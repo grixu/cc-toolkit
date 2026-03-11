@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cc-toolkit",
+  "owner": {
+    "name": "Mateusz Gostański (grixu)",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "metadata": {
+    "description": "Claude Code productivity toolkit - plan review with OpenAI Codex, and more"
+  },
+  "plugins": [
+    {
+      "name": "codex-plan-improver",
+      "source": "./plugins/codex-plan-improver",
+      "description": "Automatic plan review via OpenAI Codex CLI. Intercepts ExitPlanMode and sends plans through iterative Codex review before presenting to the user.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Mateusz Gostański (grixu)",
+        "email": "mateusz.gostanski@gmail.com"
+      },
+      "category": "productivity",
+      "tags": ["planning", "review", "codex"]
+    }
+  ]
+}
