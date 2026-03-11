@@ -1,0 +1,17 @@
+{
+  "description": "Intercepts ExitPlanMode to trigger Codex plan review",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/plan-review-on-exit.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
