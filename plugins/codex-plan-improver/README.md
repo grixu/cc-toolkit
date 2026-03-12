@@ -62,3 +62,11 @@ Default model: `gpt-5.3-codex`
 ## Configuration
 
 The default Codex model can be configured in `~/.codex/config.toml`. The plugin always uses read-only sandbox mode.
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `CC_TOOLKIT_CODEX_PLAN_REVIEW` | _(unset — review enabled)_ | Set to `0` or `false` to skip automatic Codex review on plan exit |
+
+When the variable is **unset** or set to `1`/`true`, the hook intercepts `ExitPlanMode` and triggers Codex review as usual. Any other value (e.g. `0`, `false`, `no`) disables the hook entirely.

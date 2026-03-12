@@ -13,7 +13,7 @@
       "name": "codex-plan-improver",
       "source": "./plugins/codex-plan-improver",
       "description": "Automatic plan review via OpenAI Codex CLI. Intercepts ExitPlanMode and sends plans through iterative Codex review before presenting to the user.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Mateusz Gostański (grixu)",
         "email": "mateusz.gostanski@gmail.com"

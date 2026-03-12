@@ -3,6 +3,12 @@
 # Matcher in hooks.json ensures this only runs for ExitPlanMode.
 # Prevents infinite loops via session-scoped flag file.
 
+# Check env var — skip review if explicitly disabled
+REVIEW_FLAG="${CC_TOOLKIT_CODEX_PLAN_REVIEW:-}"
+if [ -n "$REVIEW_FLAG" ] && [ "$REVIEW_FLAG" != "1" ] && [ "$REVIEW_FLAG" != "true" ]; then
+  exit 0
+fi
+
 INPUT=$(cat)
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id')
 
