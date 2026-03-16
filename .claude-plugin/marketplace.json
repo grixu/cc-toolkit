@@ -20,6 +20,18 @@
       },
       "category": "productivity",
       "tags": ["planning", "review", "codex"]
+    },
+    {
+      "name": "feature-delivery",
+      "source": "./plugins/feature-delivery",
+      "description": "End-to-end feature delivery workflow: requirements gathering, spec editing, status dashboard, and implementation orchestration with parallel subagents",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański (grixu)",
+        "email": "mateusz.gostanski@gmail.com"
+      },
+      "category": "productivity",
+      "tags": ["requirements", "specification", "implementation", "delivery"]
     }
   ]
 }
