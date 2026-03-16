@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-16
+
 ### Added
 
 - `/start` command — 6-phase requirements gathering (complexity analysis, discovery Q&A, codebase research, technical Q&A, test planning, spec generation)
