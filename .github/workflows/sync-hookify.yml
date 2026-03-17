@@ -1,0 +1,161 @@
+name: Sync Hookify from Upstream
+
+on:
+  schedule:
+    - cron: "0 8 * * 1,4" # Monday & Thursday at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      sync_status: ${{ steps.sync.outputs.sync_status }}
+      upstream_sha: ${{ steps.sync.outputs.upstream_sha }}
+      pr_number: ${{ steps.pr.outputs.pr_number }}
+      merged: ${{ steps.merge.outputs.merged }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch hookify-upstream branch
+        run: git fetch origin hookify-upstream || true
+
+      - name: Checkout hookify-upstream branch
+        run: |
+          if git show-ref --verify --quiet refs/remotes/origin/hookify-upstream; then
+            git checkout -B hookify-upstream origin/hookify-upstream
+            git checkout main
+          fi
+
+      - name: Run sync script
+        id: sync
+        run: ./scripts/sync-hookify.sh --ci
+
+      - name: Push hookify-upstream branch
+        if: steps.sync.outputs.sync_status == 'updated'
+        run: git push origin hookify-upstream --force-with-lease
+
+      - name: Find existing PR
+        if: steps.sync.outputs.sync_status == 'updated'
+        id: find_pr
+        run: |
+          EXISTING_PR=$(gh pr list --head hookify-upstream --base main --state open --json number -q '.[0].number' || echo "")
+          echo "existing_pr=$EXISTING_PR" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create PR
+        if: steps.sync.outputs.sync_status == 'updated' && steps.find_pr.outputs.existing_pr == ''
+        id: create_pr
+        run: |
+          PR_URL=$(gh pr create \
+            --head hookify-upstream \
+            --base main \
+            --title "sync: hookify upstream @ ${{ steps.sync.outputs.upstream_sha }}" \
+            --body "$(cat <<'EOF'
+          ## Upstream Hookify Sync
+
+          Automated sync from [anthropics/claude-code/plugins/hookify](https://github.com/anthropics/claude-code/tree/main/plugins/hookify).
+
+          **Upstream commit:** `${{ steps.sync.outputs.upstream_sha }}`
+
+          ### Review checklist
+          - [ ] Check for merge conflicts (especially `plugin.json` version field)
+          - [ ] Verify local customizations are preserved
+          - [ ] Test hookify plugin locally if significant changes
+
+          This PR will attempt auto-merge. If conflicts exist, manual resolution is required.
+          EOF
+          )")
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on existing PR
+        if: steps.sync.outputs.sync_status == 'updated' && steps.find_pr.outputs.existing_pr != ''
+        run: |
+          gh pr comment "${{ steps.find_pr.outputs.existing_pr }}" \
+            --body "Updated with upstream @ \`${{ steps.sync.outputs.upstream_sha }}\`"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve PR number
+        if: steps.sync.outputs.sync_status == 'updated'
+        id: pr
+        run: |
+          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER="${{ steps.find_pr.outputs.existing_pr }}"
+          fi
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Try auto-merge
+        if: steps.sync.outputs.sync_status == 'updated'
+        id: merge
+        run: |
+          if gh pr merge "${{ steps.pr.outputs.pr_number }}" --merge; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            gh pr edit "${{ steps.pr.outputs.pr_number }}" --add-label "merge-conflict" 2>/dev/null || true
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    needs: sync
+    if: needs.sync.outputs.merged == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Ensure CHANGELOG has unreleased content
+        run: |
+          CHANGELOG="plugins/hookify/CHANGELOG.md"
+          UPSTREAM_SHA="${{ needs.sync.outputs.upstream_sha }}"
+
+          # Extract content between [Unreleased] and next ## heading
+          UNRELEASED=$(sed -n '/^## \[Unreleased\]/,/^## \[/{/^## \[/d;p;}' "$CHANGELOG" | sed '/^$/d')
+
+          if [ -z "$UNRELEASED" ]; then
+            # Insert sync entry after [Unreleased] heading
+            sed -i '/^## \[Unreleased\]/a\\n### Changed\n\n- Sync with upstream hookify (anthropics/claude-code@'"$UPSTREAM_SHA"')' "$CHANGELOG"
+            git add "$CHANGELOG"
+            git commit -m "chore(hookify): add changelog entry for upstream sync"
+            git push
+          fi
+
+      - name: Release
+        run: ./scripts/release.sh hookify patch
+        env:
+          CI: "true"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push release
+        run: |
+          git push
+          TAG=$(git describe --tags --abbrev=0)
+          git push origin "$TAG"
