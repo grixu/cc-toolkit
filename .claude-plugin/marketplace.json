@@ -46,7 +46,7 @@
       "name": "hookify",
       "source": "./plugins/hookify",
       "description": "Create custom hooks to prevent unwanted behaviors using markdown rule files with regex pattern matching",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Mateusz Gostański (grixu)",
         "email": "mateusz.gostanski@gmail.com"

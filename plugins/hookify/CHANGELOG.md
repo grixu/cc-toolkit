@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-17
+
 ### Added
 
 - Forked from upstream anthropics/claude-code hookify plugin (v0.1.0)
