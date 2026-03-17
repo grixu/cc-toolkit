@@ -30,6 +30,15 @@ MARKETPLACE="$REPO_ROOT/.claude-plugin/marketplace.json"
 die()  { echo "error: $*" >&2; exit 1; }
 info() { echo "→ $*"; }
 
+# Portable in-place sed (macOS vs Linux)
+_sed_i() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
+
 usage() {
   cat <<EOF
 Usage: $(basename "$0") <plugin-name> <patch|minor|major>
@@ -117,7 +126,11 @@ fi
 
 # ── Confirm ──────────────────────────────────────────────────
 
-read -rp "Proceed with release? [y/N] " confirm
+if [[ "${CI:-}" == "true" ]]; then
+  confirm="y"
+else
+  read -rp "Proceed with release? [y/N] " confirm
+fi
 [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
 echo
 
@@ -137,10 +150,10 @@ mv "$MARKETPLACE.tmp" "$MARKETPLACE"
 
 # 3. Stamp CHANGELOG — replace [Unreleased] header with version + date, add fresh [Unreleased]
 info "Updating CHANGELOG.md"
-sed -i '' "s/^## \[Unreleased\]/## [$NEW_VERSION] - $TODAY/" "$CHANGELOG"
+_sed_i "s/^## \[Unreleased\]/## [$NEW_VERSION] - $TODAY/" "$CHANGELOG"
 
 # Insert fresh [Unreleased] section after the header block
-sed -i '' "/^and this project adheres to/a\\
+_sed_i "/^and this project adheres to/a\\
 \\
 ## [Unreleased]" "$CHANGELOG"
 
@@ -161,7 +174,11 @@ git tag -a "$TAG_NAME" -m "$PLUGIN_NAME v$NEW_VERSION"
 # ── Optional: push & GitHub release ─────────────────────────
 
 echo
-read -rp "Push to remote and create GitHub Release? [y/N] " push_confirm
+if [[ "${CI:-}" == "true" ]]; then
+  push_confirm="y"
+else
+  read -rp "Push to remote and create GitHub Release? [y/N] " push_confirm
+fi
 if [[ "$push_confirm" =~ ^[Yy]$ ]]; then
   info "Pushing commits and tag"
   git push
