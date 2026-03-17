@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-17
+
+### Changed
+
+- Move requirement files from local `requirements/` folder to `~/.claude/grixu-cc-toolkit/feature-delivery/<project-name>/` — keeps project repos clean and persists specs across clones
+- Add `storage-root.sh` script to compute deterministic storage path from project directory name
+- Add `Bash` to allowed tools in `start`, `current`, and `edit` commands (needed to invoke `storage-root.sh`)
+
 ## [1.0.0] - 2026-03-16
 
 ### Added
