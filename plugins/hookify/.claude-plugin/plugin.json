@@ -5,5 +5,12 @@
   "author": {
     "name": "Daisy Hollman",
     "email": "daisy@anthropic.com"
-  }
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "hooks",
+    "rules",
+    "safety",
+    "patterns"
+  ]
 }
