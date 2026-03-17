@@ -10,3 +10,4 @@ This project is set of well-crafted Claude Code plugins.
   - Node.js
   - Python
 - ALWAYS show the missing questions, unresolved cases, edge cases that are not covered in skills, commands, scripts etc.
+- ALWAYS use `./scripts/release.sh <plugin-name> <patch|minor|major>` for releasing plugins — do not perform release steps manually
