@@ -50,11 +50,22 @@ Implementation depth scales with specification complexity:
 
 ---
 
+## Storage Location
+
+All output is stored outside the project directory in the Claude Code config area.
+
+**Before any file operations**, run:
+```
+$STORAGE_ROOT=$(${CLAUDE_PLUGIN_ROOT}/scripts/storage-root.sh --ensure)
+```
+
+This returns the absolute path (e.g. `~/.claude/grixu-cc-toolkit/feature-delivery/my-app`) and creates it if needed. Use `$STORAGE_ROOT` as the base path for all output files.
+
 ## Phase 1: Load & Validate Specification
 
 1. Parse $ARGUMENTS to identify which specification to implement
 2. If $ARGUMENTS is empty:
-   - Check `requirements/.current-requirement`
+   - Check `$STORAGE_ROOT/.current-requirement`
    - If no active requirement, show error and available requirements via `/current --all`
    - Exit with suggestion to specify spec-id
 3. Find the latest specification version:

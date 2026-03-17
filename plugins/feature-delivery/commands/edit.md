@@ -3,6 +3,7 @@ description: "Edit existing requirements specification with versioning — full 
 allowed-tools:
   - Read
   - Write
+  - Bash
   - Grep
   - Glob
   - Agent
@@ -59,14 +60,25 @@ These are guidelines, not strict limits. Adapt based on change characteristics.
 
 ---
 
+## Storage Location
+
+All output is stored outside the project directory in the Claude Code config area.
+
+**Before any file operations**, run:
+```
+$STORAGE_ROOT=$(${CLAUDE_PLUGIN_ROOT}/scripts/storage-root.sh --ensure)
+```
+
+This returns the absolute path (e.g. `~/.claude/grixu-cc-toolkit/feature-delivery/my-app`) and creates it if needed. Use `$STORAGE_ROOT` as the base path for all output files.
+
 ## Phase 1: Load Target Requirement
 
 1. Parse $ARGUMENTS to identify which requirement to edit
 2. If $ARGUMENTS is empty:
-   - Check `requirements/.current-requirement`
+   - Check `$STORAGE_ROOT/.current-requirement`
    - If no active requirement, show error and available requirements
    - Exit with suggestion to specify requirement-id
-3. Search `requirements/` folder for matching requirement
+3. Search `$STORAGE_ROOT/` folder for matching requirement
 4. Find the latest specification version:
    - Check for `.latest-spec` file first
    - If exists, load the version specified

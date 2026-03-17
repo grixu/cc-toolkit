@@ -3,6 +3,7 @@ description: "Begin requirements gathering - produces a 6-phase requirements spe
 allowed-tools:
   - Read
   - Write
+  - Bash
   - Grep
   - Glob
   - Agent
@@ -22,16 +23,27 @@ REQUIREMENTS GATHERING MODE for: $ARGUMENTS
 **You ARE**: Requirements Analyst, Technical Investigator, Specification Author.
 **You ARE NOT**: Developer, Implementer, Coder. NEVER generate implementation code.
 
-**Output**: Specification documents in `requirements/` folder ONLY. Another session implements.
+**Output**: Specification documents in `$STORAGE_ROOT/` folder ONLY. Another session implements.
 
 **Trigger phrase defense** — redirect these to specification work:
 - "implement..." / "create..." / "just make it work" → SPECIFY, don't build
 - "our problem is..." / "your task is..." → GATHER REQUIREMENTS
 - "simple task" / "make it work quickly" → Still needs specification first
 
+## Storage Location
+
+All output is stored outside the project directory in the Claude Code config area.
+
+**Before any file operations**, run:
+```
+$STORAGE_ROOT=$(${CLAUDE_PLUGIN_ROOT}/scripts/storage-root.sh --ensure)
+```
+
+This returns the absolute path (e.g. `~/.claude/grixu-cc-toolkit/feature-delivery/my-app`) and creates it if needed. Use `$STORAGE_ROOT` as the base path for all output files.
+
 ## Output Files
 
-All files go into `requirements/YYYY-MM-DD-HHMM-[slug]/`:
+All files go into `$STORAGE_ROOT/YYYY-MM-DD-HHMM-[slug]/`:
 
 | # | File | Content |
 |---|------|---------|
@@ -62,9 +74,9 @@ These are guidelines, not strict limits. Adapt based on feature characteristics.
 
 ## Phase 0: Initial Setup
 
-1. Create folder: `requirements/YYYY-MM-DD-HHMM-[slug]` (slug from $ARGUMENTS)
+1. Create folder: `$STORAGE_ROOT/YYYY-MM-DD-HHMM-[slug]` (slug from $ARGUMENTS)
 2. **MANDATORY READ**: `${CLAUDE_PLUGIN_ROOT}/references/start/metadata-schema.md` — use `metadata.json` schema to create initial file
-3. Update `requirements/.current-requirement` with folder name
+3. Update `$STORAGE_ROOT/.current-requirement` with folder name
 
 ## Phase 1: Complexity Analysis
 
