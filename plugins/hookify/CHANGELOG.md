@@ -7,4 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
 - Forked from upstream anthropics/claude-code hookify plugin (v0.1.0)
+- Upstream sync script and CI workflow for automated upstream tracking
+
+### Changed
+
+- Add `permissionDecisionReason` to hook deny output for better diagnostics
+- Improve `systemMessage` format on blocked operations to show rule name
