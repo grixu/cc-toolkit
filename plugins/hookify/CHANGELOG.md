@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-23
+
 ### Changed
 
 - Migrated upstream source from `anthropics/claude-code` to correct upstream `anthropics/claude-plugins-official`
