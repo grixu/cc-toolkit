@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ──────────────────────────────────────────────────────────────
-# sync-hookify.sh — Sync hookify plugin from upstream anthropics/claude-code
+# sync-hookify.sh — Sync hookify plugin from upstream anthropics/claude-plugins-official
 #
 # Usage:
 #   ./scripts/sync-hookify.sh [--ci]
@@ -18,7 +18,7 @@ set -euo pipefail
 # Requirements: git
 # ──────────────────────────────────────────────────────────────
 
-UPSTREAM_REPO="https://github.com/anthropics/claude-code.git"
+UPSTREAM_REPO="https://github.com/anthropics/claude-plugins-official.git"
 UPSTREAM_PREFIX="plugins/hookify"
 LOCAL_PREFIX="plugins/hookify"
 SYNC_BRANCH="hookify-upstream"
@@ -69,7 +69,7 @@ fi
 
 # ── Fetch upstream (sparse, shallow) ─────────────────────────
 
-info "Fetching upstream hookify from anthropics/claude-code..."
+info "Fetching upstream hookify from anthropics/claude-plugins-official..."
 TEMP_DIR=$(mktemp -d)
 
 git clone --depth=1 --filter=blob:none --sparse \
@@ -134,7 +134,7 @@ info "Committing upstream changes..."
 git commit -m "$(cat <<EOF
 sync: hookify upstream @ $UPSTREAM_SHA
 
-Source: anthropics/claude-code@$UPSTREAM_SHA
+Source: anthropics/claude-plugins-official@$UPSTREAM_SHA
 Path: $UPSTREAM_PREFIX
 EOF
 )" --quiet

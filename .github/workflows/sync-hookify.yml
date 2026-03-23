@@ -66,7 +66,7 @@ jobs:
             --body "$(cat <<'EOF'
           ## Upstream Hookify Sync
 
-          Automated sync from [anthropics/claude-code/plugins/hookify](https://github.com/anthropics/claude-code/tree/main/plugins/hookify).
+          Automated sync from [anthropics/claude-plugins-official/plugins/hookify](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify).
 
           **Upstream commit:** `${{ steps.sync.outputs.upstream_sha }}`
 
@@ -142,7 +142,7 @@ jobs:
 
           if [ -z "$UNRELEASED" ]; then
             # Insert sync entry after [Unreleased] heading
-            sed -i '/^## \[Unreleased\]/a\\n### Changed\n\n- Sync with upstream hookify (anthropics/claude-code@'"$UPSTREAM_SHA"')' "$CHANGELOG"
+            sed -i '/^## \[Unreleased\]/a\\n### Changed\n\n- Sync with upstream hookify (anthropics/claude-plugins-official@'"$UPSTREAM_SHA"')' "$CHANGELOG"
             git add "$CHANGELOG"
             git commit -m "chore(hookify): add changelog entry for upstream sync"
             git push
