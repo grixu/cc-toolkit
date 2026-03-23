@@ -73,9 +73,10 @@ class RuleEngine:
                 return {
                     "hookSpecificOutput": {
                         "hookEventName": hook_event,
-                        "permissionDecision": "deny"
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": combined_message
                     },
-                    "systemMessage": combined_message
+                    "systemMessage": "Hookify: Blocked operation by rule: " + rule.name + "\n"
                 }
             else:
                 # For other events, just show message
