@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrated upstream source from `anthropics/claude-code` to correct upstream `anthropics/claude-plugins-official`
+- Re-applied `permissionDecisionReason` in hook deny output for better diagnostics
+- Re-applied improved `systemMessage` format on blocked operations to show rule name
+- Updated sync scripts and CI workflow for new upstream repository
+
 ## [0.1.1] - 2026-03-17
 
 ### Added

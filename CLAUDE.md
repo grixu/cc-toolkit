@@ -37,7 +37,7 @@ The root `.claude-plugin/marketplace.json` must list every plugin with matching 
 
 ## Hookify Upstream Sync
 
-The hookify plugin is forked from `anthropics/claude-code`. Upstream syncs go to the `hookify-upstream` branch via `scripts/sync-hookify.sh` and CI (`.github/workflows/sync-hookify.yml`). Merge conflicts may arise when local changes overlap with upstream.
+The hookify plugin is forked from `anthropics/claude-plugins-official`. Upstream syncs go to the `hookify-upstream` branch via `scripts/sync-hookify.sh` and CI (`.github/workflows/sync-hookify.yml`). Merge conflicts may arise when local changes overlap with upstream.
 
 ## Subdirectory Instructions
 
