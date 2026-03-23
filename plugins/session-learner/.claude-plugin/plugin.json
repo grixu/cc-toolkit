@@ -1,0 +1,17 @@
+{
+  "name": "session-learner",
+  "description": "Analyze conversation for friction signals (corrections, repeated instructions, deviations) and interactively update project documentation (.claude/rules/, CLAUDE.md) with verified learnings. Coordinates with Claude Code's auto memory to avoid duplication.",
+  "version": "0.1.0",
+  "author": {
+    "name": "grixu",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "learning",
+    "memory",
+    "documentation",
+    "retrospective",
+    "rules"
+  ]
+}
