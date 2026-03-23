@@ -63,7 +63,7 @@
       "name": "session-learner",
       "source": "./plugins/session-learner",
       "description": "Analyze conversation for friction signals (corrections, repeated instructions, deviations) and interactively update project documentation (.claude/rules/, CLAUDE.md) with verified learnings",
-      "version": "0.1.0",
+      "version": "0.0.0",
       "author": {
         "name": "Mateusz Gostański (grixu)",
         "email": "mateusz.gostanski@gmail.com"
