@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-27
+
+### Added
+
+- `.rule.md` extension for team/project rules (committed to repo)
+- Global rules from `~/.claude/hookify.*.local.md`
+- Name-based priority system: project .local.md > project .rule.md > global .local.md
+- `source` and `source_type` fields on Rule dataclass for provenance tracking
+- New example rule files demonstrating `.rule.md` format
+
+### Changed
+
+- `load_rules()` now scans three tiers instead of one
+- Updated all commands, skills, agents, and documentation for multi-source support
+
 ## [0.2.0] - 2026-03-23
 
 ### Changed

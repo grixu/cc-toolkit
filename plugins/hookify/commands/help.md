@@ -21,11 +21,28 @@ Hookify installs generic hooks that run on these events:
 - **Stop**: When Claude wants to stop working
 - **UserPromptSubmit**: When user submits a prompt
 
-These hooks read configuration files from `.claude/hookify.*.local.md` and check if any rules match the current operation.
+These hooks read rule files from multiple locations and check if any rules match the current operation.
 
-### 2. Configuration Files
+### 2. Rule Types and Locations
 
-Users create rules in `.claude/hookify.{rule-name}.local.md` files:
+Hookify supports two file extensions and two locations:
+
+| Type | Extension | Location | Git | Purpose |
+|------|-----------|----------|-----|---------|
+| Team rule | `.rule.md` | `.claude/` | Committed | Shared project rules |
+| User-local | `.local.md` | `.claude/` | Ignored | Personal project rules |
+| Global | `.local.md` | `~/.claude/` | N/A | Personal defaults |
+
+**Priority (highest first):**
+1. Project `.local.md` -- overrides everything
+2. Project `.rule.md` -- team/project rules
+3. Global `~/.claude/*.local.md` -- user global defaults
+
+If two rules share the same `name`, the higher-priority tier wins. You can override a team rule by creating a `.local.md` with the same name and `enabled: false`.
+
+### 3. Configuration Files
+
+Users create rules in `.claude/hookify.{rule-name}.rule.md` (team) or `.local.md` (personal) files:
 
 ```markdown
 ---
@@ -58,7 +75,7 @@ The message body is what Claude sees when the rule triggers.
 This analyzes your request and creates the appropriate rule file.
 
 **Option B: Create manually**
-Create `.claude/hookify.my-rule.local.md` with the format above.
+Create `.claude/hookify.my-rule.rule.md` (team) or `.claude/hookify.my-rule.local.md` (personal) with the format above.
 
 **Option C: Analyze conversation**
 ```
@@ -131,18 +148,20 @@ Use Python regex syntax:
 
 ## Important Notes
 
-**No Restart Needed**: Hookify rules (`.local.md` files) take effect immediately on the next tool use. The hookify hooks are already loaded and read your rules dynamically.
+**No Restart Needed**: Hookify rules take effect immediately on the next tool use. The hookify hooks are already loaded and read your rules dynamically.
 
 **Block or Warn**: Rules can either `block` operations (prevent execution) or `warn` (show message but allow). Set `action: block` or `action: warn` in the rule's frontmatter.
 
-**Rule Files**: Keep rules in `.claude/hookify.*.local.md` - they should be git-ignored (add to .gitignore if needed).
+**Team vs Personal**: Use `.rule.md` for team rules (committed to repo) and `.local.md` for personal rules (gitignored). Global personal rules go in `~/.claude/`.
+
+**Override Team Rules**: Create a `.local.md` with the same `name` as a `.rule.md` rule to override it. Set `enabled: false` to disable a team rule for yourself.
 
 **Disable Rules**: Set `enabled: false` in frontmatter or delete the file.
 
 ## Troubleshooting
 
 **Hook not triggering:**
-- Check rule file is in `.claude/` directory
+- Check rule file is in `.claude/` directory (or `~/.claude/` for global rules)
 - Verify `enabled: true` in frontmatter
 - Confirm pattern is valid regex
 - Test pattern: `python3 -c "import re; print(re.search('your_pattern', 'test_text'))"`
@@ -168,7 +187,7 @@ Use Python regex syntax:
    - Ask Claude to run `rm -rf /tmp/test`
    - You should see the warning
 
-4. Refine the rule by editing `.claude/hookify.warn-rm.local.md`
+4. Refine the rule by editing its `.rule.md` or `.local.md` file
 
 5. Create more rules as you encounter unwanted behaviors
 

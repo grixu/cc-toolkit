@@ -25,6 +25,7 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# Local configuration (should not be committed)
+# Local configuration (user-local, should not be committed)
+# Note: .rule.md files are intentionally NOT ignored - they are team rules
 .claude/*.local.md
 .claude/*.local.json

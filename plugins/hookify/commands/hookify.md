@@ -74,14 +74,22 @@ After gathering behaviors (from arguments or agent), present to user using AskUs
   - "Just warn" (action: warn - shows message but allows)
   - "Block operation" (action: block - prevents execution)
 
-**Question 3: Ask for example patterns:**
+**Question 3: Rule scope?**
+- "Should this be a team rule or a personal rule?"
+- Options:
+  - "Team rule (.rule.md)" - committed to repo, shared with team
+  - "Personal rule (.local.md)" - gitignored, just for you
+
+**Question 4: Ask for example patterns:**
 - "What patterns should trigger this rule?"
 - Show detected patterns
 - Allow user to refine or add more
 
 ### Step 3: Generate Rule Files
 
-For each confirmed behavior, create a `.claude/hookify.{rule-name}.local.md` file:
+For each confirmed behavior, create a rule file based on the chosen scope:
+- Team rule: `.claude/hookify.{rule-name}.rule.md` (committed to repo)
+- Personal rule: `.claude/hookify.{rule-name}.local.md` (gitignored)
 
 **Rule naming convention:**
 - Use kebab-case
@@ -132,16 +140,18 @@ Use the current working directory (where Claude Code was started) as the base pa
 1. Check if `.claude/` directory exists in current working directory
    - If not, create it first with: `mkdir -p .claude`
 
-2. Use Write tool to create each `.claude/hookify.{name}.local.md` file
-   - Use relative path from current working directory: `.claude/hookify.{name}.local.md`
+2. Use Write tool to create each rule file:
+   - Team: `.claude/hookify.{name}.rule.md`
+   - Personal: `.claude/hookify.{name}.local.md`
+   - Use relative path from current working directory
    - The path should resolve to the project's .claude directory, not the plugin's
 
 3. Show user what was created:
    ```
    Created 3 hookify rules:
-   - .claude/hookify.dangerous-rm.local.md
-   - .claude/hookify.console-log.local.md
-   - .claude/hookify.sensitive-files.local.md
+   - .claude/hookify.dangerous-rm.rule.md (team)
+   - .claude/hookify.console-log.local.md (personal)
+   - .claude/hookify.sensitive-files.rule.md (team)
 
    These rules will trigger on:
    - dangerous-rm: Bash commands matching "rm -rf"
@@ -184,7 +194,7 @@ Use the current working directory (where Claude Code was started) as the base pa
 1. Analyze: User wants to prevent rm -rf commands
 2. Ask: "Should I block this command or just warn you?"
 3. User selects: "Just warn"
-4. Create `.claude/hookify.dangerous-rm.local.md`:
+4. Create `.claude/hookify.dangerous-rm.local.md` (or `.rule.md` for team):
    ```markdown
    ---
    name: warn-dangerous-rm
@@ -204,6 +214,7 @@ Use the current working directory (where Claude Code was started) as the base pa
 
 - **No restart needed**: Rules take effect immediately on the next tool use
 - **File location**: Create files in project's `.claude/` directory (current working directory), NOT the plugin's .claude/
+- **Team vs Personal**: `.rule.md` files are committed to repo (team), `.local.md` files are gitignored (personal)
 - **Regex syntax**: Use Python regex syntax (raw strings, no need to escape in YAML)
 - **Action types**: Rules can `warn` (default) or `block` operations
 - **Testing**: Test rules immediately after creating them
@@ -213,7 +224,7 @@ Use the current working directory (where Claude Code was started) as the base pa
 **If rule file creation fails:**
 1. Check current working directory with pwd
 2. Ensure `.claude/` directory exists (create with mkdir if needed)
-3. Use absolute path if needed: `{cwd}/.claude/hookify.{name}.local.md`
+3. Use absolute path if needed: `{cwd}/.claude/hookify.{name}.rule.md` or `.local.md`
 4. Verify file was created with Glob or ls
 
 **If rule doesn't trigger after creation:**

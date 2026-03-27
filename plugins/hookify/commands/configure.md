@@ -13,10 +13,13 @@ Enable or disable existing hookify rules using an interactive interface.
 
 ### 1. Find Existing Rules
 
-Use Glob tool to find all hookify rule files:
+Use Glob tool to find all hookify rule files across all tiers:
 ```
 pattern: ".claude/hookify.*.local.md"
+pattern: ".claude/hookify.*.rule.md"
+pattern: "~/.claude/hookify.*.local.md"
 ```
+Note: For the global path, expand `~` to the user's home directory.
 
 If no rules found, inform user:
 ```
@@ -111,8 +114,10 @@ Changes apply immediately - no restart needed
 ## Important Notes
 
 - Changes take effect immediately on next tool use
-- You can also manually edit .claude/hookify.*.local.md files
-- To permanently remove a rule, delete its .local.md file
+- You can also manually edit `.rule.md` or `.local.md` files directly
+- `.rule.md` files are team rules (committed to git), `.local.md` files are user-local (gitignored)
+- To override a team rule, create a `.local.md` with the same `name`
+- To permanently remove a rule, delete its file
 - Use `/hookify:list` to see all configured rules
 
 ## Edge Cases

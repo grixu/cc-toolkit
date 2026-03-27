@@ -8,7 +8,13 @@ version: 0.1.0
 
 ## Overview
 
-Hookify rules are markdown files with YAML frontmatter that define patterns to watch for and messages to show when those patterns match. Rules are stored in `.claude/hookify.{rule-name}.local.md` files.
+Hookify rules are markdown files with YAML frontmatter that define patterns to watch for and messages to show when those patterns match.
+
+Rules are stored in two extensions:
+- `.claude/hookify.{rule-name}.rule.md` -- team/project rules (committed to repo)
+- `.claude/hookify.{rule-name}.local.md` -- user-local rules (gitignored)
+
+Rules can also live globally in `~/.claude/hookify.{rule-name}.local.md` (personal defaults across all projects).
 
 ## Rule File Format
 
@@ -282,19 +288,34 @@ Better: `rm\s+-rf`
 
 ## File Organization
 
-**Location:** All rules in `.claude/` directory
-**Naming:** `.claude/hookify.{descriptive-name}.local.md`
-**Gitignore:** Add `.claude/*.local.md` to `.gitignore`
+**Locations:**
+- Project rules: `.claude/` directory (in project root)
+- Global rules: `~/.claude/` directory (user home)
+
+**Extensions:**
+- `.rule.md` -- team/project rules, committed to repo
+- `.local.md` -- user-local rules, gitignored
+
+**Naming:**
+- `.claude/hookify.{descriptive-name}.rule.md` (team)
+- `.claude/hookify.{descriptive-name}.local.md` (personal)
+- `~/.claude/hookify.{descriptive-name}.local.md` (global personal)
+
+**Priority (highest first):**
+1. Project `.local.md` -- overrides everything (user override per project)
+2. Project `.rule.md` -- team/project rules
+3. Global `~/.claude/*.local.md` -- user global defaults
+
+If two rules share the same `name`, the higher-priority tier wins. A disabled `.local.md` rule shadows an enabled `.rule.md` rule with the same name (intentional override).
 
 **Good names:**
-- `hookify.dangerous-rm.local.md`
-- `hookify.console-log.local.md`
-- `hookify.require-tests.local.md`
-- `hookify.sensitive-files.local.md`
+- `hookify.dangerous-rm.rule.md` (team safety rule)
+- `hookify.console-log.local.md` (personal preference)
+- `hookify.coding-style.local.md` (global in ~/.claude/)
 
 **Bad names:**
 - `hookify.rule1.local.md` (not descriptive)
-- `hookify.md` (missing .local)
+- `hookify.md` (missing extension)
 - `danger.local.md` (missing hookify prefix)
 
 ## Workflow
@@ -305,7 +326,10 @@ Better: `rm\s+-rf`
 2. Determine which tool is involved (Bash, Edit, etc.)
 3. Choose event type (bash, file, stop, etc.)
 4. Write regex pattern
-5. Create `.claude/hookify.{name}.local.md` file in project root
+5. Choose scope:
+   - Team rule: `.claude/hookify.{name}.rule.md` (committed, shared)
+   - Personal rule: `.claude/hookify.{name}.local.md` (gitignored)
+   - Global rule: `~/.claude/hookify.{name}.local.md` (all projects)
 6. Test immediately - rules are read dynamically on next tool use
 
 ### Refining a Rule
@@ -322,7 +346,9 @@ Better: `rm\s+-rf`
 ## Examples
 
 See `${CLAUDE_PLUGIN_ROOT}/examples/` for complete examples:
-- `dangerous-rm.local.md` - Block dangerous rm commands
+- `dangerous-rm.rule.md` - Block dangerous rm commands (team rule)
+- `dangerous-rm.local.md` - Block dangerous rm commands (personal rule)
+- `coding-standards.rule.md` - Warn about TypeScript `any` type (team rule)
 - `console-log-warning.local.md` - Warn about console.log
 - `sensitive-files-warning.local.md` - Warn about editing .env files
 

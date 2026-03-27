@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Configuration loader for hookify plugin.
 
-Loads and parses .claude/hookify.*.local.md files.
+Loads and parses hookify rule files from project and global .claude directories.
+Supports .rule.md (team rules) and .local.md (user-local rules) extensions.
 """
 
 import os
@@ -40,6 +41,8 @@ class Rule:
     action: str = "warn"  # "warn" or "block" (future)
     tool_matcher: Optional[str] = None  # Override tool matching
     message: str = ""  # Message body from markdown
+    source: str = ""  # Source file path (for debugging/display)
+    source_type: str = ""  # "project-local", "project-rule", or "global-local"
 
     @classmethod
     def from_dict(cls, frontmatter: Dict[str, Any], message: str) -> 'Rule':
@@ -195,8 +198,37 @@ def extract_frontmatter(content: str) -> tuple[Dict[str, Any], str]:
     return frontmatter, message
 
 
+# Priority tiers: first entry wins on name collision
+_RULE_TIERS = [
+    {
+        'base': lambda: '.claude',
+        'glob_pattern': 'hookify.*.local.md',
+        'source_type': 'project-local',
+    },
+    {
+        'base': lambda: '.claude',
+        'glob_pattern': 'hookify.*.rule.md',
+        'source_type': 'project-rule',
+    },
+    {
+        'base': lambda: os.path.join(os.path.expanduser('~'), '.claude'),
+        'glob_pattern': 'hookify.*.local.md',
+        'source_type': 'global-local',
+    },
+]
+
+
 def load_rules(event: Optional[str] = None) -> List[Rule]:
-    """Load all hookify rules from .claude directory.
+    """Load all hookify rules from project and global .claude directories.
+
+    Searches three tiers in priority order:
+      1. <CWD>/.claude/hookify.*.local.md  (user override per project)
+      2. <CWD>/.claude/hookify.*.rule.md   (team/project rules)
+      3. ~/.claude/hookify.*.local.md       (user global rules)
+
+    If two rules share the same ``name``, the higher-priority tier wins.
+    This means a disabled .local.md rule shadows an enabled .rule.md rule
+    with the same name (intentional override).
 
     Args:
         event: Optional event filter ("bash", "file", "stop", etc.)
@@ -204,39 +236,48 @@ def load_rules(event: Optional[str] = None) -> List[Rule]:
     Returns:
         List of enabled Rule objects matching the event.
     """
-    rules = []
+    seen_names: Dict[str, str] = {}  # name -> source_type that claimed it
+    rules: List[Rule] = []
 
-    # Find all hookify.*.local.md files
-    pattern = os.path.join('.claude', 'hookify.*.local.md')
-    files = glob.glob(pattern)
+    for tier in _RULE_TIERS:
+        base_dir = tier['base']()
+        pattern = os.path.join(base_dir, tier['glob_pattern'])
+        source_type = tier['source_type']
+        files = sorted(glob.glob(pattern))
 
-    for file_path in files:
-        try:
-            rule = load_rule_file(file_path)
-            if not rule:
-                continue
-
-            # Filter by event if specified
-            if event:
-                if rule.event != 'all' and rule.event != event:
+        for file_path in files:
+            try:
+                rule = load_rule_file(file_path)
+                if not rule:
                     continue
 
-            # Only include enabled rules
-            if rule.enabled:
-                rules.append(rule)
+                # Deduplicate: first tier to claim a name wins
+                if rule.name in seen_names:
+                    continue
+                seen_names[rule.name] = source_type
 
-        except (IOError, OSError, PermissionError) as e:
-            # File I/O errors - log and continue
-            print(f"Warning: Failed to read {file_path}: {e}", file=sys.stderr)
-            continue
-        except (ValueError, KeyError, AttributeError, TypeError) as e:
-            # Parsing errors - log and continue
-            print(f"Warning: Failed to parse {file_path}: {e}", file=sys.stderr)
-            continue
-        except Exception as e:
-            # Unexpected errors - log with type details
-            print(f"Warning: Unexpected error loading {file_path} ({type(e).__name__}): {e}", file=sys.stderr)
-            continue
+                # Tag provenance
+                rule.source = file_path
+                rule.source_type = source_type
+
+                # Filter by event if specified
+                if event:
+                    if rule.event != 'all' and rule.event != event:
+                        continue
+
+                # Only include enabled rules
+                if rule.enabled:
+                    rules.append(rule)
+
+            except (IOError, OSError, PermissionError) as e:
+                print(f"Warning: Failed to read {file_path}: {e}", file=sys.stderr)
+                continue
+            except (ValueError, KeyError, AttributeError, TypeError) as e:
+                print(f"Warning: Failed to parse {file_path}: {e}", file=sys.stderr)
+                continue
+            except Exception as e:
+                print(f"Warning: Unexpected error loading {file_path} ({type(e).__name__}): {e}", file=sys.stderr)
+                continue
 
     return rules
 
@@ -295,3 +336,11 @@ pattern: "rm -rf"
 
     rule = Rule.from_dict(fm, msg)
     print("Rule:", rule)
+
+    # Test multi-tier loading
+    print("\n--- Multi-tier loading ---")
+    all_rules = load_rules()
+    for r in all_rules:
+        print(f"  [{r.source_type}] {r.name} (enabled={r.enabled}) from {r.source}")
+    if not all_rules:
+        print("  (no rules found)")

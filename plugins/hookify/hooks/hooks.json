@@ -1,5 +1,5 @@
 {
-  "description": "Hookify plugin - User-configurable hooks from .local.md files",
+  "description": "Hookify plugin - User-configurable hooks from .rule.md and .local.md files",
   "hooks": {
     "PreToolUse": [
       {

@@ -21,7 +21,7 @@ The hookify plugin makes it simple to create hooks without editing complex `hook
 /hookify Warn me when I use rm -rf commands
 ```
 
-This analyzes your request and creates `.claude/hookify.warn-rm.local.md`.
+This analyzes your request and creates a rule file (e.g. `.claude/hookify.warn-rm.local.md`).
 
 ### 2. Test It Immediately
 
@@ -68,11 +68,26 @@ Enable/disable existing rules through an interactive interface.
 /hookify:help
 ```
 
+## Rule Types
+
+| Type | Extension | Location | Git | Purpose |
+|------|-----------|----------|-----|---------|
+| Team rule | `.rule.md` | `.claude/` | Committed | Shared project rules |
+| User-local | `.local.md` | `.claude/` | Ignored | Personal project rules |
+| Global | `.local.md` | `~/.claude/` | N/A | Personal defaults |
+
+**Priority (highest first):**
+1. Project `.local.md` -- overrides everything (user override per project)
+2. Project `.rule.md` -- team/project rules
+3. Global `~/.claude/*.local.md` -- user global defaults
+
+If two rules share the same `name`, the higher-priority tier wins. You can override a team rule by creating a `.local.md` with the same name and `enabled: false`.
+
 ## Rule Configuration Format
 
 ### Simple Rule (Single Pattern)
 
-`.claude/hookify.dangerous-rm.local.md`:
+`.claude/hookify.dangerous-rm.rule.md` (team) or `.local.md` (personal):
 ```markdown
 ---
 name: block-dangerous-rm
@@ -263,7 +278,10 @@ Use environment variables instead of hardcoded values.
 ### Enable/Disable Rules
 
 **Temporarily disable:**
-Edit the `.local.md` file and set `enabled: false`
+Edit the rule file and set `enabled: false`
+
+**Override a team rule:**
+Create a `.local.md` with the same `name` and `enabled: false`
 
 **Re-enable:**
 Set `enabled: true`
@@ -275,9 +293,9 @@ Set `enabled: true`
 
 ### Delete Rules
 
-Simply delete the `.local.md` file:
+Simply delete the rule file:
 ```bash
-rm .claude/hookify.my-rule.local.md
+rm .claude/hookify.my-rule.rule.md  # or .local.md
 ```
 
 ### View All Rules
@@ -303,7 +321,7 @@ cc --plugin-dir /path/to/hookify
 ## Troubleshooting
 
 **Rule not triggering:**
-1. Check rule file exists in `.claude/` directory (in project root, not plugin directory)
+1. Check rule file exists in `.claude/` directory (in project root, not plugin directory) or `~/.claude/` for global rules
 2. Verify `enabled: true` in frontmatter
 3. Test regex pattern separately
 4. Rules should work immediately - no restart needed
@@ -333,7 +351,6 @@ Found a useful rule pattern? Consider sharing example files via PR!
 - Rule templates library
 - Interactive pattern builder
 - Hook testing utilities
-- JSON format support (in addition to markdown)
 
 ## License
 
