@@ -1,0 +1,11 @@
+{
+  "name": "namesmith",
+  "version": "0.1.0",
+  "description": "Business name discovery: generates candidates, challenges them with a sub-agent, then checks domain availability via Instant Domain Search MCP.",
+  "author": {
+    "name": "Mateusz Gostański (grixu)",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": ["naming", "branding", "domains", "business", "startup"]
+}
