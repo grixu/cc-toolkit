@@ -63,6 +63,37 @@ Create custom hooks to prevent unwanted behaviors using simple markdown rule fil
 
 See [plugin README](plugins/hookify/README.md) for details.
 
+### namesmith
+
+Business name discovery — generates candidates across 6 naming archetypes, filters them with a challenger sub-agent (5-dimension scoring), then checks domain availability via bundled Instant Domain Search MCP.
+
+| Trigger | Description |
+|---------|-------------|
+| "help me name my business" | Start a guided naming session |
+| "business name ideas for..." | Generate, score, and check domains |
+| `/namesmith [description]` | Direct invocation with business description |
+
+```
+/plugin install namesmith@cc-toolkit
+```
+
+See [plugin README](plugins/namesmith/README.md) for details.
+
+### session-learner
+
+Analyze a conversation for friction signals (corrections, repeated instructions, deviations) and interactively update project documentation with verified learnings.
+
+| Trigger | Description |
+|---------|-------------|
+| "learn from this session" | Analyze conversation and propose doc updates |
+| "what did you learn today" | Review friction signals from current session |
+
+```
+/plugin install session-learner@cc-toolkit
+```
+
+See [plugin README](plugins/session-learner/README.md) for details.
+
 ## License
 
 MIT
