@@ -81,7 +81,7 @@
       "name": "namesmith",
       "source": "./plugins/namesmith",
       "description": "Business name discovery: generates 15-20 candidates, filters them with a challenger sub-agent, then checks domain availability via Instant Domain Search MCP",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "author": {
         "name": "Mateusz Gostański (grixu)",
         "email": "mateusz.gostanski@gmail.com"
