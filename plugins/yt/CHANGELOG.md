@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-04-17
+
 ### Added
 
 - `yt` skill — end-to-end orchestrator: extract URLs, check transcript cache, transcribe fresh URLs in a background agent, gather user preferences via `AskUserQuestion`, then process all transcripts in parallel subagents

@@ -1,6 +1,6 @@
 {
   "name": "yt",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "YouTube video analysis pipeline: download audio with yt-dlp, transcribe via ElevenLabs Scribe, then summarize, extract domain news, or run custom prompts over the transcripts.",
   "author": {
     "name": "Mateusz Gostański (grixu)",
