@@ -79,6 +79,24 @@ Business name discovery — generates candidates across 6 naming archetypes, fil
 
 See [plugin README](plugins/namesmith/README.md) for details.
 
+### yt
+
+YouTube video analysis pipeline — downloads audio with `yt-dlp`, transcribes via ElevenLabs Scribe v2, then summarizes, extracts domain news, or runs a custom prompt. Caches transcripts locally so re-asking about the same video skips the ElevenLabs call.
+
+| Trigger | Description |
+|---------|-------------|
+| YouTube URL + "podsumuj" / "summarize" | Full pipeline — transcribe + summarize |
+| YouTube URL + "co nowego" / "what's new" | Domain news extraction |
+| "pobierz transkrypcję" / "transcribe this video" | Transcription only |
+
+**Requires:** Node.js ≥ 20, `yt-dlp`, `ffmpeg`, `ELEVENLABS_API_KEY` env var
+
+```
+/plugin install yt@cc-toolkit
+```
+
+See [plugin README](plugins/yt/README.md) for details.
+
 ### session-learner
 
 Analyze a conversation for friction signals (corrections, repeated instructions, deviations) and interactively update project documentation with verified learnings.

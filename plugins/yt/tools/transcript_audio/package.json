@@ -1,0 +1,17 @@
+{
+  "name": "yt-transcript-audio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Source + build config for the yt plugin's ElevenLabs transcription bundle.",
+  "scripts": {
+    "build": "tsdown",
+    "start": "node transcribe.mjs"
+  },
+  "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.43.0"
+  },
+  "devDependencies": {
+    "tsdown": "^0.18.0"
+  }
+}
