@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-27
+
 ### Changed
 
 - **BREAKING**: Plugin renamed from `yt` to `scribe`. The plugin now covers transcription pipelines from any source (YouTube, local audio/video), not just YouTube. Reinstall via `/plugin install scribe@cc-toolkit` after uninstalling `yt`.
