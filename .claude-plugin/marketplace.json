@@ -96,9 +96,9 @@
       ]
     },
     {
-      "name": "yt",
-      "source": "./plugins/yt",
-      "description": "YouTube video analysis pipeline: download audio with yt-dlp, transcribe via ElevenLabs Scribe, then summarize, extract domain news, or run custom prompts over the transcripts",
+      "name": "scribe",
+      "source": "./plugins/scribe",
+      "description": "Audio/video transcription pipeline with summary, news extraction, and custom processing. Sources: YouTube URLs (yt-dlp) or local files (any format ffmpeg handles). Backed by ElevenLabs Scribe.",
       "version": "0.1.0",
       "author": {
         "name": "Mateusz Gostański (grixu)",
@@ -106,11 +106,14 @@
       },
       "category": "productivity",
       "tags": [
-        "youtube",
         "transcription",
         "summarization",
         "elevenlabs",
-        "yt-dlp"
+        "youtube",
+        "yt-dlp",
+        "ffmpeg",
+        "audio",
+        "video"
       ]
     }
   ]

@@ -79,23 +79,26 @@ Business name discovery — generates candidates across 6 naming archetypes, fil
 
 See [plugin README](plugins/namesmith/README.md) for details.
 
-### yt
+### scribe
 
-YouTube video analysis pipeline — downloads audio with `yt-dlp`, transcribes via ElevenLabs Scribe v2, then summarizes, extracts domain news, or runs a custom prompt. Caches transcripts locally so re-asking about the same video skips the ElevenLabs call.
+Transcription + analysis pipeline. Two source flavors: YouTube URLs (downloads audio with `yt-dlp`) or local audio/video files (extracts audio with `ffmpeg`). Transcribes via ElevenLabs Scribe v2, then summarizes, extracts domain news, or runs a custom prompt. Caches transcripts locally so re-asking about the same item skips the ElevenLabs call.
+
+Previously named `yt` — see the plugin's CHANGELOG for migration notes.
 
 | Trigger | Description |
 |---------|-------------|
-| YouTube URL + "podsumuj" / "summarize" | Full pipeline — transcribe + summarize |
-| YouTube URL + "co nowego" / "what's new" | Domain news extraction |
-| "pobierz transkrypcję" / "transcribe this video" | Transcription only |
+| YouTube URL + "podsumuj" / "summarize" | Full YT pipeline — transcribe + summarize |
+| YouTube URL + "co nowego" / "what's new" | Domain news extraction from videos |
+| Local path/glob/folder + "transkrybuj" / "transcribe" | Full local pipeline — transcribe + process |
+| Local path + "podsumuj nagranie" / "extract action items" | Local file analysis with chosen mode |
 
-**Requires:** Node.js ≥ 20, `yt-dlp`, `ffmpeg`, `ELEVENLABS_API_KEY` env var
+**Requires:** Node.js ≥ 20, `ffmpeg`, `ELEVENLABS_API_KEY` env var. `yt-dlp` only for YouTube; `shasum` (preinstalled on macOS) for local.
 
 ```
-/plugin install yt@cc-toolkit
+/plugin install scribe@cc-toolkit
 ```
 
-See [plugin README](plugins/yt/README.md) for details.
+See [plugin README](plugins/scribe/README.md) for details.
 
 ### session-learner
 

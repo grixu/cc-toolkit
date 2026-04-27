@@ -1,0 +1,20 @@
+{
+  "name": "scribe",
+  "version": "0.1.0",
+  "description": "Audio/video transcription pipeline with summary, news extraction, and custom processing. Sources: YouTube URLs (yt-dlp) or local files (any format ffmpeg handles). Backed by ElevenLabs Scribe.",
+  "author": {
+    "name": "Mateusz Gostański (grixu)",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "transcription",
+    "summarization",
+    "elevenlabs",
+    "youtube",
+    "yt-dlp",
+    "ffmpeg",
+    "audio",
+    "video"
+  ]
+}

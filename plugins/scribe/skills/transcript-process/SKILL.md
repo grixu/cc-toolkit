@@ -1,18 +1,18 @@
 ---
-name: yt-process
-description: "Process YouTube video transcriptions — summarize, extract news/novelties from a specific domain, or apply a custom prompt. Use whenever user has a transcript from yt-transcribe and wants to do something with it: 'summarize this video', 'what's new in AI from this episode', 'extract key points', 'find news about X', 'process this transcript'. Also triggers when user provides a YouTube URL + transcript path and asks for analysis, summary, novelty extraction, or any text processing of video content."
+name: transcript-process
+description: "Process audio/video transcriptions — summarize, extract news/novelties from a specific domain, or apply a custom prompt. Source-agnostic: works with transcripts from yt-transcribe, local-transcribe, or any other producer. Use whenever user has a transcript and wants to do something with it: 'summarize this', 'what's new in AI from this episode', 'extract key points', 'find news about X', 'process this transcript', 'wyciągnij action items', 'podsumuj nagranie'."
 context: fork
 ---
 
-# yt-process
+# transcript-process
 
-Process transcriptions of YouTube videos in one of three modes: `summary`, `news`, or `custom`.
+Process audio/video transcriptions in one of three modes: `summary`, `news`, or `custom`. Source-agnostic — same logic for YouTube, local files, or any other transcript source.
 
 ## Input
 
 The user provides:
 
-- **url** — YouTube video URL (for context/reference)
+- **url** — source identifier (YouTube URL, local file path, or any reference). Used for context only.
 - **transcript** — path to the `.md` file with the transcription text
 - **mode** — one of: `summary`, `news`, `custom`
 - **topic** — (required for `news`) the domain/field to focus on

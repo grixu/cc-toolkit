@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rebuild the transcript_audio bundles.
-# Run before releasing a new version of the yt plugin when transcribe.mjs,
+# Run before releasing a new version of the scribe plugin when transcribe.mjs,
 # transliterate.mjs, or any @elevenlabs/elevenlabs-js bump has changed.
 
 set -euo pipefail

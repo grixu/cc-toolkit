@@ -1,6 +1,6 @@
 ---
 name: yt
-description: "Orchestrate YouTube video analysis pipeline — transcribe and then process videos (summarize, extract domain news, or apply custom prompts). Use whenever user provides YouTube URLs and wants to extract information from them: summaries, news, novelties, key points, analysis, or custom processing. Triggers on: YouTube links + any analysis intent, 'co nowego w tych filmach', 'podsumuj filmy', 'summarize these videos', 'extract info from YT', 'what's new in AI from these episodes', 'przeanalizuj te filmy', or any request combining YouTube URLs with content extraction. Always use this — not yt-transcribe or yt-process separately — when the user wants end-to-end YouTube video analysis."
+description: "Orchestrate YouTube video analysis pipeline — transcribe and then process videos (summarize, extract domain news, or apply custom prompts). Use whenever user provides YouTube URLs and wants to extract information from them: summaries, news, novelties, key points, analysis, or custom processing. Triggers on: YouTube links + any analysis intent, 'co nowego w tych filmach', 'podsumuj filmy', 'summarize these videos', 'extract info from YT', 'what's new in AI from these episodes', 'przeanalizuj te filmy', or any request combining YouTube URLs with content extraction. Always use this — not yt-transcribe or transcript-process separately — when the user wants end-to-end YouTube video analysis. For local audio/video files instead of YouTube, use the `local` skill."
 ---
 
 # yt — YouTube Video Analysis Pipeline
@@ -12,7 +12,7 @@ Orchestrate the full pipeline: check the transcript index for cache hits, transc
 | Skill | Path | Purpose |
 |---|---|---|
 | yt-transcribe | `${CLAUDE_PLUGIN_ROOT}/skills/yt-transcribe/SKILL.md` | Download audio + transcribe to Markdown |
-| yt-process | `${CLAUDE_PLUGIN_ROOT}/skills/yt-process/SKILL.md` | Process transcriptions (summary / news / custom) |
+| transcript-process | `${CLAUDE_PLUGIN_ROOT}/skills/transcript-process/SKILL.md` | Process transcriptions (summary / news / custom) — source-agnostic |
 
 ## Transcript index
 
@@ -292,24 +292,24 @@ For each URL that has a transcript (cached OR newly transcribed), combine with u
 
 ## Step 8 — Process all in parallel
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/yt-process/SKILL.md` once to get the processing instructions.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/transcript-process/SKILL.md` once to get the processing instructions.
 
 Spawn **one Agent per video, ALL in a single message** — that's what makes them run in parallel. Sequential messages would mean sequential execution.
 
 Each agent gets:
-1. The full yt-process skill instructions (from the SKILL.md you just read)
+1. The full transcript-process skill instructions (from the SKILL.md you just read)
 2. The specific video's data: URL, transcript path, mode, topic/meta/prompt
 3. Instruction to read the transcript file from disk and process it according to the mode
 4. Instruction to return ONLY the processed output, no meta-commentary
 
-Name agents distinctly: `yt-process-1`, `yt-process-2`, etc.
+Name agents distinctly: `yt-proc-1`, `yt-proc-2`, etc.
 
 Example agent prompt structure:
 
 ```
 You are a video transcript processor. Follow these instructions exactly:
 
-<paste full yt-process SKILL.md instructions here>
+<paste full transcript-process SKILL.md instructions here>
 
 Your task — process this video:
 - URL: <url>
@@ -350,6 +350,27 @@ Tell the user the path: `Zapisano wyniki w yt-analysis-YYYY-MM-DD-HHMMSS.md`.
 | Index file corrupt / unreadable JSON | Treat as empty (`{videos: []}`), warn the user, continue |
 | Processing failed for a video | Show other results, note the failure |
 
+## Mixed input (URL + local path in the same message)
+
+If the user's message contains both YouTube URLs and local file paths (paths ending with audio/video extensions: mp3, m4a, wav, ogg, flac, opus, aac, mp4, mov, mkv, webm, avi, m4v, wmv, ts, flv, 3gp, amr, wma — or paths to folders/globs combined with intent keywords), **finish your full pipeline first** (Steps 1-9: transcribe + process + write `yt-analysis-*.md`). Only the YouTube URLs are handled in your run; local paths are deferred.
+
+After Step 9 completes, **sequentially** spawn the `local` orchestrator as a sub-Agent for the leftover paths:
+
+```
+Wykryto też N plików lokalnych w wiadomości — odpalam orkiestrator `local` dla nich...
+
+Agent({
+  description: "Process leftover local files",
+  prompt: "<full local SKILL.md instructions>\n\nProcess these local file paths: <list>"
+})
+```
+
+The spawned `local` orchestrator runs its own complete pipeline and writes its own `local-analysis-*.md`. The user gets two separate, independent reports — one per source.
+
+**Detection rule:** any path-like token (`/...`, `~/...`, `./...`, `../...`) ending in a whitelisted audio/video extension, OR any folder/glob path combined with transcription intent keywords (`transkrybuj`, `podsumuj nagranie`, `transcribe`, `wyciągnij`, etc.).
+
+If detection is ambiguous (e.g. path mentioned but no extension, no clear intent), prefer to skip — better miss-trigger than false-trigger.
+
 ## Language
 
-Communicate with the user in Polish. Processing output language follows yt-process rules — defaults to the language used when invoking the skill.
+Communicate with the user in Polish. Processing output language follows transcript-process rules — defaults to the language used when invoking the skill.
