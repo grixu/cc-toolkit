@@ -68,6 +68,25 @@ Enable/disable existing rules through an interactive interface.
 /hookify:help
 ```
 
+### Reviewing Changes Against Rules
+
+Ask Claude to review your diff against the active rule set:
+
+```
+Review my changes against hookify rules
+```
+
+Other phrases that trigger it: "audit my diff for hookify violations", "check hookify compliance".
+
+The skill:
+
+1. Lists committed (vs detected base) and uncommitted changes. Asks which scope to review when both have content.
+2. Loads enabled `file` and `all` rules. Bash, stop, and prompt rules are skipped — a static diff cannot exercise them.
+3. Partitions files into rule-scoped groups so each file appears in exactly one group.
+4. Dispatches one subagent per group in parallel. Each returns violations as JSON.
+5. Aggregates a per-rule report. Rules with no violations are listed too.
+6. Offers to save the report to `.claude/hookify-review-<date>.md` or enter Plan Mode with a fix plan grouped by file.
+
 ## Rule Types
 
 | Type | Extension | Location | Git | Purpose |

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `review-changes` skill — hookify-rules-aware code review of committed and uncommitted changes. Loads enabled `file`/`all` rules, partitions changed files into non-overlapping rule-scoped groups, dispatches parallel subagents, and aggregates a per-rule violation report. Offers to save the report or enter Plan Mode with a fix plan grouped by file.
+
 ## [0.3.0] - 2026-03-27
 
 ### Added
