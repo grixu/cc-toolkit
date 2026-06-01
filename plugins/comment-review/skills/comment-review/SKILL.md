@@ -1,0 +1,272 @@
+---
+name: comment-review
+description: >-
+  Code review focused exclusively on comment quality — not logic, naming, or
+  structure. Use when the user says "/comment-review", "review komentarzy",
+  "sprawdź komentarze", "przejrzyj komentarze", "comment review", or asks to
+  check whether comments in a change are worth keeping. Reviews the current
+  branch diff by default (auto-detects the base branch, or pass --base), or
+  explicit file/dir paths when passed as arguments. Judges every comment against
+  a focused rule set — no code-narration, decisions-only, not too long, no
+  cross-file/doc refs, no banner sections, no change-state/ticket history, no
+  process-narration disguised as a decision, no commented-out code, and nothing
+  that contradicts the code — and returns a per-comment verdict (KEEP / REMOVE /
+  REWRITE) with a concrete suggested fix.
+allowed-tools: Read, Bash, Grep, Glob, Edit
+---
+
+# comment-review — review comments, nothing else
+
+You review **comment quality only**. You do not review logic, naming,
+architecture, performance, or tests. If a comment is fine, say nothing about it.
+Your default stance is **"no comment beats a bad comment"** — bias toward
+removal, and only ask for a *new* comment where a future reader is genuinely
+stuck without one.
+
+## Step 1 — Resolve scope
+
+Parse the invocation arguments:
+
+- **Arguments are file or directory paths** → review those targets in full
+  (every comment line, not just changed ones). Expand directories to their
+  source files.
+- **`--base <branch>`** → use that branch as the diff base (e.g. `--base develop`).
+- **No path arguments** → review the current branch diff. Pick the base branch
+  defensively, since trunk is not always `main`:
+
+  ```bash
+  base="${ARG_BASE:-}"
+  if [ -z "$base" ]; then
+    for c in main master develop trunk; do
+      git rev-parse --verify --quiet "refs/heads/$c" >/dev/null && base="$c" && break
+    done
+  fi
+  if [ -z "$base" ] || ! git rev-parse --verify --quiet "$base" >/dev/null; then
+    echo "NO_BASE"; exit 0
+  fi
+  git diff --name-status "$base"...HEAD   # triple-dot = changes since the common ancestor
+  ```
+
+  The triple-dot diff already resolves the fork point internally, so do **not**
+  call `git merge-base` separately — it is redundant, and some repos run a hook
+  that blocks any command containing the word "merge". If you need the diff for a
+  single file later, keep using `git diff "$base"...HEAD -- <file>` for the same
+  reason.
+
+  Review only the changed files, focusing on **added/modified comment lines**
+  and on code whose meaning changed (a comment can rot when the code under it
+  moves). If the script prints `NO_BASE`, or the diff is empty, tell the user
+  which base you tried and ask them to pass explicit paths or `--base <branch>`
+  — never guess silently.
+
+### In scope vs skip
+
+Review source files that carry human-authored comments: `.ts .tsx .js .jsx .py
+.go .rs .java .kt .swift .c .cpp .h .rb .php .vue .sh` and similar. **Skip**:
+JSON, lockfiles, generated/minified files, `.md`/docs (the prose *is* the
+content), and license/SPDX headers. When you skip a changed file, note it in
+one line so coverage is honest.
+
+## Step 2 — Read the comments
+
+Open each in-scope file with `Read`. For large files, use `Grep` to locate
+comment lines (`//`, `/* */`, `#`, `"""`, `<!-- -->`) first, then read those
+regions with context. You must read the **code around each comment** — every
+verdict is a judgment about the comment *relative to its code*, never a
+keyword match.
+
+## Step 3 — Judge each comment against the rules
+
+For every comment, assign one verdict: **KEEP**, **REMOVE**, or **REWRITE**.
+Apply the rules below — R1–R7 are the core comment-quality rules; R8–R9 catch
+commented-out code and comments that contradict the code. When two rules
+collide, the most specific finding wins; when genuinely unsure, default to KEEP
+and move on (low signal is worse than a missed nitpick).
+
+### R1 — No narrating *what* the code does
+The code is there to be read. A comment that restates the line(s) below in
+prose adds nothing.
+
+- **REMOVE** when the comment's meaning is contained in the next code line's
+  identifiers/operators.
+  ```ts
+  // increment the counter
+  counter++;
+  ```
+- **Exception → KEEP**: a genuinely complex algorithm (non-trivial math, a
+  tricky state machine, bit-twiddling, an intentionally unusual loop) where a
+  one-line "what" makes the mechanism graspable. The bar is *complex*, not
+  *unfamiliar to a junior*.
+
+### R2 — Comments should explain *decisions* (the WHY)
+The comments worth keeping say why the code is the way it is — the constraint,
+the trade-off, the gotcha that the code itself cannot show.
+
+- **KEEP** decision/rationale comments (`// sequential, because the upstream
+  rate-limits per source IP`).
+- **REWRITE** a "what" comment into a "why" when a real reason exists but the
+  comment states the mechanics instead.
+- Surface a **missing WHY** as a finding (suggest the comment text) only at
+  *non-obvious* code: magic constants, workarounds, surprising/inverted logic,
+  silent catch blocks, specific timeouts/retries/batch sizes.
+- **Exception**: do **not** demand a comment on obvious code or on very common,
+  well-known patterns (a standard getter, a plain map/filter, a textbook
+  singleton). Asking for a WHY there is just noise.
+
+### R3 — Not too long
+A comment should be as short as the idea allows.
+
+- **REWRITE** when, for non-algorithmic code, the comment runs **longer than the
+  code it annotates** or **exceeds ~2 sentences** — trim to the single
+  load-bearing sentence (or remove it if the signature already says everything).
+  Prefer one tight line over a paragraph.
+- The threshold relaxes for the R1/R7 algorithm exception: a genuinely complex
+  mechanism may justify a few lines. Length alone is never the finding there —
+  pair R3 with *what is actually load-bearing*.
+
+### R4 — No references to other files or documentation
+Cross-references rot and hide coupling. A comment should stand on its own at
+the point of code.
+
+- **REMOVE / REWRITE** comments that point elsewhere: "see `utils/foo.ts`",
+  "as described in the design doc", bare external URLs that will rot.
+- **Exception → KEEP**: a stable, pinned reference that is genuinely load-
+  bearing — an RFC number, a spec section, or a URL pinned to a commit/version.
+  Plain "latest" links still get flagged to pin or drop.
+
+### R5 — No banner / section-divider comments
+Decorative dividers are structure that the file layout should already provide.
+
+- **REMOVE** banners like:
+  ```
+  // ============================================================
+  // PERFORMANCE
+  // ============================================================
+  ```
+  If a file needs banners to be navigable, the real fix is splitting it — say
+  so, but the comment still goes.
+
+### R6 — No change-state / history comments
+What changed and why-it-changed lives in version control, not in the source.
+
+- **REMOVE** comments that describe the diff or a prior state: PR/ticket numbers
+  (`// fixed in PROJ-123`, `// see #456`), and phrasing like *previously*,
+  *changed from*, *was X, now Y*, *old behavior*, *temporary until the migration*.
+  The commit message / blame is where this belongs.
+- **Exception → KEEP**: a comment that documents a **present-day constraint**,
+  even when it carries a ticket id — e.g. `// Farmer rejects org-owner creds
+  (PL-5276)` explaining why the code does what it does *right now*. The id here
+  is provenance for a live constraint, not a record of a past change. This
+  covers both a still-open `TODO`/`FIXME` landmine and a plain rationale comment
+  that happens to cite a ticket. What still goes under R6: closed-ticket
+  breadcrumbs and "what changed" history (`// fixed in PROJ-123`, `// was X, now
+  Y`).
+
+### R7 — No process-narration disguised as a decision
+A comment can *look* like a rationale but actually just narrates the
+algorithm/process/state at the spot where a value is computed or assigned —
+duplicating what the code already expresses.
+
+- **REMOVE** when the comment merely re-describes how a value is built
+  (`// take the first 10 and sort by date` above code that slices 10 and sorts
+  by date). If that explanation has value, it belongs where the value is
+  *produced/processed*, expressed in the code — not duplicated as prose.
+- **Exception → KEEP**: when that narration is **critical to correctness**,
+  **genuinely very complex**, or **security-relevant** (e.g. why an order of
+  operations must not change, why a bound is exactly this value for a security
+  reason). Keep those, ideally tightened to the load-bearing point.
+
+### R8 — No commented-out code
+Dead code parked in a comment is the diff's job, not the file's. Version control
+already keeps the old version; a commented-out block just rots and confuses.
+
+- **REMOVE** lines that are commented-out statements/expressions rather than
+  prose: `// const old = legacy(user)`, a `#`-prefixed block of former Python,
+  an `/* ... */` wrapping a previous implementation.
+- **How to tell it apart from a prose comment:** strip the comment marker and
+  ask whether the remainder is *code* (parses as a statement, has assignments /
+  calls / brackets) rather than a sentence. If it's code → R8.
+- **Exception → KEEP**: a short snippet that is genuinely illustrative *as
+  documentation* (a usage example in a doc comment), clearly framed as an
+  example, not an abandoned line.
+
+### R9 — No comment that contradicts the code (fix-first)
+A comment that actively lies about what the code does is the worst defect here:
+a reader trusts it and is misled. Surface these **first**, ahead of every
+noise-level finding.
+
+- **REWRITE** (or REMOVE if redundant) when the comment asserts behavior the
+  code beside it does not have: `// returns true on success` above a function
+  that returns the error object; `// retries 3×` above a single attempt; a
+  param doc naming the wrong unit/range.
+- This is a semantic check — you must have read the code to claim it. Never
+  raise R9 on suspicion; cite the exact line of code that contradicts the
+  comment.
+- On **modified files**, this is where rot shows up: code changed, comment
+  didn't. Re-read the comment against the *new* code, not the touched lines.
+
+### Always KEEP (never flag)
+Type annotations (not comments), license/SPDX headers, framework-required tags
+(`@deprecated`, `@internal`, `@param` on public APIs), tool directives
+(`eslint-disable-next-line`, `// nolint`, `# type: ignore`), and genuine
+decision/rationale comments per R2.
+
+### Doc comments follow language convention, not R1
+Idiomatic public-API doc comments are required form, not narration: Go godoc
+(must open with the symbol name — `// ParseConfig reads …`), Rust `///` / `//!`,
+Python module/class/function docstrings, JSDoc/TSDoc on exported APIs. Do **not**
+flag their *existence* under R1. Still judge them on **R3** (trim boilerplate
+that only restates the signature), **R9** (the doc must not lie about the code),
+and R7's exception (keep a genuinely complex explanation). The convention buys
+the comment's right to exist; it does not exempt it from being correct and tight.
+
+### False-positive traps (the calibration that separates a good review from a noisy one)
+
+Each rule has a look-alike that is *not* a violation. Check these before
+emitting — a wrong REMOVE is worse than a missed nitpick.
+
+- **R1 vs self-documenting markup** — JSX/template props and declarative config
+  read like "comment == code" by convention (`<Button label="Save"/>`,
+  `timeout: 30_000  # 30s`). Do **not** flag the absence or presence here; the
+  markup *is* the documentation.
+- **R5 vs a real diagram** — ASCII art that encodes a state machine, ordering, or
+  layout is load-bearing structure, not a decorative banner. Keep it. Only the
+  content-free `===== SECTION =====` divider is R5.
+- **R6 vs a present-tense landmine** — `// TODO: remove once Safari <16 is dropped`
+  warns about today's constraint; keep it. `// fixed the Safari bug (PROJ-12)`
+  describes the past; remove it. The tense and whether the work is *still open*
+  decide it, not the presence of a ticket id.
+- **R7 vs a genuine invariant** — `// must run before auth(); sets the tenant
+  context the guard reads` looks like narration but states an ordering
+  contract the code cannot enforce. Keep. Narration that just re-says the
+  visible mechanics (`// sort by date`) goes.
+- **Tests / fixtures** — `// Arrange / Act / Assert`, `// given …`, and step
+  labels in e2e specs are vocabulary, not noise. Never R1 them.
+- **Modified files** — when a comment sits above code the diff just changed,
+  check whether the comment still matches the *new* code (a rotted comment is a
+  REWRITE/REMOVE under R1/R7), not just whether the comment line itself was
+  touched.
+
+## Step 4 — Report
+
+Group findings by file. For each finding give:
+
+- `path:line` and the **verbatim quoted comment**
+- the rule it matches (`R1`–`R9`) and the **verdict** (KEEP / REMOVE / REWRITE)
+- a one-line reason
+- a concrete **suggested fix** — the exact replacement text for REWRITE, or
+  "delete these lines" for REMOVE, or the proposed new comment for a missing-WHY
+
+List any **R9 (contradicts-the-code)** findings first — they mislead readers and
+are the most urgent to fix. Otherwise order findings within a file by line
+number. End with a short tally
+(`N comments reviewed · X remove · Y rewrite · Z keep-as-is`) and the list of
+skipped files with reasons. If you found nothing, say so plainly — do not invent
+findings to look thorough.
+
+## Step 5 — Offer to apply (only on confirmation)
+
+Never edit during the review. After presenting the report, ask whether to apply
+the REMOVE and REWRITE fixes. Apply with `Edit` only the ones the user
+confirms; leave missing-WHY suggestions for the author to write, since only they
+know the real reason.
