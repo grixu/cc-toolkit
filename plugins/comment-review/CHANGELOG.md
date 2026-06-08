@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-08
+
 ### Changed
 
 - R4 tightened: now flags references to **internal project docs** (`DD_ARCH.md §3.2`,
