@@ -1,0 +1,38 @@
+{
+  "skill_name": "comment-review",
+  "evals": [
+    {
+      "id": 0,
+      "name": "banners-and-doc-refs",
+      "prompt": "/comment-review fixture/datadog-integration.tf",
+      "expected_output": "Flags every section-divider banner (empty or titled, ===== and -----) as R5 REMOVE, and every internal doc reference (DD_ARCH.md, DD_PLAN.md) as R4. Keeps the external RFC reference and the genuine WHY rationale.",
+      "files": ["fixture/datadog-integration.tf"],
+      "assertions": [
+        "Flags top '===== Datadog =====' banner as R5 REMOVE",
+        "Flags '# ----- Provider credentials -----' as R5 REMOVE",
+        "Flags '# ----- DD GCP integration ... -----' titled banner as R5 REMOVE",
+        "Flags '# ----- Metric namespace allowlist -----' as R5 REMOVE",
+        "Flags 'DD_ARCH.md §3.2' under R4",
+        "Flags 'DD_PLAN.md T4.1' under R4 (keep rationale, drop ref)",
+        "Keeps 'RFC 9110 §10.2.4' (R4 external exception)",
+        "Keeps metric-allowlist WHY rationale"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "file-refs-and-diagram",
+      "prompt": "/comment-review fixture/scheduler.ts",
+      "expected_output": "Flags the source-file references and dividers, keeps the ASCII state-machine diagram, the decision comment, and the external CVE reference.",
+      "files": ["fixture/scheduler.ts"],
+      "assertions": [
+        "Flags 'docs/scheduling.md' + 'utils/backoff.ts' under R4",
+        "Flags '// ----- helpers -----' as R5 REMOVE",
+        "Flags top '===== Scheduler =====' banner as R5 REMOVE",
+        "Flags '// increment the attempt counter' as R1 REMOVE",
+        "Keeps ASCII state-machine diagram (R5 exception)",
+        "Keeps 'Sequential, not parallel ...' decision comment (R2)",
+        "Keeps 'CVE-2024-1234' external reference (R4 exception)"
+      ]
+    }
+  ]
+}

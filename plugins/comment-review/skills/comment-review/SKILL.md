@@ -124,27 +124,57 @@ A comment should be as short as the idea allows.
   mechanism may justify a few lines. Length alone is never the finding there —
   pair R3 with *what is actually load-bearing*.
 
-### R4 — No references to other files or documentation
-Cross-references rot and hide coupling. A comment should stand on its own at
-the point of code.
+### R4 — No references to other files or internal project docs
+A comment should stand on its own at the point of code. A pointer to another
+file or to an internal project doc rots the moment either side moves, and it
+hides coupling: the reader has to leave the code to understand the code.
 
-- **REMOVE / REWRITE** comments that point elsewhere: "see `utils/foo.ts`",
-  "as described in the design doc", bare external URLs that will rot.
-- **Exception → KEEP**: a stable, pinned reference that is genuinely load-
-  bearing — an RFC number, a spec section, or a URL pinned to a commit/version.
-  Plain "latest" links still get flagged to pin or drop.
+- **REMOVE / REWRITE** any comment that sends the reader elsewhere *inside the
+  repo* — another source file ("see `utils/foo.ts`", "logic lives in
+  `handler.ts`") **or** an internal doc / section anchor ("as described in the
+  design doc", `DD_ARCH.md §3.2`, `DD_PLAN.md T4.1`, a Confluence/Notion link).
+  Rewrite so the load-bearing fact lives **in the comment**, then drop the
+  pointer. If the real content is too big to inline, that is the signal it
+  belongs in the doc, not the code — keep only the one constraint that actually
+  affects this code, stated plainly, with no citation.
+- **No "provenance" loophole.** A doc/file ref glued onto an otherwise
+  self-contained sentence still goes (`// that hard-stop is intentional
+  (DD_PLAN.md T4.1)` → `// that hard-stop is intentional`). The test is simple:
+  if the sentence reads fine with the ref deleted, the ref was dead weight —
+  delete it. Design provenance belongs in the doc; change provenance belongs in
+  git; neither belongs inline. (Contrast R6, which keeps a *ticket id* only when
+  it tags a live external constraint — an internal doc you control is not that.)
+- **Exception → KEEP**: a stable, **external**, pinned reference that is
+  genuinely load-bearing and cannot be inlined — an RFC number, a published spec
+  section, a CVE id, or a URL pinned to a commit/version. Internal repo files and
+  internal project docs never qualify, no matter how stable they feel. Plain
+  "latest" links still get flagged to pin or drop.
 
 ### R5 — No banner / section-divider comments
-Decorative dividers are structure that the file layout should already provide.
+A row of `=`, `-`, `*`, or `#` fencing a label is decoration. Function
+boundaries, file layout, and ordering already provide structure; the divider
+just adds visual noise that drifts out of sync with the code beneath it.
 
-- **REMOVE** banners like:
+- **REMOVE** the divider **whether it is empty or carries a descriptive
+  title** — the label does not redeem the fence. Both of these go:
   ```
   // ============================================================
   // PERFORMANCE
   // ============================================================
   ```
-  If a file needs banners to be navigable, the real fix is splitting it — say
-  so, but the comment still goes.
+  ```
+  # -----------------------------------------------------------------------------
+  # DD GCP integration — per-env SA + STS registration
+  # -----------------------------------------------------------------------------
+  ```
+  If the title carries a real constraint or rationale, keep **that one sentence**
+  as a plain comment and delete the fence rows; if it only labels the next block,
+  delete the whole thing.
+- **"The file is long and flat" is not a reason to keep them.** A file that
+  needs dividers to be navigable should be split, or its sections turned into
+  real functions/modules — say so, but the banner still goes; keeping it just
+  freezes the smell in place. A repo-wide *convention* of decorative dividers is
+  still R5 — flag it rather than grandfathering it in.
 
 ### R6 — No change-state / history comments
 What changed and why-it-changed lives in version control, not in the source.
@@ -229,9 +259,11 @@ emitting — a wrong REMOVE is worse than a missed nitpick.
   read like "comment == code" by convention (`<Button label="Save"/>`,
   `timeout: 30_000  # 30s`). Do **not** flag the absence or presence here; the
   markup *is* the documentation.
-- **R5 vs a real diagram** — ASCII art that encodes a state machine, ordering, or
-  layout is load-bearing structure, not a decorative banner. Keep it. Only the
-  content-free `===== SECTION =====` divider is R5.
+- **R5 vs a real diagram** — ASCII art that *encodes information* (a state
+  machine, a sequence/ordering, a box-and-arrow layout, a table) is load-bearing:
+  removing it would lose information, so keep it. A fence of `=`/`-`/`*` around a
+  *label* loses nothing when deleted — that is R5 whether the label is empty
+  (`===== SECTION =====`) or descriptive (`----- Provider credentials -----`).
 - **R6 vs a present-tense landmine** — `// TODO: remove once Safari <16 is dropped`
   warns about today's constraint; keep it. `// fixed the Safari bug (PROJ-12)`
   describes the past; remove it. The tense and whether the work is *still open*
@@ -255,7 +287,9 @@ Group findings by file. For each finding give:
 - the rule it matches (`R1`–`R9`) and the **verdict** (KEEP / REMOVE / REWRITE)
 - a one-line reason
 - a concrete **suggested fix** — the exact replacement text for REWRITE, or
-  "delete these lines" for REMOVE, or the proposed new comment for a missing-WHY
+  "delete these lines" for REMOVE, or the proposed new comment for a missing-WHY.
+  The fix must itself obey the rules: never introduce a file/doc cross-reference
+  (R4) or a divider/banner (R5) in a replacement — inline the fact instead.
 
 List any **R9 (contradicts-the-code)** findings first — they mislead readers and
 are the most urgent to fix. Otherwise order findings within a file by line

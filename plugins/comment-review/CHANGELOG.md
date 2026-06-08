@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- R4 tightened: now flags references to **internal project docs** (`DD_ARCH.md §3.2`,
+  `DD_PLAN.md T4.1`, Confluence/Notion links), not just other source files. Closes the
+  "provenance loophole" — a doc/file ref glued onto an otherwise self-contained sentence
+  still goes ("if the sentence reads fine with the ref deleted, the ref was dead weight").
+  The KEEP exception is narrowed to **external, pinned** references only (RFC, published
+  spec, CVE, commit-pinned URL); internal repo files/docs never qualify.
+- R5 tightened: a section-divider banner is removed **whether empty or carrying a
+  descriptive title** (e.g. `# ----- DD GCP integration — per-env SA + STS registration -----`).
+  Added an explicit rejection of the "long flat file / house convention justifies keeping
+  it" rationalization — the fix is splitting the file, not keeping the banner.
+- R5 false-positive trap rewritten: only ASCII that *encodes information* (state machine,
+  ordering, layout, table) survives; removed the old "only content-free dividers are R5"
+  escape hatch that let titled dividers through.
+- Report step: suggested fixes must themselves obey the rules — a REWRITE must not
+  introduce a file/doc cross-reference (R4) or a divider/banner (R5).
+
 ## [0.1.0] - 2026-06-01
 
 ### Added
