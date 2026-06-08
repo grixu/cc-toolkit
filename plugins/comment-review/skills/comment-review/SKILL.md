@@ -17,11 +17,27 @@ allowed-tools: Read, Bash, Grep, Glob, Edit
 
 # comment-review — review comments, nothing else
 
-You review **comment quality only**. You do not review logic, naming,
-architecture, performance, or tests. If a comment is fine, say nothing about it.
-Your default stance is **"no comment beats a bad comment"** — bias toward
+You review **comment quality only** — in every source file, **including test
+files**. You do not review logic, naming, architecture, performance, or whether a
+test is correct; you review the *comments* in all of them. If a comment is fine,
+say nothing about it.
+
+Your default stance is **"no comment beats a bad comment."** Bias hard toward
 removal, and only ask for a *new* comment where a future reader is genuinely
 stuck without one.
+
+**The deletion test — apply it to every comment, especially the ones that sound
+like rationale.** Mentally delete the comment and read the code without it. If
+the only things lost are facts the code already states — its identifiers, its
+types, the shape of a data structure, what a test asserts — the comment was dead
+weight: REMOVE it. Domain vocabulary does not redeem a restatement: *"Dispatcher
+receives the flat v3 contract — one entry per audit row"* reads like insight but
+says exactly what the typed argument below it already says, so it fails the test.
+A comment survives only when deleting it loses a *why* the code cannot express —
+a constraint, a trade-off, an ordering rule, a non-obvious failure mode. When you
+catch yourself defending a comment as *"documents the domain rule"* or *"the
+mapping the code can't show,"* re-run the deletion test: usually the code *does*
+show it.
 
 ## Step 1 — Resolve scope
 
@@ -79,20 +95,41 @@ keyword match.
 
 For every comment, assign one verdict: **KEEP**, **REMOVE**, or **REWRITE**.
 Apply the rules below — R1–R7 are the core comment-quality rules; R8–R9 catch
-commented-out code and comments that contradict the code. When two rules
-collide, the most specific finding wins; when genuinely unsure, default to KEEP
-and move on (low signal is worse than a missed nitpick).
+commented-out code and comments that contradict the code; R10–R11 cover style
+consistency and the higher bar inside test files. Run the **deletion test** from
+the top of this skill on every comment first — most findings fall out of it
+directly. When two rules collide, the most specific finding wins; when genuinely
+unsure, default to KEEP and move on (low signal is worse than a missed nitpick) —
+**except in test files, where R11 reverses this to default-REMOVE.**
+
+**A "note" prefix buys nothing.** `AGENTS-NOTE:`, `NOTE:`, `NB:`, `IMPORTANT:`
+and the like only mark that *the author* thought the comment mattered — they are
+not themselves a why, and they do not exempt the comment from any rule. Strip the
+prefix and judge what remains on its merits: if the remainder restates the code
+(R1) or points at an internal doc (R4), it goes despite the label.
 
 ### R1 — No narrating *what* the code does
-The code is there to be read. A comment that restates the line(s) below in
-prose adds nothing.
+The code is there to be read. A comment that restates what the code below *is* or
+*does* — in prose, at any level of abstraction — adds nothing.
 
-- **REMOVE** when the comment's meaning is contained in the next code line's
-  identifiers/operators.
+- **REMOVE** when the comment's meaning is already contained in the code it sits
+  on: the next line's identifiers/operators, **or the block / data structure
+  below it**. A prose summary of a map/`Record` literal is still narration:
   ```ts
   // increment the counter
   counter++;
   ```
+  ```ts
+  // Required NewAudit type sets per report; SEO needs all four sub-audits.
+  const REQUIRED_AUDIT_TYPES: Record<ReportType, AuditType[]> = {
+    /* …the literal lists exactly these sets, key by key… */
+  };
+  ```
+  The second comment names what the map already spells out. Raising the
+  abstraction ("type sets per report") or invoking a domain noun does **not** turn
+  a restatement into a *why* — it is the same fact in prose. This is the most
+  common disguise: a comment that *sounds* like a domain rule but only summarizes
+  the declaration beneath it.
 - **Exception → KEEP**: a genuinely complex algorithm (non-trivial math, a
   tricky state machine, bit-twiddling, an intentionally unusual loop) where a
   one-line "what" makes the mechanism graspable. The bar is *complex*, not
@@ -183,6 +220,15 @@ What changed and why-it-changed lives in version control, not in the source.
   (`// fixed in PROJ-123`, `// see #456`), and phrasing like *previously*,
   *changed from*, *was X, now Y*, *old behavior*, *temporary until the migration*.
   The commit message / blame is where this belongs.
+- **REMOVE** migration / old-vs-new *mapping* comments — prose whose content is
+  the relationship between a former schema/behavior and the current one
+  (`// Legacy run stored Analysis.id refs that match no NewAudit row → facade
+  returns []`). That the old shape no longer matches is migration context: it
+  documents the change, not what the code must do today. The present-day behavior
+  ("unmatched ids → empty result") should be readable from the code or stated
+  plainly without the historical framing; the "legacy stored X" half belongs in
+  the migration PR. "The reader won't remember the old structure" is precisely
+  *why* it goes to git history — not a reason to freeze it inline.
 - **Exception → KEEP**: a comment that documents a **present-day constraint**,
   even when it carries a ticket id — e.g. `// Farmer rejects org-owner creds
   (PL-5276)` explaining why the code does what it does *right now*. The id here
@@ -235,6 +281,51 @@ noise-level finding.
 - On **modified files**, this is where rot shows up: code changed, comment
   didn't. Re-read the comment against the *new* code, not the touched lines.
 
+### R10 — Consistent with the file's commenting style
+Comments are part of a file's texture. One comment that breaks the file's own
+convention reads as an afterthought and almost always marks low-value prose.
+
+- **REMOVE / REWRITE** a comment out of step with how the rest of the file
+  comments comparable code. The clearest tell: sibling declarations of the same
+  kind are left bare, and one of them carries a trivial doc/line comment.
+  ```ts
+  /** First (findings) query/params. */
+  function findingsCall(bq) { return bq.query.mock.calls[0][0]; }
+  function suggestionsCalls(bq) { return bq.query.mock.calls.slice(1); }  // ← bare, same kind
+  ```
+  The lone `/** … */` adds nothing the name doesn't and clashes with its
+  un-commented sibling — drop it. The file's *consistent* choice is no doc on
+  these helpers; match it.
+- Also covers mixed register: a stray `/** */` doc-block among `//` line
+  comments, or a verbose paragraph where the file otherwise keeps to one line.
+- **The fix is consistency, not uniformity for its own sake.** If the
+  inconsistent comment is the *load-bearing* one (a real WHY its siblings lack),
+  keep it — and consider whether the siblings now need one too. Style is the
+  tie-breaker for low-value comments, never a reason to delete a genuine why.
+
+### R11 — In test files, the bar is much higher
+Tests are read top-to-bottom as an executable spec; the assertions *are* the
+documentation. A comment that narrates what the test does, or how the
+implementation under test behaves, states the same thing twice and rots when
+either side moves. **In test files, the Step 3 "when in doubt, KEEP" default is
+reversed: when in doubt, the comment goes** — the spec reads fine without it.
+
+- **REMOVE** test comments that restate the test's mechanics or the
+  implementation's behavior, even when phrased as insight:
+  - `// Exactly one facade read for all runs (not per-run); distinct ids only.`
+    → the `toHaveBeenCalledTimes(1)` assertion below already says it.
+  - `// Namespace-scoped facade read across all stored ids — no direct
+    prisma.analysis access.` → binds the test's prose to an implementation detail
+    (R1 + coupling); the test will lie the moment the impl changes.
+  - `// agentRun.create stores the resolved NewAudit ids (not the dispatcher
+    contract).` → narrates impl behavior the assertion already checks.
+  - `// Duplicate + unsorted urls — the service Set-dedupes and sorts.` →
+    describes what the code under test does; the fixture + assertion show it.
+- **KEEP** only *structural / scenario* labels not recoverable from the code:
+  `// Arrange` / `// Act` / `// Assert`, `// given an expired token`, numbered
+  steps in an e2e flow, or a genuine non-obvious *why a fixture is shaped this
+  way* (a real gotcha — not a description of the shape).
+
 ### Always KEEP (never flag)
 Type annotations (not comments), license/SPDX headers, framework-required tags
 (`@deprecated`, `@internal`, `@param` on public APIs), tool directives
@@ -272,8 +363,12 @@ emitting — a wrong REMOVE is worse than a missed nitpick.
   context the guard reads` looks like narration but states an ordering
   contract the code cannot enforce. Keep. Narration that just re-says the
   visible mechanics (`// sort by date`) goes.
-- **Tests / fixtures** — `// Arrange / Act / Assert`, `// given …`, and step
-  labels in e2e specs are vocabulary, not noise. Never R1 them.
+- **Tests / fixtures** — only *structural* labels are safe vocabulary:
+  `// Arrange / Act / Assert`, `// given …`, numbered e2e steps. Everything else
+  in a test file is subject to R11 (and R1): a comment that restates an assertion
+  or the implementation under test is noise, not vocabulary. The trap here is the
+  opposite of over-flagging — do **not** wave a test comment through just because
+  it sits in a spec file.
 - **Modified files** — when a comment sits above code the diff just changed,
   check whether the comment still matches the *new* code (a rotted comment is a
   REWRITE/REMOVE under R1/R7), not just whether the comment line itself was
@@ -284,7 +379,7 @@ emitting — a wrong REMOVE is worse than a missed nitpick.
 Group findings by file. For each finding give:
 
 - `path:line` and the **verbatim quoted comment**
-- the rule it matches (`R1`–`R9`) and the **verdict** (KEEP / REMOVE / REWRITE)
+- the rule it matches (`R1`–`R11`) and the **verdict** (KEEP / REMOVE / REWRITE)
 - a one-line reason
 - a concrete **suggested fix** — the exact replacement text for REWRITE, or
   "delete these lines" for REMOVE, or the proposed new comment for a missing-WHY.

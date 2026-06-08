@@ -24,6 +24,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   escape hatch that let titled dividers through.
 - Report step: suggested fixes must themselves obey the rules — a REWRITE must not
   introduce a file/doc cross-reference (R4) or a divider/banner (R5).
+- Added a **deletion test** as the default stance: delete the comment; if the only
+  thing lost is a fact the code/types/structure already state, REMOVE it. Domain
+  vocabulary does not redeem a restatement. Directly counters the skill's tendency
+  to keep plausible-but-empty "WHY-sounding" comments in realistic diffs.
+- R1 broadened from "the next code *line*" to "the adjacent code **or data
+  structure** at any abstraction level" — catches a prose summary of a map/`Record`
+  literal (e.g. "Required NewAudit type sets per report") that merely restates the
+  declaration beneath it.
+- R6 extended to migration / old-vs-new **mapping** comments (e.g. "Legacy run
+  stored Analysis.id refs that match no NewAudit row → facade returns []") — they
+  document the change, not the code's present job; that belongs in the migration PR.
+- Added **R10 (style consistency)**: a comment out of step with how the file
+  comments comparable code (a lone trivial `/** */` on one of several bare sibling
+  helpers, mixed register) is low-value prose and goes; consistency, never a reason
+  to delete a genuine why.
+- Added **R11 (higher bar in test files)**: test comments that restate the test's
+  mechanics or the implementation under test are noise; only structural/scenario
+  labels (Arrange/Act/Assert, "given …", e2e steps) survive. In test files the
+  default flips to REMOVE-when-in-doubt. The `Tests / fixtures` false-positive trap
+  was narrowed accordingly (no longer "never R1 them").
+- A `NOTE:` / `AGENTS-NOTE:` / `NB:` / `IMPORTANT:` prefix confers **no immunity** —
+  strip the prefix and judge the remainder; the marker is not itself a why.
 
 ## [0.1.0] - 2026-06-01
 
