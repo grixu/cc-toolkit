@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Severity is now a property of the rule, not the file's overall impression.**
+  Added an explicit anti-anchoring rule to Step 2: once something is a finding, its
+  severity comes from the table (`over-complex`/`style-mix`/`needless-cast` → high;
+  `ordering`/`test-structure`/`barrel` → medium; `openness` → nit) and may not be
+  downgraded because the change is otherwise clean. Fixes the case where a real
+  `test-structure` interleaving on an otherwise-tidy file was reported as a `nit`
+  and buried under a "clean change" headline.
+- **The headline may no longer contradict the tally** — a change with any high or
+  medium finding cannot be called "clean" / "only cosmetic nits"; the collapsed
+  one-line verdict is reserved for a tally that is empty or nits-only.
+
+### Added
+
+- **Multi-lens fan-out mode (Step 1.5)** for large diffs (~20+ in-scope files):
+  optionally dispatch parallel subagents by rule family — structure & tests
+  (`openness`/`test-structure`/`ordering`), simplification & waste
+  (`over-complex`/`needless-cast`), module shape (`style-mix`/`barrel`) — each
+  keeping whole files so cross-file rules still see context. The main agent merges,
+  dedups (most-specific wins), and **re-grades every finding** against the severity
+  table before rendering the single report. Inline single-agent review stays the
+  default below the threshold. `Task` added to `allowed-tools`.
+
 ## [0.1.0] - 2026-06-08
 
 ### Added

@@ -13,7 +13,7 @@ description: >-
   (auto-detects the base branch, or pass --base), or explicit file/dir paths.
   Returns per-finding severity + a concrete suggested fix, and offers to apply the
   safe ones.
-allowed-tools: Read, Bash, Grep, Glob, Edit, AskUserQuestion
+allowed-tools: Read, Bash, Grep, Glob, Edit, AskUserQuestion, Task
 ---
 
 # quality-review — review how the code reads, not whether it works
@@ -100,6 +100,43 @@ generated/minified files (`.d.ts` from a generator, `*_pb.*`, anything under
 `dist/`, `build/`, `node_modules/`), `.md`/docs, and config. When you skip a
 changed file, note it in one line so coverage is honest.
 
+## Step 1.5 — Pick the review mode: inline by default, fan-out for large diffs
+
+**Default: inline.** One agent (you) reads every in-scope file and judges it
+against all seven rules. This is correct and cheapest for a normal change, and it
+keeps the cross-file rules (`ordering`, `style-mix`, `over-complex`, `barrel`) in a
+single head. Use inline unless the diff is genuinely large.
+
+**Fan out only when the diff is too big to hold at once** — roughly **more than ~20
+in-scope source files**, or a set so large you would be re-reading files to keep
+context while judging. This is a judgment call, not a hard gate; a 13-file change
+reviews fine inline. Below the threshold, do not fan out — the coordination and
+merge cost is not worth it, and parallel agents each tend to inflate their own
+findings, which is the noise this skill exists to suppress.
+
+When you do fan out, dispatch parallel subagents with the `Task` tool, **one per
+rule-family lens** (not per "role" — naming, correctness, and security are out of
+scope and get no lens):
+
+- **Lens A — structure & tests:** `openness`, `test-structure`, `ordering`
+- **Lens B — simplification & waste:** `over-complex`, `needless-cast`
+- **Lens C — module shape:** `style-mix`, `barrel`
+
+Each lens keeps whole files, so the cross-file rules in its family still see the
+surrounding code. Give every subagent: the in-scope file list (paths), the
+**verbatim rule sections** for its lens from Step 2 (including their calibration
+paragraphs), the severity table, and the finding contract — `` `name` severity ·
+L<lines> — what the reader loses → the fix ``, primary vs boy-scout split. A
+subagent **returns findings only**; it does not render the Step 3 skeleton, does not
+edit files, and does not run Step 4.
+
+You then **merge**: collect all lenses' findings, dedup overlaps (most-specific
+wins, exactly as inline), and **re-grade every finding yourself against the Step 2
+severity table** — do not trust a subagent's severity, since a single-lens agent is
+the one most prone to the anchoring the table forbids. Then render the one Step 3
+report and run Step 4. The fan-out changes *who reads*, never the output contract:
+the user sees the same single skeleton either way.
+
 ## Step 2 — Judge against the rules
 
 Each finding gets one **rule name** and one **severity**. Use these seven names
@@ -126,6 +163,18 @@ Severity:
   `test-structure` interleaving, pointless indirection (`barrel`).
 - **nit** — local `openness` / spacing. Real, but cheap; cluster them so the
   report does not drown in nits.
+
+**Severity is a property of the rule, not of the file's overall impression.**
+Grade each finding on its own row in this table, then stop. Do **not** downgrade a
+finding because the change is otherwise clean, small, or correct — that anchoring
+("the file reads well, so this can only be a nit") is exactly how a real medium
+gets buried. A clean file with one `test-structure` interleaving has a *medium*
+finding, not a nit. Concretely: `over-complex`, `style-mix`, `needless-cast` are
+**high** by default; `ordering`, `test-structure` (interleaving **or** the
+late-extraction variant), `barrel` are **medium**; only `openness`/spacing is a
+**nit**. The single lever that legitimately moves severity *down* is the rule's own
+calibration paragraph turning a candidate into a **non-finding** — once something
+is a finding, its severity comes from this table, full stop.
 
 When two rules touch the same code, the most specific finding wins. When you are
 genuinely unsure whether something is a problem, leave it out — a noisy review
@@ -366,10 +415,16 @@ Rules for filling it in:
   whole block when there are none.
 - Keep `Conventions` and `Headline` to one line each. Resist growing either into a
   summary essay.
+- **The headline may not contradict the tally.** If there is any `high` or `medium`
+  finding, the headline names the worst one — it must not call the change "clean",
+  "well-structured", or "only cosmetic nits". Reserve the clean verdict for a tally
+  that is genuinely nits-only (or empty). The reader should never see "clean change"
+  sitting above a medium finding.
 
-If the change reads cleanly, collapse the whole thing to the title line plus a
-one-sentence verdict and the tally — do not pad the report
-to look thorough.
+Collapse the whole report to the title line plus a one-sentence verdict and the
+tally **only when the change reads cleanly — i.e. the tally is empty or nits-only.**
+Do not pad a clean report to look thorough; do not collapse one that has a
+medium-or-higher finding to look clean.
 
 ## Step 4 — Follow up with the user (AskUserQuestion)
 
