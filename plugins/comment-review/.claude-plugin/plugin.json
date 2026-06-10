@@ -1,6 +1,6 @@
 {
   "name": "comment-review",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Single-skill code review focused exclusively on comment quality. Flags comments that narrate the code, banner/section dividers, change-state and ticket/PR history notes, cross-file references, process-narration disguised as decisions, commented-out code, and comments that contradict the code — and surfaces missing WHY at non-obvious code. Reviews the current branch diff by default (or explicit paths), with calibration against common false positives.",
   "author": {
     "name": "grixu",
