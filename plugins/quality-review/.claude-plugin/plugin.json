@@ -1,6 +1,6 @@
 {
   "name": "quality-review",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Single-skill code review focused on code quality and craft, not correctness — readability and vertical openness, given/when/then test structure, Clean Code stepdown ordering, OOP/functional style consistency, pointless barrel exports, unnecessary type casts, and over-complicated code that collapses into one parameterized function. Reviews the current branch diff by default (or explicit paths), with calibration against common false positives.",
   "author": {
     "name": "grixu",
