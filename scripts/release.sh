@@ -188,7 +188,7 @@ if [[ "$push_confirm" =~ ^[Yy]$ ]]; then
     info "Creating GitHub Release"
 
     # Extract release notes from CHANGELOG for this version
-    RELEASE_NOTES=$(sed -n "/^## \[$NEW_VERSION\]/,/^## \[/{/^## \[$NEW_VERSION\]/d;/^## \[/d;p;}" "$CHANGELOG" | sed '1{/^$/d}')
+    RELEASE_NOTES=$(sed -n "/^## \[$NEW_VERSION\]/,/^## \[/{/^## \[$NEW_VERSION\]/d;/^## \[/d;p;}" "$CHANGELOG" | sed '1{/^$/d;}')
 
     gh release create "$TAG_NAME" \
       --title "$PLUGIN_NAME v$NEW_VERSION" \
