@@ -2,8 +2,8 @@
 
 A single-skill Claude Code plugin that does one thing: **review the comments in
 your code** — not the logic, naming, or structure. It judges every comment
-against 7 rules and tells you which to keep, remove, or rewrite, with a concrete
-suggested fix.
+against a focused rule set and tells you which to keep, remove, rewrite, or move,
+with a concrete suggested fix.
 
 Default stance: *no comment beats a bad comment.* The skill biases toward
 removal and only asks for a new comment where a future reader would genuinely be
@@ -53,12 +53,21 @@ Core comment-quality rules (R1–R7):
    a rationale but just re-describes how a value is built. *Exception:* keep it
    when it's critical to correctness, very complex, or security-relevant.
 
-Plus two extra checks:
+Plus extra checks:
 
 8. **No commented-out code** — dead code belongs in version control, not parked
    in a comment.
 9. **No comment that contradicts the code** — a comment that lies about what the
    code does is the most urgent fix; these are surfaced first.
+10. **Consistent with the file's commenting style** — a lone trivial doc among
+    bare siblings of the same kind almost always marks low-value prose.
+11. **In test files, the bar is much higher** — comments restating an assertion
+    or the implementation under test go; only structural/scenario labels stay.
+12. **Rationale belongs where the behavior lives** — a genuine *why* pinned to a
+    declaration (enum member, constant, field) while it explains a method's
+    behavior elsewhere is **moved** to that method, or **removed** if the reason
+    is already there. *Contrast:* a note about the value's own meaning
+    (`// 0 means unbounded`) stays on the declaration.
 
 The skill also calibrates against false positives: self-documenting markup,
 real ASCII diagrams, present-tense TODO landmines, genuine ordering invariants,

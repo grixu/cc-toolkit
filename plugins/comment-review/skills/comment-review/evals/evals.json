@@ -33,6 +33,21 @@
         "Keeps 'Sequential, not parallel ...' decision comment (R2)",
         "Keeps 'CVE-2024-1234' external reference (R4 exception)"
       ]
+    },
+    {
+      "id": 2,
+      "name": "misplaced-and-duplicated-rationale",
+      "prompt": "/comment-review fixture/dlq-codes.ts fixture/dlq.handler.ts",
+      "expected_output": "Flags the behavioral rationale parked on the enum log-code as R12: MOVE when it only lives on the declaration, REMOVE when the same reason is already present at the handler that performs the conditional UPDATE. Keeps a value-meaning note on a declaration (R12 contrast) and a genuine WHY that already sits at its method.",
+      "files": ["fixture/dlq-codes.ts", "fixture/dlq.handler.ts"],
+      "assertions": [
+        "Flags '// the conditional UPDATE can't distinguish a missing row from an ineligible status' on the enum member as R12",
+        "Verdict is REMOVE when the same rationale already exists at the handler's UPDATE (duplicated)",
+        "Verdict is MOVE (naming the handler method) when the rationale exists only on the enum declaration",
+        "Keeps '// 0 means unbounded, not disabled' value-meaning note on a constant (R12 contrast)",
+        "Keeps the genuine WHY already located at the handler method (R2)",
+        "Does not flag bare enum members that carry no comment"
+      ]
     }
   ]
 }

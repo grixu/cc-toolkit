@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **R12 — rationale belongs where the behavior lives.** Catches a genuine *why*
+  that clears R1/R2 but is pinned to a *declaration* (enum member, constant,
+  type/DTO field, log-code) while it actually explains the behavior of a method
+  elsewhere. The tell: the load-bearing clause describes runtime behavior ("the
+  conditional UPDATE can't distinguish a missing row from an ineligible status")
+  on a line that only names a value. New **MOVE** verdict relocates such a
+  comment to the implementing method; **REMOVE** when the rationale is already
+  duplicated at the usage site. Reviewer does a best-effort `Grep` for the symbol
+  to name the destination method and detect duplication, without blocking the
+  finding when the search is inconclusive. Contrast/KEEP: a note about the
+  *value's own meaning* (`// 0 means unbounded, not disabled`) stays at the
+  declaration.
+- MOVE verdict threaded through the report format, tally
+  (`… · W move · …`), and the apply step (delete at source; insert at the
+  destination only when a single unambiguous usage site was located).
+- Eval `misplaced-and-duplicated-rationale` covering R12 MOVE/REMOVE and the
+  value-meaning KEEP contrast.
+
 ## [0.2.0] - 2026-06-08
 
 ### Changed

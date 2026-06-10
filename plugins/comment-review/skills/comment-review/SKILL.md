@@ -10,8 +10,9 @@ description: >-
   a focused rule set — no code-narration, decisions-only, not too long, no
   cross-file/doc refs, no banner sections, no change-state/ticket history, no
   process-narration disguised as a decision, no commented-out code, and nothing
-  that contradicts the code — and returns a per-comment verdict (KEEP / REMOVE /
-  REWRITE) with a concrete suggested fix.
+  that contradicts the code, and no rationale parked on the wrong declaration when
+  it belongs where the behavior lives — and returns a per-comment verdict (KEEP /
+  REMOVE / REWRITE / MOVE) with a concrete suggested fix.
 allowed-tools: Read, Bash, Grep, Glob, Edit
 ---
 
@@ -38,6 +39,11 @@ a constraint, a trade-off, an ordering rule, a non-obvious failure mode. When yo
 catch yourself defending a comment as *"documents the domain rule"* or *"the
 mapping the code can't show,"* re-run the deletion test: usually the code *does*
 show it.
+
+A *why* that survives the deletion test can still be in the **wrong place** —
+pinned to a declaration (an enum member, a constant, a type field) when it
+actually explains the behavior of a method elsewhere. That is not a deletion
+case; it is a relocation case. R12 covers it.
 
 ## Step 1 — Resolve scope
 
@@ -93,10 +99,11 @@ keyword match.
 
 ## Step 3 — Judge each comment against the rules
 
-For every comment, assign one verdict: **KEEP**, **REMOVE**, or **REWRITE**.
-Apply the rules below — R1–R7 are the core comment-quality rules; R8–R9 catch
-commented-out code and comments that contradict the code; R10–R11 cover style
-consistency and the higher bar inside test files. Run the **deletion test** from
+For every comment, assign one verdict: **KEEP**, **REMOVE**, **REWRITE**, or
+**MOVE**. Apply the rules below — R1–R7 are the core comment-quality rules;
+R8–R9 catch commented-out code and comments that contradict the code; R10–R11
+cover style consistency and the higher bar inside test files; R12 catches a
+genuine *why* that sits on the wrong declaration. Run the **deletion test** from
 the top of this skill on every comment first — most findings fall out of it
 directly. When two rules collide, the most specific finding wins; when genuinely
 unsure, default to KEEP and move on (low signal is worse than a missed nitpick) —
@@ -326,6 +333,53 @@ reversed: when in doubt, the comment goes** — the spec reads fine without it.
   steps in an e2e flow, or a genuine non-obvious *why a fixture is shaped this
   way* (a real gotcha — not a description of the shape).
 
+### R12 — Rationale belongs where the behavior lives (no orphaned / duplicated *why*)
+A comment can clear R1/R2 as a genuine *why* and **still** be in the wrong place:
+pinned to a *declaration* — an enum member, a constant, a type/DTO field, a
+log-code definition — while the reason it states is about the **behavior of code
+elsewhere** that emits, reads, or acts on that value. At the declaration the
+reader only needs what the identifier *means*; the constraint/trade-off/gotcha
+lands on whoever is reading the method that implements it.
+
+- **The tell:** the comment's load-bearing clause describes runtime behavior — a
+  verb about what some code *does* or *can't do* ("the conditional UPDATE can't
+  distinguish a missing row from an ineligible status", "we retry twice before
+  giving up", "fails silently when the row is already gone") — but it sits on a
+  line that only *names a value*. The declaration neither performs nor enforces
+  that behavior, so the *why* is orphaned from its code.
+  ```ts
+  export enum AuditDlqInfoCode {
+    DLQ_MESSAGE_RECEIVED = 'audit.dlq.message.received',
+    // One no-op code — the conditional UPDATE can't distinguish a missing row
+    // from an ineligible status
+    DLQ_STATUS_NOT_ELIGIBLE = 'audit.dlq.no_op.status_not_eligible',
+  }
+  ```
+  The rationale is real, but it explains the handler's UPDATE, not the string
+  constant. A reader of the enum cannot act on it; a reader of the handler needs
+  it.
+- **Locate the destination (best-effort).** `Grep`/`Glob` for the declared
+  symbol to find where it is actually used. This serves two ends: it lets you
+  **name the concrete method** in the suggested fix, and it tells you whether the
+  rationale is **already present** there. Do not block the finding on the search
+  — if the symbol is used in many places or the search is inconclusive, still
+  flag the misplacement and point at "the method that performs the behavior" in
+  general terms.
+- **REMOVE** when the same rationale already lives at the usage site — the
+  declaration copy is the redundant (duplicated) one; delete it and keep the
+  authoritative copy where the behavior is.
+- **MOVE** when the rationale exists *only* at the declaration: the suggested fix
+  relocates the sentence to the implementing method and leaves the declaration
+  bare (the identifier already says what the value is). MOVE is for comments
+  whose **content is worth keeping but whose location is wrong** — never use it
+  as a soft REMOVE for low-value prose (that is R1).
+- **Contrast → KEEP at the declaration:** a comment that explains the *value's
+  own meaning* and is needed at every use site — `// 0 means 'unbounded', not
+  'disabled'`, `// EU-only region; never used for US tenants`, a unit/range note
+  on a field. The test: does the sentence describe **this identifier's
+  semantics** (stays — every reader of the value needs it) or **what some method
+  does with it** (moves — only that method's reader needs it)?
+
 ### Always KEEP (never flag)
 Type annotations (not comments), license/SPDX headers, framework-required tags
 (`@deprecated`, `@internal`, `@param` on public APIs), tool directives
@@ -373,29 +427,45 @@ emitting — a wrong REMOVE is worse than a missed nitpick.
   check whether the comment still matches the *new* code (a rotted comment is a
   REWRITE/REMOVE under R1/R7), not just whether the comment line itself was
   touched.
+- **R12 vs a value-meaning note** — a comment on a declaration that explains the
+  *identifier's own semantics* stays put (`// 0 means 'unbounded'`,
+  `// sentinel; never persisted`): every reader of the value needs it, so it is
+  correctly located. R12 only fires when the load-bearing clause is about *what a
+  method does* with the value, not about *what the value is*. Don't MOVE a note
+  that the call site genuinely depends on.
 
 ## Step 4 — Report
 
 Group findings by file. For each finding give:
 
 - `path:line` and the **verbatim quoted comment**
-- the rule it matches (`R1`–`R11`) and the **verdict** (KEEP / REMOVE / REWRITE)
+- the rule it matches (`R1`–`R12`) and the **verdict** (KEEP / REMOVE / REWRITE /
+  MOVE)
 - a one-line reason
 - a concrete **suggested fix** — the exact replacement text for REWRITE, or
   "delete these lines" for REMOVE, or the proposed new comment for a missing-WHY.
+  For **MOVE**, name the **destination** (the method/usage site you located, or
+  "the method that performs the behavior" if the search was inconclusive) and
+  give the exact comment text to place there, plus "delete from the declaration."
   The fix must itself obey the rules: never introduce a file/doc cross-reference
   (R4) or a divider/banner (R5) in a replacement — inline the fact instead.
 
 List any **R9 (contradicts-the-code)** findings first — they mislead readers and
 are the most urgent to fix. Otherwise order findings within a file by line
 number. End with a short tally
-(`N comments reviewed · X remove · Y rewrite · Z keep-as-is`) and the list of
-skipped files with reasons. If you found nothing, say so plainly — do not invent
+(`N comments reviewed · X remove · Y rewrite · W move · Z keep-as-is`) and the
+list of skipped files with reasons. If you found nothing, say so plainly — do not invent
 findings to look thorough.
 
 ## Step 5 — Offer to apply (only on confirmation)
 
 Never edit during the review. After presenting the report, ask whether to apply
-the REMOVE and REWRITE fixes. Apply with `Edit` only the ones the user
+the REMOVE, REWRITE, and MOVE fixes. Apply with `Edit` only the ones the user
 confirms; leave missing-WHY suggestions for the author to write, since only they
 know the real reason.
+
+For a confirmed **MOVE**, delete the comment at the declaration, and insert the
+rewritten comment at the destination **only when you located a single
+unambiguous usage site**; if the destination was ambiguous, apply just the
+deletion and hand the user the exact text to paste, so you never drop a comment
+into the wrong method.
