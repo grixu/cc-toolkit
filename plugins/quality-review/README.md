@@ -24,7 +24,7 @@ From the `grixu/cc-toolkit` marketplace:
 ## Usage
 
 ```
-/quality-review                 # review the current branch diff vs main/master
+/quality-review                 # review the current branch diff (committed + uncommitted)
 /quality-review src/auth.ts     # review specific files in full
 /quality-review src/ lib/       # review directories
 /quality-review --base develop  # diff against a different base branch
@@ -87,6 +87,11 @@ Reviews source files (`.ts .tsx .js .jsx .py .go .rs .java .kt .swift .c .cpp .r
 just the changed lines, since ordering, style, and duplication are whole-file and
 cross-file properties. Skips JSON, lockfiles, generated/minified files, Markdown,
 and config.
+
+With no path arguments it reviews the current branch diff. The base is detected
+defensively (`@{upstream}` → `origin/main` → `origin/master` → `main` → `master`,
+or `--base <branch>`), and both **committed** and **uncommitted** changes are
+considered — when both exist, the skill asks which scope to review.
 
 ## What it does *not* do
 

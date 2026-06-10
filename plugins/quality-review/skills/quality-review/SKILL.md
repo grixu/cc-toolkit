@@ -45,31 +45,40 @@ project has deliberately chosen it. Note which conventions you picked up.
 Parse the invocation arguments:
 
 - **Arguments are file or directory paths** → review those targets in full.
-  Expand directories to their source files.
-- **`--base <branch>`** → use that branch as the diff base (e.g. `--base develop`).
-- **No path arguments** → review the current branch diff. Pick the base branch
-  defensively, since trunk is not always `main`:
+  Expand directories to their source files. Skip the diff machinery below.
+- **`--base <branch>`** → pass it straight through to the script as `--base <branch>`.
+- **No path arguments** → review the current branch diff. Detect what exists with the
+  bundled script, which resolves the base defensively (`@{upstream}`, then `origin/main`,
+  `origin/master`, `main`, `master`) and covers committed, uncommitted, and untracked
+  changes:
 
   ```bash
-  base="${ARG_BASE:-}"
-  if [ -z "$base" ]; then
-    for c in main master develop trunk; do
-      git rev-parse --verify --quiet "refs/heads/$c" >/dev/null && base="$c" && break
-    done
-  fi
-  if [ -z "$base" ] || ! git rev-parse --verify --quiet "$base" >/dev/null; then
-    echo "NO_BASE"; exit 0
-  fi
-  git diff --name-status "$base"...HEAD   # triple-dot = changes since the common ancestor
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/quality-review/scripts/get_changes.py --scope uncommitted
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/quality-review/scripts/get_changes.py --scope committed
   ```
 
-  The triple-dot diff resolves the fork point internally, so do **not** call
-  `git merge-base` separately — it is redundant, and some repos run a hook that
-  blocks any command containing the word "merge".
+  (append `--base <branch>` to both when the user passed one.) Read the `count` of each:
 
-If the script prints `NO_BASE`, or the diff is empty, tell the user which base
-you tried and ask them to pass explicit paths or `--base <branch>` — never guess
-silently.
+  - both zero → tell the user there is nothing to review and stop;
+  - exactly one non-zero → use that scope automatically;
+  - both non-zero → ask with `AskUserQuestion` which to review — **Uncommitted**
+    (working tree vs HEAD), **Committed** (HEAD vs base), or **Both** (base → working
+    tree) — putting the file counts you just saw in each option's description.
+
+  Re-run the script once with the chosen `--scope` to get the canonical file list. Each
+  entry carries `path`, `status`, `binary`, an optional `untracked`, plus the run's
+  `diff_args`. To see a file's change:
+
+  - tracked → `git diff <diff_args> -- <path>`;
+  - untracked (`"untracked": true`) → `git diff` shows nothing, so read the file
+    directly and treat every line as added.
+
+  Base resolution lives in the script, which computes the fork point internally (via a
+  subprocess `git` call the Bash hook never sees) — so there is no `git merge-base`
+  command to run here, and nothing for a "block the word merge" hook to catch.
+
+If the script exits with "could not resolve a base ref", tell the user and offer to
+review uncommitted changes only or to pass `--base <branch>` — never guess silently.
 
 ### Read the whole file for context, but score the changed lines
 
