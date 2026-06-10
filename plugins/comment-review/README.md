@@ -21,7 +21,8 @@ From the `grixu/cc-toolkit` marketplace:
 ## Usage
 
 ```
-/comment-review                 # review comments in the current branch diff vs main/master
+/comment-review                 # review comments in the current branch diff (committed + uncommitted)
+/comment-review --base develop  # diff against an explicit base branch
 /comment-review src/auth.ts     # review all comments in specific files
 /comment-review src/ lib/       # review all comments under directories
 ```
@@ -78,3 +79,8 @@ test scaffolding, and idiomatic doc comments (godoc / docstrings / JSDoc / Rust
 
 Reviews source files that carry human-authored comments. Skips JSON, lockfiles,
 generated/minified files, Markdown/docs, and license headers.
+
+With no path arguments it reviews the current branch diff. The base is detected
+defensively (`@{upstream}` → `origin/main` → `origin/master` → `main` → `master`,
+or `--base <branch>`), and both **committed** and **uncommitted** changes are
+considered — when both exist, the skill asks which scope to review.

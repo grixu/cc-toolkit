@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Scope detection now delegates to a bundled `get_changes.py` script** (vendored
+  from the hookify `review-changes` skill) instead of inline base-detection bash.
+  The base is resolved defensively against `@{upstream}` → `origin/main` →
+  `origin/master` → `main` → `master` — the previous loop only checked **local**
+  branches (`refs/heads/$c`) and returned `NO_BASE` on a branch forked from
+  `origin/main` without a local `main`. The skill now also reviews **uncommitted**
+  changes: when both committed and uncommitted changes exist it asks which scope to
+  review via `AskUserQuestion`, instead of silently diffing only committed work
+  (which left a working-tree-only run with an empty diff). Base resolution computes
+  the fork point inside a `subprocess` git call, so no `git merge-base` command is
+  run from the skill.
+- `AskUserQuestion` added to `allowed-tools` (needed for the scope prompt above).
+
 ## [0.3.0] - 2026-06-10
 
 ### Added
