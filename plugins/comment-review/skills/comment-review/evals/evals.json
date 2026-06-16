@@ -48,6 +48,41 @@
         "Keeps the genuine WHY already located at the handler method (R2)",
         "Does not flag bare enum members that carry no comment"
       ]
+    },
+    {
+      "id": 3,
+      "name": "spec-id-references",
+      "prompt": "/comment-review fixture/payment-validator.ts",
+      "expected_output": "Treats bare spec/requirement-ID tokens (F1, Q1, §4.1, R7, AC-3/AC-4) as R4 internal-doc references even without a filename: REMOVE the pure pointers (F1 narration, 'see Q1', 'Implements AC-3 and AC-4'), REWRITE the ones that carry a real constraint by stripping the token and keeping only the load-bearing sentence (§4.1 cap, R7 ordering rule). Crucially, no kept/rewritten comment retains the token. Keeps the external RFC pin, the genuine WHY, and the value-meaning note where 'R2' is a real string literal the code uses.",
+      "files": ["fixture/payment-validator.ts"],
+      "assertions": [
+        "Flags '// F1: users can submit a payment with a saved card' as R4 with verdict REMOVE",
+        "Flags '// see Q1' as R4 REMOVE (pure pointer, nothing survives the strip)",
+        "Flags '// §4.1 caps a single charge at 500_000 minor units' as R4 REWRITE",
+        "The §4.1 suggested fix does NOT contain the token '§4.1' or '4.1'",
+        "Flags '// R7: charge in source order ...' as R4 REWRITE and keeps the ordering rationale",
+        "The R7 suggested fix does NOT contain the token 'R7' but keeps 'out-of-order' / 'source order'",
+        "Flags '/** Implements AC-3 and AC-4. */' as R4 REMOVE (pure pointer doc)",
+        "Keeps '// Retry-After handling per RFC 9110 §10.2.4' (R4 external-pin exception)",
+        "Keeps '// region R2 is EU-only; never route US tenants here' (R2 is a real string literal, value-meaning note)",
+        "Keeps '// sequential, not parallel — the gateway rate-limits per merchant IP' (genuine WHY)",
+        "No kept or rewritten comment text in the report retains any spec-id fragment (F1, Q1, AC-3, AC-4, §4.1, R7)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "spec-id-embedded-midsentence",
+      "prompt": "/comment-review fixture/host-allowlist.ts",
+      "expected_output": "Spec/requirement-ID tokens woven mid-sentence into otherwise genuine WHY comments (R2, F3, Q4, §2.3, §2.4) are the hard case: the comment is worth keeping but the token must not ride along. Each of the three real-WHY comments is REWRITE with the token scrubbed and the rationale (silent fail-open, revoked-token window, validation ordering) preserved. The bare R1 narration line is REMOVE. Reasoning must check whether a token is a real code value before stripping rather than rationalizing it as one.",
+      "files": ["fixture/host-allowlist.ts"],
+      "assertions": [
+        "The lines 4-6 comment is REWRITE, scrubbing both 'R2' and 'F3' while keeping the silent-fail-open rationale",
+        "The lines 11-12 comment is REWRITE, scrubbing 'Per Q4' while keeping the revoked-token constraint",
+        "The lines 17-18 comment is REWRITE, scrubbing 'see §2.3 then §2.4' while keeping the shape-before-semantics ordering rationale",
+        "No rewritten comment retains R2, F3, Q4, §2.3 or §2.4",
+        "The bare R1 line '// hosts are matched case-insensitively' is REMOVE",
+        "Reasoning does not rationalize a prose-only token as a real code value"
+      ]
     }
   ]
 }

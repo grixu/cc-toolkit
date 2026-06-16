@@ -44,8 +44,11 @@ Core comment-quality rules (R1–R7):
    a comment on obvious code or very common patterns.
 3. **Not too long** — for non-algorithmic code, flag a comment longer than the
    code it annotates or over ~2 sentences; trim to the load-bearing line.
-4. **No references to other files or documentation** — they rot and hide
-   coupling. *Exception:* a stable, pinned reference (RFC, spec, pinned URL).
+4. **No references to other files, internal docs, or spec/requirement IDs** —
+   file paths *and* bare tokens like `F1`, `Q1`, `R2`, `§4.1`, `AC-3` rot and
+   hide coupling; the token is stripped and the real fact kept inline.
+   *Exception:* a stable, pinned **external** reference (RFC, published spec, CVE,
+   pinned URL).
 5. **No banner / section-divider comments** (`// ===== PERFORMANCE =====`).
 6. **No change-state / history comments** — PR/ticket numbers, "previously",
    "changed from", "was X now Y". That belongs in version control. *Exception:*

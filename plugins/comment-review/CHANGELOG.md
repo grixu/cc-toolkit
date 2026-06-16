@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **R4 now covers terse spec/requirement-ID references**, not just file paths and
+  named docs. Bare tokens that point into an internal spec, requirements list, or
+  plan — `F1`, `Q1`, `R2`, `§4.1`, `$4.1`, `AC-3`, `US-12`, `REQ-7` — are flagged
+  and stripped like any other internal-doc reference, with the load-bearing
+  sentence kept. This closes the case where a real WHY was kept but its citation
+  fragment (`(R2)`, `F1:`, `§4.1`) rode along into the file.
+- **Fix-hygiene guard at Step 4 and Step 5**: suggested-fix text and applied edits
+  must be re-read and scrubbed of any leftover spec-id fragment before emission —
+  the most common leak was rewriting a comment but leaving the token glued on.
+- **False-positive trap** distinguishing an internal spec slot from a stable
+  external pin (RFC/CVE — stays) and from a token that is a real code value (a
+  semver, an enum/string literal whose text happens to be `R2`).
+- New eval fixtures (`evals/fixture/payment-validator.ts`,
+  `evals/fixture/host-allowlist.ts`) and eval cases 3–4 covering blatant and
+  mid-sentence-embedded spec-id references.
+
+### Changed
+
+- **Progressive disclosure**: the R1–R12 rule bodies, exceptions, and
+  false-positive traps moved to `references/rules.md` (loaded via a MANDATORY
+  trigger at Step 3). `SKILL.md` drops from ~520 to ~180 lines — workflow,
+  deletion-test philosophy, and a one-line rule index — keeping the always-loaded
+  metadata layer lean.
+
 ## [0.4.0] - 2026-06-10
 
 ### Changed
