@@ -1,0 +1,6 @@
+comment review {{file}}
+
+Review only the comments in the file path(s) above, judging each against the
+comment-quality rules (R1–R12). Return the per-comment verdict report
+(KEEP / REMOVE / REWRITE / MOVE) with a one-line reason and a concrete suggested
+fix for every finding, then the tally. Do not edit any files.
