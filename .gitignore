@@ -1,0 +1,10 @@
+# Node dev tooling (shared at the repo root; used by plugins/*/evals)
+node_modules/
+pnpm-lock.yaml
+# pnpm-workspace.yaml is committed — it carries the onlyBuiltDependencies setting
+
+# promptfoo eval outputs
+eval-*.json
+*.eval.json
+output.json
+.promptfoo/

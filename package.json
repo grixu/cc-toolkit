@@ -1,0 +1,14 @@
+{
+  "name": "cc-toolkit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Claude Code plugin marketplace — root dev tooling (promptfoo eval suites live in plugins/<name>/evals/)",
+  "scripts": {
+    "eval": "bash scripts/run-evals.sh",
+    "eval:comment-review": "promptfoo eval -c plugins/comment-review/evals/promptfooconfig.yaml --no-cache --no-share -o /tmp/eval-comment-review.json"
+  },
+  "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "promptfoo": "latest"
+  }
+}
