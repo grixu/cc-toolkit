@@ -1,0 +1,11 @@
+# promptfoo's transitive deps ship build scripts (esbuild, sharp, onnxruntime, …) that
+# we don't need to run for evals. Decline each one explicitly so `pnpm install` exits 0
+# instead of failing with ERR_PNPM_IGNORED_BUILDS (which also breaks pnpm's pre-run
+# dependency check used by `pnpm eval`). Flip one to `true` only if a feature needs it.
+allowBuilds:
+  '@playwright/browser-chromium': false
+  '@swc/core': false
+  esbuild: false
+  onnxruntime-node: false
+  protobufjs: false
+  sharp: false
