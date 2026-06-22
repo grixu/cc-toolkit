@@ -1,0 +1,258 @@
+/*
+ * report.css — the single shipped stylesheet for the researcher HTML Report.
+ * ADR-0008: the Composer authors NO CSS. It emits semantic HTML against the fixed
+ * class vocabulary below; the entire visual identity lives here. Pure CSS — no JS
+ * for layout, citations, dark mode, or the table of contents.
+ *
+ * ── Class vocabulary (CONTRACT — keep in sync with workflows/research.js Composer) ──
+ *   nav.toc            table of contents, emitted FIRST in source order
+ *     .toc > ol/li/a   nested ordered list of section links
+ *   main.report        the document body wrapper
+ *     header.report-header  → h1 (the goal) + p.subtitle (optional one-liner)
+ *   h2 / h3 / h4       section headings (carry id="..." matching the ToC anchors)
+ *   a.citation         inline citation — rendered superscript, href="#src-N"
+ *   ol.sources         numbered Sources list; each <li id="src-N"> contains:
+ *     .source-title, a.source-url, .source-meta (access date),
+ *     .source-trust[ data-tier="primary|secondary|community" ], a.backref ("↩")
+ *   aside.callout      discreet callout; modifiers:
+ *     .callout--questions  (assessor Open questions)
+ *     .callout--conflict   (residual contradictions, surfaced with attribution)
+ *     .callout--note       (general note, e.g. "diagrams unavailable: mmdc missing")
+ *   figure.figure      diagram / chart / image block + <figcaption>
+ *     .diagram         wraps an <img> compiled from a .mmd source
+ *     .chart           wraps a Chart.js <canvas>; .chart noscript table = fallback
+ *   table              plain data tables (styled directly, no class needed)
+ *   .muted             de-emphasised text;  .visually-hidden  a11y-only text
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --measure: 70ch;            /* the reading column width */
+  --toc-width: 16rem;
+
+  /* light theme (default) */
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #57606a;
+  --rule: #e4e7eb;
+  --accent: #2563eb;
+  --accent-soft: #2563eb1a;
+  --callout-bg: #f6f8fa;
+  --callout-conflict: #b4540014;
+  --code-bg: #f2f4f6;
+  --shadow: 0 1px 2px #1f23280f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171a;
+    --fg: #e6e8eb;
+    --muted: #9aa3ad;
+    --rule: #2a2f35;
+    --accent: #6ea8fe;
+    --accent-soft: #6ea8fe1f;
+    --callout-bg: #1b1f24;
+    --callout-conflict: #e9a16c14;
+    --code-bg: #1e2329;
+    --shadow: 0 1px 2px #00000040;
+  }
+}
+
+/* ───────────────────────── base ───────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: 2.5rem 1.25rem;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+}
+
+.toc, main.report { max-width: var(--measure); margin-inline: auto; }
+
+/* headings — modular scale (~1.25) */
+h1, h2, h3, h4 { line-height: 1.25; font-weight: 650; margin: 2.25rem 0 0.75rem; }
+h1 { font-size: 2rem; margin-top: 0; letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; padding-top: 0.5rem; border-top: 1px solid var(--rule); }
+h3 { font-size: 1.2rem; }
+h4 { font-size: 1.0625rem; color: var(--muted); }
+
+p, ul, ol, blockquote, figure, table { margin: 0 0 1rem; }
+ul, ol { padding-left: 1.4rem; }
+li { margin: 0.2rem 0; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+strong { font-weight: 650; }
+code, pre {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+
+blockquote {
+  margin-left: 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  border-left: 3px solid var(--rule);
+  color: var(--muted);
+}
+
+.muted { color: var(--muted); }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.report-header { margin-bottom: 2rem; }
+.report-header .subtitle { color: var(--muted); font-size: 1.15rem; margin-top: 0.25rem; }
+
+/* ───────────────────────── table of contents ───────────────────────── */
+
+.toc {
+  margin-bottom: 2.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--callout-bg);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+.toc-title {
+  font-weight: 650; font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.5rem;
+}
+.toc ol { margin: 0; padding-left: 1.1rem; }
+.toc ol ol { padding-left: 1rem; }
+.toc li { margin: 0.15rem 0; }
+.toc a { color: var(--fg); }
+.toc a:hover { color: var(--accent); }
+
+/* ───────────────────────── citations & sources ───────────────────────── */
+
+a.citation {
+  font-size: 0.72em;
+  font-weight: 600;
+  vertical-align: super;
+  line-height: 0;
+  padding: 0 0.12em;
+  color: var(--accent);
+  white-space: nowrap;
+}
+a.citation::before { content: "["; }
+a.citation::after { content: "]"; }
+:target { scroll-margin-top: 1.5rem; }
+li[id^="src-"]:target { background: var(--accent-soft); border-radius: 6px; }
+
+ol.sources {
+  margin-top: 0.5rem;
+  padding-left: 1.6rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+ol.sources li { margin: 0.5rem 0; padding-left: 0.2rem; }
+.source-title { font-weight: 600; }
+a.source-url { color: var(--accent); word-break: break-word; }
+.source-meta { color: var(--muted); font-size: 0.88em; }
+.source-trust {
+  display: inline-block;
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.4rem; border-radius: 999px; margin-left: 0.35rem;
+  border: 1px solid var(--rule); color: var(--muted);
+  vertical-align: 0.08em;
+}
+.source-trust[data-tier="primary"]   { color: var(--accent); border-color: var(--accent); }
+.source-trust[data-tier="community"] { opacity: 0.75; }
+a.backref { font-size: 0.85em; color: var(--muted); margin-left: 0.3rem; }
+
+/* ───────────────────────── callouts ───────────────────────── */
+
+aside.callout {
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.1rem;
+  background: var(--callout-bg);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 0.97rem;
+}
+aside.callout .callout-title {
+  font-weight: 650; font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.4rem;
+}
+aside.callout :last-child { margin-bottom: 0; }
+.callout--conflict { border-left-color: #b45400; background: var(--callout-conflict); }
+.callout--note { border-left-color: var(--muted); }
+
+/* ───────────────────────── figures: diagrams, charts, images ───────────────────────── */
+
+figure.figure { margin: 1.75rem 0; text-align: center; }
+figure.figure img,
+figure.figure canvas,
+figure.figure svg { max-width: 100%; height: auto; }
+.diagram img { border-radius: 6px; }
+.chart { position: relative; }
+.chart noscript { display: block; }
+figcaption {
+  margin-top: 0.5rem; font-size: 0.88rem; color: var(--muted);
+  text-align: center;
+}
+
+/* data tables (including chart <noscript> fallbacks) */
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { padding: 0.45rem 0.7rem; border: 1px solid var(--rule); text-align: left; }
+th { background: var(--callout-bg); font-weight: 650; }
+caption { caption-side: bottom; color: var(--muted); font-size: 0.88rem; padding-top: 0.4rem; }
+
+/* ───────────────────────── wide viewports: sticky ToC sidebar ───────────────────────── */
+
+@media (min-width: 78rem) {
+  body {
+    display: grid;
+    grid-template-columns: 1fr minmax(0, var(--measure)) 1fr;
+    column-gap: 2.5rem;
+    align-items: start;
+  }
+  .toc {
+    grid-column: 1;
+    justify-self: end;
+    width: var(--toc-width);
+    max-width: none;
+    margin: 0;
+    position: sticky;
+    top: 2rem;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+  }
+  main.report { grid-column: 2; }
+}
+
+/* ───────────────────────── print ───────────────────────── */
+
+@media print {
+  :root {
+    --bg: #ffffff; --fg: #000000; --muted: #444444; --rule: #cccccc;
+    --accent: #1a4fbf; --callout-bg: #f4f4f4;
+  }
+  body { display: block; padding: 0; font-size: 11pt; }
+  .toc {
+    position: static; width: auto; max-width: none; margin: 0 0 1.5rem;
+    break-inside: avoid;
+  }
+  main.report { max-width: none; }
+  h2, h3, figure.figure, aside.callout { break-inside: avoid; }
+  a { color: inherit; }
+  a.source-url::after { content: " (" attr(href) ")"; font-size: 0.85em; color: var(--muted); }
+}

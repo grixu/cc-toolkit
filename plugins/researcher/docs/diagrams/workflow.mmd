@@ -1,0 +1,86 @@
+flowchart LR
+  %% ===== style (na wzór szkicu) =====
+  classDef input  fill:#3a1d00,stroke:#ff9933,stroke-width:2px,color:#ffcc99;
+  classDef stage  fill:#161616,stroke:#777,stroke-width:1px,color:#bdbdbd;
+  classDef agent  fill:#0b1020,stroke:#2a4a7f,stroke-width:1.5px,color:#a9c2e6;
+  classDef merge  fill:#0d1b2e,stroke:#4a90d9,stroke-width:2px,color:#bcd6f5;
+  classDef synth  fill:#101a0d,stroke:#5bbf4a,stroke-width:2px,color:#bfe6b3;
+  classDef format fill:#220000,stroke:#e63946,stroke-width:2px,color:#ff8a93;
+  classDef report fill:#1a1400,stroke:#caa33a,stroke-width:2px,color:#e6d49a;
+
+  Q(["1. Input: pytanie researchowe"]):::input
+
+  %% ===== faza 1: front-end skill (wątek główny, interaktywny) =====
+  subgraph FE["2. Dobieranie kontekstu — front-end skill (wątek główny)"]
+    direction TB
+    C1["Subagent Explore:<br/>codebase"]:::agent
+    C2["Subagent Explore:<br/>dokumentacja"]:::agent
+    C3["CLAUDE.md → inferencja audience<br/>(pyta usera tylko gdy się nie da)"]:::agent
+    C4["Zadanie:<br/>Jira / Linear MCP"]:::agent
+    Mctx{"Merge → Research brief<br/>(goal + scope/depth/recency/source<br/>+ audience: lay/informed/practitioner/expert)"}:::merge
+    C1 --> Mctx
+    C2 --> Mctx
+    C3 --> Mctx
+    C4 --> Mctx
+  end
+
+  Q --> C1
+  Q --> C2
+  Q --> C3
+  Q --> C4
+
+  %% ===== faza 2: dynamic workflow (subagenty, lekki return) =====
+  subgraph WF["Dynamic Workflow — subagenty (do wątku głównego wraca tylko ścieżka + manifest)"]
+    direction TB
+    Plan["3. Plan: podział na pod-pytania<br/>+ ustalenie zależności"]:::stage
+
+    subgraph ROUND["4. Research round — gate'owana przez Assessor (×N, cap rund per depth)"]
+      direction TB
+      subgraph RET["Retrieval — równolegle"]
+        direction TB
+        R1["Retriever: firecrawl (WebSearch fallback)<br/>+ trust tier @ fetch"]:::agent
+        R2["Retriever: firecrawl<br/>+ trust tier @ fetch"]:::agent
+        R3["Retriever: firecrawl<br/>+ trust tier @ fetch"]:::agent
+        F1["Findings + typed evidence span<br/>(quote / image_region / locator)<br/>+ kandydaci na obrazki [src ids]"]:::agent
+        F2["Findings + evidence span [src ids]"]:::agent
+        F3["Findings + evidence span [src ids]"]:::agent
+        R1 --> F1
+        R2 --> F2
+        R3 --> F3
+      end
+
+      Dedup{"Dedup po URL →<br/>append-only numeric ids (+ trust tier)"}:::merge
+      Scout["Conflict-scout: diff findings → conflicts[]<br/>(hint resolvable?; materiality = Assessor)"]:::agent
+      Verify["Verifier (tylko deep brief): próba obalenia<br/>material findings nad zebranym korpusem<br/>(nie fetchuje)"]:::agent
+
+      F1 --> Dedup
+      F2 --> Dedup
+      F3 --> Dedup
+      Dedup --> Scout
+      Scout -. "deep brief" .-> Verify
+    end
+
+    Assess{"5. Assessor — jedyna bramka:<br/>ocenia materiality (trust tier odsiewa szum);<br/>green-light gdy pokrycie OK + brak material/<br/>resolvable conflict lub refutation"}:::merge
+    Synth["6. Synthesizer (raz, po green-light):<br/>reconcile findings (waży trust tiers),<br/>ujawnia residual sprzeczności (z atrybucją),<br/>audience-neutral draft answer z [id]"]:::synth
+    Edit["7. Editor (jedyny audience-aware): tnij lanie<br/>wody, de-jargon pod tier, oznacz wizualizacje<br/>(co mają pokazać; więcej dla lay, mniej dla expert)"]:::format
+    Comp["8. Composer (subagent-side): semantic HTML na<br/>stałym class vocab (report.css, zero bespoke CSS);<br/>diagramy→mmdc SVG (preflight degraduje),<br/>wykresy→Chart.js (vendored); wizualizacje z findings;<br/>zwraca tylko path + manifest"]:::format
+
+    Plan --> R1
+    Plan --> R2
+    Plan --> R3
+    Scout --> Assess
+    Verify -. "deep brief" .-> Assess
+    Assess -->|"kolejna runda<br/>(cap rund per depth, bez token-budżetu)"| Plan
+    Assess -->|"pokrycie OK"| Synth
+    Synth --> Edit
+    Edit --> Comp
+  end
+
+  Mctx --> Plan
+
+  %% ===== artefakt + prezentacja + checkpoint człowieka =====
+  Comp --> Art["Report (jeden ewoluujący artefakt):<br/>output.html (ToC + [n], linkuje report.css)<br/>+ state.json HEAD + findings/ (shardy, append-only) + answer.md<br/>+ diagrams/ (.mmd + SVG) + assets/ (Chart.js + report.css + obrazy)<br/>+ snapshots/ (przed nadpisaniem: Bash cp+rewrite, append-only)"]:::report
+  Art --> Pres(["9. Prezentacja: manifest inline<br/>+ ścieżka + oferta otwarcia"]):::stage
+  Pres --> Human{"Follow-up?"}:::merge
+  Human -->|"user wybiera/dodaje pytania → nowy run<br/>rozszerza TEN SAM ewoluujący Report<br/>(Synthesizer czyta poprzednie shardy i re-synth całości;<br/>nowe findings = nowe shardy, ids append-only)"| Plan
+  Human -->|"koniec"| Done(["Koniec"]):::input

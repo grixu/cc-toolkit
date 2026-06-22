@@ -151,6 +151,24 @@
         "clean-code",
         "refactoring"
       ]
+    },
+    {
+      "name": "researcher",
+      "source": "./plugins/researcher",
+      "description": "Source-grounded research assistant: an interactive skill gathers a research brief, then launches a bundled Dynamic Workflow that fans out firecrawl retrieval (WebSearch fallback) into cited findings, gates rounds on coverage and contradictions, and renders a self-contained HTML report where every claim traces to a numbered source. The report evolves across follow-up runs.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański (grixu)",
+        "email": "mateusz.gostanski@gmail.com"
+      },
+      "category": "productivity",
+      "tags": [
+        "research",
+        "web",
+        "firecrawl",
+        "citations",
+        "workflow"
+      ]
     }
   ]
 }
