@@ -3,12 +3,12 @@ export const meta = {
   description:
     'Source-grounded research: fan out firecrawl retrievers (WebSearch fallback) into cited findings, gate rounds on coverage + contradictions (Conflict-scout + deep-only Verifier feeding a single Assessor), synthesize once, edit for the audience, and render an evolving HTML report. Returns only the artifact path + a compact manifest.',
   phases: [
-    { title: 'Setup', detail: 'load prior state.json (if extending), schemaVersion check, mmdc preflight' },
+    { title: 'Setup', detail: 'create the report dir; load the prior state.json HEAD only (no read-back), schemaVersion check' },
     { title: 'Plan', detail: 'derive distinct sub-query angles from the brief (diversity)' },
     { title: 'Research', detail: 'assessor-gated rounds: parallel retrievers → Conflict-scout → (deep) Verifier → Assessor' },
-    { title: 'Synthesize', detail: 'one terminal Synthesizer reconciles findings into a cited, audience-neutral draft' },
+    { title: 'Synthesize', detail: 'one terminal Synthesizer reconciles findings (reading the prior shards directly on extend) into a cited, audience-neutral draft' },
     { title: 'Edit', detail: 'Editor re-cuts for concision + the brief audience tier; marks earn-their-place visuals' },
-    { title: 'Compose', detail: 'Composer snapshots, copies assets, renders semantic HTML + diagrams/charts, writes state.json' },
+    { title: 'Compose', detail: 'Persist appends new findings shards (prior shards untouched) + the HEAD; Composer snapshots, copies assets, renders semantic HTML + diagrams/charts' },
   ],
 }
 
@@ -19,7 +19,7 @@ let a = {}
 if (args && typeof args === 'object') a = args
 else if (typeof args === 'string') { try { a = JSON.parse(args) } catch { a = {} } }
 
-const SCHEMA_VERSION = 1 // bump when state.json shape changes; setup refuses a mismatched prior state
+const SCHEMA_VERSION = 2 // bump when state.json shape changes; setup refuses a mismatched prior state
 
 // slugify is a script-side fallback only — the skill normally resolves and passes `slug` (decision J).
 const slugify = (s) => String(s || 'research')
@@ -44,6 +44,11 @@ const SLUG = a.slug || slugify(brief.goal)
 const REPORT_DIR = `${OUTPUT_BASE}/${SLUG}`
 const EXTENDING = !!a.extending
 const PLUGIN_ROOT = a.pluginRoot || '' // ${CLAUDE_PLUGIN_ROOT}; the Composer copies assets/ from here
+// The SKILL detects tool availability up front (it runs in the main session where a quick `command -v` is cheap)
+// and passes it in — the Composer assumes a GLOBAL `mmdc` (no pnpm-dlx download at compose time, ADR: fail/degrade,
+// don't fetch). Default true so a direct/legacy launch still attempts diagrams.
+const DIAGRAMS_AVAILABLE = a.diagramsAvailable !== false
+const MMDC_CMD = 'mmdc'
 
 // Round budget per depth (ADR-0003: bounded by rounds, NOT a token budget). Fan-out cap is TUNABLE
 // (PLAN §8 — settle during build); the probe ran 5 parallel retrievers comfortably.
@@ -105,57 +110,53 @@ const RETRIEVER_SCHEMA = {
   },
 }
 
-// Persisted + in-flight research state. A finding here is the FLAT form (carries global source_ids[]).
-const STATE_SCHEMA = {
+// A source row (flat) — global append-only source_id assigned by mergeRound.
+const SOURCE_ITEM_SCHEMA = {
   type: 'object',
-  required: ['schemaVersion', 'sources', 'findings', 'roundCount'],
+  required: ['source_id', 'url', 'title', 'trust_tier'],
+  properties: {
+    source_id: { type: 'integer' },
+    url: { type: 'string' },
+    title: { type: 'string' },
+    access_date: { type: 'string' },
+    trust_tier: { type: 'string', enum: TRUST_TIERS },
+    candidate_image_urls: { type: 'array', items: { type: 'string' } },
+  },
+}
+
+// A finding (FLAT form) is persisted as { claim, source_ids[] (global, append-only), evidence[] {kind, value} } in
+// sharded findings/NNN.json files (schema v2): the Persist write never forces an agent to emit the whole corpus in
+// one turn, and on extend the Synthesizer reads the prior shards directly (no read-back round-trip through the
+// orchestrator — ADR-0010). No StructuredOutput schema is bound to it — shards are written/read verbatim as JSON.
+
+// state.json HEAD (schema v2): everything EXCEPT findings (which live in shards). findingCount/shardCount let the
+// extend Synthesizer read the prior shards (findings/000..shardCount-1.json) deterministically, and let Persist
+// append new shards at indices continuing from shardCount. The SKILL still reads goal/brief from here.
+const HEAD_SCHEMA = {
+  type: 'object',
+  required: ['schemaVersion', 'sources', 'roundCount', 'shardCount', 'findingCount'],
   properties: {
     schemaVersion: { type: 'integer' },
     brief: { type: 'object' },
     goal: { type: 'string' },
-    sources: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['source_id', 'url', 'title', 'trust_tier'],
-        properties: {
-          source_id: { type: 'integer' },
-          url: { type: 'string' },
-          title: { type: 'string' },
-          access_date: { type: 'string' },
-          trust_tier: { type: 'string', enum: TRUST_TIERS },
-          candidate_image_urls: { type: 'array', items: { type: 'string' } },
-        },
-      },
-    },
-    findings: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['claim', 'source_ids', 'evidence'],
-        properties: {
-          claim: { type: 'string' },
-          source_ids: { type: 'array', items: { type: 'integer' } },
-          evidence: { type: 'array', items: { type: 'object', properties: { kind: { type: 'string' }, value: { type: 'string' } } } },
-        },
-      },
-    },
-    answer: { type: ['string', 'null'] },
+    sources: { type: 'array', items: SOURCE_ITEM_SCHEMA },
+    findingCount: { type: 'integer' },
+    shardCount: { type: 'integer' },
     roundCount: { type: 'integer' },
   },
 }
 
-// Setup agent return: prior state (when extending) + environment preflight.
+// Setup agent return: prior HEAD (when extending) + directory prep. Findings are NOT returned here — on extend the
+// Synthesizer reads the prior shards itself (ADR-0010), so they never round-trip through the orchestrator. Tool
+// availability (mmdc) is detected by the SKILL and passed in args, NOT preflighted here (no agent round-trip, no pnpm-dlx download).
 const SETUP_SCHEMA = {
   type: 'object',
-  required: ['schemaOk', 'extending', 'mmdcRunner', 'diagramsAvailable'],
+  required: ['schemaOk', 'extending'],
   properties: {
     schemaOk: { type: 'boolean', description: 'false iff a prior state.json exists with a schemaVersion this workflow cannot read' },
-    extending: { type: 'boolean', description: 'true iff a usable prior state.json was loaded' },
+    extending: { type: 'boolean', description: 'true iff a usable prior state.json HEAD was loaded' },
     priorSchemaVersion: { type: ['integer', 'null'] },
-    mmdcRunner: { type: 'string', description: 'command prefix to compile .mmd → .svg: "mmdc", "pnpm dlx @mermaid-js/mermaid-cli", "npx -y @mermaid-js/mermaid-cli", or "" if none' },
-    diagramsAvailable: { type: 'boolean', description: 'false ⇒ Composer renders without diagrams + a note (graceful degrade)' },
-    state: { ...STATE_SCHEMA, type: ['object', 'null'] },
+    state: { ...HEAD_SCHEMA, type: ['object', 'null'] },
   },
 }
 
@@ -263,6 +264,13 @@ function mergeRound(state, retrieverOutputs) {
   return state
 }
 
+// Split findings into bounded shards so each Persist Write stays small — and each shard stays small enough for the
+// extend Synthesizer to Read it back cheaply (the whole-corpus-in-one-turn emit is what aborts large/deep runs).
+// 20/shard keeps a shard well under ~20KB.
+const FINDINGS_PER_SHARD = 20
+const shardName = (i) => `findings/${String(i).padStart(3, '0')}.json`
+function chunk(arr, n) { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out }
+
 // Compact text view of accumulated findings/sources for prompts that reason over the corpus.
 // Findings carry a #index so the Conflict-scout / Verifier / Assessor can reference them.
 function corpusText(state) {
@@ -272,12 +280,22 @@ function corpusText(state) {
 }
 
 // Synthesizer-only view: NO #index on findings (so the model never mistakes a finding's position for a
-// citation) and an explicit list of the ONLY valid citation tokens — the SOURCE ids.
-function synthCorpus(state) {
+// citation) and an explicit list of the ONLY valid citation tokens — the SOURCE ids. On extend, `state.sources`
+// holds old + new (the citation vocabulary spans the whole report) while `state.findings` holds only THIS run's
+// new findings (the prior ones are read from the shards), so the evidence block is labelled accordingly.
+function synthCorpus(state, evidenceLabel = 'EVIDENCE') {
   const srcLine = (s) => `  [${s.source_id}] (${s.trust_tier}) ${s.title} — ${s.url}`
   const findLine = (f) => `  - ${f.claim}  (supported by ${(f.source_ids || []).map((i) => `[${i}]`).join('') || '[?]'})`
   const ids = state.sources.map((s) => s.source_id).join(', ')
-  return `SOURCES — the ONLY valid citation ids are: ${ids}\n${state.sources.map(srcLine).join('\n')}\n\nEVIDENCE (cite the SOURCE id(s) shown after each item — never a finding's position):\n${state.findings.map(findLine).join('\n')}`
+  return `SOURCES — the ONLY valid citation ids are: ${ids}\n${state.sources.map(srcLine).join('\n')}\n\n${evidenceLabel} (cite the SOURCE id(s) shown after each item — never a finding's position):\n${state.findings.map(findLine).join('\n')}`
+}
+
+// Sources-only coverage map: "what has already been consulted" — titles + URLs, no findings. The extend Planner
+// gets this (not corpusText) so it biases toward gaps/newer material without the now-empty in-memory findings.
+function sourcesText(state) {
+  if (!state.sources.length) return 'SOURCES ALREADY CONSULTED: (none)'
+  const srcLine = (s) => `  [${s.source_id}] (${s.trust_tier}) ${s.title} — ${s.url}`
+  return `SOURCES ALREADY CONSULTED (${state.sources.length}) — treat these as covered ground; aim elsewhere:\n${state.sources.map(srcLine).join('\n')}`
 }
 
 // ───────────────────────────── Setup ─────────────────────────────────────────
@@ -289,18 +307,12 @@ Extending an existing report: ${EXTENDING}
 This workflow's state schemaVersion: ${SCHEMA_VERSION}
 
 Do exactly this:
-1. Ensure the directory exists: \`mkdir -p ${REPORT_DIR}/diagrams ${REPORT_DIR}/assets ${REPORT_DIR}/snapshots\`.
-2. Prior state: if ${REPORT_DIR}/state.json exists, Read it.
+1. Ensure the directories exist: \`mkdir -p ${REPORT_DIR}/diagrams ${REPORT_DIR}/assets ${REPORT_DIR}/snapshots ${REPORT_DIR}/findings\`.
+2. Prior state HEAD: if ${REPORT_DIR}/state.json exists, Read it. It is a SMALL head object — it has NO findings (those live in findings/NNN.json shards). Do NOT read the shards here.
    - If its schemaVersion !== ${SCHEMA_VERSION}: return schemaOk=false, extending=false, priorSchemaVersion=<it>, state=null (the orchestrator will refuse rather than corrupt an evolving report). Do not migrate.
-   - Else return schemaOk=true, extending=true, priorSchemaVersion=<it>, and state = the FULL parsed object (schemaVersion, brief, goal, sources[], findings[], answer, roundCount).
+   - Else return schemaOk=true, extending=true, priorSchemaVersion=<it>, and state = the parsed HEAD verbatim (schemaVersion, brief, goal, sources[], roundCount, findingCount, shardCount).
    - If the file does not exist: schemaOk=true, extending=false, state=null.
-3. mmdc preflight — pick the runner the Composer will use to compile Mermaid .mmd → .svg, in this order:
-   - if \`command -v mmdc\` succeeds → mmdcRunner="mmdc", diagramsAvailable=true
-   - else if \`command -v pnpm\` succeeds → mmdcRunner="pnpm dlx @mermaid-js/mermaid-cli", diagramsAvailable=true
-   - else if \`command -v npx\` succeeds → mmdcRunner="npx -y @mermaid-js/mermaid-cli", diagramsAvailable=true
-   - else → mmdcRunner="", diagramsAvailable=false
-   Do NOT actually invoke npx/pnpm dlx (it would download a package) — only detect availability.
-Return the structured object. Nothing else.`
+Return the structured object. Nothing else. (Tool availability is NOT your concern — the orchestrator already detected it.)`
 
 phase('Setup')
 const setup = await agent(setupPrompt, { label: 'setup', phase: 'Setup', schema: SETUP_SCHEMA })
@@ -314,15 +326,30 @@ if (setup && setup.schemaOk === false) {
 }
 
 const isExtending = !!(setup && setup.extending && setup.state)
-const mmdcRunner = (setup && setup.mmdcRunner) || ''
-const diagramsAvailable = !!(setup && setup.diagramsAvailable)
+const diagramsAvailable = DIAGRAMS_AVAILABLE // from args (SKILL detected a global mmdc); no compose-time fallback
 
-// The accumulating research state (prior, when extending; else empty). Mutated in place by the loop.
+// The accumulating research state (prior HEAD, when extending; else empty). Mutated in place by the loop.
+// `findings` ALWAYS starts empty: on extend the prior findings stay on disk (the Synthesizer reads the shards
+// itself — ADR-0010), and the loop/round reasoning runs over THIS run's new findings only. `sources` carries the
+// prior HEAD's append-only source rows so new ids continue from them and the citation vocabulary stays whole.
 const state = isExtending
-  ? { ...setup.state, schemaVersion: SCHEMA_VERSION }
+  ? {
+      schemaVersion: SCHEMA_VERSION,
+      brief: (setup.state && setup.state.brief) || brief,
+      goal: (setup.state && setup.state.goal) || brief.goal,
+      sources: Array.isArray(setup.state.sources) ? setup.state.sources : [],
+      findings: [],
+      answer: null,
+      roundCount: setup.state.roundCount || 0,
+    }
   : { schemaVersion: SCHEMA_VERSION, brief, goal: brief.goal, sources: [], findings: [], answer: null, roundCount: 0 }
 
-log(`${isExtending ? `Extending (${state.sources.length} prior sources, round ${state.roundCount})` : 'Fresh report'} · depth=${brief.depth} maxRounds=${MAX_ROUNDS} fanout=${FANOUT} · diagrams=${diagramsAvailable ? mmdcRunner : 'OFF'}`)
+// Prior-shard accounting (extend only): the Synthesizer reads findings/000..priorShardCount-1.json directly, and
+// Persist appends this run's new shards at indices continuing from priorShardCount while the HEAD counts accumulate.
+const priorShardCount = isExtending ? (setup.state.shardCount || 0) : 0
+const priorFindingCount = isExtending ? (setup.state.findingCount || 0) : 0
+
+log(`${isExtending ? `Extending (${state.sources.length} prior sources, ${priorFindingCount} prior findings in ${priorShardCount} shard(s), round ${state.roundCount})` : 'Fresh report'} · depth=${brief.depth} maxRounds=${MAX_ROUNDS} fanout=${FANOUT} · diagrams=${diagramsAvailable ? MMDC_CMD : 'OFF'}`)
 
 // ───────────────────────────── Plan (distinct sub-queries) ───────────────────
 const planPrompt = `
@@ -331,13 +358,19 @@ parallel retrievers do not all converge on the same popular result (a known fail
 facets — official/spec sources, independent analysis, criticism/limitations, recent developments, data/benchmarks —
 as fits the goal. Do NOT retrieve anything; only plan.
 
+CAPABILITY QUESTIONS: when the goal names specific products, vendors, tools, or standards and asks what they support
+or whether they have some capability, DEDICATE at least one angle PER named entity to that entity's OWN primary/official
+documentation for the EXACT capability in question — point the query at the vendor's own docs, not third-party blogs or
+forum/issue threads (e.g. angle "Logto official docs — native RFC 7591 /register (DCR) endpoint", query targeting
+Logto's documentation). "Does X support Y" must be answerable from X's primary source; do not leave it to inference.
+
 GOAL: ${brief.goal}
 BRIEF: depth=${brief.depth}, recency=${brief.recency}, sourcePreference=${brief.sources}, language=${brief.language}
-${isExtending ? `\nThis EXTENDS an existing report. Bias the angles toward GAPS and newer material, not what is already covered:\n${corpusText(state)}` : ''}
+${isExtending ? `\nThis EXTENDS an existing report. Bias the angles toward GAPS and newer material, not what is already covered. Here is the coverage map — the sources already consulted (the prior findings are not shown; aim for what they did NOT cover):\n${sourcesText(state)}` : ''}
 
 Recency guidance: recent ⇒ favour ~last 2 years; latest ⇒ fast-moving, prioritise newest; any ⇒ include foundational.
 Source guidance: broad ⇒ all types (trust-weighted); authoritative ⇒ primary + reputable only; technical-academic ⇒ docs/standards/papers.
-Return the structured object.`
+Return the structured object — subQueries[] is REQUIRED and MUST contain at least one {angle, query} item.`
 
 phase('Plan')
 const plan = await agent(planPrompt, { label: 'plan:sub-queries', phase: 'Plan', schema: PLAN_SCHEMA })
@@ -368,9 +401,13 @@ STARTING QUERY (refine freely): ${sq.query}
 Recency: ${RECENCY_HINT}. Sources: ${SOURCE_HINT}. Round ${round}.
 
 Tools: FIRST load firecrawl — ToolSearch with query "select:firecrawl_search,firecrawl_scrape". Use firecrawl_search
-to find candidate pages, then firecrawl_scrape to read the 2-4 most relevant. If firecrawl errors or a site is
-unsupported (e.g. reddit.com — "site not supported"), FALL BACK to WebSearch (ToolSearch "select:WebSearch") and
-work from its snippets. Record any fallback in \`notes\`.
+(pass a \`query\` string and optional \`limit\` — do NOT pass \`sources\` as a string) to find candidate pages, then
+firecrawl_scrape to read the 2-4 most relevant. On every firecrawl_scrape pass \`formats: ["markdown","links"]\` and
+\`onlyMainContent: true\` so the result carries the page's asset/image URLs — the \`links\` array plus the \`![](…)\`
+URLs inside the returned markdown (you need these for candidate_image_urls). Do NOT call firecrawl_search_feedback.
+If firecrawl errors, a site is unsupported (e.g. reddit.com — "site not supported"), or it returns a captcha/cookie-wall
+instead of content, FALL BACK to WebSearch (ToolSearch "select:WebSearch") and work from its snippets. Record EVERY
+fallback or skipped/blocked source in \`notes\` (e.g. "stripe.com restricted-keys: hCaptcha — skipped").
 
 For every source you actually used:
 - url, title, and a trust_tier:
@@ -378,11 +415,18 @@ For every source you actually used:
     "reputable-secondary"= established press / well-known organisations;
     "community"          = forums, personal blogs, unverified posts.
 - access_date: run \`date -u +%Y-%m-%d\` and use its output (workflow scripts cannot produce dates — you must).
-- candidate_image_urls: URLs of charts/infographics on the page worth showing in a report (else []).
+- candidate_image_urls: from the scrape's \`links\` output and the \`![](…)\` URLs in the returned markdown, collect URLs of
+    CHARTS / DIAGRAMS / INFOGRAPHICS / FIGURES worth showing in a report — exclude logos, nav icons, avatars, social
+    buttons and tracking pixels (else []).
 - findings: discrete factual claims, each with an evidence span:
     prefer kind="quote" — the EXACT verbatim text from the scrape (auditable by construction);
     kind="image_region" (value = url + alt/caption) for a chart/figure;
     kind="locator"     (value = page/section/timestamp + your paraphrase) for paywalled/non-text — explicitly non-verbatim.
+CAPABILITY CLAIMS: if a finding asserts a capability of a named product/vendor/standard ("X supports Y", "X has Y"),
+prefer confirming it against that actor's OWN official docs (primary tier) — scrape them when the angle points there.
+If you can only find secondary/community evidence, still record the claim but say IN THE CLAIM TEXT that it is
+UNCONFIRMED by a primary source (e.g. "Logto appears to lack a native /register endpoint — unconfirmed by Logto's own
+docs"), rather than asserting it as established fact.
 Quality over volume — a handful of well-supported findings beats many thin ones. Never fabricate a quote.
 Return the structured object.`
 
@@ -394,7 +438,7 @@ For each conflict, HINT whether more retrieval could likely resolve it (likely /
 
 ${corpusText(st)}
 
-Return conflicts[] (empty array if the findings are mutually consistent).`
+Return conflicts[] (empty array if the findings are mutually consistent). EVERY conflict MUST include resolvable_hint set to exactly one of: likely, unlikely, unknown.`
 
 const verifierPrompt = (st) => `
 You are the VERIFIER (this is a DEEP brief). Adversarially try to REFUTE the material findings, reasoning ONLY over
@@ -404,12 +448,15 @@ For each finding you challenge, give a verdict:
   "needs-evidence" = cannot be settled without fresh counter-evidence → becomes a GAP for another round;
   "stands"         = survives scrutiny.
 Only list findings you actually challenge; anything unlisted is assumed to stand.
+In particular: when a finding asserts a CAPABILITY of a named product/vendor/standard ("X supports Y", "X has Y") but
+the corpus backs it only with secondary/community sources or inference — no primary/official source from X itself —
+mark it "needs-evidence" (so the next round confirms it against X's own docs), NOT "stands".
 
 ${corpusText(st)}
 
 Return refutations[].`
 
-const assessorPrompt = (st, conflicts, refutations, round) => `
+const assessorPrompt = (st, conflicts, refutations, round, roundNotes) => `
 You are the ASSESSOR — the loop's SINGLE gate. Decide whether another research round is warranted.
 
 GOAL: ${brief.goal}
@@ -421,17 +468,28 @@ ${corpusText(st)}
 Conflicts detected this round:
 ${JSON.stringify(conflicts, null, 2)}
 ${RUN_VERIFIER ? `Verifier refutations this round:\n${JSON.stringify(refutations, null, 2)}` : '(no Verifier — quick/standard brief)'}
-
+${(roundNotes && roundNotes.length) ? `\nRetrieval issues this round (a source was blocked, unsupported, captcha/cookie-walled, or fell back to WebSearch). Judge whether any blocked source leaves a REAL, retrievable coverage gap worth another round — if so add it to gaps[]:\n${roundNotes.map((n) => `- ${n}`).join('\n')}\n` : ''}
 Judge each conflict's / refutation's MATERIALITY against the goal + planned facets. A material AND resolvable conflict,
 or an unresolved (needs-evidence) refutation, is itself a gap. Green-light (sufficient=true) ONLY when coverage is
 sufficient AND no material, resolvable conflict or refutation remains. Otherwise set sufficient=false and list gaps[]
-that are SPECIFIC and retrievable (they become next round's retrievers). Always propose 2-4 ready-to-use followups[]
-for the human checkpoint, even when sufficient.
+that are SPECIFIC and retrievable (they become next round's retrievers).
+
+CAPABILITY CONFIRMATION — do NOT under-rate this. If the goal hinges on whether a specific product/vendor/standard has
+some capability or support, and the corpus answers that only by INFERENCE or from secondary/community sources (no
+primary/official source from that actor), that is a MATERIAL, RESOLVABLE gap: set sufficient=false and add a SPECIFIC
+gap that sends a retriever to that actor's OWN primary docs (e.g. "confirm whether Logto Cloud exposes a native RFC
+7591 /register endpoint against Logto's official documentation"). Do NOT downgrade such a gap to "residual / low-
+materiality / one scrape would close it" and green-light anyway — if one scrape would close it, that scrape IS the next
+round's job, not a follow-up to hand the human.${brief.depth === 'deep' ? ' This is a DEEP brief: hold a HIGH bar — a single round that settles a central capability by inference is NOT sufficient; chase the primary-source confirmation before green-lighting.' : ''}
+
+Always propose 2-4 ready-to-use followups[] for the human checkpoint, even when sufficient — these are NEW directions
+to extend the report, NOT confirmations you should have chased this round (those go in gaps[]).
 Return the structured object.`
 
 // ───────────────────────────── assessor-gated round loop ─────────────────────
 phase('Research')
 let assessment = null
+const retrievalNotes = [] // blocked/unsupported/fallback sources — surfaced to the Assessor + final warnings
 for (let round = 1; round <= MAX_ROUNDS; round++) {
   const queries = round === 1
     ? subQueries
@@ -445,6 +503,8 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
   const before = state.findings.length
   mergeRound(state, outputs.filter(Boolean))
   state.roundCount++
+  const roundNotes = outputs.filter(Boolean).map((o) => o.notes).filter((n) => n && n.trim())
+  for (const n of roundNotes) retrievalNotes.push(`r${round}: ${n.trim()}`)
   const newFindings = state.findings.length - before
   log(`Round ${round}: +${newFindings} findings (total ${state.findings.length}) from ${state.sources.length} sources`)
 
@@ -466,7 +526,7 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
   }
 
   // Assessor — the single gate.
-  assessment = await agent(assessorPrompt(state, conflicts, refutations, round), { label: 'assessor', phase: 'Research', schema: ASSESSOR_SCHEMA })
+  assessment = await agent(assessorPrompt(state, conflicts, refutations, round, roundNotes), { label: 'assessor', phase: 'Research', schema: ASSESSOR_SCHEMA })
   const sufficient = assessment ? assessment.sufficient : true
   log(`Round ${round}: Assessor ${sufficient ? 'GREEN — coverage sufficient' : `wants more (${((assessment && assessment.gaps) || []).length} gaps)`}`)
   if (sufficient) break
@@ -476,9 +536,13 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
 const gaps = (assessment && assessment.gaps) || []
 const followups = (assessment && assessment.followups) || []
 
-if (!state.findings.length) {
+// Abort only when there is NOTHING to synthesise — no new findings AND no prior ones on disk. On extend, the prior
+// findings live in the shards (priorFindingCount), so a follow-up round that happens to add nothing still re-synthesises
+// (the Synthesizer reads the prior shards) rather than falsely reporting an empty report.
+if (!state.findings.length && priorFindingCount === 0) {
   return { error: 'no-findings', message: 'Retrieval produced no usable findings (firecrawl/WebSearch may be unavailable or the query too narrow).', artifactPath: REPORT_DIR, gaps, followups }
 }
+if (!state.findings.length) log(`No new findings this run — re-synthesising from the ${priorFindingCount} prior finding(s) on disk`)
 
 // ───────────────────────────── Synthesize + Edit ────────────────────────────
 const SYNTH_SCHEMA = {
@@ -532,15 +596,29 @@ const TIER_GUIDE = {
   expert: 'EXPERT: assume the terminology including abbreviations, trim background, and foreground caveats and edge cases. Fewer visuals.',
 }[brief.audience.tier]
 
+// On extend, the prior findings are NOT inlined — they live in the shard files the Synthesizer reads itself (ADR-0010).
+// Hand it the deterministic shard-path list (derived from priorShardCount) plus read-and-reconcile instructions.
+const priorShardList = Array.from({ length: priorShardCount }, (_, i) => `${REPORT_DIR}/${shardName(i)}`)
+const synthExtendBlock = isExtending ? `
+This EXTENDS an existing report. Re-synthesise the WHOLE answer holistically from ALL findings — old + new — not just the
+new material (ADR-0005); the findings are the source of truth, so NEVER seed from the prior prose.
+The PRIOR findings are NOT inlined below — they live in ${priorShardCount} JSON shard file(s) you MUST read NOW:
+${priorShardList.map((p) => `  - ${p}`).join('\n')}
+Read EVERY one with the \`Read\` tool (NOT cat — a host hook blocks it), issuing ALL the Read calls in a SINGLE turn
+(batched concurrent calls, not one-by-one). If any Read fails, RETRY it — you are responsible for loading every shard;
+a silently dropped shard loses prior findings. Each shard is a JSON array of findings { claim, source_ids[], evidence[] };
+treat those prior findings as EQUALLY authoritative as the NEW evidence below, and reconcile any new-vs-prior
+contradiction yourself (the round loop reasoned over the new findings only — it did not see the prior ones).
+` : ''
+
 const synthPrompt = `
-You are the SYNTHESIZER — the reasoning core. You run ONCE, now that the Assessor has green-lit coverage. Read the FULL
-findings + sources below and compose a single coherent, CITED draft answer to the goal.
+You are the SYNTHESIZER — the reasoning core. You run ONCE, now that the Assessor has green-lit coverage. Compose a
+single coherent, CITED draft answer to the goal from the full body of findings + sources.
 
 GOAL: ${brief.goal}
 Write the answer in this language: ${brief.language}.
-${isExtending ? 'This EXTENDS an existing report — re-synthesise the WHOLE answer from ALL accumulated findings (holistic, per ADR-0005), not just new material. The findings are the source of truth.' : ''}
-
-${synthCorpus(state)}
+${synthExtendBlock}
+${synthCorpus(state, isExtending ? 'NEW EVIDENCE gathered THIS run (the prior findings come from the shard files named above — read them)' : 'EVIDENCE')}
 
 Rules:
 - Reconcile findings where they can be reconciled. Where a contradiction is irreducible, SURFACE it with attribution
@@ -596,37 +674,91 @@ const doc = (edited && edited.answer)
   : { title: synth.title, answer: synth.answer, sections: [], visuals: [], open_questions: gaps.slice(0, 4), cut_summary: 'editor unavailable — rendered the synthesizer draft as-is' }
 state.answer = doc.answer
 
-// ───────────────────────────── Persist (snapshot + state.json) ──────────────
-// Done BEFORE rendering and separately from it: state.json is the source of truth and must survive even if the
-// large (occasionally flaky) HTML render drops mid-response. The prior report is snapshotted here too — once — so a
-// compose retry never snapshots a same-run intermediate.
-const PERSIST_SCHEMA = {
-  type: 'object',
-  required: ['stateWritten'],
-  properties: { stateWritten: { type: 'boolean' }, snapshotMade: { type: 'boolean' } },
+// ───────────────────────────── Persist (snapshot + APPEND-ONLY sharded state, parallel) ──────────────
+// state is the source of truth — written BEFORE the render so it survives a flaky HTML render. Writes are APPEND-ONLY
+// (ADR-0010): `state.findings` now holds ONLY this run's new findings, so they go to NEW shards at indices continuing
+// from priorShardCount; the prior shards are never cleared or rewritten on extend (a naive rewrite of the in-memory
+// corpus would DELETE the prior findings from disk). Shards still write in PARALLEL (one bounded agent per shard) so
+// wall-clock is the slowest single shard, not the sum. Three waves: (1) snapshot + (fresh-only) clear stale shards,
+// (2) parallel NEW-shard + answer writes, (3) the HEAD last and only if every new shard landed — so state.json never
+// points at a shard that was not written; the HEAD counts ACCUMULATE (prior + new).
+const WRITE_OK_SCHEMA = { type: 'object', required: ['written'], properties: { written: { type: 'boolean' } } }
+const PREP_SCHEMA = { type: 'object', required: ['ready'], properties: { ready: { type: 'boolean' }, snapshotMade: { type: 'boolean' } } }
+
+const findingShards = chunk(state.findings, FINDINGS_PER_SHARD) // this run's NEW findings only
+const shardBase = priorShardCount // new shards are written at file indices priorShardCount + i (0 on a fresh run)
+const head = {
+  schemaVersion: SCHEMA_VERSION,
+  brief: state.brief,
+  goal: state.goal,
+  sources: state.sources,
+  roundCount: state.roundCount,
+  findingCount: priorFindingCount + state.findings.length, // accumulate across runs (prior live on disk)
+  shardCount: priorShardCount + findingShards.length,
 }
-const persistPrompt = `
-You are the PERSIST step. Using Bash/Write only, do TWO things under ${REPORT_DIR}, then return. Do NOT render HTML.
-1. SNAPSHOT — only if a prior output.html exists (freeze it BEFORE the renderer overwrites it):
-     cd ${REPORT_DIR}
-     if [ -f output.html ]; then ts=$(date -u +%Y%m%dT%H%M%SZ); sed -e 's#="assets/#="../assets/#g' -e 's#="diagrams/#="../diagrams/#g' output.html > snapshots/output.$ts.html; fi
-   Use this redirect form, NOT 'sed -i' (its syntax differs macOS vs Linux). The snapshot shares the LIVE ../assets/
-   while its content stays frozen. Set snapshotMade true iff you wrote a snapshot.
-2. STATE — write ${REPORT_DIR}/state.json containing EXACTLY this JSON, verbatim:
-${JSON.stringify(state)}
-Return { stateWritten, snapshotMade }.`
+const persistFailed = (message) => ({ error: 'persist-failed', message, artifactPath: `${REPORT_DIR}/output.html`, gaps, followups })
 
 phase('Compose')
-// state.json is the source of truth; retry hard (writes are cheap and idempotent) and ABORT before rendering if it
-// cannot be persisted — keeping the prior consistent report beats rendering a v2 view over a v1 state.
-let persisted = null
-for (let attempt = 1; attempt <= 3 && !(persisted && persisted.stateWritten); attempt++) {
-  if (attempt > 1) log(`Persist (state.json) attempt ${attempt} — retrying`)
-  persisted = await agent(persistPrompt, { label: attempt > 1 ? `persist#${attempt}` : 'persist', phase: 'Compose', schema: PERSIST_SCHEMA })
+
+// Wave 1 — snapshot the prior report (once) + prep findings/. Must finish before the parallel shard writes.
+// On a FRESH run we clear findings/ so a re-run from scratch leaves no stale shards; on an EXTEND we MUST preserve
+// the prior shards (the Synthesizer just read them, and the appended HEAD still points at them) — never clear.
+const prepClearStep = isExtending
+  ? `2. PRESERVE PRIOR SHARDS — this is an EXTEND run; the prior findings/*.json shards MUST survive (the new findings are appended as NEW shards, and state.json still points at the prior ones). Do NOT delete anything in findings/. Just ensure the dir exists:
+     mkdir -p ${REPORT_DIR}/findings`
+  : `2. CLEAR STALE SHARDS (FRESH run) so a re-run from scratch leaves none behind:
+     mkdir -p ${REPORT_DIR}/findings && rm -f ${REPORT_DIR}/findings/*.json 2>/dev/null; true`
+const prepPrompt = `
+You are the PERSIST PREP step (Bash only). Under ${REPORT_DIR}, do exactly two things, then return:
+1. SNAPSHOT — only if a prior output.html exists, freeze it BEFORE the renderer overwrites it:
+     cd ${REPORT_DIR}
+     if [ -f output.html ]; then mkdir -p snapshots; ts=$(date -u +%Y%m%dT%H%M%SZ); sed -e 's#="assets/#="../assets/#g' -e 's#="diagrams/#="../diagrams/#g' output.html > snapshots/output.$ts.html; fi
+   Use this redirect form, NOT 'sed -i' (its syntax differs macOS vs Linux). Set snapshotMade true iff you wrote one.
+${prepClearStep}
+Return { ready: true, snapshotMade }.`
+
+let prep = null
+for (let attempt = 1; attempt <= 2 && !(prep && prep.ready); attempt++) {
+  if (attempt > 1) log('Persist prep (snapshot/clean) — retrying')
+  prep = await agent(prepPrompt, { label: attempt > 1 ? 'persist:prep#2' : 'persist:prep', phase: 'Compose', schema: PREP_SCHEMA })
 }
-if (!persisted || !persisted.stateWritten) {
-  return { error: 'persist-failed', message: 'Could not write state.json after retries — aborted before render to keep the prior report and its state consistent. Re-run to retry.', artifactPath: `${REPORT_DIR}/output.html`, gaps, followups }
+if (!prep || !prep.ready) return persistFailed('Could not prepare the report dir (snapshot/clean) after retries — aborted before render to keep the prior report consistent. Re-run to retry.')
+
+// Wave 2 — write every NEW findings shard + answer.md in PARALLEL. Each new shard lands at file index shardBase + i
+// (append-only: shardBase = priorShardCount on extend, 0 on a fresh run), so prior shards are never touched. Each
+// agent carries only its own slice (small in, bounded out). A failing thunk resolves to null (parallel never rejects),
+// so each result is checked individually.
+const shardWriters = findingShards.map((sh, i) => () =>
+  agent(
+    `You are a PERSIST SHARD WRITER. Using the Write tool ONLY, write this exact JSON to ${REPORT_DIR}/${shardName(shardBase + i)} — copy it VERBATIM, do not reformat, merge, or add anything:\n${JSON.stringify(sh)}\nReturn { written: true } once the file is written.`,
+    { label: `persist:shard ${shardBase + i}`, phase: 'Compose', schema: WRITE_OK_SCHEMA },
+  ))
+const answerWriter = () =>
+  agent(
+    `You are a PERSIST WRITER. Using the Write tool ONLY, write ${REPORT_DIR}/answer.md with EXACTLY the content between the markers (drop the markers themselves):\n<<<ANSWER\n${state.answer || ''}\nANSWER>>>\nReturn { written: true } once the file is written.`,
+    { label: 'persist:answer', phase: 'Compose', schema: WRITE_OK_SCHEMA },
+  )
+const writeResults = await parallel([...shardWriters, answerWriter])
+const shardsWritten = writeResults.slice(0, findingShards.length).filter((r) => r && r.written).length
+const answerWritten = !!(writeResults[findingShards.length] && writeResults[findingShards.length].written)
+if (shardsWritten !== findingShards.length || !answerWritten) {
+  return persistFailed(`Could not write the sharded state (${shardsWritten}/${findingShards.length} shards, answer=${answerWritten}) — aborted before render to keep the prior report consistent. Re-run to retry.`)
 }
+
+// Wave 3 — write the HEAD last, now that every shard + answer.md landed (so state.json never points at a missing
+// shard). The head is tiny, so retry hard.
+let headWritten = null
+for (let attempt = 1; attempt <= 3 && !(headWritten && headWritten.written); attempt++) {
+  if (attempt > 1) log(`Persist head (state.json) attempt ${attempt} — retrying`)
+  headWritten = await agent(
+    `You are the PERSIST HEAD WRITER. Using the Write tool ONLY, write ${REPORT_DIR}/state.json with EXACTLY this JSON (copy verbatim):\n${JSON.stringify(head)}\nReturn { written: true } once the file is written.`,
+    { label: attempt > 1 ? `persist:head#${attempt}` : 'persist:head', phase: 'Compose', schema: WRITE_OK_SCHEMA },
+  )
+}
+if (!headWritten || !headWritten.written) return persistFailed('Could not write state.json head after retries — shards are on disk but the head is missing; aborted before render. Re-run to retry.')
+
+log(`Persisted ${findingShards.length} new shard(s) + head (${head.findingCount} findings across ${head.shardCount} shard(s), ${state.sources.length} sources)`)
+const persisted = { stateWritten: true, snapshotMade: !!prep.snapshotMade }
 
 // ───────────────────────────── Compose (pure render, retryable) ─────────────
 const COMPOSER_SCHEMA = {
@@ -662,12 +794,18 @@ const composerPrompt = `
 You are the COMPOSER — the final stage. Render the editor-approved answer as the HTML Report at ${REPORT_DIR}/output.html,
 plus its sidecar diagrams/ and assets/. Do ALL file I/O yourself (Bash / Write / curl); the verbose HTML must NOT be
 returned — return only the compact manifest. You author NO CSS and NO bespoke <style>: the shipped report.css owns the
-look; you emit semantic HTML against its fixed class vocabulary.
+look; you emit semantic HTML against the fixed class vocabulary FULLY specified below.
+
+WORK FAST — DO NOT EXPLORE. Everything you need is in this prompt. Specifically:
+- Do NOT read report.css (its complete class vocabulary is given in the skeleton below — just \`cp\` it).
+- Do NOT \`ls\`/inspect the report dir, and do NOT read back the diagrams or files you write.
+- Do NOT use \`grep\`/\`find\` (they may be blocked by host hooks and waste a turn).
+Go straight to the steps below: copy assets, compile any diagrams, then write output.html.
 
 PATHS / CONFIG
 - Report dir:      ${REPORT_DIR}   (diagrams/ assets/ snapshots/ already exist)
 - Plugin assets:   ${PLUGIN_ROOT ? `${PLUGIN_ROOT}/assets` : "(unknown — locate via: find ~/.claude/plugins " + REPORT_DIR + "/../.. -path '*researcher/assets/report.css' 2>/dev/null | head -1)"}
-- mmdc runner:     ${diagramsAvailable ? mmdcRunner : '(diagrams UNAVAILABLE — no mmdc; render that data as a table/chart + a note)'}
+- mmdc command:    ${diagramsAvailable ? `${MMDC_CMD}  (installed globally — invoke directly; do NOT use pnpm dlx / npx, and do NOT install anything)` : '(diagrams UNAVAILABLE — render that data as a table/chart + a note; never install or download a renderer)'}
 - Report language: ${brief.language}  — write all UI labels (ToC title, "Sources", "Open questions", "accessed", "Source") in THIS language.
 - This run's round suffix for append-only artifact names: r${state.roundCount}
 
@@ -683,15 +821,15 @@ OPEN QUESTIONS: ${JSON.stringify(doc.open_questions || [])}
 RESIDUAL CONFLICTS (surface with attribution): ${JSON.stringify((synth && synth.residual_conflicts) || [])}
 SOURCES (render as the numbered list, ascending source_id): ${JSON.stringify(sourcesForRender)}
 
-NOTE: the prior output.html has ALREADY been snapshotted and state.json ALREADY written by a separate PERSIST step.
-Do NOT snapshot, and do NOT create or touch state.json here. Your job is purely to (re)render the live output.html
-+ its assets/diagrams — this step is idempotent and may be retried, so never depend on prior partial output.
+NOTE: the prior output.html has ALREADY been snapshotted, and state.json + findings/ + answer.md ALREADY written by a
+separate PERSIST step. Do NOT snapshot, and do NOT create or touch state.json, findings/, or answer.md here. Your job is
+purely to (re)render the live output.html + its assets/diagrams — idempotent and retryable, so never depend on prior partial output.
 
-STEP 2 — ASSETS: copy report.css into the report every run; copy chart.umd.js ONLY if a chart is present (${hasChart ? 'YES — copy it' : 'no charts — skip it'}):
+STEP 1 — ASSETS: copy report.css into the report every run; copy chart.umd.js ONLY if a chart is present (${hasChart ? 'YES — copy it' : 'no charts — skip it'}):
   cp "<pluginAssets>/report.css" ${REPORT_DIR}/assets/report.css
   ${hasChart ? `cp "<pluginAssets>/chart.umd.js" ${REPORT_DIR}/assets/chart.umd.js` : '(skip chart.umd.js)'}
 
-STEP 3 — RENDER output.html. Skeleton (semantic HTML, fixed classes, NO <style>):
+STEP 2 — RENDER output.html. Skeleton (semantic HTML, fixed classes, NO <style>):
   <!DOCTYPE html><html lang="LANG"><head>   (LANG = the BCP-47 code for ${brief.language}, e.g. English→en, Polish→pl — a code, NOT the language name)
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>TITLE</title>
@@ -713,19 +851,26 @@ STEP 3 — RENDER output.html. Skeleton (semantic HTML, fixed classes, NO <style
   - '## heading' → <h2 id="sec-slug">…</h2>; '### heading' → <h3 id="…">. Give every heading a slug id, list each in the
     ToC in source order (nav emitted FIRST), with the Sources <h2 id="sources"> as the final ToC entry.
   - Inline citation [n] → <a class="citation" href="#src-n">n</a> (emit JUST the number — report.css adds the [ ] brackets).
-    [3][7] → two adjacent citation anchors. Cite ONLY ids present in SOURCES.
+    Give the FIRST citation of each source id an anchor id: <a class="citation" id="cite-n" href="#src-n">n</a> (later
+    citations of the SAME id need no id). [3][7] → two adjacent citation anchors. Cite ONLY ids present in SOURCES.
   - Ordinary markdown (paragraphs, **bold**, *italic*, lists, 'code', blockquotes, tables) → the matching semantic HTML.
 
   SOURCES list — one entry per source, ascending source_id:
     <li id="src-N"><span class="source-title">TITLE</span> <span class="source-trust" data-tier="DTIER">TIER</span><br>
-      <a class="source-url" href="URL">URL</a> <span class="source-meta">· [localized: accessed] ACCESS_DATE</span></li>
+      <a class="source-url" href="URL">URL</a> <span class="source-meta">· [localized: accessed] ACCESS_DATE</span>
+      <a class="backref" href="#cite-N">↩</a></li>
     trust_tier → data-tier: primary→"primary", reputable-secondary→"secondary", community→"community".
+    Add the <a class="backref" href="#cite-N">↩</a> ONLY for a source actually cited in the body (it returns to that
+    source's first [n] citation); OMIT it for any source with no inline citation.
 
-STEP 4 — VISUALS: replace each '{{VISUAL:N}}' token line with rendered HTML per its visuals[] entry. Content artifacts are
+STEP 3 — VISUALS: replace each '{{VISUAL:N}}' token line with rendered HTML per its visuals[] entry. Content artifacts are
   APPEND-ONLY — never overwrite a file in diagrams/ or assets/; make names unique with the round suffix (fig-r${state.roundCount}-N),
   so older snapshots keep resolving.
-  - diagram (only if mmdc available): write Mermaid to diagrams/fig-r${state.roundCount}-N.mmd, then compile:
-      ${diagramsAvailable ? `${mmdcRunner} -i diagrams/fig-r${state.roundCount}-N.mmd -o diagrams/fig-r${state.roundCount}-N.svg` : '(skip — no mmdc; render the data as a table instead + note it)'}
+  - diagram (only if mmdc available): write Mermaid to diagrams/fig-r${state.roundCount}-N.mmd, then compile with the GLOBAL mmdc.
+    MERMAID SAFETY — these chars cause mmdc parse failures: in node labels, edge labels and \`Note\` lines do NOT use '/', '(',
+    ')', or '<br/>'. Replace '/' with ' lub ' or '-', drop parentheses, and wrap any label with spaces/punctuation in double
+    quotes — e.g. A["Klucz API lub MCP"], NOT A[Klucz API/MCP (sk_)]. Keep each Note/label on a single line. Then compile:
+      ${diagramsAvailable ? `${MMDC_CMD} -i diagrams/fig-r${state.roundCount}-N.mmd -o diagrams/fig-r${state.roundCount}-N.svg` : '(skip — no mmdc; render the data as a table instead + note it)'}
     embed: <figure class="figure diagram"><!-- source: diagrams/fig-r${state.roundCount}-N.mmd --><img src="diagrams/fig-r${state.roundCount}-N.svg" alt="CAPTION"><figcaption>CAPTION</figcaption></figure>
     If compilation fails, fall back to a <table> (or short note) so the data still shows — never abort.
   - chart: <figure class="figure"><div class="chart"><canvas id="chartN"></canvas>
@@ -764,5 +909,5 @@ return {
   snapshotMade: !!(persisted && persisted.snapshotMade),
   gaps,
   followups,
-  warnings: composed.warnings || [],
+  warnings: [...(composed.warnings || []), ...retrievalNotes.map((n) => `retrieval — ${n}`)],
 }

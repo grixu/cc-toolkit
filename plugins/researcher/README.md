@@ -32,8 +32,10 @@ This plugin depends on capabilities that are **not on by default** — read this
 
   (WebSearch is used as an automatic fallback when firecrawl errors or a site is unsupported.)
 - **`mmdc`** *(optional — for diagrams)* — the Mermaid CLI, used to compile diagrams to SVG at compose time. Install
-  globally with `pnpm add -g @mermaid-js/mermaid-cli`. If it's missing, the workflow falls back to `pnpm dlx` / `npx`,
-  and if neither is available it renders the report **without diagrams** (with a note) rather than failing.
+  globally with `pnpm add -g @mermaid-js/mermaid-cli`. The skill detects it **once, up front** (`command -v mmdc`) and
+  tells the workflow whether diagrams are available — it assumes a **global** `mmdc` and never downloads a renderer
+  mid-run. If `mmdc` is missing, the report renders **without diagrams** (reconstructing that data as tables/charts)
+  rather than failing or fetching anything.
 - **Charts need no install** — a version-pinned **Chart.js** ships with the plugin and is copied into each report's
   `assets/` (no CDN, fully offline).
 - **Styling is built-in** — a shipped `report.css` is copied alongside (system fonts, light/dark via CSS, no theming
@@ -76,11 +78,18 @@ Each report is a folder (default `./research/<slug>/`):
 ```
 research/<slug>/
 ├── output.html          # the live report — open this
-├── state.json           # machine-readable state (sources, findings, answer) for follow-up runs
+├── state.json           # machine-readable HEAD (schema, brief, sources, counts) — the follow-up registry
+├── findings/            # sharded findings (NNN.json, ≤20 each) — append-only; the Synthesizer reads them directly on follow-ups
+├── answer.md            # the synthesized answer, as markdown
 ├── assets/              # shipped report.css + pinned chart.umd.js (+ any downloaded source images)
 ├── diagrams/            # compiled diagram SVGs beside their .mmd sources
 └── snapshots/           # the prior output.html, snapshotted before each overwrite
 ```
+
+State is written sharded — a small `state.json` HEAD plus bounded `findings/` shards — so a large/deep report
+persists reliably (an agent never has to emit the whole corpus in one step). Follow-up runs are append-only: the
+Synthesizer reads the prior findings shards directly, and this run's new findings are written as new shards rather
+than rewriting the prior ones.
 
 - **One linear, cited document.** Inline `[n]` citations link to a numbered **Sources** list (with trust tiers and
   access dates); nothing is hidden behind toggles. Light + dark via `prefers-color-scheme`, system fonts, prints cleanly.
@@ -89,8 +98,9 @@ research/<slug>/
   a source image is downloaded only when it's genuinely irreplaceable (and always attributed).
 - **Agent-readable.** The HTML body stays semantically clean — heavy artifacts live in the sidecar folders — so the
   report is just as usable when an agent reads it as documentation.
-- **It evolves.** Follow-up runs re-synthesize the whole answer holistically and snapshot the prior version first;
-  source ids are append-only, so existing citations never break.
+- **It evolves.** Follow-up runs re-synthesize the whole answer holistically — the Synthesizer reads the prior
+  findings shards directly and rebuilds from all findings (never reusing the prior prose) — and snapshot the prior
+  version first. New findings are appended as new shards and source ids are append-only, so existing citations never break.
 
 ## How it works
 

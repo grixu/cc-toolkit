@@ -3,7 +3,7 @@ name: research
 description: "Produce a source-grounded, cited HTML research report on a question. Gathers a brief (depth, recency, source mix, audience) then launches a bundled Dynamic Workflow that fans out firecrawl retrieval into findings, gates rounds on coverage + contradictions, synthesizes a cited answer, and renders an evolving HTML report. Use for substantive research requests: 'research X', 'zbadaj/zresearchuj X', 'do a deep dive on', 'find out everything about', 'write me a report on', 'compare A vs B with sources', 'what does the evidence say about'. Invoke explicitly as /researcher:research \"<question>\". Requires Dynamic Workflows enabled + the firecrawl MCP."
 argument-hint: "<research question>"
 disable-model-invocation: true
-allowed-tools: Workflow AskUserQuestion Read Bash(echo:*) Bash(ls:*) Bash(test:*) Bash(cat:*) Bash(find:*) Bash(open:*) Bash(xdg-open:*)
+allowed-tools: Workflow AskUserQuestion Read Bash(echo:*) Bash(ls:*) Bash(test:*) Bash(cat:*) Bash(find:*) Bash(command:*) Bash(open:*) Bash(xdg-open:*)
 ---
 
 # research — source-grounded research report
@@ -75,6 +75,12 @@ directory; each `state.json` is self-describing (`goal`, `brief`).
 
 ## 4. Launch the workflow
 
+**First, detect tool availability here (cheap in this session) and pass it forward** — the workflow assumes a
+**global `mmdc`** and never downloads a renderer at compose time. Run `command -v mmdc`; set `diagramsAvailable: true`
+if it resolves, else `false`. Do **not** install it — if it's missing, the report simply renders without Mermaid
+diagrams (reconstructing that data as tables/charts) and you may mention `pnpm add -g @mermaid-js/mermaid-cli` as an
+optional one-time install for diagram support.
+
 Resolve the plugin root from the Context block above (call it `PLUGIN_ROOT`). Call the **Workflow** tool with the
 bundled script by path and the brief as a real JSON object (not a stringified one):
 
@@ -91,6 +97,7 @@ Workflow({
     outputBase: "./research",
     slug: "<resolved slug>",
     extending: <true|false>,
+    diagramsAvailable: <true|false>,
     pluginRoot: "<PLUGIN_ROOT>"
   }
 })
@@ -114,14 +121,24 @@ On success the workflow returns `{ artifactPath, manifest: { title, sections[], 
 
 ## 6. Follow-up checkpoint (extend the evolving report)
 
-If `followups[]` is non-empty, run a blocking `AskUserQuestion` (`multiSelect: true`) listing the proposed follow-up
-questions as individually selectable options, and let the user add their own (the auto-added "Other"). Then:
+When `followups[]` is non-empty you **MUST** hand the decision back through a single blocking `AskUserQuestion`
+(`multiSelect: true`). **Do not** print the follow-ups as a markdown list and ask about them in prose — that is the
+wrong behavior, and it is the failure mode this step exists to prevent. Build the call mechanically:
 
-- If the user selects/adds questions → build the next brief (their selection becomes the new `goal`; **inherit the
-  same `slug`, `extending: true`, and the prior `brief` defaults** so the report stays one coherent, single-language
-  document) and relaunch the workflow (step 4). The report is re-synthesized holistically and snapshotted before the
-  overwrite — this is the same evolving `output.html`, not a new file.
-- If the user is done → stop.
+- **One** question (e.g. *"Which follow-up(s) should I research next? (each extends this report)"*), `header: "Follow-up"`.
+- **One option per `followups[]` entry.** They arrive as full-sentence questions, so **cap at 4** (AskUserQuestion
+  allows ≤4 options): set the option's `label` to a **short 3–6 word summary you synthesize** from the entry, and put
+  the **full follow-up sentence in the option's `description`**. The auto-added "Other" lets the user write their own.
 
-Mirror the calm, decision-handing-back style of the other orchestrator skills: surface and offer, don't unilaterally
-declare the research "complete".
+Then:
+
+- If the user selects one or more options (and/or writes their own) → **combine the chosen follow-up texts into the
+  next `goal`** (join multiple picks into one coherent question), and **inherit the same `slug`, `extending: true`, and
+  the prior `brief` defaults** (depth, recency, sources, audience, language) so the report stays one coherent,
+  single-language document — then relaunch the workflow (step 4). The report is re-synthesized holistically and
+  snapshotted before the overwrite — this is the same evolving `output.html`, not a new file.
+- If the user picks nothing / says they're done → stop.
+
+The tone stays calm and decision-handing-back, like the other orchestrator skills — but here "handing the decision
+back" **means the `AskUserQuestion` call**, not a prose offer. (If `followups[]` is empty, skip the question and simply
+note the report is complete.)

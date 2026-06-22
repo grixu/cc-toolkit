@@ -9,9 +9,12 @@ before each overwrite.
 **Why:** one canonical, shareable deliverable that deepens over time — and holistic re-editing
 (rather than appending a section per run) is what stops the document from bloating back into "lanie
 wody" at the whole-document level, which the linear, nothing-hidden layout would otherwise invite.
-The persisted prior answer seeds each re-edit, so the **Editor** must treat it as a draft to re-cut
-wholesale — not fixed text to append to — and the **Findings** stay the source of truth wherever
-prose and findings drift.
+Each run the **Synthesizer** **rebuilds the whole answer from the accumulated Findings** — it is *not*
+seeded by the prior prose (the persisted `answer.md` is a write-only export, not an input). Full
+rebuild, not seeding, is what keeps the **Findings** the source of truth: seeding from the prior answer
+would quietly let *prose* become authoritative for settled material and entrench any error there. The
+**Editor** then re-cuts that freshly rebuilt draft wholesale. (How findings cross a run boundary —
+lazy per-consumer shard reads + append-only shard writes — is ADR-0010.)
 
 **Trade-off accepted:** the run must persist machine-readable state (sources + findings + answer)
 beside `output.html` for the next run to read and extend, and re-editing the full document costs more
