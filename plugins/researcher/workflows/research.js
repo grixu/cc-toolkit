@@ -508,11 +508,10 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
   const newFindings = state.findings.length - before
   log(`Round ${round}: +${newFindings} findings (total ${state.findings.length}) from ${state.sources.length} sources`)
 
-  // Conflict-scout — detection only, every round, after dedup.
-  const scout = await agent(conflictScoutPrompt(state), { label: 'conflict-scout', phase: 'Research', schema: CONFLICT_SCHEMA })
-  const conflicts = (scout && scout.conflicts) || []
-
-  // Verifier — depth-gated; reasons over the corpus, drops refuted findings.
+  // Verifier — depth-gated; reasons over the corpus, drops refuted findings. Runs BEFORE the Conflict-scout so the
+  // scout (and the Assessor) reason over the post-splice findings, keeping conflict #index references aligned with
+  // the re-indexed corpus the Assessor sees. The Verifier's own refutedIdx splice (descending) is internally
+  // consistent because it reads the pre-splice corpus that produced those #indexes.
   let refutations = []
   if (RUN_VERIFIER) {
     const v = await agent(verifierPrompt(state), { label: 'verifier', phase: 'Research', schema: VERIFIER_SCHEMA })
@@ -524,6 +523,11 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
     for (const idx of refutedIdx) if (idx >= 0 && idx < state.findings.length) state.findings.splice(idx, 1)
     if (refutedIdx.length) log(`Round ${round}: Verifier dropped ${refutedIdx.length} refuted findings`)
   }
+
+  // Conflict-scout — detection only, every round, after dedup AND after the Verifier splice so its #index
+  // references line up with the corpus the Assessor reasons over.
+  const scout = await agent(conflictScoutPrompt(state), { label: 'conflict-scout', phase: 'Research', schema: CONFLICT_SCHEMA })
+  const conflicts = (scout && scout.conflicts) || []
 
   // Assessor — the single gate.
   assessment = await agent(assessorPrompt(state, conflicts, refutations, round, roundNotes), { label: 'assessor', phase: 'Research', schema: ASSESSOR_SCHEMA })
