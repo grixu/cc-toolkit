@@ -42,6 +42,11 @@ brancha. `state.json.waveInProgress` zaznacza falę w locie — na cold-starcie 
 `true` sygnalizuje falę przerwaną w poprzednim wywołaniu, którą goal dokańcza / sprząta
 (worktree) przed ruszeniem dalej.
 
+**Freeze specu na czas fali:** przy `waveInProgress` spec jest zamrożony — zmiany wymagań
+(`/grill`) nie wchodzą w locie. Lądują w specu jako zwykła edycja i są podejmowane dopiero
+przy następnym reconcile (kolejna re-entry `/implement` / `/to-tasks`), nie w trakcie
+bieżącej fali. To utrzymuje falę spójną wobec jednego `spec_hash`.
+
 **Bramki task → fala:**
 - *Per task, przed merge:* walidacja AC + **lint tylko zmienionych / utworzonych plików**.
   Pass → merge do feature brancha.

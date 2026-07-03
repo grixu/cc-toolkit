@@ -214,12 +214,14 @@ Manifest dostaje też blok `upstream` dla zależności cross-feature (patrz
   "schema": 1, "slug": "user-onboarding", "title": "User onboarding",
   "language": "en", "createdFrom": "topic", "phase": "spec",
   "boundedContext": null,
-  "specHash": "sha256:…", "waveInProgress": false, "manifest": "feature.lock.json"
+  "specHash": "sha256:…", "tasksHash": null, "waveInProgress": false, "manifest": "feature.lock.json"
 }
 ```
 
 `boundedContext` ustawiany tylko w trybie `shared` + `per-bounded-context`
-(`COMMAND_CONFIG.md`); w pozostałych trybach `null`.
+(`COMMAND_CONFIG.md`); w pozostałych trybach `null`. `tasksHash` = rollup `input_hash`
+wszystkich tasków (analogicznie do `spec_hash` z §2.2); `null`, dopóki taski nie
+istnieją. Wiąże verdykt DoR tasków (§5.4).
 
 **Frontmatter taska** (`tasks/T-004.md`) — pointer do manifestu:
 
@@ -286,8 +288,11 @@ Nie ma osobnej komendy `/validate`.
 
 ### 5.4 Blok `readiness` (w `state.json`)
 
-`validatedHash` = snapshot, wobec którego liczono verdykt; rozjazd z bieżącym
-`state.json.specHash` ⇒ verdykt stale.
+`validatedHash` = snapshot, wobec którego liczono verdykt; rozjazd z bieżącym hashem
+artefaktu ⇒ verdykt stale. Wiązanie jest symetryczne: verdykt `spec` wobec
+`state.json.specHash`, verdykt `tasks` wobec `state.json.tasksHash` (§4.4). Zmiana specu
+bumpuje `input_hash` dotkniętych tasków → rusza `tasksHash` → verdykt tasków też staje się
+stale, więc `/implement` nie zadziała na nieaktualnym zestawie.
 
 ```json
 "readiness": {

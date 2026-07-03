@@ -129,7 +129,8 @@ spełnione (nic nie brakuje), brak martwych symboli — z ostrożnością, bo el
 konsumowany przez większą pracę → **HIL** potwierdza / odrzuca.
 
 **Walidacja tasków (ogon)** — 4 wymiary, każdy w osobnym czystym subagencie; verdykt
-binarny, związany z `tasksHash`, zapisany do `readiness.tasks`:
+binarny, związany z `tasksHash` (rollup `input_hash` tasków — `SPEC.md` §4.4/§5.4),
+zapisany do `readiness.tasks`:
 
 1. **Frontmatter kompletny** — ID, tworzone elementy (z ID wewn.), zależności
    `task::element`, zależności z kodu, AC, FR/NFR.
