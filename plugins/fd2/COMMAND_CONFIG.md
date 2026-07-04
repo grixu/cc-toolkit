@@ -26,7 +26,8 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
 
 0. **Wczytanie** istniejącego `.claude/fd-config.json`, jeśli jest (prefill).
 1. **Detekcja** (kolejność): stack → menedżer pakietów → build / lint / test / format →
-   CI → MCP. Każde pole niesie `value` + `source` + `confidence`.
+   CI → MCP → dostępność dynamic workflows (wersja Claude Code, plan, `disableWorkflows`).
+   Każde pole niesie `value` + `source` + `confidence`.
 2. **Klasyfikacja pewności:** jednoznaczne → prefill; wieloznaczne (>1 kandydat) → HIL
    dezambiguacja; brak → wg polityki braków.
 3. **HIL — pełny re-ask za każdym razem:** `/config` zawsze przechodzi cały HIL, detekcja
@@ -36,7 +37,10 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
    bounded-contextu dla ficzera tu **nie** ma — dzieje się przy tworzeniu
    funkcjonalności (`/start`, `/from-docs`).
 4. **Walidacja przed zapisem:** skrypty / komendy istnieją, skill CR dostępny, ścieżki
-   storage zapisywalne, grounding MCP obecny (inaczej ostrzeżenie).
+   storage zapisywalne, grounding MCP obecny (inaczej ostrzeżenie). Proponuje też dodanie
+   komend `tooling.*` do allowlisty uprawnień — workflow fali w `/implement` działa w
+   `acceptEdits` i dziedziczy allowlistę, a komenda spoza niej potrafi zatrzymać run
+   promptem w środku.
 5. **Zapis** `.claude/fd-config.json` (+ utwórz `.claude/`), idempotentnie. Scaffolduj
    pusty `bounded-contexts.json`, jeśli tryb tego wymaga a plik nie istnieje.
 6. **Raport:** ustawione / zdefaultowane / niewykryte.

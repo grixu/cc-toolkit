@@ -95,6 +95,11 @@ jednostka"):
   konsumowany `Y#EL@vN` musi być `delivered` w manifeście Y — inaczej bloker. Tu spłaca się
   doradztwo kolejności: „zbuduj Y (a przynajmniej `API-2`) przed X". Ziarno elementowe →
   blokada i rada są element-precyzyjne, nie tylko feature-grubo.
+- `delivered` w Y ustawia ship-detekcja w reconcile Y (`SPEC.md` §2.4), więc manifest Y
+  może być nieodświeżony (nikt nie uruchomił komendy na Y po merge). Dlatego check DoR
+  liczy delivered **na żywo**: czyta manifest Y i weryfikuje osiągalność commitów
+  tasków-producentów z `baseBranch` (ta sama detekcja, tu read-only — manifest Y flipuje
+  dopiero własny reconcile Y).
 
 ---
 

@@ -15,6 +15,7 @@ zmienia stan.
 ## 2. Prekondycje
 
 - Config poprawny.
+- Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
 - Istnieje workspace funkcjonalności (`state.json` + artefakty). Komenda tylko czyta.
 
 ---
@@ -38,12 +39,14 @@ Składa obraz z artefaktów na dysku:
 ## 4. Maszyna stanów
 
 ```
-entry → guard(config) → read(state, manifest, maps) → compute(program view) → render → done
+entry → guard(config) → read(state, manifest, maps) → hash(read-only) → compute(program view) → render → done
 ```
 
-Brak zapisu, brak przejść stanu funkcjonalności, brak reconcile. `/status` nigdy nie
-markuje niczego jako stale (marking to pull przy reconcile w innych komendach) — pokazuje
-jedynie obraz i potencjalny wpływ.
+Brak zapisu, brak przejść stanu funkcjonalności, brak reconcile. Hashe do raportu
+staleness liczy skrypt-hasher (`SPEC.md` §2.6) — samo liczenie jest read-only. `/status` nigdy nie
+markuje niczego jako stale ani nie flipuje `shipped` / `delivered` (to pull przy
+reconcile w komendach mutujących — `SPEC.md` §2.4) — pokazuje manifest as-is i
+potencjalny wpływ.
 
 ---
 

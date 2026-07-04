@@ -35,9 +35,11 @@ ogólny, by nie rozstrzygać decyzji należących do implementacji.
   - observability, infrastrukturę, punkty integracji.
 - **FR i NFR** — spec je zawiera i numeruje.
 - **AC** — spec definiuje kryteria akceptacji, które **kompletnie pokrywają** FR/NFR i
-  mają do nich nawiązania. Nawiązania żyją w `ac-map.json` (mapa AC ↔ FR/NFR w formacie
-  JSON, podlinkowana ze specu). Każde AC wiąże **jedno obserwowalne zachowanie**; brak
-  mglistych czasowników i konstrukcji „albo-albo".
+  mają do nich nawiązania. Nawiązania żyją **w bloku AC** jako linia `covers:` (np.
+  `covers: FR-2, NFR-1` pod kotwicą `#### AC-5`) — wchodzą w hash bloku, więc zmiana
+  mapowania przechodzi przez inwalidację. `ac-map.json` to liczona skryptem projekcja
+  tych linii, nie drugie źródło prawdy. Każde AC wiąże **jedno obserwowalne
+  zachowanie**; brak mglistych czasowników i konstrukcji „albo-albo".
 - **Przypadki brzegowe i błędy krytyczne** — spec opisuje je i to, czy oraz jak zostaną
   obsłużone.
 - **Wdrożenie / rollback** — spec może zawierać informacje o wdrożeniu i wycofaniu, ale
@@ -88,8 +90,8 @@ degraduje faili do warningów; blokadę zdejmuje wyłącznie człowiek świadomy
 1. **Spójność strukturalna** — FR/NFR nie zaprzeczają sobie; kompletność kontraktów
    (tabele / enumy / wartości stanu); kolejność tworzenia elementów jest określona i
    poprawna.
-2. **Pokrycie** — AC kompletnie pokrywają FR/NFR i mają nawiązania (`ac-map.json`); każde
-   AC wiąże jedno obserwowalne zachowanie.
+2. **Pokrycie** — AC kompletnie pokrywają FR/NFR i mają nawiązania (linie `covers:`;
+   projekcja `ac-map.json`); każde AC wiąże jedno obserwowalne zachowanie.
 3. **Ugruntowanie** — każdy kontrakt zewnętrzny (3rd-party / API / lib) potwierdzony
    dokumentacją z cytatem w `sources-map.json`; wszystkie odwołania do dokumentów usera
    istnieją i są wczytywalne.

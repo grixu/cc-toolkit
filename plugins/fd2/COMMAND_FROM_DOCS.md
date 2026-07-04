@@ -43,7 +43,9 @@ proweniencję (efekt BYO: spec stoi na dowodach usera, bez brudzenia swojej proz
 Nie ma osobnej komendy mid-flight. Dorzucenie źródła to ponowne `/from-docs`, które dzięki
 deklaratywnemu rdzeniowi jest **reconcile, nie generacją od zera** (`SPEC.md` §2.4): nowe
 źródło dokłada / modyfikuje kandydatów, a grillowana treść przetrwa, bo żyje w specu.
-Warunek: bieżący grill jest checkpointowany do specu przed re-ingest.
+Warunek: bieżący grill jest checkpointowany do specu przed re-ingest. Zakres apply jak w
+`/grill`: spec + manifest; dotknięte taski markowane `stale`, ich pliki przepisuje dopiero
+`/to-tasks`.
 
 ---
 

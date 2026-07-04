@@ -17,7 +17,9 @@ walidacji) i żeby móc gruntować wiele twierdzeń równolegle.
   `sources-map.json`.
 
 Wzorzec: gdy trzeba ugruntować N twierdzeń → fan-out N (lub zbatchowanych) subagentów,
-każdy niezależny, każdy zwraca ustrukturyzowany wynik.
+każdy niezależny, każdy zwraca ustrukturyzowany wynik. Wywołanie z main thread (grill,
+analiza) jest zwykłym fan-outem; wywołanie z subagenta walidacji to nested subagent —
+subagent walidacji musi mieć `Agent` w `tools`.
 
 ---
 
@@ -42,7 +44,7 @@ transkrypt), URL (firecrawl) i kodu projektu (codebase-memory). Dwa formaty są
 
 - **zależny FD-spec** — identyfikowany przez `path + hash` (wejście do zależności
   cross-feature — `CROSS_FEATURE.md`);
-- **ADR** — w formacie ADR (domain-modeling mattpocock).
+- **ADR** — w formacie ADR pluginu (`references/ADR-FORMAT.md`).
 
 ---
 

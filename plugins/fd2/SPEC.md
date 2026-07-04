@@ -54,7 +54,8 @@ grill) oraz rejestry, których nie da się wywnioskować (konfiguracja, bounded 
 Każdy dyskretny element specu ma stabilne logiczne ID (np. `DB-3`, `API-2`, `AC-5`),
 alokowane append-only — nigdy nie renumerowane ani reużywane po usunięciu.
 
-- `hash(element)` = hash znormalizowanej treści bloku elementu.
+- `hash(element)` = hash znormalizowanej treści bloku elementu (kontrakt ekstrakcji,
+  normalizacji i serializacji — §2.6).
 - `input_hash(task)` = hash(produkowane elementy + hashe konsumowanych kontraktów +
   pokrywane AC / FR / NFR).
 - `spec_hash` (rollup) = hash wszystkich hashy elementów.
@@ -70,30 +71,45 @@ od `v1` i rośnie **tylko** przy zmianie breaking już-dostarczonego elementu.
 ### 2.3 Maszyna stanów tasku
 
 ```
-planned → ready → in-progress → implemented
+planned → ready → in-progress → implemented → shipped
 ```
 
 Dodatkowo:
 - `stale` — tylko task nie-shipped, którego `input_hash` się rozjechał; treść regenerowana w miejscu.
 - `dropped` — element usunięty i nigdy nie dostarczony → plik taska kasowany.
 
-Task **shipped** (dostarczony do main) jest immutable — drift domyka się nowym taskiem
+Przejścia do `shipped` nie wykonuje żadna komenda wprost — ustawia je **detekcja shipu**
+w reconcile (§2.4, krok 1), gdy commity taska są osiągalne z `baseBranch`. Task
+**shipped** (dostarczony do main) jest immutable — drift domyka się nowym taskiem
 korygującym, nie edycją.
 
 ### 2.4 Reconcile — współdzielona operacja
 
 Reconcile jest jedną, wspólną rutyną wołaną przez `/from-docs` (re-run), `/grill`,
-`/to-tasks` i `/implement` przy każdym wejściu:
+`/to-tasks` i `/implement` przy każdym wejściu. Dzieli się na **detekcję** (kroki 1–6)
+i **apply** (kroki 7–8); detekcja jest wspólna, zakres apply zależy od komendy:
 
-1. Parsuj spec → hashe elementów → rollup.
-2. Diff wobec manifestu: added / removed / modified / unchanged per element.
-3. Klasyfikuj `modified` breaking / non-breaking (zachowawczo: modyfikacja kontraktu =
+1. **Detekcja shipu:** dla tasków `implemented` sprawdź osiągalność ich commitów
+   (`impl.commits`) z `baseBranch` (`git merge-base --is-ancestor`). Osiągalne → flip
+   `implemented → shipped` oraz `pending → delivered` (+ `deliveredHash`) dla
+   produkowanych elementów. Nieosiągalne, ale treść wygląda na scaloną (np. squash-merge)
+   → HIL. Flip statusów to synchronizacja z rzeczywistością gita — wykonuje ją każda
+   komenda wołająca reconcile; nie rusza `input_hash` ani verdyktów DoR.
+2. Parsuj spec → hashe elementów → rollup.
+3. Diff wobec manifestu: added / removed / modified / unchanged per element.
+4. Klasyfikuj `modified` breaking / non-breaking (zachowawczo: modyfikacja kontraktu =
    breaking, chyba że dowodnie addytywna; override przez HIL).
-4. Mapuj zmienione elementy → taski → akcje: regen-in-place / task korygujący / task
+5. Mapuj zmienione elementy → taski → akcje: regen-in-place / task korygujący / task
    usuwający / drop / bez zmian.
-5. Propaguj po DAG (przez `input_hash`).
-6. **Bramka HIL:** pokaż `reconcile plan` przed apply.
-7. Apply: zapisz taski, zaktualizuj manifest, dopisz wpis do historii wersji specu.
+6. Propaguj po DAG (przez `input_hash`).
+7. **Bramka HIL:** pokaż `reconcile plan` przed apply.
+8. Apply — zakres per komenda:
+   - `/grill`, `/from-docs` (re-run): zapisz spec + manifest (hashe, historia wersji);
+     dotknięte taski **markuj `stale` w manifeście** — plików tasków nie przepisuj.
+   - `/to-tasks`: pełny apply — **jedyny właściciel zapisu plików tasków** (regen /
+     korekta / drop) + manifest; ogon od razu odtwarza verdykt `readiness.tasks`.
+   - `/implement`: **bez apply** — sama detekcja; wykryty drift specu / tasków = twardy
+     block „uruchom `/to-tasks`" (kroki 7–8 pomijane).
 
 ### 2.5 Forward-only
 
@@ -101,11 +117,38 @@ Dostarczonej pracy nigdy nie przepisujemy. Kod z poprzednich runów / już w mai
 forward-only: drift domyka trwały task korygujący (jak migracja). Wyjątek dotyczy
 **wnętrza bieżącego runu** `/implement` (przed shipem funkcjonalności) — tam wcześniejsze
 fale są mutowalne przez taski naprawcze. Granicą jest **ship funkcjonalności** (merge
-feature brancha do main), nie merge taska do feature brancha.
+feature brancha do main), nie merge taska do feature brancha; granicę wykrywa mechanicznie
+detekcja shipu w reconcile (§2.4, krok 1).
 
 Tożsamość tasku jest deterministycznym kluczem po zbiorze produkowanych elementów —
 ponowny `/to-tasks` jest reconcile, nie generacją od zera; dopasowanie desired ↔ existing
 idzie po maksymalnym pokryciu.
+
+### 2.6 Kontrakt hashera
+
+Hashe liczy wyłącznie **skrypt** (`scripts/`, Node.js, bez zależności zewnętrznych) —
+LLM nigdy nie liczy hasha. Skrypt woła na wejściu każda komenda, także `/status`
+(raport staleness wymaga świeżych hashy; samo liczenie jest read-only).
+
+**Ekstrakcja bloku:** blok elementu zaczyna się linią nagłówka z kotwicą
+(`#### <ID> — <tytuł>`) i sięga do następnego nagłówka o poziomie ≤ poziomowi kotwicy
+albo końca pliku. Linia nagłówka **wchodzi w treść bloku** — zmiana tytułu zmienia hash;
+o wadze zmiany decyduje klasyfikacja breaking / non-breaking (§2.4, krok 4), nie hash.
+
+**Normalizacja treści bloku**, w kolejności: (1) końce linii CRLF / CR → LF; (2) usuń
+trailing whitespace każdej linii; (3) skolapsuj sekwencje pustych linii do jednej;
+(4) usuń puste linie wiodące i końcowe bloku; (5) Unicode NFC. `hash(element)` =
+SHA-256 bajtów UTF-8 znormalizowanej treści, zapisywany jako `sha256:<hex>`.
+
+**Kanoniczna serializacja `input_hash(task)`:** JSON
+`{"consumes":{"<ref>":"<hash>"},"covers":{"<ID>":"<hash>"},"produces":{"<ID>":"<hash>"}}`
+z kluczami posortowanymi leksykograficznie na każdym poziomie, kompaktowy (bez
+whitespace), UTF-8 → SHA-256. Hash konsumowanego kontraktu = bieżący hash elementu z
+manifestu.
+
+**Rollupy:** `spec_hash` = SHA-256 kanonicznego JSON `{"<ID>":"<hash>"}` po wszystkich
+elementach; `tasksHash` analogicznie po `{"<ID taska>":"<input_hash>"}`. Brak tasków →
+`tasksHash: null`, nie hash pustej mapy.
 
 ---
 
@@ -125,10 +168,20 @@ sterowanie (patrz §5.1).
 | `/to-prs` | Wycięcie stacked-PR z feature brancha do ludzkiego CR | `COMMAND_TO_PRS.md` |
 | `/status` | Read-only wgląd w stan funkcjonalności | `COMMAND_STATUS.md` |
 
-Grill jest blokiem współdzielonym przez `/start`, `/from-docs` i `/grill`
-(`GRILLING.md`); grounding jest współdzielonym subagentem (`RESEARCHER.md`); reguły
+Grill jest blokiem współdzielonym przez `/start`, `/from-docs` i `/grill`, wykonywanym
+w **main thread** komendy — pętla stoi na pytaniach do usera, a `AskUserQuestion` jest
+w subagentach niedostępne (`GRILLING.md`); grounding jest współdzielonym subagentem
+(`RESEARCHER.md`); reguły
 budowania specu — `BUILDING_SPEC.md`; zależności między funkcjonalnościami —
 `CROSS_FEATURE.md`.
+
+### 3.1 Wskazanie funkcjonalności
+
+Komendy działające na istniejącej funkcjonalności (`/grill`, `/to-tasks`, `/implement`,
+`/to-prs`, `/status`) przyjmują **opcjonalny argument `<slug>`**. Bez argumentu, w
+kolejności: dokładnie jedna funkcjonalność w `<featuresRoot>` → bierzemy ją; inaczej
+dopasowanie po bieżącym branchu (`state.json.branch`, §4.4); inaczej wybór z listy (HIL).
+Cold-start (§5.1) wyklucza „funkcjonalność z poprzedniej komendy".
 
 ---
 
@@ -141,7 +194,7 @@ docs/features/<slug>/
   spec.md              # elementy jako bloki z ID-kotwicami
   state.json           # meta funkcjonalności (§4.4)
   feature.lock.json    # manifest / ledger, commitowany (§4.4)
-  ac-map.json          # mapa AC ↔ FR/NFR
+  ac-map.json          # mapa AC ↔ FR/NFR — projekcja liczona skryptem z linii covers w blokach AC
   sc-map.json          # mapa SC (projekcja, liczona skryptem)
   sources-map.json     # proweniencja claim → źródło
   CONTEXT.md           # model domenowy per-feature
@@ -164,6 +217,8 @@ user-editable pliku `bounded-contexts.json` (patrz `COMMAND_CONFIG.md`).
   `NFR` } — rozszerzalny; słownik = lista rodzajów elementów ze specu. Prefiks działa
   jak checklista kompletności.
 - Numer append-only per `KIND` (high-water-mark w manifeście → `idCounters`).
+  `idCounters` obejmuje też `T`: numery tasków są alokowane tak samo append-only
+  (`identityKey` rozwiązuje tożsamość taska, licznik — alokację numerów, także po dropie).
 - W specu element = blok z kotwicą, np. `#### DB-3 — Tabela użytkowników`; hasher liczy
   `hash(DB-3)` z treści bloku. Sekcje specu grupują po `KIND`.
 - Referencja w dół grafu: `<producerTask>::<element>@v<n>` (np. `T-002::API-2@v1`).
@@ -182,7 +237,7 @@ autorytatywna i nieodtwarzalna (SHA commitów, wynik CI / CR):
 {
   "schema": 1,
   "spec": { "hash": "sha256:…", "history": [ { "hash": "sha256:…", "at": "…", "summary": "init" } ] },
-  "idCounters": { "DB": 3, "API": 2, "CFG": 1, "AC": 5, "FR": 2, "NFR": 1 },
+  "idCounters": { "DB": 3, "API": 2, "CFG": 1, "AC": 5, "FR": 2, "NFR": 1, "T": 4 },
   "elements": {
     "DB-3": { "hash": "h2", "deliveredHash": "h1", "version": 2, "producer": "T-004", "status": "drifted" }
   },
@@ -213,7 +268,7 @@ Manifest dostaje też blok `upstream` dla zależności cross-feature (patrz
 {
   "schema": 1, "slug": "user-onboarding", "title": "User onboarding",
   "language": "en", "createdFrom": "topic", "phase": "spec",
-  "boundedContext": null,
+  "boundedContext": null, "branch": null,
   "specHash": "sha256:…", "tasksHash": null, "waveInProgress": false, "manifest": "feature.lock.json"
 }
 ```
@@ -222,6 +277,16 @@ Manifest dostaje też blok `upstream` dla zależności cross-feature (patrz
 (`COMMAND_CONFIG.md`); w pozostałych trybach `null`. `tasksHash` = rollup `input_hash`
 wszystkich tasków (analogicznie do `spec_hash` z §2.2); `null`, dopóki taski nie
 istnieją. Wiąże verdykt DoR tasków (§5.4).
+
+`phase` ∈ `spec | tasks | implementing | shipped` — gruby wskaźnik progresji (dla
+`/status` i sugestii następnego kroku): `spec` ustawiają `/start` / `/from-docs`;
+`tasks` — `/to-tasks` po pierwszym apply; `implementing` — `/implement` na starcie
+pierwszej fali; `shipped` — detekcja shipu (§2.4), gdy wszystkie taski są `shipped`.
+
+`branch` = feature branch funkcjonalności. Ustawia go `/implement` przy pierwszym
+uruchomieniu wg szablonu z configu (`implement.branchTemplate`, default `feat/<slug>`);
+od tej pory wiąże funkcjonalność z branchem dla `/implement`, `/to-prs` i heurystyki
+wskazania funkcjonalności (§3.1).
 
 **Frontmatter taska** (`tasks/T-004.md`) — pointer do manifestu:
 
@@ -272,19 +337,27 @@ degradowaniu defektu do „warninga". Dlatego:
 - Verdykt jest **związany z hashem** artefaktu: `validatedHash`. Zmiana specu (także
   ręczna edycja poza komendami) rozjeżdża hash → verdykt jest **stale** → nieważny.
 
+Waiver jest częścią verdyktu i **ginie razem z nim** przy każdym rozjeździe
+`validatedHash`. Ponowienie jest tanie: komenda re-walidująca, zanim nadpisze verdykt,
+porównuje poprzednie `waivedChecks` z nowymi failami — jeśli ten sam `checkId` nadal
+failuje, pokazuje poprzedni waiver i pyta o ponowienie (jedno potwierdzenie, logowane).
+Zero cichego dziedziczenia.
+
 ### 5.3 Walidacja jako krok, enforcement u konsumenta
 
 Nie ma osobnej komendy `/validate`.
 
 - **Produkcja waliduje na końcu:** `/start`, `/from-docs`, `/grill` po zapisie specu
   odpalają walidację specu (osobny czysty subagent) → zapisują verdykt związany z
-  `specHash`. Analogicznie `/to-tasks` w ogonie waliduje taski.
+  `specHash`. Analogicznie `/to-tasks` w ogonie waliduje taski. Subagent walidacyjny
+  tylko zwraca pass / fail + wątpliwości; pytania HIL (waiver, martwe symbole) zadaje
+  komenda w main thread — subagenty nie mają `AskUserQuestion`.
 - **Konsument egzekwuje na wejściu:** `/to-tasks` na starcie czyta `readiness.spec` —
   jeśli `blocked` lub hash stale, **odmawia**, raportuje powód, podpowiada fix (zwykle
   `/grill`). Analogicznie `/implement` egzekwuje `readiness.tasks`. Konsument nie
   re-waliduje po cichu.
-- **Re-walidacja** po poprawce idzie przez `/grill` (właściciel mutacji specu + reconcile;
-  ogon = ponowna walidacja).
+- **Re-walidacja** po poprawce idzie przez `/grill` (mutacja specu + reconcile; ogon =
+  ponowna walidacja) albo — przy nowych źródłach — przez re-run `/from-docs`.
 
 ### 5.4 Blok `readiness` (w `state.json`)
 
@@ -319,14 +392,17 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Bramka | Gdzie | Typ |
 |---|---|---|
 | Brak / niepoprawny config | każda komenda, wejście | block |
+| Wybór funkcjonalności (>1, brak dopasowania) | komendy per-feature, wejście (§3.1) | HIL |
+| Niejednoznaczny ship (np. squash-merge) | reconcile, krok 1 (§2.4) | HIL |
 | Wybór bounded-context (per-feature) | `/start`, `/from-docs` (tryb shared + per-BC) | HIL |
 | Tryb docs (CONTEXT per-feature / shared) | `/from-docs`, `/config` | HIL |
-| Reconcile-plan przed apply | `/from-docs` (re-run), `/grill`, `/to-tasks`, `/implement` (re-entry) | HIL |
+| Reconcile-plan przed apply | `/from-docs` (re-run), `/grill`, `/to-tasks` | HIL |
 | Walidacja spec (DoR) | `/start`, `/from-docs`, `/grill` — ogon | block → verdykt |
 | Enforcement DoR spec | `/to-tasks` — wejście | block |
 | Oversize task split / merge | `/to-tasks` | HIL |
 | Martwe symbole (możliwa zewn. konsumpcja) | `/to-tasks` — walidacja SC | HIL |
 | Walidacja tasków (DoR) | `/to-tasks` — ogon | block → verdykt |
+| Drift specu / tasków w detekcji (bez apply) | `/implement` — wejście | block |
 | Enforcement DoR tasków | `/implement` — wejście | block |
 | Per-task AC + lint zmian przed merge | `/implement` | block |
 | Per-fala pełne CI (lint + test + build) | `/implement` | block |
@@ -345,7 +421,8 @@ warunkiem wstępnym: brak / niepoprawny / niezgodna `schema` → każda komenda 
 się i prosi o uruchomienie `/config`.
 
 Domyślne wartości: język `en`, tryb `per-feature`, katalog `docs/features/<slug>/`,
-budżet kontekstu taska `250000` tokenów, model PR `stacked`, waiver dozwolony.
+budżet kontekstu taska `40000` tokenów (estymator — `COMMAND_TO_TASKS.md` §4), model PR
+`stacked`, waiver dozwolony.
 
 ---
 
@@ -354,7 +431,7 @@ budżet kontekstu taska `250000` tokenów, model PR `stacked`, waiver dozwolony.
 - `SPEC.md` — ten dokument: model, layout, ID, stan, architektura bramek.
 - `config.example.jsonc` — skomentowany `fd-config.json` + `bounded-contexts.json`.
 - `BUILDING_SPEC.md` — reguły i format specu, wymiary walidacji, język.
-- `GRILLING.md` — współdzielony agent grilla (skille, CONTEXT.md, tryby).
+- `GRILLING.md` — współdzielony blok grilla, main thread (metodyka, CONTEXT.md, tryby).
 - `RESEARCHER.md` — współdzielony subagent groundingu (źródła, `sources-map.json`).
 - `COMMAND_CONFIG.md`, `COMMAND_START.md`, `COMMAND_FROM_DOCS.md`, `COMMAND_GRILL.md`,
   `COMMAND_TO_TASKS.md`, `COMMAND_IMPLEMENT.md`, `COMMAND_TO_PRS.md`,

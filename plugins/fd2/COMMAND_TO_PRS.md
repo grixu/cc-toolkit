@@ -17,8 +17,9 @@ bottom-up.
 ## 2. Prekondycje
 
 - Config poprawny.
+- Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
 - Implementacja ukończona i po self-review całości.
-- Istnieją: feature branch, mapa SC (`sc-map.json`), manifest.
+- Istnieją: feature branch (`state.json.branch`), mapa SC (`sc-map.json`), manifest.
 - Cold-start z workspace'u.
 
 ---

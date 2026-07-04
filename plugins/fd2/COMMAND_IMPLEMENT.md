@@ -1,7 +1,8 @@
 # `/implement`
 
 Implementuje taski falami na feature branchu, walidując każdy przez AC + CI + code review.
-Silnik to **dynamic workflow** owinięty w nadrzędny goal — nie `loop`.
+Silnikiem fali jest **dynamic workflow**; nadrzędny goal to logika promptu komendy w
+głównej konwersacji — nie prymityw platformy.
 
 ---
 
@@ -15,37 +16,50 @@ CI + CR), z atomowymi, rewertowalnymi commitami i samonaprawczą pętlą.
 ## 2. Prekondycje
 
 - Config poprawny.
-- **Enforcement DoR tasków (wejście):** czyta `readiness.tasks`; `blocked` lub stale →
-  odmawia, kieruje do `/grill` / `/to-tasks`.
+- Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
+- **Reconcile-detekcja (wejście, bez apply):** przelicz hashe + ship-detekcja
+  (`SPEC.md` §2.4); wykryty drift specu / tasków → twardy block „uruchom `/to-tasks`".
+  `/implement` niczego nie apply'uje na taskach.
+- **Enforcement DoR tasków:** czyta `readiness.tasks` wobec świeżo policzonych hashy;
+  `blocked` lub stale → odmawia, kieruje do `/grill` / `/to-tasks`.
 - **Rozszerzenie cross-feature:** każdy konsumowany `Y#EL@vN` musi być `delivered` w
-  manifeście Y — inaczej bloker (`CROSS_FEATURE.md`). Tu spłaca się doradztwo kolejności:
-  „zbuduj Y przed X".
+  manifeście Y — inaczej bloker; delivered liczone na żywo (`CROSS_FEATURE.md` §5).
+  Tu spłaca się doradztwo kolejności: „zbuduj Y przed X".
+- **Feature branch:** pierwszy run tworzy branch wg `implement.branchTemplate` (default
+  `feat/<slug>`) i zapisuje `state.json.branch`; kolejne runy pracują na zapisanym.
 - Cold-start z workspace'u.
 
 ---
 
-## 3. Silnik: dynamic workflow + nadrzędny goal
+## 3. Silnik: workflow per fala + goal w głównej konwersacji
 
 - **Bez osobnego artefaktu planu** — fale liczone są **wprost z DAG-a SC on-the-fly**
   (fala = warstwa topologiczna). Mapa SC jest jedynym „planem"; nie materializujemy
   execution-planu.
-- Pętla implementacji stoi na **dynamic workflows** (nie `loop`), owinięta w
-  **goal / monitor**, który sprawdza: czy workflow żyje i czy wypełnił wszystkie taski +
-  AC. Goal napędza kolejne iteracje.
+- **Goal** to logika promptu komendy w głównej konwersacji, nie prymityw platformy.
+  Workflow nie przyjmuje inputu usera w trakcie runu, więc **każda fala i każda iteracja
+  napraw = osobny run Workflow**; goal ocenia wynik każdego runu (fala domknięta?
+  wszystkie taski + AC wypełnione?) i decyduje: kolejna fala / fala napraw / checkpoint.
+  Bramki HIL żyją **między runami**, w main thread.
+- **Dostępność i fallback:** dostępność dynamic workflows (wersja Claude Code, plan,
+  `disableWorkflows`) wykrywa `/config`, a `/implement` weryfikuje na wejściu. Brak →
+  **degradacja do subagentów**: taski fali uruchamiane równolegle przez Agent tool z
+  izolacją worktree, bramki i stan identyczne; degradacja jest raportowana, nie blokuje.
 
 ---
 
 ## 4. Fala i bramki
 
 **Izolacja:** jeden **worktree per task**, taski w fali równolegle, merge do feature
-brancha. `state.json.waveInProgress` zaznacza falę w locie — na cold-starcie (re-entry)
-`true` sygnalizuje falę przerwaną w poprzednim wywołaniu, którą goal dokańcza / sprząta
-(worktree) przed ruszeniem dalej.
+brancha. `state.json.waveInProgress` zaznacza falę w locie. Run workflow nie przeżywa
+restartu sesji, więc recovery zakłada zimny start: `true` na wejściu (re-entry) ⇒ goal
+**sprząta worktree i uruchamia falę ponownie jako nowy run** od stanu z dysku (manifest +
+statusy tasków) — nie „dokańcza" starego runu.
 
 **Freeze specu na czas fali:** przy `waveInProgress` spec jest zamrożony — zmiany wymagań
-(`/grill`) nie wchodzą w locie. Lądują w specu jako zwykła edycja i są podejmowane dopiero
-przy następnym reconcile (kolejna re-entry `/implement` / `/to-tasks`), nie w trakcie
-bieżącej fali. To utrzymuje falę spójną wobec jednego `spec_hash`.
+(`/grill`) nie wchodzą w locie. Lądują w specu jako zwykła edycja i podejmuje je dopiero
+następny `/to-tasks` (re-entry `/implement` wykryje drift i zablokuje — `SPEC.md` §2.4),
+nie bieżąca fala. To utrzymuje falę spójną wobec jednego `spec_hash`.
 
 **Bramki task → fala:**
 - *Per task, przed merge:* walidacja AC + **lint tylko zmienionych / utworzonych plików**.
@@ -90,17 +104,20 @@ commita to kandydaci do `fd-config.json`.
 ## 7. Maszyna stanów
 
 ```
-entry → guard(config) → enforce(readiness.tasks, upstream delivered)
-      → reconcile(re-entry) → goal { for wave in topo(SC):
-            parallel worktrees → per-task AC+lint → merge
-            → per-wave CI → CR
-            → on fail: diagnose → repair-wave (next iter) }
+entry → guard(config) → reconcile-detect(hashe + ship) ──drift──→ block(„/to-tasks")
+      → enforce(readiness.tasks, upstream delivered)
+      → goal (main thread) { for wave in topo(SC):
+            run = Workflow(fala) | fallback: subagenty + worktree
+                  [parallel worktrees → per-task AC+lint → merge → per-wave CI → CR]
+            → pass → next wave | fail → diagnoza → run(fala napraw)
+            → HIL między runami }
       → all tasks implemented + AC met → checkpoint
                                         └─ K-fail → HIL(escalate)
 ```
 
-Task przechodzi `planned → ready → in-progress → implemented`; porażka trzyma go poza
-`implemented` do czasu naprawy lub eskalacji.
+Task przechodzi `planned → ready → in-progress → implemented`; `shipped` ustawia dopiero
+detekcja shipu po merge do main (`SPEC.md` §2.4). Porażka trzyma taska poza `implemented`
+do czasu naprawy lub eskalacji.
 
 ---
 
@@ -109,8 +126,8 @@ Task przechodzi `planned → ready → in-progress → implemented`; porażka tr
 | Bramka | Typ |
 |---|---|
 | Brak / niepoprawny config | block |
+| Drift specu / tasków w detekcji (bez apply) | block |
 | Enforcement DoR tasków + upstream `delivered` | block |
-| Reconcile-plan przed apply (re-entry) | HIL |
 | Per-task AC + lint zmian przed merge | block |
 | Per-fala pełne CI (lint + test + build) | block |
 | Post-CI code review (≥1 skill) | gate |

@@ -16,6 +16,7 @@ element), wygenerować acykliczną mapę SC i zwalidować taski do stanu `ready`
 ## 2. Prekondycje
 
 - Config poprawny.
+- Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
 - **Enforcement DoR spec (wejście):** czyta `readiness.spec`. Jeśli `blocked` **lub**
   `specHash` stale → odmawia, raportuje powód, kieruje do `/grill`. Konsument nie
   re-waliduje specu po cichu.
@@ -65,7 +66,7 @@ przydzielamy elementy do kubełków i tniemy, gdy kubełek rośnie za bardzo.
 1. **Kohezja (podstawa):** elementy zmieniające się razem / ten sam moduł / ścieżka
    trzymają się w jednym tasku.
 2. **Budżet kontekstu (pułap tnący):** złożony plik taska + skopiowane zależności ≤
-   `tasks.maxContextTokens` (default 250k). Przekroczenie → split wzdłuż szwu kohezji.
+   `tasks.maxContextTokens` (default 40k). Przekroczenie → split wzdłuż szwu kohezji.
 3. **Twarde limity (guardrail):** `≤ maxElements`, `≤ maxAcceptanceCriteria` — domyślnie
    wyłączone (`null`); włączone wymuszają split niezależnie od budżetu.
 
@@ -88,8 +89,11 @@ zrównoleglalne w falach, łatwe do review.
 
 **Szacowanie budżetu:** liczymy tokeny złożonego, autonomicznego pliku taska (frontmatter
 + skopiowane fragmenty specu + opisy konsumowanych kontraktów + AC/FR/NFR + snippet-y
-`codeDeps`). To realny kontekst wejściowy agenta implementacji; estymacja jest „za darmo",
-bo plik i tak składamy przy generacji.
+`codeDeps`). To realny kontekst wejściowy agenta implementacji. Claude Code nie
+udostępnia tokenizera, więc estymator jest zdefiniowany wprost: `tokeny ≈ ⌈znaki / 4⌉`,
+liczony skryptem na złożonym pliku — tani, bo plik i tak składamy przy generacji.
+Default 40k zostawia agentowi fali zapas na kod projektu i wynik narzędzi, a plik taska
+utrzymuje w rozmiarze recenzowalnym przez człowieka.
 
 ### Edge cases
 
@@ -120,8 +124,8 @@ nie może być SC-topologiczna (jajko-kura).
 
 ## 6. Mapa SC i walidacja
 
-**Mapa SC** (`sc-map.json`) jest projekcją liczoną skryptem (Node.js / Python) z grafu
-tasków — nigdy autorowaną ręcznie. Musi być acykliczna; cykl świadczy o błędnej
+**Mapa SC** (`sc-map.json`) jest projekcją liczoną skryptem (Node.js, jak hasher —
+`SPEC.md` §2.6) z grafu tasków — nigdy autorowaną ręcznie. Musi być acykliczna; cykl świadczy o błędnej
 dystrybucji pracy (wspólny element do wyniesienia).
 
 **Walidacja punktów przecięcia (SC):** kolejność tasków poprawna, wszystkie dependencje
@@ -151,7 +155,9 @@ entry → guard(config) → enforce(readiness.spec) → reconcile(desired↔exis
 
 Ponowny `/to-tasks` = reconcile: dekompozytor dostaje istniejące przypisanie
 `task ↔ elementy` i zachowuje je, chyba że spec wymusi split / merge (→ HIL). Taski są
-generowane-only — user recenzuje, nie edytuje.
+generowane-only — user recenzuje, nie edytuje. `/to-tasks` jest **jedynym właścicielem
+zapisu plików tasków** (`SPEC.md` §2.4): `/grill` tylko markuje stale, `/implement` na
+drifcie blokuje.
 
 ---
 

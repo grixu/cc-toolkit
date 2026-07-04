@@ -1,8 +1,10 @@
 # `/grill`
 
 Drąży i zmienia **istniejący** spec: user dopytuje temat, koryguje wymagania lub przynosi
-nowe informacje. Jedyny właściciel mutacji specu po jego powstaniu — wszystkie poprawki i
-re-walidacje idą tędy.
+nowe informacje. Interaktywna ścieżka mutacji specu po jego powstaniu (drugą jest re-run
+`/from-docs` przy nowych źródłach — obie przechodzą przez ten sam blok grilla i
+reconcile). Plików tasków nie zapisuje — dotknięte taski markuje `stale` i kieruje do
+`/to-tasks`.
 
 ---
 
@@ -17,6 +19,7 @@ historię wersji.
 ## 2. Prekondycje
 
 - Config poprawny; istnieje `spec.md` + manifest funkcjonalności.
+- Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
 - Cold-start z workspace'u (wczytuje spec, manifest, `state.json` on-demand).
 
 ---
@@ -32,8 +35,10 @@ historię wersji.
 3. **Reconcile-plan (HIL):** zdiffuj zmieniony spec, sklasyfikuj `modified`
    breaking / non-breaking, zmapuj na akcje wobec tasków (regen-in-place / task korygujący
    / drop / bez zmian), pokaż plan **przed apply**.
-4. **Apply:** zapisz taski, zaktualizuj manifest, dopisz wpis do historii wersji specu,
-   zbumpuj `spec_hash` i `state.json.specHash`.
+4. **Apply (zakres `/grill` — `SPEC.md` §2.4):** zapisz spec, zaktualizuj manifest,
+   dopisz wpis do historii wersji, zbumpuj `spec_hash` i `state.json.specHash`; dotknięte
+   taski markuj `stale` w manifeście — plików tasków nie przepisuj (pełny apply tasków ma
+   `/to-tasks`).
 5. **Re-walidacja (ogon):** odpal walidację specu (6 wymiarów); zapisz świeży verdykt
    związany z nowym `specHash` do `readiness.spec`.
 

@@ -38,10 +38,14 @@
   },
 
   "tasks": {                            // dekompozycja / rozmiar taska
-    "maxContextTokens": 250000,         // pułap tnący: złożony plik taska + skopiowane zależności
+    "maxContextTokens": 40000,          // pułap tnący: złożony plik taska + zależności; estymacja skryptem ~znaki/4
     "maxElements": null,                // twardy limit elementów per task; null = wyłączony
     "maxAcceptanceCriteria": null,      // twardy limit AC per task; null = wyłączony
     "granularityBias": "split"          // przy niejednoznacznej kohezji — tnij (mniejsze i więcej)
+  },
+
+  "implement": {                        // pętla implementacji (COMMAND_IMPLEMENT.md)
+    "branchTemplate": "feat/{slug}"     // nazwa feature brancha; pierwszy run zapisuje wynik do state.json.branch
   },
 
   "prs": {                              // wycinanie stacka PR z feature brancha
