@@ -52,9 +52,16 @@ plików) leżą w `PR_j`, `j ≤ i`. Przypisanie to poprawna warstwa topologiczn
 buduje się na tym, co pod nim. Wybór dewelopera łamiący niezmiennik (forward-reference,
 rozjazd plikowy) → **krok odrzucony** z wyjaśnieniem, dev wybiera ponownie.
 
-**Dlaczego to tanie:** commity już istnieją liniowo na feature branchu (wave-merge ustawił
-kolejność topologiczną). Stos = partycja tej liniowej historii na PR-owe kawałki, z
-zachowaniem atomowych commitów per task + rationale.
+**Dlaczego to tanie:** feature branch to liniowa historia **1 commit per task**
+(squash-merge w fali + autosquash napraw — `COMMAND_IMPLEMENT.md` §4/§5) w kolejności
+topologicznej. Stos = partycja tej historii: branche PR są **pointerami** w nią, więc SHA
+commitów pozostają tożsame z `impl.commits` w manifeście i ship-detekcja (`SPEC.md` §2.4,
+krok 1) działa bez tłumaczenia. Gdy grupowanie wymaga innej kolejności niż zastana →
+**reorder-rebase całych commitów tasków** (bezpieczny: buildability i serializacja
+overlapu trzymają względny porządek tasków dotykających tych samych plików; konflikt →
+HIL); po rebase `/to-prs` **aktualizuje `impl.commits` w manifeście** — jedyna mutacja
+tej komendy. Task z naprawą, która nie wsiąkła w autosquash, ma >1 commit — partycja
+bierze wszystkie commity z jego trailerem `Task:`.
 
 ---
 
@@ -77,7 +84,9 @@ zachowaniem atomowych commitów per task + rationale.
 ```
 entry → guard(config) → read(branch, SC, manifest) → linearize(topo SC)
       → group (auto | manual-HIL) → assert(buildability) ──fail──→ HIL(re-assign)
-      → produce PR branches (+ optional open PR, + optional per-PR CI) → checkpoint
+      → reorder-rebase (gdy grupowanie tego wymaga; konflikt → HIL)
+      → update(manifest impl.commits) → produce PR branches (pointery)
+        (+ optional open PR, + optional per-PR CI) → checkpoint
 ```
 
 **Idempotencja:** `/to-prs` jest re-projekcją — zmiana feature brancha (np. po review) i
@@ -92,6 +101,7 @@ ponowne odpalenie odświeża stos.
 | Brak / niepoprawny config | block |
 | Manual PR grouping | HIL |
 | Niezmiennik składalności (buildability) | block |
+| Konflikt reorder-rebase | HIL |
 | Per-PR CI (`verifyPerPrCi`) | opcjonalny block |
 
 ---

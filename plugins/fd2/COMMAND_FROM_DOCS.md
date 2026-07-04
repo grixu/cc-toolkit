@@ -25,8 +25,10 @@ proweniencję (efekt BYO: spec stoi na dowodach usera, bez brudzenia swojej proz
 1. **Scaffold + ingest źródeł:** utwórz `docs/features/<slug>/` i `state.json`
    (`createdFrom: "docs"`) wg trybu z configu — w trybie shared + `per-bounded-context`
    rozwiąż BC ficzera (HIL, zapis `state.json.boundedContext`); skopiuj dostarczone
-   dokumenty do `sources/`. Formaty best-effort (md / pdf / txt / transkrypt / URL / kod)
-   + pierwszoklasowe: zależny FD-spec (`path + hash`) i ADR (`RESEARCHER.md` §3).
+   dokumenty do `sources/`; URL-e snapshotuj do `sources/web/<slug>.md` z frontmatterem
+   `{url, retrievedAt, contentHash}` (`RESEARCHER.md` §5). Formaty best-effort
+   (md / pdf / txt / transkrypt / URL / kod) + pierwszoklasowe: zależny FD-spec
+   (`path + hash`) i ADR (`RESEARCHER.md` §3).
 2. **Analiza (kontrakt ingest, przed grillem)** — produkuje:
    - kandydatów FR / NFR / AC,
    - agendę grilla (luki, niejasności, sprzeczności),

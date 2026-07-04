@@ -29,7 +29,7 @@
   },
 
   "mcp": {
-    // groundingDegraded = flaga POCHODNA (nie osobne pole): firecrawl∉detected || context7∉detected
+    // snapshot detekcji (prefill/fallback); groundingDegraded = flaga POCHODNA liczona at runtime z osiągalności narzędzi
     "detected": ["firecrawl", "context7", "codebase-memory-mcp"]
   },
 
@@ -45,7 +45,10 @@
   },
 
   "implement": {                        // pętla implementacji (COMMAND_IMPLEMENT.md)
-    "branchTemplate": "feat/{slug}"     // nazwa feature brancha; pierwszy run zapisuje wynik do state.json.branch
+    "branchTemplate": "feat/{slug}",    // nazwa feature brancha; pierwszy run zapisuje wynik do state.json.branch
+    "maxRepairIterations": 3,           // próg K: tyle nieudanych iteracji napraw taska → eskalacja HIL
+    "engine": "workflow",               // "workflow" (auto-fallback do subagentów, gdy niedostępny) | "subagents" (wymuszony)
+    "worktreeCleanup": "always"         // "always" | "keep-failed" — zostaw worktree nieudanego taska do wglądu
   },
 
   "prs": {                              // wycinanie stacka PR z feature brancha

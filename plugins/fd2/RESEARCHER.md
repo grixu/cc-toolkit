@@ -70,6 +70,14 @@ traceability `claim → źródło` żyje osobno w `sources-map.json`, obok `ac-m
 ugruntowany w dowodach usera + zachowane źródła + odtwarzalna proweniencja — bez
 zaśmiecania treści.
 
+Źródła-URL są **snapshotowane przy ingestcie**: scrape (firecrawl) do
+`sources/web/<slug>.md` z frontmatterem `{ url, retrievedAt, contentHash }`
+(`contentHash` = SHA-256 znormalizowanej treści, jak w kontrakcie hashera — `SPEC.md`
+§2.6). `sources-map.json` referuje lokalny snapshot, nie żywy URL; check „odwołania
+wczytywalne" czyta snapshot — deterministycznie i offline. Zmiana treści u źródła nie
+unieważnia walidacji: prawdą jest to, co zostało zescrape'owane (re-check driftu to
+ewentualne przyszłe rozszerzenie, nie warunek).
+
 *(Pełny schemat `sources-map.json` jest otwarty — do domknięcia przy schematyzacji
 artefaktów. Minimalnie: rekord `{ claim, fakt, cytat, źródło }` z odniesieniem do
 elementu / AC, którego dotyczy.)*
@@ -78,9 +86,11 @@ elementu / AC, którego dotyczy.)*
 
 ## 6. Tryb zdegradowany
 
-firecrawl i context7 są zalecane, nie twardo wymagane. Ich brak w `mcp.detected` (wykryty
-w `/config`) wyznacza **flagę pochodną** `groundingDegraded` (derywowaną z configu, nie
-osobne pole stanu) i generuje ostrzeżenie. Obligacja groundingu pozostaje
+firecrawl i context7 są zalecane, nie twardo wymagane. `groundingDegraded` to **flaga
+pochodna liczona at runtime**: komenda sprawdza faktyczną osiągalność narzędzi firecrawl /
+context7 w bieżącej sesji (MCP mogą dojść lub zniknąć po `/config`); `mcp.detected` z
+configu służy jako prefill raportu i fallback, gdy sprawdzenia runtime nie da się wykonać.
+Brak kanału generuje ostrzeżenie. Obligacja groundingu pozostaje
 intencją realizowaną best-effort z dostępnych kanałów (np. sam codebase-memory). Wymiar
 walidacji „Ugruntowanie" nadal raportuje braki cytatów jako faile — degradacja nie ukrywa
 luk, tylko odnotowuje ograniczoną zdolność ich zamknięcia.

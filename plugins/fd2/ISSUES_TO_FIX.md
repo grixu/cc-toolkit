@@ -5,7 +5,7 @@ względem oficjalnej dokumentacji Claude Code (workflows, sub-agents) i aktualny
 limitów modeli. Status per pozycja: `[ ]` otwarte / `[x]` rozstrzygnięte (dopisać
 decyzję i miejsce zmiany).
 
-Priorytet domknięć: **C1–C8 → D1–D5** (A i B rozstrzygnięte 2026-07-04).
+Priorytet domknięć: **D1–D5** (A, B i C rozstrzygnięte 2026-07-04).
 
 ---
 
@@ -201,31 +201,70 @@ Priorytet domknięć: **C1–C8 → D1–D5** (A i B rozstrzygnięte 2026-07-04)
 
 ## C. Problemy procesowe / edge case'y
 
-- [ ] **C1. `/to-prs`: „liniowa historia" zbyt optymistyczna.** Fale napraw dokładają
+- [x] **C1. `/to-prs`: „liniowa historia" zbyt optymistyczna.** Fale napraw dokładają
   commity taska A po commitach B/C → commity taska nieciągłe → partycja na stacked
   branches wymaga cherry-picków z reorderingiem → konflikty. Brak zdefiniowanej
   strategii merge taska do feature brancha (ff / merge commit / squash). Rozważyć:
   squash-merge per task + commity naprawcze squashowane do „swojego" taska.
-- [ ] **C2. Fale nie uwzględniają overlapu plikowego.** `/implement` planuje fale czysto
+  **Decyzja (2026-07-04): squash-merge per task + autosquash napraw.** Merge taska =
+  1 commit z trailerem `Task:` (rationale w body, kawałki zostają w worktree); naprawa =
+  fixup wciągany autosquashem przy domknięciu fali (drzewo końcowe identyczne → verdykt
+  CI ważny; konflikt → osobny commit z trailerem). `/to-prs`: reorder-rebase całych
+  commitów tasków pod grupowanie (konflikt → HIL), branche PR = pointery w liniową
+  historię, po rebase aktualizacja `impl.commits` w manifeście — SHA spójne ze
+  ship-detekcją (A1). Zmiany: `COMMAND_IMPLEMENT.md` §4/§5/§7/§8, `COMMAND_TO_PRS.md`
+  §4/§6/§7, `SPEC.md` §5.5.
+- [x] **C2. Fale nie uwzględniają overlapu plikowego.** `/implement` planuje fale czysto
   topologicznie z SC; dwa taski tej samej fali na tych samych plikach = przewidywalny
   konflikt merge. Tanie ulepszenie: serializacja tasków o przecinających się zbiorach
   plików w obrębie fali (dane w `codeDeps`/`produces`).
-- [ ] **C3. Per-task walidacja AC przy `covers` wiele-do-wielu.** AC rozpięte na kilka
+  **Decyzja (2026-07-04): serializacja po footprintcie.** Goal liczy przewidywany
+  footprint plikowy per task (`codeDeps` + treść taska, best-effort); przecinające się →
+  serializacja wewnątrz fali, rozłączne równolegle; heurystyka — resztę łapie bramka
+  merge → fala napraw. Zmiany: `COMMAND_IMPLEMENT.md` §4/§7.
+- [x] **C3. Per-task walidacja AC przy `covers` wiele-do-wielu.** AC rozpięte na kilka
   tasków nieweryfikowalne przed merge reszty fali. Doprecyzować: co sprawdza bramka per
   task, a co per fala (pełne AC).
-- [ ] **C4. `groundingDegraded` z `mcp.detected`** to snapshot z `/config`; MCP mogą
+  **Decyzja (2026-07-04): per task = AC pokryte w całości przez task; per fala = AC
+  domykane falą** (te, których ostatni producent właśnie się scalił; AC wielo-falowe
+  domyka fala ostatniego producenta). Zmiany: `COMMAND_IMPLEMENT.md` §4/§8,
+  `SPEC.md` §5.5.
+- [x] **C4. `groundingDegraded` z `mcp.detected`** to snapshot z `/config`; MCP mogą
   dojść/zniknąć później. Liczyć at runtime z faktycznie dostępnych narzędzi; config jako
   fallback.
-- [ ] **C5. Źródła-URL w `sources/`** — zdefiniować format snapshotu (scrape do md?
+  **Decyzja (2026-07-04): jak proponowano.** Flaga pochodna liczona at runtime z
+  osiągalności firecrawl/context7 w sesji; `mcp.detected` = snapshot-prefill/fallback.
+  Zmiany: `RESEARCHER.md` §6, `COMMAND_CONFIG.md` (polityka MCP), `config.example.jsonc`.
+- [x] **C5. Źródła-URL w `sources/`** — zdefiniować format snapshotu (scrape do md?
   URL + hash treści?); bez tego check „odwołania wczytywalne" nieokreślony dla web-źródeł.
-- [ ] **C6. Bounded context przy cross-feature** — feature należy do dokładnie 1 BC, ale
+  **Decyzja (2026-07-04): snapshot md + metadane.** Scrape (firecrawl) do
+  `sources/web/<slug>.md` z frontmatterem `{url, retrievedAt, contentHash}` (hash wg
+  kontraktu §2.6); walidacja czyta snapshot offline; drift-check = ewentualne przyszłe
+  rozszerzenie. Zmiany: `RESEARCHER.md` §5, `SPEC.md` §4.1.
+- [x] **C6. Bounded context przy cross-feature** — feature należy do dokładnie 1 BC, ale
   konsumuje elementy z innego BC; którego `CONTEXT.md` używa grill? Nieopisane.
-- [ ] **C7. Kolizja nazw komend z v1** (`feature-delivery` i `fd2` zainstalowane razem):
+  **Decyzja (2026-07-04): tylko własny BC.** Grill/taski X używają `CONTEXT.md` własnego
+  BC; konsumpcja cross-BC przechodzi przez wersjonowany kontrakt `Y#EL@vN` (treść
+  kopiowana — samodzielność); researcher może read-only zajrzeć do specu/manifestu Y.
+  Zmiany: `CROSS_FEATURE.md` §1.
+- [x] **C7. Kolizja nazw komend z v1** (`feature-delivery` i `fd2` zainstalowane razem):
   `/start`, `/implement` kolidują → prefiks plugin-name psuje UX z dokumentów.
   Zaplanować migrację/deprecjację v1 albo nazwy typu `/fd:start`.
-- [ ] **C8. `config.example.jsonc` niekompletny:** brak sekcji `implement` (próg `K`,
+  **Decyzja (2026-07-04): plugin `fd` + deprecjacja v1.** Docs potwierdzają: komendy
+  pluginów są zawsze namespace'owane `/nazwa-pluginu:komenda` („cannot conflict with
+  other levels") — twardej kolizji brak. Namespace v2 = `fd` (`/fd:start`…); w
+  dokumentach skróty `/grill` = `/fd:grill`; katalog `plugins/fd2/` → do zmiany nazwy
+  przy implementacji (D1); v1 `feature-delivery` deprecated w marketplace przy release
+  v2 + nota migracyjna w README. Zmiany: `SPEC.md` §3.
+- [x] **C8. `config.example.jsonc` niekompletny:** brak sekcji `implement` (próg `K`,
   granularność commita — wskazane w `COMMAND_IMPLEMENT.md` jako kandydaci), polityki
   sprzątania worktree, nazwy feature brancha (A4), fallbacku workflow (B2).
+  **Decyzja (2026-07-04):** dopisane `implement.maxRepairIterations` (K, default 3),
+  `implement.engine` (`workflow` z auto-fallbackiem | `subagents` wymuszony),
+  `implement.worktreeCleanup` (`always` | `keep-failed`); `branchTemplate` był z A4.
+  Granularność commita nie jest knobem — po C1 stała (1 commit = task na feature
+  branchu, kawałki w worktree). Zmiany: `config.example.jsonc`,
+  `COMMAND_IMPLEMENT.md` §3/§4/§5.
 
 ---
 

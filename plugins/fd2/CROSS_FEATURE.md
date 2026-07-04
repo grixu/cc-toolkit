@@ -38,6 +38,15 @@ W obrębie workspace'u ref po **slug** (stabilny; path wyliczalny z layoutu
 `docs/features/<slug>/`). `path + hash` jako forma przenośna dla specu spoza
 workspace'u / repo. Pin zawsze zawiera `specHash`.
 
+### Bounded context konsumenta
+
+Funkcjonalność należy do dokładnie jednego BC (`COMMAND_CONFIG.md`); grill i taski X
+używają wyłącznie `CONTEXT.md` **własnego** BC. Konsumpcja elementu z innego BC nie
+wciąga obcego `CONTEXT.md` — przechodzi przez wersjonowany kontrakt `Y#EL@vN`, którego
+istotna treść i tak jest kopiowana do specu / tasków X (samodzielność). Researcher może
+read-only zajrzeć do specu / manifestu Y, by ugruntować kontrakt, ale model domenowy
+pozostaje ograniczony do własnego BC.
+
 ---
 
 ## 2. Topologia emergentna + widok liczony

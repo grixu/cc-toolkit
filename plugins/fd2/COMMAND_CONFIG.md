@@ -53,8 +53,10 @@ pole zasili CI-flow w implementacji. Po cichu nic nie zgadujemy.
 
 ### Polityka MCP
 
-firecrawl + context7 zalecane, nie twardo wymagane; brak → ostrzeżenie +
-`groundingDegraded: true` (skutki — `RESEARCHER.md` §6).
+firecrawl + context7 zalecane, nie twardo wymagane; brak → ostrzeżenie.
+`groundingDegraded` nie jest polem configu — to flaga pochodna liczona at runtime z
+faktycznej osiągalności narzędzi; `mcp.detected` jest snapshotem-prefillem / fallbackiem
+(`RESEARCHER.md` §6).
 
 ### Rejestr bounded contextów
 

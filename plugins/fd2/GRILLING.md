@@ -77,7 +77,8 @@ do subagentów** (`RESEARCHER.md`): główna pętla grilla pozostaje lekka, a su
 zwracają `{fakt, cytat, źródło}`, które zasilają `sources-map.json`. Fan-out N (lub
 zbatchowanych) subagentów daje równoległość i oszczędza kontekst grilla.
 
-Brak MCP groundingu → `groundingDegraded: true` + ostrzeżenie; obligacja pozostaje
+Brak MCP groundingu → `groundingDegraded` (flaga pochodna liczona at runtime z
+osiągalności narzędzi — `RESEARCHER.md` §6) + ostrzeżenie; obligacja pozostaje
 intencją (best-effort).
 
 ---

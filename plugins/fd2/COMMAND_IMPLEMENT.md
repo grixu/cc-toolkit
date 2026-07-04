@@ -45,13 +45,27 @@ CI + CR), z atomowymi, rewertowalnymi commitami i samonaprawczą pętlą.
   `disableWorkflows`) wykrywa `/config`, a `/implement` weryfikuje na wejściu. Brak →
   **degradacja do subagentów**: taski fali uruchamiane równolegle przez Agent tool z
   izolacją worktree, bramki i stan identyczne; degradacja jest raportowana, nie blokuje.
+  Tryb subagentowy można też wymusić configiem (`implement.engine: "subagents"`).
 
 ---
 
 ## 4. Fala i bramki
 
 **Izolacja:** jeden **worktree per task**, taski w fali równolegle, merge do feature
-brancha. `state.json.waveInProgress` zaznacza falę w locie. Run workflow nie przeżywa
+brancha. `state.json.waveInProgress` zaznacza falę w locie.
+
+**Merge taska = squash:** feature branch dostaje **1 commit per task**, z trailerem
+`Task: <id>` i rationale decyzji zebranym w body; granularne commity kawałków zostają w
+worktree. Jednostką rewertu na feature branchu jest task, a liniowa historia
+1-commit-per-task w kolejności topologicznej jest tym, co `/to-prs` tnie na stos
+(`COMMAND_TO_PRS.md` §4). Sprzątanie worktree po tasku wg `implement.worktreeCleanup`
+(`always` | `keep-failed`); recovery po restarcie sprząta zawsze.
+
+**Overlap plikowy w fali:** przed startem fali goal liczy przewidywany footprint plikowy
+per task (`codeDeps` + pliki wskazane w treści taska, best-effort); taski o przecinających
+się footprintach są **serializowane wewnątrz fali** (kolejny startuje z feature brancha po
+merge poprzedniego), rozłączne biegną równolegle. Footprint to heurystyka — konflikt,
+który się prześliźnie, i tak łapie bramka merge → fala napraw. Run workflow nie przeżywa
 restartu sesji, więc recovery zakłada zimny start: `true` na wejściu (re-entry) ⇒ goal
 **sprząta worktree i uruchamia falę ponownie jako nowy run** od stanu z dysku (manifest +
 statusy tasków) — nie „dokańcza" starego runu.
@@ -62,13 +76,17 @@ następny `/to-tasks` (re-entry `/implement` wykryje drift i zablokuje — `SPEC
 nie bieżąca fala. To utrzymuje falę spójną wobec jednego `spec_hash`.
 
 **Bramki task → fala:**
-- *Per task, przed merge:* walidacja AC + **lint tylko zmienionych / utworzonych plików**.
-  Pass → merge do feature brancha.
-- *Per fala, po merge:* pełne **CI (lint + test + build)** na feature branchu.
+- *Per task, przed merge:* walidacja **AC pokrytych w całości przez task** + **lint tylko
+  zmienionych / utworzonych plików**. Pass → merge do feature brancha. AC rozpięte na >1
+  task (`covers` wiele-do-wielu) nie są tu weryfikowalne — czekają na bramkę fali.
+- *Per fala, po merge:* pełne **CI (lint + test + build)** na feature branchu + walidacja
+  **AC domykanych tą falą** — tych, których ostatni task-producent właśnie się scalił
+  (AC rozpięty na wiele fal domyka się w fali ostatniego producenta).
 - *Po CI:* **code review** przez skonfigurowane skille (może być >1).
 
-**Rewertowalność:** implementacja taska commitowana **atomowo, co kawałek**, z rationale
-decyzji w treści commita → user cofa zmiany atomowo.
+**Rewertowalność:** w worktree implementacja commitowana **atomowo, co kawałek**, z
+rationale w treści commita; po squashu jednostką rewertu na feature branchu jest **task**
+(rationale kawałków przeżywa w body commita taska).
 
 ---
 
@@ -80,13 +98,17 @@ zrozumienia problemu. Kolejna iteracja workflow uruchamia falę zawierającą **
 taski naprawcze**, każdy z: oryginalny task + zebrana diagnoza.
 
 **Taski naprawcze** są efemerycznymi artefaktami iteracji: **nie** są nowymi węzłami SC,
-nie dostają ID elementów, referują oryginalny task; commitują atomowo; wynik przywraca
-status oryginału ku `implemented` + zielone bramki. Nie mylić z trwałym taskiem
-korygującym (ten powstaje po shipie).
+nie dostają ID elementów, referują oryginalny task; wynik przywraca status oryginału ku
+`implemented` + zielone bramki. Na feature branch wchodzą jako **fixup do commita swojego
+taska** — przy domknięciu fali napraw autosquash wciąga go w oryginalny commit (drzewo
+końcowe identyczne, więc verdykt CI fali pozostaje ważny); konflikt autosquashu → osobny
+commit z tym samym trailerem `Task:` (partycja `/to-prs` obejmuje wtedy >1 commit taska).
+Nie mylić z trwałym taskiem korygującym (ten powstaje po shipie).
 
 **Eskalacja:** po K nieudanych iteracjach napraw tego samego taska → **HIL** (nie pętlimy
-w nieskończoność); goal raportuje nierozwiązywalny task. Próg `K` i granularność „kawałka"
-commita to kandydaci do `fd-config.json`.
+w nieskończoność); goal raportuje nierozwiązywalny task. Próg `K` =
+`implement.maxRepairIterations` w `fd-config.json`; granularność commita na feature
+branchu jest stała (1 commit = task, §4) — kawałki żyją w worktree.
 
 ---
 
@@ -108,7 +130,8 @@ entry → guard(config) → reconcile-detect(hashe + ship) ──drift──→ 
       → enforce(readiness.tasks, upstream delivered)
       → goal (main thread) { for wave in topo(SC):
             run = Workflow(fala) | fallback: subagenty + worktree
-                  [parallel worktrees → per-task AC+lint → merge → per-wave CI → CR]
+                  [worktrees (overlap → serializacja) → per-task AC+lint
+                   → squash-merge → per-wave CI + AC domykane falą → CR]
             → pass → next wave | fail → diagnoza → run(fala napraw)
             → HIL między runami }
       → all tasks implemented + AC met → checkpoint
@@ -128,8 +151,8 @@ do czasu naprawy lub eskalacji.
 | Brak / niepoprawny config | block |
 | Drift specu / tasków w detekcji (bez apply) | block |
 | Enforcement DoR tasków + upstream `delivered` | block |
-| Per-task AC + lint zmian przed merge | block |
-| Per-fala pełne CI (lint + test + build) | block |
+| Per-task AC (pokryte w całości) + lint zmian przed merge | block |
+| Per-fala pełne CI (lint + test + build) + AC domykane falą | block |
 | Post-CI code review (≥1 skill) | gate |
 | K-iter fail — eskalacja | HIL |
 

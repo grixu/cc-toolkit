@@ -168,6 +168,12 @@ sterowanie (patrz §5.1).
 | `/to-prs` | Wycięcie stacked-PR z feature brancha do ludzkiego CR | `COMMAND_TO_PRS.md` |
 | `/status` | Read-only wgląd w stan funkcjonalności | `COMMAND_STATUS.md` |
 
+Nazwa pluginu — a więc **namespace komend** — to **`fd`**: komendy wywołuje się jako
+`/fd:config`, `/fd:grill`… (Claude Code zawsze namespace'uje komendy pluginów nazwą
+pluginu, więc kolizja z v1 `feature-delivery` nie występuje). W dokumentach piszemy
+krótko `/grill` = `/fd:grill`. Przy release v2 plugin v1 zostaje oznaczony jako
+deprecated w marketplace, z notą migracyjną w README.
+
 Grill jest blokiem współdzielonym przez `/start`, `/from-docs` i `/grill`, wykonywanym
 w **main thread** komendy — pętla stoi na pytaniach do usera, a `AskUserQuestion` jest
 w subagentach niedostępne (`GRILLING.md`); grounding jest współdzielonym subagentem
@@ -198,7 +204,7 @@ docs/features/<slug>/
   sc-map.json          # mapa SC (projekcja, liczona skryptem)
   sources-map.json     # proweniencja claim → źródło
   CONTEXT.md           # model domenowy per-feature
-  sources/             # skopiowane ADR / research / docs (/from-docs)
+  sources/             # skopiowane źródła usera + snapshoty web (sources/web/ — RESEARCHER.md §5)
   adr/                 # ADR per-feature
   tasks/
     T-001.md ...
@@ -404,12 +410,13 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Walidacja tasków (DoR) | `/to-tasks` — ogon | block → verdykt |
 | Drift specu / tasków w detekcji (bez apply) | `/implement` — wejście | block |
 | Enforcement DoR tasków | `/implement` — wejście | block |
-| Per-task AC + lint zmian przed merge | `/implement` | block |
-| Per-fala pełne CI (lint + test + build) | `/implement` | block |
+| Per-task AC (pokryte w całości) + lint zmian przed merge | `/implement` | block |
+| Per-fala pełne CI (lint + test + build) + AC domykane falą | `/implement` | block |
 | Post-CI code review (≥1 skill) | `/implement` | gate |
 | K-iter fail — eskalacja | `/implement` | HIL |
 | Manual PR grouping | `/to-prs` | HIL |
 | Niezmiennik składalności (buildability) | `/to-prs` | block |
+| Konflikt reorder-rebase | `/to-prs` | HIL |
 
 ---
 
