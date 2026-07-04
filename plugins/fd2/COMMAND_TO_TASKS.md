@@ -105,6 +105,8 @@ utrzymuje w rozmiarze recenzowalnym przez człowieka.
   wszystkie jego elementy mają producenta. Element pozostaje 1:1 z taskiem.
 - **Kohezja vs fundament** → współdzielenie wygrywa (wynosimy), bo one-producer jest
   twardy.
+- **Trywialny spec** (jeden element / jedno AC) → jeden task, SC bez krawędzi;
+  walidacje przebiegają normalnie (pokrycie 1:1), nic nie jest skracane.
 
 ---
 

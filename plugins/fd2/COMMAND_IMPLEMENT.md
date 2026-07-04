@@ -65,7 +65,10 @@ worktree. Jednostką rewertu na feature branchu jest task, a liniowa historia
 per task (`codeDeps` + pliki wskazane w treści taska, best-effort); taski o przecinających
 się footprintach są **serializowane wewnątrz fali** (kolejny startuje z feature brancha po
 merge poprzedniego), rozłączne biegną równolegle. Footprint to heurystyka — konflikt,
-który się prześliźnie, i tak łapie bramka merge → fala napraw. Run workflow nie przeżywa
+który się prześliźnie, i tak łapie bramka merge → fala napraw.
+
+**Trywialny ficzer:** 1 task → 1 fala z 1 taskiem — jeden worktree, zero równoległości;
+silnik i bramki bez zmian (run workflow albo pojedynczy subagent w fallbacku). Run workflow nie przeżywa
 restartu sesji, więc recovery zakłada zimny start: `true` na wejściu (re-entry) ⇒ goal
 **sprząta worktree i uruchamia falę ponownie jako nowy run** od stanu z dysku (manifest +
 statusy tasków) — nie „dokańcza" starego runu.

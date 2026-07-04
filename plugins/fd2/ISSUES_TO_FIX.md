@@ -5,7 +5,8 @@ względem oficjalnej dokumentacji Claude Code (workflows, sub-agents) i aktualny
 limitów modeli. Status per pozycja: `[ ]` otwarte / `[x]` rozstrzygnięte (dopisać
 decyzję i miejsce zmiany).
 
-Priorytet domknięć: **D1–D5** (A, B i C rozstrzygnięte 2026-07-04).
+Wszystkie sekcje (A–D) rozstrzygnięte 2026-07-04. Otwarte pozostają zadania
+implementacyjne wskazane w decyzjach (m.in. pliki formatów z B4, rename katalogu z C7).
 
 ---
 
@@ -270,19 +271,42 @@ Priorytet domknięć: **D1–D5** (A, B i C rozstrzygnięte 2026-07-04).
 
 ## D. Braki kompletności zestawu dokumentów
 
-- [ ] **D1. Mapowanie spec → struktura pluginu.** Które `COMMAND_*` → `commands/*.md`;
+- [x] **D1. Mapowanie spec → struktura pluginu.** Które `COMMAND_*` → `commands/*.md`;
   GRILLING/RESEARCHER → `agents/` czy `references/` (po B1: grill = references,
   researcher = agents); jakie skrypty w `scripts/`. Pierwsza rzecz potrzebna do
   implementacji.
-- [ ] **D2. Schematy JSON artefaktów:** `sources-map.json` (jawnie otwarty,
+  **Decyzja (2026-07-04): komendy jako `commands/*.md`** (tylko jawne wywołanie — bez
+  auto-inwokacji skilli; docs: „Skills are directories with SKILL.md; commands are
+  simple markdown files"). Pełna struktura `plugins/fd/`: commands/ (8 destylatów),
+  agents/ (researcher + jeden validator parametryzowany wymiarem), references/
+  (GRILLING, BUILDING_SPEC, CROSS_FEATURE, formaty), scripts/ (hasher, project-maps,
+  estimate-tokens, migrate), schemas/, tests/, evals/ — nowy `IMPLEMENTATION.md` §1.
+- [x] **D2. Schematy JSON artefaktów:** `sources-map.json` (jawnie otwarty,
   `RESEARCHER.md` §5), `sc-map.json`, `ac-map.json` — ten sam rygor co
   `feature.lock.json` / `state.json` (czytane/pisane przez skrypty i wiele komend).
-- [ ] **D3. Migracja schematu stanu.** `"schema": 1` wszędzie; brak reguły zachowania
+  **Decyzja (2026-07-04):** kanoniczne kształty wszystkich trzech zdefiniowane w
+  `IMPLEMENTATION.md` §2 (klucze angielskie, `generatedFrom` wiąże projekcję z
+  wejściem); każdy artefakt dostaje JSON Schema w `schemas/`, walidowane przez skrypty
+  przy odczycie i zapisie.
+- [x] **D3. Migracja schematu stanu.** `"schema": 1` wszędzie; brak reguły zachowania
   przy `schema` wyższym/niższym (błąd? migracja? skrypt migracyjny?).
-- [ ] **D4. Strategia testowania pluginu:** golden-testy skryptów (hasher, reconcile,
+  **Decyzja (2026-07-04): auto-migracja w górę + block w dół.** Niższy `schema` →
+  forward-only łańcuch migracji (`scripts/migrations/`, backup + raport + HIL) jako
+  część wejścia komendy; wyższy → twardy block „zaktualizuj plugin". Workspace'y v1
+  poza migracją (inny produkt, świeży start). `IMPLEMENTATION.md` §3.
+- [x] **D4. Strategia testowania pluginu:** golden-testy skryptów (hasher, reconcile,
   dekompozytor) + scenariusze e2e (np. promptfoo).
-- [ ] **D5. Trywialny ficzer:** nazwać zachowania zdegenerowane — np. `/to-prs` dla
+  **Decyzja (2026-07-04): piramida golden + smoke e2e.** Deterministyka (hasher przypadek
+  po przypadku z kontraktu §2.6, projekcje, estymator, migracje) = golden na `node:test`
+  bez zależności; e2e = promptfoo wg działającego wzorca `plugins/comment-review/evals/`
+  (prompty naturalnojęzykowe, asercje po artefaktach na dysku, nie po `skill-used`);
+  3 scenariusze smoke: /config, /start, staleness. `IMPLEMENTATION.md` §4.
+- [x] **D5. Trywialny ficzer:** nazwać zachowania zdegenerowane — np. `/to-prs` dla
   1 taska → 1 PR (nie stack).
+  **Decyzja (2026-07-04): nazwane u właścicieli** — trywialny spec → 1 task
+  (`COMMAND_TO_TASKS.md` §4), 1 task → 1 fala / 1 worktree (`COMMAND_IMPLEMENT.md` §4),
+  1 task/grupa → pojedynczy PR bez stacka (`COMMAND_TO_PRS.md` §5), pusty zbiór tasków →
+  `tasksHash: null` (`SPEC.md` §2.6); skorowidz w `IMPLEMENTATION.md` §5.
 
 ---
 

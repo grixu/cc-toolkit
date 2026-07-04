@@ -67,6 +67,8 @@ bierze wszystkie commity z jego trailerem `Task:`.
 
 ## 5. Edge cases
 
+- **Trywialny ficzer** (1 task albo 1 grupa) → stos degeneruje do **pojedynczego PR**
+  na `baseBranch` — bez stacka i bez reorder-rebase; buildability trywialnie spełniona.
 - **Overlap plikowy** dwóch slice'ów → wspólny PR albo sąsiedztwo w stosie (w stacked
   wystarczy kolejność).
 - **Fundament o dużym fan-oucie** → na dole stosu; wszystko powyżej zależy naturalnie.

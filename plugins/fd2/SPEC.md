@@ -444,3 +444,5 @@ budżet kontekstu taska `40000` tokenów (estymator — `COMMAND_TO_TASKS.md` §
   `COMMAND_TO_TASKS.md`, `COMMAND_IMPLEMENT.md`, `COMMAND_TO_PRS.md`,
   `COMMAND_STATUS.md` — po jednej na komendę.
 - `CROSS_FEATURE.md` — zależności między funkcjonalnościami (poziom programu).
+- `IMPLEMENTATION.md` — mapowanie na strukturę pluginu, schematy artefaktów JSON,
+  migracja `schema`, strategia testów.
