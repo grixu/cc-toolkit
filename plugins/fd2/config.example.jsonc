@@ -38,7 +38,8 @@
   },
 
   "tasks": {                            // dekompozycja / rozmiar taska
-    "maxContextTokens": 40000,          // pułap tnący: złożony plik taska + zależności; estymacja skryptem ~znaki/4
+    "maxContextTokens": 40000,          // pułap tnący: złożony plik taska + zależności; estymacja skryptem ~znaki/charsPerToken
+    "charsPerToken": 4,                 // dzielnik estymatora tokenów; kalibracja en=4, języki o gęstszej tokenizacji (np. pl) ≈ 3–3.5 — /config proponuje wg language.default
     "maxElements": null,                // twardy limit elementów per task; null = wyłączony
     "maxAcceptanceCriteria": null,      // twardy limit AC per task; null = wyłączony
     "granularityBias": "split"          // przy niejednoznacznej kohezji — tnij (mniejsze i więcej)
@@ -48,6 +49,7 @@
     "branchTemplate": "feat/{slug}",    // nazwa feature brancha; pierwszy run zapisuje wynik do state.json.branch
     "maxRepairIterations": 3,           // próg K: tyle nieudanych iteracji napraw taska → eskalacja HIL
     "engine": "workflow",               // "workflow" (auto-fallback do subagentów, gdy niedostępny) | "subagents" (wymuszony)
+    "worktreeSetup": [],                // komendy bootstrapu świeżego worktree (np. "pnpm install"), uruchamiane przed startem taska
     "worktreeCleanup": "always"         // "always" | "keep-failed" — zostaw worktree nieudanego taska do wglądu
   },
 

@@ -18,8 +18,9 @@ CI + CR), z atomowymi, rewertowalnymi commitami i samonaprawczą pętlą.
 - Config poprawny.
 - Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
 - **Reconcile-detekcja (wejście, bez apply):** przelicz hashe + ship-detekcja
-  (`SPEC.md` §2.4); wykryty drift specu / tasków → twardy block „uruchom `/to-tasks`".
-  `/implement` niczego nie apply'uje na taskach.
+  (`SPEC.md` §2.4); wykryty drift specu / tasków — w tym rozjazd `contentHash` pliku
+  taska (ręczna edycja generated-only — `SPEC.md` §2.6) → twardy block „uruchom
+  `/to-tasks`". `/implement` niczego nie apply'uje na taskach.
 - **Enforcement DoR tasków:** czyta `readiness.tasks` wobec świeżo policzonych hashy;
   `blocked` lub stale → odmawia, kieruje do `/grill` / `/to-tasks`.
 - **Rozszerzenie cross-feature:** każdy konsumowany `Y#EL@vN` musi być `delivered` w
@@ -56,9 +57,15 @@ brancha. `state.json.waveInProgress` zaznacza falę w locie.
 
 **Merge taska = squash:** feature branch dostaje **1 commit per task**, z trailerem
 `Task: <id>` i rationale decyzji zebranym w body; granularne commity kawałków zostają w
-worktree. Jednostką rewertu na feature branchu jest task, a liniowa historia
-1-commit-per-task w kolejności topologicznej jest tym, co `/to-prs` tnie na stos
-(`COMMAND_TO_PRS.md` §4). Sprzątanie worktree po tasku wg `implement.worktreeCleanup`
+worktree. Merge'e wykonuje **szeregowo jeden dedykowany subagent-merger** w runie fali
+(zoptymalizowany pod obsługę konfliktów): taski kończą pracę w worktree'ach równolegle,
+ale do feature brancha wchodzą sekwencyjnie — zero wyścigu o branch. Manifest
+(`feature.lock.json`: statusy, `impl.commits`) zapisuje **wyłącznie goal w main thread**
+na podstawie strukturalnych wyników runu — pojedynczy pisarz stanu. Jednostką rewertu na
+feature branchu jest task, a liniowa historia 1-commit-per-task w kolejności
+topologicznej jest tym, co `/to-prs` tnie na stos (`COMMAND_TO_PRS.md` §4). Świeży
+worktree bootstrapują komendy `implement.worktreeSetup` z configu (np. `pnpm install`)
+przed startem taska; sprzątanie po tasku wg `implement.worktreeCleanup`
 (`always` | `keep-failed`); recovery po restarcie sprząta zawsze.
 
 **Overlap plikowy w fali:** przed startem fali goal liczy przewidywany footprint plikowy
@@ -85,7 +92,9 @@ nie bieżąca fala. To utrzymuje falę spójną wobec jednego `spec_hash`.
 - *Per fala, po merge:* pełne **CI (lint + test + build)** na feature branchu + walidacja
   **AC domykanych tą falą** — tych, których ostatni task-producent właśnie się scalił
   (AC rozpięty na wiele fal domyka się w fali ostatniego producenta).
-- *Po CI:* **code review** przez skonfigurowane skille (może być >1).
+- *Po CI:* **code review** — agent CR w runie fali wywołuje skille z
+  `codeReview.skills` po nazwie przez Skill tool (może być >1); wywoływalność sprawdza
+  `/config` (skill z `disable-model-invocation: true` jest programowo niewywoływalny).
 
 **Rewertowalność:** w worktree implementacja commitowana **atomowo, co kawałek**, z
 rationale w treści commita; po squashu jednostką rewertu na feature branchu jest **task**
@@ -106,7 +115,8 @@ nie dostają ID elementów, referują oryginalny task; wynik przywraca status or
 taska** — przy domknięciu fali napraw autosquash wciąga go w oryginalny commit (drzewo
 końcowe identyczne, więc verdykt CI fali pozostaje ważny); konflikt autosquashu → osobny
 commit z tym samym trailerem `Task:` (partycja `/to-prs` obejmuje wtedy >1 commit taska).
-Nie mylić z trwałym taskiem korygującym (ten powstaje po shipie).
+Taski naprawcze istnieją wyłącznie wewnątrz `/implement` — po zakończonej implementacji
+zmiany domyka nowa funkcjonalność (`SPEC.md` §2.5).
 
 **Eskalacja:** po K nieudanych iteracjach napraw tego samego taska → **HIL** (nie pętlimy
 w nieskończoność); goal raportuje nierozwiązywalny task. Próg `K` =
@@ -119,10 +129,11 @@ branchu jest stała (1 commit = task, §4) — kawałki żyją w worktree.
 
 - **W obrębie bieżącego runu** (feature branch, przed shipem): kod dostarczony we
   wcześniejszych falach jest **mutowalny** — taski naprawcze go modyfikują.
-- **Kod z poprzednich runów / już w main:** **forward-only** (`SPEC.md` §2.5) — nie
-  przepisujemy, domyka trwały task korygujący.
-- Granica = **ship funkcjonalności** (merge feature brancha do main), nie merge taska do
-  feature brancha.
+- **Po zakończonej implementacji** (wszystkie taski `implemented` / `shipped`): kod jest
+  **forward-only** (`SPEC.md` §2.5) — ścieżka grill → to-tasks → implement jest dla tej
+  funkcjonalności zamknięta; zmiany domyka nowa funkcjonalność.
+- Ship funkcjonalności (merge feature brancha do main) wykrywa mechanicznie detekcja
+  shipu (`SPEC.md` §2.4, krok 1).
 
 ---
 
@@ -141,9 +152,10 @@ entry → guard(config) → reconcile-detect(hashe + ship) ──drift──→ 
                                         └─ K-fail → HIL(escalate)
 ```
 
-Task przechodzi `planned → ready → in-progress → implemented`; `shipped` ustawia dopiero
-detekcja shipu po merge do main (`SPEC.md` §2.4). Porażka trzyma taska poza `implemented`
-do czasu naprawy lub eskalacji.
+Task wchodzi z `/to-tasks` jako `ready`; goal ustawia `in-progress` na starcie fali i
+`implemented` po zielonych bramkach taska; `shipped` ustawia dopiero detekcja shipu po
+merge do main (`SPEC.md` §2.4). Porażka trzyma taska poza `implemented` do czasu naprawy
+lub eskalacji.
 
 ---
 

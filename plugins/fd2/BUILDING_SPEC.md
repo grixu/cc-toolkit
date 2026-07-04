@@ -84,6 +84,8 @@ Kompletności checklisty nie da się udowodnić, więc checki są pogrupowane w 
 Każdy check jest binarny **pass / fail**; każdy fail = **bloker**; verdykt wiąże się z
 `specHash` i trafia do `readiness.spec` (architektura bramek — `SPEC.md` §5). Model nie
 degraduje faili do warningów; blokadę zdejmuje wyłącznie człowiek świadomym waiverem.
+Verdykt zapisuje też `dimensionsRun` — wymiary faktycznie wykonane; zawężenie listy w
+configu jest przez to jawne w raporcie walidacji i `/status` (`SPEC.md` §5.4).
 
 ### Wymiary specu (6)
 

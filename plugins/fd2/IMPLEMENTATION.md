@@ -21,13 +21,15 @@ plugins/fd/
     researcher.md              # RESEARCHER.md; tools: firecrawl, context7, codebase-memory
     validator.md               # czysty subagent walidacji, wymiar podawany w prompcie;
                                # w tools także Agent (nested researcher — RESEARCHER.md §1)
-  references/                  # współdzielone bloki, ładowane przez ${CLAUDE_PLUGIN_ROOT}
+    copy-refresher.md          # odświeża markowane kopie fd:copy przy drifcie upstream (CROSS_FEATURE.md §1)
+    merger.md                  # szeregowe squash-merge tasków fali do feature brancha (COMMAND_IMPLEMENT.md §4)
+  references/                  # współdzielone bloki, referowane przez ${CLAUDE_SKILL_DIR} (patrz zasady mapowania)
     GRILLING.md  BUILDING_SPEC.md  CROSS_FEATURE.md
     CONTEXT-FORMAT.md  ADR-FORMAT.md   # formaty własne (B4) — do napisania
   scripts/                     # Node.js, zero zależności (SPEC.md §2.6)
     hasher.mjs                 # hashe elementów, input_hash, rollupy
     project-maps.mjs           # projekcje sc-map + ac-map (+ walidacja acykliczności)
-    estimate-tokens.mjs        # ⌈znaki / 4⌉ na złożonym pliku taska
+    estimate-tokens.mjs        # ⌈znaki / charsPerToken⌉ na złożonym pliku taska
     migrate.mjs  migrations/   # łańcuch migracji schematów (§3)
   schemas/                     # JSON Schema artefaktów (§2)
   examples/config.example.jsonc
@@ -37,8 +39,20 @@ plugins/fd/
 
 Zasady mapowania:
 
-- **`commands/` zamiast `skills/`** — komendy fd są ciężkie i mutujące; proste pliki
-  md wywołuje wyłącznie user, bez auto-inwokacji z dopasowania po description.
+- **`commands/` zamiast `skills/`** — komendy fd są ciężkie i mutujące. Uwaga
+  platformowa: komendy są scalone ze skillami i **domyślnie model-invokable** — każdy
+  plik komendy ma we frontmatterze `disable-model-invocation: true`, żeby wywołanie było
+  wyłącznie jawne (`user-invocable: false` steruje tylko widocznością w menu, nie
+  dostępem Skill toola).
+- **Ścieżki w treści komend:** pliki pluginu z wnętrza markdownu komendy referujemy
+  przez `${CLAUDE_SKILL_DIR}` (dla plugin-skilli wskazuje podkatalog skilla, nie root
+  pluginu); `${CLAUDE_PLUGIN_ROOT}` jest udokumentowany dla hooków / MCP / komend
+  skryptowych — nie dla treści skilli.
+- **Argumenty komend są 0-indeksowane:** `$0` = pierwszy argument (np. slug), `$1` =
+  drugi — inaczej niż w shellu.
+- **Wymóg Node.js:** skrypty `scripts/` wymagają `node` (LTS) u usera niezależnie od
+  stacku projektu — zapisany w README pluginu, sprawdzany w detekcji i walidacji
+  `/config` (`COMMAND_CONFIG.md` §3).
 - **`commands/*.md` to destylat, nie kopia `COMMAND_*.md`** — plik komendy jest
   wykonywalnym promptem (flow, bramki, odwołania do references/ i scripts/); zestaw
   spec pozostaje dokumentacją projektową poza runtime'em pluginu.
@@ -131,13 +145,15 @@ LLM-owe — kilkoma drogimi smoke'ami e2e.
 **Golden testy skryptów** — `node:test`, zero zależności, fixtures w `tests/fixtures/`,
 odpalane w CI repo:
 
-- **hasher**: ekstrakcja bloków (poziomy nagłówków, ostatni blok do EOF), normalizacja
+- **hasher**: gramatyka kotwicy (regex; nagłówki niepasujące i nieznane `KIND` poza
+  ekstrakcją), ekstrakcja bloków (poziomy nagłówków, ostatni blok do EOF), normalizacja
   (CRLF / CR, trailing whitespace, kolaps pustych linii, NFC — przypadki ze znakami
-  składanymi), kanoniczny `input_hash` (sortowanie kluczy, kompakt), rollupy (pusty
-  zbiór tasków → `null`) — kontrakt `SPEC.md` §2.6 przypadek po przypadku.
+  składanymi), kanoniczny `input_hash` (sortowanie kluczy, kompakt; refy intra vs
+  cross-feature), `contentHash` pliku taska, rollupy (pusty zbiór tasków → `null`) —
+  kontrakt `SPEC.md` §2.6 przypadek po przypadku.
 - **project-maps**: projekcje sc-map / ac-map z fixture-specu; cykl w SC → błąd;
   `generatedFrom` wiązane poprawnie.
-- **estimate-tokens**: ⌈znaki / 4⌉, granice budżetu.
+- **estimate-tokens**: ⌈znaki / d⌉ z konfigurowalnym `charsPerToken`, granice budżetu.
 - **migrations**: fixture w `schema: N` → oczekiwany artefakt w `N+1`; odmowa przy
   wyższym `schema`.
 

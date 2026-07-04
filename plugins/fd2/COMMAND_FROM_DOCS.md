@@ -17,12 +17,16 @@ proweniencję (efekt BYO: spec stoi na dowodach usera, bez brudzenia swojej proz
 - Config istnieje i jest poprawny.
 - Cold-start z workspace'u.
 - Wejście: ścieżki / URL-e źródeł (lub wskazanie już skopiowanych do `sources/`).
+- Re-run (istniejąca funkcjonalność): wskazanie wg `SPEC.md` §3.1 (argument `<slug>` /
+  heurystyka / HIL) + **guard zakończonej implementacji** — wszystkie taski
+  `implemented` / `shipped` → odmowa (`SPEC.md` §2.5).
 
 ---
 
 ## 3. Flow
 
-1. **Scaffold + ingest źródeł:** utwórz `docs/features/<slug>/` i `state.json`
+1. **Scaffold + ingest źródeł:** ustal `slug` (wspólny generator `/start` / `/from-docs`;
+   kolizja → HIL — `SPEC.md` §3.1), utwórz `docs/features/<slug>/` i `state.json`
    (`createdFrom: "docs"`) wg trybu z configu — w trybie shared + `per-bounded-context`
    rozwiąż BC ficzera (HIL, zapis `state.json.boundedContext`); skopiuj dostarczone
    dokumenty do `sources/`; URL-e snapshotuj do `sources/web/<slug>.md` z frontmatterem
@@ -35,7 +39,8 @@ proweniencję (efekt BYO: spec stoi na dowodach usera, bez brudzenia swojej proz
    - `sources-map.json` (claim → wyciąg ze źródła),
    - model domenowy `CONTEXT.md`.
 3. **Grill** (`GRILLING.md`): dopełnia luki wychodząc od agendy, grounding on-demand w
-   subagentach; wynik zapisany do `spec.md` (elementy z ID) + `ac-map.json`.
+   subagentach; wynik zapisany do `spec.md` (elementy z ID; linie `covers:` w blokach
+   AC) — `ac-map.json` liczy skrypt jako projekcję w kroku zapisu.
 4. **Zapis + hash** i **walidacja (ogon)** — jak w `/start` (kroki 3–4 flow: policz hashe
    elementów + `spec_hash`, zapisz manifest i `state.json.specHash`; walidacja 6 wymiarów
    → `readiness.spec`).
@@ -68,6 +73,8 @@ z bramką HIL na plan.
 | Bramka | Typ |
 |---|---|
 | Brak / niepoprawny config | block |
+| Kolizja sluga przy scaffoldzie | HIL |
+| Implementacja zakończona (re-run) | block |
 | Tryb docs (CONTEXT per-feature / shared) | HIL |
 | Wybór bounded-context (tryb shared + per-BC) | HIL |
 | Reconcile-plan przed apply (re-run) | HIL |

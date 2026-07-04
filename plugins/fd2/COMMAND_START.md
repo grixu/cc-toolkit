@@ -21,14 +21,17 @@ scaffold katalogu funkcjonalności, gotowy do `/to-tasks`.
 
 ## 3. Flow
 
-1. **Scaffold funkcjonalności:** ustal `slug`, utwórz `docs/features/<slug>/` wg trybu z
+1. **Scaffold funkcjonalności:** ustal `slug` (wspólny generator `/start` / `/from-docs`
+   — krótki, opisowy kebab-case; kolizja z istniejącym katalogiem → HIL: re-run
+   istniejącej / inny slug — `SPEC.md` §3.1), utwórz `docs/features/<slug>/` wg trybu z
    configu; zainicjuj `state.json` (`phase: "spec"`, `createdFrom: "topic"`, `language`)
    i pusty `feature.lock.json`. W trybie shared + `per-bounded-context` — rozwiązanie BC
    (HIL).
 2. **Grill** (`GRILLING.md`): temat → agenda → drążenie luk / niejasności / sprzeczności,
    z groundingiem on-demand w subagentach (`RESEARCHER.md`) i kontekstem kodu projektu.
-   Wynik: `spec.md` (elementy z ID), `ac-map.json`, `CONTEXT.md`, wpisy do
-   `sources-map.json`.
+   Wynik: `spec.md` (elementy z ID; linie `covers:` w blokach AC), `CONTEXT.md`, wpisy
+   do `sources-map.json`; `ac-map.json` liczy skrypt jako projekcję w kroku zapisu
+   (`BUILDING_SPEC.md` §2).
 3. **Zapis + hash:** policz hashe elementów i `spec_hash`; zapisz manifest (init historii
    wersji specu) i `state.json.specHash`.
 4. **Walidacja (ogon):** odpal walidację specu w osobnych czystych subagentach (6
@@ -54,6 +57,7 @@ hash i unieważnia verdykt.
 | Bramka | Typ |
 |---|---|
 | Brak / niepoprawny config | block |
+| Kolizja sluga przy scaffoldzie | HIL |
 | Wybór bounded-context (tryb shared) | HIL |
 | Walidacja spec (DoR) — ogon | block → verdykt |
 

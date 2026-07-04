@@ -18,7 +18,10 @@ bottom-up.
 
 - Config poprawny.
 - Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
-- Implementacja ukończona i po self-review całości.
+- **Kompletność implementacji (twarda bramka):** wszystkie taski w manifeście mają
+  status `implemented` / `shipped` — inaczej block („dokończ `/implement`").
+- Self-review całości wykonany przez usera (pełna kontrola człowieka, poza pluginem);
+  jego commity na feature branchu obsługuje §4.
 - Istnieją: feature branch (`state.json.branch`), mapa SC (`sc-map.json`), manifest.
 - Cold-start z workspace'u.
 
@@ -63,6 +66,11 @@ HIL); po rebase `/to-prs` **aktualizuje `impl.commits` w manifeście** — jedyn
 tej komendy. Task z naprawą, która nie wsiąkła w autosquash, ma >1 commit — partycja
 bierze wszystkie commity z jego trailerem `Task:`.
 
+**Commity spoza pętli** (self-review usera, bez trailera `Task:`): commity `--fixup` są
+wciągane autosquashem do swoich celów przed partycją; zwykłe commity → HIL przypisania
+do taska / grupy PR (wchodzą do partycji tej grupy, w kolejności zachowującej
+buildability). Partycja nie gubi żadnego commita — commit nieprzypisany = block.
+
 ---
 
 ## 5. Edge cases
@@ -75,16 +83,19 @@ bierze wszystkie commity z jego trailerem `Task:`.
 - **Task za duży na review nawet sam** → sygnał, że powinien być rozbity w dekompozycji →
   feedback do `/to-tasks` / `/grill`.
 - **Praca niezależna serializowana przez stacked** → akceptowany koszt wyboru stacked.
-- **Ludzki CR żąda zmian w niskim PR** → propaguje w górę stosu (rebase); zmiany wracają
-  jako edycja feature brancha (grill / fix-task) → re-projekcja `/to-prs`. *(pełna pętla
-  feedbacku ludzkiego CR — do domknięcia.)*
+- **Ludzki CR żąda zmian** → user wprowadza je jako commity na feature branchu (zwykłe
+  albo `--fixup` do commita taska; pełna kontrola człowieka, poza pluginem) → ponowny
+  `/to-prs` robi re-projekcję: autosquash fixupów, HIL przypisania zwykłych commitów
+  (§4), odświeżenie stosu i rebase w górę. Ścieżki grill → to-tasks → implement po
+  zakończonej implementacji nie ma (`SPEC.md` §2.5).
 
 ---
 
 ## 6. Maszyna stanów
 
 ```
-entry → guard(config) → read(branch, SC, manifest) → linearize(topo SC)
+entry → guard(config) → enforce(all tasks implemented) → read(branch, SC, manifest)
+      → absorb(fixupy → autosquash; obce commity → HIL) → linearize(topo SC)
       → group (auto | manual-HIL) → assert(buildability) ──fail──→ HIL(re-assign)
       → reorder-rebase (gdy grupowanie tego wymaga; konflikt → HIL)
       → update(manifest impl.commits) → produce PR branches (pointery)
@@ -101,6 +112,8 @@ ponowne odpalenie odświeża stos.
 | Bramka | Typ |
 |---|---|
 | Brak / niepoprawny config | block |
+| Kompletność implementacji (wszystkie taski `implemented`) | block |
+| Przypisanie obcych commitów (bez trailera `Task:`) | HIL |
 | Manual PR grouping | HIL |
 | Niezmiennik składalności (buildability) | block |
 | Konflikt reorder-rebase | HIL |

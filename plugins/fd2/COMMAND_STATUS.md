@@ -25,7 +25,9 @@ zmienia stan.
 Składa obraz z artefaktów na dysku:
 
 - **Readiness** — verdykty `readiness.spec` i `readiness.tasks` (ready / blocked + faile /
-  waivery), z informacją, czy verdykt jest aktualny wobec `specHash` (czy nie stale).
+  waivery), z informacją, czy verdykt jest aktualny wobec świeżo policzonych hashy (czy
+  nie stale) oraz które wymiary walidacji przebiegły (`dimensionsRun` — różnica wobec
+  pełnego zestawu jest raportowana).
 - **Taski** — stany: `planned` / `ready` / `in-progress` / `implemented` / `stale` /
   `dropped`; które `delivered`.
 - **Graf SC** — mapa zależności wewnątrz funkcjonalności + **widok programu** (DAG

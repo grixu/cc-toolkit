@@ -17,9 +17,10 @@ element), wygenerować acykliczną mapę SC i zwalidować taski do stanu `ready`
 
 - Config poprawny.
 - Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
-- **Enforcement DoR spec (wejście):** czyta `readiness.spec`. Jeśli `blocked` **lub**
-  `specHash` stale → odmawia, raportuje powód, kieruje do `/grill`. Konsument nie
-  re-waliduje specu po cichu.
+- **Enforcement DoR spec (wejście):** czyta `readiness.spec` wobec świeżo policzonego
+  `spec_hash` (hasher na wejściu — `SPEC.md` §2.6/§5.4). Jeśli `blocked` **lub** verdykt
+  stale → odmawia, raportuje powód, kieruje do `/grill`. Konsument nie re-waliduje specu
+  po cichu.
 - Cold-start z workspace'u; wczytuje spec / manifest on-demand.
 
 ---
@@ -41,7 +42,9 @@ Markdown z frontmatterem + autonomiczna treść.
 
 **Treść:** wszystkie informacje niezbędne do wykonania są **skopiowane** do pliku — nie
 odnosimy się do specu, ADR ani innych dokumentów, tylko wklejamy ich istotną treść. Cel:
-plik taska daje się wykonać w izolacji, bez sięgania po zewnętrzne artefakty.
+plik taska daje się wykonać w izolacji, bez sięgania po zewnętrzne artefakty. Skopiowane
+fragmenty kontraktów cross-feature są ujęte w markery `fd:copy` (`CROSS_FEATURE.md` §1) —
+drift upstream odświeża je maszynowo copy-refresher, bez pełnej regeneracji taska.
 
 ---
 
@@ -90,7 +93,9 @@ zrównoleglalne w falach, łatwe do review.
 **Szacowanie budżetu:** liczymy tokeny złożonego, autonomicznego pliku taska (frontmatter
 + skopiowane fragmenty specu + opisy konsumowanych kontraktów + AC/FR/NFR + snippet-y
 `codeDeps`). To realny kontekst wejściowy agenta implementacji. Claude Code nie
-udostępnia tokenizera, więc estymator jest zdefiniowany wprost: `tokeny ≈ ⌈znaki / 4⌉`,
+udostępnia tokenizera, więc estymator jest zdefiniowany wprost: `tokeny ≈ ⌈znaki / d⌉`,
+gdzie `d` = `tasks.charsPerToken` (default `4` — kalibracja pod angielski; dla języków o
+gęstszej tokenizacji, np. polskiego, `/config` proponuje `3–3.5` wg `language.default`);
 liczony skryptem na złożonym pliku — tani, bo plik i tak składamy przy generacji.
 Default 40k zostawia agentowi fali zapas na kod projektu i wynik narzędzi, a plik taska
 utrzymuje w rozmiarze recenzowalnym przez człowieka.
@@ -157,9 +162,14 @@ entry → guard(config) → enforce(readiness.spec) → reconcile(desired↔exis
 
 Ponowny `/to-tasks` = reconcile: dekompozytor dostaje istniejące przypisanie
 `task ↔ elementy` i zachowuje je, chyba że spec wymusi split / merge (→ HIL). Taski są
-generowane-only — user recenzuje, nie edytuje. `/to-tasks` jest **jedynym właścicielem
-zapisu plików tasków** (`SPEC.md` §2.4): `/grill` tylko markuje stale, `/implement` na
-drifcie blokuje.
+generowane-only — user recenzuje, nie edytuje; egzekwuje to `contentHash` pliku taska
+zapisywany w manifeście przy apply (`SPEC.md` §2.6). `/to-tasks` jest **jedynym
+właścicielem zapisu plików tasków** (`SPEC.md` §2.4): `/grill` tylko markuje stale,
+`/implement` na drifcie blokuje. Taski stale wyłącznie z powodu driftu upstream
+odświeża w apply subagent copy-refresher — podmienia markowane bloki `fd:copy` zamiast
+regenerować task (`CROSS_FEATURE.md` §1). Po passie walidacji tasków `/to-tasks` ustawia
+taskom status `ready`; `in-progress` ustawia dopiero `/implement` na starcie fali
+(`SPEC.md` §2.3).
 
 ---
 

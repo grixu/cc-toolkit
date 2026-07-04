@@ -20,6 +20,9 @@ historię wersji.
 
 - Config poprawny; istnieje `spec.md` + manifest funkcjonalności.
 - Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
+- **Guard zakończonej implementacji:** wszystkie taski `implemented` / `shipped` →
+  odmowa — zmiany wymagań po zakończonej implementacji domyka nowa funkcjonalność
+  (`SPEC.md` §2.5).
 - Cold-start z workspace'u (wczytuje spec, manifest, `state.json` on-demand).
 
 ---
@@ -33,8 +36,9 @@ historię wersji.
    nowe / uzupełnione bloki elementów. Grill jest świadomy ID — zachowuje istniejące,
    alokuje nowe tylko dla nowych elementów. Grounding on-demand w subagentach.
 3. **Reconcile-plan (HIL):** zdiffuj zmieniony spec, sklasyfikuj `modified`
-   breaking / non-breaking, zmapuj na akcje wobec tasków (regen-in-place / task korygujący
-   / drop / bez zmian), pokaż plan **przed apply**.
+   breaking / non-breaking, zmapuj na akcje wobec tasków (regen-in-place / drop / bez
+   zmian; element `delivered` → block, zmiana poza zakresem — `SPEC.md` §2.4), pokaż
+   plan **przed apply**.
 4. **Apply (zakres `/grill` — `SPEC.md` §2.4):** zapisz spec, zaktualizuj manifest,
    dopisz wpis do historii wersji, zbumpuj `spec_hash` i `state.json.specHash`; dotknięte
    taski markuj `stale` w manifeście — plików tasków nie przepisuj (pełny apply tasków ma
@@ -64,6 +68,7 @@ konsumentów w `stale`.
 | Bramka | Typ |
 |---|---|
 | Brak / niepoprawny config | block |
+| Implementacja zakończona (zmiany → nowa funkcjonalność) | block |
 | Reconcile-plan przed apply | HIL |
 | Walidacja spec (DoR) — ogon | block → verdykt |
 

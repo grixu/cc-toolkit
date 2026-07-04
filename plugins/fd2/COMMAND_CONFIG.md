@@ -26,8 +26,9 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
 
 0. **Wczytanie** istniejącego `.claude/fd-config.json`, jeśli jest (prefill).
 1. **Detekcja** (kolejność): stack → menedżer pakietów → build / lint / test / format →
-   CI → MCP → dostępność dynamic workflows (wersja Claude Code, plan, `disableWorkflows`).
-   Każde pole niesie `value` + `source` + `confidence`.
+   CI → MCP → dostępność dynamic workflows (wersja Claude Code, plan, `disableWorkflows`)
+   → obecność `node` (twardy wymóg skryptów pluginu, niezależny od stacku projektu —
+   `IMPLEMENTATION.md` §1). Każde pole niesie `value` + `source` + `confidence`.
 2. **Klasyfikacja pewności:** jednoznaczne → prefill; wieloznaczne (>1 kandydat) → HIL
    dezambiguacja; brak → wg polityki braków.
 3. **HIL — pełny re-ask za każdym razem:** `/config` zawsze przechodzi cały HIL, detekcja
@@ -36,8 +37,12 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
    (`per-app` / `per-bounded-context`) w trybie shared. Wyboru konkretnego
    bounded-contextu dla ficzera tu **nie** ma — dzieje się przy tworzeniu
    funkcjonalności (`/start`, `/from-docs`).
-4. **Walidacja przed zapisem:** skrypty / komendy istnieją, skill CR dostępny, ścieżki
-   storage zapisywalne, grounding MCP obecny (inaczej ostrzeżenie). Proponuje też dodanie
+4. **Walidacja przed zapisem:** skrypty / komendy istnieją (w tym
+   `implement.worktreeSetup`), `node` obecny (inaczej block — bez niego nie działa hasher
+   ani projekcje), skill CR dostępny **i wywoływalny programowo** (frontmatter bez
+   `disable-model-invocation: true` — taki skill jest nieosiągalny i dla Skill toola,
+   i dla preloadu), ścieżki storage zapisywalne, grounding MCP obecny (inaczej
+   ostrzeżenie). Proponuje też dodanie
    komend `tooling.*` do allowlisty uprawnień — workflow fali w `/implement` działa w
    `acceptEdits` i dziedziczy allowlistę, a komenda spoza niej potrafi zatrzymać run
    promptem w środku.
@@ -88,6 +93,7 @@ odpowiedziach. Brak stanu per-feature.
 | contextMode (`per-app` / `per-bounded-context`) | HIL |
 | Tryb docs (CONTEXT per-feature / shared) | HIL |
 | Krytyczny tooling niewykryty | ostrzeżenie + potwierdzenie |
+| Brak `node` (wymóg skryptów pluginu) | block → HIL |
 | Walidacja przed zapisem (ścieżki, skille, komendy) | block → HIL |
 
 Bramka „brak configu" jest egzekwowana przez **inne** komendy na wejściu — tu głęboka

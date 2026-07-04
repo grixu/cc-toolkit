@@ -78,10 +78,13 @@ Dodatkowo:
 - `stale` — tylko task nie-shipped, którego `input_hash` się rozjechał; treść regenerowana w miejscu.
 - `dropped` — element usunięty i nigdy nie dostarczony → plik taska kasowany.
 
-Przejścia do `shipped` nie wykonuje żadna komenda wprost — ustawia je **detekcja shipu**
-w reconcile (§2.4, krok 1), gdy commity taska są osiągalne z `baseBranch`. Task
-**shipped** (dostarczony do main) jest immutable — drift domyka się nowym taskiem
-korygującym, nie edycją.
+Właściciele przejść: `planned` nadaje `/to-tasks` przy generacji; `ready` ustawia
+`/to-tasks` po passie walidacji tasków (DoR); `in-progress` — `/implement` (goal) na
+starcie fali; `implemented` — `/implement` po zielonych bramkach taska. Przejścia do
+`shipped` nie wykonuje żadna komenda wprost — ustawia je **detekcja shipu** w reconcile
+(§2.4, krok 1), gdy commity taska są osiągalne z `baseBranch`. Task **shipped**
+(dostarczony do main) jest immutable — drift dostarczonej pracy jest poza zakresem tej
+funkcjonalności i domyka go nowa funkcjonalność (§2.5).
 
 ### 2.4 Reconcile — współdzielona operacja
 
@@ -92,15 +95,19 @@ i **apply** (kroki 7–8); detekcja jest wspólna, zakres apply zależy od komen
 1. **Detekcja shipu:** dla tasków `implemented` sprawdź osiągalność ich commitów
    (`impl.commits`) z `baseBranch` (`git merge-base --is-ancestor`). Osiągalne → flip
    `implemented → shipped` oraz `pending → delivered` (+ `deliveredHash`) dla
-   produkowanych elementów. Nieosiągalne, ale treść wygląda na scaloną (np. squash-merge)
-   → HIL. Flip statusów to synchronizacja z rzeczywistością gita — wykonuje ją każda
-   komenda wołająca reconcile; nie rusza `input_hash` ani verdyktów DoR.
+   produkowanych elementów. Nieosiągalne → porównaj patch-id commitów taska z historią
+   `baseBranch` (`git patch-id` / `git cherry`); dopasowanie = podejrzenie squash-merge
+   → HIL — **zbiorczy** (jedna decyzja potwierdza wiele tasków naraz; przy polityce repo
+   „squash and merge" to ścieżka regularna, nie wyjątek). Flip statusów to synchronizacja
+   z rzeczywistością gita — wykonuje ją każda komenda wołająca reconcile; nie rusza
+   `input_hash` ani verdyktów DoR.
 2. Parsuj spec → hashe elementów → rollup.
 3. Diff wobec manifestu: added / removed / modified / unchanged per element.
 4. Klasyfikuj `modified` breaking / non-breaking (zachowawczo: modyfikacja kontraktu =
    breaking, chyba że dowodnie addytywna; override przez HIL).
-5. Mapuj zmienione elementy → taski → akcje: regen-in-place / task korygujący / task
-   usuwający / drop / bez zmian.
+5. Mapuj zmienione elementy → taski → akcje: regen-in-place / drop / bez zmian. Zmiana
+   lub usunięcie elementu `delivered` → **block**: taka zmiana jest poza zakresem tej
+   funkcjonalności — domyka ją nowa funkcjonalność (§2.5).
 6. Propaguj po DAG (przez `input_hash`).
 7. **Bramka HIL:** pokaż `reconcile plan` przed apply.
 8. Apply — zakres per komenda:
@@ -113,12 +120,13 @@ i **apply** (kroki 7–8); detekcja jest wspólna, zakres apply zależy od komen
 
 ### 2.5 Forward-only
 
-Dostarczonej pracy nigdy nie przepisujemy. Kod z poprzednich runów / już w main jest
-forward-only: drift domyka trwały task korygujący (jak migracja). Wyjątek dotyczy
-**wnętrza bieżącego runu** `/implement` (przed shipem funkcjonalności) — tam wcześniejsze
-fale są mutowalne przez taski naprawcze. Granicą jest **ship funkcjonalności** (merge
-feature brancha do main), nie merge taska do feature brancha; granicę wykrywa mechanicznie
-detekcja shipu w reconcile (§2.4, krok 1).
+Dostarczonej pracy nigdy nie przepisujemy — i nie ma pętli powrotnej po zakończonej
+implementacji: gdy wszystkie taski funkcjonalności są `implemented` / `shipped`, ścieżka
+grill → to-tasks → implement jest dla niej zamknięta (guard na wejściu `/grill` i re-run
+`/from-docs`), a zmiany wymagań domyka **nowa funkcjonalność** — nowy spec, który może
+konsumować kontrakty starej (`CROSS_FEATURE.md`). Wewnątrz bieżącego runu `/implement`
+wcześniejsze fale są mutowalne przez taski naprawcze. Ship funkcjonalności (merge feature
+brancha do main) wykrywa mechanicznie detekcja shipu w reconcile (§2.4, krok 1).
 
 Tożsamość tasku jest deterministycznym kluczem po zbiorze produkowanych elementów —
 ponowny `/to-tasks` jest reconcile, nie generacją od zera; dopasowanie desired ↔ existing
@@ -130,10 +138,15 @@ Hashe liczy wyłącznie **skrypt** (`scripts/`, Node.js, bez zależności zewnę
 LLM nigdy nie liczy hasha. Skrypt woła na wejściu każda komenda, także `/status`
 (raport staleness wymaga świeżych hashy; samo liczenie jest read-only).
 
-**Ekstrakcja bloku:** blok elementu zaczyna się linią nagłówka z kotwicą
-(`#### <ID> — <tytuł>`) i sięga do następnego nagłówka o poziomie ≤ poziomowi kotwicy
-albo końca pliku. Linia nagłówka **wchodzi w treść bloku** — zmiana tytułu zmienia hash;
-o wadze zmiany decyduje klasyfikacja breaking / non-breaking (§2.4, krok 4), nie hash.
+**Ekstrakcja bloku:** blok elementu zaczyna się linią nagłówka z kotwicą i sięga do
+następnego nagłówka o poziomie ≤ poziomowi kotwicy albo końca pliku. Kotwicę definiuje
+regex `^(#{1,6}) ([A-Z]{2,10})-([1-9][0-9]*) — ` (np. `#### DB-3 — Tabela użytkowników`);
+nagłówki niepasujące do wzorca nie są elementami. Słownik `KIND` = klucze `idCounters`
+manifestu: nagłówek pasujący do wzorca, lecz z `KIND` spoza słownika, nie zakłada po
+cichu nowego rodzaju — flaguje go walidacja „Spójność strukturalna" → HIL (zaakceptuj
+nowy `KIND` → dopis do `idCounters`, albo popraw literówkę). Linia nagłówka **wchodzi w
+treść bloku** — zmiana tytułu zmienia hash; o wadze zmiany decyduje klasyfikacja
+breaking / non-breaking (§2.4, krok 4), nie hash.
 
 **Normalizacja treści bloku**, w kolejności: (1) końce linii CRLF / CR → LF; (2) usuń
 trailing whitespace każdej linii; (3) skolapsuj sekwencje pustych linii do jednej;
@@ -143,12 +156,23 @@ SHA-256 bajtów UTF-8 znormalizowanej treści, zapisywany jako `sha256:<hex>`.
 **Kanoniczna serializacja `input_hash(task)`:** JSON
 `{"consumes":{"<ref>":"<hash>"},"covers":{"<ID>":"<hash>"},"produces":{"<ID>":"<hash>"}}`
 z kluczami posortowanymi leksykograficznie na każdym poziomie, kompaktowy (bez
-whitespace), UTF-8 → SHA-256. Hash konsumowanego kontraktu = bieżący hash elementu z
-manifestu.
+whitespace), UTF-8 → SHA-256. Hash konsumowanego kontraktu: dla refów intra
+(`T::EL@vN`) — bieżący hash elementu z własnego manifestu; dla refów cross-feature
+(`slug#EL@vN`) — bieżący hash elementu z manifestu Y (live-read w workspace); dla specu
+spoza workspace'u (forma `path + hash`) — hash z pinu `upstream`. Non-breaking zmiana
+konsumowanego elementu upstream rusza więc `input_hash` konsumenta — celowo: wymusza
+odświeżenie skopiowanej treści kontraktu (markery `fd:copy` — `CROSS_FEATURE.md` §1).
 
 **Rollupy:** `spec_hash` = SHA-256 kanonicznego JSON `{"<ID>":"<hash>"}` po wszystkich
 elementach; `tasksHash` analogicznie po `{"<ID taska>":"<input_hash>"}`. Brak tasków →
 `tasksHash: null`, nie hash pustej mapy.
+
+**Integralność pliku taska:** przy zapisie taska `/to-tasks` liczy `contentHash` = hash
+znormalizowanej (jak wyżej) pełnej treści pliku i zapisuje go w manifeście
+(`tasks[].contentHash`). Treść taska nie wchodzi w `input_hash` (ten wiąże wejścia
+projekcji), więc bez `contentHash` ręczna edycja „generated-only" pliku byłaby
+niewykrywalna; rozjazd `contentHash` jest driftem tasków — reconcile-detekcja traktuje
+go jak każdy inny drift (`/implement` → twardy block „uruchom `/to-tasks`").
 
 ---
 
@@ -171,8 +195,8 @@ sterowanie (patrz §5.1).
 Nazwa pluginu — a więc **namespace komend** — to **`fd`**: komendy wywołuje się jako
 `/fd:config`, `/fd:grill`… (Claude Code zawsze namespace'uje komendy pluginów nazwą
 pluginu, więc kolizja z v1 `feature-delivery` nie występuje). W dokumentach piszemy
-krótko `/grill` = `/fd:grill`. Przy release v2 plugin v1 zostaje oznaczony jako
-deprecated w marketplace, z notą migracyjną w README.
+krótko `/grill` = `/fd:grill`. Plugin v1 (`feature-delivery`) pozostaje nietknięty —
+v2 to osobny produkt, bez migracji i bez zmian w v1.
 
 Grill jest blokiem współdzielonym przez `/start`, `/from-docs` i `/grill`, wykonywanym
 w **main thread** komendy — pętla stoi na pytaniach do usera, a `AskUserQuestion` jest
@@ -184,10 +208,15 @@ budowania specu — `BUILDING_SPEC.md`; zależności między funkcjonalnościami
 ### 3.1 Wskazanie funkcjonalności
 
 Komendy działające na istniejącej funkcjonalności (`/grill`, `/to-tasks`, `/implement`,
-`/to-prs`, `/status`) przyjmują **opcjonalny argument `<slug>`**. Bez argumentu, w
-kolejności: dokładnie jedna funkcjonalność w `<featuresRoot>` → bierzemy ją; inaczej
-dopasowanie po bieżącym branchu (`state.json.branch`, §4.4); inaczej wybór z listy (HIL).
-Cold-start (§5.1) wyklucza „funkcjonalność z poprzedniej komendy".
+`/to-prs`, `/status`, a także `/from-docs` w trybie re-run) przyjmują **opcjonalny
+argument `<slug>`**. Bez argumentu, w kolejności: dokładnie jedna funkcjonalność w
+`<featuresRoot>` → bierzemy ją; inaczej dopasowanie po bieżącym branchu
+(`state.json.branch`, §4.4); inaczej wybór z listy (HIL). Cold-start (§5.1) wyklucza
+„funkcjonalność z poprzedniej komendy".
+
+Slug nadają `/start` i `/from-docs` **wspólnym mechanizmem**: krótki, opisowy kebab-case
+wyprowadzony z tematu / źródeł. Kolizja z istniejącym katalogiem funkcjonalności → HIL:
+kontynuuj jako re-run istniejącej albo podaj inny slug.
 
 ---
 
@@ -220,8 +249,9 @@ user-editable pliku `bounded-contexts.json` (patrz `COMMAND_CONFIG.md`).
 ### 4.3 Schemat ID — płaski `<KIND>-<n>`
 
 - `KIND` ∈ { `DB`, `API`, `CFG`, `OBS`, `INF`, `INT`, `MOD`, `DESIGN`, `AC`, `FR`,
-  `NFR` } — rozszerzalny; słownik = lista rodzajów elementów ze specu. Prefiks działa
-  jak checklista kompletności.
+  `NFR` } — rozszerzalny; słownik żyje w kluczach `idCounters` manifestu (zestaw wyżej
+  to seed), nowy `KIND` wchodzi przez HIL walidacji „Spójność strukturalna" (§2.6).
+  Prefiks działa jak checklista kompletności.
 - Numer append-only per `KIND` (high-water-mark w manifeście → `idCounters`).
   `idCounters` obejmuje też `T`: numery tasków są alokowane tak samo append-only
   (`identityKey` rozwiązuje tożsamość taska, licznik — alokację numerów, także po dropie).
@@ -251,7 +281,7 @@ autorytatywna i nieodtwarzalna (SHA commitów, wynik CI / CR):
     "T-004": {
       "identityKey": ["DB-3"], "produces": ["DB-3"],
       "consumes": ["T-002::API-2@v1"], "covers": ["AC-5", "FR-2"],
-      "inputHash": "…", "specHash": "…", "status": "implemented",
+      "inputHash": "…", "contentHash": "sha256:…", "specHash": "…", "status": "implemented",
       "impl": { "commits": ["a1b2c3"], "ci": "pass", "cr": "pass" }
     }
   },
@@ -323,7 +353,9 @@ bramkuje.
 Każda komenda kończy pracę, waliduje, **oddaje sterowanie** i zatrzymuje się na granicy.
 Zero auto-chainingu. Deweloper przegląda artefakt, kompaktuje / czyści kontekst i sam
 odpala następną komendę. Plugin **podpowiada** prawdopodobny następny krok (prozą), ale
-**nie proponuje jego uruchomienia**.
+**nie proponuje jego uruchomienia**. Zakaz jest egzekwowany także na poziomie platformy:
+wszystkie komendy mają we frontmatterze `disable-model-invocation: true`, więc model nie
+może ich wywołać Skill toolem — uruchamia je wyłącznie user (`IMPLEMENTATION.md` §1).
 
 Konsekwencja architektoniczna: **każda komenda cold-startuje z workspace'u** (pliki
 `.json` stanu + artefakty na dysku, ładowane on-demand) — zero polegania na kontekście
@@ -368,16 +400,24 @@ Nie ma osobnej komendy `/validate`.
 ### 5.4 Blok `readiness` (w `state.json`)
 
 `validatedHash` = snapshot, wobec którego liczono verdykt; rozjazd z bieżącym hashem
-artefaktu ⇒ verdykt stale. Wiązanie jest symetryczne: verdykt `spec` wobec
-`state.json.specHash`, verdykt `tasks` wobec `state.json.tasksHash` (§4.4). Zmiana specu
+artefaktu ⇒ verdykt stale. Staleness liczy się zawsze wobec **świeżo policzonego**
+rollupu (hasher na wejściu komendy — §2.6), nigdy wobec pól `state.json` — te po ręcznej
+edycji artefaktu same są nieaktualne. Wiązanie jest symetryczne: verdykt `spec` wobec
+bieżącego `spec_hash`, verdykt `tasks` wobec bieżącego `tasksHash` (§4.4). Zmiana specu
 bumpuje `input_hash` dotkniętych tasków → rusza `tasksHash` → verdykt tasków też staje się
 stale, więc `/implement` nie zadziała na nieaktualnym zestawie.
+
+Verdykt zapisuje też `dimensionsRun` — wymiary walidacji faktycznie wykonane (wg
+`validation.dimensions` z configu). `/status` i raport walidacji pokazują różnicę wobec
+pełnego zestawu v1, więc wyłączenie wymiaru w configu jest jawne, nie ciche.
 
 ```json
 "readiness": {
   "spec":  { "verdict": "ready|blocked", "validatedHash": "<merkle>",
+             "dimensionsRun": ["structural", "coverage", "grounding", "feasibility", "decomposability", "non-over-spec"],
              "failedChecks": [], "waivedChecks": [{ "id": "", "by": "human", "at": "" }] },
   "tasks": { "verdict": "ready|blocked", "validatedHash": "<merkle>",
+             "dimensionsRun": ["frontmatter", "self-contained", "sc-integrity", "coverage"],
              "failedChecks": [], "waivedChecks": [] }
 }
 ```
@@ -399,10 +439,12 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 |---|---|---|
 | Brak / niepoprawny config | każda komenda, wejście | block |
 | Wybór funkcjonalności (>1, brak dopasowania) | komendy per-feature, wejście (§3.1) | HIL |
+| Kolizja sluga przy scaffoldzie | `/start`, `/from-docs` — wejście (§3.1) | HIL |
 | Niejednoznaczny ship (np. squash-merge) | reconcile, krok 1 (§2.4) | HIL |
 | Wybór bounded-context (per-feature) | `/start`, `/from-docs` (tryb shared + per-BC) | HIL |
 | Tryb docs (CONTEXT per-feature / shared) | `/from-docs`, `/config` | HIL |
 | Reconcile-plan przed apply | `/from-docs` (re-run), `/grill`, `/to-tasks` | HIL |
+| Guard zakończonej implementacji (zmiany → nowa funkcjonalność, §2.5) | `/grill`, `/from-docs` (re-run) — wejście | block |
 | Walidacja spec (DoR) | `/start`, `/from-docs`, `/grill` — ogon | block → verdykt |
 | Enforcement DoR spec | `/to-tasks` — wejście | block |
 | Oversize task split / merge | `/to-tasks` | HIL |
@@ -414,6 +456,8 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Per-fala pełne CI (lint + test + build) + AC domykane falą | `/implement` | block |
 | Post-CI code review (≥1 skill) | `/implement` | gate |
 | K-iter fail — eskalacja | `/implement` | HIL |
+| Kompletność implementacji (wszystkie taski `implemented`) | `/to-prs` — wejście | block |
+| Przypisanie obcych commitów (bez trailera `Task:`) | `/to-prs` | HIL |
 | Manual PR grouping | `/to-prs` | HIL |
 | Niezmiennik składalności (buildability) | `/to-prs` | block |
 | Konflikt reorder-rebase | `/to-prs` | HIL |

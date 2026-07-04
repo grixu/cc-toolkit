@@ -8,6 +8,10 @@ decyzję i miejsce zmiany).
 Wszystkie sekcje (A–D) rozstrzygnięte 2026-07-04. Otwarte pozostają zadania
 implementacyjne wskazane w decyzjach (m.in. pliki formatów z B4, rename katalogu z C7).
 
+**Runda 2 (2026-07-04): sekcje E–G** — znaleziska drugiego przeglądu (platforma po
+scaleniu komend ze skillami, luki modelu, ryzyka implementacyjne). Wszystkie
+rozstrzygnięte 2026-07-04; zmiany naniesione na zestaw spec tego samego dnia.
+
 ---
 
 ## A. Luki logiczne w modelu
@@ -310,6 +314,183 @@ implementacyjne wskazane w decyzjach (m.in. pliki formatów z B4, rename katalog
 
 ---
 
+## E. Konflikty z platformą — runda 2 (poparte dokumentacją)
+
+### E1. ⛔ Komendy są domyślnie model-invokable
+
+- [x] Docs: custom commands scalone ze skillami („Custom commands have been merged into
+  skills"); „By default, Claude can invoke any skill that doesn't have
+  `disable-model-invocation: true` set" — dotyczy też komend pluginów. Założenie D1
+  („proste pliki md wywołuje wyłącznie user") nieaktualne — model mógłby sam łamać zakaz
+  auto-chainingu. `user-invocable: false` steruje tylko widocznością w menu, nie
+  dostępem Skill toola.
+- **Decyzja (2026-07-04):** `disable-model-invocation: true` we frontmatterze wszystkich
+  8 komend. Zmiany: `IMPLEMENTATION.md` §1, `SPEC.md` §5.1.
+
+### E2. ⚠️ `${CLAUDE_PLUGIN_ROOT}` nieudokumentowany w treści komend
+
+- [x] W treści skilla/komendy udokumentowaną substytucją jest `${CLAUDE_SKILL_DIR}`;
+  `${CLAUDE_PLUGIN_ROOT}` dotyczy hooków / MCP / komend skryptowych.
+- **Decyzja (2026-07-04):** referencje z treści komend przez `${CLAUDE_SKILL_DIR}`.
+  Zmiany: `IMPLEMENTATION.md` §1.
+
+### E3. Deprecacja v1 w marketplace — odpuszczone
+
+- [x] Schemat marketplace nie ma pola `deprecated` (najbliższe: `renames`,
+  `defaultEnabled`).
+- **Decyzja (2026-07-04): nie ruszamy v1** — v2 to osobny produkt. Usunięte zdanie o
+  deprecacji ze `SPEC.md` §3.
+
+### E4. ⚠️ Miejsce wykonania skilli CR w fali
+
+- [x] Subagenty mają Skill tool domyślnie („Subagents can still invoke unlisted …
+  skills through the Skill tool"); skill z `disable-model-invocation: true` jest
+  programowo niewywoływalny (ani Skill tool, ani preload). Preload przez frontmatter
+  `skills:` nie pasuje do dynamicznej listy z configu (statyczny plik agenta).
+- **Decyzja (2026-07-04):** agent CR w runie fali wywołuje skille z `codeReview.skills`
+  po nazwie przez Skill tool; `/config` waliduje istnienie **i wywoływalność** (brak
+  flagi). Zmiany: `COMMAND_IMPLEMENT.md` §4, `COMMAND_CONFIG.md` §3.
+
+### E5. ℹ️ Argumenty pozycyjne 0-indeksowane
+
+- [x] `$0` = pierwszy argument, `$1` = drugi — inaczej niż w shellu.
+- **Decyzja (2026-07-04):** odnotowane jako gotcha w `IMPLEMENTATION.md` §1.
+
+---
+
+## F. Luki modelu — runda 2
+
+### F1. ⛔ Treść pliku taska poza łańcuchem Merkle
+
+- [x] `input_hash` liczy tylko produces / consumes / covers — edycja body taska
+  niewykrywalna; „generated-only" niewymuszalne, `/implement` wykonałby zmanipulowaną
+  treść przy świeżym verdykcie.
+- **Decyzja (2026-07-04):** `contentHash` pliku taska w manifeście (zapis w apply
+  `/to-tasks`, kontrakt normalizacji §2.6); rozjazd = drift tasków → block w
+  `/implement`. Zmiany: `SPEC.md` §2.6/§4.4, `COMMAND_TO_TASKS.md` §7,
+  `COMMAND_IMPLEMENT.md` §2.
+
+### F2. Równoległa mutacja workspace'u podczas fali — out-of-scope
+
+- [x] Freeze fali (`waveInProgress`) nie jest egzekwowany bramką w `/grill` /
+  `/to-tasks`; lock bez właściciela.
+- **Decyzja (2026-07-04): out-of-scope.** Nie zakładamy równoczesnych sesji mutujących
+  ten sam workspace; detekcja driftu na wejściu `/implement` wystarcza. Bez zmian.
+
+### F3. ⚠️ `input_hash` refów cross-feature: sprzeczność hash vs wersja
+
+- [x] `SPEC.md` §2.6 (hash z manifestu) vs `CROSS_FEATURE.md` §3 (wersje) — nie do
+  pogodzenia; przy samej wersji skopiowana treść kontraktu dryfuje po cichu.
+- **Decyzja (2026-07-04): wersja + hash.** Do `input_hash` wchodzi bieżący hash
+  elementu z manifestu Y (live-read; spoza workspace'u — hash z pinu `upstream`);
+  `@vN` niesie semantykę breaking. Kopie w taskach w markerach `fd:copy` (ref + hash);
+  odświeża wyspecjalizowany subagent copy-refresher w apply `/to-tasks`.
+  Zmiany: `SPEC.md` §2.6, `CROSS_FEATURE.md` §1/§3, `COMMAND_TO_TASKS.md` §3/§7,
+  `IMPLEMENTATION.md` §1.
+
+### F4. ⚠️ `/to-prs` bez bramki kompletności
+
+- [x] Prekondycja „implementacja ukończona" bez mechanizmu — można wyciąć stos z
+  na wpół zaimplementowanego brancha.
+- **Decyzja (2026-07-04):** twarda bramka na wejściu: wszystkie taski
+  `implemented` / `shipped`. Zmiany: `COMMAND_TO_PRS.md` §2/§6/§7, `SPEC.md` §5.5.
+
+### F5. ⚠️ Ship-detekcja vs squash-merge (dominująca polityka repo)
+
+- [x] „Treść wygląda na scaloną" bez definicji mechanicznej; przy „squash and merge"
+  HIL odpalałby się per task — regularna udręka, nie wyjątek.
+- **Decyzja (2026-07-04):** mechanika = `git patch-id` / `git cherry`; HIL zbiorczy
+  (jedna decyzja dla wielu tasków); ten sam przypadek w live-check delivered
+  cross-feature → HIL, nie ślepy bloker. Zmiany: `SPEC.md` §2.4, `CROSS_FEATURE.md` §5.
+
+### F6. ⚠️ Zakres po zakończonej implementacji + commity self-review
+
+- [x] „Pełna pętla feedbacku ludzkiego CR — do domknięcia"; „trwały task korygujący"
+  nieoperacjonalizowany (brak mechaniki brancha/PR dla rundy 2).
+- **Decyzja (2026-07-04): ścieżki grill → to-tasks → implement po zakończonej
+  implementacji jawnie NIE wspieramy** — zmiany domyka nowa funkcjonalność; guard na
+  wejściu `/grill` i re-run `/from-docs`; reconcile: zmiana elementu `delivered` =
+  block. Self-review usera na feature branchu = wspierany wkład: fixupy → autosquash,
+  zwykłe commity → HIL przypisania w `/to-prs`; re-projekcja `/to-prs` domyka pętlę
+  ludzkiego CR. Zmiany: `SPEC.md` §2.3/§2.4/§2.5/§5.5, `COMMAND_IMPLEMENT.md` §5/§6,
+  `COMMAND_TO_PRS.md` §2/§4/§5/§6/§7, `COMMAND_GRILL.md` §2/§5,
+  `COMMAND_FROM_DOCS.md` §2/§5, `CROSS_FEATURE.md` §6.
+
+### F7. ℹ️ Staleness wobec pól `state.json` zamiast świeżych hashy
+
+- [x] Literalne porównanie z `state.json.specHash` przepuszczałoby ręczne edycje
+  (pole samo jest wtedy nieaktualne).
+- **Decyzja (2026-07-04):** staleness zawsze wobec świeżo policzonego rollupu (hasher
+  na wejściu). Zmiany: `SPEC.md` §5.4, `COMMAND_TO_TASKS.md` §2, `COMMAND_STATUS.md` §3.
+
+### F8. ℹ️ Wskazanie funkcjonalności dla re-run `/from-docs`; generacja i kolizja sluga
+
+- [x] §3.1 nie obejmowało re-run `/from-docs`; slug bez mechanizmu generacji i obsługi
+  kolizji przy scaffoldzie.
+- **Decyzja (2026-07-04):** re-run `/from-docs` w regule §3.1; wspólny generator sluga
+  (krótki, opisowy kebab-case) dla `/start` / `/from-docs`; kolizja → HIL (re-run
+  istniejącej / inny slug). Zmiany: `SPEC.md` §3.1/§5.5, `COMMAND_START.md` §3/§5,
+  `COMMAND_FROM_DOCS.md` §2/§3/§5.
+
+### F9. ℹ️ Właściciele przejść `ready` / `in-progress`
+
+- [x] Maszyna stanów taska definiowała właściciela tylko dla `shipped`.
+- **Decyzja (2026-07-04):** `ready` ustawia `/to-tasks` po passie DoR tasków;
+  `in-progress` — `/implement` (goal) na starcie fali. Zmiany: `SPEC.md` §2.3,
+  `COMMAND_TO_TASKS.md` §7, `COMMAND_IMPLEMENT.md` §7.
+
+---
+
+## G. Ryzyka implementacyjne — runda 2
+
+### G1. ⚠️ Współbieżne merge i zapisy manifestu w fali
+
+- [x] Równoległe merge'e do jednego feature brancha (wyścig o branch) i równoległe
+  zapisy `feature.lock.json` (last-writer-wins) — spec nie wskazywał właściciela.
+- **Decyzja (2026-07-04):** merge'e szeregowo w dedykowanym subagencie-mergerze
+  (zoptymalizowany pod konflikty); manifest pisze wyłącznie goal w main thread
+  (single-writer, na podstawie strukturalnych wyników runu).
+  Zmiany: `COMMAND_IMPLEMENT.md` §4, `IMPLEMENTATION.md` §1.
+
+### G2. ⚠️ Niezadeklarowany wymóg Node.js
+
+- [x] Cały deterministyczny rdzeń to Node, a projekt usera może go nie mieć.
+- **Decyzja (2026-07-04):** wymóg jawny — README + detekcja i walidacja `/config`
+  (brak `node` → block). Zmiany: `COMMAND_CONFIG.md` §3/§5, `IMPLEMENTATION.md` §1.
+
+### G3. ℹ️ Bootstrap worktree
+
+- [x] Świeży worktree bez `node_modules` / `.env` → lint i CI padają przed startem.
+- **Decyzja (2026-07-04):** `implement.worktreeSetup` — lista komend uruchamianych na
+  świeżym worktree przed startem taska. Zmiany: `config.example.jsonc`,
+  `COMMAND_IMPLEMENT.md` §4, `COMMAND_CONFIG.md` §3.
+
+### G4. ℹ️ Estymator znaki/4 kalibrowany pod angielski
+
+- [x] Dla polskiego ~3–3.5 znaka/token — budżet przekraczany o 30–50%.
+- **Decyzja (2026-07-04):** `tasks.charsPerToken` (default 4; `/config` proponuje
+  3–3.5 wg `language.default`). Zmiany: `config.example.jsonc`,
+  `COMMAND_TO_TASKS.md` §4.
+
+### G5. ℹ️ Gramatyka kotwicy ID i słownik KIND niezdefiniowane
+
+- [x] Bez formalnego wzorca dowolny nagłówek `[A-Z]+-\d+` stawałby się elementem,
+  a literówka w KIND po cichu zakładała nowy rodzaj.
+- **Decyzja (2026-07-04):** regex kotwicy w §2.6
+  (`^(#{1,6}) ([A-Z]{2,10})-([1-9][0-9]*) — `); słownik KIND = klucze `idCounters`;
+  nieznany KIND → HIL w walidacji „Spójność strukturalna" (akceptacja → dopis do
+  `idCounters`). Zmiany: `SPEC.md` §2.6/§4.3, `IMPLEMENTATION.md` §4.
+
+### G6. ℹ️ Ciche wyłączenie wymiaru walidacji w configu
+
+- [x] Waiver ma pełną ceremonię, a wycięcie wymiaru z `validation.dimensions` w
+  ręcznie edytowalnym, commitowanym configu osłabiało bramkę bez śladu.
+- **Decyzja (2026-07-04):** widoczność zamiast zakazu — verdykt zapisuje
+  `dimensionsRun`, `/status` i raport walidacji pokazują różnicę wobec pełnego
+  zestawu. Zmiany: `SPEC.md` §5.4, `BUILDING_SPEC.md` §5, `COMMAND_STATUS.md` §3.
+
+---
+
 ## Mocne strony (bez zmian)
 
 - Rozdział manifest (commitowany, autorytatywny) / meta / frontmatter-pointer.
@@ -327,3 +508,11 @@ implementacyjne wskazane w decyzjach (m.in. pliki formatów z B4, rename katalog
   (AskUserQuestion…), nested subagenty, ograniczenia frontmatter plugin-subagentów.
 - Katalog modeli Claude API (2026-06) — okna kontekstu (1M / 200K Haiku), max output
   (128K / 64K Haiku).
+- https://code.claude.com/docs/en/skills — scalenie komend ze skillami,
+  `disable-model-invocation`, argumenty (`$N` 0-based), `${CLAUDE_SKILL_DIR}` (runda 2).
+- https://code.claude.com/docs/en/sub-agents — Skill tool w subagentach, preload
+  `skills:`, `isolation: worktree` (runda 2).
+- https://code.claude.com/docs/en/plugins-reference + /en/plugin-marketplaces — zakres
+  `${CLAUDE_PLUGIN_ROOT}`, brak pola `deprecated` (najbliższe: `renames`) (runda 2).
+- https://code.claude.com/docs/en/tools-reference — brak tokenizera dla skryptów
+  (potwierdzenie estymatora) (runda 2).
