@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "boundedContexts": [
+    { "name": "billing", "contextFile": "src/billing/CONTEXT.md", "match": ["src/billing/**"] },
+    { "name": "identity", "contextFile": "src/identity/CONTEXT.md", "match": ["src/identity/**"] }
+  ]
+}

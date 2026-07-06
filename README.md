@@ -30,6 +30,29 @@ Automatic plan review via OpenAI Codex CLI. Intercepts `ExitPlanMode` and sends 
 
 See [plugin README](plugins/codex-plan-improver/README.md) for details.
 
+### fd
+
+Spec-driven feature delivery (v2 of feature-delivery, installed separately). Carries one feature from an idea or documents, through a validated spec and self-contained tasks, to wave-based implementation and a stack of reviewable PRs. Declarative core (spec → projection → code), hard binary quality gates with human-only waivers, no auto-chaining — the human drives progression.
+
+**Requires:** Node.js (LTS) on PATH, git. Recommended MCP servers: `firecrawl`, `context7`, `codebase-memory`.
+
+| Command | Description |
+|---------|-------------|
+| `/fd:config` | Detect stack, choose modes, write `.claude/fd-config.json` (prerequisite) |
+| `/fd:start [topic]` | Spec from a topic — grill → spec → validate |
+| `/fd:from-docs [sources…]` | Spec from documents / URLs / dependent specs |
+| `/fd:grill [slug]` | Drill and change an existing spec + reconcile + re-validate |
+| `/fd:to-tasks [slug]` | Project the spec onto self-contained tasks + dependency map + validate |
+| `/fd:implement [slug]` | Implement ready tasks in dependency waves on a feature branch |
+| `/fd:to-prs [slug]` | Cut a stacked set of PR branches from the feature branch |
+| `/fd:status [slug]` | Read-only status — verdicts, task states, open/blocked gates |
+
+```
+/plugin install fd@cc-toolkit
+```
+
+See [plugin README](plugins/fd/README.md) for details.
+
 ### feature-delivery
 
 End-to-end feature delivery workflow — from requirements gathering through implementation orchestration with parallel subagents.

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "records": [
+    {
+      "claim": "Stripe API wymaga idempotency-key dla POST",
+      "fact": "Stripe recommends an Idempotency-Key header on POST requests to safely retry.",
+      "quote": "To perform an idempotent request, provide an Idempotency-Key header.",
+      "source": {
+        "type": "web",
+        "ref": "sources/web/stripe-idempotency.md",
+        "url": "https://docs.stripe.com/api/idempotent_requests"
+      },
+      "anchors": ["API-2", "AC-5"],
+      "groundedAt": "2026-07-04T12:00:00Z"
+    },
+    {
+      "claim": "Users table already exists",
+      "fact": "The users table is defined in the existing migration.",
+      "quote": "CREATE TABLE users (...)",
+      "source": { "type": "code", "ref": "db/migrations/001_users.sql#L1-L20" },
+      "anchors": ["DB-3"],
+      "groundedAt": "2026-07-04T12:05:00Z"
+    }
+  ]
+}

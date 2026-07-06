@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "slug": "user-onboarding",
+  "title": "User onboarding",
+  "language": "en",
+  "createdFrom": "topic",
+  "phase": "spec",
+  "boundedContext": null,
+  "branch": null,
+  "specHash": null,
+  "tasksHash": null,
+  "waveInProgress": false
+}

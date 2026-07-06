@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "boundedContexts": [
+    { "name": "billing", "match": ["src/billing/**"] }
+  ]
+}

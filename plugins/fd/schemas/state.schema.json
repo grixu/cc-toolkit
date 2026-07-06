@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grixu.dev/cc-toolkit/fd/schemas/state.schema.json",
+  "title": "state.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "slug", "title", "language", "createdFrom", "phase", "boundedContext", "branch", "specHash", "tasksHash", "waveInProgress", "manifest"],
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "title": { "type": "string" },
+    "language": { "type": "string" },
+    "createdFrom": { "type": "string", "enum": ["topic", "docs"] },
+    "phase": { "type": "string", "enum": ["spec", "tasks", "implementing", "shipped"] },
+    "boundedContext": { "type": ["string", "null"] },
+    "branch": { "type": ["string", "null"] },
+    "specHash": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+    "tasksHash": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+    "waveInProgress": { "type": "boolean" },
+    "manifest": { "type": "string" },
+    "readiness": { "$ref": "#/$defs/readiness" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spec": { "$ref": "#/$defs/verdict" },
+        "tasks": { "$ref": "#/$defs/verdict" }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "validatedHash", "dimensionsRun", "failedChecks", "waivedChecks"],
+      "properties": {
+        "verdict": { "type": "string", "enum": ["ready", "blocked"] },
+        "validatedHash": { "$ref": "#/$defs/sha256" },
+        "dimensionsRun": { "type": "array", "items": { "type": "string" } },
+        "failedChecks": { "type": "array", "items": { "type": "string" } },
+        "waivedChecks": { "type": "array", "items": { "$ref": "#/$defs/waiver" } }
+      }
+    },
+    "waiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "by", "at"],
+      "properties": {
+        "id": { "type": "string" },
+        "by": { "type": "string" },
+        "at": { "type": "string" }
+      }
+    }
+  }
+}

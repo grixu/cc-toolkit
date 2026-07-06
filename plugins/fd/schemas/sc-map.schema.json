@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grixu.dev/cc-toolkit/fd/schemas/sc-map.schema.json",
+  "title": "sc-map.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generatedFrom",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "generatedFrom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tasksHash"
+      ],
+      "properties": {
+        "tasksHash": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/taskId"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "contract"
+        ],
+        "properties": {
+          "from": {
+            "$ref": "#/$defs/taskId"
+          },
+          "to": {
+            "$ref": "#/$defs/taskId"
+          },
+          "contract": {
+            "type": "string",
+            "pattern": "^T-[0-9]+::[A-Z]{2,10}-[1-9][0-9]*@v[1-9][0-9]*$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "taskId": {
+      "type": "string",
+      "pattern": "^T-[0-9]+$"
+    }
+  }
+}

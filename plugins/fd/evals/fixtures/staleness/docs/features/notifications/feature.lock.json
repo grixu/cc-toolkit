@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "spec": {
+    "hash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf",
+    "history": [
+      { "hash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf", "at": "2026-07-05T00:00:00Z", "summary": "init" }
+    ]
+  },
+  "idCounters": { "API": 1, "MOD": 1, "DB": 1, "AC": 3, "T": 3 },
+  "elements": {
+    "API-1": { "hash": "sha256:f67a56909e16e5c2e3f40f95ec6f66de787b67da594aa0c1bf5a2bf73648c666", "version": 1, "producer": "T-001", "status": "pending" },
+    "MOD-1": { "hash": "sha256:30f14b8e43ad74e4ee1ed915bd822095395ce888ff044c28d4df0cb26dfa36af", "version": 1, "producer": "T-002", "status": "pending" },
+    "DB-1": { "hash": "sha256:f4923752e7d82d07feac2218a08fd3f6ac2513d67cbb813bf420eb23ba5b390a", "version": 1, "producer": "T-003", "status": "pending" },
+    "AC-1": { "hash": "sha256:4ccba7ea5e02539905b664f5bb3e4ba72843938deed03136e2293ed844d2335d", "version": 1, "status": "pending" },
+    "AC-2": { "hash": "sha256:78cca2b4f2c3f86ca9c194bce50628361c26eac54a51478b2cb0e4939bc974df", "version": 1, "status": "pending" },
+    "AC-3": { "hash": "sha256:40ddd6e0e46284ec004f9857695e828618b9020b674d7c879ccf960a1a9e7de5", "version": 1, "status": "pending" }
+  },
+  "tasks": {
+    "T-001": {
+      "identityKey": ["API-1"],
+      "produces": ["API-1"],
+      "consumes": [],
+      "covers": ["AC-1"],
+      "inputHash": "sha256:70e1b737ddbbfeeae0cd1c0a62622ed5dda8aa54aa5798be625f7db2ae138105",
+      "contentHash": "sha256:21cb83113aea1eecc65ac9d96d3e1ea185114c81f93a9531a890d7b298c21cf8",
+      "specHash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf",
+      "status": "ready"
+    },
+    "T-002": {
+      "identityKey": ["MOD-1"],
+      "produces": ["MOD-1"],
+      "consumes": ["T-001::API-1@v1"],
+      "covers": ["AC-2"],
+      "inputHash": "sha256:b4b03ce32d1419d03656bf02c19ef075cfd7ad22393357a1806ad92d0f2543ae",
+      "contentHash": "sha256:7152a3ab10864dcf7fcb3bb45053a83fb572b3f23979e758fbe9dce570af3b3d",
+      "specHash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf",
+      "status": "ready"
+    },
+    "T-003": {
+      "identityKey": ["DB-1"],
+      "produces": ["DB-1"],
+      "consumes": [],
+      "covers": ["AC-3"],
+      "inputHash": "sha256:ffc23b92d7d4d1a9bf479cd90ac1b68486dfcb6b1e05954e84eeb42d0a2becc5",
+      "contentHash": "sha256:82ebbad0504b64c390679817867c483cf3fd450d3a46af7ce86f923d0f8c7509",
+      "specHash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf",
+      "status": "ready"
+    }
+  },
+  "scMap": "sc-map.json"
+}

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "idCounters": { "DB": 3, "API": 2, "MOD": 1, "AC": 6, "FR": 2, "NFR": 1, "T": 3 },
+  "elements": {},
+  "tasks": {},
+  "upstream": [
+    {
+      "slug": "billing",
+      "path": "external/billing/",
+      "specHash": "sha256:00000000000000000000000000000000000000000000000000000000000000f0",
+      "consumes": ["API-9@v1"],
+      "elements": {
+        "API-9": { "hash": "sha256:00000000000000000000000000000000000000000000000000000000000000a9", "version": 1 }
+      }
+    }
+  ]
+}

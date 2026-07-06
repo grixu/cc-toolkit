@@ -1,0 +1,6 @@
+/fd:grill notifications
+
+I hand-edited the API-1 element in the notifications spec to add an idempotency key. Please
+reconcile the feature against its manifest: detect the drift and mark the tasks affected by
+that change as stale. I'm not adding any new requirements — there is nothing to drill, so go
+straight to the reconcile plan and apply it.

@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "spec": {
+    "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "history": [
+      {
+        "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "at": "2026-07-04T12:00:00Z",
+        "summary": "init"
+      }
+    ]
+  },
+  "idCounters": {
+    "DB": 3,
+    "API": 2,
+    "CFG": 1,
+    "AC": 5,
+    "FR": 2,
+    "NFR": 1,
+    "T": 4
+  },
+  "elements": {
+    "DB-3": {
+      "hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "deliveredHash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "version": 2,
+      "producer": "T-004",
+      "status": "drifted"
+    },
+    "API-2": {
+      "hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "version": 1,
+      "status": "pending"
+    }
+  },
+  "tasks": {
+    "T-004": {
+      "identityKey": [
+        "DB-3"
+      ],
+      "produces": [
+        "DB-3"
+      ],
+      "consumes": [
+        "T-002::API-2@v1",
+        "checkout#API-2@v2"
+      ],
+      "covers": [
+        "AC-5",
+        "FR-2"
+      ],
+      "inputHash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "contentHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "specHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "status": "implemented",
+      "impl": {
+        "commits": [
+          "a1b2c3"
+        ],
+        "ci": "pass",
+        "cr": "pass"
+      }
+    }
+  },
+  "scMap": "sc-map.json",
+  "upstream": [
+    {
+      "slug": "checkout",
+      "path": "docs/features/checkout/",
+      "specHash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "consumes": [
+        "API-2@v2",
+        "DB-1@v1"
+      ]
+    }
+  ]
+}

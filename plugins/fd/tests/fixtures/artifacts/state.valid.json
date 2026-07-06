@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "slug": "user-onboarding",
+  "title": "User onboarding",
+  "language": "en",
+  "createdFrom": "topic",
+  "phase": "tasks",
+  "boundedContext": null,
+  "branch": "feat/user-onboarding",
+  "specHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "tasksHash": null,
+  "waveInProgress": false,
+  "manifest": "feature.lock.json",
+  "readiness": {
+    "spec": {
+      "verdict": "ready",
+      "validatedHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "dimensionsRun": ["structural", "coverage", "grounding", "feasibility", "decomposability", "non-over-spec"],
+      "failedChecks": [],
+      "waivedChecks": [{ "id": "grounding.web-reachable", "by": "human", "at": "2026-07-04T13:00:00Z" }]
+    }
+  }
+}

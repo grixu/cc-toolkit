@@ -1,0 +1,19 @@
+{
+  "name": "fd",
+  "version": "0.1.0",
+  "description": "Spec-driven feature delivery v2: takes a single feature from idea or documents, through a validated spec and self-contained tasks, to implemented code delivered as stacked PRs. Declarative core (spec → projection → code), hard binary quality gates with human-only waivers, Merkle content versioning with surgical invalidation, and wave-based implementation on isolated worktrees. Eight explicit commands (/fd:config, /fd:start, /fd:from-docs, /fd:grill, /fd:to-tasks, /fd:implement, /fd:to-prs, /fd:status) — no auto-chaining, the human drives progression.",
+  "author": {
+    "name": "grixu",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "feature-delivery",
+    "specification",
+    "requirements",
+    "tasks",
+    "implementation",
+    "stacked-prs",
+    "quality-gates"
+  ]
+}

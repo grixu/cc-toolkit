@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "idCounters": { "API": 9, "T": 1 },
+  "elements": {
+    "API-9": { "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000009", "version": 1, "producer": "T-001", "status": "delivered" }
+  },
+  "tasks": {}
+}

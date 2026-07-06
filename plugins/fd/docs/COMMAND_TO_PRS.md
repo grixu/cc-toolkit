@@ -1,0 +1,129 @@
+# `/to-prs`
+
+Wycina z feature brancha stos PR-ów do **ludzkiego** code review — drugiej, realnej bramki
+merge-do-main (obok automatycznego CR w pętli implementacji). Istnieje po to, by ludzki
+przegląd był wykonalny przy kilku–kilkudziesięciu PR.
+
+---
+
+## 1. Cel
+
+Zamienić liniową historię feature brancha w czytelny stos PR-ów, zachowując atomowe
+commity per task + rationale, tak by reviewer widział ślad decyzji i mógł mergować
+bottom-up.
+
+---
+
+## 2. Prekondycje
+
+- Config poprawny.
+- Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
+- **Kompletność implementacji (twarda bramka):** wszystkie taski w manifeście mają
+  status `implemented` / `shipped` — inaczej block („dokończ `/implement`").
+- Self-review całości wykonany przez usera (pełna kontrola człowieka, poza pluginem);
+  jego commity na feature branchu obsługuje §4.
+- Istnieją: feature branch (`state.json.branch`), mapa SC (`sc-map.json`), manifest.
+- Cold-start z workspace'u.
+
+---
+
+## 3. Model
+
+Integracja odbyła się najpierw na jednym feature branchu (`COMMAND_IMPLEMENT.md`); tu
+osobną komendą **wycinamy** z niego branche PR. `/to-prs` nie wystawia PR-ów siłą —
+dostarcza branche (opcjonalnie otwiera PR).
+
+- **Stacked:** PR-y jako stos, `PR_n` bazuje na `PR_{n-1}`, baza stacka = `baseBranch`
+  (default `main`). Review i merge **bottom-up**.
+- **Kolejność stacka** = linearyzacja (topo-sort) DAG-a SC: fundament na dole, capability
+  slice wyżej.
+
+---
+
+## 4. Grupowanie
+
+- **Auto (default):** spójny slice = reuse hybrydy dekompozycji. Fundament → dolne PR-y,
+  każda zdolność → PR. Daje „kilka–kilkadziesiąt PR".
+- **Manualny (pętla HIL):** dev przypisuje taski do PR-ów; **co krok walidujemy
+  składalność**; pętla trwa, aż wszystkie taski przypisane i stos poprawny.
+
+### Niezmiennik składalności (buildability)
+
+Dla stosu `[PR_1..PR_m]` (dół → góra): dla każdego taska `t ∈ PR_i` **wszystkie** jego
+zależności (producent konsumowanych elementów + `codeDeps` + taski dotykające tych samych
+plików) leżą w `PR_j`, `j ≤ i`. Przypisanie to poprawna warstwa topologiczna, a każdy PR
+buduje się na tym, co pod nim. Wybór dewelopera łamiący niezmiennik (forward-reference,
+rozjazd plikowy) → **krok odrzucony** z wyjaśnieniem, dev wybiera ponownie.
+
+**Dlaczego to tanie:** feature branch to liniowa historia **1 commit per task**
+(squash-merge w fali + autosquash napraw — `COMMAND_IMPLEMENT.md` §4/§5) w kolejności
+topologicznej. Stos = partycja tej historii: branche PR są **pointerami** w nią, więc SHA
+commitów pozostają tożsame z `impl.commits` w manifeście i ship-detekcja (`SPEC.md` §2.4,
+krok 1) działa bez tłumaczenia. Gdy grupowanie wymaga innej kolejności niż zastana →
+**reorder-rebase całych commitów tasków** (bezpieczny: buildability i serializacja
+overlapu trzymają względny porządek tasków dotykających tych samych plików; konflikt →
+HIL); po rebase `/to-prs` **aktualizuje `impl.commits` w manifeście** — jedyna mutacja
+tej komendy. Task z naprawą, która nie wsiąkła w autosquash, ma >1 commit — partycja
+bierze wszystkie commity z jego trailerem `Task:`.
+
+**Commity spoza pętli** (self-review usera, bez trailera `Task:`): commity `--fixup` są
+wciągane autosquashem do swoich celów przed partycją; zwykłe commity → HIL przypisania
+do taska / grupy PR (wchodzą do partycji tej grupy, w kolejności zachowującej
+buildability). Partycja nie gubi żadnego commita — commit nieprzypisany = block.
+
+---
+
+## 5. Edge cases
+
+- **Trywialny ficzer** (1 task albo 1 grupa) → stos degeneruje do **pojedynczego PR**
+  na `baseBranch` — bez stacka i bez reorder-rebase; buildability trywialnie spełniona.
+- **Overlap plikowy** dwóch slice'ów → wspólny PR albo sąsiedztwo w stosie (w stacked
+  wystarczy kolejność).
+- **Fundament o dużym fan-oucie** → na dole stosu; wszystko powyżej zależy naturalnie.
+- **Task za duży na review nawet sam** → sygnał, że powinien być rozbity w dekompozycji →
+  feedback do `/to-tasks` / `/grill`.
+- **Praca niezależna serializowana przez stacked** → akceptowany koszt wyboru stacked.
+- **Ludzki CR żąda zmian** → user wprowadza je jako commity na feature branchu (zwykłe
+  albo `--fixup` do commita taska; pełna kontrola człowieka, poza pluginem) → ponowny
+  `/to-prs` robi re-projekcję: autosquash fixupów, HIL przypisania zwykłych commitów
+  (§4), odświeżenie stosu i rebase w górę. Ścieżki grill → to-tasks → implement po
+  zakończonej implementacji nie ma (`SPEC.md` §2.5).
+
+---
+
+## 6. Maszyna stanów
+
+```
+entry → guard(config) → enforce(all tasks implemented) → read(branch, SC, manifest)
+      → absorb(fixupy → autosquash; obce commity → HIL) → linearize(topo SC)
+      → group (auto | manual-HIL) → assert(buildability) ──fail──→ HIL(re-assign)
+      → reorder-rebase (gdy grupowanie tego wymaga; konflikt → HIL)
+      → update(manifest impl.commits) → produce PR branches (pointery)
+        (+ optional open PR, + optional per-PR CI) → checkpoint
+```
+
+**Idempotencja:** `/to-prs` jest re-projekcją — zmiana feature brancha (np. po review) i
+ponowne odpalenie odświeża stos.
+
+---
+
+## 7. Bramki
+
+| Bramka | Typ |
+|---|---|
+| Brak / niepoprawny config | block |
+| Kompletność implementacji (wszystkie taski `implemented`) | block |
+| Przypisanie obcych commitów (bez trailera `Task:`) | HIL |
+| Manual PR grouping | HIL |
+| Niezmiennik składalności (buildability) | block |
+| Konflikt reorder-rebase | HIL |
+| Per-PR CI (`verifyPerPrCi`) | opcjonalny block |
+
+---
+
+## 8. Wyjście / checkpoint
+
+Raport: stos PR-ów (kolejność, przypisanie tasków), branche gotowe do review. Sugestia
+prozą: review i merge bottom-up; przy zmianach z CR — commity na feature branchu i
+ponowny `/to-prs` (re-projekcja, §5); ścieżki przez `/grill` po zakończonej
+implementacji nie ma (`SPEC.md` §2.5).

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grixu.dev/cc-toolkit/fd/schemas/feature-lock.schema.json",
+  "title": "feature.lock.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "spec", "idCounters", "elements", "tasks"],
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "history"],
+      "properties": {
+        "hash": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["hash", "at", "summary"],
+            "properties": {
+              "hash": { "$ref": "#/$defs/sha256" },
+              "at": { "type": "string" },
+              "summary": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "idCounters": {
+      "type": "object",
+      "patternProperties": {
+        "^(T|[A-Z]{2,10})$": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "elements": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z]{2,10}-[1-9][0-9]*$": { "$ref": "#/$defs/element" }
+      },
+      "additionalProperties": false
+    },
+    "tasks": {
+      "type": "object",
+      "patternProperties": {
+        "^T-[0-9]+$": { "$ref": "#/$defs/task" }
+      },
+      "additionalProperties": false
+    },
+    "scMap": { "type": "string" },
+    "upstream": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/upstream" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "elementId": { "type": "string", "pattern": "^[A-Z]{2,10}-[1-9][0-9]*$" },
+    "taskId": { "type": "string", "pattern": "^T-[0-9]+$" },
+    "contractRef": {
+      "type": "string",
+      "anyOf": [
+        { "pattern": "^T-[0-9]+::[A-Z]{2,10}-[1-9][0-9]*@v[1-9][0-9]*$" },
+        { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Z]{2,10}-[1-9][0-9]*@v[1-9][0-9]*$" }
+      ]
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "version", "status"],
+      "properties": {
+        "hash": { "$ref": "#/$defs/sha256" },
+        "deliveredHash": { "$ref": "#/$defs/sha256" },
+        "version": { "type": "integer", "minimum": 1 },
+        "producer": { "$ref": "#/$defs/taskId" },
+        "status": { "type": "string", "enum": ["pending", "delivered", "drifted"] }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identityKey", "produces", "consumes", "covers", "inputHash", "contentHash", "specHash", "status"],
+      "properties": {
+        "identityKey": { "type": "array", "items": { "$ref": "#/$defs/elementId" } },
+        "produces": { "type": "array", "items": { "$ref": "#/$defs/elementId" } },
+        "consumes": { "type": "array", "items": { "$ref": "#/$defs/contractRef" } },
+        "covers": { "type": "array", "items": { "$ref": "#/$defs/elementId" } },
+        "inputHash": { "$ref": "#/$defs/sha256" },
+        "contentHash": { "$ref": "#/$defs/sha256" },
+        "specHash": { "$ref": "#/$defs/sha256" },
+        "status": { "type": "string", "enum": ["planned", "ready", "in-progress", "implemented", "shipped", "stale", "dropped"] },
+        "oversized": { "type": "boolean" },
+        "impl": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commits"],
+          "properties": {
+            "commits": { "type": "array", "items": { "type": "string" } },
+            "ci": { "type": "string", "enum": ["pass", "fail"] },
+            "cr": { "type": "string", "enum": ["pass", "fail"] }
+          }
+        }
+      }
+    },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "path", "specHash", "consumes"],
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "path": { "type": "string" },
+        "specHash": { "$ref": "#/$defs/sha256" },
+        "consumes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z]{2,10}-[1-9][0-9]*@v[1-9][0-9]*$" }
+        },
+        "elements": {
+          "type": "object",
+          "patternProperties": {
+            "^[A-Z]{2,10}-[1-9][0-9]*$": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["hash"],
+              "properties": {
+                "hash": { "$ref": "#/$defs/sha256" },
+                "version": { "type": "integer", "minimum": 1 }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}

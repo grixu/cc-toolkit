@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: fd (feature-delivery) plugin — e2e smoke of /fd:config, /fd:start, /fd:grill
+
+# One prompt template, filled per-test from prompts/<scenario>.txt via the `message` var
+# (see tests below). Each prompt file's content is a literal slash command like
+# `/fd:config`. The Agent SDK dispatches slash commands from the plain query() string, and
+# `disable-model-invocation: true` on the fd command files does NOT block explicit slash
+# invocation — it only blocks the model from auto-invoking (confirmed against the SDK docs).
+# We must NOT put a bare `/fd:...` in the `prompts:` list: a prompts entry starting with `/`
+# is parsed by promptfoo as a file path. Routing through a `{{message}}` var sidesteps that.
+prompts:
+  - '{{message}}'
+
+providers:
+  - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
+    label: fd
+    config:
+      apiKeyRequired: false # run on the local Claude Code subscription; no API key for the target
+      model: sonnet # alias → current Sonnet on the subscription; override per run (e.g. opus
+        # for a stricter gate). grill/reconcile want a capable model.
+      permission_mode: bypassPermissions # fd commands run unattended
+      allow_dangerously_skip_permissions: true # required alongside bypassPermissions
+      allow_all_tools: true # fd commands Write/Edit/run Bash/spawn Task subagents — the
+        # provider's default (working_dir ⇒ read-only Read/Grep/Glob/LS) would block them
+      working_dir: .sandbox # SAFE default; each test overrides to .sandbox/<scenario> below.
+        # Resolves relative to THIS config's dir (plugins/fd/evals). Kept inside the
+        # git-ignored sandbox so a missing per-test override can never mutate the repo.
+      max_budget_usd: 6 # per-run cost guard (config is cheap; start/grill are heavier)
+      plugins:
+        - type: local
+          path: .. # config dir is plugins/fd/evals, so ".." = plugins/fd (the plugin root).
+            # The provider resolves plugin paths relative to the CONFIG dir, not the cwd.
+      skills: all
+      setting_sources: [] # keep this repo's CLAUDE.md / hooks OUT of the eval
+      ask_user_question:
+        behavior: first_option # fd commands are interactive (grill, HIL gates); first_option
+          # keeps runs unattended. Fixtures + prompts are designed so first_option converges.
+
+# No llm-rubric anywhere: every assertion is a deterministic JavaScript check that reads the
+# artifacts the command wrote on disk (and re-validates them with the plugin's own
+# scripts/lib/validate.mjs). That is free, offline, and needs no grader provider. Plugin
+# skills load via Agent-Skills injection, so metadata.skillCalls stays empty — disk
+# artifacts are the "the command actually ran" signal.
+
+tests:
+  # --------------------------------------------------------------------------------------
+  # CONFIG — /fd:config detects a small pnpm/TS project and writes a valid fd-config.json.
+  # This is the cheap smoke (see `pnpm eval:fd:config`).
+  - description: 'CONFIG: detect a pnpm project and write .claude/fd-config.json'
+    vars:
+      message: file://prompts/config.txt
+    options:
+      working_dir: .sandbox/config # per-test override → plugins/fd/evals/.sandbox/config
+    assert:
+      - type: javascript
+        value: file://asserts/config.js
+
+  # --------------------------------------------------------------------------------------
+  # START — /fd:start builds a spec from a tiny, self-contained topic (no external claims,
+  # so no researcher fan-out) and persists spec.md + manifest + a DoR verdict.
+  - description: 'START: create a spec from a tiny topic (health-check endpoint)'
+    vars:
+      message: file://prompts/start.txt
+    options:
+      working_dir: .sandbox/start
+    assert:
+      - type: javascript
+        value: file://asserts/start.js
+
+  # --------------------------------------------------------------------------------------
+  # STALENESS — the fixture ships pre-drifted (exactly the API-1 element edited vs the
+  # recorded hashes). /fd:grill must reconcile and mark ONLY the API-1 producer/consumer
+  # tasks (T-001, T-002) stale, leaving the independent T-003 alone.
+  - description: 'STALENESS: reconcile an edited spec, mark only the affected tasks stale'
+    vars:
+      message: file://prompts/staleness.txt
+    options:
+      working_dir: .sandbox/staleness
+    assert:
+      - type: javascript
+        value: file://asserts/staleness.js

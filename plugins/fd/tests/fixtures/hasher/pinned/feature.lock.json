@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "idCounters": { "MOD": 1, "T": 1 },
+  "elements": {},
+  "tasks": {},
+  "upstream": [
+    {
+      "slug": "ghost",
+      "path": "external/ghost/",
+      "specHash": "sha256:00000000000000000000000000000000000000000000000000000000000000f0",
+      "consumes": ["API-3@v1"],
+      "elements": {
+        "API-3": { "hash": "sha256:00000000000000000000000000000000000000000000000000000000000000a3", "version": 1 }
+      }
+    }
+  ]
+}

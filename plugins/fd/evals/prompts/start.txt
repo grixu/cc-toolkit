@@ -1,0 +1,7 @@
+/fd:start health-check endpoint
+
+Add a single GET /health endpoint that returns HTTP 200 with a JSON body containing a
+status field set to "ok" and an uptimeSeconds number. No auth, no database, no external
+services or third-party APIs. Keep the spec minimal — just this one endpoint and its
+acceptance criteria. For any question, the simplest reasonable default is fine; don't
+expand the scope.

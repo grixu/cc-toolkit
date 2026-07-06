@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "spec": {
+    "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "history": []
+  },
+  "idCounters": { "DB": 1, "T": 1 },
+  "elements": {
+    "DB-1": { "hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "version": 1, "status": "pending" }
+  },
+  "tasks": {
+    "T-001": {
+      "identityKey": ["DB-1"],
+      "produces": ["DB-1"],
+      "consumes": [],
+      "covers": [],
+      "inputHash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "contentHash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "specHash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "status": "planned",
+      "unexpectedField": true
+    }
+  }
+}

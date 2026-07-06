@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "generatedFrom": { "tasksHash": "sha256:not-a-real-hash" },
+  "nodes": ["T-001"],
+  "edges": []
+}

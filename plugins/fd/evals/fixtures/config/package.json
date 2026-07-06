@@ -1,0 +1,20 @@
+{
+  "name": "acme-widgets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Small realistic pnpm/TypeScript project used as the /fd:config detection fixture.",
+  "packageManager": "pnpm@9.12.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^9.13.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

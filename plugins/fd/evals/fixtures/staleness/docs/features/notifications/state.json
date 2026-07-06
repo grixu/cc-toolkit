@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "slug": "notifications",
+  "title": "Notifications",
+  "language": "en",
+  "createdFrom": "topic",
+  "phase": "tasks",
+  "boundedContext": null,
+  "branch": null,
+  "specHash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf",
+  "tasksHash": "sha256:5df6db4eaabd6b3f7166b5370c8aca7b236ee293ad2df8c66de3255f340cd61b",
+  "waveInProgress": false,
+  "manifest": "feature.lock.json",
+  "readiness": {
+    "spec": {
+      "verdict": "ready",
+      "validatedHash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf",
+      "dimensionsRun": ["structural"],
+      "failedChecks": [],
+      "waivedChecks": []
+    },
+    "tasks": {
+      "verdict": "ready",
+      "validatedHash": "sha256:5df6db4eaabd6b3f7166b5370c8aca7b236ee293ad2df8c66de3255f340cd61b",
+      "dimensionsRun": ["frontmatter", "self-contained", "sc-integrity", "coverage"],
+      "failedChecks": [],
+      "waivedChecks": []
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "generatedFrom": {
+    "tasksHash": "sha256:5df6db4eaabd6b3f7166b5370c8aca7b236ee293ad2df8c66de3255f340cd61b"
+  },
+  "nodes": [
+    "T-001",
+    "T-002",
+    "T-003"
+  ],
+  "edges": [
+    {
+      "from": "T-002",
+      "to": "T-001",
+      "contract": "T-001::API-1@v1"
+    }
+  ]
+}

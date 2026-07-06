@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "generatedFrom": {
+    "specHash": "sha256:dd4a1f90124b164b84b605e532d103764490216e97db57a371fcf2548979b1cf"
+  },
+  "acs": {
+    "AC-1": {
+      "covers": []
+    },
+    "AC-2": {
+      "covers": []
+    },
+    "AC-3": {
+      "covers": []
+    }
+  }
+}

@@ -1,0 +1,5 @@
+/fd:config
+
+Set up feature-delivery for this project. Detect the stack, package manager, and the
+build/lint/test/format commands, accept the sensible default for anything you would
+normally ask about, and write .claude/fd-config.json.

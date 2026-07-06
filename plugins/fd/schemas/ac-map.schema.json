@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grixu.dev/cc-toolkit/fd/schemas/ac-map.schema.json",
+  "title": "ac-map.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generatedFrom",
+    "acs"
+  ],
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "generatedFrom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "specHash"
+      ],
+      "properties": {
+        "specHash": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "acs": {
+      "type": "object",
+      "patternProperties": {
+        "^AC-[1-9][0-9]*$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "covers"
+          ],
+          "properties": {
+            "covers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^(FR|NFR)-[1-9][0-9]*$"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

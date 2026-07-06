@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "records": [
+    {
+      "claim": "Stripe API wymaga idempotency-key dla POST",
+      "fact": "Stripe recommends an Idempotency-Key header on POST requests.",
+      "quote": "To perform an idempotent request, provide an Idempotency-Key header.",
+      "source": {
+        "type": "blog",
+        "ref": "sources/web/stripe-idempotency.md"
+      },
+      "anchors": ["API-2"],
+      "groundedAt": "2026-07-04T12:00:00Z"
+    }
+  ]
+}

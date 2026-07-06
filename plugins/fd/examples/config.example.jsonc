@@ -1,0 +1,87 @@
+// .claude/fd-config.json — konfiguracja pluginu feature-delivery v2 (fd).
+// Tworzona i aktualizowana wyłącznie przez `/fd:config` (patrz docs/COMMAND_CONFIG.md);
+// tu pełny, skomentowany przykład. Format faktycznego pliku to czysty JSON.
+{
+  "schema": 1,
+
+  "language": {
+    "default": "en"                     // język specu i artefaktów pochodnych; override per-prompt do komendy
+  },
+
+  "storage": {
+    "mode": "per-feature",              // "per-feature" | "shared"
+    "featuresRoot": "docs/features",    // katalog funkcjonalności (i rejestru bounded-contexts.json)
+    "shared": {                         // używane tylko w trybie "shared"; wskazuje rejestr BC, nie trzyma listy
+      "contextMode": "per-app",         // "per-app" | "per-bounded-context"
+      "contextFile": "docs/CONTEXT.md", // wspólny CONTEXT.md (dla contextMode: per-app)
+      "boundedContextsFile": "docs/features/bounded-contexts.json",
+      "adrRoot": "docs/adr",            // wspólny katalog ADR
+      "specsRoot": "docs/features"      // gdzie lądują spec + taski + manifest funkcjonalności
+    }
+  },
+
+  "tooling": {                          // wykryte komendy projektu; null = potwierdzony brak (patrz polityka braków)
+    "packageManager": "pnpm",
+    "build": "pnpm build",
+    "lint": "pnpm lint",
+    "test": "pnpm test",
+    "format": "pnpm format"
+  },
+
+  "mcp": {
+    // snapshot detekcji (prefill/fallback); groundingDegraded = flaga POCHODNA liczona at runtime z osiągalności narzędzi
+    "detected": ["firecrawl", "context7", "codebase-memory-mcp"]
+  },
+
+  "codeReview": {
+    "skills": ["code-review"]           // ≥1 skill CR; pętla implementacji może odpalić wiele
+  },
+
+  "tasks": {                            // dekompozycja / rozmiar taska
+    "maxContextTokens": 40000,          // pułap tnący: złożony plik taska + zależności; estymacja skryptem ~znaki/charsPerToken
+    "charsPerToken": 4,                 // dzielnik estymatora tokenów; kalibracja en=4, języki o gęstszej tokenizacji (np. pl) ≈ 3–3.5 — /fd:config proponuje wg language.default
+    "maxElements": null,                // twardy limit elementów per task; null = wyłączony
+    "maxAcceptanceCriteria": null,      // twardy limit AC per task; null = wyłączony
+    "granularityBias": "split"          // przy niejednoznacznej kohezji — tnij (mniejsze i więcej)
+  },
+
+  "implement": {                        // pętla implementacji (docs/COMMAND_IMPLEMENT.md)
+    "branchTemplate": "feat/{slug}",    // nazwa feature brancha; pierwszy run zapisuje wynik do state.json.branch
+    "maxRepairIterations": 3,           // próg K: tyle nieudanych iteracji napraw taska → eskalacja HIL
+    "engine": "workflow",               // "workflow" (auto-fallback do subagentów, gdy niedostępny) | "subagents" (wymuszony)
+    "worktreeSetup": [],                // komendy bootstrapu świeżego worktree (np. "pnpm install"), uruchamiane przed startem taska
+    "worktreeCleanup": "always"         // "always" | "keep-failed" — zostaw worktree nieudanego taska do wglądu
+  },
+
+  "prs": {                              // wycinanie stacka PR z feature brancha
+    "model": "stacked",                 // PR_n bazuje na PR_{n-1}
+    "grouping": "slice",                // auto: fundament → dolne PR-y, każda zdolność → PR
+    "baseBranch": "main",               // baza stacka
+    "verifyPerPrCi": false              // opcjonalny CI per branch PR jako finalna bramka
+  },
+
+  "validation": {                       // bramki jakości / Definition of Ready
+    "allowWaiver": true,                // false = zespół zakazuje override'ów (twardziej, nie luźniej)
+    "dimensions": {                     // punkt rozszerzalności v1 — włącz/wyłącz per wymiar
+      "spec": ["structural", "coverage", "grounding", "feasibility", "decomposability", "non-over-spec"],
+      "tasks": ["frontmatter", "self-contained", "sc-integrity", "coverage"]
+    }
+  },
+
+  "detectedAt": "2026-07-02T12:00:00Z"  // znacznik ostatniej detekcji `/fd:config`
+}
+
+// ---------------------------------------------------------------------------
+// Plik towarzyszący: docs/features/bounded-contexts.json
+// User-editable rejestr bounded contextów — POZA fd-config.json, żeby dodawać
+// BC bez dotykania configu. Używany tylko w trybie shared + contextMode:
+// per-bounded-context. `/fd:config` scaffolduje pusty plik, gdy tryb wybrany.
+// Kształt:
+//
+// {
+//   "schema": 1,
+//   "boundedContexts": [
+//     { "name": "billing",  "contextFile": "src/billing/CONTEXT.md",  "match": ["src/billing/**"] },
+//     { "name": "identity", "contextFile": "src/identity/CONTEXT.md", "match": ["src/identity/**"] }
+//   ]
+// }

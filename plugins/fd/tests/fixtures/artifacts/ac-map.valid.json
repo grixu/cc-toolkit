@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "generatedFrom": { "specHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+  "acs": {
+    "AC-5": { "covers": ["FR-2", "NFR-1"] },
+    "AC-6": { "covers": [] }
+  }
+}

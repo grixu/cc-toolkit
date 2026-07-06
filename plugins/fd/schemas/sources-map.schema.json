@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grixu.dev/cc-toolkit/fd/schemas/sources-map.schema.json",
+  "title": "sources-map.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "records"],
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim", "fact", "quote", "source", "anchors", "groundedAt"],
+        "properties": {
+          "claim": { "type": "string" },
+          "fact": { "type": "string" },
+          "quote": { "type": "string" },
+          "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "ref"],
+            "properties": {
+              "type": { "type": "string", "enum": ["web", "file", "code", "fd-spec", "adr"] },
+              "ref": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          },
+          "anchors": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Z]{2,10}-[1-9][0-9]*$" }
+          },
+          "groundedAt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

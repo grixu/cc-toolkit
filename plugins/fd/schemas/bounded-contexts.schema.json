@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grixu.dev/cc-toolkit/fd/schemas/bounded-contexts.schema.json",
+  "title": "bounded-contexts.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "boundedContexts"],
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "boundedContexts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "contextFile", "match"],
+        "properties": {
+          "name": { "type": "string" },
+          "contextFile": { "type": "string" },
+          "match": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
