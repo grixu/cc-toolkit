@@ -10,7 +10,10 @@ Compose the current picture of a feature from the artifacts on disk — "where a
 
 ## Preconditions
 
-Cold-start from the workspace; do not rely on any prior command's context.
+Cold-start from the workspace; do not rely on any prior command's context. Plugin files
+resolve via `${CLAUDE_PLUGIN_ROOT}`; a file missing after **one** direct check ⇒ STOP and
+report a broken fd installation — never search the repo or `$HOME` for plugin files, and do
+not read script sources.
 
 1. **Config gate (block).** Read `.claude/fd-config.json`. Missing, unparsable, or `schema` mismatch → halt with "run `/fd:config`".
 2. **Feature selection.** Optional `$0` slug → use it. Else exactly one feature under the features root (`storage.featuresRoot`, or `storage.shared.specsRoot` in shared mode) → use it. Else match `state.json.branch` against the current git branch. Else present the list with AskUserQuestion (HIL).
@@ -18,7 +21,7 @@ Cold-start from the workspace; do not rely on any prior command's context.
 
 ## Read-only guarantee
 
-The only script run is the hasher — `node "${CLAUDE_SKILL_DIR}/../scripts/hasher.mjs" <featureDir> --features-root <featuresRoot-or-specsRoot>` — purely to compute fresh hashes for the staleness report; computing hashes is read-only. `/fd:status` does **not** migrate (migration mutates): if a workspace artifact carries a `schema` newer than this plugin supports, report that and stop; if older, report it and suggest running a mutating command (e.g. `/fd:to-tasks` or `/fd:grill`) to migrate — do not migrate here. Ship / delivered flips belong to the mutating commands' reconcile; `/fd:status` shows the manifest **as-is** plus potential impact, and marks nothing.
+The only script run is the hasher — `node "${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs" <featureDir> --features-root <featuresRoot-or-specsRoot>` — purely to compute fresh hashes for the staleness report; computing hashes is read-only. `/fd:status` does **not** migrate (migration mutates): if a workspace artifact carries a `schema` newer than this plugin supports, report that and stop; if older, report it and suggest running a mutating command (e.g. `/fd:to-tasks` or `/fd:grill`) to migrate — do not migrate here. Ship / delivered flips belong to the mutating commands' reconcile; `/fd:status` shows the manifest **as-is** plus potential impact, and marks nothing.
 
 ## What it reports
 

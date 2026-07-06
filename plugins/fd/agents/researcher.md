@@ -6,7 +6,8 @@ description: >-
   — project code, library docs, or the web — and returns structured provenance
   records that feed sources-map.json. Snapshots URL sources to disk. Never invents
   a citation. Internal sub-agent invoked by fd commands (grill grounding, /fd:from-docs
-  analysis) and by the validator's grounding dimension — not for direct user invocation.
+  URL snapshots — extraction belongs to the analyst agent) and by the validator's
+  grounding dimension — not for direct user invocation.
   <example>
   Context: the grill is writing an element that claims a Stripe endpoint requires an idempotency key.
   user: [grill fans out a researcher] "Ground: Stripe POST /v1/charges requires an Idempotency-Key header. anchors: API-2, AC-5. featureDir: docs/features/checkout/"

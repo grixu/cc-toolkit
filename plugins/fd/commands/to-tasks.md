@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Partition the spec's elements into self-contained task files (one producer per element), compute the acyclic SC map, and validate the tasks to `ready`. This command is the **single owner of task-file writes**: `/fd:grill` only marks tasks stale, `/fd:implement` blocks on drift.
 
-Plugin scripts: hasher `${CLAUDE_SKILL_DIR}/../scripts/hasher.mjs`, projections `${CLAUDE_SKILL_DIR}/../scripts/project-maps.mjs`, estimator `${CLAUDE_SKILL_DIR}/../scripts/estimate-tokens.mjs`, migration `${CLAUDE_SKILL_DIR}/../scripts/migrate.mjs`. Schemas in `${CLAUDE_SKILL_DIR}/../schemas/`. Validate every JSON write with `scripts/lib/validate.mjs` (see below). When tasks consume cross-feature contracts (upstream pins, `fd:copy` copies, `@v` semantics), load `${CLAUDE_SKILL_DIR}/../references/CROSS_FEATURE.md` for the authoritative contract before reconciling or copying.
+Plugin scripts: hasher `${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs`, projections `${CLAUDE_PLUGIN_ROOT}/scripts/project-maps.mjs`, estimator `${CLAUDE_PLUGIN_ROOT}/scripts/estimate-tokens.mjs`, migration `${CLAUDE_PLUGIN_ROOT}/scripts/migrate.mjs`. Schemas in `${CLAUDE_PLUGIN_ROOT}/schemas/`. Validate every JSON write with `scripts/lib/validate.mjs` (see below). When tasks consume cross-feature contracts (upstream pins, `fd:copy` copies, `@v` semantics), load `${CLAUDE_PLUGIN_ROOT}/references/CROSS_FEATURE.md` for the authoritative contract before reconciling or copying.
 
 ## Preconditions
 
@@ -16,8 +16,8 @@ Run these gates in order; each cold-starts from the workspace — never trust co
 
 1. **Config gate (block).** Read `.claude/fd-config.json`. Missing, unparsable, or `schema` mismatch → halt with "run `/fd:config`". Load `storage`, `tasks`, `validation` from it.
 2. **Feature selection.** Optional `$0` slug → use it. Else exactly one feature under the features root → use it. Else match `state.json.branch` against the current git branch. Else present the list with AskUserQuestion (HIL). The features root is `storage.featuresRoot` (per-feature) or `storage.shared.specsRoot` (shared); the feature dir is `<root>/<slug>`.
-3. **Migrate.** Run `node "${CLAUDE_SKILL_DIR}/../scripts/migrate.mjs" <featureDir>`. A **lower** workspace schema → run `--dry-run`, show the report, get HIL confirmation, then apply. A **higher** schema → hard halt: "workspace requires a newer fd plugin".
-4. **Hasher on entry.** Run `node "${CLAUDE_SKILL_DIR}/../scripts/hasher.mjs" <featureDir> --features-root <featuresRoot-or-specsRoot>`. Its JSON (`elements`, `specHash`, `unknownKinds`, `tasks`, `tasksHash`) is the source of truth for this run. **Staleness is always judged against these fresh values, never against `state.json` fields.**
+3. **Migrate.** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/migrate.mjs" <featureDir>`. A **lower** workspace schema → run `--dry-run`, show the report, get HIL confirmation, then apply. A **higher** schema → hard halt: "workspace requires a newer fd plugin".
+4. **Hasher on entry.** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs" <featureDir> --features-root <featuresRoot-or-specsRoot>`. Its JSON (`elements`, `specHash`, `unknownKinds`, `tasks`, `tasksHash`) is the source of truth for this run. **Staleness is always judged against these fresh values, never against `state.json` fields.**
 5. **DoR-spec enforcement (block).** Read `state.json.readiness.spec`. Proceed only if `verdict == "ready"` AND `validatedHash == the fresh specHash`. If `blocked`, or the verdict is stale (hash mismatch), **REFUSE**: report the reason and point to `/fd:grill`. Never silently re-validate the spec.
 
 If the hasher reports `unknownKinds`, that is a spec structural-consistency issue owned by the grill/spec validation — refuse and point to `/fd:grill` rather than inventing a KIND.
@@ -47,7 +47,7 @@ Partition **all** spec elements into tasks — every element assigned to exactly
 Size cascade, applied to each candidate task in order:
 
 1. **Cohesion seam** — elements that change together / share a module or path stay together.
-2. **Context budget** — the assembled task file **plus copied dependencies** must be ≤ `tasks.maxContextTokens`. Measure by assembling the file and running `node "${CLAUDE_SKILL_DIR}/../scripts/estimate-tokens.mjs" <assembledFile> --chars-per-token <tasks.charsPerToken>`. Over budget → split along the cohesion seam.
+2. **Context budget** — the assembled task file **plus copied dependencies** must be ≤ `tasks.maxContextTokens`. Measure by assembling the file and running `node "${CLAUDE_PLUGIN_ROOT}/scripts/estimate-tokens.mjs" <assembledFile> --chars-per-token <tasks.charsPerToken>`. Over budget → split along the cohesion seam. This plan-time estimate is re-measured on the real generated file after each wave (see Generation waves) — the measurement, not an eyeballed guess, is the gate.
 3. **Hard limits** — `maxElements`, `maxAcceptanceCriteria` when non-null force a split regardless of budget.
 
 Ambiguous cohesion → **bias to split** (smaller, more, easier to review and parallelize). A **single element over budget** that cannot be cut (one producer) → **HIL**: accept it as `oversized: true`, or push back to the spec to break the element up.
@@ -69,6 +69,8 @@ builtAgainst: { specHash: "sha256:…", inputHash: "sha256:…" }
 status: planned                 # planned at generation; set to ready by the validation tail
 ```
 
+The file **MUST begin with `---` on line 1** (a leading BOM is tolerated; anything else before the `---` silently disables the frontmatter and voids `produces`/`consumes`/`covers`). Frontmatter is a **FLAT YAML subset**: top-level `key: value` with inline arrays/objects only — indented or nested YAML is ignored. `codeDeps` names **real, existing** repo paths, verified during generation (never guessed); the body embeds those concrete paths so no downstream agent has to re-discover them.
+
 Body: **fully self-contained** — copy in every piece of spec/ADR/context content the task needs; make **no references out** to the spec, ADRs, or other docs. Copied cross-feature contract content is wrapped in `fd:copy` markers so upstream drift is machine-locatable and refreshed by the copy-refresher rather than triggering a full regen:
 
 ```markdown
@@ -79,23 +81,28 @@ Body: **fully self-contained** — copy in every piece of spec/ADR/context conte
 
 ## Generation waves
 
-Generation waves are **not** implementation waves. Because the SC map is computed *after* the tasks, generation cannot be SC-topological (chicken-and-egg). Instead order by the decomposition layers: **foundation tasks first, then slices**, so consumers' `consumes` refs resolve to already-known producer IDs in one pass.
+Generation waves are **not** implementation waves. Because the SC map is computed *after* the tasks, generation cannot be SC-topological (chicken-and-egg). Instead order by the decomposition layers: **foundation tasks first, then slices**, so consumers' `consumes` refs resolve to already-known producer IDs in one pass. Pre-assign the producer IDs for the whole plan before dispatching, so every batch's `consumes` refs resolve up front.
 
-- Batch within a layer by context budget or a > 15-task threshold. Each batch is **one subagent** that reads the spec and its element assignment on-demand and writes its task files.
+- Batch within a layer by context budget or a > 15-task threshold. Each batch is **one subagent** that writes its task files.
+- **Dispatch all batches of a layer in ONE message** (parallel tool calls); the validator fan-out (validation tail) goes the same way. Launch the fan-out and await the subagents' completions directly — never foreground-`sleep`, never poll the filesystem for their outputs; read each task file once after its agent reports done.
+- **Spec extracts, not the whole spec.** The main thread has already parsed every element, so for each batch it writes a **per-batch extract** to the scratchpad — only the elements plus the ADR/context blocks that batch's tasks need — and points the subagent at its extract. A generation subagent never re-reads the full `spec.md`.
+- **Handoff carries no copyable section markers.** Never hand a batch a single file whose per-task sections are set off by markers the subagent might copy into a task file (e.g. `### T-004`): a stray delimiter above the frontmatter voids it (see the line-1 rule in Task file format). Give each task's frontmatter as its own file, or instruct explicitly — the first line of every task file is `---`, nothing before it.
+- **codeDeps are verified, not guessed.** A batch may run **at most ONE** bounded code exploration (one Explore-style lookup) to resolve the real, existing repo paths its tasks depend on; share that result across the batch's tasks and embed the concrete target paths in each task body, so implement-stage agents never grep to rediscover them.
+- **Post-wave size gate.** After a wave completes, run `node "${CLAUDE_PLUGIN_ROOT}/scripts/estimate-tokens.mjs" <assembledFile> --chars-per-token <tasks.charsPerToken>` on **every** assembled task file. Any file over `tasks.maxContextTokens` → split along the cohesion seam (**HIL**). The plan-time budget estimate does not replace this measurement.
 - A small feature degenerates to a single batch / single subagent.
 - A **trivial spec** (one element / one AC) → **one task**, SC with no edges; validations still run normally (1:1 coverage), nothing is skipped.
 
 ## Projections and validation tail
 
-1. **Projections.** Run `node "${CLAUDE_SKILL_DIR}/../scripts/project-maps.mjs" <featureDir>` to write `sc-map.json` and `ac-map.json`. A `{"error":"cycle","cycle":[...]}` (non-zero exit) means a shared element is wrongly distributed → hoist it into its own foundation task and retry. The SC map is a projection; never author it by hand.
+1. **Projections.** Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/project-maps.mjs" <featureDir>` to write `sc-map.json` and `ac-map.json`. A `{"error":"cycle","cycle":[...]}` (non-zero exit) means a shared element is wrongly distributed → hoist it into its own foundation task and retry. The SC map is a projection; never author it by hand.
 2. **SC intersection validation.** Check order is correct and all dependencies are satisfied. A **dead symbol** — an element produced but consumed by nothing — goes to **HIL**: confirm it is intentional (may be consumed externally) or fix the distribution.
-3. **Task validation tail (block → verdict).** Fan out **one `validator` subagent per dimension** listed in `validation.dimensions.tasks` (v1 set: `frontmatter`, `self-contained`, `sc-integrity`, `coverage`). Each dimension:
+3. **Task validation tail (block → verdict).** Fan out **one `validator` subagent per dimension** listed in `validation.dimensions.tasks` (v1 set: `frontmatter`, `self-contained`, `sc-integrity`, `coverage`) — dispatch them in one message and await their completions directly, never `sleep`/poll. Each dimension:
    - **frontmatter** — id, produced elements (with IDs), `task::element` deps, code deps, AC, FR/NFR all present.
-   - **self-contained** — everything needed is copied in; no references to external documents.
+   - **self-contained** — everything needed is copied in; no references to external documents. **Cheap pre-scan first:** grep each task file for reference-leak markers (`see spec`, `ADR-`, `§`, `refer to T-`, `patrz`); only flagged files get the full LLM read for the reference-leak check — unflagged files pass it by construction. The other self-containment checks (the content a task needs is actually present) still apply to every file.
    - **sc-integrity** — graph acyclic, order correct, dependencies satisfied, dead symbols handled (HIL above).
    - **coverage** — every AC covered by ≥ 1 task; no uncovered spec elements.
 
-   Verdicts are **binary pass/fail**; every fail is a **blocker**. Validator subagents return pass/fail + doubts only — they have no AskUserQuestion; the command asks all HIL (waivers, dead symbols) in the main thread. Only a human lifts a block, via a logged **waiver**. **Waiver replay:** before overwriting the verdict, compare the previous `waivedChecks` against the new fails; if the same `checkId` still fails, show the prior waiver and ask for a one-confirmation renewal (logged). No silent inheritance.
+   Verdicts are **binary pass/fail**; every fail is a **blocker**. Validator subagents return pass/fail plus `blockingDoubts` (an answer is required before a verdict) and `advisoryDoubts` (reported to the human, never forcing a re-run) — they have no AskUserQuestion; the command asks all HIL (blocking doubts, waivers, dead symbols) in the main thread. After folding answers/fixes, re-run **only** the dimensions whose in-scope tasks changed since they last passed, with no speculative confirm round after a fix the model already justified. Only a human lifts a block, via a logged **waiver**. **Waiver replay:** before overwriting the verdict, compare the previous `waivedChecks` against the new fails; if the same `checkId` still fails, show the prior waiver and ask for a one-confirmation renewal (logged). No silent inheritance.
 
 ## Apply and state writes
 
@@ -109,7 +116,7 @@ On the validation tail:
 Validate every JSON write against its schema before finishing (`feature.lock.json`, `sc-map.json`, `ac-map.json`, `state.json`), 2-space JSON with a trailing newline:
 
 ```bash
-node --input-type=module -e "import { loadAndValidate } from '${CLAUDE_SKILL_DIR}/../scripts/lib/validate.mjs'; const r = loadAndValidate(process.argv[1], process.argv[2]); if (!r.valid) { console.error(JSON.stringify(r.errors, null, 2)); process.exit(1); }" <file.json> <schema.json>
+node --input-type=module -e "import { loadAndValidate } from '${CLAUDE_PLUGIN_ROOT}/scripts/lib/validate.mjs'; const r = loadAndValidate(process.argv[1], process.argv[2]); if (!r.valid) { console.error(JSON.stringify(r.errors, null, 2)); process.exit(1); }" <file.json> <schema.json>
 ```
 
 ## Gates

@@ -88,6 +88,32 @@ for (const c of cases) {
   });
 }
 
+// --- storage.docs optionality (decoupled docs location) ---
+
+test("fd-config: storage.docs present is accepted", () => {
+  const schema = readJson(schemaPath("fd-config"));
+  const value = readJson(fixturePath("fd-config.valid-docs.json"));
+  const { valid, errors } = validate(value, schema);
+  assert.equal(valid, true, `expected valid, got errors: ${JSON.stringify(errors)}`);
+});
+
+test("fd-config: storage.docs absent is accepted (optional block)", () => {
+  const schema = readJson(schemaPath("fd-config"));
+  const value = readJson(fixturePath("fd-config.valid.json"));
+  assert.equal("docs" in value.storage, false, "fixture must exercise the docs-absent path");
+  const { valid, errors } = validate(value, schema);
+  assert.equal(valid, true, `expected valid, got errors: ${JSON.stringify(errors)}`);
+});
+
+test("fd-config: storage.docs bad contextMode enum is rejected", () => {
+  const schema = readJson(schemaPath("fd-config"));
+  const value = readJson(fixturePath("fd-config.invalid-docs-mode.json"));
+  const { valid, errors } = validate(value, schema);
+  assert.equal(valid, false);
+  assert.ok(hasPath(errors, "storage.docs.contextMode"), JSON.stringify(errors));
+  assert.match(messageAt(errors, "storage.docs.contextMode"), /enum/);
+});
+
 // --- loadAndValidate + assertValid ---
 
 test("loadAndValidate: reads file, parses, validates", () => {

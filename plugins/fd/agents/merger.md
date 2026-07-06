@@ -24,7 +24,8 @@ conflict handling** (a bad auto-resolution is worse than a reported conflict). Y
 
 An ordered list of tasks, each: `{ task: <T-id>, worktree: <abs path>, branch: <feature branch> }`.
 The order is authoritative — it already respects dependency and file-footprint serialization. Do not
-reorder it.
+reorder it. The list may hold a **single** task: `/fd:implement` calls you once per passing task, in
+order, so it can record each merge in the manifest incrementally rather than in a batch at wave close.
 
 ## Procedure — strictly sequential
 
@@ -34,11 +35,15 @@ the next. Never run two merges concurrently.
 1. **Gather rationale.** Read the worktree branch's piece-commit messages
    (`git -C <worktree> log <baseline>..HEAD`) and distill their decision rationale for the squash
    commit body. The atomic piece commits themselves stay in the worktree; only the squashed summary
-   lands on the feature branch.
+   lands on the feature branch. **Exclude the empty `Fd-Gate: pass` breadcrumb commit** (the task
+   agent's final self-gate marker) from the rationale — it carries only the gate verdict, no decision
+   content.
 2. **Squash-merge** the worktree branch into the feature branch as **exactly one commit**:
    - subject: a concise summary of the task;
    - body: the gathered rationale;
-   - trailer: `Task: <T-id>` (exactly — the partition in `/fd:to-prs` keys on this trailer).
+   - trailer: `Task: <T-id>` (exactly — the partition in `/fd:to-prs` keys on this trailer). Carry
+     **only** `Task: <id>`; the breadcrumb's `Fd-Gate: pass` trailer is a per-worktree gate marker and
+     must **not** propagate to the feature-branch commit.
 3. **On conflict**, resolve **only** when the conflict is mechanical — non-overlapping hunks,
    line-number shifts, rename/move relocations — where the merge is unambiguous. Anything
    **semantic** (overlapping edits to the same logic, ambiguous intent) → **stop on this task**: abort

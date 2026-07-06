@@ -29,7 +29,8 @@ scaffold katalogu funkcjonalności, gotowy do `/to-tasks`.
    (HIL).
 2. **Grill** (`GRILLING.md`): temat → agenda → drążenie luk / niejasności / sprzeczności,
    z groundingiem on-demand w subagentach (`RESEARCHER.md`) i kontekstem kodu projektu.
-   Wynik: `spec.md` (elementy z ID; linie `covers:` w blokach AC), `CONTEXT.md`, wpisy
+   Wynik: `spec.md` (elementy z ID; linie `covers:` w blokach AC), `CONTEXT.md`/ADR
+   (routing wg `storage.docs`, gdy ustawione; inaczej wg trybu storage), wpisy
    do `sources-map.json`; `ac-map.json` liczy skrypt jako projekcję w kroku zapisu
    (`BUILDING_SPEC.md` §2).
 3. **Zapis + hash:** policz hashe elementów i `spec_hash`; zapisz manifest (init historii

@@ -37,6 +37,14 @@ Każdy rozwiązany punkt materializuje się jako zmiana w specu: nowy lub uzupe�
 elementu (z ID), nowe AC z linią `covers:` (nawiązania do FR/NFR), doprecyzowany kontrakt. Grill jest
 świadomy istniejących ID — zachowuje je, alokuje nowe tylko dla nowych elementów.
 
+**Szablon AC.** Pisz każde AC jako konkretny **wyzwalacz → obserwowalny wynik**: dokładnie
+jedno obserwowalne zachowanie, brak mglistych czasowników (`obsługuje`, `wspiera`,
+`poprawnie`), brak „albo-albo", obowiązkowa linia `covers:`.
+- Dobrze: `Gdy żądanie obciążenia powtarza Idempotency-Key widziany w ostatnich 24h, API
+  zwraca oryginalny wynik obciążenia i nie tworzy drugiego.` `covers: FR-2`
+- Źle: `System poprawnie obsługuje zduplikowane lub niepoprawne żądania obciążenia.`
+  (mglisty czasownik, dwa zachowania, brak wyzwalacza)
+
 Pętla trwa, dopóki agenda nie jest pusta lub user jej świadomie nie zamknie. Grill nie
 wychodzi poza wymagania w kod implementacji.
 

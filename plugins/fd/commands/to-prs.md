@@ -8,7 +8,10 @@ Turn a feature branch's linear, one-commit-per-task history into a readable **st
 for human review — the second real merge-to-main gate, alongside the automated CR in `/fd:implement`.
 It exists so human review stays doable across a few to a few dozen PRs.
 
-`$0` (optional) = feature slug. Cold-start from disk. `${CLAUDE_SKILL_DIR}` points at `commands/`.
+`$0` (optional) = feature slug. Cold-start from disk. Plugin files resolve via
+`${CLAUDE_PLUGIN_ROOT}`; a file missing after **one** direct check ⇒ STOP and report a broken
+fd installation — never search the repo or `$HOME` for plugin files, and do not read script
+sources (use the documented one-liners).
 
 ---
 
@@ -20,7 +23,7 @@ It exists so human review stays doable across a few to a few dozen PRs.
 2. **Feature selection.** Same rule as `/fd:implement`: `$0` slug → else the single feature under
    `featuresRoot` → else match `state.json.branch` to the current git branch → else **HIL** list.
 
-3. **Schema migration.** `node "${CLAUDE_SKILL_DIR}/../scripts/migrate.mjs" <featureDir> --dry-run`.
+3. **Schema migration.** `node "${CLAUDE_PLUGIN_ROOT}/scripts/migrate.mjs" <featureDir> --dry-run`.
    Lower `schema` → report → **HIL** → apply. Higher → STOP: "update the plugin".
 
 4. **Implementation completeness (BLOCK).** Read the manifest; **every** task must be `implemented`

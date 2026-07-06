@@ -54,6 +54,14 @@ therefore of its hash, so a mapping change is caught by invalidation. Never hand
 `ac-map.json`; it is derived from these lines. Each AC must bind exactly one observable
 behavior — no vague verbs, no either-or.
 
+**AC template.** Write each AC as a concrete **trigger → observable outcome**: exactly one
+observable behavior, no vague verbs (`handle`, `support`, `properly`), no either-or, and a
+mandatory `covers:` line.
+- Good: `When a charge request repeats an Idempotency-Key seen in the last 24h, the API
+  returns the original charge result and creates no second charge.` `covers: FR-2`
+- Bad: `The system properly handles duplicate or invalid charge requests.` (vague verb, two
+  behaviors, no trigger)
+
 ## Grounding on-demand
 
 Ground every external claim (an API, library, framework, or 3rd-party service) **the

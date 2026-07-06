@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "language": { "default": "en" },
+  "storage": {
+    "mode": "per-feature",
+    "featuresRoot": "docs/features",
+    "docs": {
+      "contextMode": "per-repo",
+      "contextFile": "docs/CONTEXT.md"
+    }
+  },
+  "tooling": {
+    "packageManager": "pnpm",
+    "build": "pnpm build",
+    "lint": "pnpm lint",
+    "test": "pnpm test",
+    "format": null
+  },
+  "mcp": { "detected": [] },
+  "codeReview": { "skills": ["code-review"] },
+  "tasks": {
+    "maxContextTokens": 40000,
+    "charsPerToken": 4,
+    "maxElements": null,
+    "maxAcceptanceCriteria": null,
+    "granularityBias": "split"
+  },
+  "implement": {
+    "branchTemplate": "feat/{slug}",
+    "maxRepairIterations": 3,
+    "engine": "workflow",
+    "worktreeSetup": [],
+    "worktreeCleanup": "always"
+  },
+  "prs": {
+    "model": "stacked",
+    "grouping": "slice",
+    "baseBranch": "main",
+    "verifyPerPrCi": false
+  },
+  "validation": {
+    "allowWaiver": true,
+    "dimensions": {
+      "spec": ["structural"],
+      "tasks": ["frontmatter"]
+    }
+  },
+  "detectedAt": "2026-07-05T12:00:00Z"
+}

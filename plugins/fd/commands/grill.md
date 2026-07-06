@@ -12,13 +12,18 @@ never writes task files — it marks affected tasks `stale` and points to `/fd:t
 
 ## Paths & scripts (this command is an executable prompt)
 
-Resolve plugin files from the commands dir via `${CLAUDE_SKILL_DIR}`:
+Resolve plugin files from the plugin root via `${CLAUDE_PLUGIN_ROOT}`:
 - hasher (read-only, run on entry and after apply):
-  `node "${CLAUDE_SKILL_DIR}/../scripts/hasher.mjs" <featureDir> --features-root <featuresRoot>`.
-- projections: `node "${CLAUDE_SKILL_DIR}/../scripts/project-maps.mjs" <featureDir>`.
-- migration: `node "${CLAUDE_SKILL_DIR}/../scripts/migrate.mjs" <featureDir> [--dry-run]`.
-- schema check: `loadAndValidate('<file>','${CLAUDE_SKILL_DIR}/../schemas/<name>.schema.json')`
-  from `${CLAUDE_SKILL_DIR}/../scripts/lib/validate.mjs`.
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs" <featureDir> --features-root <featuresRoot>`.
+- projections: `node "${CLAUDE_PLUGIN_ROOT}/scripts/project-maps.mjs" <featureDir>`.
+- migration: `node "${CLAUDE_PLUGIN_ROOT}/scripts/migrate.mjs" <featureDir> [--dry-run]`.
+- schema check: `loadAndValidate('<file>','${CLAUDE_PLUGIN_ROOT}/schemas/<name>.schema.json')`
+  from `${CLAUDE_PLUGIN_ROOT}/scripts/lib/validate.mjs`.
+
+These paths resolve inside the loaded plugin (installed or `--plugin-dir`). A referenced file
+missing after **one** direct check ⇒ STOP and report a broken fd installation — never search
+the repo or `$HOME` for plugin files. Invoke scripts via the one-liners above; do not read
+their source.
 
 Judge staleness against **fresh hasher output**, never stored `state.json` fields. Write JSON
 pretty (2-space) + trailing newline, validate against schema before proceeding. HIL uses
@@ -53,13 +58,13 @@ pretty (2-space) + trailing newline, validate against schema before proceeding. 
      do not touch `inputHash` or DoR verdicts. If after the flips **every**
      task in the manifest is `shipped`, set `state.json.phase = "shipped"`.
    - If the feature consumes upstream specs, re-read their manifests and compare consumed-element
-     hashes (`${CLAUDE_SKILL_DIR}/../references/CROSS_FEATURE.md`).
-2. **Grill (main thread).** Load and follow `${CLAUDE_SKILL_DIR}/../references/GRILLING.md` + `${CLAUDE_SKILL_DIR}/../references/BUILDING_SPEC.md`.
+     hashes — load `${CLAUDE_PLUGIN_ROOT}/references/CROSS_FEATURE.md` only then, never otherwise.
+2. **Grill (main thread).** Load and follow `${CLAUDE_PLUGIN_ROOT}/references/GRILLING.md` + `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`.
    Drill around the user's input; changes materialize as new / filled-in element blocks. The
    grill is **ID-aware**: keep existing IDs exactly, allocate new IDs only for genuinely new
-   elements, never renumber or reuse. Maintain `CONTEXT.md`/ADRs (routed per storage mode);
-   ground new external claims on-demand via the `researcher` subagent, appending to
-   `sources-map.json`.
+   elements, never renumber or reuse. Maintain `CONTEXT.md`/ADRs (routed per `storage.docs` when
+   set, else per storage mode); ground new external claims on-demand via the `researcher`
+   subagent, appending to `sources-map.json`.
 3. **Reconcile-plan (HIL, before apply).** Re-hash, then diff the changed spec against the
    manifest: added / removed / `modified` / unchanged per element. Classify `modified`
    **breaking / non-breaking conservatively** — any contract modification is breaking unless
@@ -77,13 +82,18 @@ pretty (2-space) + trailing newline, validate against schema before proceeding. 
 ## Re-validation tail (spec DoR — `block → verdict`)
 
 1. Read `validation.dimensions.spec`; full v1 set `structural`, `coverage`, `grounding`,
-   `feasibility`, `decomposability`, `non-over-spec` (semantics: `${CLAUDE_SKILL_DIR}/../references/BUILDING_SPEC.md`).
-2. Fan out **one `validator` per configured dimension** (parallel), each with dimension name +
-   feature dir + check semantics; each returns `{dimension, checks:[{id, verdict, evidence}],
-   doubts:[]}`. The `grounding` validator may spawn nested `researcher` subagents.
+   `feasibility`, `decomposability`, `non-over-spec` (semantics: `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`).
+2. Fan out **one `validator` per configured dimension** (parallel — dispatch them in one message
+   and await their completions directly, never `sleep`/poll), each with dimension name + feature
+   dir + check semantics; each returns `{dimension, checks:[{id, verdict, evidence}],
+   blockingDoubts:[], advisoryDoubts:[]}`. The `grounding` validator may spawn nested
+   `researcher` subagents.
 3. Aggregate every `fail` into `failedChecks`.
-4. Ask returned `doubts` here via `AskUserQuestion`; fold answers into the spec, re-hash and
-   re-run the affected dimension.
+4. Ask each **blocking** doubt here via `AskUserQuestion` (an answer is required before a
+   verdict); fold the answers/fixes into the spec and re-hash. **Advisory** doubts are reported
+   to the human but never force a re-run. Re-run **only** the dimensions whose in-scope elements
+   changed since they last passed — not the whole set — and add no speculative confirm round
+   after a fix the model already justified.
 5. Waivers (only if `validation.allowWaiver`; the model never waives): a human may waive each
    remaining fail. Before overwriting the prior `readiness.spec`, compare its `waivedChecks` to
    the new fails — same `checkId` still failing → show the prior waiver, ask **one** renew

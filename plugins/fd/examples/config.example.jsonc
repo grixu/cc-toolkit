@@ -17,6 +17,16 @@
       "boundedContextsFile": "docs/features/bounded-contexts.json",
       "adrRoot": "docs/adr",            // wspólny katalog ADR
       "specsRoot": "docs/features"      // gdzie lądują spec + taski + manifest funkcjonalności
+    },
+    "docs": {                           // OPCJONALNE: gdzie żyją CONTEXT.md i ADR-y. Odsprzężone od storage.mode
+                                        // (spec per-feature + wspólny adrRoot jest legalny). Brak bloku ⇒ semantyka stara:
+                                        // tryb docs wynika z storage.mode (per-feature → w katalogu ficzera; shared → z shared.*)
+      "contextMode": "per-app",         // "per-feature" (w katalogu ficzera; contextFile/adrRoot ignorowane)
+                                        //   | "per-app" (contextFile + opcjonalny adrRoot)
+                                        //   | "per-bounded-context" (boundedContextsFile + opcjonalny adrRoot)
+      "contextFile": "docs/CONTEXT.md", // wspólny CONTEXT.md (dla contextMode: per-app)
+      "adrRoot": "docs/adr",            // wspólny katalog ADR (opcjonalny; dla per-app / per-bounded-context)
+      "boundedContextsFile": "docs/features/bounded-contexts.json" // rejestr BC (dla contextMode: per-bounded-context)
     }
   },
 

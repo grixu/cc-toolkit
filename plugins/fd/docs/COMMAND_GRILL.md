@@ -34,7 +34,8 @@ historię wersji.
    spoza komend.
 2. **Grill** (`GRILLING.md`): drążenie wokół wkładu usera; zmiany materializują się jako
    nowe / uzupełnione bloki elementów. Grill jest świadomy ID — zachowuje istniejące,
-   alokuje nowe tylko dla nowych elementów. Grounding on-demand w subagentach.
+   alokuje nowe tylko dla nowych elementów. Utrzymuje `CONTEXT.md`/ADR (routing wg
+   `storage.docs`, gdy ustawione; inaczej wg trybu storage). Grounding on-demand w subagentach.
 3. **Reconcile-plan (HIL):** zdiffuj zmieniony spec, sklasyfikuj `modified`
    breaking / non-breaking, zmapuj na akcje wobec tasków (regen-in-place / drop / bez
    zmian; element `delivered` → block, zmiana poza zakresem — `SPEC.md` §2.4), pokaż
@@ -47,7 +48,7 @@ historię wersji.
    związany z nowym `specHash` do `readiness.spec`.
 
 Cross-feature: jeśli funkcjonalność konsumuje zależne spec, reconcile re-czyta ich
-manifesty i drąży wersje kontraktów (`CROSS_FEATURE.md`).
+manifesty i drąży wersje kontraktów — `CROSS_FEATURE.md` ładowany tylko wtedy, nie inaczej.
 
 ---
 

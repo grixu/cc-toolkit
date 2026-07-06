@@ -92,10 +92,14 @@ spec's DoR verdict isn't `ready` and current — it points you back to `/fd:gril
 /fd:implement <slug>
 ```
 Implements every ready task in dependency waves on a feature branch — each task in
-an isolated worktree, squash-merged serially, gated by acceptance criteria + full
-CI + code review, with a bounded self-healing repair loop. **Blocks** on any
-spec/task drift (sending you to `/fd:to-tasks`), if the tasks' DoR verdict isn't
-`ready` and current, or if a consumed cross-feature contract isn't delivered yet.
+an isolated worktree, squash-merged serially, gated by acceptance criteria + CI
+scoped to the packages the wave touched, with one whole-feature code review at
+feature close and a bounded self-healing repair loop. The first run asks which base
+to branch off. **Resumable:** an interrupted session picks up the remainder of the
+in-flight wave, salvaging completed-but-unmerged task branches instead of redoing
+the wave. **Blocks** on any spec/task drift (sending you to `/fd:to-tasks`), if the
+tasks' DoR verdict isn't `ready` and current, or if a consumed cross-feature
+contract isn't delivered yet.
 
 ```
 # self-review the feature branch (outside fd), then:
@@ -137,7 +141,9 @@ docs/features/<slug>/
 
 A `shared` storage mode instead routes `CONTEXT.md` to a shared context root and
 ADRs to a shared ADR root, keeping the spec/state/manifest/maps/tasks together
-under a specs root. See `examples/config.example.jsonc`.
+under a specs root. Where CONTEXT.md and ADRs live is decoupled from the storage
+mode via the optional `storage.docs` block (`/fd:config` always asks) — e.g.
+per-feature specs with a shared ADR root. See `examples/config.example.jsonc`.
 
 ## Key concepts
 
@@ -170,10 +176,16 @@ back to `/fd:to-tasks` (the single owner of task-file writes).
 
 **Waves, worktrees, squash-per-task.** `/fd:implement` computes implementation
 waves as topological layers of the SC map on the fly (there is no materialized
-plan). Each task runs in its own git worktree; tasks with overlapping file
+plan). Each task runs in its own git worktree (driven by the shipped
+`scripts/wave-implement.mjs` workflow script); tasks with overlapping file
 footprints serialize, disjoint ones run in parallel. A dedicated merger subagent
 squash-merges each passing task into the feature branch as exactly one commit
 carrying a `Task: <id>` trailer — strictly serially, so there are no branch races.
+The manifest records each task as it merges (not batched at wave close), and a
+passing task leaves an empty `Fd-Gate: pass` breadcrumb commit on its worktree
+branch — together these make an interrupted wave resumable: on re-entry, merged
+tasks are skipped, gated-but-unmerged branches are re-checked and salvaged, and
+only the rest re-runs.
 
 **Stacked PRs + buildability.** The feature branch ends up as a linear,
 one-commit-per-task history in topological order, so `/fd:to-prs` cuts a PR stack
@@ -202,6 +214,7 @@ The knobs that most change behavior:
 | `language.default` | `en` | Language of the spec and derived artifacts |
 | `tasks.charsPerToken` | `4` | Token-estimator divisor; use `3`–`3.5` for densely tokenized languages (e.g. Polish) |
 | `storage.mode` | `per-feature` | `per-feature` (everything in the feature dir) or `shared` (CONTEXT/ADRs in shared roots) |
+| `storage.docs` | *(unset)* | Where CONTEXT.md/ADRs live, decoupled from `storage.mode`: `contextMode` (`per-feature` / `per-app` / `per-bounded-context`) + `contextFile` / `adrRoot` / `boundedContextsFile` |
 | `tasks.maxContextTokens` | `40000` | Budget that caps a task's assembled size (file + copied deps); over budget forces a split |
 | `implement.engine` | `workflow` | `workflow` (auto-falls-back to subagents when unavailable) or forced `subagents` |
 | `implement.branchTemplate` | `feat/{slug}` | Feature branch name; the first `/fd:implement` run records the result |
@@ -231,6 +244,18 @@ pnpm eval:fd
 ```
 
 See [`evals/README.md`](evals/README.md) for the eval setup and scenarios.
+
+To try the plugin from this checkout without installing it, load it in dev mode:
+
+```
+claude --plugin-dir plugins/fd
+```
+
+Command bodies reference plugin files via `${CLAUDE_PLUGIN_ROOT}`, which resolves
+in both installed and `--plugin-dir` sessions. `scripts/wave-implement.mjs` is a
+dynamic-workflow script executed by `/fd:implement` via the Workflow tool — never
+run it with `node` (its trailing harness `return` is stripped by the unit tests
+that import its pure helpers).
 
 ## Design docs & attribution
 

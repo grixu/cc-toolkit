@@ -40,6 +40,13 @@ ogólny, by nie rozstrzygać decyzji należących do implementacji.
   mapowania przechodzi przez inwalidację. `ac-map.json` to liczona skryptem projekcja
   tych linii, nie drugie źródło prawdy. Każde AC wiąże **jedno obserwowalne
   zachowanie**; brak mglistych czasowników i konstrukcji „albo-albo".
+  - **Szablon AC.** Pisz każde AC jako konkretny **wyzwalacz → obserwowalny wynik**:
+    dokładnie jedno obserwowalne zachowanie, brak mglistych czasowników (`obsługuje`,
+    `wspiera`, `poprawnie`), brak „albo-albo", obowiązkowa linia `covers:`.
+    - Dobrze: `Gdy żądanie obciążenia powtarza Idempotency-Key widziany w ostatnich 24h,
+      API zwraca oryginalny wynik obciążenia i nie tworzy drugiego.` `covers: FR-2`
+    - Źle: `System poprawnie obsługuje zduplikowane lub niepoprawne żądania obciążenia.`
+      (mglisty czasownik, dwa zachowania, brak wyzwalacza)
 - **Przypadki brzegowe i błędy krytyczne** — spec opisuje je i to, czy oraz jak zostaną
   obsłużone.
 - **Wdrożenie / rollback** — spec może zawierać informacje o wdrożeniu i wycofaniu, ale

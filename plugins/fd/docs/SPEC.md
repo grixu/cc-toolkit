@@ -453,9 +453,12 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Walidacja tasków (DoR) | `/to-tasks` — ogon | block → verdykt |
 | Drift specu / tasków w detekcji (bez apply) | `/implement` — wejście | block |
 | Enforcement DoR tasków | `/implement` — wejście | block |
+| Wybór bazy feature brancha (pierwszy run) | `/implement` — wejście | HIL |
+| Salvage: re-check bramki per-task przy recovery | `/implement` — wejście | block (per task) |
 | Per-task AC (pokryte w całości) + lint zmian przed merge | `/implement` | block |
-| Per-fala pełne CI (lint + test + build) + AC domykane falą | `/implement` | block |
-| Post-CI code review (≥1 skill) | `/implement` | gate |
+| Per-fala scoped CI (fallback: pełne) + AC domykane falą | `/implement` | block |
+| Domknięcie: pełne CI repo | `/implement` — domknięcie | block |
+| Domknięcie: code review całej funkcjonalności (≥1 skill) | `/implement` — domknięcie | gate |
 | K-iter fail — eskalacja | `/implement` | HIL |
 | Kompletność implementacji (wszystkie taski `implemented`) | `/to-prs` — wejście | block |
 | Przypisanie obcych commitów (bez trailera `Task:`) | `/to-prs` | HIL |

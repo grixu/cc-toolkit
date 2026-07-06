@@ -36,9 +36,16 @@ Markdown z frontmatterem + autonomiczna treść.
 - `consumes` — zależności z innych tasków w formie `<producerTask>::<element>@v<n>` oraz
   refy cross-feature `<slug>#<element>@vN` (`CROSS_FEATURE.md`).
 - `covers` — AC / FR / NFR odnoszące się do taska.
-- `codeDeps` — zależności z istniejącego kodu projektu.
+- `codeDeps` — zależności z istniejącego kodu projektu: **realne, istniejące** ścieżki repo,
+  weryfikowane przy generacji (nie zgadywane); treść taska osadza te konkretne ścieżki.
 - `builtAgainst` — `{ specHash, inputHash }` snapshot, wobec którego zbudowano task.
 - `status` — stan maszyny (`SPEC.md` §2.3).
+
+**Parser frontmattera:** plik **musi zaczynać się od `---` w linii 1** (wiodący BOM
+tolerowany; cokolwiek innego przed `---` po cichu wyłącza frontmatter i unieważnia
+`produces`/`consumes`/`covers`). Frontmatter to **płaski podzbiór YAML**: `key: value` na
+najwyższym poziomie, tablice / obiekty tylko inline — wcięte / zagnieżdżone YAML jest
+ignorowane.
 
 **Treść:** wszystkie informacje niezbędne do wykonania są **skopiowane** do pliku — nie
 odnosimy się do specu, ADR ani innych dokumentów, tylko wklejamy ich istotną treść. Cel:
@@ -98,7 +105,8 @@ gdzie `d` = `tasks.charsPerToken` (default `4` — kalibracja pod angielski; dla
 gęstszej tokenizacji, np. polskiego, `/config` proponuje `3–3.5` wg `language.default`);
 liczony skryptem na złożonym pliku — tani, bo plik i tak składamy przy generacji.
 Default 40k zostawia agentowi fali zapas na kod projektu i wynik narzędzi, a plik taska
-utrzymuje w rozmiarze recenzowalnym przez człowieka.
+utrzymuje w rozmiarze recenzowalnym przez człowieka. Estymata plan-time nie jest bramką
+końcową — realny plik mierzymy po każdej fali generacji (§5).
 
 ### Edge cases
 
@@ -122,10 +130,26 @@ utrzymuje w rozmiarze recenzowalnym przez człowieka.
 nie może być SC-topologiczna (jajko-kura).
 
 - Partycja generacji = warstwy z §4: **fundament-taski pierwsze, potem slice'y** → refy
-  `consumes` konsumentów rozwiązują się do już-znanych ID producentów (jedno przejście).
+  `consumes` konsumentów rozwiązują się do już-znanych ID producentów (jedno przejście); ID
+  producentów całego planu przydzielamy przed dispatchem.
 - Rozmiar batcha w warstwie: budżet kontekstu / próg >15 tasków. Każda fala to osobny
-  subagent, który wczytuje spec i pliki on-demand. Mały ficzer = jedna warstwa, jeden
-  batch (degeneruje do pojedynczego subagenta).
+  subagent piszący swoje pliki tasków. Mały ficzer = jedna warstwa, jeden batch (degeneruje
+  do pojedynczego subagenta).
+- **Dispatch równoległy:** wszystkie batche warstwy odpalamy **w jednej wiadomości**
+  (równoległe wywołania); tak samo fan-out walidatorów (ogon §6). Czekamy na ukończenie
+  subagentów wprost — bez `sleep`, bez pollowania plików; każdy plik czytamy raz po
+  zgłoszeniu końca przez agenta.
+- **Ekstrakty specu zamiast całości:** main thread (już sparsował elementy) zapisuje dla
+  każdego batcha ekstrakt do scratchpada — tylko elementy + bloki ADR / context potrzebne
+  temu batchowi — i wskazuje subagentowi ekstrakt; subagent generacji nie re-czyta całego
+  `spec.md`.
+- **codeDeps weryfikowane, nie zgadywane:** batch może wykonać **co najwyżej JEDNĄ**
+  ograniczoną eksplorację kodu (jeden lookup w stylu Explore) na realne ścieżki repo,
+  współdzieloną między jego taski; konkretne ścieżki osadzamy w treści tasków, by agent
+  implementacji ich nie doszukiwał się ponownie.
+- **Bramka rozmiaru po fali:** po ukończeniu fali uruchamiamy `estimate-tokens.mjs` na
+  **każdym** złożonym pliku taska; plik ponad `tasks.maxContextTokens` → split wzdłuż szwu
+  kohezji (HIL). Estymata plan-time (§4) nie zastępuje tego pomiaru.
 
 ---
 
@@ -146,10 +170,20 @@ zapisany do `readiness.tasks`:
 1. **Frontmatter kompletny** — ID, tworzone elementy (z ID wewn.), zależności
    `task::element`, zależności z kodu, AC, FR/NFR.
 2. **Samodzielność treści** — wszystkie niezbędne informacje skopiowane; brak odwołań do
-   zewnętrznych dokumentów.
+   zewnętrznych dokumentów. **Najpierw tani pre-scan:** grep po każdym pliku taska za
+   markerami wycieku referencji (`see spec`, `ADR-`, `§`, `refer to T-`, `patrz`); tylko
+   oflagowany plik dostaje pełne czytanie LLM pod kątem wycieku — plik nieoflagowany
+   przechodzi ten check z konstrukcji. Pozostałe checki samodzielności (potrzebna treść
+   faktycznie obecna) dotyczą każdego pliku.
 3. **Integralność SC** — graf acykliczny, kolejność poprawna, dependencje spełnione, brak
    martwych symboli (z HIL jak wyżej).
 4. **Pokrycie** — każde AC pokryte przez ≥1 task; brak niepokrytych elementów specu.
+
+Walidatory zwracają pass/fail plus `blockingDoubts` (odpowiedź wymagana przed verdyktem) i
+`advisoryDoubts` (noty do usera, bez re-runu) — bez `AskUserQuestion`; wszystkie HIL (blocking
+doubts, waivery, martwe symbole) pyta main thread. Po zwinięciu odpowiedzi / poprawek re-run
+**tylko** wymiarów, których taski w zakresie zmieniły się od ostatniego passa — bez
+spekulatywnej rundy potwierdzającej po poprawce, którą model już uzasadnił.
 
 ---
 

@@ -33,6 +33,17 @@
             "adrRoot": { "type": "string" },
             "specsRoot": { "type": "string" }
           }
+        },
+        "docs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contextMode"],
+          "properties": {
+            "contextMode": { "type": "string", "enum": ["per-feature", "per-app", "per-bounded-context"] },
+            "contextFile": { "type": "string" },
+            "adrRoot": { "type": "string" },
+            "boundedContextsFile": { "type": "string" }
+          }
         }
       }
     },

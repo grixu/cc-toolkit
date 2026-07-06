@@ -11,15 +11,20 @@ hands control back. It never runs the next command.
 
 ## Paths & scripts (this command is an executable prompt)
 
-Plugin files resolve from the commands dir via `${CLAUDE_SKILL_DIR}`:
+Plugin files resolve from the plugin root via `${CLAUDE_PLUGIN_ROOT}`:
 - hasher (read-only, run on entry and after every persist):
-  `node "${CLAUDE_SKILL_DIR}/../scripts/hasher.mjs" <featureDir> --features-root <featuresRoot>`
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs" <featureDir> --features-root <featuresRoot>`
   → stdout JSON `{elements:{ID:hash}, specHash, unknownKinds:[], tasks:{...}, tasksHash}`.
-- projections: `node "${CLAUDE_SKILL_DIR}/../scripts/project-maps.mjs" <featureDir>` (writes
+- projections: `node "${CLAUDE_PLUGIN_ROOT}/scripts/project-maps.mjs" <featureDir>` (writes
   `ac-map.json`, `sc-map.json`).
-- migration: `node "${CLAUDE_SKILL_DIR}/../scripts/migrate.mjs" <featureDir> [--dry-run]`.
+- migration: `node "${CLAUDE_PLUGIN_ROOT}/scripts/migrate.mjs" <featureDir> [--dry-run]`.
 - schema check for any JSON artifact you read or write:
-  `node --input-type=module -e "import { loadAndValidate } from '${CLAUDE_SKILL_DIR}/../scripts/lib/validate.mjs'; const r = loadAndValidate(process.argv[1], process.argv[2]); if (!r.valid) { console.error(JSON.stringify(r.errors, null, 2)); process.exit(1); }" <file.json> <schema.json>`
+  `node --input-type=module -e "import { loadAndValidate } from '${CLAUDE_PLUGIN_ROOT}/scripts/lib/validate.mjs'; const r = loadAndValidate(process.argv[1], process.argv[2]); if (!r.valid) { console.error(JSON.stringify(r.errors, null, 2)); process.exit(1); }" <file.json> <schema.json>`
+
+These paths resolve inside the loaded plugin (installed or `--plugin-dir`). A referenced file
+missing after **one** direct check ⇒ STOP and report a broken fd installation — never search
+the repo or `$HOME` for plugin files. Invoke scripts via the one-liners above; do not read
+their source.
 
 Always judge staleness against **fresh hasher output**, never against stored `state.json`
 fields. Write JSON pretty (2-space), trailing newline, and validate against its schema
@@ -38,7 +43,7 @@ before moving on. HIL questions use `AskUserQuestion` in this main thread only.
 1. **Slug + scaffold.** Generate a short, descriptive kebab-case `slug` from the topic
    (shared generator with `/fd:from-docs`). Resolve the feature dir from config: per-feature →
    `<featuresRoot>/<slug>/`; shared → `<specsRoot>/<slug>/` (with `CONTEXT.md`/ADRs routed per
-   the storage mode (see the loaded GRILLING reference)). **Collision** (dir already exists) → **HIL**: (a) continue on the
+   `storage.docs` when set, else per the storage mode (see the loaded GRILLING reference)). **Collision** (dir already exists) → **HIL**: (a) continue on the
    existing feature — then treat this as a spec mutation and follow `/fd:grill` (entry
    reconcile against the manifest, reconcile-plan HIL before persist); or (b) supply a new
    slug and scaffold fresh. Do not overwrite an existing feature.
@@ -58,13 +63,13 @@ before moving on. HIL questions use `AskUserQuestion` in this main thread only.
    Write a **minimal valid** `feature.lock.json` (validate against `feature-lock.schema.json`):
    `spec.hash: null`, empty `history`, empty `elements`/`tasks`, and seed `idCounters` (all
    seed KINDs plus `T`, each `0`): `{ "DB":0,"API":0,"CFG":0,"OBS":0,"INF":0,"INT":0,"MOD":0,"DESIGN":0,"AC":0,"FR":0,"NFR":0,"T":0 }`.
-4. **Grill (main thread).** Load and follow `${CLAUDE_SKILL_DIR}/../references/GRILLING.md`
-   and `${CLAUDE_SKILL_DIR}/../references/BUILDING_SPEC.md`. Build the agenda from the topic
+4. **Grill (main thread).** Load and follow `${CLAUDE_PLUGIN_ROOT}/references/GRILLING.md`
+   and `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`. Build the agenda from the topic
    plus the project's code context, then drill gaps / ambiguities / contradictions with the
    user one item at a time. Each resolved item materializes immediately in `spec.md` as an
    ID-anchored element block (append-only IDs) or an AC carrying a `covers:` line. Maintain
-   `CONTEXT.md` (`${CLAUDE_SKILL_DIR}/../references/CONTEXT-FORMAT.md`) and record decisions as ADRs
-   (`${CLAUDE_SKILL_DIR}/../references/ADR-FORMAT.md`), routed per the storage mode (see the loaded GRILLING reference). **Ground every external claim
+   `CONTEXT.md` (`${CLAUDE_PLUGIN_ROOT}/references/CONTEXT-FORMAT.md`) and record decisions as ADRs
+   (`${CLAUDE_PLUGIN_ROOT}/references/ADR-FORMAT.md`), routed per `storage.docs` when set, else per the storage mode (see the loaded GRILLING reference). **Ground every external claim
    the moment it enters the spec** by fanning out the `researcher` subagent (one per claim or
    a batch) — never search/fetch in this thread; append its returned records to
    `sources-map.json` (validate against `sources-map.schema.json`). If a grounding channel is
@@ -85,16 +90,19 @@ Run after persist, always.
 
 1. Read `validation.dimensions.spec` from config. Full v1 set: `structural`, `coverage`,
    `grounding`, `feasibility`, `decomposability`, `non-over-spec` (semantics:
-   `${CLAUDE_SKILL_DIR}/../references/BUILDING_SPEC.md`). Run the configured subset.
-2. Fan out **one `validator` subagent per configured dimension** (parallel). Each prompt
-   carries the dimension name, the feature dir (absolute), and the dimension's check semantics
-   (inline or pointed at `BUILDING_SPEC.md`). Validators read artifacts fresh from disk and
-   return `{dimension, checks:[{id, verdict, evidence}], doubts:[]}`. The `grounding` validator
-   may spawn nested `researcher` subagents to probe citation coverage.
+   `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`). Run the configured subset.
+2. Fan out **one `validator` subagent per configured dimension** (parallel — dispatch them in
+   one message and await their completions directly, never `sleep`/poll). Each prompt carries the
+   dimension name, the feature dir (absolute), and the dimension's check semantics (inline or
+   pointed at `BUILDING_SPEC.md`). Validators read artifacts fresh from disk and return
+   `{dimension, checks:[{id, verdict, evidence}], blockingDoubts:[], advisoryDoubts:[]}`. The
+   `grounding` validator may spawn nested `researcher` subagents to probe citation coverage.
 3. **Aggregate.** Collect every `fail` check id into `failedChecks`.
-4. **Doubts.** Ask each returned doubt here via `AskUserQuestion` (subagents cannot ask); fold
-   the answer into the spec/manifest if it changes an element, then re-hash and re-run the
-   affected dimension.
+4. **Doubts.** Ask each **blocking** doubt here via `AskUserQuestion` (subagents cannot ask; an
+   answer is required before a verdict); fold the answer into the spec/manifest if it changes an
+   element, then re-hash. **Advisory** doubts are reported to the human but never force a re-run.
+   Re-run **only** the dimensions whose in-scope elements changed since they last passed — not
+   the whole set — and add no speculative confirm round after a fix the model already justified.
 5. **Waivers** (only if `validation.allowWaiver`; the model **never** waives). For each
    remaining fail a human may waive it. Before overwriting a prior `readiness.spec`, compare
    its `waivedChecks` to the new fails: for a `checkId` that still fails and was previously

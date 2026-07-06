@@ -333,6 +333,10 @@ rozstrzygnięte 2026-07-04; zmiany naniesione na zestaw spec tego samego dnia.
   `${CLAUDE_PLUGIN_ROOT}` dotyczy hooków / MCP / komend skryptowych.
 - **Decyzja (2026-07-04):** referencje z treści komend przez `${CLAUDE_SKILL_DIR}`.
   Zmiany: `IMPLEMENTATION.md` §1.
+- **ERRATA (2026-07-06):** decyzja błędna — w treści komend pluginowych
+  `${CLAUDE_SKILL_DIR}` jest pusty (istnieje tylko w SKILL.md); cztery testowe uruchomienia
+  przez `--plugin-dir` potwierdziły brak substytucji. Właściwa zmienna to
+  `${CLAUDE_PLUGIN_ROOT}` (plugins-reference). Wszystkie komendy poprawione.
 
 ### E3. Deprecacja v1 w marketplace — odpuszczone
 

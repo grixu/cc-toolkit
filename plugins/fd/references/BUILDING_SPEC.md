@@ -42,6 +42,13 @@ settle decisions that belong to implementation.
   the block's hash, so a mapping change goes through invalidation. `ac-map.json` is a
   script-computed projection of these lines, never a second source of truth. Each AC binds
   **exactly one observable behavior** — no vague verbs, no either-or constructions.
+  - **AC template.** Write each AC as a concrete **trigger → observable outcome**: exactly
+    one observable behavior, no vague verbs (`handle`, `support`, `properly`), no either-or,
+    and a mandatory `covers:` line.
+    - Good: `When a charge request repeats an Idempotency-Key seen in the last 24h, the API
+      returns the original charge result and creates no second charge.` `covers: FR-2`
+    - Bad: `The system properly handles duplicate or invalid charge requests.` (vague verb,
+      two behaviors, no trigger)
 - **Edge cases and critical errors** are described, together with whether and how they are
   handled.
 - **Deploy / rollback** may be noted, but without detailed procedures. When a procedure is

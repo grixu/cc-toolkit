@@ -19,17 +19,19 @@ plugins/fd/
     to-tasks.md  implement.md  to-prs.md  status.md
   agents/
     researcher.md              # RESEARCHER.md; tools: firecrawl, context7, codebase-memory
+    analyst.md                 # ekstrakcja analizy w /fd:from-docs (kandydaci FR/NFR/AC + agenda → analysis/SA-*.md)
     validator.md               # czysty subagent walidacji, wymiar podawany w prompcie;
                                # w tools także Agent (nested researcher — RESEARCHER.md §1)
     copy-refresher.md          # odświeża markowane kopie fd:copy przy drifcie upstream (CROSS_FEATURE.md §1)
     merger.md                  # szeregowe squash-merge tasków fali do feature brancha (COMMAND_IMPLEMENT.md §4)
-  references/                  # współdzielone bloki, referowane przez ${CLAUDE_SKILL_DIR} (patrz zasady mapowania)
+  references/                  # współdzielone bloki, referowane przez ${CLAUDE_PLUGIN_ROOT}/references/
     GRILLING.md  BUILDING_SPEC.md  CROSS_FEATURE.md
     CONTEXT-FORMAT.md  ADR-FORMAT.md   # formaty własne (B4) — do napisania
   scripts/                     # Node.js, zero zależności (SPEC.md §2.6)
     hasher.mjs                 # hashe elementów, input_hash, rollupy
     project-maps.mjs           # projekcje sc-map + ac-map (+ walidacja acykliczności)
     estimate-tokens.mjs        # ⌈znaki / charsPerToken⌉ na złożonym pliku taska
+    wave-implement.mjs         # skrypt dynamic-workflow fali /fd:implement (uruchamiany przez Workflow, nie node)
     migrate.mjs  migrations/   # łańcuch migracji schematów (§3)
   schemas/                     # JSON Schema artefaktów (§2)
   examples/config.example.jsonc
@@ -45,9 +47,10 @@ Zasady mapowania:
   wyłącznie jawne (`user-invocable: false` steruje tylko widocznością w menu, nie
   dostępem Skill toola).
 - **Ścieżki w treści komend:** pliki pluginu z wnętrza markdownu komendy referujemy
-  przez `${CLAUDE_SKILL_DIR}` (dla plugin-skilli wskazuje podkatalog skilla, nie root
-  pluginu); `${CLAUDE_PLUGIN_ROOT}` jest udokumentowany dla hooków / MCP / komend
-  skryptowych — nie dla treści skilli.
+  przez `${CLAUDE_PLUGIN_ROOT}` (root pluginu; udokumentowany dla komend / agentów /
+  hooków / MCP). `${CLAUDE_SKILL_DIR}` istnieje wyłącznie w SKILL.md (podkatalog skilla)
+  i w treści komendy pozostaje pusty — korekta 2026-07-06 po testach `--plugin-dir`
+  (pierwotna decyzja E2 z ISSUES_TO_FIX była błędna).
 - **Argumenty komend są 0-indeksowane:** `$0` = pierwszy argument (np. slug), `$1` =
   drugi — inaczej niż w shellu.
 - **Wymóg Node.js:** skrypty `scripts/` wymagają `node` (LTS) u usera niezależnie od

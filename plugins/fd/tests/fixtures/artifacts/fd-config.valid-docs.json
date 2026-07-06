@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "language": { "default": "en" },
+  "storage": {
+    "mode": "per-feature",
+    "featuresRoot": "docs/features",
+    "docs": {
+      "contextMode": "per-app",
+      "contextFile": "docs/CONTEXT.md",
+      "adrRoot": "docs/adr"
+    }
+  },
+  "tooling": {
+    "packageManager": "pnpm",
+    "build": "pnpm build",
+    "lint": "pnpm lint",
+    "test": "pnpm test",
+    "format": "pnpm format"
+  },
+  "mcp": { "detected": ["firecrawl", "context7", "codebase-memory-mcp"] },
+  "codeReview": { "skills": ["quality-review", "comment-review", "fd:grill"] },
+  "tasks": {
+    "maxContextTokens": 40000,
+    "charsPerToken": 4,
+    "maxElements": null,
+    "maxAcceptanceCriteria": null,
+    "granularityBias": "split"
+  },
+  "implement": {
+    "branchTemplate": "feat/{slug}",
+    "maxRepairIterations": 3,
+    "engine": "workflow",
+    "worktreeSetup": [],
+    "worktreeCleanup": "always"
+  },
+  "prs": {
+    "model": "stacked",
+    "grouping": "slice",
+    "baseBranch": "main",
+    "verifyPerPrCi": false
+  },
+  "validation": {
+    "allowWaiver": true,
+    "dimensions": {
+      "spec": ["structural", "coverage", "grounding", "feasibility", "decomposability", "non-over-spec"],
+      "tasks": ["frontmatter", "self-contained", "sc-integrity", "coverage"]
+    }
+  },
+  "detectedAt": "2026-07-05T12:00:00Z"
+}
