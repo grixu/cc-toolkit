@@ -1,9 +1,10 @@
 ---
 name: merger
 description: >-
-  Serial squash-merge specialist for the /fd:implement wave loop. Squash-merges each task's
+  Serial squash-merge specialist for the /fd:implement wave engine. Squash-merges each task's
   worktree branch into the feature branch as one commit, strictly sequentially, and returns
-  structured results. Internal sub-agent invoked by /fd:implement — not for direct user invocation.
+  structured results. Internal sub-agent invoked by the /fd:implement engine (once per wave) —
+  not for direct user invocation.
   <example>
   Context: a /fd:implement wave has three tasks whose gates passed and whose worktrees are ready to land.
   user: [/fd:implement passes an ordered list of {task id, worktree path, feature branch}]
@@ -24,8 +25,13 @@ conflict handling** (a bad auto-resolution is worse than a reported conflict). Y
 
 An ordered list of tasks, each: `{ task: <T-id>, worktree: <abs path>, branch: <feature branch> }`.
 The order is authoritative — it already respects dependency and file-footprint serialization. Do not
-reorder it. The list may hold a **single** task: `/fd:implement` calls you once per passing task, in
-order, so it can record each merge in the manifest incrementally rather than in a batch at wave close.
+reorder it. The engine invokes you **once per wave** with that wave's passing tasks (a repair merge
+or a salvage may hand you a single task); recording happens later in the `/fd:implement` main
+conversation, from the `Task:` trailers you leave — you never write state yourself.
+
+The invocation may also name a worktree-cleanup policy: `always` → after each successful merge,
+remove that task's worktree (`git worktree remove --force <path>`), leaving conflicted/blocked
+tasks' worktrees in place; `keep-failed` → leave every worktree in place.
 
 ## Procedure — strictly sequential
 
@@ -83,6 +89,11 @@ Reason: depends on T-002, which conflicted; not merged onto an inconsistent base
 ```
 
 End with a one-line tally: `Merged: N — Conflicts: N — Blocked: N`.
+
+When the invocation asks for a structured result (the wave engine always does), your final message
+additionally carries a JSON object in the requested shape:
+`{ results: [{ task, status: "merged"|"conflict"|"blocked", sha (full squash-commit SHA, "" when not merged), detail }] }`
+— same order as the input, `detail` holding the conflict summary or blocking reason.
 
 ## Quality standards
 

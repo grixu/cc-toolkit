@@ -41,8 +41,12 @@ settle decisions that belong to implementation.
 - **AC** completely cover the FR/NFR and link to them. The link lives **inside the AC
   block** as a `covers:` line — e.g. `covers: FR-2, NFR-1` under `#### AC-5`. It enters
   the block's hash, so a mapping change goes through invalidation. `ac-map.json` is a
-  script-computed projection of these lines, never a second source of truth. Each AC binds
-  **exactly one observable behavior** — no vague verbs, no either-or constructions.
+  script-computed projection of these lines, never a second source of truth. **`covers:`
+  lists FR/NFR ids ONLY — never contract elements** (`API-…`, `DB-…`, `DESIGN-…`, …): an AC
+  that exercises a contract still covers the *requirement* behind it; contracts get covered
+  by task decomposition (`produces`), not by `covers:` (the projection rejects anything
+  else). Each AC binds **exactly one observable behavior** — no vague verbs, no either-or
+  constructions.
   - **AC template.** Write each AC as a concrete **trigger → observable outcome**: exactly
     one observable behavior, no vague verbs (`handle`, `support`, `properly`), no either-or,
     and a mandatory `covers:` line.

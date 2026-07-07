@@ -10,8 +10,16 @@ It exists so human review stays doable across a few to a few dozen PRs.
 
 `$0` (optional) = feature slug. Cold-start from disk. Plugin files resolve via
 `${CLAUDE_PLUGIN_ROOT}`; a file missing after **one** direct check ⇒ STOP and report a broken
-fd installation — never search the repo or `$HOME` for plugin files, and do not read script
-sources (use the documented one-liners).
+fd installation — never search the repo or `$HOME` for plugin files.
+
+**Script contract (applies to every shipped script):**
+- Scripts are EXECUTED via the documented one-liners — their stdout JSON is the whole
+  interface. Never `Read` a script's `.mjs` source into context; running one with wrong or
+  missing args prints a usage error, and that error is the documentation.
+- Reading a script's source is allowed only to diagnose an execution that already failed —
+  say so explicitly when you do.
+- Never re-implement a shipped script inline (hand-assembled state JSON, one-off replacement
+  scripts). A job no shipped script covers is a gap: report it, do not work around it.
 
 ---
 

@@ -15,6 +15,11 @@ never writes task files — it marks affected tasks `stale` and points to `/fd:t
 Resolve plugin files from the plugin root via `${CLAUDE_PLUGIN_ROOT}`:
 - hasher (read-only, run on entry and after apply):
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs" <featureDir> --features-root <featuresRoot>`.
+- manifest projector (the ONLY writer of `feature.lock.json`):
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs" <featureDir> [--add-kind K | --history-summary S] [--features-root <dir>]`.
+- state/verdict applier (the ONLY writer of `state.json`):
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs" <readiness-spec|reconcile> <featureDir> …`.
+- ship recorder: `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" ship <featureDir> --task <T-…> --deliver <EL=sha256:…>`.
 - projections: `node "${CLAUDE_PLUGIN_ROOT}/scripts/project-maps.mjs" <featureDir>`.
 - migration: `node "${CLAUDE_PLUGIN_ROOT}/scripts/migrate.mjs" <featureDir> [--dry-run]`.
 - schema check: `loadAndValidate('<file>','${CLAUDE_PLUGIN_ROOT}/schemas/<name>.schema.json')`
@@ -22,8 +27,16 @@ Resolve plugin files from the plugin root via `${CLAUDE_PLUGIN_ROOT}`:
 
 These paths resolve inside the loaded plugin (installed or `--plugin-dir`). A referenced file
 missing after **one** direct check ⇒ STOP and report a broken fd installation — never search
-the repo or `$HOME` for plugin files. Invoke scripts via the one-liners above; do not read
-their source.
+the repo or `$HOME` for plugin files.
+
+**Script contract (applies to every shipped script):**
+- Scripts are EXECUTED via the one-liners above — their stdout JSON is the whole
+  interface. Never `Read` a script's `.mjs` source into context; running one with wrong or
+  missing args prints a usage error, and that error is the documentation.
+- Reading a script's source is allowed only to diagnose an execution that already failed —
+  say so explicitly when you do.
+- Never re-implement a shipped script inline (hand-assembled state JSON, one-off replacement
+  scripts). A job no shipped script covers is a gap: report it, do not work around it.
 
 Judge staleness against **fresh hasher output**, never stored `state.json` fields. Write JSON
 pretty (2-space) + trailing newline, validate against schema before proceeding. HIL uses
@@ -50,13 +63,13 @@ pretty (2-space) + trailing newline, validate against schema before proceeding. 
 1. **Entry reconcile — detect.** Run the hasher and diff fresh element hashes against the
    manifest (this also catches manual `spec.md` edits made outside the commands).
    - **Ship-detection.** For each `implemented` task, test whether its `impl.commits` are
-     reachable from `prs.baseBranch` (`git merge-base --is-ancestor`). Reachable → flip the
-     task `implemented → shipped` and its produced elements `pending → delivered` (+ set
-     `deliveredHash`). Unreachable but a `git cherry` / `git patch-id` match against
-     `baseBranch` → suspected squash-merge → **one batched HIL** confirming many tasks at once
-     (regular under a "squash and merge" repo policy). These flips synchronize with git; they
-     do not touch `inputHash` or DoR verdicts. If after the flips **every**
-     task in the manifest is `shipped`, set `state.json.phase = "shipped"`.
+     reachable from `prs.baseBranch` (`git merge-base --is-ancestor`). Reachable → flip via
+     `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" ship <featureDir> --task <T-…,…> --deliver <EL=sha256:…,…>`
+     (the script flips `implemented → shipped`, marks the elements `delivered`, and sets
+     `state.json.phase = "shipped"` once every live task is shipped). Unreachable but a
+     `git cherry` / `git patch-id` match against `baseBranch` → suspected squash-merge →
+     **one batched HIL** confirming many tasks at once (regular under a "squash and merge"
+     repo policy). These flips synchronize with git; they do not touch `inputHash` or DoR verdicts.
    - If the feature consumes upstream specs, re-read their manifests and compare consumed-element
      hashes — load `${CLAUDE_PLUGIN_ROOT}/references/CROSS_FEATURE.md` only then, never otherwise.
 2. **Grill (main thread).** Load and follow `${CLAUDE_PLUGIN_ROOT}/references/GRILLING.md` + `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`.
@@ -72,19 +85,24 @@ pretty (2-space) + trailing newline, validate against schema before proceeding. 
    (regen-in-place / drop / none), propagating along the SC graph via `inputHash`. **Changing
    or removing a `delivered` element → block**: it is out of scope and belongs to a new feature.
    Show the plan and get approval before writing anything.
-4. **Apply (scope = `/fd:grill`).** Write `spec.md`; update `feature.lock.json`: element
-   hashes, append a `history` entry `{ hash, at:<ISO>, summary }`, bump `spec.hash`. A
-   **breaking change to a delivered element** bumps its `@v` (`version`) and sets its consumers
-   `stale`. Set `state.json.specHash`. **Mark affected tasks `stale` in the manifest only —
-   do not rewrite task files** (full task apply is `/fd:to-tasks`). Run `project-maps.mjs` to
-   recompute `ac-map.json`. Validate every written artifact against its schema.
+4. **Apply (scope = `/fd:grill`).** Write `spec.md`; project the manifest:
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs" <featureDir> --history-summary "<one-line delta summary>" --features-root <featuresRoot>`
+   (element hashes, history append, `spec.hash` bump; existing task entries keep their stored
+   hashes — the staleness baseline). Then execute the approved plan:
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs" reconcile <featureDir> --plan-file <scratch>/reconcile.json`
+   — `{ stale: [<affected/consumer T-…>], bumpVersions: [<delivered EL with a HIL-approved
+   breaking change>], drop: [] }`; the `@v` bump lives ONLY behind that approved plan. **Tasks
+   are marked `stale` in the manifest only — do not rewrite task files** (full task apply is
+   `/fd:to-tasks`). Run `project-maps.mjs` to recompute `ac-map.json`. (`state.json.specHash`
+   is set by the re-validation tail's `readiness-spec` apply.)
 
 ## Re-validation tail (spec DoR — `block → verdict`)
 
 1. Read `validation.dimensions.spec`; full v1 set `structural`, `coverage`, `grounding`,
    `feasibility`, `decomposability`, `non-over-spec` (semantics: `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`).
-2. Fan out **one `validator` per configured dimension** (parallel — dispatch them in one message
-   and await their completions directly, never `sleep`/poll), each with dimension name + feature
+2. Fan out **one `validator` per configured dimension** (parallel — dispatch them ALL in ONE
+   message, multiple Agent calls in a single response; one-per-message serializes the fan-out.
+   Await their completions directly, never `sleep`/poll), each with dimension name + feature
    dir + check semantics; each returns `{dimension, checks:[{id, verdict, evidence}],
    blockingDoubts:[], advisoryDoubts:[]}`. The `grounding` validator may spawn nested
    `researcher` subagents.
@@ -98,10 +116,14 @@ pretty (2-space) + trailing newline, validate against schema before proceeding. 
    remaining fail. Before overwriting the prior `readiness.spec`, compare its `waivedChecks` to
    the new fails — same `checkId` still failing → show the prior waiver, ask **one** renew
    confirmation, log `{ id, by:"human", at:<ISO> }`, move it into `waivedChecks`.
-6. `verdict = ready` iff `failedChecks` empty (after waivers), else `blocked`. Write
-   `state.json.readiness.spec = { verdict, validatedHash:<fresh specHash>, dimensionsRun, failedChecks, waivedChecks }`; validate `state.json`. Changing the spec bumps affected tasks'
-   `inputHash` → moves `tasksHash` → the tasks verdict also goes stale, so `/fd:implement`
-   won't act on a stale set until `/fd:to-tasks` re-projects.
+6. `verdict = ready` iff `failedChecks` empty (after waivers), else `blocked`. Write the
+   verdict content `{ verdict, dimensionsRun, failedChecks, waivedChecks }` to a scratchpad
+   file and apply it:
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs" readiness-spec <featureDir> --verdict-file <scratch>/verdict-spec.json --features-root <featuresRoot>`
+   — the script records `state.json.readiness.spec` (injecting `validatedHash` = the fresh
+   `specHash` it computes itself) and sets `state.json.specHash`. Changing the spec bumps
+   affected tasks' `inputHash` → moves `tasksHash` → the tasks verdict also goes stale, so
+   `/fd:implement` won't act on a stale set until `/fd:to-tasks` re-projects.
 
 ## Output / checkpoint
 

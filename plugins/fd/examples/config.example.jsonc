@@ -59,6 +59,7 @@
     "branchTemplate": "feat/{slug}",    // nazwa feature brancha; pierwszy run zapisuje wynik do state.json.branch
     "maxRepairIterations": 3,           // próg K: tyle nieudanych iteracji napraw taska → eskalacja HIL
     "engine": "workflow",               // "workflow" (auto-fallback do subagentów, gdy niedostępny) | "subagents" (wymuszony)
+    "ciScope": "full",                  // CI po każdej fali: "full" = cały pipeline na całym repo | "scoped" = zawężone do dotkniętych pakietów (fallback full); domknięcie featura zawsze biegnie full
     "worktreeSetup": [],                // komendy bootstrapu świeżego worktree (np. "pnpm install"), uruchamiane przed startem taska
     "worktreeCleanup": "always"         // "always" | "keep-failed" — zostaw worktree nieudanego taska do wglądu
   },

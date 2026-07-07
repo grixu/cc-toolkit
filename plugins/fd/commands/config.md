@@ -9,7 +9,16 @@ Detect the stack, run a full human-in-the-loop pass, validate, and write `.claud
 
 The commented schema is `${CLAUDE_PLUGIN_ROOT}/examples/config.example.jsonc`; the enforced JSON Schema is `${CLAUDE_PLUGIN_ROOT}/schemas/fd-config.schema.json`.
 
-These paths resolve inside the loaded plugin (installed or `--plugin-dir`). A referenced file missing after **one** direct check ⇒ STOP and report a broken fd installation — never search the repo or `$HOME` for plugin files. Invoke scripts via the documented one-liners; do not read their source.
+These paths resolve inside the loaded plugin (installed or `--plugin-dir`). A referenced file missing after **one** direct check ⇒ STOP and report a broken fd installation — never search the repo or `$HOME` for plugin files.
+
+**Script contract (applies to every shipped script):**
+- Scripts are EXECUTED via the documented one-liners — their stdout JSON is the whole
+  interface. Never `Read` a script's `.mjs` source into context; running one with wrong or
+  missing args prints a usage error, and that error is the documentation.
+- Reading a script's source is allowed only to diagnose an execution that already failed —
+  say so explicitly when you do.
+- Never re-implement a shipped script inline (hand-assembled state JSON, one-off replacement
+  scripts). A job no shipped script covers is a gap: report it, do not work around it.
 
 ## Preconditions
 
@@ -41,8 +50,8 @@ Per detected field: exactly one candidate → prefill it; more than one candidat
 
 Detection only prefills; always walk the user through the choices below, prefilled with Phase 0/1/2 values. Batch **all non-conditional questions into as few AskUserQuestion calls as possible** (main-thread HIL; the tool takes at most 4 questions per call) — do not fire a prompt per field:
 
-- **Storage mode** — `per-feature` (default) or `shared`; this fixes where the **spec + tasks + manifest** live. Ask `featuresRoot` (default `docs/features`).
-- **Docs location** — an always-asked, explicit question: *where do `CONTEXT.md` and ADRs live for this project?* Options are derived from detection (an existing `docs/CONTEXT.md`/`docs/adr`, a per-feature layout, a bounded-context registry). The answer is recorded into `storage.docs` and is **decoupled from storage mode** (per-feature specs with a shared `adrRoot` is legal):
+- **Storage mode** — `per-feature` (default) or `shared`; this fixes where the **spec + tasks + manifest** live. Ask `featuresRoot` (default `docs/features`) — **the features path is set HERE** (a custom path arrives via the "Other" answer); make the question text say so explicitly, because the next question is about docs only.
+- **Docs location** — an always-asked, explicit question: *where do `CONTEXT.md` and ADRs live for this project?* This is **not** the specs/tasks path (that was the previous question — a path answered here by mistake should trigger a reconciliation follow-up, not a silent guess). Options are derived from detection (an existing `docs/CONTEXT.md`/`docs/adr`, a per-feature layout, a bounded-context registry). The answer is recorded into `storage.docs` and is **decoupled from storage mode** (per-feature specs with a shared `adrRoot` is legal):
   - `per-feature` → `CONTEXT.md` + ADRs live in the feature dir (`contextFile`/`adrRoot` unused).
   - `per-app` → shared `contextFile` (+ optional `adrRoot`).
   - `per-bounded-context` → `boundedContextsFile` (+ optional `adrRoot`).
@@ -52,7 +61,7 @@ Detection only prefills; always walk the user through the choices below, prefill
 
 Conditional follow-ups (only when the answers above trigger them): `shared` storage mode needs `storage.shared.*` (`contextMode`, `contextFile`, `adrRoot`, `specsRoot`, `boundedContextsFile`); a `per-bounded-context` docs location needs `storage.docs.boundedContextsFile`.
 
-Everything else is **defaulted WITHOUT asking** — the remaining `tasks.*` knobs (granularity bias, optional hard limits), `implement.*` (branch template, repair-iteration cap, engine, worktree setup/cleanup), `prs.*`, `validation.*`. These defaults are listed in the Phase 6 report for review. Any **non-default** value the model chooses on the user's behalf (e.g. a non-empty `implement.worktreeSetup`) must be either an explicit option in the batched question or flagged for confirmation — **never silently written**.
+Everything else is **defaulted WITHOUT asking** — the remaining `tasks.*` knobs (granularity bias, optional hard limits), `implement.*` (branch template, repair-iteration cap, engine, CI scope `ciScope: "full"`, worktree setup/cleanup), `prs.*`, `validation.*`. These defaults are listed in the Phase 6 report for review. Any **non-default** value the model chooses on the user's behalf (e.g. a non-empty `implement.worktreeSetup`) must be either an explicit option in the batched question or flagged for confirmation — **never silently written**.
 
 Do **not** ask for the per-feature bounded-context here — that choice happens at feature creation (`/fd:start`, `/fd:from-docs`).
 
@@ -61,13 +70,13 @@ Do **not** ask for the per-feature bounded-context here — that choice happens 
 Any failure below **stops the write**, is presented to the user to fix or consciously confirm, and loops back — never silently guessed. Reuse the Phase-1 detection results here — do **not** re-run `node --version` or re-detect the package manager; the pre-write step's genuinely new work is path writability and stamping `detectedAt`:
 
 - **`node` present** — reuse the Phase-1 `node` result. If it was absent, **BLOCK**: without it the hasher and projections cannot run. Do not write the config.
-- **tooling + `implement.worktreeSetup` commands exist / are executable** — resolve each configured command; a missing/non-executable one is a block until fixed or confirmed-none.
+- **tooling + `implement.worktreeSetup` commands exist / are executable** — resolve each configured command (an executability check, e.g. `command -v` on the binary, is fine; re-detecting *which* package manager the repo uses is not — that was Phase 1); a missing/non-executable one is a block until fixed or confirmed-none.
 - **Each `codeReview.skills` entry resolves to an invocable id** — for every selected skill:
-  1. Resolve its definition — the `SKILL.md` frontmatter (skills) or the command-file frontmatter (slash-command skills).
-  2. Reject any whose frontmatter has `disable-model-invocation: true` — that skill is unreachable by the Skill tool and for preload → re-ask.
-  3. Persist the **canonical invocable id**: the bare name for a top-level skill (`quality-review`), and `plugin:skill` **only** for a plugin-scoped skill (`fd:grill`). Never emit a doubled `name:name` id unless `name` genuinely is both the plugin and the skill inside it.
+  1. **Source of truth for invocability is the session's available-skills list** (the skills the Skill tool can actually reach right now), NOT the filesystem — a `SKILL.md` sitting in a plugin cache or marketplace checkout proves nothing about reachability, and a session-provided skill may have no `SKILL.md` on disk at all. Persist the id **exactly as the session lists it**. Do not sweep `$HOME`/plugin caches hunting for definitions.
+  2. Consult the on-disk `SKILL.md` frontmatter (or command-file frontmatter for slash-command skills) **only** to check `disable-model-invocation: true` — such a skill is unreachable by the Skill tool and for preload → re-ask. Definition not found on disk but present in the session list → keep it (session list wins), note it in the report.
+  3. The **canonical invocable id** is whatever form the session lists: a bare name for a top-level skill (`code-review`), `plugin:skill` for a plugin-scoped one (`fd:grill`). A plugin whose skill shares its name legitimately yields a doubled id (`quality-review:quality-review`) — that is the normal form for such plugins, not an error.
 
-  Worked example — a correct entry list: `"skills": ["quality-review", "comment-review", "fd:grill"]` (two top-level skills by bare name, one plugin-scoped skill as `plugin:skill`). Wrong: `["quality-review:quality-review", "comment-review:comment-review"]` — those doubled ids name no real plugin/skill pair.
+  Worked example — a correct entry list: `"skills": ["code-review", "quality-review:quality-review", "fd:grill"]` (a built-in top-level skill by bare name; a plugin whose skill is named like the plugin as `plugin:skill` — doubled is correct there; a plugin-scoped skill as `plugin:skill`). Wrong: `"quality-review"` bare when the session lists only `quality-review:quality-review` — a bare id the session does not list resolves to nothing at `/fd:implement` time.
 - **Storage paths writable** — `featuresRoot` (and, in shared mode, the shared roots; plus any `storage.docs` `contextFile`/`adrRoot`/`boundedContextsFile` directory) can be created/written.
 - **Grounding MCP present** — firecrawl + context7 are recommended, not required; absence is a **warning only** (grounding degrades to best-effort). `groundingDegraded` is NOT a config field — it is computed at runtime by consumers from actual tool reachability.
 

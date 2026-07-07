@@ -11,6 +11,11 @@ export const SEED_KINDS = [
 
 // The dash in an anchor is an em dash (U+2014) fenced by single spaces.
 const ANCHOR_RE = /^(#{1,6}) ([A-Z]{2,16})-([1-9][0-9]*) — /;
+// Near-miss detector: a heading that clearly attempts the anchor form (KIND too long,
+// leading-zero number, wrong dash character) must surface as malformed instead of
+// silently reading as an ordinary heading and dropping the element. The space between
+// number and dash is required so ordinary hyphenated tokens (DB-3-sub) stay headings.
+const LENIENT_ANCHOR_RE = /^(#{1,6}) ([A-Z]{2,})-([0-9]+) +[—–-]/;
 const HEADING_RE = /^(#{1,6}) /;
 
 export class HasherError extends Error {}
@@ -80,10 +85,16 @@ export function extractElements(specText, kindDict) {
   const elements = [];
   const unknownKinds = [];
   const unknownSeen = new Set();
+  const malformedAnchors = [];
 
   for (let i = 0; i < lines.length; i++) {
     const m = ANCHOR_RE.exec(lines[i]);
-    if (!m) continue;
+    if (!m) {
+      if (LENIENT_ANCHOR_RE.test(lines[i])) {
+        malformedAnchors.push({ line: i + 1, text: lines[i] });
+      }
+      continue;
+    }
     const level = m[1].length;
     const kind = m[2];
     if (!dict.has(kind)) {
@@ -108,7 +119,7 @@ export function extractElements(specText, kindDict) {
       content: lines.slice(i, end).join('\n'),
     });
   }
-  return { elements, unknownKinds };
+  return { elements, unknownKinds, malformedAnchors };
 }
 
 export function parseTaskFrontmatter(fileText) {
@@ -288,7 +299,7 @@ export function runHasher(featureDir, options = {}) {
   const upstream = manifest && Array.isArray(manifest.upstream) ? manifest.upstream : [];
   const featuresRoot = options.featuresRoot ? path.resolve(options.featuresRoot) : path.dirname(dir);
 
-  const { elements, unknownKinds } = extractElements(specText, kindDict);
+  const { elements, unknownKinds, malformedAnchors } = extractElements(specText, kindDict);
   const elementsMap = {};
   for (const el of elements) elementsMap[el.id] = hashElement(el.content);
   const specHash = rollup(elementsMap);
@@ -318,7 +329,7 @@ export function runHasher(featureDir, options = {}) {
     }
   }
 
-  return { elements: elementsMap, specHash, unknownKinds, tasks, tasksHash: rollup(tasksInput) };
+  return { elements: elementsMap, specHash, unknownKinds, malformedAnchors, tasks, tasksHash: rollup(tasksInput) };
 }
 
 function parseCliArgs(argv) {

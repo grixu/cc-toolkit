@@ -14,7 +14,11 @@ hands control back. It never runs the next command.
 Plugin files resolve from the plugin root via `${CLAUDE_PLUGIN_ROOT}`:
 - hasher (read-only, run on entry and after every persist):
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs" <featureDir> --features-root <featuresRoot>`
-  → stdout JSON `{elements:{ID:hash}, specHash, unknownKinds:[], tasks:{...}, tasksHash}`.
+  → stdout JSON `{elements:{ID:hash}, specHash, unknownKinds:[], malformedAnchors:[], tasks:{...}, tasksHash}`.
+- manifest projector (the ONLY writer of `feature.lock.json`):
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs" <featureDir> [--seed | --add-kind K | --history-summary S] [--features-root <dir>]`.
+- verdict/state applier (the ONLY writer of `state.json`):
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs" <seed-state|readiness-spec|reconcile> <featureDir> …`.
 - projections: `node "${CLAUDE_PLUGIN_ROOT}/scripts/project-maps.mjs" <featureDir>` (writes
   `ac-map.json`, `sc-map.json`).
 - migration: `node "${CLAUDE_PLUGIN_ROOT}/scripts/migrate.mjs" <featureDir> [--dry-run]`.
@@ -23,8 +27,16 @@ Plugin files resolve from the plugin root via `${CLAUDE_PLUGIN_ROOT}`:
 
 These paths resolve inside the loaded plugin (installed or `--plugin-dir`). A referenced file
 missing after **one** direct check ⇒ STOP and report a broken fd installation — never search
-the repo or `$HOME` for plugin files. Invoke scripts via the one-liners above; do not read
-their source.
+the repo or `$HOME` for plugin files.
+
+**Script contract (applies to every shipped script):**
+- Scripts are EXECUTED via the one-liners above — their stdout JSON is the whole
+  interface. Never `Read` a script's `.mjs` source into context; running one with wrong or
+  missing args prints a usage error, and that error is the documentation.
+- Reading a script's source is allowed only to diagnose an execution that already failed —
+  say so explicitly when you do.
+- Never re-implement a shipped script inline (hand-assembled state JSON, one-off replacement
+  scripts). A job no shipped script covers is a gap: report it, do not work around it.
 
 Always judge staleness against **fresh hasher output**, never against stored `state.json`
 fields. Write JSON pretty (2-space), trailing newline, and validate against its schema
@@ -52,17 +64,17 @@ before moving on. HIL questions use `AskUserQuestion` in this main thread only.
    area → **HIL** confirm (or pick another) → record `state.json.boundedContext`. In all other
    modes leave it `null`.
 3. **Init state.** Determine `language`: a per-invocation override in the topic wins, else
-   `language.default`. Write `state.json` (validate against `state.schema.json`):
+   `language.default`. Seed both state files with the shipped scripts (never hand-write them):
 
-   ```json
-   { "schema": 1, "slug": "<slug>", "title": "<short title>", "language": "<lang>",
-     "createdFrom": "topic", "phase": "spec", "boundedContext": null, "branch": null,
-     "specHash": null, "tasksHash": null, "waveInProgress": false, "manifest": "feature.lock.json" }
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs" seed-state <featureDir> --slug <slug> --title "<short title>" --language <lang> --created-from topic [--bounded-context <bc>]
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs" <featureDir> --seed
    ```
 
-   Write a **minimal valid** `feature.lock.json` (validate against `feature-lock.schema.json`):
-   `spec.hash: null`, empty `history`, empty `elements`/`tasks`, and seed `idCounters` (all
-   seed KINDs plus `T`, each `0`): `{ "DB":0,"API":0,"CONFIG":0,"OBSERVABILITY":0,"INFRASTRUCTURE":0,"INTEGRATION":0,"MODULE":0,"DESIGN":0,"AC":0,"FR":0,"NFR":0,"T":0 }`.
+   `seed-state` writes a schema-valid `state.json` (`phase: "spec"`, null hashes, `branch:
+   null`); `--seed` writes the minimal valid `feature.lock.json` (`spec.hash: null`, empty
+   `history`/`elements`/`tasks`, `idCounters` = every seed KIND plus `T` at `0`). Both are
+   idempotent no-ops when the file already exists.
 4. **Grill (main thread).** Load and follow `${CLAUDE_PLUGIN_ROOT}/references/GRILLING.md`
    and `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`. Build the agenda from the topic
    plus the project's code context, then drill gaps / ambiguities / contradictions with the
@@ -77,12 +89,20 @@ before moving on. HIL questions use `AskUserQuestion` in this main thread only.
    not a hard stop). The loop ends when the agenda is empty or the user closes it.
 5. **Persist + hash.** Save `spec.md`. Run the hasher. If `unknownKinds` is non-empty, a
    heading matches the anchor grammar but its `KIND` is outside `idCounters` → **HIL** (accept
-   the new `KIND` → add it to `idCounters`; or it is a typo → fix `spec.md` and re-hash).
-   Then update `feature.lock.json`: set `spec.hash` = fresh `specHash`; append a `history`
-   entry `{ hash: specHash, at: <ISO>, summary: "init" }`; for each element set
-   `{ hash, version: 1, status: "pending" }`; bump each `idCounters[KIND]` to its high-water
-   mark. Set `state.json.specHash` = fresh `specHash`. Run `project-maps.mjs` to compute
-   `ac-map.json` from the `covers:` lines. Validate every written artifact against its schema.
+   the new `KIND` → `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs" <featureDir> --add-kind <KIND>`;
+   or it is a typo → fix `spec.md` and re-hash). If `malformedAnchors` is non-empty, a heading
+   *tries* to be an anchor but fails the grammar (over-long KIND, leading-zero number, wrong
+   dash) — the element would silently not exist → same **HIL** shape: fix `spec.md` and re-hash.
+   Then project the manifest with the shipped script (it owns `spec.hash`, the history append,
+   element entries `{hash, version: 1, status: "pending"}`, producers, and the append-only
+   `idCounters` bump — never hand-assemble any of it):
+
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/build-manifest.mjs" <featureDir> --history-summary init --features-root <featuresRoot>
+   ```
+
+   (`state.json.specHash` is written by the validation tail's `readiness-spec` apply below.)
+   Run `project-maps.mjs` to compute `ac-map.json` from the `covers:` lines.
 
 ## Validation tail (spec DoR — `block → verdict`)
 
@@ -91,8 +111,9 @@ Run after persist, always.
 1. Read `validation.dimensions.spec` from config. Full v1 set: `structural`, `coverage`,
    `grounding`, `feasibility`, `decomposability`, `non-over-spec` (semantics:
    `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`). Run the configured subset.
-2. Fan out **one `validator` subagent per configured dimension** (parallel — dispatch them in
-   one message and await their completions directly, never `sleep`/poll). Each prompt carries the
+2. Fan out **one `validator` subagent per configured dimension** (parallel — dispatch them ALL
+   in ONE message, multiple Agent calls in a single response; one-per-message serializes the
+   fan-out. Await their completions directly, never `sleep`/poll). Each prompt carries the
    dimension name, the feature dir (absolute), and the dimension's check semantics (inline or
    pointed at `BUILDING_SPEC.md`). Validators read artifacts fresh from disk and return
    `{dimension, checks:[{id, verdict, evidence}], blockingDoubts:[], advisoryDoubts:[]}`. The
@@ -110,8 +131,15 @@ Run after persist, always.
    `{ id, by: "human", at: <ISO> }` and move it from `failedChecks` to `waivedChecks`. A new
    fail needs an explicit human waiver decision too.
 6. **Verdict.** `verdict = ready` iff `failedChecks` is empty (after waivers); else `blocked`.
-   Write `state.json.readiness.spec = { verdict, validatedHash: <fresh specHash>, dimensionsRun:
-   <configured subset>, failedChecks, waivedChecks }`. Validate `state.json` against its schema.
+   Write the verdict content to a scratchpad file
+   `{ verdict, dimensionsRun: <configured subset>, failedChecks, waivedChecks }` and apply it:
+
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/apply.mjs" readiness-spec <featureDir> --verdict-file <scratch>/verdict-spec.json --features-root <featuresRoot>
+   ```
+
+   The script records `state.json.readiness.spec` (injecting `validatedHash` = the fresh
+   `specHash` it computes itself) and sets `state.json.specHash`, schema-validated.
 
 ## Output / checkpoint
 

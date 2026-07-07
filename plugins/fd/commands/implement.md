@@ -1,20 +1,31 @@
 ---
-description: Implement all ready tasks of a feature in dependency waves on a feature branch — AC + scoped CI per wave, one whole-feature code review at feature close. User-run only.
+description: Implement all ready tasks of a feature in one full-cycle Workflow run — dependency waves, per-wave CI with a bounded repair loop, whole-feature code review at close. Interrupts only for critical decisions. User-run only.
 argument-hint: "[slug]"
 disable-model-invocation: true
 ---
 
-Implement every ready task of one feature, wave by wave, on its feature branch — each task
-in an isolated worktree, squash-merged serially, gated per wave by AC + scoped CI, with one
-whole-feature code review at feature close and a self-healing repair loop. Runs autonomously
-between human gates; hands control back at the end. **Resumable:** an interrupted session
-resumes the remainder of the in-flight wave, salvaging completed-but-unmerged task branches.
+Implement every ready task of one feature on its feature branch, in **one full-cycle engine
+run**: waves computed from task dependencies, each task in an isolated worktree, passing
+tasks squash-merged serially, every wave gated by CI with a bounded repair loop, and — after
+the last wave — the whole-feature code review, mechanical fixes, autosquash, and a final full
+CI, all inside the same run. The run comes back to this conversation **only** when it is
+done, when its internal budget forces a checkpoint (auto-relaunched, no question asked), or
+when a decision genuinely needs a human. **Resumable:** an interrupted session reconstructs
+progress from git trailers and relaunches the remainder.
 
 `$0` (optional) = feature slug. Cold-start: read everything from disk, rely on nothing from a
 prior command. Plugin files (`scripts/`, `schemas/`, `references/`) resolve via
 `${CLAUDE_PLUGIN_ROOT}`; a file missing after **one** direct check ⇒ STOP and report a broken
-fd installation — never search the repo or `$HOME` for plugin files, and do not read script
-sources (use the documented one-liners).
+fd installation — never search the repo or `$HOME` for plugin files.
+
+**Script contract (applies to every shipped script):**
+- Scripts are EXECUTED via the documented one-liners — their stdout JSON is the whole
+  interface. Never `Read` a script's `.mjs` source into context; running one with wrong or
+  missing args prints a usage error, and that error is the documentation.
+- Reading a script's source is allowed only to diagnose an execution that already failed —
+  say so explicitly when you do.
+- Never re-implement a shipped script inline (hand-assembled state JSON, one-off replacement
+  scripts). A job no shipped script covers is a gap: report it, do not work around it.
 
 ---
 
@@ -22,7 +33,8 @@ sources (use the documented one-liners).
 
 1. **Config.** Read `.claude/fd-config.json`. Missing, unparsable, or `schema` mismatch → STOP:
    "run `/fd:config`". Keep `storage.featuresRoot` (or `storage.shared.specsRoot`),
-   `prs.baseBranch`, `implement.*`, `codeReview.skills`, `tooling.*` for later steps.
+   `prs.baseBranch`, `implement.*` (incl. `implement.ciScope`, default `full`),
+   `codeReview.skills`, `tooling.*` for later steps.
 
 2. **Feature selection.** Resolve the feature directory (holds `spec.md`, `state.json`,
    `feature.lock.json`, `sc-map.json`, `tasks/`):
@@ -39,17 +51,18 @@ sources (use the documented one-liners).
 4. **Reconcile — DETECT ONLY.** Run the hasher on every entry; judge staleness *only* against
    its fresh output — never against stored `state.json` fields (they may themselves be stale):
    `node "${CLAUDE_PLUGIN_ROOT}/scripts/hasher.mjs" <featureDir> --features-root <featuresRoot>`
-   → `{ elements, specHash, unknownKinds, tasks:{ T:{inputHash,contentHash} }, tasksHash }`.
+   → `{ elements, specHash, unknownKinds, malformedAnchors, tasks:{ T:{inputHash,contentHash} }, tasksHash }`.
    `/fd:implement` applies **nothing** to tasks or spec (reconcile steps 7–8 are skipped).
-   - **Ship-detection (reconcile step 1 — git-reality sync, allowed; main thread writes the
-     manifest).** For each `implemented` task, test each `impl.commits` SHA with
-     `git merge-base --is-ancestor <sha> <baseBranch>`. All reachable → flip task
-     `implemented → shipped` and its produced elements `pending → delivered`
-     (`deliveredHash` = current element hash, `status: delivered`). Unreachable but
-     `git patch-id` / `git cherry` matches `baseBranch` history → suspected squash-merge →
-     **one batched HIL** (a single confirmation covers many tasks — regular under a "squash and
-     merge" repo policy, not an exception). This flip touches neither `inputHash` nor DoR verdicts. If after the flips
-     **every** task in the manifest is `shipped`, set `state.json.phase = "shipped"`.
+   - **Ship-detection (reconcile step 1 — git-reality sync, allowed).** For each `implemented`
+     task, test each `impl.commits` SHA with `git merge-base --is-ancestor <sha> <baseBranch>`.
+     All reachable → flip via the shipped script (never hand-edit JSON):
+     `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" ship <featureDir> --task <T-4,T-7> --deliver <EL=sha256:…,…>`
+     (`--deliver` = each produced element with its current hash; the script flips
+     `implemented → shipped`, marks elements `delivered`, and sets `phase = "shipped"` when every
+     live task is shipped). Unreachable but `git patch-id` / `git cherry` matches `baseBranch`
+     history → suspected squash-merge → **one batched HIL** (a single confirmation covers many
+     tasks — regular under a "squash and merge" repo policy, not an exception). This flip touches
+     neither `inputHash` nor DoR verdicts.
    - **Drift-detection (BLOCK).** Compare the fresh `elements` map (`{id → hash}`) against `manifest.elements[id].hash`
      (added / removed / modified) AND fresh `tasks[id].inputHash` / `tasks[id].contentHash` against the
      manifest. Any spec drift, any task `inputHash` drift, or a `contentHash` mismatch (a
@@ -70,70 +83,126 @@ sources (use the documented one-liners).
    block. Not delivered / missing / dangling ref → **BLOCK** naming exactly which `<slug>#<EL>@vN`
    are unmet; advise "build Y (or at least `EL`) first" (order advice is element-precise).
 
-7. **Feature branch (first run: adopt a prepared branch, else base-branch HIL).** `state.json.branch`
-   set → `git checkout` it. Null (first run) → first try **adoption, with no question asked**: when the
-   user is already sitting on a branch they prepared for this work, use it as the feature branch as-is.
-   Adopt when ALL hold:
+7. **Feature branch (first run: adopt a freshly cut branch, else HIL).** `state.json.branch`
+   set → `git checkout` it. Null (first run) → first try **adoption, with no question asked**: when
+   the user is already sitting on a branch they freshly cut for this work, use it as the feature
+   branch as-is. Adopt silently when ALL hold:
    - `git rev-parse --abbrev-ref HEAD` is a branch (not `HEAD`/detached) and differs from `prs.baseBranch`;
    - the branch is cut from the base and up to date with it: `git merge-base --is-ancestor <prs.baseBranch> HEAD`;
+   - the branch is **fresh** — no commits of its own: `git rev-list --count <prs.baseBranch>..HEAD` is `0`
+     (a branch carrying its own commits may be unrelated work, e.g. a PoC — never hijack it silently);
    - the branch is not recorded as `state.json.branch` of another feature under `featuresRoot`.
    Adoption = write the current branch name to `state.json.branch` (schema-validated, 2-space JSON);
    create nothing, ask nothing; the checkpoint report says "branch adopted" instead of "created".
-   Otherwise (sitting on the base itself, detached HEAD, branch behind the base, or the guard failed) →
-   **HIL** with `AskUserQuestion` "create `<branchTemplate>` off which base?" (branch name from
-   `implement.branchTemplate`, default `feat/{slug}`, `{slug}` substituted). Options: `prs.baseBranch`
-   (default / recommended); the current git branch (only when it differs from `prs.baseBranch`); or
-   another ref (validate with `git rev-parse --verify <ref>` — reject and re-ask on failure). Create the
-   branch off the **chosen** base, check it out, and write `state.json.branch`. The HIL runs on a
-   feature's first `/fd:implement` unless a prepared branch was adopted.
+   Otherwise two HIL shapes, by cause:
+   - **Current branch has its own commits** (cut from base, up to date, but `rev-list --count` > 0) →
+     **HIL**: adopt this branch anyway (its commits become part of the feature branch history) /
+     create `<branchTemplate>` off `prs.baseBranch` / another ref.
+   - **All other cases** (sitting on the base itself, detached HEAD, branch behind the base, or the
+     guard failed) → **HIL** with `AskUserQuestion` "create `<branchTemplate>` off which base?"
+     (branch name from `implement.branchTemplate`, default `feat/{slug}`, `{slug}` substituted).
+     Options: `prs.baseBranch` (default / recommended); the current git branch (only when it differs
+     from `prs.baseBranch`); or another ref (validate with `git rev-parse --verify <ref>` — reject and
+     re-ask on failure).
+   **Name collision.** Before creating `<branchTemplate>`: if a branch of that name already exists
+   (`git rev-parse --verify <name>`), or worktrees/branches matching `fd/<slug>/*` linger while
+   `state.json.branch` is null (residue of an older interrupted run) → **HIL**: fresh distinct name
+   (suffix, e.g. `<name>-run2`) / hard-reset the existing branch to the chosen base / build on the
+   existing branch as-is / stop. Never silently reuse or clobber an existing branch.
+   Create the branch off the **chosen** base, check it out, and write `state.json.branch`. The HIL
+   runs on a feature's first `/fd:implement` unless a freshly cut branch was adopted.
 
-8. **Recovery — resume the remainder + salvage.** `state.json.waveInProgress == true` on entry ⇒ a prior
-   session was interrupted mid-wave. A Workflow run never survives a session exit, so do **not** resume the
-   old run (ignore Workflow `resumeFromRunId`) — reconstruct from disk + git:
-   - **(a) Done set.** A task is done when it is `implemented` **and** all its `impl.commits` are reachable
-     from the feature tip (`git merge-base --is-ancestor <sha> <feature>`). Skip these — already merged and recorded.
-   - **(b) Salvage set.** Discover leftover task branches (`git worktree list --porcelain`, then the
+8. **Recovery — reconstruct from git, then relaunch the remainder.** `state.json.waveInProgress
+   == true` on entry ⇒ a prior session was interrupted mid-run. A Workflow run never survives a
+   session exit, so do **not** resume the old run (ignore Workflow `resumeFromRunId`) —
+   reconstruct from disk + git:
+   - **(a) Done set.** Resolve merged tasks from trailers:
+     `git log <base>..<featureBranch> --format='%H %(trailers:key=Task,valueonly)'`. For each task
+     with a trailer commit, persist it:
+     `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" record <featureDir> --task <T> --commit <sha> [--commit <sha>…] --status implemented`.
+   - **(b) Orphan fixups.** `fixup!` commits without their own `Task:` trailer left by an
+     interrupted repair → run the autosquash defensively (`git rebase --autosquash <base>`; abort on
+     conflict and keep the fixups as-is), then re-resolve trailers and re-record before trusting
+     `impl.commits`.
+   - **(c) Salvage set.** Discover leftover task branches (`git worktree list --porcelain`, then the
      `fd/<slug>/T-*` branch pattern) for tasks **not** done. For each, first re-resolve its commits from
      trailers. A branch carrying an `Fd-Gate: pass` breadcrumb → **re-run the cheap per-task gate** (the ACs
-     covered entirely by that task + lint of its changed files). Gate pass ⇒ the **merger** merges it and this
-     main thread **records it incrementally** (report it as salvaged). Gate fail, or **no breadcrumb** ⇒ **discard**.
-   - **(c) Worktree cleanup.** Delete worktrees **only** for non-salvaged tasks; a salvaged task's worktree
+     covered entirely by that task + lint of its changed files). Gate pass ⇒ the **merger** merges it and the
+     merge is recorded via `record-impl.mjs record` (report it as salvaged). Gate fail, or **no breadcrumb** ⇒ **discard**.
+   - **(d) Worktree cleanup.** Delete worktrees **only** for non-salvaged tasks; a salvaged task's worktree
      survives until its merge lands.
-   - **(d) Recompute + run the remainder.** Recompute waves from the updated manifest + `sc-map.json` and run
-     only the outstanding tasks. If **every** task is `implemented` but `impl.cr` is not `pass` on all → there is
-     no wave to run: resume at **Feature close** (its code-review step).
+   - **(e) Relaunch the remainder.** Launch **one fresh full-cycle run** (Engine below) whose
+     `tasks` are only the outstanding ones — their `deps` may point at already-merged tasks; the
+     engine treats a dep outside the task list as satisfied. If **every** task is `implemented` but
+     `impl.cr` is not `pass` on all → nothing to implement — the engine needs tasks to run, so
+     perform the close steps via the subagent fallback (full CI → CR → fixes → autosquash → final
+     CI), then record identically.
 
 ---
 
-## Engine — waves computed on the fly; the goal lives in this conversation
+## Engine — one run owns the full cycle; this conversation owns decisions
 
-Waves are **topological layers of `sc-map.json`**, computed on the fly (`from` = consumer,
-`to` = producer; a task enters the earliest wave in which all its intra-feature producers have
-completed). There is **no materialized execution plan** — the SC map is the only plan.
+Waves are **topological layers of the task `deps`** (derived from `sc-map.json`: `from` =
+consumer, `to` = producer). The main thread does **not** iterate waves: it computes the task
+list once, launches **one** engine run, and handles that run's return. There is **no
+materialized execution plan** — the SC map is the only plan.
 
-The "goal" is this command's own main-conversation logic, **not** a platform primitive. A Workflow
-run takes no user input mid-run, so **each wave and each repair iteration = one separate run**.
-Per wave: launch ONE run → merge, record, and gate its results here in the main thread → decide next
-wave / repair wave / feature close. All HIL gates live **between runs, in this main thread**.
+**Run boundary.** The engine run does the whole delivery cycle internally: per-wave worktree
+preparation (serial, cut from the feature branch after the previous wave's merges), task
+agents with self-gates and breadcrumbs, the **serial squash-merge** (fd:merger, once per
+wave, authoritative order), the per-wave CI (`implement.ciScope`: `full` = whole repo,
+`scoped` = changed packages with full fallback), a **bounded repair loop** (K =
+`implement.maxRepairIterations`; unmerged tasks repair in their worktrees, merged code repairs
+as fixups on the feature branch, strictly serial), and — at feature close — the full CI, the
+whole-feature **code review**, mechanical fixes, `git rebase --autosquash`, and the final full
+CI. The main thread keeps: all preconditions, building the run args, persisting state at run
+boundaries (via `record-impl.mjs`, from `Task:` trailers), and every HIL.
 
-**Run boundary.** A wave run does **only** task implementation + each task's self-gate + a durable
-breadcrumb commit. Everything else — the serial merge, the per-task manifest writes, the scoped CI,
-and (at feature close) the code review — is done by **this main thread**, between runs.
-
-- **Run engine.** The wave run executes the **shipped** script
+- **Run engine.** The run executes the **shipped** script
   `${CLAUDE_PLUGIN_ROOT}/scripts/wave-implement.mjs` via the **Workflow** tool (`scriptPath`) — a
   Claude-Code dynamic-workflow script that calls the harness `agent()`; **never invoke it with `node`**.
-  Workflow availability is detected by `/fd:config` and re-verified on entry. Pass the wave as **one**
+  Workflow availability is detected by `/fd:config` and re-verified on entry. Pass everything as **one**
   `args` value — it may reach the script as a JSON string, which the script parses defensively:
-  - **args:** `{ mode: "implement"|"repair", wave, featureBranch, tasks: [{ id, worktree, branch,
-    taskFile, serializeAfter?, diagnosis? }], gate: { acIds, lintChanged: true } }`.
-  - **returns:** `{ tasks: [{ id, status: "passed"|"failed", changedFiles, headSha, gate, diagnosis? }] }`.
-- **Fallback** (no Workflow tool, or `implement.engine == "subagents"`) → degrade to parallel
-  **Agent-tool** subagents with per-task worktree isolation — **same** args/return contract, **same**
-  task-agent prompts, same gates and state. Report the degradation; do not block on it.
+  - **args:** `{ mode: "full"|"repair", featureDir, slug, repoRoot, featureBranch, baseBranch,
+    tasks: [{ id, worktree, branch, taskFile, deps, serializeAfter?, acIds, diagnosis?, decision? }],
+    gate: { lintChanged: true }, ci: { scope: <implement.ciScope>, lint, test, build, packageManager },
+    worktreeSetup, worktreeCleanup, codeReview: { skills }, repair: { maxIterations }, close: true }`.
+    Per task: `deps` = its intra-feature producer tasks (from sc-map edges), `acIds` = the ACs it
+    covers entirely (from `covers` + ac-map), `decision` = the human answer when relaunching after
+    an escalation.
+  - **returns (discriminated on `status`):**
+    - `{ status: "completed", waves, tasks, close: { fullCi, cr, finalCi } }` — the cycle finished.
+    - `{ status: "continue", reason, waves, tasks, remaining }` — internal agent budget spent;
+      **persist and relaunch immediately with the remaining tasks — no HIL.**
+    - `{ status: "escalated", escalations: [{ kind, taskId?, wave?, question, options, context }],
+      waves, tasks, remaining }` — a human decision is required (see Escalations below).
+- **Fallback** (no Workflow tool, or `implement.engine == "subagents"`) → this main thread runs the
+  **same full cycle itself** via parallel **Agent-tool** subagents: per-task worktree isolation, the
+  same task-agent prompts and gates, serial merger calls, its own Bash for CI, the repair loop, and
+  the close steps — escalations become direct `AskUserQuestion`s. Report the degradation; do not
+  block on it.
 - **Orchestration rule.** Await the run's (or the subagents') completion **directly**. Never
   foreground-`sleep`, never poll the filesystem — the harness returns the structured results when the
   agents finish.
+
+### Escalations & HIL (the only mid-cycle interrupts)
+
+The run early-returns `status: "escalated"` **only** for:
+
+- **`architectural`** — a task agent found something the spec does not cover with more than one
+  viable design; it stopped without guessing. → `AskUserQuestion` with the returned question and
+  options; relaunch with the remaining tasks, attaching the answer as that task's `decision`.
+- **`repair-exhausted`** — a wave (or the close) is still red after K repair iterations. → Present
+  the diagnosis; the user decides (fix by hand and relaunch / drop scope / stop).
+- **`cr-judgment`** — a code-review finding that needs a human call (design trade-off, scope
+  question). → Present finding + report file; on "fix it" answers, relaunch (the remaining-task
+  list may be empty except the repair) or apply the fix via the fallback path, then re-close.
+- **`engine-failure`** — a merger/CI/close agent died mid-run; branch state may be unknown. →
+  Run the precondition-8 salvage (trailers are the ledger), then relaunch the remainder.
+
+On **every** return (completed, continue, escalated): first persist progress — re-resolve merged
+tasks from `Task:` trailers and record them (State ownership below) — then act on the status.
+`continue` never asks anything: persist, relaunch with `remaining`.
 
 ### Task-agent contract (single source of truth)
 
@@ -146,23 +215,34 @@ directives (the script embeds them verbatim; the fallback reuses them):
 - **Stub, never recreate**, a missing dependency file: a peer task's producer owns it, so write a
   minimal, contract-satisfying stub only. Do not touch files this task does not own.
 - Commit **atomically**, piece by piece, on the worktree branch, with decision rationale in each message.
+- **Escalation rule:** when the spec is silent on something the task needs and more than one viable
+  design exists, do **not** pick one — return `status: "escalated"` with the question, options, and
+  self-contained context. No breadcrumb, no further edits.
 - **Final act, after the self-gate passes:** one **empty breadcrumb commit** on the worktree branch
   with trailers `Task: <id>` + `Fd-Gate: pass` (a one-line gate summary in the body). Self-gate fails →
   write no breadcrumb; return `status: "failed"` with a diagnosis.
 
-### State ownership — single writer, incremental per task
+### State ownership — single writer, at run boundaries
 
 The manifest (`feature.lock.json`) and `state.json` are written **exclusively by this main
-conversation** — never by wave agents — and **per task, at merge time**, not batched at wave close:
+conversation** — never by the engine's agents — and always **through the shipped scripts**,
+never by hand-editing JSON. The engine's durable ledger is git: every squash-merge carries a
+`Task: <id>` trailer, so nothing is lost even on a hard crash.
 
-- Set `state.json.phase = "implementing"` at the first wave start; set `waveInProgress = true` there
-  and clear it to `false` **only at feature close**.
-- After each **merger** merge: write that task's `impl.commits` and flip its status to `implemented`.
-- **Canonical commit identity is the `Task: <id>` trailer;** `impl.commits` is a derived cache. After
-  **every** autosquash, re-resolve it from trailers (`git log <base>..<featureBranch>` reading
-  `%(trailers:key=Task,valueonly)`); a trailer left on **more than one** commit (an autosquash conflict)
-  stores **all** those SHAs in the task's array.
-- Per-wave **scoped CI** writes `impl.ci`; the feature-close code review writes `impl.cr`.
+- At first launch: `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" phase <featureDir> --phase implementing --wave-in-progress true`.
+- At **every** run return: resolve `git log <base>..<featureBranch> --format='%H %(trailers:key=Task,valueonly)'`
+  and record each newly merged task:
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" record <featureDir> --task <T> --commit <sha> [--commit <sha>…] --status implemented`
+  (a trailer left on more than one commit — e.g. an autosquash conflict — records **all** those SHAs).
+  Fold in the returned verdicts: waves with green CI → `record … --task <T-…,…> --ci pass`; a
+  completed close → `record … --task <all-implemented> --cr pass`.
+- **Canonical commit identity is the `Task: <id>` trailer;** `impl.commits` is a derived cache.
+  After the close's autosquash the SHAs changed — the trailer re-resolve at the `completed` return
+  refreshes the cache (plain `record`, not `--append`; append is for adding SHAs to a live task).
+- On `completed` (with close): `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" phase <featureDir> --wave-in-progress false`.
+  `waveInProgress` stays `true` across `continue`/`escalated` relaunches — it is the crash signal.
+  `phase` stays `implementing` — flipping to `shipped` remains ship-detection's job (precondition 4),
+  after the feature branch merges to `baseBranch`.
 
 **Task state machine** (this command owns two transitions):
 
@@ -171,20 +251,24 @@ ready ──(wave start)──▶ in-progress ──(self-gate + merge)──▶
                              └──(failure)──▶ stays out of implemented until repaired or escalated
 ```
 
-A task enters as `ready` (set by `/fd:to-tasks`). This command sets `in-progress` at wave start and
-`implemented` once its self-gate passes **and** the merger has landed its branch. `shipped` is set by
-nobody directly — only ship-detection (precondition 4) flips it once `impl.commits` are reachable from
-`baseBranch`.
+A task enters as `ready` (set by `/fd:to-tasks`). The engine works the task; this conversation
+records `implemented` from its trailer at the next run boundary. (`in-progress` exists for
+observability; with recording at run boundaries it may be skipped over — a task can go
+`ready → implemented` in one recording.) `shipped` is set by nobody directly — only
+ship-detection (precondition 4) flips it once `impl.commits` are reachable from `baseBranch`.
 
 ---
 
-## Wave mechanics
+## Wave mechanics (inside the run)
 
 - **Isolation & naming.** One git worktree per task. Worktree path `<repo>/.fd-worktrees/<slug>/<T-id>`,
   branch `fd/<slug>/<T-id>` — both derive from the feature slug, never from the feature branch's own
-  name (an adopted branch changes nothing here). Bootstrap each fresh worktree with the
-  `implement.worktreeSetup` commands (e.g. `pnpm install`) before the task starts.
-- **Footprint serialization.** Before a wave starts, two best-effort pre-passes over the wave's tasks
+  name (an adopted branch changes nothing here). The main thread precomputes these names into `args.tasks`.
+- **Per-wave worktree preparation (serial).** The engine cuts each wave's worktrees from the feature
+  branch **after** the previous wave's merges (so later tasks see merged code), strictly sequentially
+  (concurrent `git worktree add` races on `.git/worktrees`), force-removing stale paths first, and
+  bootstraps each with the `implement.worktreeSetup` commands (e.g. `pnpm install`).
+- **Footprint serialization.** Computed by the main thread before launch, over each wave's tasks
   (both from `codeDeps` + file paths named in each task body):
   - **write ∩ write** — two tasks that write the same file serialize.
   - **read-after-write** — a task whose `needs` (its `codeDeps` + import/file paths named in its body)
@@ -193,93 +277,87 @@ nobody directly — only ship-detection (precondition 4) flips it once `impl.com
     `tasks[].serializeAfter`) or **defer to the next wave** (where the peer is already merged).
   Serialized tasks run in later batches; disjoint tasks run in parallel. Honest caveat: the element→file
   mapping is body-parsed, best-effort — the **primary** guarantee is the stub rule plus the merge and CI
-  gates, not this heuristic.
-- **Task work.** Per the task-agent contract above: batch edits, self-gate, one breadcrumb commit. The
-  main thread sets the task `in-progress` at wave start and `implemented` after its self-gate passes and
-  the merger lands it.
+  gates, not this heuristic. (`serializeAfter` refs across waves are filtered by the engine — wave order
+  already guarantees them.)
+- **Task work.** Per the task-agent contract above: batch edits, self-gate, one breadcrumb commit.
 
 ---
 
-## Gates
+## Gates (inside the run, except entry gates)
 
-**Per task = the task agent's self-gate (breadcrumbed).** Inside the run, each task agent validates the
-ACs **covered entirely by that task** + lints its **changed / created files only**, then writes the
-`Fd-Gate: pass` breadcrumb. ACs spanning more than one task are not verifiable here — they wait for the
-wave gate.
+**Per task = the task agent's self-gate (breadcrumbed).** Each task agent validates the ACs
+**covered entirely by that task** (its `acIds`) + lints its **changed / created files only**, then
+writes the `Fd-Gate: pass` breadcrumb. ACs spanning more than one task are not verifiable here —
+they wait for the wave gate.
 
-**Merge = squash (serial, recorded incrementally).** For each passing task, **in order**, this main
-thread invokes the **merger** subagent (one task per call) to squash-merge its worktree branch into the
-feature branch as exactly **one commit**, trailer `Task: <id>`, rationale gathered from the worktree's
-piece-commits (the empty breadcrumb excluded). Merges run **strictly serially** — zero branch races.
-After each merge, record that task's `impl.commits` and `status = implemented` **before** starting the next.
+**Merge = squash (serial, once per wave).** The engine invokes the **merger** (`fd:merger`) once per
+wave with the passing tasks in authoritative order; the merger squash-merges each worktree branch
+into the feature branch as exactly **one commit**, trailer `Task: <id>`, rationale gathered from the
+worktree's piece-commits (the empty breadcrumb excluded), and reports per-task
+`merged | conflict | blocked` + SHA. Merges run **strictly serially** — zero branch races. Recording
+happens at the run boundary, from trailers.
 
-**Per wave, after all merges (block) = scoped CI.** Union the changed files of the commits merged this
-wave (`git diff --name-only`), map them to workspace packages (`pnpm-workspace.yaml` /
-`package.json#workspaces` / `turbo.json` — best-effort). Run the **filtered** `tooling.*` (e.g. a
-`--filter` per detected package) **only** when the mapping is confidently detected; otherwise fall back
-to the **full** `tooling.lint` + `tooling.test` + `tooling.build`. Validate the **ACs closed by this
-wave** (those whose last producer task just merged; a multi-wave AC closes in the wave of its last
-producer). Record `impl.ci`.
+**Per wave, after the merges (block) = CI, scope by `implement.ciScope`.**
+- `full` (default) → the full `tooling.lint` + `tooling.test` + `tooling.build` at the repo root.
+- `scoped` → union the wave's changed files, map them to workspace packages (`pnpm-workspace.yaml` /
+  `package.json#workspaces` / `turbo.json` — best-effort) and run the **filtered** `tooling.*` only
+  when the mapping is confidently detected; otherwise fall back to the **full** commands. The CI agent
+  reports which scope actually ran.
+  In both scopes the CI agent validates the **ACs closed by this wave** (those whose last producer
+  task just merged) and reports literal exit codes — a "pass" claim with a non-zero exit is downgraded
+  to fail by the engine.
+
+**Repair loop (bounded, inside the run).** Failed tasks and merge conflicts repair **in their own
+worktrees** (parallel, re-merged by the merger); CI failures on already-merged code repair as **one
+serial feature-branch agent** landing `git commit --fixup` commits. Re-run CI; loop at most
+K = `implement.maxRepairIterations` iterations; exhaustion → `escalated`.
 
 **Code review is not a per-wave gate** — it runs once over the whole feature at **Feature close** (below).
 
-**Worktree cleanup.** Per `implement.worktreeCleanup` (`always` | `keep-failed`). On recovery the salvage
-decision gates deletion: a salvaged task's worktree survives until its merge lands; non-salvaged task
-worktrees are deleted.
+**Worktree cleanup.** Per `implement.worktreeCleanup` (`always` | `keep-failed`), executed by the
+merger after each successful merge; the engine force-removes stale paths when preparing a wave. On
+recovery the salvage decision gates deletion: a salvaged task's worktree survives until its merge
+lands; non-salvaged task worktrees are deleted.
 
 ---
 
-## Repair loop
+## Feature close (inside the run)
 
-On any failure (per-task AC, merge conflict, wave CI, or a feature-close CR finding) the validating agent
-returns a **structured diagnosis**: cause, location, and the context needed to understand it. The next
-iteration is a **separate run** containing **only repair tasks**:
+Once all waves are merged and green, the engine closes the feature in the same run:
 
-- Repair tasks are **ephemeral** — not SC nodes, no new element IDs; each references its original task,
-  its input is `original task + diagnosis`. They exist only inside `/fd:implement`.
-- A repair lands as `git commit --fixup` of its task's commit. At close, `git rebase --autosquash`
-  pulls fixups into the original commit — the final tree is identical, so the CI verdict stays valid.
-  Autosquash conflict → keep the repair as a separate commit carrying the same `Task: <id>` trailer
-  (`/fd:to-prs` then partitions all commits with that trailer together).
-- **After every autosquash, re-resolve `impl.commits` from trailers** (`git log <base>..<featureBranch>`
-  reading `%(trailers:key=Task,valueonly)`): the SHAs change, so the manifest cache must be refreshed; a
-  trailer left on more than one commit stores all those SHAs in the task's array.
-- After **K = `implement.maxRepairIterations`** failed iterations on the same task → **HIL escalation**;
-  report the unresolvable task. Never loop forever. K applies to the **feature-close** repair wave too.
+1. **Full-repo CI** (always full, regardless of `ciScope`). Red → the serial feature-branch repair
+   loop (K cap) → still red ⇒ `escalated`.
+2. **Whole-feature code review (gate).** The engine writes `git diff <base>...<feature>` (with the
+   name list) to `<featureDir>/cr-diff.patch` and hands the CR agent that **file path** — the agent
+   `Read`s it; the diff is **never inlined** into a prompt. The CR agent invokes **each**
+   `codeReview.skills` skill **by name via the Skill tool** (≥1), writes the full report to
+   `<featureDir>/cr-report.md`, and classifies every finding `mechanical` (objectively fixable) or
+   `judgment` (needs a human). **No** nested fan-out and **no** network research.
+3. **Findings:** `judgment` → `escalated` (one escalation per finding, report file attached);
+   `mechanical` → the serial feature-branch repair agent fixes them as `--fixup` commits.
+4. **Autosquash.** `git rebase --autosquash <base>` folds fixups into their targets (conflict →
+   abort the rebase, `escalated`); the engine verifies every `Task:` trailer survived.
+5. **Final full CI** confirms the tree is still green after fixes + autosquash. Red ⇒ `escalated`.
 
----
+The `completed` return carries `close: { fullCi, cr, finalCi }`; the main thread then records
+`--cr pass`, refreshes `impl.commits` from the post-autosquash trailers, flips
+`waveInProgress = false`, and reports.
 
-## Feature close
-
-Once **all** tasks are `implemented`, close the feature — once, in this main thread:
-
-1. **Full-repo CI.** Run the full `tooling.lint` + `tooling.test` + `tooling.build` on the feature branch.
-   Failure → a repair wave, then re-enter here.
-2. **Whole-feature code review (gate).** Compute `git diff --name-only <base>...<feature>` and write it
-   (with the diff) to a file; hand the CR agent that **file path** — the agent `Read`s it. **Never inline
-   the diff** into the prompt. The CR agent invokes **each** `codeReview.skills` skill **by name via the
-   Skill tool** (≥1). **No** nested fan-out and **no** network research. Findings feed the repair loop.
-3. **Final repair wave** (if any findings) → `--fixup` commits → `git rebase --autosquash` → re-resolve
-   `impl.commits` from trailers.
-4. **Re-run full CI** to confirm the tree is still green after the fixups.
-5. **Record & report.** Set every task's `impl.cr = pass`; set `waveInProgress = false`. `phase` **stays
-   `implementing`** — flipping to `shipped` remains ship-detection's job (precondition 4), after the
-   feature branch merges to `baseBranch`. Report the close.
-
-**Resume:** entry finds **all** tasks `implemented` but `impl.cr` not `pass` on all ⇒ no wave to run —
-enter Feature close at **step 2**.
+**Resume:** entry finds **all** tasks `implemented` but `impl.cr` not `pass` on all ⇒ nothing to
+implement — perform the close steps via the subagent fallback (the engine needs tasks to run), then
+record identically.
 
 ---
 
 ## Boundaries
 
-- **Spec freeze during a wave.** While `waveInProgress`, the spec is frozen. Requirement changes land
+- **Spec freeze during a run.** While `waveInProgress`, the spec is frozen. Requirement changes land
   in `spec.md` as ordinary edits and are picked up by the **next** `/fd:to-tasks` (re-entry drift
-  detection will block until then) — never by the running wave.
-- **Mutability.** Earlier waves' code is mutable via repair tasks **within this run**. Once **all**
+  detection will block until then) — never by the running engine.
+- **Mutability.** Earlier waves' code is mutable via repair work **within the run**. Once **all**
   tasks are `implemented` / `shipped`, the grill → to-tasks → implement path is **closed** for this
   feature (forward-only); further change is a new feature.
-- **Degenerate.** 1 task → 1 wave, 1 worktree, zero parallelism — same engine and same gates.
+- **Degenerate.** 1 task → 1 wave, 1 worktree, zero parallelism — same engine, same cycle, same gates.
 
 ---
 
@@ -290,42 +368,54 @@ enter Feature close at **step 2**.
 | Missing / invalid config | entry | block |
 | Schema migration (lower → apply; higher → halt) | entry | HIL / block |
 | Feature selection (>1, no match) | entry | HIL |
-| Base-branch selection (first run) | entry | HIL (skipped when a prepared branch is adopted) |
+| Base-branch selection (first run) | entry | HIL (skipped when a freshly cut branch is adopted) |
+| Adoption of a branch carrying its own commits | entry | HIL |
+| Feature-branch name collision / stale `fd/<slug>/*` residue | entry | HIL |
 | Ambiguous ship (e.g. squash-merge) | entry, reconcile step 1 | HIL |
 | Spec / task drift in detection (no apply) | entry | block |
 | DoR-tasks enforcement + upstream `delivered` | entry | block |
 | Ambiguous upstream `delivered` (squash-merge) | entry, cross-feature | HIL |
 | Salvage gate re-check on recovery | entry | block (per task) |
-| Per-task AC (covered entirely) + lint of changes = self-gate | wave | block |
-| Per-wave CI — scoped (fallback full) + AC closed by wave | wave | block |
-| K-iteration repair failure — escalation | repair loop | HIL |
-| Feature-close full-repo CI | feature close | block |
-| Feature-close whole-feature code review (≥1 skill) | feature close | gate |
+| Per-task AC (covered entirely) + lint of changes = self-gate | in run, wave | block |
+| Per-wave CI (`ciScope`: full / scoped-with-fallback) + AC closed by wave | in run, wave | block |
+| CI verdict reconciliation (pass + non-zero exit ⇒ fail) | in run, wave + close | block |
+| Architectural spec gap found by a task agent | in run → early return | HIL |
+| K-iteration repair exhaustion (wave or close) | in run → early return | HIL |
+| Feature-close full-repo CI | in run, close | block |
+| Feature-close whole-feature code review (≥1 skill) | in run, close | gate |
+| CR judgment finding | in run → early return | HIL |
+| Internal agent-budget checkpoint | in run → early return | auto-relaunch (no HIL) |
 
 ---
 
 ## Output / checkpoint
 
-Report: tasks implemented (with `Task: <id>` commit SHAs); per-wave CI with **whether it ran scoped or
-fell back to full**; on a resumed session, which tasks were **salvaged** vs **re-run**; the feature-close
-**full CI + code-review** results; any HIL escalations; and whether the run degraded to subagents. The
-feature branch now holds the whole feature as a linear, one-commit-per-task history. Suggest as prose
-(do **not** run it): self-review the feature branch, then `/fd:to-prs`.
+Report: tasks implemented (with `Task: <id>` commit SHAs); per-wave CI with **the scope that
+actually ran** (full / scoped / scoped-fell-back-to-full) and repair iterations used; any
+`continue` checkpoints (count them — they are invisible to the user otherwise); on a resumed
+session, which tasks were **salvaged** vs **re-run**; the feature-close **full CI + code-review**
+results (findings + report file); any HIL escalations and their resolutions; and whether the run
+degraded to subagents. The feature branch now holds the whole feature as a linear,
+one-commit-per-task history. Suggest as prose (do **not** run it): self-review the feature branch,
+then `/fd:to-prs`.
 
 ---
 
 ## Edge cases
 
-- **Unknown KIND in spec** (`hasher` `unknownKinds` non-empty) surfaces as spec drift handling in
-  `/fd:to-tasks`, not here — it means the spec is not in a clean, tasked state → block to `/fd:to-tasks`.
+- **Unknown KIND / malformed anchor in spec** (`hasher` `unknownKinds` or `malformedAnchors`
+  non-empty) surfaces as spec drift handling in `/fd:to-tasks`, not here — it means the spec is not
+  in a clean, tasked state → block to `/fd:to-tasks`.
 - **No `sc-map.json` / manifest** → the feature was never tasked → the reconcile-detect sc-map check blocks first (both routes point to `/fd:to-tasks`).
-- **Merge conflict the merger cannot resolve mechanically** → returned as a diagnosis → repair loop,
-  not a guess.
-- **Session exits mid-wave** → next invocation hits recovery (resume-remainder + salvage, precondition 8):
+- **Merge conflict the merger cannot resolve mechanically** → returned as `conflict` with a
+  diagnosis → the in-run repair loop, not a guess.
+- **A merger / CI / close agent dies mid-run** → the engine early-returns `escalated`
+  (`engine-failure`); trailers are the ledger — salvage (precondition 8) reconstructs, then relaunch.
+- **Session exits mid-run** → next invocation hits recovery (precondition 8):
   - **before any merge** → no task is done; every breadcrumbed branch is re-gated, then salvaged or discarded.
-  - **mid-merges** (some tasks recorded) → done tasks are skipped; the rest salvage.
-  - **during an autosquash** → after the rebase, `impl.commits` is re-resolved from trailers before it is trusted.
+  - **mid-merges** (some tasks on the branch) → done tasks are recorded from trailers; the rest salvage.
+  - **during an autosquash** → orphan `fixup!` commits are folded defensively before `impl.commits` is trusted.
   - **salvage-fail** (breadcrumb present but the re-gate fails, or no breadcrumb) → discard the branch and
     re-run the task.
-- **Degraded engine** (no Workflow tool / `implement.engine == "subagents"`) → same contract and gates via
-  Agent-tool subagents; the degradation is reported, not a block.
+- **Degraded engine** (no Workflow tool / `implement.engine == "subagents"`) → same contract, cycle,
+  and gates via Agent-tool subagents; the degradation is reported, not a block.

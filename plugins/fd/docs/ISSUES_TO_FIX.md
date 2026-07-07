@@ -501,6 +501,114 @@ rozstrzygnięte 2026-07-04; zmiany naniesione na zestaw spec tego samego dnia.
 
 ---
 
+## H. Testy polowe — runda 2 (decyzje rundy 3, 2026-07-07)
+
+### H1. Silnik implement obsługiwał jedną falę na run; user chce pełnego cyklu
+
+- [x] Run polowy: Workflow robił tylko taski jednej fali; merge/CI/repair/CR orkiestrował
+  main thread między runami (dużo tur, dużo cache-read, HIL-e w środku cyklu).
+- **Decyzja (2026-07-07):** jeden run `wave-implement.mjs` = pełny cykl (fale z `deps` →
+  merger raz na falę → CI → pętla napraw ≤K → domknięcie: pełne CI → CR → fixy →
+  autosquash → finalne CI). Zwroty `completed | continue | escalated`; do HIL trafiają
+  wyłącznie: `architectural`, `repair-exhausted`, `cr-judgment` (+ `engine-failure`).
+  Writer stanu zostaje w main thread na granicach runu; księgą wewnątrz runu są trailery
+  `Task:`. Checkpoint `continue` = auto-relaunch bez pytania.
+
+### H2. Zakres CI per fala
+
+- [x] Runda 2 zawęziła per-wave CI do dotkniętych pakietów; user opisał cykl z pełnym CI.
+- **Decyzja usera (2026-07-07):** knob `implement.ciScope: "full"|"scoped"`,
+  **default `full`**; domknięcie zawsze full. Cichy default (raport fazy 6 configa).
+
+### H3. Adopcja brancha porywała nie-swoją robotę
+
+- [x] Run polowy: user stał na branchu PoC z 11 własnymi commitami — heurystyka rundy 2
+  zaadoptowałaby go po cichu, gdyby był up-to-date z bazą; do tego kolizja nazwy
+  `feat/<slug>` po starym przerwanym runie była nieobsłużona.
+- **Decyzja usera (2026-07-07):** cicha adopcja TYLKO świeżo odbitego brancha
+  (`git rev-list --count <base>..HEAD` == 0); branch z własnymi commitami → HIL z opcją
+  adopcji. Kolizja nazwy / residuum `fd/<slug>/*` → HIL (sufiks / reset / build-on / stop).
+
+### H4. Bramki HIL w to-tasks rozstrzygane przez model
+
+- [x] Run polowy: 17 martwych symboli i blocking doubt (`sha256:pending`) domknięte
+  auto-resolve — spec oznaczał je jako HIL; fałszywy blocking doubt wynikał z walidacji
+  na stanie sprzed apply.
+- **Decyzja usera (2026-07-07):** blocking doubts → **zawsze HIL** (model nigdy sam);
+  martwe symbole → auto-klasyfikacja walidatora (advisory/blocking) z obowiązkowym
+  ujawnieniem w raporcie. Dwufazowy apply (`apply.mjs fill` przed walidatorami) usuwa
+  systemowy fałszywy doubt; placeholder ustandaryzowany jako `sha256:pending`.
+
+### H5. Brak shipowanych writerów stanu (hand-roll z hardcode'ami)
+
+- [x] Oba runy hand-rollowały mutacje `feature.lock.json`/`state.json` (inline node ~6×,
+  scratchpadowe skrypty z `idCounters.T=28` i wklejonym `tasksHash`; ryzyko zaniżenia
+  liczników append-only na re-runie).
+- **Decyzja (2026-07-07):** trzy shipowane skrypty jako jedyni writerzy:
+  `build-manifest.mjs` (projektor manifestu, append-only liczniki, producenci, historia),
+  `apply.mjs` (seed-state / fill / finalize / readiness-spec / reconcile — `validatedHash`
+  zawsze liczy skrypt), `record-impl.mjs` (chirurgiczny patcher implement/ship, zero
+  recompute). Zmiany: `SPEC.md` §4.4, wszystkie komendy.
+
+### H6. @v-bump vs BLOCK na delivered — rozstrzygnięcie
+
+- [x] Teksty brzmiały sprzecznie: „dotknięcie delivered → BLOCK (nowa funkcjonalność)"
+  vs „breaking change delivered bumpuje `@v`".
+- **Decyzja (2026-07-07):** BLOCK jest bramką domyślną; bump `@v` to mechanizm wykonywany
+  WYŁĄCZNIE przez `apply.mjs reconcile` z planu zatwierdzonego HIL-em — kolejność, nie
+  sprzeczność. Doprecyzowane w `from-docs.md`, `grill.md`, `to-tasks.md`.
+
+---
+
+## I. Testy polowe — runda 3 (config + from-docs, 2026-07-07)
+
+Runda merytorycznie czysta: config wzorcowy (92k ctx, wszystkie poprawki rundy 3
+potwierdzone), from-docs dowiózł spec DoR-ready (284 elementy, 6/6 wymiarów), wszystkie
+shipowane skrypty użyte poprawnie. Problemy dotyczą dyscypliny wykonania i rozmiaru
+kontekstu (main thread 93k → 456k tok).
+
+### I1. Fan-out analityków w 3 wiadomościach mimo kontraktu "ONE message" (S2)
+
+- [x] 6 analityków poszło w 3 wiadomościach (2+2+2), a narracja twierdziła "dispatched in
+  one message"; walidatorzy w tym samym runie poszli poprawnie 6-w-1 i 3-w-1 — zawodzi
+  sekcja Analysis, nie mechanizm. Do tego 2× `ls analysis/` (polling zakazany przez spec).
+- **Fix (2026-07-07):** protokół dispatchu w `from-docs.md` krok 3: najpierw domknięta
+  pełna lista plastrów, potem JEDNA wiadomość z całym fan-outem; podzielony dispatch =
+  złamanie kontraktu, narracja niezgodna z realnym kształtem wiadomości = podwójne;
+  jawny zakaz `ls`/`Glob` na `analysis/` w trakcie. Mirror w `COMMAND_FROM_DOCS.md`.
+
+### I2. Jednorazowy 21k-znakowy builder sources-map pisany inline (S3)
+
+- [x] Model napisał w main thread `build-sources-map.mjs` (21 277 znaków, ~5,3k tok na
+  stałe w kontekście, bug escapowania naprawiany w 2 edycjach) — brakowało shipowanego
+  writera `sources-map.json`.
+- **Fix (2026-07-07):** shipowany `scripts/build-sources-map.mjs` — jedyny writer
+  `sources-map.json` (merge + dedupe rekordów z plików danych, walidacja schematu przed
+  zapisem, `--seed` przy scaffoldzie); grill akumuluje kompletne rekordy i utrwala je
+  jednym wywołaniem w kroku Persist. Golden testy. `SPEC.md` §4.4 rozszerzony.
+
+### I3. Skrypty czytane zamiast uruchamiane
+
+- [x] Obserwacja usera przez rundy: model czyta źródła `.mjs` do kontekstu zamiast
+  wykonywać one-linery; dotychczasowy zapis ("do not read their source") ginął w akapicie
+  o ścieżkach.
+- **Fix (2026-07-07):** wydzielony blok **Script contract** ostemplowany identycznie na
+  początku wszystkich 8 komend: skrypty są WYKONYWANE (stdout JSON = cały interfejs; zły
+  argument → usage error = dokumentacja), czytanie źródła tylko przy diagnozie nieudanego
+  wykonania (jawnie zgłoszone), zakaz reimplementacji inline — brakująca zdolność to luka
+  do zgłoszenia. `@`-inlinowanie współdzielonego pliku odrzucone: nieudokumentowane w
+  aktualnych docs pluginów (zweryfikowano 2026-07-07).
+
+### I4. Bloat kontekstu from-docs — pozostałe źródła (backlog, decyzja usera: nie teraz)
+
+- [ ] Main czyta całe SA-1..6 (+44k tok), zwroty walidatorów z pełnymi cytatami także dla
+  PASS (~13,5k), narracja/re-derivacje (~165k output). Kierunki: sekcja "grill agenda" w
+  SA czytana zamiast całości, kompaktowe werdykty walidatorów (dowody na dysk, czytane
+  tylko dla FAIL), dyscyplina narracyjna. Diagramy przebiegu:
+  `docs/field-tests/r3-from-docs-*.mmd`.
+
+---
+
 ## Mocne strony (bez zmian)
 
 - Rozdział manifest (commitowany, autorytatywny) / meta / frontmatter-pointer.

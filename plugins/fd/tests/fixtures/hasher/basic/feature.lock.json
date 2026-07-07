@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "spec": { "hash": null, "history": [] },
   "idCounters": { "DB": 3, "API": 2, "AC": 5, "FR": 2, "T": 4 },
   "elements": {},
   "tasks": {}

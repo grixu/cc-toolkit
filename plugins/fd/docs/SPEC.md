@@ -189,7 +189,7 @@ sterowanie (patrz §5.1).
 | `/from-docs` | Spec z dokumentów: źródła → analiza → grill → spec → walidacja | `COMMAND_FROM_DOCS.md` |
 | `/grill` | Drążenie i zmiana istniejącego specu + reconcile + re-walidacja | `COMMAND_GRILL.md` |
 | `/to-tasks` | Dekompozycja specu na samodzielne taski + mapa SC + walidacja | `COMMAND_TO_TASKS.md` |
-| `/implement` | Pętla implementacji falami (dynamic workflow, worktree, CI/CR) | `COMMAND_IMPLEMENT.md` |
+| `/implement` | Pełny cykl implementacji w jednym runie dynamic workflow (fale, worktree, CI, naprawy, CR) | `COMMAND_IMPLEMENT.md` |
 | `/to-prs` | Wycięcie stacked-PR z feature brancha do ludzkiego CR | `COMMAND_TO_PRS.md` |
 | `/status` | Read-only wgląd w stan funkcjonalności | `COMMAND_STATUS.md` |
 
@@ -267,6 +267,16 @@ user-editable pliku `bounded-contexts.json` (patrz `COMMAND_CONFIG.md`).
 Stan jest rozdzielony na trzy poziomy: manifest (autorytatywny, commitowany), meta
 funkcjonalności (per-feature) oraz pointer we frontmatterze taska.
 
+**Jedynymi writerami plików stanu są shipowane skrypty** — komendy nigdy nie składają
+tych JSON-ów ręcznie: `build-manifest.mjs` (projektor `feature.lock.json`: seed, elementy,
+producenci, append-only `idCounters`, `spec.history`), `apply.mjs` (przejścia i werdykty:
+`seed-state`, `fill`/`finalize` tasków, `readiness-spec`, `reconcile` z bumpem `@v`),
+`record-impl.mjs` (chirurgiczne zapisy fazy implement/ship: `impl.commits`, statusy,
+`phase`/`waveInProgress` — bez recompute hashy), `build-sources-map.mjs` (jedyny writer
+`sources-map.json`: merge + dedupe rekordów proweniencji z plików danych, walidacja
+schematu przed zapisem). `validatedHash` w readiness zawsze wylicza skrypt ze świeżego
+przebiegu hashera — nigdy nie jest podawany z ręki.
+
 **`feature.lock.json`** — manifest / ledger reconcile. Commitowany, bo część jest
 autorytatywna i nieodtwarzalna (SHA commitów, wynik CI / CR):
 
@@ -322,9 +332,10 @@ pierwszej fali; `shipped` — detekcja shipu (§2.4), gdy wszystkie taski są `s
 
 `branch` = feature branch funkcjonalności. Ustawia go `/implement` przy pierwszym
 uruchomieniu: szablonem z configu (`implement.branchTemplate`, default `feat/<slug>`)
-albo **adopcją bieżącego brancha**, gdy user już siedzi na branchu odbitym z
-`prs.baseBranch` i z nią aktualnym (wtedy bez pytania i bez tworzenia). Od tej pory
-wiąże funkcjonalność z branchem dla `/implement`, `/to-prs` i heurystyki wskazania
+albo **adopcją bieżącego brancha**, gdy user już siedzi na branchu **świeżo odbitym** z
+`prs.baseBranch` — z nią aktualnym i bez własnych commitów (wtedy bez pytania i bez
+tworzenia; branch z własnymi commitami przechodzi przez HIL z opcją adopcji). Od tej
+pory wiąże funkcjonalność z branchem dla `/implement`, `/to-prs` i heurystyki wskazania
 funkcjonalności (§3.1).
 
 **Frontmatter taska** (`tasks/T-004.md`) — pointer do manifestu:
@@ -455,13 +466,19 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Walidacja tasków (DoR) | `/to-tasks` — ogon | block → verdykt |
 | Drift specu / tasków w detekcji (bez apply) | `/implement` — wejście | block |
 | Enforcement DoR tasków | `/implement` — wejście | block |
-| Wybór bazy feature brancha (pierwszy run) | `/implement` — wejście | HIL (pomijany przy adopcji przygotowanego brancha) |
+| Wybór bazy feature brancha (pierwszy run) | `/implement` — wejście | HIL (pomijany przy adopcji świeżo odbitego brancha) |
+| Adopcja brancha z własnymi commitami | `/implement` — wejście | HIL |
+| Kolizja nazwy feature brancha / residuum `fd/<slug>/*` | `/implement` — wejście | HIL |
 | Salvage: re-check bramki per-task przy recovery | `/implement` — wejście | block (per task) |
-| Per-task AC (pokryte w całości) + lint zmian przed merge | `/implement` | block |
-| Per-fala scoped CI (fallback: pełne) + AC domykane falą | `/implement` | block |
-| Domknięcie: pełne CI repo | `/implement` — domknięcie | block |
-| Domknięcie: code review całej funkcjonalności (≥1 skill) | `/implement` — domknięcie | gate |
-| K-iter fail — eskalacja | `/implement` | HIL |
+| Per-task AC (pokryte w całości) + lint zmian przed merge | `/implement` — w runie | block |
+| Per-fala CI (`implement.ciScope`: full / scoped z fallbackiem) + AC domykane falą | `/implement` — w runie | block |
+| Rekonsyliacja werdyktu CI (pass + niezerowy exit ⇒ fail) | `/implement` — w runie | block |
+| Luka architektoniczna znaleziona przez agenta taskowego | `/implement` — w runie → wczesny zwrot | HIL |
+| Domknięcie: pełne CI repo | `/implement` — w runie, domknięcie | block |
+| Domknięcie: code review całej funkcjonalności (≥1 skill) | `/implement` — w runie, domknięcie | gate |
+| Finding CR typu judgment | `/implement` — w runie → wczesny zwrot | HIL |
+| K-iter fail — eskalacja (fala lub domknięcie) | `/implement` — w runie → wczesny zwrot | HIL |
+| Checkpoint budżetu agentów | `/implement` — w runie → wczesny zwrot | auto-relaunch (bez HIL) |
 | Kompletność implementacji (wszystkie taski `implemented`) | `/to-prs` — wejście | block |
 | Przypisanie obcych commitów (bez trailera `Task:`) | `/to-prs` | HIL |
 | Manual PR grouping | `/to-prs` | HIL |
@@ -479,7 +496,9 @@ się i prosi o uruchomienie `/config`.
 
 Domyślne wartości: język `en`, tryb `per-feature`, katalog `docs/features/<slug>/`,
 budżet kontekstu taska `250000` tokenów (target: modele z oknem ≥512k; estymator —
-`COMMAND_TO_TASKS.md` §4), model PR `stacked`, waiver dozwolony.
+`COMMAND_TO_TASKS.md` §4), CI per fala `implement.ciScope: "full"` (`scoped` = zawężone
+do dotkniętych pakietów z fallbackiem full; domknięcie zawsze full), model PR `stacked`,
+waiver dozwolony.
 
 ---
 

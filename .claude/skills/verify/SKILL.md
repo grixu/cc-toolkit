@@ -43,5 +43,16 @@ grep -rn 'CLAUDE_SKILL_DIR' plugins/*/commands plugins/*/agents
 
 Any match is a failure (report file and line).
 
-## 6. Summary
+## 6. Workflow-runtime scripts carry no imports/exports
+Any script under `plugins/*/scripts/` containing the marker `// Workflow-runtime entry` is executed by the Workflow tool, which wraps the body in an async function — `import` statements and any `export` other than `export const meta` are a syntax error there. The unit tests cannot catch a regression (they append their own export line after stripping the marker), so check it here:
+
+```bash
+for f in $(rg -l -F '// Workflow-runtime entry' plugins/*/scripts 2>/dev/null); do
+  rg -n '^import |^export ' "$f" | rg -v '^\d+:export const meta = \{$'
+done
+```
+
+Any output is a failure (report file and line).
+
+## 7. Summary
 Print a summary with pass/fail for each check. If all checks pass, confirm everything is consistent. If any fail, list exactly what needs to be fixed.

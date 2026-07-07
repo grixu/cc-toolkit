@@ -95,6 +95,7 @@
         "branchTemplate": { "type": "string" },
         "maxRepairIterations": { "type": "integer", "minimum": 1 },
         "engine": { "type": "string", "enum": ["workflow", "subagents"] },
+        "ciScope": { "type": "string", "enum": ["full", "scoped"] },
         "worktreeSetup": { "type": "array", "items": { "type": "string" } },
         "worktreeCleanup": { "type": "string", "enum": ["always", "keep-failed"] }
       }

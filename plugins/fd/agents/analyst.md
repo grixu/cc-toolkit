@@ -44,8 +44,9 @@ Write the analysis file at the given path with three parts:
    candidate **already in final form** (the AC template in the plugin's BUILDING_SPEC
    reference): a concrete trigger → one observable outcome, binding exactly one behavior,
    no vague verbs (handle / support / properly / etc.), no either-or, and carrying a
-   `covers:` line naming the FR/NFR it satisfies. Candidates may still be revised in the
-   grill — but they enter it in the right shape, not as loose prose.
+   `covers:` line naming the FR/NFR it satisfies — **FR/NFR ids only, never contract
+   elements** (`API-…`, `DB-…`, `DESIGN-…`): the projection rejects them. Candidates may
+   still be revised in the grill — but they enter it in the right shape, not as loose prose.
 2. **Grill agenda** — the open items the grill must close, in three classes: **gaps**
    (missing elements or AC), **ambiguities** (vague verbs, undefined contracts,
    unspecified types or defaults), **contradictions** (claims in the slice that collide,

@@ -156,9 +156,25 @@ test('extractElements: anchor grammar and block boundaries', () => {
 });
 
 test('extractElements: em dash is required (hyphen does not match)', () => {
-  const { elements, unknownKinds } = extractElements('#### DB-1 - hyphen\nbody', ['DB']);
+  const { elements, unknownKinds, malformedAnchors } = extractElements('#### DB-1 - hyphen\nbody', ['DB']);
   assert.deepEqual(elements, []);
   assert.deepEqual(unknownKinds, []);
+  assert.deepEqual(malformedAnchors, [{ line: 1, text: '#### DB-1 - hyphen' }]);
+});
+
+test('extractElements: anchor near-misses are reported as malformedAnchors, not dropped silently', () => {
+  const spec = [
+    '#### TOOLONGKINDABCDEFX-1 — seventeen-char kind',
+    '#### DB-03 — leading zero',
+    '#### DB-4 - hyphen not em dash',
+    '##### DB-3-sub not an anchor',
+    '## Plain heading — with a dash',
+    '#### DB-5 — valid anchor',
+  ].join('\n');
+  const { elements, unknownKinds, malformedAnchors } = extractElements(spec, ['DB']);
+  assert.deepEqual(elements.map((e) => e.id), ['DB-5']);
+  assert.deepEqual(unknownKinds, []);
+  assert.deepEqual(malformedAnchors.map((m) => m.line), [1, 2, 3]);
 });
 
 test('extractElements: unknown KIND is reported once, never extracted', () => {

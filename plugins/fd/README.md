@@ -91,16 +91,19 @@ spec's DoR verdict isn't `ready` and current — it points you back to `/fd:gril
 ```
 /fd:implement <slug>
 ```
-Implements every ready task in dependency waves on a feature branch — each task in
-an isolated worktree, squash-merged serially, gated by acceptance criteria + CI
-scoped to the packages the wave touched, with one whole-feature code review at
-feature close and a bounded self-healing repair loop. The first run adopts the branch
-you are already on when it is cut from the base and up to date with it — otherwise it
-asks which base to branch off. **Resumable:** an interrupted session picks up the remainder of the
-in-flight wave, salvaging completed-but-unmerged task branches instead of redoing
-the wave. **Blocks** on any spec/task drift (sending you to `/fd:to-tasks`), if the
-tasks' DoR verdict isn't `ready` and current, or if a consumed cross-feature
-contract isn't delivered yet.
+Implements every ready task in **one full-cycle engine run**: dependency waves, each
+task in an isolated worktree, squash-merged serially, every wave gated by acceptance
+criteria + CI (`implement.ciScope`: whole repo, or scoped to the touched packages),
+a bounded self-healing repair loop, and — after the last wave — the whole-feature
+code review, mechanical fixes, and a final full CI, all inside the same run. It
+interrupts you only for decisions that genuinely need a human: an architectural gap
+the spec doesn't cover, repair exhaustion, or a code-review judgment call. The first
+run adopts the branch you are already on when it is freshly cut from the base (no
+commits of its own) and up to date with it — otherwise it asks. **Resumable:** an
+interrupted session reconstructs progress from git trailers, salvages
+completed-but-unmerged task branches, and relaunches the remainder. **Blocks** on any
+spec/task drift (sending you to `/fd:to-tasks`), if the tasks' DoR verdict isn't
+`ready` and current, or if a consumed cross-feature contract isn't delivered yet.
 
 ```
 # self-review the feature branch (outside fd), then:
@@ -175,18 +178,21 @@ Each task's full normalized content is hashed into a `contentHash` in the manife
 so a manual edit shows up as drift — and `/fd:implement` blocks on it, pointing you
 back to `/fd:to-tasks` (the single owner of task-file writes).
 
-**Waves, worktrees, squash-per-task.** `/fd:implement` computes implementation
-waves as topological layers of the SC map on the fly (there is no materialized
-plan). Each task runs in its own git worktree (driven by the shipped
-`scripts/wave-implement.mjs` workflow script); tasks with overlapping file
-footprints serialize, disjoint ones run in parallel. A dedicated merger subagent
-squash-merges each passing task into the feature branch as exactly one commit
-carrying a `Task: <id>` trailer — strictly serially, so there are no branch races.
-The manifest records each task as it merges (not batched at wave close), and a
-passing task leaves an empty `Fd-Gate: pass` breadcrumb commit on its worktree
-branch — together these make an interrupted wave resumable: on re-entry, merged
-tasks are skipped, gated-but-unmerged branches are re-checked and salvaged, and
-only the rest re-runs.
+**One run, whole cycle.** `/fd:implement` launches the shipped
+`scripts/wave-implement.mjs` workflow script once; the run computes waves as
+topological layers of the task dependencies (there is no materialized plan) and
+carries each wave through implementation, merge, CI, and repair — then closes the
+feature (full CI → code review → fixes → autosquash → final CI) in the same run.
+Each task runs in its own git worktree; tasks with overlapping file footprints
+serialize, disjoint ones run in parallel. A dedicated merger subagent squash-merges
+each passing task into the feature branch as exactly one commit carrying a
+`Task: <id>` trailer — strictly serially, so there are no branch races. Those
+trailers are the durable ledger: the main conversation records the manifest from
+them at every run boundary (via the shipped `record-impl.mjs`), and a passing task
+additionally leaves an empty `Fd-Gate: pass` breadcrumb commit on its worktree
+branch — together these make an interrupted run resumable: on re-entry, merged
+tasks are recorded from trailers, gated-but-unmerged branches are re-checked and
+salvaged, and only the rest relaunches.
 
 **Stacked PRs + buildability.** The feature branch ends up as a linear,
 one-commit-per-task history in topological order, so `/fd:to-prs` cuts a PR stack
@@ -218,7 +224,8 @@ The knobs that most change behavior:
 | `storage.docs` | *(unset)* | Where CONTEXT.md/ADRs live, decoupled from `storage.mode`: `contextMode` (`per-feature` / `per-app` / `per-bounded-context`) + `contextFile` / `adrRoot` / `boundedContextsFile` |
 | `tasks.maxContextTokens` | `250000` | Budget that caps a task's assembled size (file + copied deps); over budget forces a split. Default targets ≥512k-context models (e.g. Opus 4.8); `/fd:config` asks and offers smaller caps |
 | `implement.engine` | `workflow` | `workflow` (auto-falls-back to subagents when unavailable) or forced `subagents` |
-| `implement.branchTemplate` | `feat/{slug}` | Feature branch name; the first `/fd:implement` run records the result (bypassed when it adopts a branch you already prepared) |
+| `implement.ciScope` | `full` | Per-wave CI scope: `full` (whole repo) or `scoped` (touched packages, full fallback); feature close always runs full |
+| `implement.branchTemplate` | `feat/{slug}` | Feature branch name; the first `/fd:implement` run records the result (bypassed when it adopts a branch you freshly cut off the base) |
 | `implement.maxRepairIterations` | `3` | Failed repair iterations on one task before HIL escalation |
 | `prs.model` / `prs.grouping` | `stacked` / `slice` | PR stack shape and how tasks group into PRs |
 | `prs.baseBranch` / `prs.verifyPerPrCi` | `main` / `false` | Stack base; optional per-PR CI as a final gate |

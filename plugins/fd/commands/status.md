@@ -12,8 +12,16 @@ Compose the current picture of a feature from the artifacts on disk — "where a
 
 Cold-start from the workspace; do not rely on any prior command's context. Plugin files
 resolve via `${CLAUDE_PLUGIN_ROOT}`; a file missing after **one** direct check ⇒ STOP and
-report a broken fd installation — never search the repo or `$HOME` for plugin files, and do
-not read script sources.
+report a broken fd installation — never search the repo or `$HOME` for plugin files.
+
+**Script contract (applies to every shipped script):**
+- Scripts are EXECUTED via the documented one-liners — their stdout JSON is the whole
+  interface. Never `Read` a script's `.mjs` source into context; running one with wrong or
+  missing args prints a usage error, and that error is the documentation.
+- Reading a script's source is allowed only to diagnose an execution that already failed —
+  say so explicitly when you do.
+- Never re-implement a shipped script inline (hand-assembled state JSON, one-off replacement
+  scripts). A job no shipped script covers is a gap: report it, do not work around it.
 
 1. **Config gate (block).** Read `.claude/fd-config.json`. Missing, unparsable, or `schema` mismatch → halt with "run `/fd:config`".
 2. **Feature selection.** Optional `$0` slug → use it. Else exactly one feature under the features root (`storage.featuresRoot`, or `storage.shared.specsRoot` in shared mode) → use it. Else match `state.json.branch` against the current git branch. Else present the list with AskUserQuestion (HIL).

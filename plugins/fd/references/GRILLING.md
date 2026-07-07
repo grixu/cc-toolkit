@@ -52,7 +52,10 @@ existing ID exactly as it is, allocate a new ID only for a genuinely new element
 Record AC→FR/NFR coverage as a `covers:` line inside the AC block itself, e.g.
 `covers: FR-2, NFR-1` under `#### AC-5`. This line is part of the block's content, and
 therefore of its hash, so a mapping change is caught by invalidation. Never hand-write
-`ac-map.json`; it is derived from these lines. Each AC must bind exactly one observable
+`ac-map.json`; it is derived from these lines. **`covers:` lists FR/NFR ids ONLY — never
+contract elements** (`API-…`, `DB-…`, `DESIGN-…`, …): an AC exercising a contract covers
+the requirement behind it, and contracts get covered by task decomposition (`produces`);
+the ac-map projection rejects anything else. Each AC must bind exactly one observable
 behavior — no vague verbs, no either-or.
 
 **AC template.** Write each AC as a concrete **trigger → observable outcome**: exactly one
