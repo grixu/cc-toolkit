@@ -168,6 +168,12 @@ rozstrzygnięte 2026-07-04; zmiany naniesione na zestaw spec tego samego dnia.
 - **Decyzja (2026-07-04): default `40000` + estymator `tokeny ≈ ⌈znaki/4⌉` liczony
   skryptem na złożonym pliku.** Zmiany: `config.example.jsonc`, `SPEC.md` §6,
   `COMMAND_TO_TASKS.md` §4 (kaskada + „Szacowanie budżetu").
+- **Decyzja (2026-07-07, po testach polowych): powrót do defaultu `250000` + budżet
+  staje się jawnym pytaniem HIL w `/fd:config` (opcje 250k / 120k / 40k).** Target to
+  Opus 4.8 i inne modele z oknem ≥512k — plik taska + zależności zajmuje najwyżej połowę
+  okna. Kontrargumenty z 2026-07-04 obsłużone inaczej: generacja pliku i tak przebiega
+  falami (nie jednym przebiegiem), a użytkownik małego okna wybiera niższy pułap w
+  pytaniu configowym. Estymator i bramka splitu bez zmian.
 
 ### B4. Skille mattpocock — niezdefiniowana dystrybucja ⚠️
 

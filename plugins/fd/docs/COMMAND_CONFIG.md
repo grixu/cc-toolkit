@@ -35,8 +35,9 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
 2. **Klasyfikacja pewności:** jednoznaczne → prefill; wieloznaczne (>1 kandydat) → HIL
    dezambiguacja; brak → wg polityki braków.
 3. **HIL — pełny re-ask za każdym razem:** `/config` zawsze przechodzi cały HIL, detekcja
-   tylko prefilluje defaulty. Wszystkie pytania bezwarunkowe są **zbatchowane w JEDNO
-   AskUserQuestion** (nie prompt per pole). Pytania bezwarunkowe:
+   tylko prefilluje defaulty. Wszystkie pytania bezwarunkowe są **zbatchowane w możliwie
+   najmniej wywołań AskUserQuestion** (narzędzie przyjmuje max 4 pytania na wywołanie;
+   nie prompt per pole). Pytania bezwarunkowe:
    - **tryb przechowywania** (`per-feature` / `shared`) + `featuresRoot` — gdzie żyją
      spec + taski + manifest;
    - **lokalizacja docs** — jawne, zawsze zadawane pytanie *gdzie żyją `CONTEXT.md` i ADR-y?*
@@ -45,15 +46,20 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
      w katalogu ficzera (`contextFile`/`adrRoot` ignorowane); `per-app` → wspólny
      `contextFile` (+ opcjonalny `adrRoot`); `per-bounded-context` → `boundedContextsFile`
      (+ opcjonalny `adrRoot`);
-   - **domyślny język** (`language.default`);
-   - **skille CR** (`codeReview.skills`, ≥1).
+   - **domyślny język** (`language.default`) — przy języku o gęstszej tokenizacji
+     (np. polski) zaproponuj `tasks.charsPerToken` `3`–`3.5` zamiast `4`, żeby estymator
+     tokenów nie kłamał;
+   - **skille CR** (`codeReview.skills`, ≥1);
+   - **budżet kontekstu taska** (`tasks.maxContextTokens`) — pułap na złożony plik taska
+     + skopiowane zależności; opcje: `250000` (default / rekomendowane — modele z oknem
+     ≥512k, np. Opus 4.8), `120000`, `40000` (małe okna / konserwatywnie).
 
    Follow-upy warunkowe (tylko gdy odpowiedzi je wyzwolą): tryb `shared` wymaga
    `storage.shared.*` (`contextMode` `per-app` / `per-bounded-context` + ścieżki);
    lokalizacja docs `per-bounded-context` wymaga `storage.docs.boundedContextsFile`.
 
-   Reszta pokręteł jest **zdefaultowana BEZ pytania** (`tasks.*`, `implement.*`, `prs.*`,
-   `validation.*`) i wylistowana w raporcie fazy 6 do wglądu. Każda wartość **non-default**,
+   Reszta pokręteł jest **zdefaultowana BEZ pytania** (pozostałe `tasks.*`, `implement.*`,
+   `prs.*`, `validation.*`) i wylistowana w raporcie fazy 6 do wglądu. Każda wartość **non-default**,
    którą model wybiera za usera (np. niepuste `implement.worktreeSetup`), musi być albo
    jawną opcją w zbatchowanym pytaniu, albo oflagowana do potwierdzenia — **nigdy po cichu**.
 

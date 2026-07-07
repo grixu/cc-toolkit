@@ -29,11 +29,17 @@ samonaprawczą pętlą.
 - **Rozszerzenie cross-feature:** każdy konsumowany `Y#EL@vN` musi być `delivered` w
   manifeście Y — inaczej bloker; delivered liczone na żywo (`CROSS_FEATURE.md` §5).
   Tu spłaca się doradztwo kolejności: „zbuduj Y przed X".
-- **Feature branch (pierwszy run = HIL bazy):** dla pierwszego runu **HIL** (`AskUserQuestion`)
-  „utwórz `<branchTemplate>` na jakiej bazie?" — opcje: `prs.baseBranch` (default / rekomendowane),
+- **Feature branch (pierwszy run: adopcja przygotowanego brancha, inaczej HIL bazy):** najpierw
+  **adopcja bez żadnego pytania** — user siedzący na własnym, przygotowanym branchu ma go dostać
+  jako feature branch wprost. Warunki (wszystkie): bieżący `git rev-parse --abbrev-ref HEAD` to
+  branch (nie detached) różny od `prs.baseBranch`; odbity z bazy i z nią aktualny
+  (`git merge-base --is-ancestor <prs.baseBranch> HEAD`); nie jest zapisany jako `state.json.branch`
+  innej funkcjonalności. Adopcja = zapis bieżącej nazwy do `state.json.branch`, zero tworzenia,
+  zero HIL; raport mówi „branch zaadoptowany" (vs „utworzony"). W przeciwnym razie (na bazie /
+  detached / branch za bazą / guard nie przeszedł) → **HIL** (`AskUserQuestion`) „utwórz
+  `<branchTemplate>` na jakiej bazie?" — opcje: `prs.baseBranch` (default / rekomendowane),
   bieżący branch git (jeśli różny), inny ref (walidacja `git rev-parse --verify`). Branch tworzony
-  na **wybranej** bazie, `state.json.branch` zapisany; kolejne runy pracują na zapisanym. HIL jest
-  stały — odpala się na pierwszym `/implement` każdej funkcjonalności.
+  na **wybranej** bazie, `state.json.branch` zapisany; kolejne runy pracują na zapisanym.
 - **Recovery — wznowienie reszty + salvage:** `waveInProgress == true` na wejściu ⇒ **nigdy** zimny
   restart całej fali (patrz §4). Done-set (taski `implemented`, których `impl.commits` są osiągalne z
   tipa feature brancha) pomijamy; leftover branche `fd/<slug>/T-*` z breadcrumbem `Fd-Gate: pass`
@@ -202,7 +208,7 @@ przy domknięciu (§4.1).
 ```
 entry → guard(config) → reconcile-detect(hashe + ship) ──drift──→ block(„/to-tasks")
       → enforce(readiness.tasks, upstream delivered)
-      → feature branch (pierwszy run: HIL bazy)
+      → feature branch (pierwszy run: adopcja przygotowanego brancha | HIL bazy)
       → recovery(waveInProgress): done-set skip + salvage(breadcrumb→re-gate→merge|discard)
       → goal (main thread) { for wave in topo(SC):
             run = Workflow(scripts/wave-implement.mjs) | fallback: subagenty + worktree
@@ -230,7 +236,7 @@ lub eskalacji.
 | Brak / niepoprawny config | wejście | block |
 | Migracja schematu (niższy → apply; wyższy → halt) | wejście | HIL / block |
 | Wybór funkcjonalności (>1, brak dopasowania) | wejście | HIL |
-| Wybór bazy brancha (pierwszy run) | wejście | HIL |
+| Wybór bazy brancha (pierwszy run) | wejście | HIL (pomijany przy adopcji przygotowanego brancha) |
 | Niejednoznaczny ship (np. squash-merge) | wejście, reconcile krok 1 | HIL |
 | Drift specu / tasków w detekcji (bez apply) | wejście | block |
 | Enforcement DoR tasków + upstream `delivered` | wejście | block |

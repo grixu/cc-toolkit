@@ -39,7 +39,7 @@ Per detected field: exactly one candidate → prefill it; more than one candidat
 
 ### Phase 3 — Full HIL (re-asked every run)
 
-Detection only prefills; always walk the user through the choices below, prefilled with Phase 0/1/2 values. Batch **all non-conditional questions into ONE AskUserQuestion** (main-thread HIL) — do not fire a prompt per field:
+Detection only prefills; always walk the user through the choices below, prefilled with Phase 0/1/2 values. Batch **all non-conditional questions into as few AskUserQuestion calls as possible** (main-thread HIL; the tool takes at most 4 questions per call) — do not fire a prompt per field:
 
 - **Storage mode** — `per-feature` (default) or `shared`; this fixes where the **spec + tasks + manifest** live. Ask `featuresRoot` (default `docs/features`).
 - **Docs location** — an always-asked, explicit question: *where do `CONTEXT.md` and ADRs live for this project?* Options are derived from detection (an existing `docs/CONTEXT.md`/`docs/adr`, a per-feature layout, a bounded-context registry). The answer is recorded into `storage.docs` and is **decoupled from storage mode** (per-feature specs with a shared `adrRoot` is legal):
@@ -48,10 +48,11 @@ Detection only prefills; always walk the user through the choices below, prefill
   - `per-bounded-context` → `boundedContextsFile` (+ optional `adrRoot`).
 - **Default language** (`language.default`, default `en`). When the language tokenizes densely (e.g. Polish), suggest `tasks.charsPerToken` of `3`–`3.5` instead of `4` so the token estimator stays honest.
 - **Code-review skills** (`codeReview.skills`, ≥1) used by the implementation loop.
+- **Task context budget** (`tasks.maxContextTokens`) — the cap on an assembled task file plus its copied dependencies. Options: `250000` (default / recommended — targets models with a ≥512k context window, e.g. Opus 4.8), `120000` (mid-size windows), `40000` (small windows / conservative).
 
 Conditional follow-ups (only when the answers above trigger them): `shared` storage mode needs `storage.shared.*` (`contextMode`, `contextFile`, `adrRoot`, `specsRoot`, `boundedContextsFile`); a `per-bounded-context` docs location needs `storage.docs.boundedContextsFile`.
 
-Everything else is **defaulted WITHOUT asking** — `tasks.*` (context budget, granularity bias, optional hard limits), `implement.*` (branch template, repair-iteration cap, engine, worktree setup/cleanup), `prs.*`, `validation.*`. These defaults are listed in the Phase 6 report for review. Any **non-default** value the model chooses on the user's behalf (e.g. a non-empty `implement.worktreeSetup`) must be either an explicit option in the batched question or flagged for confirmation — **never silently written**.
+Everything else is **defaulted WITHOUT asking** — the remaining `tasks.*` knobs (granularity bias, optional hard limits), `implement.*` (branch template, repair-iteration cap, engine, worktree setup/cleanup), `prs.*`, `validation.*`. These defaults are listed in the Phase 6 report for review. Any **non-default** value the model chooses on the user's behalf (e.g. a non-empty `implement.worktreeSetup`) must be either an explicit option in the batched question or flagged for confirmation — **never silently written**.
 
 Do **not** ask for the per-feature bounded-context here — that choice happens at feature creation (`/fd:start`, `/fd:from-docs`).
 

@@ -4,14 +4,17 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // The script ends with a top-level `return await run(args)` — the Workflow-runtime
-// entry — which plain node cannot parse. Strip that trailing entry and import the
-// rest (everything above it is import-safe) via a data: URL.
+// entry — which plain node cannot parse. It also must not carry `export` statements
+// beyond `meta`: the runtime wraps the body in an async function, where they are a
+// syntax error. Strip the trailing entry, append our own export line for the helpers
+// under test, and import via a data: URL.
 const scriptPath = fileURLToPath(new URL('../scripts/wave-implement.mjs', import.meta.url));
 const source = readFileSync(scriptPath, 'utf8');
 const entryMarker = '// Workflow-runtime entry';
 const cut = source.indexOf(entryMarker);
 if (cut === -1) throw new Error('wave-implement.mjs: Workflow-runtime entry marker not found');
-const importable = source.slice(0, cut);
+const importable = source.slice(0, cut)
+  + '\nexport { parseArgs, scheduleFromSerializeAfter, taskPrompt, TASK_RESULT_SCHEMA };\n';
 const {
   parseArgs,
   scheduleFromSerializeAfter,

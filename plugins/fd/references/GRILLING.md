@@ -42,9 +42,10 @@ decisions.
 ## Element IDs and the `covers:` line
 
 Each buildable thing in the spec is a block anchored by a heading of the form
-`#### <KIND>-<n> — Title` (e.g. `#### DB-3 — User table`), where `KIND` is 2–10
-uppercase letters (seed kinds: DB, API, CFG, OBS, INF, INT, MOD, DESIGN, AC, FR, NFR)
-and `<n>` is a positive integer with no leading zeros. **Be ID-aware:** keep every
+`#### <KIND>-<n> — Title` (e.g. `#### DB-3 — User table`), where `KIND` is 2–16
+uppercase letters (seed kinds: DB, API, CONFIG, OBSERVABILITY, INFRASTRUCTURE,
+INTEGRATION, MODULE, DESIGN, AC, FR, NFR) and `<n>` is a positive integer with no
+leading zeros. **Be ID-aware:** keep every
 existing ID exactly as it is, allocate a new ID only for a genuinely new element, and
 **never renumber or reuse** a number. Allocation is append-only.
 

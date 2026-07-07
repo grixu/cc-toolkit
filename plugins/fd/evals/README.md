@@ -127,7 +127,7 @@ Two promptfoo details make this work:
 single element was edited so the recorded hashes are a truthful baseline the reconcile can
 diff against.
 
-- Spec has three elements (`API-1`, `MOD-1`, `DB-1`) and three tasks: `T-001` produces
+- Spec has three elements (`API-1`, `MODULE-1`, `DB-1`) and three tasks: `T-001` produces
   `API-1`, `T-002` consumes `T-001::API-1@v1`, `T-003` produces `DB-1` (independent).
 - `feature.lock.json` / `state.json` hold the **real** hashes captured by running
   `node plugins/fd/scripts/hasher.mjs <featureDir> --features-root <root>` on the consistent

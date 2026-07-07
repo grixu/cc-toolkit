@@ -21,7 +21,7 @@
     "skills": ["code-review"]
   },
   "tasks": {
-    "maxContextTokens": 40000,
+    "maxContextTokens": 250000,
     "charsPerToken": 4,
     "maxElements": null,
     "maxAcceptanceCriteria": null,

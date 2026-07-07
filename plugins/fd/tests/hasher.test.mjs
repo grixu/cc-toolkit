@@ -128,7 +128,7 @@ test('extractElements: anchor grammar and block boundaries', () => {
     '## Section',
     '#### db-1 — lowercase kind',
     '#### DB-03 — leading zero',
-    '#### TOOLONGKIND-1 — over ten chars',
+    '#### TOOLONGKINDABCDEF-1 — over sixteen chars',
     '#### XYZ-9 — unknown kind',
     '#### DB-4 - hyphen not em dash',
     '#### AC-5 — Last to EOF',
@@ -237,7 +237,7 @@ test('runHasher: cross-feature ref resolves to the live upstream manifest hash',
   const producerHash = 'sha256:0000000000000000000000000000000000000000000000000000000000000009';
 
   const expected = inputHash(
-    { produces: ['MOD-1'], consumes: ['producer#API-9@v1'], covers: ['AC-1'] },
+    { produces: ['MODULE-1'], consumes: ['producer#API-9@v1'], covers: ['AC-1'] },
     (cat, key) => (cat === 'consumes' ? producerHash : res.elements[key]),
   );
   assert.equal(res.tasks['T-001'].inputHash, expected);
@@ -251,7 +251,7 @@ test('runHasher: unresolvable-in-workspace ref falls back to the upstream pin ha
   const res = runHasher(path.join(FX, 'pinned'));
   const pinHash = 'sha256:00000000000000000000000000000000000000000000000000000000000000a3';
   const expected = inputHash(
-    { produces: ['MOD-1'], consumes: ['ghost#API-3@v1'], covers: [] },
+    { produces: ['MODULE-1'], consumes: ['ghost#API-3@v1'], covers: [] },
     (cat, key) => (cat === 'consumes' ? pinHash : res.elements[key]),
   );
   assert.equal(res.tasks['T-001'].inputHash, expected);

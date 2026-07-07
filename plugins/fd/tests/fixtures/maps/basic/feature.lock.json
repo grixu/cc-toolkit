@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "idCounters": { "DB": 3, "API": 2, "MOD": 1, "AC": 6, "FR": 2, "NFR": 1, "T": 3 },
+  "idCounters": { "DB": 3, "API": 2, "MODULE": 1, "AC": 6, "FR": 2, "NFR": 1, "T": 3 },
   "elements": {},
   "tasks": {},
   "upstream": [

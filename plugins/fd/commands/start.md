@@ -62,7 +62,7 @@ before moving on. HIL questions use `AskUserQuestion` in this main thread only.
 
    Write a **minimal valid** `feature.lock.json` (validate against `feature-lock.schema.json`):
    `spec.hash: null`, empty `history`, empty `elements`/`tasks`, and seed `idCounters` (all
-   seed KINDs plus `T`, each `0`): `{ "DB":0,"API":0,"CFG":0,"OBS":0,"INF":0,"INT":0,"MOD":0,"DESIGN":0,"AC":0,"FR":0,"NFR":0,"T":0 }`.
+   seed KINDs plus `T`, each `0`): `{ "DB":0,"API":0,"CONFIG":0,"OBSERVABILITY":0,"INFRASTRUCTURE":0,"INTEGRATION":0,"MODULE":0,"DESIGN":0,"AC":0,"FR":0,"NFR":0,"T":0 }`.
 4. **Grill (main thread).** Load and follow `${CLAUDE_PLUGIN_ROOT}/references/GRILLING.md`
    and `${CLAUDE_PLUGIN_ROOT}/references/BUILDING_SPEC.md`. Build the agenda from the topic
    plus the project's code context, then drill gaps / ambiguities / contradictions with the

@@ -94,8 +94,9 @@ spec's DoR verdict isn't `ready` and current — it points you back to `/fd:gril
 Implements every ready task in dependency waves on a feature branch — each task in
 an isolated worktree, squash-merged serially, gated by acceptance criteria + CI
 scoped to the packages the wave touched, with one whole-feature code review at
-feature close and a bounded self-healing repair loop. The first run asks which base
-to branch off. **Resumable:** an interrupted session picks up the remainder of the
+feature close and a bounded self-healing repair loop. The first run adopts the branch
+you are already on when it is cut from the base and up to date with it — otherwise it
+asks which base to branch off. **Resumable:** an interrupted session picks up the remainder of the
 in-flight wave, salvaging completed-but-unmerged task branches instead of redoing
 the wave. **Blocks** on any spec/task drift (sending you to `/fd:to-tasks`), if the
 tasks' DoR verdict isn't `ready` and current, or if a consumed cross-feature
@@ -215,9 +216,9 @@ The knobs that most change behavior:
 | `tasks.charsPerToken` | `4` | Token-estimator divisor; use `3`–`3.5` for densely tokenized languages (e.g. Polish) |
 | `storage.mode` | `per-feature` | `per-feature` (everything in the feature dir) or `shared` (CONTEXT/ADRs in shared roots) |
 | `storage.docs` | *(unset)* | Where CONTEXT.md/ADRs live, decoupled from `storage.mode`: `contextMode` (`per-feature` / `per-app` / `per-bounded-context`) + `contextFile` / `adrRoot` / `boundedContextsFile` |
-| `tasks.maxContextTokens` | `40000` | Budget that caps a task's assembled size (file + copied deps); over budget forces a split |
+| `tasks.maxContextTokens` | `250000` | Budget that caps a task's assembled size (file + copied deps); over budget forces a split. Default targets ≥512k-context models (e.g. Opus 4.8); `/fd:config` asks and offers smaller caps |
 | `implement.engine` | `workflow` | `workflow` (auto-falls-back to subagents when unavailable) or forced `subagents` |
-| `implement.branchTemplate` | `feat/{slug}` | Feature branch name; the first `/fd:implement` run records the result |
+| `implement.branchTemplate` | `feat/{slug}` | Feature branch name; the first `/fd:implement` run records the result (bypassed when it adopts a branch you already prepared) |
 | `implement.maxRepairIterations` | `3` | Failed repair iterations on one task before HIL escalation |
 | `prs.model` / `prs.grouping` | `stacked` / `slice` | PR stack shape and how tasks group into PRs |
 | `prs.baseBranch` / `prs.verifyPerPrCi` | `main` / `false` | Stack base; optional per-PR CI as a final gate |

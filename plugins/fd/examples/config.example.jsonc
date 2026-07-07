@@ -48,7 +48,7 @@
   },
 
   "tasks": {                            // dekompozycja / rozmiar taska
-    "maxContextTokens": 40000,          // pułap tnący: złożony plik taska + zależności; estymacja skryptem ~znaki/charsPerToken
+    "maxContextTokens": 250000,         // pułap tnący: złożony plik taska + zależności; target = modele z oknem ≥512k (np. Opus 4.8); estymacja skryptem ~znaki/charsPerToken
     "charsPerToken": 4,                 // dzielnik estymatora tokenów; kalibracja en=4, języki o gęstszej tokenizacji (np. pl) ≈ 3–3.5 — /fd:config proponuje wg language.default
     "maxElements": null,                // twardy limit elementów per task; null = wyłączony
     "maxAcceptanceCriteria": null,      // twardy limit AC per task; null = wyłączony

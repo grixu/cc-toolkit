@@ -29,7 +29,7 @@
           },
           "anchors": {
             "type": "array",
-            "items": { "type": "string", "pattern": "^[A-Z]{2,10}-[1-9][0-9]*$" }
+            "items": { "type": "string", "pattern": "^[A-Z]{2,16}-[1-9][0-9]*$" }
           },
           "groundedAt": { "type": "string" }
         }

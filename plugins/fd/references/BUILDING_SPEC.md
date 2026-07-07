@@ -20,9 +20,10 @@ settle decisions that belong to implementation.
 - **Elements as anchored blocks.** Each buildable thing is a block whose heading is the
   anchor. The anchor grammar, exactly: a Markdown heading of level 1–6, then `KIND-n`,
   then a space, an em dash, a space, then the title — matched by
-  `^(#{1,6}) ([A-Z]{2,10})-([1-9][0-9]*) — `. `KIND` is 2–10 uppercase letters drawn from
-  the manifest's `idCounters` dictionary; the seed set is **DB, API, CFG, OBS, INF, INT,
-  MOD, DESIGN, AC, FR, NFR**. `n` is an integer ≥ 1 with no leading zeros. Example:
+  `^(#{1,6}) ([A-Z]{2,16})-([1-9][0-9]*) — `. `KIND` is 2–16 uppercase letters drawn from
+  the manifest's `idCounters` dictionary; the seed set is **DB, API, CONFIG,
+  OBSERVABILITY, INFRASTRUCTURE, INTEGRATION, MODULE, DESIGN, AC, FR, NFR**. `n` is an
+  integer ≥ 1 with no leading zeros. Example:
   `#### DB-3 — User table`. A block runs from its anchor heading to the next heading of
   equal-or-higher level (level ≤ the anchor's), or end of file; the heading line itself is
   part of the block. Headings that don't match the pattern are not elements. A heading

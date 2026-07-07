@@ -41,7 +41,7 @@ Task identity is a deterministic key over the produced-element set (`identityKey
 
 Partition **all** spec elements into tasks — every element assigned to exactly one producer task. Two-layer hybrid:
 
-- **Foundation tasks first** — elements with fan-out ≥ 2, or contract KINDs (DB, CFG, shared API, enums). Consumers depend on the versioned contract `@v`.
+- **Foundation tasks first** — elements with fan-out ≥ 2, or contract KINDs (DB, CONFIG, shared API, enums). Consumers depend on the versioned contract `@v`.
 - **Vertical slices** — one per AC/behavior; merge ACs that share a cohesive element set. Any element produced by ≥ 2 slices is **hoisted to foundation** (one-producer rule).
 
 Size cascade, applied to each candidate task in order:

@@ -16,7 +16,7 @@ POST /users with an idempotency key.
 
 ## Modules
 
-### MOD-1 — Onboarding flow
+### MODULE-1 — Onboarding flow
 
 Coordinates registration and confirmation.
 

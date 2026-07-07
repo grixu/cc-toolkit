@@ -1,6 +1,6 @@
 # Consumer feature
 
-### MOD-1 — Checkout module
+### MODULE-1 — Checkout module
 
 Wires the checkout flow against the upstream payment API.
 

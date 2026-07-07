@@ -11,7 +11,7 @@ const EVALS_DIR = path.resolve(__dirname, '..');
 const PLUGIN_DIR = path.resolve(__dirname, '..', '..');
 
 // Anchor grammar (hasher.mjs ANCHOR_RE): "### KIND-N — title", em dash U+2014, single-spaced.
-const ANCHOR_RE = /^#{1,6} [A-Z]{2,10}-[1-9][0-9]* — /m;
+const ANCHOR_RE = /^#{1,6} [A-Z]{2,16}-[1-9][0-9]* — /m;
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 
 module.exports = async () => {

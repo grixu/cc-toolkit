@@ -30,7 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All command bodies reference plugin files via `${CLAUDE_PLUGIN_ROOT}` (the
   previously used `${CLAUDE_SKILL_DIR}` is skill-scoped only and stays unset in
   commands), with a one-probe guard against filesystem hunts for plugin files.
-- `/fd:implement`: permanent base-branch HIL on first run; manifest written
+- `/fd:implement` first-run feature branch: adopts the branch the user already
+  prepared (cut from `prs.baseBranch` and up to date with it) with no question
+  asked; the base-branch HIL runs only otherwise; manifest written
   incrementally per merged task (single writer preserved); interrupted waves resume
   their remainder and salvage gated-but-unmerged task branches instead of
   cold-restarting; per-wave CI scoped to touched packages (full-repo fallback);
@@ -56,3 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`CROSS_FEATURE.md` only when upstreams are consumed).
 - Spec-quality: compact AC template (trigger → one observable outcome, no vague
   verbs, mandatory `covers:`) in GRILLING/BUILDING_SPEC references and docs.
+- Element-kind seed dictionary spelled out in full words: `CFG`→`CONFIG`,
+  `OBS`→`OBSERVABILITY`, `INF`→`INFRASTRUCTURE`, `INT`→`INTEGRATION`,
+  `MOD`→`MODULE`; the anchor-grammar KIND length ceiling widened from 10 to 16
+  uppercase letters (hasher regex, JSON-schema patterns, fixtures).
+- `tasks.maxContextTokens` default raised from `40000` to `250000` (targets
+  models with a ≥512k context window, e.g. Opus 4.8); `/fd:config` now asks for
+  the task context budget explicitly (250k / 120k / 40k options) instead of
+  silently defaulting it.

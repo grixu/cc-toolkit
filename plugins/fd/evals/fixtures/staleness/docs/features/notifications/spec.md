@@ -14,7 +14,7 @@ channel with `400`.
 
 ## Modules
 
-### MOD-1 — Notification dispatcher
+### MODULE-1 — Notification dispatcher
 
 Routes an accepted notification to the transport for its channel (email, sms) and
 records the outcome. Retries a transient transport failure up to three times.

@@ -31,14 +31,14 @@
     "idCounters": {
       "type": "object",
       "patternProperties": {
-        "^(T|[A-Z]{2,10})$": { "type": "integer", "minimum": 0 }
+        "^(T|[A-Z]{2,16})$": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },
     "elements": {
       "type": "object",
       "patternProperties": {
-        "^[A-Z]{2,10}-[1-9][0-9]*$": { "$ref": "#/$defs/element" }
+        "^[A-Z]{2,16}-[1-9][0-9]*$": { "$ref": "#/$defs/element" }
       },
       "additionalProperties": false
     },
@@ -57,13 +57,13 @@
   },
   "$defs": {
     "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-    "elementId": { "type": "string", "pattern": "^[A-Z]{2,10}-[1-9][0-9]*$" },
+    "elementId": { "type": "string", "pattern": "^[A-Z]{2,16}-[1-9][0-9]*$" },
     "taskId": { "type": "string", "pattern": "^T-[0-9]+$" },
     "contractRef": {
       "type": "string",
       "anyOf": [
-        { "pattern": "^T-[0-9]+::[A-Z]{2,10}-[1-9][0-9]*@v[1-9][0-9]*$" },
-        { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Z]{2,10}-[1-9][0-9]*@v[1-9][0-9]*$" }
+        { "pattern": "^T-[0-9]+::[A-Z]{2,16}-[1-9][0-9]*@v[1-9][0-9]*$" },
+        { "pattern": "^[a-z0-9]+(-[a-z0-9]+)*#[A-Z]{2,16}-[1-9][0-9]*@v[1-9][0-9]*$" }
       ]
     },
     "element": {
@@ -114,12 +114,12 @@
         "specHash": { "$ref": "#/$defs/sha256" },
         "consumes": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[A-Z]{2,10}-[1-9][0-9]*@v[1-9][0-9]*$" }
+          "items": { "type": "string", "pattern": "^[A-Z]{2,16}-[1-9][0-9]*@v[1-9][0-9]*$" }
         },
         "elements": {
           "type": "object",
           "patternProperties": {
-            "^[A-Z]{2,10}-[1-9][0-9]*$": {
+            "^[A-Z]{2,16}-[1-9][0-9]*$": {
               "type": "object",
               "additionalProperties": false,
               "required": ["hash"],

@@ -140,7 +140,7 @@ LLM nigdy nie liczy hasha. Skrypt woła na wejściu każda komenda, także `/sta
 
 **Ekstrakcja bloku:** blok elementu zaczyna się linią nagłówka z kotwicą i sięga do
 następnego nagłówka o poziomie ≤ poziomowi kotwicy albo końca pliku. Kotwicę definiuje
-regex `^(#{1,6}) ([A-Z]{2,10})-([1-9][0-9]*) — ` (np. `#### DB-3 — Tabela użytkowników`);
+regex `^(#{1,6}) ([A-Z]{2,16})-([1-9][0-9]*) — ` (np. `#### DB-3 — Tabela użytkowników`);
 nagłówki niepasujące do wzorca nie są elementami. Słownik `KIND` = klucze `idCounters`
 manifestu: nagłówek pasujący do wzorca, lecz z `KIND` spoza słownika, nie zakłada po
 cichu nowego rodzaju — flaguje go walidacja „Spójność strukturalna" → HIL (zaakceptuj
@@ -249,10 +249,10 @@ user-editable pliku `bounded-contexts.json` (patrz `COMMAND_CONFIG.md`).
 
 ### 4.3 Schemat ID — płaski `<KIND>-<n>`
 
-- `KIND` ∈ { `DB`, `API`, `CFG`, `OBS`, `INF`, `INT`, `MOD`, `DESIGN`, `AC`, `FR`,
-  `NFR` } — rozszerzalny; słownik żyje w kluczach `idCounters` manifestu (zestaw wyżej
-  to seed), nowy `KIND` wchodzi przez HIL walidacji „Spójność strukturalna" (§2.6).
-  Prefiks działa jak checklista kompletności.
+- `KIND` ∈ { `DB`, `API`, `CONFIG`, `OBSERVABILITY`, `INFRASTRUCTURE`, `INTEGRATION`,
+  `MODULE`, `DESIGN`, `AC`, `FR`, `NFR` } — rozszerzalny; słownik żyje w kluczach
+  `idCounters` manifestu (zestaw wyżej to seed), nowy `KIND` wchodzi przez HIL walidacji
+  „Spójność strukturalna" (§2.6). Prefiks działa jak checklista kompletności.
 - Numer append-only per `KIND` (high-water-mark w manifeście → `idCounters`).
   `idCounters` obejmuje też `T`: numery tasków są alokowane tak samo append-only
   (`identityKey` rozwiązuje tożsamość taska, licznik — alokację numerów, także po dropie).
@@ -274,7 +274,7 @@ autorytatywna i nieodtwarzalna (SHA commitów, wynik CI / CR):
 {
   "schema": 1,
   "spec": { "hash": "sha256:…", "history": [ { "hash": "sha256:…", "at": "…", "summary": "init" } ] },
-  "idCounters": { "DB": 3, "API": 2, "CFG": 1, "AC": 5, "FR": 2, "NFR": 1, "T": 4 },
+  "idCounters": { "DB": 3, "API": 2, "CONFIG": 1, "AC": 5, "FR": 2, "NFR": 1, "T": 4 },
   "elements": {
     "DB-3": { "hash": "h2", "deliveredHash": "h1", "version": 2, "producer": "T-004", "status": "drifted" }
   },
@@ -321,9 +321,11 @@ istnieją. Wiąże verdykt DoR tasków (§5.4).
 pierwszej fali; `shipped` — detekcja shipu (§2.4), gdy wszystkie taski są `shipped`.
 
 `branch` = feature branch funkcjonalności. Ustawia go `/implement` przy pierwszym
-uruchomieniu wg szablonu z configu (`implement.branchTemplate`, default `feat/<slug>`);
-od tej pory wiąże funkcjonalność z branchem dla `/implement`, `/to-prs` i heurystyki
-wskazania funkcjonalności (§3.1).
+uruchomieniu: szablonem z configu (`implement.branchTemplate`, default `feat/<slug>`)
+albo **adopcją bieżącego brancha**, gdy user już siedzi na branchu odbitym z
+`prs.baseBranch` i z nią aktualnym (wtedy bez pytania i bez tworzenia). Od tej pory
+wiąże funkcjonalność z branchem dla `/implement`, `/to-prs` i heurystyki wskazania
+funkcjonalności (§3.1).
 
 **Frontmatter taska** (`tasks/T-004.md`) — pointer do manifestu:
 
@@ -453,7 +455,7 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Walidacja tasków (DoR) | `/to-tasks` — ogon | block → verdykt |
 | Drift specu / tasków w detekcji (bez apply) | `/implement` — wejście | block |
 | Enforcement DoR tasków | `/implement` — wejście | block |
-| Wybór bazy feature brancha (pierwszy run) | `/implement` — wejście | HIL |
+| Wybór bazy feature brancha (pierwszy run) | `/implement` — wejście | HIL (pomijany przy adopcji przygotowanego brancha) |
 | Salvage: re-check bramki per-task przy recovery | `/implement` — wejście | block (per task) |
 | Per-task AC (pokryte w całości) + lint zmian przed merge | `/implement` | block |
 | Per-fala scoped CI (fallback: pełne) + AC domykane falą | `/implement` | block |
@@ -476,8 +478,8 @@ warunkiem wstępnym: brak / niepoprawny / niezgodna `schema` → każda komenda 
 się i prosi o uruchomienie `/config`.
 
 Domyślne wartości: język `en`, tryb `per-feature`, katalog `docs/features/<slug>/`,
-budżet kontekstu taska `40000` tokenów (estymator — `COMMAND_TO_TASKS.md` §4), model PR
-`stacked`, waiver dozwolony.
+budżet kontekstu taska `250000` tokenów (target: modele z oknem ≥512k; estymator —
+`COMMAND_TO_TASKS.md` §4), model PR `stacked`, waiver dozwolony.
 
 ---
 

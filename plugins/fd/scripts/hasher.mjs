@@ -5,11 +5,12 @@ import path from 'node:path';
 
 // Seed KIND dictionary (SPEC.md §4.3). Used when the manifest carries no idCounters.
 export const SEED_KINDS = [
-  'DB', 'API', 'CFG', 'OBS', 'INF', 'INT', 'MOD', 'DESIGN', 'AC', 'FR', 'NFR', 'T',
+  'DB', 'API', 'CONFIG', 'OBSERVABILITY', 'INFRASTRUCTURE', 'INTEGRATION', 'MODULE',
+  'DESIGN', 'AC', 'FR', 'NFR', 'T',
 ];
 
 // The dash in an anchor is an em dash (U+2014) fenced by single spaces.
-const ANCHOR_RE = /^(#{1,6}) ([A-Z]{2,10})-([1-9][0-9]*) — /;
+const ANCHOR_RE = /^(#{1,6}) ([A-Z]{2,16})-([1-9][0-9]*) — /;
 const HEADING_RE = /^(#{1,6}) /;
 
 export class HasherError extends Error {}

@@ -21,7 +21,7 @@ export const meta = {
 // Defensive: the Workflow tool should pass `args` as a real object, but a live-authored
 // launch can pass it JSON-encoded as a string; a naive typeof check then silently drops
 // the whole payload. Parse the string form, and validate every field the run path relies on.
-export function parseArgs(rawArgs) {
+function parseArgs(rawArgs) {
   let a = rawArgs;
   if (typeof a === 'string') {
     try {
@@ -72,7 +72,7 @@ export function parseArgs(rawArgs) {
 // a task lands in the earliest batch after ALL of its `serializeAfter` predecessors.
 // Unknown refs and cycles throw. Batches run sequentially; tasks within a batch run in
 // parallel. Input order is preserved inside each batch so a rerun schedules identically.
-export function scheduleFromSerializeAfter(tasks) {
+function scheduleFromSerializeAfter(tasks) {
   if (!Array.isArray(tasks) || tasks.length === 0) return [];
 
   const byId = new Map();
@@ -130,7 +130,7 @@ export function scheduleFromSerializeAfter(tasks) {
 
 // Structured contract every task agent returns (one per agent() call). The main thread
 // merges passing tasks in order and records impl.commits; a failed task feeds the repair loop.
-export const TASK_RESULT_SCHEMA = {
+const TASK_RESULT_SCHEMA = {
   type: 'object',
   required: ['id', 'status', 'changedFiles', 'headSha', 'gate'],
   properties: {
@@ -166,7 +166,7 @@ export const TASK_RESULT_SCHEMA = {
 
 // Single source of truth for the task-agent directives. Embedded verbatim in every task
 // prompt here; the subagent fallback in commands/implement.md reuses the same directives.
-export const TASK_CONTRACT = [
+const TASK_CONTRACT = [
   'Task-agent contract — follow exactly:',
   '- The task file is self-contained. Do NOT re-grep or rediscover paths, symbols, or contracts already named in its body or codeDeps — read the task file once and trust it.',
   '- Batch your edits: make all code changes first, then run typecheck and lint ONCE at the end — never after every edit.',
@@ -180,7 +180,7 @@ export const TASK_CONTRACT = [
 
 // Builds one task agent's prompt: where to work, its self-gate, the mode (repair carries
 // the diagnosis to fix), and the shared task-agent contract verbatim (with the breadcrumb).
-export function taskPrompt(task, gate, mode) {
+function taskPrompt(task, gate, mode) {
   const acLine = gate.acIds && gate.acIds.length
     ? gate.acIds.join(', ')
     : '(none covered entirely by this task — this task closes no AC on its own)';
@@ -221,7 +221,7 @@ export function taskPrompt(task, gate, mode) {
 // each batch's task agents in parallel, and returns the collected per-task results.
 // References the `agent`/`parallel` globals only here, so importing this module under
 // plain node (for the tests) has no side effects.
-export async function run(rawArgs) {
+async function run(rawArgs) {
   const { mode, tasks, gate } = parseArgs(rawArgs);
   const batches = scheduleFromSerializeAfter(tasks);
 
@@ -235,8 +235,6 @@ export async function run(rawArgs) {
 
   return { tasks: results };
 }
-
-export default run;
 
 // Workflow-runtime entry — MUST stay the last line; plain `node` cannot parse a
 // top-level return, which is why the tests strip it before importing.

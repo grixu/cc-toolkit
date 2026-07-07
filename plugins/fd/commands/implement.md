@@ -70,13 +70,22 @@ sources (use the documented one-liners).
    block. Not delivered / missing / dangling ref → **BLOCK** naming exactly which `<slug>#<EL>@vN`
    are unmet; advise "build Y (or at least `EL`) first" (order advice is element-precise).
 
-7. **Feature branch (first run = base-branch HIL).** `state.json.branch` set → `git checkout` it.
-   Null (first run) → **HIL** with `AskUserQuestion` "create `<branchTemplate>` off which base?" (branch
-   name from `implement.branchTemplate`, default `feat/{slug}`, `{slug}` substituted). Options:
-   `prs.baseBranch` (default / recommended); the current git branch (only when it differs from
-   `prs.baseBranch`); or another ref (validate with `git rev-parse --verify <ref>` — reject and re-ask on
-   failure). Create the branch off the **chosen** base, check it out, and write `state.json.branch`
-   (schema-validated, 2-space JSON). This HIL is permanent — it runs on every feature's first `/fd:implement`.
+7. **Feature branch (first run: adopt a prepared branch, else base-branch HIL).** `state.json.branch`
+   set → `git checkout` it. Null (first run) → first try **adoption, with no question asked**: when the
+   user is already sitting on a branch they prepared for this work, use it as the feature branch as-is.
+   Adopt when ALL hold:
+   - `git rev-parse --abbrev-ref HEAD` is a branch (not `HEAD`/detached) and differs from `prs.baseBranch`;
+   - the branch is cut from the base and up to date with it: `git merge-base --is-ancestor <prs.baseBranch> HEAD`;
+   - the branch is not recorded as `state.json.branch` of another feature under `featuresRoot`.
+   Adoption = write the current branch name to `state.json.branch` (schema-validated, 2-space JSON);
+   create nothing, ask nothing; the checkpoint report says "branch adopted" instead of "created".
+   Otherwise (sitting on the base itself, detached HEAD, branch behind the base, or the guard failed) →
+   **HIL** with `AskUserQuestion` "create `<branchTemplate>` off which base?" (branch name from
+   `implement.branchTemplate`, default `feat/{slug}`, `{slug}` substituted). Options: `prs.baseBranch`
+   (default / recommended); the current git branch (only when it differs from `prs.baseBranch`); or
+   another ref (validate with `git rev-parse --verify <ref>` — reject and re-ask on failure). Create the
+   branch off the **chosen** base, check it out, and write `state.json.branch`. The HIL runs on a
+   feature's first `/fd:implement` unless a prepared branch was adopted.
 
 8. **Recovery — resume the remainder + salvage.** `state.json.waveInProgress == true` on entry ⇒ a prior
    session was interrupted mid-wave. A Workflow run never survives a session exit, so do **not** resume the
@@ -172,8 +181,9 @@ nobody directly — only ship-detection (precondition 4) flips it once `impl.com
 ## Wave mechanics
 
 - **Isolation & naming.** One git worktree per task. Worktree path `<repo>/.fd-worktrees/<slug>/<T-id>`,
-  branch `fd/<slug>/<T-id>`. Bootstrap each fresh worktree with the `implement.worktreeSetup` commands
-  (e.g. `pnpm install`) before the task starts.
+  branch `fd/<slug>/<T-id>` — both derive from the feature slug, never from the feature branch's own
+  name (an adopted branch changes nothing here). Bootstrap each fresh worktree with the
+  `implement.worktreeSetup` commands (e.g. `pnpm install`) before the task starts.
 - **Footprint serialization.** Before a wave starts, two best-effort pre-passes over the wave's tasks
   (both from `codeDeps` + file paths named in each task body):
   - **write ∩ write** — two tasks that write the same file serialize.
@@ -280,7 +290,7 @@ enter Feature close at **step 2**.
 | Missing / invalid config | entry | block |
 | Schema migration (lower → apply; higher → halt) | entry | HIL / block |
 | Feature selection (>1, no match) | entry | HIL |
-| Base-branch selection (first run) | entry | HIL |
+| Base-branch selection (first run) | entry | HIL (skipped when a prepared branch is adopted) |
 | Ambiguous ship (e.g. squash-merge) | entry, reconcile step 1 | HIL |
 | Spec / task drift in detection (no apply) | entry | block |
 | DoR-tasks enforcement + upstream `delivered` | entry | block |

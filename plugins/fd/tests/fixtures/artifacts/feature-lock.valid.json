@@ -13,7 +13,7 @@
   "idCounters": {
     "DB": 3,
     "API": 2,
-    "CFG": 1,
+    "CONFIG": 1,
     "AC": 5,
     "FR": 2,
     "NFR": 1,
