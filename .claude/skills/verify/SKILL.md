@@ -34,5 +34,14 @@ For each plugin's `CHANGELOG.md`:
 - Must follow Keep a Changelog format
 - Version entries should match semver
 
-## 5. Summary
+## 5. Plugin path variables
+No file under `plugins/*/commands/` or `plugins/*/agents/` may reference the CLAUDE_SKILL_DIR variable — it exists only inside a SKILL.md (it would be substituted right here if spelled with dollar-brace syntax) and stays unset in plugin command bodies. Plugin files must be referenced via the CLAUDE_PLUGIN_ROOT variable. Check with:
+
+```bash
+grep -rn 'CLAUDE_SKILL_DIR' plugins/*/commands plugins/*/agents
+```
+
+Any match is a failure (report file and line).
+
+## 6. Summary
 Print a summary with pass/fail for each check. If all checks pass, confirm everything is consistent. If any fail, list exactly what needs to be fixed.
