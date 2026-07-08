@@ -20,6 +20,10 @@ bottom-up.
 - Wskazanie funkcjonalności: argument `<slug>` / heurystyka / HIL (`SPEC.md` §3.1).
 - **Kompletność implementacji (twarda bramka):** wszystkie taski w manifeście mają
   status `implemented` / `shipped` — inaczej block („dokończ `/implement`").
+- **Werdykt domknięcia (twarda bramka):** `state.json.close.finalCi == "pass"` — to jedyny
+  pełno-pipeline'owy werdykt feature'a (per-taskowy `impl.gate` zapisuje tylko bramkę fali:
+  smoke + AC). Brak bloku lub cokolwiek innego niż `pass` → block („domknięcie `/implement`
+  nigdy nie zbiegło na zielono").
 - Self-review całości wykonany przez usera (pełna kontrola człowieka, poza pluginem);
   jego commity na feature branchu obsługuje §4.
 - Istnieją: feature branch (`state.json.branch`), mapa SC (`sc-map.json`), manifest.
@@ -66,6 +70,13 @@ HIL); po rebase `/to-prs` **aktualizuje `impl.commits` w manifeście** — jedyn
 tej komendy. Task z naprawą, która nie wsiąkła w autosquash, ma >1 commit — partycja
 bierze wszystkie commity z jego trailerem `Task:`.
 
+**Commity integration-fix** (subject `fix(integration): …`, trailery `Task: <winowajca>` +
+`Integration-Fix: true`) to cross-cuttingowe naprawy pętli, celowo **nie** autosquashowane:
+niosą trailer `Task:`, więc partycja wciąga je do PR-a taska-winowajcy jak każdy inny commit
+z trailerem. PR taska niosący adaptacje blast radius innych obszarów jest **poprawny**, nie
+jest rozmyciem granicy — niezmiennik buildability wymaga, żeby łamiąca zmiana i jej
+downstreamowe adaptacje lądowały w tym samym PR-ze.
+
 **Commity spoza pętli** (self-review usera, bez trailera `Task:`): commity `--fixup` są
 wciągane autosquashem do swoich celów przed partycją; zwykłe commity → HIL przypisania
 do taska / grupy PR (wchodzą do partycji tej grupy, w kolejności zachowującej
@@ -94,7 +105,7 @@ buildability). Partycja nie gubi żadnego commita — commit nieprzypisany = blo
 ## 6. Maszyna stanów
 
 ```
-entry → guard(config) → enforce(all tasks implemented) → read(branch, SC, manifest)
+entry → guard(config) → enforce(all tasks implemented, state.close.finalCi==pass) → read(branch, SC, manifest)
       → absorb(fixupy → autosquash; obce commity → HIL) → linearize(topo SC)
       → group (auto | manual-HIL) → assert(buildability) ──fail──→ HIL(re-assign)
       → reorder-rebase (gdy grupowanie tego wymaga; konflikt → HIL)
@@ -113,6 +124,7 @@ ponowne odpalenie odświeża stos.
 |---|---|
 | Brak / niepoprawny config | block |
 | Kompletność implementacji (wszystkie taski `implemented`) | block |
+| Werdykt domknięcia (`state.close.finalCi == "pass"`) | block |
 | Przypisanie obcych commitów (bez trailera `Task:`) | HIL |
 | Manual PR grouping | HIL |
 | Niezmiennik składalności (buildability) | block |

@@ -272,13 +272,15 @@ tych JSON-ów ręcznie: `build-manifest.mjs` (projektor `feature.lock.json`: see
 producenci, append-only `idCounters`, `spec.history`), `apply.mjs` (przejścia i werdykty:
 `seed-state`, `fill`/`finalize` tasków, `readiness-spec`, `reconcile` z bumpem `@v`),
 `record-impl.mjs` (chirurgiczne zapisy fazy implement/ship: `impl.commits`, statusy,
-`phase`/`waveInProgress` — bez recompute hashy), `build-sources-map.mjs` (jedyny writer
+`phase`/`waveInProgress`, werdykt bramki fali `impl.gate`, feature-level `state.close`
+przez verb `close`, `state.branch` przez verb `branch` — bez recompute hashy),
+`build-sources-map.mjs` (jedyny writer
 `sources-map.json`: merge + dedupe rekordów proweniencji z plików danych, walidacja
 schematu przed zapisem). `validatedHash` w readiness zawsze wylicza skrypt ze świeżego
 przebiegu hashera — nigdy nie jest podawany z ręki.
 
 **`feature.lock.json`** — manifest / ledger reconcile. Commitowany, bo część jest
-autorytatywna i nieodtwarzalna (SHA commitów, wynik CI / CR):
+autorytatywna i nieodtwarzalna (SHA commitów, werdykty bramki fali / CR):
 
 ```json
 {
@@ -293,7 +295,7 @@ autorytatywna i nieodtwarzalna (SHA commitów, wynik CI / CR):
       "identityKey": ["DB-3"], "produces": ["DB-3"],
       "consumes": ["T-002::API-2@v1"], "covers": ["AC-5", "FR-2"],
       "inputHash": "…", "contentHash": "sha256:…", "specHash": "…", "status": "implemented",
-      "impl": { "commits": ["a1b2c3"], "ci": "pass", "cr": "pass" }
+      "impl": { "commits": ["a1b2c3"], "gate": "pass", "cr": "pass" }
     }
   },
   "scMap": "sc-map.json"
@@ -305,6 +307,10 @@ niedostarczony; `delivered` — dostarczony do main (`deliveredHash` ustawiony, 
 `deliveredHash`); `drifted` — dostarczony, lecz bieżący `hash` ≠ `deliveredHash` (breaking
 → bump `@v`). To status **elementu**, odrębny od statusu **tasku** (§2.3); `delivered`
 elementu ⇔ jego task-producent jest shipped.
+
+`impl.gate` = werdykt **bramki fali** (smoke typecheck+build + weryfikacja AC) — celowo
+nie nazywa się „ci": pełny pipeline biegnie raz na feature przy domknięciu i ląduje w
+`state.close`.
 
 Manifest dostaje też blok `upstream` dla zależności cross-feature (patrz
 `CROSS_FEATURE.md`).
@@ -324,6 +330,11 @@ Manifest dostaje też blok `upstream` dla zależności cross-feature (patrz
 (`COMMAND_CONFIG.md`); w pozostałych trybach `null`. `tasksHash` = rollup `input_hash`
 wszystkich tasków (analogicznie do `spec_hash` z §2.2); `null`, dopóki taski nie
 istnieją. Wiąże verdykt DoR tasków (§5.4).
+
+`state.json` dostaje też opcjonalny blok `close` — feature-level werdykty domknięcia
+`/implement` (`{ "fullCi": "pass", "cr": "pass", "finalCi": "pass" }`, zapis przyrostowy
+przez `record-impl.mjs close`); `close.finalCi == "pass"` to twarda prekondycja
+`/to-prs` — jedyny pełno-pipeline'owy werdykt feature'a.
 
 `phase` ∈ `spec | tasks | implementing | shipped` — gruby wskaźnik progresji (dla
 `/status` i sugestii następnego kroku): `spec` ustawiają `/start` / `/from-docs`;
@@ -471,15 +482,20 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Kolizja nazwy feature brancha / residuum `fd/<slug>/*` | `/implement` — wejście | HIL |
 | Salvage: re-check bramki per-task przy recovery | `/implement` — wejście | block (per task) |
 | Per-task AC (pokryte w całości) + lint zmian przed merge | `/implement` — w runie | block |
-| Per-fala CI (`implement.ciScope`: full / scoped z fallbackiem) + AC domykane falą | `/implement` — w runie | block |
-| Rekonsyliacja werdyktu CI (pass + niezerowy exit ⇒ fail) | `/implement` — w runie | block |
+| Per-fala smoke (`tooling.typecheck` + `tooling.build`; oba `null` ⇒ głośny skip) | `/implement` — w runie | block |
+| Per-fala weryfikacja AC domykanych falą (celowany test lub inspekcja; unverified ⇒ naprawa `ac:<id>`; re-weryfikacja w pętli napraw obejmuje WSZYSTKIE AC fali) | `/implement` — w runie | block |
+| Bramka eskalowanej fali (biegnie; naprawa odroczona jako `gateDebt` do relaunchu) | `/implement` — w runie | block (spłata przed falą 0 relaunchu) |
+| Rekonsyliacja werdyktu (pass + niezerowy exit / unverified AC ⇒ fail) | `/implement` — w runie | block |
+| Walidacja args (`invalid-args`: self-referencja, licznik tasków) | `/implement` — launch → wczesny zwrot | auto-regeneracja + relaunch (bez HIL) |
 | Luka architektoniczna znaleziona przez agenta taskowego | `/implement` — w runie → wczesny zwrot | HIL |
 | Domknięcie: pełne CI repo | `/implement` — w runie, domknięcie | block |
 | Domknięcie: code review całej funkcjonalności (≥1 skill) | `/implement` — w runie, domknięcie | gate |
 | Finding CR typu judgment | `/implement` — w runie → wczesny zwrot | HIL |
-| K-iter fail — eskalacja (fala lub domknięcie) | `/implement` — w runie → wczesny zwrot | HIL |
+| K-iter fail — eskalacja (fala, domknięcie lub gateDebt) | `/implement` — w runie → wczesny zwrot | HIL |
 | Checkpoint budżetu agentów | `/implement` — w runie → wczesny zwrot | auto-relaunch (bez HIL) |
+| Klasyfikacja `engine-failure` (zbieg z limitem sesji ⇒ „czekaj i relaunch") | `/implement` — obsługa zwrotu | raport (bez HIL) / salvage |
 | Kompletność implementacji (wszystkie taski `implemented`) | `/to-prs` — wejście | block |
+| Werdykt domknięcia (`state.close.finalCi == "pass"`) | `/to-prs` — wejście | block |
 | Przypisanie obcych commitów (bez trailera `Task:`) | `/to-prs` | HIL |
 | Manual PR grouping | `/to-prs` | HIL |
 | Niezmiennik składalności (buildability) | `/to-prs` | block |
@@ -496,8 +512,8 @@ się i prosi o uruchomienie `/config`.
 
 Domyślne wartości: język `en`, tryb `per-feature`, katalog `docs/features/<slug>/`,
 budżet kontekstu taska `250000` tokenów (target: modele z oknem ≥512k; estymator —
-`COMMAND_TO_TASKS.md` §4), CI per fala `implement.ciScope: "full"` (`scoped` = zawężone
-do dotkniętych pakietów z fallbackiem full; domknięcie zawsze full), model PR `stacked`,
+`COMMAND_TO_TASKS.md` §4), bramka fali = smoke (`tooling.typecheck` + `tooling.build`) + weryfikacja AC
+(pełny pipeline — lint + testy + build — biegnie wyłącznie przy domknięciu), model PR `stacked`,
 waiver dozwolony.
 
 ---

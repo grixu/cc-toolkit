@@ -18,10 +18,20 @@
     "tasksHash": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
     "waveInProgress": { "type": "boolean" },
     "manifest": { "type": "string" },
-    "readiness": { "$ref": "#/$defs/readiness" }
+    "readiness": { "$ref": "#/$defs/readiness" },
+    "close": { "$ref": "#/$defs/close" }
   },
   "$defs": {
     "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "close": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fullCi": { "type": "string", "enum": ["pass", "fail"] },
+        "cr": { "type": "string", "enum": ["pass", "fail"] },
+        "finalCi": { "type": "string", "enum": ["pass", "fail"] }
+      }
+    },
     "readiness": {
       "type": "object",
       "additionalProperties": false,

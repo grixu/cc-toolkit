@@ -62,9 +62,11 @@ export function recordTask(featureDir, options = {}) {
         : [...options.commits];
       task.impl = impl;
     }
-    if (options.ci || options.cr) {
+    if (options.gate || options.cr) {
       task.impl = task.impl ?? { commits: [] };
-      if (options.ci) task.impl.ci = options.ci;
+      // gate = the wave gate (smoke + AC verification), NOT the full CI pipeline —
+      // that runs once per feature at close and lands in state.close via the close verb.
+      if (options.gate) task.impl.gate = options.gate;
       if (options.cr) task.impl.cr = options.cr;
     }
     if (options.status) task.status = options.status;
@@ -119,10 +121,46 @@ export function recordPhase(featureDir, options = {}) {
   return { phase: state.phase, waveInProgress: state.waveInProgress };
 }
 
+// Feature-level close verdicts (the feature's FIRST full CI, the code review, and the
+// final CI after autosquash). Recorded incrementally: an escalated close (e.g. a
+// cr-judgment after a green full CI) persists what already ran.
+export function recordClose(featureDir, options = {}) {
+  const dir = path.resolve(featureDir);
+  const updates = {};
+  for (const key of ['fullCi', 'cr', 'finalCi']) {
+    if (options[key] === undefined) continue;
+    if (options[key] !== 'pass' && options[key] !== 'fail') {
+      throw new RecordImplError(`close ${key} must be "pass" or "fail", got ${JSON.stringify(options[key])}`);
+    }
+    updates[key] = options[key];
+  }
+  if (Object.keys(updates).length === 0) {
+    throw new RecordImplError('close requires at least one of --full-ci, --cr, --final-ci');
+  }
+  const state = readState(dir);
+  state.close = { ...(state.close ?? {}), ...updates };
+  writeState(dir, state);
+  return { close: state.close };
+}
+
+// Branch adoption/creation goes through here — never a hand Edit of state.json.
+export function recordBranch(featureDir, options = {}) {
+  const dir = path.resolve(featureDir);
+  if (typeof options.set !== 'string' || options.set === '') {
+    throw new RecordImplError('branch requires --set <branch-name>');
+  }
+  const state = readState(dir);
+  state.branch = options.set;
+  writeState(dir, state);
+  return { branch: state.branch };
+}
+
 const VERBS = {
   'record': (dir, o) => recordTask(dir, o),
   'ship': (dir, o) => recordShip(dir, o),
   'phase': (dir, o) => recordPhase(dir, o),
+  'close': (dir, o) => recordClose(dir, o),
+  'branch': (dir, o) => recordBranch(dir, o),
 };
 
 function parseCliArgs(argv) {
@@ -134,8 +172,11 @@ function parseCliArgs(argv) {
     else if (a === '--commit') o.commits.push(argv[++i]);
     else if (a === '--append') o.append = true;
     else if (a === '--status') o.status = argv[++i];
-    else if (a === '--ci') o.ci = argv[++i];
+    else if (a === '--gate') o.gate = argv[++i];
     else if (a === '--cr') o.cr = argv[++i];
+    else if (a === '--full-ci') o.fullCi = argv[++i];
+    else if (a === '--final-ci') o.finalCi = argv[++i];
+    else if (a === '--set') o.set = argv[++i];
     else if (a === '--deliver') {
       o.deliver = {};
       for (const pair of argv[++i].split(',')) {
@@ -155,9 +196,10 @@ function main() {
   const { verb, featureDir, options } = parseCliArgs(process.argv.slice(2));
   if (!verb || !featureDir || !VERBS[verb]) {
     process.stdout.write(JSON.stringify({
-      error: 'usage: record-impl.mjs <record|ship|phase> <featureDir> '
-        + '[--task T-1[,T-2]] [--commit SHA]... [--append] [--status S] [--ci pass|fail] [--cr pass|fail] '
-        + '[--deliver EL=sha256:...,...] [--phase implementing|shipped] [--wave-in-progress true|false]',
+      error: 'usage: record-impl.mjs <record|ship|phase|close|branch> <featureDir> '
+        + '[--task T-1[,T-2]] [--commit SHA]... [--append] [--status S] [--gate pass|fail] [--cr pass|fail] '
+        + '[--deliver EL=sha256:...,...] [--phase implementing|shipped] [--wave-in-progress true|false] '
+        + '[--full-ci pass|fail] [--final-ci pass|fail] [--set <branch>]',
     }) + '\n');
     process.exit(1);
   }

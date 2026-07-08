@@ -92,16 +92,21 @@ spec's DoR verdict isn't `ready` and current — it points you back to `/fd:gril
 /fd:implement <slug>
 ```
 Implements every ready task in **one full-cycle engine run**: dependency waves, each
-task in an isolated worktree, squash-merged serially, every wave gated by acceptance
-criteria + CI (`implement.ciScope`: whole repo, or scoped to the touched packages),
-a bounded self-healing repair loop, and — after the last wave — the whole-feature
-code review, mechanical fixes, and a final full CI, all inside the same run. It
+task in an isolated worktree, squash-merged serially, every wave gated by a
+typecheck+build **smoke** plus a dedicated **AC verifier** (each closed AC proven by a
+targeted test or, where no test can exist, by code inspection), a bounded self-healing
+repair loop, and — after the last wave — the feature's first **full CI** (lint + tests +
+build), the whole-feature code review, mechanical fixes, and a final full CI, all inside
+the same run. Lint and the full suite deliberately wait for the close: intermediate
+waves legitimately fail end-state checks (e.g. exports whose consumers arrive later). It
 interrupts you only for decisions that genuinely need a human: an architectural gap
 the spec doesn't cover, repair exhaustion, or a code-review judgment call. The first
 run adopts the branch you are already on when it is freshly cut from the base (no
 commits of its own) and up to date with it — otherwise it asks. **Resumable:** an
 interrupted session reconstructs progress from git trailers, salvages
-completed-but-unmerged task branches, and relaunches the remainder. **Blocks** on any
+completed-but-unmerged task branches, and relaunches the remainder — "one run" names
+that resumability property, not a wall-clock guarantee: a large feature realistically
+completes as a series of launches with decisions between them. **Blocks** on any
 spec/task drift (sending you to `/fd:to-tasks`), if the tasks' DoR verdict isn't
 `ready` and current, or if a consumed cross-feature contract isn't delivered yet.
 
@@ -110,7 +115,8 @@ spec/task drift (sending you to `/fd:to-tasks`), if the tasks' DoR verdict isn't
 /fd:to-prs <slug>
 ```
 Cuts the feature branch into a stack of PR branches for human review. **Blocks**
-unless every task is implemented, and enforces a **buildability invariant** so each
+unless every task is implemented **and the feature close's final full CI went green**
+(`state.close.finalCi`), and enforces a **buildability invariant** so each
 PR in the stack depends only on PRs below it.
 
 ```
@@ -224,7 +230,7 @@ The knobs that most change behavior:
 | `storage.docs` | *(unset)* | Where CONTEXT.md/ADRs live, decoupled from `storage.mode`: `contextMode` (`per-feature` / `per-app` / `per-bounded-context`) + `contextFile` / `adrRoot` / `boundedContextsFile` |
 | `tasks.maxContextTokens` | `250000` | Budget that caps a task's assembled size (file + copied deps); over budget forces a split. Default targets ≥512k-context models (e.g. Opus 4.8); `/fd:config` asks and offers smaller caps |
 | `implement.engine` | `workflow` | `workflow` (auto-falls-back to subagents when unavailable) or forced `subagents` |
-| `implement.ciScope` | `full` | Per-wave CI scope: `full` (whole repo) or `scoped` (touched packages, full fallback); feature close always runs full |
+| `tooling.typecheck` | *(detected / `null`)* | Standalone type check (e.g. `tsc --noEmit`); with `tooling.build` it forms the per-wave smoke in `/fd:implement` — full CI (lint+test+build) runs at feature close |
 | `implement.branchTemplate` | `feat/{slug}` | Feature branch name; the first `/fd:implement` run records the result (bypassed when it adopts a branch you freshly cut off the base) |
 | `implement.maxRepairIterations` | `3` | Failed repair iterations on one task before HIL escalation |
 | `prs.model` / `prs.grouping` | `stacked` / `slice` | PR stack shape and how tasks group into PRs |

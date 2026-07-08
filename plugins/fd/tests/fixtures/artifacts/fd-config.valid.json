@@ -15,6 +15,7 @@
   "tooling": {
     "packageManager": "pnpm",
     "build": "pnpm build",
+    "typecheck": null,
     "lint": "pnpm lint",
     "test": "pnpm test",
     "format": null

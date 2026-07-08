@@ -1,17 +1,22 @@
 ---
-description: Implement all ready tasks of a feature in one full-cycle Workflow run — dependency waves, per-wave CI with a bounded repair loop, whole-feature code review at close. Interrupts only for critical decisions. User-run only.
+description: Implement all ready tasks of a feature in one full-cycle Workflow run — dependency waves, per-wave smoke + AC verification with a bounded repair loop, full CI and whole-feature code review at close. Interrupts only for critical decisions. User-run only.
 argument-hint: "[slug]"
 disable-model-invocation: true
 ---
 
 Implement every ready task of one feature on its feature branch, in **one full-cycle engine
 run**: waves computed from task dependencies, each task in an isolated worktree, passing
-tasks squash-merged serially, every wave gated by CI with a bounded repair loop, and — after
-the last wave — the whole-feature code review, mechanical fixes, autosquash, and a final full
-CI, all inside the same run. The run comes back to this conversation **only** when it is
+tasks squash-merged serially, every wave gated by a typecheck+build smoke plus AC
+verification with a bounded repair loop, and — after the last wave — the feature's FIRST
+full CI, the whole-feature code review, mechanical fixes, autosquash, and a final full CI,
+all inside the same run. The run comes back to this conversation **only** when it is
 done, when its internal budget forces a checkpoint (auto-relaunched, no question asked), or
 when a decision genuinely needs a human. **Resumable:** an interrupted session reconstructs
-progress from git trailers and relaunches the remainder.
+progress from git trailers and relaunches the remainder. "One run" names that resumability
+property — the cycle is logical, not a wall-clock guarantee: a large feature (dozens of
+tasks, architectural escalations, session limits) realistically completes as a **series of
+launches** with HIL between them, each picking up exactly where the trailers say the last
+one stopped.
 
 `$0` (optional) = feature slug. Cold-start: read everything from disk, rely on nothing from a
 prior command. Plugin files (`scripts/`, `schemas/`, `references/`) resolve via
@@ -33,8 +38,8 @@ fd installation — never search the repo or `$HOME` for plugin files.
 
 1. **Config.** Read `.claude/fd-config.json`. Missing, unparsable, or `schema` mismatch → STOP:
    "run `/fd:config`". Keep `storage.featuresRoot` (or `storage.shared.specsRoot`),
-   `prs.baseBranch`, `implement.*` (incl. `implement.ciScope`, default `full`),
-   `codeReview.skills`, `tooling.*` for later steps.
+   `prs.baseBranch`, `implement.*`, `codeReview.skills`, `tooling.*` (incl. the nullable
+   `tooling.typecheck` — it feeds the per-wave smoke) for later steps.
 
 2. **Feature selection.** Resolve the feature directory (holds `spec.md`, `state.json`,
    `feature.lock.json`, `sc-map.json`, `tasks/`):
@@ -92,7 +97,8 @@ fd installation — never search the repo or `$HOME` for plugin files.
    - the branch is **fresh** — no commits of its own: `git rev-list --count <prs.baseBranch>..HEAD` is `0`
      (a branch carrying its own commits may be unrelated work, e.g. a PoC — never hijack it silently);
    - the branch is not recorded as `state.json.branch` of another feature under `featuresRoot`.
-   Adoption = write the current branch name to `state.json.branch` (schema-validated, 2-space JSON);
+   Adoption = record the current branch name via the shipped script (never hand-edit state.json):
+   `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" branch <featureDir> --set <branch-name>`;
    create nothing, ask nothing; the checkpoint report says "branch adopted" instead of "created".
    Otherwise two HIL shapes, by cause:
    - **Current branch has its own commits** (cut from base, up to date, but `rev-list --count` > 0) →
@@ -109,7 +115,8 @@ fd installation — never search the repo or `$HOME` for plugin files.
    `state.json.branch` is null (residue of an older interrupted run) → **HIL**: fresh distinct name
    (suffix, e.g. `<name>-run2`) / hard-reset the existing branch to the chosen base / build on the
    existing branch as-is / stop. Never silently reuse or clobber an existing branch.
-   Create the branch off the **chosen** base, check it out, and write `state.json.branch`. The HIL
+   Create the branch off the **chosen** base, check it out, and record it via
+   `record-impl.mjs branch <featureDir> --set <name>`. The HIL
    runs on a feature's first `/fd:implement` unless a freshly cut branch was adopted.
 
 8. **Recovery — reconstruct from git, then relaunch the remainder.** `state.json.waveInProgress
@@ -150,32 +157,50 @@ materialized execution plan** — the SC map is the only plan.
 **Run boundary.** The engine run does the whole delivery cycle internally: per-wave worktree
 preparation (serial, cut from the feature branch after the previous wave's merges), task
 agents with self-gates and breadcrumbs, the **serial squash-merge** (fd:merger, once per
-wave, authoritative order), the per-wave CI (`implement.ciScope`: `full` = whole repo,
-`scoped` = changed packages with full fallback), a **bounded repair loop** (K =
+wave, authoritative order), the per-wave gate — **two agents in parallel**: the
+**smoke** (`tooling.typecheck` + `tooling.build`, whichever are configured; both `null` ⇒
+skipped LOUDLY in the wave report) and the **AC verifier** (every AC the wave just closed,
+proven by a targeted test run or, where no test can exist, by code inspection; an
+unverified AC is a failure `ac:<id>`) — a **bounded repair loop** (K =
 `implement.maxRepairIterations`; unmerged tasks repair in their worktrees, merged code repairs
-as fixups on the feature branch, strictly serial), and — at feature close — the full CI, the
-whole-feature **code review**, mechanical fixes, `git rebase --autosquash`, and the final full
-CI. The main thread keeps: all preconditions, building the run args, persisting state at run
+as fixups on the feature branch, strictly serial), and — at feature close — the feature's
+FIRST full CI (lint + test + build, whole repo), the whole-feature **code review**, mechanical
+fixes, `git rebase --autosquash`, and the final full CI. Lint and the full test suite
+deliberately do NOT run between waves: they judge end states and false-flag intermediate ones
+(e.g. exports whose consumers arrive in a later wave), and a false red feeds the repair loop.
+The main thread keeps: all preconditions, building the run args, persisting state at run
 boundaries (via `record-impl.mjs`, from `Task:` trailers), and every HIL.
 
 - **Run engine.** The run executes the **shipped** script
   `${CLAUDE_PLUGIN_ROOT}/scripts/wave-implement.mjs` via the **Workflow** tool (`scriptPath`) — a
   Claude-Code dynamic-workflow script that calls the harness `agent()`; **never invoke it with `node`**.
-  Workflow availability is detected by `/fd:config` and re-verified on entry. Pass everything as **one**
-  `args` value — it may reach the script as a JSON string, which the script parses defensively:
+  Workflow availability is detected by `/fd:config` and re-verified on entry.
+  **Launch protocol (corruption defense):** compose the args once into a canonical
+  `<featureDir>/engine-args.json`, written with the **Write tool** — never a Bash heredoc (free
+  text like HIL decisions can trip repo hooks, and hand-relaying JSON is how a field run
+  corrupted a `serializeAfter` edge into a self-reference). Pass that file's parsed content
+  **verbatim** as the one `args` value; any change goes through regenerating the file first,
+  never an inline edit of the payload. Include `tasksCount` (= `tasks.length`) — the engine
+  cross-checks it as a truncation tripwire. It may reach the script as a JSON string, which the
+  script parses defensively:
   - **args:** `{ mode: "full"|"repair", featureDir, slug, repoRoot, featureBranch, baseBranch,
-    tasks: [{ id, worktree, branch, taskFile, deps, serializeAfter?, acIds, diagnosis?, decision? }],
-    gate: { lintChanged: true }, ci: { scope: <implement.ciScope>, lint, test, build, packageManager },
+    tasksCount, tasks: [{ id, worktree, branch, taskFile, deps, serializeAfter?, acIds, diagnosis?, decision? }],
+    gate: { lintChanged: true }, ci: { typecheck, lint, test, build, packageManager } (the
+    `tooling.*` commands verbatim, `null` = confirmed absence), gateDebt?: { smoke, acs },
     worktreeSetup, worktreeCleanup, codeReview: { skills }, repair: { maxIterations }, close: true }`.
     Per task: `deps` = its intra-feature producer tasks (from sc-map edges), `acIds` = the ACs it
     covers entirely (from `covers` + ac-map), `decision` = the human answer when relaunching after
-    an escalation.
+    an escalation. `gateDebt` = the red gate remainder of a prior run's escalated wave (copied
+    from that run's wave report — see Escalations); the engine settles it (fresh smoke +
+    re-verification + repair loop) **before** wave 0, so new worktrees are never cut from a
+    known-red branch.
   - **returns (discriminated on `status`):**
     - `{ status: "completed", waves, tasks, close: { fullCi, cr, finalCi } }` — the cycle finished.
     - `{ status: "continue", reason, waves, tasks, remaining }` — internal agent budget spent;
       **persist and relaunch immediately with the remaining tasks — no HIL.**
     - `{ status: "escalated", escalations: [{ kind, taskId?, wave?, question, options, context }],
-      waves, tasks, remaining }` — a human decision is required (see Escalations below).
+      waves, tasks, remaining }` — a human decision is required (see Escalations below). An
+      escalated wave's report entry carries `gateDebt` when its gate ended red.
 - **Fallback** (no Workflow tool, or `implement.engine == "subagents"`) → this main thread runs the
   **same full cycle itself** via parallel **Agent-tool** subagents: per-task worktree isolation, the
   same task-agent prompts and gates, serial merger calls, its own Bash for CI, the repair loop, and
@@ -192,13 +217,28 @@ The run early-returns `status: "escalated"` **only** for:
 - **`architectural`** — a task agent found something the spec does not cover with more than one
   viable design; it stopped without guessing. → `AskUserQuestion` with the returned question and
   options; relaunch with the remaining tasks, attaching the answer as that task's `decision`.
-- **`repair-exhausted`** — a wave (or the close) is still red after K repair iterations. → Present
-  the diagnosis; the user decides (fix by hand and relaunch / drop scope / stop).
+  The escalated wave's gate (smoke + AC verification) still ran on whatever merged — repair did
+  not (the pending decision could invalidate it). If that gate ended red, the wave report entry
+  carries `gateDebt` — **copy it into the relaunch's `args.gateDebt`** so the next run settles
+  it before cutting new worktrees; fold `--gate` only for waves whose gate ended green.
+- **`repair-exhausted`** — a wave (or the close, or an inherited gate debt) is still red after K
+  repair iterations. → Present the diagnosis; the user decides (fix by hand and relaunch / drop
+  scope / stop).
 - **`cr-judgment`** — a code-review finding that needs a human call (design trade-off, scope
   question). → Present finding + report file; on "fix it" answers, relaunch (the remaining-task
   list may be empty except the repair) or apply the fix via the fallback path, then re-close.
-- **`engine-failure`** — a merger/CI/close agent died mid-run; branch state may be unknown. →
-  Run the precondition-8 salvage (trailers are the ledger), then relaunch the remainder.
+- **`engine-failure`** — an engine agent returned no result. The engine **cannot see why**
+  (`agent()` yields null for a kill, a terminal API error, and an account rate limit alike), so
+  **classify before asking anything**: if the failure coincided with a session/rate limit (the
+  workflow's failure notification says so, or this conversation itself just hit its limit), it
+  is **not a bug** — the branch and trailers are intact; report "session limit — wait for the
+  reset, then relaunch (or say Continue)" and do **not** raise a scary HIL. Only when no limit
+  signal exists: run the precondition-8 salvage (trailers are the ledger), then relaunch the
+  remainder.
+- **`invalid-args`** — the args failed the engine's validation (self-referencing edge, count
+  mismatch, malformed ids); **no agent ran, nothing was touched.** → Regenerate
+  `engine-args.json` from the canonical inputs, relaunch with the file's content verbatim — no
+  HIL. HIL only if regeneration reproduces the same error (the inputs themselves are wrong).
 
 On **every** return (completed, continue, escalated): first persist progress — re-resolve merged
 tasks from `Task:` trailers and record them (State ownership below) — then act on the status.
@@ -234,8 +274,12 @@ never by hand-editing JSON. The engine's durable ledger is git: every squash-mer
   and record each newly merged task:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" record <featureDir> --task <T> --commit <sha> [--commit <sha>…] --status implemented`
   (a trailer left on more than one commit — e.g. an autosquash conflict — records **all** those SHAs).
-  Fold in the returned verdicts: waves with green CI → `record … --task <T-…,…> --ci pass`; a
-  completed close → `record … --task <all-implemented> --cr pass`.
+  Fold in the returned verdicts: a wave whose gate ended green (smoke pass — or loud skip —
+  AND every closed AC verified) → `record … --task <T-…,…> --gate pass` (`impl.gate` = the wave
+  gate, deliberately NOT named "ci" — the full pipeline runs once per feature and lands in
+  `state.close`); a completed close → `record … --task <all-implemented> --cr pass` **and**
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" close <featureDir> --full-ci pass --cr pass --final-ci pass`
+  (incremental: an escalated close records whatever already ran, e.g. `--full-ci pass` alone).
 - **Canonical commit identity is the `Task: <id>` trailer;** `impl.commits` is a derived cache.
   After the close's autosquash the SHAs changed — the trailer re-resolve at the `completed` return
   refreshes the cache (plain `record`, not `--append`; append is for adding SHAs to a live task).
@@ -269,7 +313,13 @@ ship-detection (precondition 4) flips it once `impl.commits` are reachable from 
   (concurrent `git worktree add` races on `.git/worktrees`), force-removing stale paths first, and
   bootstraps each with the `implement.worktreeSetup` commands (e.g. `pnpm install`).
 - **Footprint serialization.** Computed by the main thread before launch, over each wave's tasks
-  (both from `codeDeps` + file paths named in each task body):
+  (both from `codeDeps` + file paths named in each task body). **Edges come from exact-file
+  overlap ONLY** — a directory path (e.g. `backend/src/cerbos/`) never creates an edge, it is
+  read-context: git does not conflict on two different files in one directory, and a
+  directory-prefix match over-serializes an entire shared area (a field run produced 54 spurious
+  pairs from one directory `codeDep`, killing the wave's parallelism). Two tasks creating the
+  **same new file path** still overlap exact-file. Skipped directory-level overlaps are named in
+  the launch narration ("N directory-overlap pairs ignored") — dropped loudly, never silently.
   - **write ∩ write** — two tasks that write the same file serialize.
   - **read-after-write** — a task whose `needs` (its `codeDeps` + import/file paths named in its body)
     intersect a peer's `willWrite` (file paths the peer names for the elements it produces), with **no**
@@ -288,7 +338,7 @@ ship-detection (precondition 4) flips it once `impl.commits` are reachable from 
 **Per task = the task agent's self-gate (breadcrumbed).** Each task agent validates the ACs
 **covered entirely by that task** (its `acIds`) + lints its **changed / created files only**, then
 writes the `Fd-Gate: pass` breadcrumb. ACs spanning more than one task are not verifiable here —
-they wait for the wave gate.
+they wait for the wave AC verifier.
 
 **Merge = squash (serial, once per wave).** The engine invokes the **merger** (`fd:merger`) once per
 wave with the passing tasks in authoritative order; the merger squash-merges each worktree branch
@@ -297,20 +347,41 @@ worktree's piece-commits (the empty breadcrumb excluded), and reports per-task
 `merged | conflict | blocked` + SHA. Merges run **strictly serially** — zero branch races. Recording
 happens at the run boundary, from trailers.
 
-**Per wave, after the merges (block) = CI, scope by `implement.ciScope`.**
-- `full` (default) → the full `tooling.lint` + `tooling.test` + `tooling.build` at the repo root.
-- `scoped` → union the wave's changed files, map them to workspace packages (`pnpm-workspace.yaml` /
-  `package.json#workspaces` / `turbo.json` — best-effort) and run the **filtered** `tooling.*` only
-  when the mapping is confidently detected; otherwise fall back to the **full** commands. The CI agent
-  reports which scope actually ran.
-  In both scopes the CI agent validates the **ACs closed by this wave** (those whose last producer
-  task just merged) and reports literal exit codes — a "pass" claim with a non-zero exit is downgraded
-  to fail by the engine.
+**Per wave, after the merges (block) = two agents in parallel.**
+- **Smoke** — `tooling.typecheck` + `tooling.build` (each that is non-null) at the repo root:
+  broken types/APIs are the one failure class that compounds, because the next wave's worktrees
+  are cut from this branch. NO lint, NO test suite — those judge end states and false-flag
+  intermediate ones (e.g. exports whose consumers arrive in a later wave). Both commands `null`
+  ⇒ the smoke is **skipped loudly** (named in the wave report), never silently passed.
+- **AC verifier** — every AC **closed by this wave** (last producer just merged), each proven by
+  the strongest applicable method: `covered-by-test` (run just that test, targeted), or
+  `verified-by-inspection` when no test can meaningfully exist (config value, removal, wiring).
+  `unverified` is a wave failure `ac:<id>` — a missing test for testable behavior is unverified,
+  never inspection-passed. Verification methods land in the wave report.
+  Both agents report literal exit codes / per-AC verdicts — a "pass" claim with a non-zero exit
+  (or an unverified AC) is downgraded to fail by the engine.
 
 **Repair loop (bounded, inside the run).** Failed tasks and merge conflicts repair **in their own
-worktrees** (parallel, re-merged by the merger); CI failures on already-merged code repair as **one
-serial feature-branch agent** landing `git commit --fixup` commits. Re-run CI; loop at most
-K = `implement.maxRepairIterations` iterations; exhaustion → `escalated`.
+worktrees** (parallel, re-merged by the merger); smoke failures and unverified ACs sit on
+already-merged code, so they repair as **one serial feature-branch agent**. Its commit surgery
+(the agent first builds the task→commit map from the `Task:` trailers):
+- a fix confined to one task's files → `git commit --fixup <that task's commit>`, one fixup per
+  culprit — so `/fd:to-prs` still slices clean per-task commits after autosquash;
+- a **cross-cutting** fix (files of more than one task, or outside any footprint) → a normal
+  **integration-fix commit**: subject `fix(integration): …`, trailers `Task: <culprit>` +
+  `Integration-Fix: true` — it rides into the culprit's PR by its trailer, is never
+  autosquashed, and keeps the clean change and its blast-radius adaptations separately
+  reviewable; files created by a **later** task split off onto that task's trailer (one commit
+  spanning owners breaks the PR-stack rebase);
+- an `ac:<id>` failure fixups onto the owning task's commit;
+- **never delete or weaken a test to make the gate pass** — a red test is a diagnosis.
+Then re-run the smoke + **re-verify ALL of the wave's closed ACs** (never just the
+still-unverified subset — a repair may have deleted the very test that covered an AC, and no
+other gate would notice a test that no longer runs); loop at most K =
+`implement.maxRepairIterations` iterations; exhaustion → `escalated`.
+**On a wave escalation** the gate runs but the repair loop does not (the pending human decision
+could invalidate it) — a red verdict returns as the wave report's `gateDebt`, settled at the
+start of the relaunch (before wave 0, same repair loop, same K).
 
 **Code review is not a per-wave gate** — it runs once over the whole feature at **Feature close** (below).
 
@@ -325,8 +396,12 @@ lands; non-salvaged task worktrees are deleted.
 
 Once all waves are merged and green, the engine closes the feature in the same run:
 
-1. **Full-repo CI** (always full, regardless of `ciScope`). Red → the serial feature-branch repair
-   loop (K cap) → still red ⇒ `escalated`.
+1. **Full-repo CI** (`tooling.lint` + `tooling.test` + `tooling.build`, unfiltered) — the
+   feature's FIRST full pipeline, so a red here is expected more often than before: the repair
+   agent starts from the trailer-built task→commit map for attribution, and an
+   exported-but-unused symbol that maps to a spec element or `produces` contract is NOT dead
+   code (its consumers may live in a future feature) — never auto-deleted. Red → the serial
+   feature-branch repair loop (K cap) → still red ⇒ `escalated`.
 2. **Whole-feature code review (gate).** The engine writes `git diff <base>...<feature>` (with the
    name list) to `<featureDir>/cr-diff.patch` and hands the CR agent that **file path** — the agent
    `Read`s it; the diff is **never inlined** into a prompt. The CR agent invokes **each**
@@ -335,13 +410,15 @@ Once all waves are merged and green, the engine closes the feature in the same r
    `judgment` (needs a human). **No** nested fan-out and **no** network research.
 3. **Findings:** `judgment` → `escalated` (one escalation per finding, report file attached);
    `mechanical` → the serial feature-branch repair agent fixes them as `--fixup` commits.
+   A contract-bearing unused export is classified `judgment`, never `mechanical`.
 4. **Autosquash.** `git rebase --autosquash <base>` folds fixups into their targets (conflict →
    abort the rebase, `escalated`); the engine verifies every `Task:` trailer survived.
 5. **Final full CI** confirms the tree is still green after fixes + autosquash. Red ⇒ `escalated`.
 
 The `completed` return carries `close: { fullCi, cr, finalCi }`; the main thread then records
-`--cr pass`, refreshes `impl.commits` from the post-autosquash trailers, flips
-`waveInProgress = false`, and reports.
+`--cr pass`, persists the feature-level verdicts via `record-impl.mjs close … --full-ci pass
+--cr pass --final-ci pass` (the block `/fd:to-prs` gates on), refreshes `impl.commits` from the
+post-autosquash trailers, flips `waveInProgress = false`, and reports.
 
 **Resume:** entry finds **all** tasks `implemented` but `impl.cr` not `pass` on all ⇒ nothing to
 implement — perform the close steps via the subagent fallback (the engine needs tasks to run), then
@@ -377,10 +454,14 @@ record identically.
 | Ambiguous upstream `delivered` (squash-merge) | entry, cross-feature | HIL |
 | Salvage gate re-check on recovery | entry | block (per task) |
 | Per-task AC (covered entirely) + lint of changes = self-gate | in run, wave | block |
-| Per-wave CI (`ciScope`: full / scoped-with-fallback) + AC closed by wave | in run, wave | block |
-| CI verdict reconciliation (pass + non-zero exit ⇒ fail) | in run, wave + close | block |
+| Per-wave smoke (typecheck + build; both `null` ⇒ loud skip) | in run, wave | block |
+| Per-wave AC verification (test or inspection; unverified ⇒ repair) | in run, wave | block |
+| Gate on an escalated wave (runs; repair deferred as `gateDebt`) | in run, wave | block (settled at relaunch) |
+| Gate-debt settlement (inherited red gate, before wave 0) | in run, entry | block |
+| Verdict reconciliation (pass + non-zero exit / unverified AC ⇒ fail) | in run, wave + close | block |
+| Args validation (`invalid-args`: self-ref, count mismatch) | launch → early return | auto-regenerate + relaunch (no HIL) |
 | Architectural spec gap found by a task agent | in run → early return | HIL |
-| K-iteration repair exhaustion (wave or close) | in run → early return | HIL |
+| K-iteration repair exhaustion (wave, close, or gate debt) | in run → early return | HIL |
 | Feature-close full-repo CI | in run, close | block |
 | Feature-close whole-feature code review (≥1 skill) | in run, close | gate |
 | CR judgment finding | in run → early return | HIL |
@@ -390,13 +471,15 @@ record identically.
 
 ## Output / checkpoint
 
-Report: tasks implemented (with `Task: <id>` commit SHAs); per-wave CI with **the scope that
-actually ran** (full / scoped / scoped-fell-back-to-full) and repair iterations used; any
+Report: tasks implemented (with `Task: <id>` commit SHAs); per-wave smoke status (including
+**loud skips**) + AC verdicts with **the method that proved each AC** (test / inspection) and
+repair iterations used; any
 `continue` checkpoints (count them — they are invisible to the user otherwise); on a resumed
 session, which tasks were **salvaged** vs **re-run**; the feature-close **full CI + code-review**
 results (findings + report file); any HIL escalations and their resolutions; and whether the run
 degraded to subagents. The feature branch now holds the whole feature as a linear,
-one-commit-per-task history. Suggest as prose (do **not** run it): self-review the feature branch,
+one-commit-per-task history (plus any explicit `Integration-Fix` commits, each riding its
+culprit's `Task:` trailer). Suggest as prose (do **not** run it): self-review the feature branch,
 then `/fd:to-prs`.
 
 ---
@@ -409,8 +492,13 @@ then `/fd:to-prs`.
 - **No `sc-map.json` / manifest** → the feature was never tasked → the reconcile-detect sc-map check blocks first (both routes point to `/fd:to-tasks`).
 - **Merge conflict the merger cannot resolve mechanically** → returned as `conflict` with a
   diagnosis → the in-run repair loop, not a guess.
-- **A merger / CI / close agent dies mid-run** → the engine early-returns `escalated`
-  (`engine-failure`); trailers are the ledger — salvage (precondition 8) reconstructs, then relaunch.
+- **A merger / CI / close agent returns no result mid-run** → the engine early-returns `escalated`
+  (`engine-failure`); **classify first** — a session/rate limit is the common cause on long runs
+  and needs only "wait for the reset, relaunch", not salvage. No limit signal → trailers are the
+  ledger; salvage (precondition 8) reconstructs, then relaunch.
+- **Args corruption at launch** (`invalid-args` return: self-referencing edge, count mismatch) →
+  nothing ran; regenerate `engine-args.json` and relaunch — HIL only if the error reproduces from
+  clean inputs.
 - **Session exits mid-run** → next invocation hits recovery (precondition 8):
   - **before any merge** → no task is done; every breadcrumbed branch is re-gated, then salvaged or discarded.
   - **mid-merges** (some tasks on the branch) → done tasks are recorded from trailers; the rest salvage.

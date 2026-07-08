@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { recordTask, recordShip, recordPhase, RecordImplError } from '../scripts/record-impl.mjs';
+import { recordTask, recordShip, recordPhase, recordClose, recordBranch, RecordImplError } from '../scripts/record-impl.mjs';
 import { runBuildManifest } from '../scripts/build-manifest.mjs';
 import { applySeedState } from '../scripts/apply.mjs';
 import { readJson } from '../scripts/lib/json-io.mjs';
@@ -38,7 +38,7 @@ test('phase sets implementing + waveInProgress and rejects out-of-scope phases',
   }
 });
 
-test('record sets commits + status, appends without duplicates, bulk-sets ci', () => {
+test('record sets commits + status, appends without duplicates, bulk-sets the wave gate', () => {
   const dir = setup();
   try {
     recordTask(dir, { tasks: ['T-001'], commits: ['c0ffee01'], status: 'implemented' });
@@ -50,14 +50,48 @@ test('record sets commits + status, appends without duplicates, bulk-sets ci', (
     t = manifest(dir).tasks['T-001'];
     assert.deepEqual(t.impl.commits, ['c0ffee01', 'c0ffee02']);
 
-    recordTask(dir, { tasks: ['T-001', 'T-002'], ci: 'pass' });
+    recordTask(dir, { tasks: ['T-001', 'T-002'], gate: 'pass' });
     const m = manifest(dir);
-    assert.equal(m.tasks['T-001'].impl.ci, 'pass');
-    assert.equal(m.tasks['T-002'].impl.ci, 'pass');
+    assert.equal(m.tasks['T-001'].impl.gate, 'pass');
+    assert.equal(m.tasks['T-002'].impl.gate, 'pass');
     assert.deepEqual(m.tasks['T-002'].impl.commits, []);
 
     assert.throws(() => recordTask(dir, { tasks: ['T-001', 'T-002'], commits: ['x'] }), /single --task/);
     assert.throws(() => recordTask(dir, { tasks: ['T-099'], commits: ['x'] }), /unknown task/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('close records feature-level verdicts incrementally and validates values', () => {
+  const dir = setup();
+  try {
+    let res = recordClose(dir, { fullCi: 'pass' });
+    assert.deepEqual(res, { close: { fullCi: 'pass' } });
+    assert.deepEqual(state(dir).close, { fullCi: 'pass' });
+
+    res = recordClose(dir, { cr: 'pass', finalCi: 'pass' });
+    assert.deepEqual(state(dir).close, { fullCi: 'pass', cr: 'pass', finalCi: 'pass' });
+
+    recordClose(dir, { fullCi: 'fail' });
+    assert.equal(state(dir).close.fullCi, 'fail');
+    assert.equal(state(dir).close.finalCi, 'pass');
+
+    assert.throws(() => recordClose(dir, {}), /at least one of/);
+    assert.throws(() => recordClose(dir, { fullCi: 'green' }), /must be "pass" or "fail"/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('branch sets state.branch and rejects an empty name', () => {
+  const dir = setup();
+  try {
+    const res = recordBranch(dir, { set: 'feat/basic' });
+    assert.deepEqual(res, { branch: 'feat/basic' });
+    assert.equal(state(dir).branch, 'feat/basic');
+    assert.throws(() => recordBranch(dir, {}), /--set/);
+    assert.throws(() => recordBranch(dir, { set: '' }), /--set/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

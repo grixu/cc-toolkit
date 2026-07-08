@@ -98,7 +98,7 @@
           "required": ["commits"],
           "properties": {
             "commits": { "type": "array", "items": { "type": "string" } },
-            "ci": { "type": "string", "enum": ["pass", "fail"] },
+            "gate": { "type": "string", "enum": ["pass", "fail"] },
             "cr": { "type": "string", "enum": ["pass", "fail"] }
           }
         }

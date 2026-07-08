@@ -9,7 +9,7 @@ przechodzi pełny HIL (detekcja tylko prefilluje).
 ## 1. Cel
 
 Jedna definicja konfiguracji z defaultami: język, tryb i ścieżki przechowywania,
-tooling (build / lint / test / format), wykryte MCP, skille CR, parametry dekompozycji,
+tooling (build / typecheck / lint / test / format), wykryte MCP, skille CR, parametry dekompozycji,
 modelu PR i walidacji. Schemat pliku — `config.example.jsonc`.
 
 ---
@@ -25,7 +25,9 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
 ## 3. Flow (6 faz)
 
 0. **Wczytanie** istniejącego `.claude/fd-config.json`, jeśli jest (prefill).
-1. **Detekcja** (kolejność): stack → menedżer pakietów → build / lint / test / format →
+1. **Detekcja** (kolejność): stack → menedżer pakietów → build / typecheck / lint / test / format
+   (`typecheck` = samodzielny check typów, np. `tsc --noEmit`; zasila smoke między falami
+   `/implement`, bo transpile-only build nie łapie typów; niekrytyczny, `null` = brak) →
    CI → MCP (osiągalne jako toole w tej sesji — patrz Polityka MCP) → dostępność dynamic
    workflows (`implement.engine` default `workflow`, chyba że workflow są **znane jako
    niedostępne**, np. jawne `disableWorkflows`; `workflow` sam spada do subagentów at runtime;
@@ -60,8 +62,8 @@ istniejącego configu. Pozostałe komendy przy braku / niepoprawnym / niezgodnym
    `storage.shared.*` (`contextMode` `per-app` / `per-bounded-context` + ścieżki);
    lokalizacja docs `per-bounded-context` wymaga `storage.docs.boundedContextsFile`.
 
-   Reszta pokręteł jest **zdefaultowana BEZ pytania** (pozostałe `tasks.*`, `implement.*`
-   — w tym `implement.ciScope: "full"` — `prs.*`, `validation.*`) i wylistowana w raporcie
+   Reszta pokręteł jest **zdefaultowana BEZ pytania** (pozostałe `tasks.*`, `implement.*`,
+   `prs.*`, `validation.*`) i wylistowana w raporcie
    fazy 6 do wglądu. Każda wartość **non-default**,
    którą model wybiera za usera (np. niepuste `implement.worktreeSetup`), musi być albo
    jawną opcją w zbatchowanym pytaniu, albo oflagowana do potwierdzenia — **nigdy po cichu**.

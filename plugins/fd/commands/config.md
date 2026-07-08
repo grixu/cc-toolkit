@@ -36,7 +36,7 @@ Detect each field carrying an internal `{value, source, confidence}` triple that
 
 1. **Stack / language** — manifest and lockfiles (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, …), source layout.
 2. **Package manager** — lockfile (`pnpm-lock.yaml` → pnpm, `package-lock.json` → npm, `yarn.lock` → yarn), `packageManager` field.
-3. **build / lint / test / format commands** — `scripts` in the manifest, Makefile/justfile targets, tool configs (eslint, prettier, biome, ruff, …).
+3. **build / typecheck / lint / test / format commands** — `scripts` in the manifest, Makefile/justfile targets, tool configs (eslint, prettier, biome, ruff, …). `typecheck` is the standalone type check (`typecheck`/`tsc --noEmit`/`check-types` script); it feeds the between-waves smoke in `/fd:implement`, where a transpile-only `build` (vite/esbuild) misses type errors — non-critical, `null` when the repo has none.
 4. **CI** — `.github/workflows/*`, `.gitlab-ci.yml`, etc.; use it only to corroborate the four commands above and to note in the report — CI is not a config field.
 5. **MCP servers reachable** — `mcp.detected` is the set of grounding/graph MCP servers reachable **as tools in this session**: firecrawl, context7, codebase-memory-mcp. Read the tool namespace already present in this session (each server exposes `mcp__<server>__*` tools); do **not** shell-ping or spawn anything to test them. Record the subset that is present. This is a snapshot for `mcp.detected` only.
 6. **Dynamic-workflows availability** — default `implement.engine` to `"workflow"` unless dynamic workflows are **known-unavailable** (e.g. an explicit `disableWorkflows` setting); `workflow` auto-falls-back to subagents at runtime, so it is the safe default. No shell probe — do not try to detect the Claude Code version or plan tier.
@@ -61,7 +61,7 @@ Detection only prefills; always walk the user through the choices below, prefill
 
 Conditional follow-ups (only when the answers above trigger them): `shared` storage mode needs `storage.shared.*` (`contextMode`, `contextFile`, `adrRoot`, `specsRoot`, `boundedContextsFile`); a `per-bounded-context` docs location needs `storage.docs.boundedContextsFile`.
 
-Everything else is **defaulted WITHOUT asking** — the remaining `tasks.*` knobs (granularity bias, optional hard limits), `implement.*` (branch template, repair-iteration cap, engine, CI scope `ciScope: "full"`, worktree setup/cleanup), `prs.*`, `validation.*`. These defaults are listed in the Phase 6 report for review. Any **non-default** value the model chooses on the user's behalf (e.g. a non-empty `implement.worktreeSetup`) must be either an explicit option in the batched question or flagged for confirmation — **never silently written**.
+Everything else is **defaulted WITHOUT asking** — the remaining `tasks.*` knobs (granularity bias, optional hard limits), `implement.*` (branch template, repair-iteration cap, engine, worktree setup/cleanup), `prs.*`, `validation.*`. These defaults are listed in the Phase 6 report for review. Any **non-default** value the model chooses on the user's behalf (e.g. a non-empty `implement.worktreeSetup`) must be either an explicit option in the batched question or flagged for confirmation — **never silently written**.
 
 Do **not** ask for the per-feature bounded-context here — that choice happens at feature creation (`/fd:start`, `/fd:from-docs`).
 
@@ -80,7 +80,7 @@ Any failure below **stops the write**, is presented to the user to fix or consci
 - **Storage paths writable** — `featuresRoot` (and, in shared mode, the shared roots; plus any `storage.docs` `contextFile`/`adrRoot`/`boundedContextsFile` directory) can be created/written.
 - **Grounding MCP present** — firecrawl + context7 are recommended, not required; absence is a **warning only** (grounding degrades to best-effort). `groundingDegraded` is NOT a config field — it is computed at runtime by consumers from actual tool reachability.
 
-Then **propose** (do not apply) adding the `tooling.*` commands to the user's permission allowlist — e.g. `Bash(pnpm build:*)`, `Bash(pnpm test:*)`, `Bash(pnpm lint:*)`, `Bash(pnpm format:*)`. The `/fd:implement` wave workflow runs in `acceptEdits` and inherits the allowlist; a command outside it interrupts a run with a mid-flight prompt. Print the suggested entries and tell the user to add them (via `/permissions` or `.claude/settings.json`). **Never edit settings yourself.**
+Then **propose** (do not apply) adding the `tooling.*` commands to the user's permission allowlist — e.g. `Bash(pnpm build:*)`, `Bash(pnpm typecheck:*)`, `Bash(pnpm test:*)`, `Bash(pnpm lint:*)`, `Bash(pnpm format:*)`. The `/fd:implement` wave workflow runs in `acceptEdits` and inherits the allowlist; a command outside it interrupts a run with a mid-flight prompt. Print the suggested entries and tell the user to add them (via `/permissions` or `.claude/settings.json`). **Never edit settings yourself.**
 
 ### Phase 5 — Write (idempotent, schema-validated)
 

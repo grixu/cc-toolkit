@@ -609,6 +609,229 @@ kontekstu (main thread 93k → 456k tok).
 
 ---
 
+## J. Grill 2026-07-08 — bramka fali: smoke + weryfikacja AC zamiast pełnego CI
+
+### J1. Pełny CI per fala przykładał kryteria stanu końcowego do stanów pośrednich
+
+- [x] Motywacja (trzy naraz): czas ścienny (czysty przebieg W fal = W+2 pełne pipeline'y),
+  tokeny palone przez pętle repair odpalane fałszywą czerwienią, oraz semantyka — lint na
+  wczesnych falach flaguje wyeksportowane-ale-nieużywane fundamenty, których konsumenci
+  przychodzą w falach 2+; agent naprawczy „naprawia" to najchętniej kasując fundament.
+- **Decyzja usera (2026-07-08), ODWRACA H2 (default `full` per fala z 2026-07-07):**
+  między falami biegną równolegle DWA agenty: **smoke** = `tooling.typecheck` +
+  `tooling.build` (każde nie-null; oba null ⇒ głośny skip w raporcie, nigdy cichy pass)
+  oraz **weryfikator AC** domkniętych falą (celowany test lub inspekcja kodu, gdy test nie
+  może istnieć; `unverified` → pętla repair jako `ac:<id>`, fixup na commit
+  taska-właściciela). Pełny pipeline (lint+testy+build) wyłącznie na domknięciu.
+  Knob `implement.ciScope` USUNIĘTY w całości (bez knoba — zawsze smoke); nowy nullable
+  `tooling.typecheck` z detekcją w `/config`. Wpis tutaj jest po to, żeby runda 5 nie
+  kręciła się w kółko: full→scoped→full→smoke to koniec wahadła, zmiana ma uzasadnienie
+  semantyczne, nie tylko kosztowe.
+- Utwardzenie close (pierwszy pełny CI w życiu feature'a): prompt agenta napraw buduje
+  mapę task→commit z trailerów `Task:`; jeden `--fixup` na winowajcę (chirurgia commitów
+  pod `/to-prs`); eksport niosący kontrakt spec/`produces` nigdy nie jest kasowany
+  automatycznie (CR: zawsze `judgment`). Świadomie zaakceptowane ryzyka: semantyczna
+  kolizja równoległych tasków wychodzi dopiero na close; osobny limit K dla close
+  odrzucony do czasu testu polowego.
+
+---
+
+## K. Testy polowe — runda 3 (implement, 2026-07-07/08)
+
+Run: sesja 7baed842, feature `cerbos-authz-phase2-org-migration` (39 tasków / 143 AC /
+9 fal) na repo console-test-fd. 5 launchy silnika, ~11h49m wall (w tym ~5,5h nocnego
+limitu konta i 2× HIL po ~40 min), ~8,9M tok, 62 agenty. Wynik: 28/39 tasków
+zmerge'owanych, close nie zbiegł ani razu. Redesign J1 wjechał W TRAKCIE sesji (edycja
+silnika między runem 2 a 4), więc run jest mimowolnym testem A/B obu bramek na tej samej
+feature — i **potwierdza J1 na wszystkich trzech filarach**: (a) stary model na wave 0
+dał 20 errorów `import/no-unused-modules` na fundamentach bez konsumentów i 3 iteracje
+repair (sufit K), w tym repair, który SKASOWAŁ test AC-67, żeby przejść `ci:test`; nowy
+model na analogicznej fali: smoke pass, 0 repair, a jedyny repair fali 1 był
+konstruktywny (dodał brakujące testy, `--fixup` na commit taska-właściciela); (b) merger
+squashował z trailerem `Task:` i wyciętym breadcrumbem `Fd-Gate`, naprawy szły wyłącznie
+jako `--fixup <commit-taska>`, zero konfliktów w całym runie. Diagramy przebiegu:
+`docs/field-tests/r3-implement-*.mmd`.
+
+### K1. ⚠️ Limit sesji klasyfikowany jako `engine-failure` z mylącą eskalacją
+
+- [x] Dwa launche (runy 3 i 5) padły na „You've hit your session limit · resets <t>";
+  silnik zgłosił to człowiekowi jako „Worktree preparation failed — fix the working
+  copy" oraz „A wave gate agent died" — obie diagnozy fałszywe, poprawną akcją było
+  „poczekaj do resetu i relaunch, stan roboczy nietknięty". Każdy agent bez wyniku jest
+  dziś traktowany jak engine-failure. Przy dużych feature'ach (godziny compute) limit to
+  scenariusz częsty, nie wyjątkowy.
+- **Decyzja (grill 2026-07-08): oba poziomy — pierwotny kierunek „rozpoznawać sygnaturę
+  w treści błędu" jest NIEWYKONALNY w silniku** (`agent()` zwraca gołe `null` dla killa,
+  błędu API i limitu jednakowo; treść błędu widzi tylko main thread w notyfikacji).
+  Fix: (a) silnik — wszystkie teksty eskalacji `engine-failure` przepisane na uczciwe
+  (wspólna stała `NO_RESULT`: „kill / błąd API / limit konta — przyczyna niewidoczna;
+  branch i trailery nietknięte, relaunch bezpieczny; przy zbiegu z limitem poczekaj do
+  resetu"); (b) main thread (`implement.md`, Eskalacje) — przy engine-failure NAJPIERW
+  klasyfikacja: sygnatura limitu w notyfikacji workflow lub własny limit sesji ⇒ raport
+  „to limit, nie bug — czekaj do resetu i relaunch", bez HIL; salvage tylko bez sygnału
+  limitu.
+
+### K2. ⚠️ Fala eskalująca merguje przechodzące taski bez bramki
+
+- [x] Gdy fala kończy się eskalacją architektoniczną, merger merguje taski przechodzące
+  (run 2: 4 taski, run 4: 3 taski), ale smoke/weryfikacja AC tej fali już nie biegnie —
+  na feature branchu ląduje kod niezgejtowany falowo. Teoretycznie łapie to close, ale
+  close może nie zbiec nigdy (tu: 0/5 launchy); `/to-prs` nie ma bramki kompletności
+  (F4), więc shippowałby taski częściowo zgejtowane. Main thread poprawnie NIE foldował
+  `--ci pass` dla tych fal — stan mówi prawdę, ale kod i tak leży w branchu.
+- **Decyzja (grill 2026-07-08): sama bramka, bez naprawy + dług do relaunchu.** Przy
+  eskalacji fali smoke ∥ AC-verify biegną normalnie (chyba że nic się nie zmergowało —
+  wtedy prosto do człowieka), werdykt ląduje w raporcie fali, ale pętla napraw NIE
+  startuje (decyzja człowieka może ją unieważnić). Czerwona resztka wraca jako
+  `gateDebt` wpisu raportu fali; main thread kopiuje ją do `args.gateDebt` relaunchu,
+  a silnik spłaca dług PRZED falą 0 (świeży smoke + re-weryfikacja + standardowa pętla
+  napraw, to samo K; wyczerpanie → `repair-exhausted`) — nowe worktree nigdy nie tną
+  się ze znanego-czerwonego brancha. Fold `--gate` tylko dla fal z zieloną bramką.
+
+### K3. ⚠️ Fixupy cross-cutting zwijają obce pliki w commit jednego taska
+
+- [x] Naprawa regresu integracyjnego po zmianie schematu (T-001, `globalRoles String[]`)
+  zwinęła poprawki 6 plików downstream — w tym spoza footprintu T-001 — w jeden
+  `--fixup` na commit T-001. Atrybucja autosquash formalnie poprawna, ale PR taska
+  z `/to-prs` wchłania zmiany obcych obszarów → granica task↔PR się rozmywa.
+- **Decyzja (grill 2026-07-08): jawne commity integration-fix.** Ustalenie z eksploracji:
+  „puchnięcie PR-a winowajcy" jest częściowo WYMOGIEM, nie bugiem — niezmiennik
+  buildability `/to-prs` żąda, by łamiąca zmiana i adaptacje jej blast radius lądowały
+  w tym samym PR-ze. Kontrakt: naprawa w plikach JEDNEGO taska → `--fixup` jak dotąd
+  (`ac:<id>` zawsze); naprawa cross-cutting → zwykły commit `fix(integration): …` z
+  trailerami `Task: <winowajca>` + `Integration-Fix: true` — do PR-a winowajcy wciąga
+  go istniejąca reguła partycji „wszystkie commity z trailerem" (zero zmian w kroku
+  absorb), autosquash go nie dotyka, czysta zmiana i adaptacje pozostają osobno
+  recenzowalne; pliki utworzone przez PÓŹNIEJSZY task → podział naprawy per właściciel
+  (commit rozpięty na właścicieli psuje rebase stosu). Zmiany: `featureRepairPrompt`,
+  `implement.md` (pętla napraw), `to-prs.md` + mirrory.
+
+### K4. ⚠️ Korupcja args przy inline-paste + crash na self-ref `serializeAfter`
+
+- [x] Run 1 padł w 0s: `serializeAfter cycle: T-025 -> T-025` — kanoniczny
+  `engine-args.json` był czysty, korupcja powstała przy ręcznym wklejaniu 14 KB args
+  inline do wywołania Workflow. Do tego engine rzucił niezłapany wyjątek (stack trace
+  w wyniku Workflow) zamiast strukturalnego `{status:'failed', reason}`.
+- **Decyzja (grill 2026-07-08): odrzucanie strukturalne + protokół launchu; kierunek
+  „filtrować self-ref" ODRZUCONY** (cichy filtr maskuje korupcję i gubi realną krawędź
+  serializacji — silnik nie zna intencji), a „ścieżka pliku zamiast inline" jest
+  niewykonalna (skrypt workflow nie ma dostępu do filesystemu). Fix: parseArgs +
+  scheduleWaves w try/catch → zwrot `escalated` z nowym kind `invalid-args` (nic nie
+  pobiegło; regeneruj engine-args.json i relaunch bez HIL); tripwire'y korupcji w
+  parseArgs (deklarowany `tasksCount` vs `tasks.length`, format `T-\d+` refów, jawny
+  błąd na self-ref w deps/serializeAfter); protokół launchu w `implement.md`:
+  engine-args.json pisany Write toolem (nigdy heredoc — patrz K7c), do Workflow trafia
+  zawartość pliku verbatim, zmiana = najpierw regeneracja pliku.
+
+### K5. ⚠️ Katalogowe `codeDeps` over-serializują footprint
+
+- [x] Wspólny katalogowy dep (`backend/src/cerbos/`) prefix-matchował footprinty
+  wszystkich tasków → 54 fałszywe pary serialize; paralelizm uratowała dopiero ręczna
+  interwencja main threadu (filtracja do 5 realnych par exact-file). Heurystyka wisi na
+  przytomności LLM-a, nie na regule.
+- **Decyzja (grill 2026-07-08): exact-file only, katalog = sygnał.** Krawędzie
+  `serializeAfter` powstają wyłącznie z overlapu konkretnego pliku (git nie konfliktuje
+  na różnych plikach w katalogu; hazard read-after-write na poziomie obszaru kryją już
+  krawędzie deps/consumes + defer-to-next-wave); ścieżka katalogowa nigdy nie tworzy
+  krawędzi, pominięte pary katalogowe są nazwane w narracji launchu. Wariant „shipowany
+  skrypt liczący pary" odrzucony: wejście (mapowanie element→plik) i tak ekstrahuje LLM
+  z treści taska — skrypt utwardzałby tylko ostatni krok nad rozmytymi danymi. Zmiany:
+  `implement.md` (footprint) + mirror.
+
+### K6. ℹ️ „Pełny cykl w jednym runie" nierealny dla dużej feature
+
+- [x] 39 tasków = realnie 5 launchy: 1 crash args, 2 eskalacje architektoniczne
+  (T-010 Cerbos ESM-only, T-021/T-036), 2 limity konta; close (pierwszy pełny CI → CR →
+  autosquash → finalny CI) nie zbiegł ani razu. Obietnica „one full delivery cycle"
+  myli oczekiwania — cykl jest logiczny, nie fizyczny (co silnik zresztą wspiera:
+  relaunch z remaining działał bezbłędnie, stan odtwarzany z trailerów git).
+- **Fix (grill 2026-07-08, bez zmian mechaniki):** `implement.md` (intro + Run boundary),
+  README i `COMMAND_IMPLEMENT.md` mówią wprost: „jeden run" nazywa własność
+  wznawialności — duża feature realnie domyka się serią launchy z HIL pomiędzy, każdy
+  startuje tam, gdzie trailery mówią, że skończył poprzedni.
+
+### K7. ℹ️ Drobne rysy z runu
+
+- [x] **Regres pokrycia po repair:** stary gate złapał skasowany test (AC-67 „green but
+  not covered"); scoped re-weryfikacja (`stillUnverified`) z redesignu stworzyła ślepy
+  punkt — AC raz `covered-by-test` nigdy nie wracało do sprawdzenia, a skasowanego testu
+  nie widzi ani smoke, ani full CI na close (test, który nie biegnie, jest „zielony").
+  **Decyzja (grill 2026-07-08): pełna re-weryfikacja WSZYSTKICH AC fali co iterację
+  repair** (świadome cofnięcie optymalizacji; fala domyka średnio kilkanaście AC, koszt
+  mały) + twardy zakaz „nigdy nie kasuj/nie osłabiaj testu, żeby bramka przeszła" w obu
+  promptach repair (worktree i feature-branch).
+- [x] **`record-impl.mjs`:** brak subkomendy adopcji brancha; przeciążony fold
+  `--ci pass`. **Decyzja (grill 2026-07-08): rename + blok close** (plugin
+  niepublikowany, zero kosztu migracji): per-task `impl.ci` → `impl.gate`
+  (flaga `--gate`; gate = bramka fali, celowo nie „ci"), nowy feature-level
+  `state.close = { fullCi, cr, finalCi }` z verbem `record-impl close` (zapis
+  przyrostowy — eskalowane domknięcie utrwala, co pobiegło), `/to-prs` dostał twardą
+  prekondycję `state.close.finalCi == "pass"` (domyka kawałek F4), nowy verb
+  `record-impl branch --set` dla adopcji/utworzenia brancha (koniec ręcznych Editów
+  state.json). Zmiany: record-impl.mjs + testy, feature-lock/state schematy, fixtures,
+  implement.md/to-prs.md + mirrory, SPEC §4.4/§5.5.
+- [x] **Decyzje HIL przez Bash-heredoc:** tekst decyzji T-021 zawierał „npm install" →
+  hook `block-npm-usage` zablokował heredoc. **Fix (grill 2026-07-08):** protokół
+  launchu w `implement.md` — engine-args.json (z tekstami decyzji w środku) pisany
+  wyłącznie Write toolem; swobodny tekst człowieka nigdy nie przechodzi przez treść
+  polecenia Bash.
+
+### K8. ℹ️ Return silnika wciągany w całości do main threadu
+
+- [ ] Dwa największe skoki kontekstu sesji to odczyt returnów Workflow: +54k (160→214k)
+  i +51k (306→357k) — ponad 40% całego przyrostu main threadu w ~12h. Analiza
+  workflow-vs-subagenty na tym runie: orkiestracja przez Workflow to ledwie ~7%
+  konsumpcji limitu (147 wywołań API main threadu vs 4141 agentów silnika; 24,9M vs
+  519M cache read), więc jedyny istotny koszt Workflow po stronie main threadu to
+  właśnie tłusty return — ta sama klasa problemu co I2/I4.
+- **Kierunek:** silnik pisze pełny raport runu na dysk (per-task wyniki, werdykty bramek,
+  diagnozy repair), a return niesie wskaźnik + minimalne podsumowanie (status, fale,
+  taski id→status→commit, eskalacje z pytaniami); main thread czyta z pliku wybiórczo —
+  tylko kontekst eskalacji i sekcje fail, nigdy całość przy `completed`.
+
+### K9. ℹ️ Wszystkie agenty silnika biegną na modelu/effort sesji
+
+- [ ] ~93% konsumpcji limitu w runie to agenty silnika (519M cache read, śr. ~65 wywołań
+  API na agenta), a etapy mechaniczne — merger (skryptowa sekwencja squash-merge'ów),
+  smoke (odpal 2 komendy, zraportuj exit code), prepare-wave — biegną na pełnym modelu
+  i effort sesji tak samo jak task-agenty. Docs workflows: „Every agent in a workflow
+  uses your session's model unless the script routes a stage to a different one";
+  `agent()` przyjmuje `opts.model` i `opts.effort`.
+- **Kierunek:** w `wave-implement.mjs` routować etapy mechaniczne na `effort: 'low'`
+  (ew. tańszy model) — merger, smoke, prepare-wave; task-agenty, repair, AC-verify i CR
+  zostają na modelu sesji. Wymaga testu polowego, czy jakość mergera (konflikt-checki,
+  trailery) nie siada na niższym tierze — dopiero potem ewentualny cichy default.
+
+### K10. ⚠️ Baseline task-agentów dominuje limit; eksploracja shellem zamiast grafu
+
+- [ ] Anatomia kontekstu 31 task-agentów (runy 2+4): prompt delegacyjny to ~2k znaków,
+  ale baseline startowy (system prompt + odziedziczone schematy WSZYSTKICH
+  tooli/MCP sesji + CLAUDE.md targetu) = 43k tok w runie 2 → 92k w runie 4; przy
+  medianie 93 wywołań API na agenta baseline × wywołania = 42–63% całego cache read
+  silnika — sam wzrost baseline'u tłumaczy większość różnicy kosztu run 4 vs run 2.
+  Dowód lokalizacji: merger (custom agent z obciętą listą tooli) miał stały baseline
+  21k w OBU runach — przyrost żyje w dziedziczonych schematach narzędzi. Doczytywanie:
+  480k znaków skumulowanej eksploracji shellem (`cat`/`grep`/`ls` — największa klasa),
+  całe pliki po 36k znaków czytane niezależnie przez 5 agentów; naruszenia
+  self-contained: 3× cały spec.md (T-004/T-014/T-016), 11× cudze task files (T-036 aż
+  cztery). Własny output agenta (reasoning nieobecny w transkrypcie, ale liczony
+  i kumulowany) ~35k tok średnio, do 83k (T-028).
+- **Kierunek (decyzje usera 2026-07-08):** (a) dedykowany typ agenta dla task-agentów
+  à la `fd:merger` — obcięta lista tooli natywnych + wyłącznie wspierane MCP:
+  `context7`, `firecrawl`, `codebase-memory-mcp` (baseline ~92k → kilkadziesiąt %
+  mniej); (b) pobieranie kodu w promptach task-agentów wymuszone przez
+  `codebase-memory-mcp` (`search_graph`/`get_code_snippet`/`trace_path`/`search_code`)
+  zamiast Read/Grep/shellowych `cat|grep` — celowane snippety na poziomie symbolu
+  zamiast całych 36k-plików i shellowych polowań; Read zostaje dla znanego pliku przed
+  edycją i dla configów; dostępność MCP wykrywa `/config`, przy braku fallback na toole
+  natywne; ŚWIADOMIE ODRZUCONE: batching odczytów w mniejszą liczbę wywołań (zapełnia
+  kontekst agenta na raz → niestabilność pracy) oraz snippety kodu w ekstraktach tasków
+  (lepszą metodą pobierania jest graf); (c) zakaz czytania spec.md i cudzych task files
+  zostaje i wymaga utwardzenia w prompcie task-agenta (dziś umowa, nie bramka).
+  Routing effort/model etapów mechanicznych: patrz K9.
+
+---
+
 ## Mocne strony (bez zmian)
 
 - Rozdział manifest (commitowany, autorytatywny) / meta / frontmatter-pointer.

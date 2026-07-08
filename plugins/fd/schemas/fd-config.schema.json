@@ -50,10 +50,11 @@
     "tooling": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["packageManager", "build", "lint", "test", "format"],
+      "required": ["packageManager", "build", "typecheck", "lint", "test", "format"],
       "properties": {
         "packageManager": { "type": ["string", "null"] },
         "build": { "type": ["string", "null"] },
+        "typecheck": { "type": ["string", "null"] },
         "lint": { "type": ["string", "null"] },
         "test": { "type": ["string", "null"] },
         "format": { "type": ["string", "null"] }
@@ -95,7 +96,6 @@
         "branchTemplate": { "type": "string" },
         "maxRepairIterations": { "type": "integer", "minimum": 1 },
         "engine": { "type": "string", "enum": ["workflow", "subagents"] },
-        "ciScope": { "type": "string", "enum": ["full", "scoped"] },
         "worktreeSetup": { "type": "array", "items": { "type": "string" } },
         "worktreeCleanup": { "type": "string", "enum": ["always", "keep-failed"] }
       }

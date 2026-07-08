@@ -37,6 +37,10 @@ fd installation — never search the repo or `$HOME` for plugin files.
 4. **Implementation completeness (BLOCK).** Read the manifest; **every** task must be `implemented`
    or `shipped`. Any other status → STOP: "finish `/fd:implement` first". (This command never runs
    the implementation loop; it only projects a completed branch.)
+   **Close verdict (BLOCK).** Read `state.json.close`: `finalCi` must be `"pass"` — that is the
+   feature's only full-pipeline verdict (per-task `impl.gate` records only the wave smoke + AC
+   gate). Missing block or anything but `pass` → STOP: "the feature close never went green —
+   finish `/fd:implement`'s close first".
 
 5. **Artifacts present.** `state.json.branch` set and checked out, `sc-map.json` + `feature.lock.json`
    readable. Whole-branch human self-review is assumed already done (outside the plugin); the user's
@@ -58,6 +62,13 @@ Why this is cheap: the feature branch is already a linear one-commit-per-task hi
 order (squash-merge per task + autosquash of repairs). A stack is a **partition** of that history —
 PR branches are **pointers** into it, so commit SHAs stay identical to `impl.commits` and ship-detection
 keeps working without translation.
+
+**Integration-fix commits** (subject `fix(integration): …`, trailers `Task: <culprit>` +
+`Integration-Fix: true`) are the loop's cross-cutting repairs, deliberately **not** autosquashed:
+they carry a `Task:` trailer, so the partition pulls them into the culprit task's PR like any
+other trailer commit. A task PR carrying blast-radius adaptations of other areas is **correct**,
+not boundary drift — the buildability invariant (step 4) requires the breaking change and its
+downstream adaptations to land in the same PR.
 
 ---
 
@@ -126,6 +137,7 @@ partition takes **all** commits with that trailer.
 | Schema migration (lower → apply; higher → halt) | entry | HIL / block |
 | Feature selection (>1, no match) | entry | HIL |
 | Implementation completeness (all tasks implemented / shipped) | entry | block |
+| Close verdict (`state.close.finalCi == "pass"`) | entry | block |
 | Foreign-commit assignment (no `Task:` trailer) | flow | HIL |
 | Manual PR grouping | flow | HIL |
 | Buildability invariant | flow | block |

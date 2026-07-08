@@ -1,15 +1,19 @@
 // Claude Code dynamic-workflow script for /fd:implement — the FULL delivery cycle in
 // one run: for every wave (computed here from task deps) it prepares worktrees, runs the
-// task agents, squash-merges the passing tasks (fd:merger), runs wave CI, and repairs red
-// CI up to K iterations; after the last wave it runs full CI, the whole-feature code
-// review, mechanical fixes, autosquash, and the final full CI. It calls the harness
+// task agents, squash-merges the passing tasks (fd:merger), gates the wave with a
+// typecheck+build smoke plus AC verification (in parallel), and repairs red gates up to
+// K iterations; after the last wave it runs the feature's first full CI, the
+// whole-feature code review, mechanical fixes, autosquash, and the final full CI. It calls the harness
 // `agent()` / `parallel()` globals and is launched via the Workflow tool (scriptPath);
 // it is NEVER run with `node`.
 //
-// The run returns early with status "escalated" only for decisions a human must make
-// (architectural spec gap, repair exhaustion, CR judgment call, or a dead merge/CI
-// agent), and with status "continue" when the internal agent budget is spent — the main
-// thread relaunches with the remaining tasks, no HIL. State files are NOT written here:
+// The run returns early with status "escalated" for decisions a human must make
+// (architectural spec gap, repair exhaustion, CR judgment call), for an engine agent
+// that returned no result (cause invisible here — kill, API error, or rate limit), and
+// for invalid args (kind "invalid-args": regenerate engine-args.json, relaunch, no HIL);
+// status "continue" means the internal agent budget is spent — the main thread
+// relaunches with the remaining tasks, no HIL. An escalated wave's red gate returns as
+// gateDebt, settled at the start of the relaunch. State files are NOT written here:
 // the `Task: <id>` trailers on the feature branch are the in-run ledger, and the main
 // thread persists them via record-impl.mjs at every return.
 //
@@ -24,7 +28,7 @@
 export const meta = {
   name: 'wave-implement',
   description:
-    'Full /fd:implement cycle in one run: waves from task deps (worktree isolation, per-task self-gate, breadcrumb), serial squash-merge per wave, wave CI with a bounded repair loop, then feature close (full CI, code review, mechanical fixes, autosquash, final CI). Returns completed | continue | escalated; the main thread persists state from Task: trailers at every return.',
+    'Full /fd:implement cycle in one run: waves from task deps (worktree isolation, per-task self-gate, breadcrumb), serial squash-merge per wave, per-wave smoke (typecheck+build) plus AC verification with a bounded repair loop, then feature close (first full CI, code review, mechanical fixes, autosquash, final CI). Returns completed | continue | escalated; the main thread persists state from Task: trailers at every return.',
 };
 
 // Defensive: the Workflow tool should pass `args` as a real object, but a live-authored
@@ -63,6 +67,11 @@ function parseArgs(rawArgs) {
   if (!Array.isArray(tasks) || tasks.length === 0) {
     throw new Error('wave-implement: args.tasks must be a non-empty array');
   }
+  // tasksCount is an optional corruption tripwire: a hand-relayed args payload that lost
+  // or duplicated a task no longer matches the count the main thread declared.
+  if (a.tasksCount !== undefined && a.tasksCount !== tasks.length) {
+    throw new Error(`wave-implement: args.tasksCount (${a.tasksCount}) does not match tasks.length (${tasks.length}) — corrupted args, regenerate engine-args.json and relaunch`);
+  }
   tasks.forEach((t, i) => {
     if (!t || typeof t !== 'object') {
       throw new Error(`wave-implement: tasks[${i}] must be an object`);
@@ -72,17 +81,33 @@ function parseArgs(rawArgs) {
         throw new Error(`wave-implement: tasks[${i}].${field} must be a non-empty string`);
       }
     }
+    if (!/^T-\d+$/.test(t.id)) {
+      throw new Error(`wave-implement: tasks[${i}].id must match T-<n>, got ${JSON.stringify(t.id)}`);
+    }
     for (const field of ['deps', 'serializeAfter', 'acIds']) {
       if (t[field] !== undefined && !Array.isArray(t[field])) {
         throw new Error(`wave-implement: tasks[${i}].${field} must be an array when present`);
+      }
+    }
+    // A task referencing itself is never a real edge — it is corruption (the field-tested
+    // failure mode of relaying args by hand). Rejecting beats silently filtering: the
+    // intended edge pointed SOMEWHERE, and dropping it would lose a serialization constraint.
+    for (const field of ['deps', 'serializeAfter']) {
+      for (const ref of t[field] ?? []) {
+        if (typeof ref !== 'string' || !/^T-\d+$/.test(ref)) {
+          throw new Error(`wave-implement: tasks[${i}].${field} entry must match T-<n>, got ${JSON.stringify(ref)} — corrupted args?`);
+        }
+        if (ref === t.id) {
+          throw new Error(`wave-implement: tasks[${i}].${field} references the task itself (${t.id}) — corrupted args, regenerate engine-args.json and relaunch`);
+        }
       }
     }
   });
   if (!gate || typeof gate !== 'object' || Array.isArray(gate)) {
     throw new Error('wave-implement: args.gate must be an object');
   }
-  if (!ci || typeof ci !== 'object' || (ci.scope !== 'full' && ci.scope !== 'scoped')) {
-    throw new Error('wave-implement: args.ci.scope must be "full" or "scoped"');
+  if (!ci || typeof ci !== 'object' || Array.isArray(ci)) {
+    throw new Error('wave-implement: args.ci must be an object carrying the configured commands (typecheck, build, lint, test, packageManager; null = confirmed absence)');
   }
   if (!codeReview || !Array.isArray(codeReview.skills) || codeReview.skills.length === 0) {
     throw new Error('wave-implement: args.codeReview.skills must be a non-empty array');
@@ -90,9 +115,24 @@ function parseArgs(rawArgs) {
   if (!repair || !Number.isInteger(repair.maxIterations) || repair.maxIterations < 1) {
     throw new Error('wave-implement: args.repair.maxIterations must be a positive integer');
   }
+  // gateDebt: the un-repaired gate verdict of a prior run's escalated wave (its gate ran
+  // but repair waited for the human). Settled before wave 0 so new worktrees are not cut
+  // from a known-red branch.
+  let gateDebt = null;
+  if (a.gateDebt !== undefined && a.gateDebt !== null) {
+    const g = a.gateDebt;
+    if (typeof g !== 'object' || Array.isArray(g)) {
+      throw new Error('wave-implement: args.gateDebt must be an object { smoke, acs } when present');
+    }
+    const acs = g.acs ?? [];
+    if (!Array.isArray(acs) || acs.some((x) => typeof x !== 'string' || x === '')) {
+      throw new Error('wave-implement: args.gateDebt.acs must be an array of AC ids');
+    }
+    if (g.smoke === true || acs.length > 0) gateDebt = { smoke: g.smoke === true, acs };
+  }
 
   return {
-    mode, featureDir, slug, repoRoot, featureBranch, baseBranch, tasks, gate, ci,
+    mode, featureDir, slug, repoRoot, featureBranch, baseBranch, tasks, gate, ci, gateDebt,
     worktreeSetup: Array.isArray(worktreeSetup) ? worktreeSetup : [],
     worktreeCleanup: worktreeCleanup === 'keep-failed' ? 'keep-failed' : 'always',
     codeReview,
@@ -236,10 +276,9 @@ function unionChangedFiles(results) {
   return [...files].sort();
 }
 
-// An AC is closed once EVERY task that lists it in acIds has merged. Returns the full
-// closed set for the given merged ids; callers diff consecutive calls for a wave delta.
-function acsClosedByWave(allTasks, mergedTaskIds) {
-  const merged = new Set(mergedTaskIds);
+// Every task listing an AC in acIds co-owns it. The map feeds both closure detection
+// and repair attribution (an unverified AC's fix must land as a fixup of an owner's commit).
+function acOwners(allTasks) {
   const owners = new Map();
   for (const t of allTasks) {
     for (const ac of t.acIds ?? []) {
@@ -247,8 +286,15 @@ function acsClosedByWave(allTasks, mergedTaskIds) {
       owners.get(ac).push(t.id);
     }
   }
+  return owners;
+}
+
+// An AC is closed once EVERY task that lists it in acIds has merged. Returns the full
+// closed set for the given merged ids; callers diff consecutive calls for a wave delta.
+function acsClosedByWave(allTasks, mergedTaskIds) {
+  const merged = new Set(mergedTaskIds);
   const closed = [];
-  for (const [ac, ids] of owners) {
+  for (const [ac, ids] of acOwners(allTasks)) {
     if (ids.every((id) => merged.has(id))) closed.push(ac);
   }
   return closed.sort();
@@ -273,10 +319,22 @@ function reconcileCi(ciResult) {
   return ciResult;
 }
 
+// Same defense for the AC verifier: a "pass" claim with an unverified AC in its own list
+// is a contradiction — downgrade so a sloppy verdict cannot close the wave.
+function reconcileAc(acResult) {
+  if (!acResult || typeof acResult !== 'object') return null;
+  const acs = Array.isArray(acResult.acs) ? acResult.acs : [];
+  if (acResult.status === 'pass' && acs.some((v) => v && v.verdict === 'unverified')) {
+    return { ...acResult, status: 'fail' };
+  }
+  return acResult;
+}
+
 // Splits a wave's failures into repair work: failed/unmerged tasks are repaired in their
-// own worktrees (parallel, re-merged after); CI failures on already-merged code become
-// ONE serial feature-branch repair (fixup commits), so nothing races the feature branch.
-function repairPlanFrom({ taskResults = [], mergeResults = [], ciResult = null }) {
+// own worktrees (parallel, re-merged after); smoke/CI failures and unverified ACs sit on
+// already-merged code, so they become ONE serial feature-branch repair (fixup commits) —
+// nothing races the feature branch.
+function repairPlanFrom({ taskResults = [], mergeResults = [], ciResult = null, acResult = null, owners = new Map() }) {
   const seen = new Set();
   const worktreeRepairs = [];
   for (const r of taskResults) {
@@ -291,15 +349,24 @@ function repairPlanFrom({ taskResults = [], mergeResults = [], ciResult = null }
       worktreeRepairs.push({ id: m.task, diagnosis: m.detail || `merge ${m.status}` });
     }
   }
-  // A red CI ALWAYS yields a feature repair — even with an empty failures list (an agent
-  // that under-reports must not let the wave sail through green).
-  const featureRepair = ciResult && ciResult.status === 'fail'
-    ? {
-      diagnosis: (ciResult.failures ?? []).length > 0
+  const featureLines = [];
+  // A red CI/smoke ALWAYS yields a feature repair — even with an empty failures list (an
+  // agent that under-reports must not let the wave sail through green).
+  if (ciResult && ciResult.status === 'fail') {
+    featureLines.push(
+      (ciResult.failures ?? []).length > 0
         ? ciResult.failures.map((f) => `${f.location}: ${f.detail}`).join('\n')
         : 'CI failed without structured failure entries — re-run the configured commands and diagnose from their output tails',
-    }
-    : null;
+    );
+  }
+  for (const v of acResult?.acs ?? []) {
+    if (!v || v.verdict !== 'unverified') continue;
+    const owning = owners.get(v.id) ?? [];
+    featureLines.push(
+      `ac:${v.id}: ${v.detail || 'not verified'} — finish the behavior or add the missing test; land it as a fixup of the owning task's commit (${owning.length ? owning.join(', ') : 'locate the owner via the Task: trailers'})`,
+    );
+  }
+  const featureRepair = featureLines.length > 0 ? { diagnosis: featureLines.join('\n') } : null;
   return { worktreeRepairs, featureRepair };
 }
 
@@ -401,10 +468,9 @@ const MERGE_RESULT_SCHEMA = {
 
 const CI_RESULT_SCHEMA = {
   type: 'object',
-  required: ['status', 'scope', 'commands', 'failures'],
+  required: ['status', 'commands', 'failures'],
   properties: {
     status: { type: 'string', enum: ['pass', 'fail'] },
-    scope: { type: 'string', enum: ['scoped', 'full'], description: 'the scope actually run (scoped may fall back to full)' },
     commands: {
       type: 'array',
       items: {
@@ -423,6 +489,30 @@ const CI_RESULT_SCHEMA = {
         type: 'object',
         required: ['location', 'detail'],
         properties: { location: { type: 'string' }, detail: { type: 'string' } },
+      },
+    },
+  },
+};
+
+const AC_RESULT_SCHEMA = {
+  type: 'object',
+  required: ['status', 'acs'],
+  properties: {
+    status: { type: 'string', enum: ['pass', 'fail'], description: 'fail when ANY listed AC is unverified' },
+    acs: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['id', 'verdict', 'detail'],
+        properties: {
+          id: { type: 'string' },
+          verdict: {
+            type: 'string',
+            enum: ['covered-by-test', 'verified-by-inspection', 'unverified'],
+            description: 'covered-by-test = a targeted test run proves it; verified-by-inspection = no test can exist, the merged code demonstrably satisfies it; unverified = missing, incomplete, or unconfirmed',
+          },
+          detail: { type: 'string', description: 'the evidence: test command + exit code, or what the inspection established; for unverified — exactly what is missing' },
+        },
       },
     },
   },
@@ -504,6 +594,7 @@ function taskPrompt(task, mode) {
       '',
       'Repair diagnosis — fix exactly this, and land it as a `git commit --fixup` of the original task commit:',
       task.diagnosis,
+      'Never delete or weaken a test to make the gate pass — a red test is a diagnosis, not noise.',
     );
   }
 
@@ -573,56 +664,104 @@ function mergerPrompt(passingTasks, { repoRoot, featureBranch, worktreeCleanup }
   return lines.join('\n');
 }
 
-function ciPrompt(ci, { repoRoot, scope, changedFiles, closedAcs }) {
+// Full-pipeline CI runs ONLY at feature close (and after autosquash) — between waves the
+// gate is smokePrompt + acVerifyPrompt, because lint and the full suite judge finished
+// features and false-flag intermediate states (e.g. exports whose consumers arrive in a
+// later wave), and a false red feeds the repair loop with destructive "fixes".
+function ciPrompt(ci, { repoRoot }) {
   const commands = [
     ci.lint ? `lint: ${ci.lint}` : null,
     ci.build ? `build: ${ci.build}` : null,
     ci.test ? `test: ${ci.test}` : null,
   ].filter(Boolean);
-  const lines = [
-    'You run the CI gate for a merged wave of tasks, at the repository root, on the feature branch as currently checked out. Run commands, report literal exit codes — never summarize a failure away.',
+  return [
+    'You run the FULL CI gate for the whole feature, at the repository root, on the feature branch as currently checked out. Run every command unfiltered, report literal exit codes — never summarize a failure away.',
     '',
     `Repository root: ${repoRoot}`,
     `Configured commands: ${commands.length ? commands.join(' | ') : '(none configured — report status "pass" with an empty commands list and note it in failures as location "config", detail "no CI commands configured")'}`,
-    `Requested scope: ${scope}`,
+    '',
+    'Return JSON: status, commands = [{cmd, exitCode, tail (last lines when non-zero)}], failures = [{location, detail}] (empty when green).',
+  ].join('\n');
+}
+
+// The between-waves smoke: typecheck + build only. Broken types/APIs are the one failure
+// class that compounds (the next wave's worktrees are cut from this branch); lint and
+// tests wait for feature close.
+function smokePrompt(ci, { repoRoot }) {
+  const commands = [
+    ci.typecheck ? `typecheck: ${ci.typecheck}` : null,
+    ci.build ? `build: ${ci.build}` : null,
+  ].filter(Boolean);
+  return [
+    'You run the integration smoke for a merged wave of tasks, at the repository root, on the feature branch as currently checked out. Run the commands below (all of them, in order), report literal exit codes — never summarize a failure away.',
+    '',
+    `Repository root: ${repoRoot}`,
+    `Commands to run: ${commands.join(' | ')}`,
+    '',
+    'Do NOT run lint or the test suite — an intermediate wave state legitimately fails end-state checks (e.g. exported symbols whose consumers arrive in later waves); those run at feature close.',
+    '',
+    'Return JSON: status, commands = [{cmd, exitCode, tail (last lines when non-zero)}], failures = [{location, detail}] (empty when green).',
+  ].join('\n');
+}
+
+// AC verification is its own agent (parallel to the smoke): an AC is proven by a targeted
+// test run when one exists, and by code inspection when no test can exist — a full-suite
+// pass was never the right proxy for either.
+function acVerifyPrompt({ closedAcs, owners, taskById, repoRoot }) {
+  const lines = [
+    'You verify acceptance criteria that a merged wave just closed, at the repository root, on the feature branch as currently checked out. You are read-only except for RUNNING tests — never edit, never commit.',
+    '',
+    `Repository root: ${repoRoot}`,
+    '',
+    'ACs to verify — each with its owning tasks; their task files state the expected behavior and name its tests:',
   ];
-  if (scope === 'scoped') {
-    lines.push(
-      '',
-      'Scoped run: map the changed files below to workspace packages (pnpm-workspace.yaml / package.json#workspaces / turbo.json) and run the commands filtered to those packages plus their dependents. Fall back to the FULL unfiltered commands unless the mapping is unambiguous; report the scope you actually ran.',
-      `Changed files: ${changedFiles.length ? changedFiles.join(', ') : '(none reported)'}`,
-    );
-  }
-  if (closedAcs.length > 0) {
-    lines.push(
-      '',
-      `Acceptance criteria closed by this wave: ${closedAcs.join(', ')} — verify the test run demonstrably covers them; an AC left untested by a green run is a failure entry (location "ac:<id>").`,
-    );
+  for (const ac of closedAcs) {
+    const owning = (owners.get(ac) ?? []).map((id) => `${id} (${taskById.get(id)?.taskFile ?? 'task file unknown'})`);
+    lines.push(`- ${ac}: ${owning.length ? owning.join(', ') : 'owner unknown — locate it via the task files'}`);
   }
   lines.push(
     '',
-    'Return JSON: status, scope, commands = [{cmd, exitCode, tail (last lines when non-zero)}], failures = [{location, detail}] (empty when green).',
+    'For each AC use the STRONGEST applicable method:',
+    '1. covered-by-test — a test demonstrably exercising the AC exists: run JUST that test (targeted filter, never the whole suite) and confirm it passes; evidence = the command + exit code.',
+    '2. verified-by-inspection — no test can meaningfully exist (config value, removal, wiring): read the merged code and state exactly what satisfies the AC.',
+    '3. unverified — the behavior is missing, incomplete, or unconfirmed: state exactly what is missing.',
+    'A missing test for a TESTABLE behavior is "unverified", never "verified-by-inspection".',
+    '',
+    'Return JSON: status ("fail" when any AC is unverified), acs = [{id, verdict, detail}] — one entry per AC listed above.',
   );
   return lines.join('\n');
 }
 
 // Merged-code repairs run as ONE serial agent per iteration: fixup commits land directly
-// on the feature branch, so parallel writers are forbidden by construction.
-function featureRepairPrompt(diagnosis, { repoRoot, featureBranch, baseBranch }) {
+// on the feature branch, so parallel writers are forbidden by construction. Commit surgery
+// is non-negotiable — /fd:to-prs slices the branch by per-task commits, so every fix must
+// fold into its task's commit at autosquash.
+function featureRepairPrompt(diagnosis, { repoRoot, featureBranch, baseBranch, taskIds = [] }) {
   return [
-    'You repair a red CI on the feature branch. Work at the repository root on the feature branch as checked out; you are the ONLY writer right now.',
+    'You repair failures on the merged feature branch. Work at the repository root on the feature branch as checked out; you are the ONLY writer right now.',
     '',
     `Repository root: ${repoRoot}`,
     `Feature branch: ${featureBranch} (base: ${baseBranch})`,
+    taskIds.length ? `Tasks in this run: ${taskIds.join(', ')} (earlier commits may carry other Task ids)` : null,
+    '',
+    'FIRST build the attribution map: `git log --format="%H %s [%(trailers:key=Task,valueonly,separator=%x2C)]" ' + `${baseBranch}..${featureBranch}\` — every squash commit carries a \`Task:\` trailer naming its task.`,
     '',
     'Failures to fix — fix exactly these, nothing speculative:',
     diagnosis,
     '',
-    'Land each fix as `git commit --fixup <sha-of-the-commit-that-introduced-it>` (find the culprit with `git log`/`git blame`; when genuinely unattributable, use a normal commit with the trailer `Task: <owning-task-id>`). Do NOT rebase or autosquash — that happens at feature close.',
+    'Commit surgery — /fd:to-prs slices the branch into per-task PRs from these commits, so every fix must land attributably:',
+    '- Fix confined to ONE task\'s files: `git commit --fixup <that task\'s squash commit>` (attribute via the map above plus `git blame`). One fixup per culprit commit — never one bulk commit for unrelated fixes.',
+    '- Cross-cutting fix (files spanning more than one task, or outside any task\'s footprint): a NORMAL commit — subject `fix(integration): <what>`, trailers `Task: <culprit-id>` AND `Integration-Fix: true`, where the culprit is the task whose change caused the breakage. It rides into the culprit\'s PR by its Task: trailer and is never autosquashed, so the reviewer sees the clean change and its blast-radius adaptations separately.',
+    '- When some files of one fix were CREATED or last rewritten by a LATER task, SPLIT the fix per owning task — each piece as that owner\'s fixup or integration-fix commit; one commit spanning owners breaks the PR-stack rebase.',
+    '- Genuinely unattributable: a normal commit with the trailer `Task: <owning-task-id>` of your best-evidence owner, and say so in your report.',
+    '- Do NOT rebase or autosquash — that happens at feature close.',
+    'A failure at location `ac:<id>` means an acceptance criterion is unmet or untested: finish the behavior or add the missing test, and fixup onto the commit of the owning task named in that failure line.',
+    'NEVER delete or weaken a test to make a gate pass — a red or "tautological-looking" test is a diagnosis to act on, not noise; the AC verifier re-checks every AC after your repair and a lost test surfaces as a new failure.',
+    'NEVER delete an exported-but-unused symbol to satisfy a check: if it maps to a spec element or a task\'s `produces` contract, it is a deliberate contract whose consumers do not exist yet — check the task files first; a genuinely dead symbol is a finding to REPORT in detail, not code to remove.',
     'Re-run only the failed commands to confirm the fix; report literal exit codes.',
     '',
     'Return JSON: status ("ok" when every listed failure is fixed and re-verified, else "failed"), detail.',
-  ].join('\n');
+  ].filter((l) => l !== null).join('\n');
 }
 
 function writeDiffPrompt({ repoRoot, baseBranch, featureBranch, featureDir }) {
@@ -648,6 +787,7 @@ function crPrompt(codeReview, { diffFile, featureDir }) {
     `Write the full review report to ${featureDir}/cr-report.md.`,
     '',
     'Classify every finding: kind "mechanical" = objectively fixable in place (bug, missed rename, lint-grade smell, missing null-check with an obvious guard); kind "judgment" = needs a human decision (design trade-off, scope question, spec ambiguity). When unsure, choose "judgment".',
+    'An exported-but-unused symbol that maps to a spec element or a task\'s `produces` contract is NOT dead code — its consumers may arrive in a later feature; if it looks genuinely dead, classify as "judgment", never "mechanical".',
     '',
     'Return JSON: status ("pass" when no findings), skillsRun, findings = [{kind, severity, location, detail}], reportFile.',
   ].join('\n');
@@ -670,9 +810,33 @@ function autosquashPrompt({ repoRoot, baseBranch, featureBranch }) {
 // globals, so importing this module under plain node (for the tests) has no side effects.
 
 async function run(rawArgs) {
-  const a = parseArgs(rawArgs);
-  const waves = scheduleWaves(a.tasks);
+  // Args validation failures return structurally instead of throwing: a raw stack trace
+  // in the Workflow result gives the main thread nothing to act on, while kind
+  // "invalid-args" means exactly "regenerate engine-args.json and relaunch — no code ran".
+  let a;
+  let waves;
+  try {
+    a = parseArgs(rawArgs);
+    waves = scheduleWaves(a.tasks);
+  } catch (err) {
+    return {
+      status: 'escalated',
+      waves: [],
+      tasks: [],
+      remaining: [],
+      escalations: [{
+        kind: 'invalid-args',
+        question: 'The run arguments failed validation — no agent ran and nothing was touched. Regenerate engine-args.json from the canonical inputs and relaunch (no HIL needed unless the canonical file itself is wrong).',
+        options: [],
+        context: err.message,
+      }],
+    };
+  }
   const taskById = new Map(a.tasks.map((t) => [t.id, t]));
+
+  // agent() yields null for ANY terminal death — kill, API error, or account rate limit —
+  // and the cause is not visible to this script, so no escalation text may guess one.
+  const NO_RESULT = 'returned no result (killed, terminal API error, or account rate limit — the cause is not visible to the engine). The branch and Task: trailers are intact, so relaunching is safe; if this coincided with a session limit, wait for the reset first.';
 
   let agentCalls = 0;
   const spawn = (prompt, opts) => {
@@ -690,12 +854,37 @@ async function run(rawArgs) {
   const payload = (extra) => ({ waves: waveReports, tasks: results, remaining: remaining(), ...extra });
   const escalate = (list) => payload({ status: 'escalated', escalations: [...escalations, ...list] });
 
-  const runCi = async (scope, changedFiles, closedAcs, label, phaseName) => {
+  const owners = acOwners(a.tasks);
+  const taskIds = a.tasks.map((t) => t.id);
+  const smokeCommands = [a.ci.typecheck, a.ci.build].filter(Boolean);
+
+  const runCloseCi = async (label) => {
     const raw = await spawn(
-      ciPrompt(a.ci, { repoRoot: a.repoRoot, scope, changedFiles, closedAcs }),
+      ciPrompt(a.ci, { repoRoot: a.repoRoot }),
+      { label, phase: 'Close', schema: CI_RESULT_SCHEMA },
+    );
+    return reconcileCi(raw);
+  };
+  // Skipping is loud, never silent: a repo with neither typecheck nor build has NO
+  // between-waves integration signal, and the wave report must say so.
+  const runSmoke = async (label, phaseName) => {
+    if (smokeCommands.length === 0) {
+      log(`${label}: smoke skipped — tooling has neither typecheck nor build configured`);
+      return { status: 'skipped', commands: [], failures: [] };
+    }
+    const raw = await spawn(
+      smokePrompt(a.ci, { repoRoot: a.repoRoot }),
       { label, phase: phaseName, schema: CI_RESULT_SCHEMA },
     );
     return reconcileCi(raw);
+  };
+  const runAcVerify = async (acs, label, phaseName) => {
+    if (acs.length === 0) return { status: 'pass', acs: [] };
+    const raw = await spawn(
+      acVerifyPrompt({ closedAcs: acs, owners, taskById, repoRoot: a.repoRoot }),
+      { label, phase: phaseName, schema: AC_RESULT_SCHEMA },
+    );
+    return reconcileAc(raw);
   };
 
   const mergeTasks = async (passing, label, phaseName) => {
@@ -710,6 +899,56 @@ async function run(rawArgs) {
     }
     return merged.results;
   };
+
+  // Gate debt from a prior run: an escalated wave's gate ran red but its repair waited
+  // for the human. Settle it BEFORE wave 0 — this run's worktrees are cut from the
+  // feature branch, and cutting them from a known-red branch poisons every task agent
+  // with someone else's regression. Debt ACs may belong to tasks merged in the prior
+  // run (absent from args.tasks); the verifier locates owners via task files/trailers.
+  if (a.gateDebt) {
+    phase('Gate debt');
+    let [smoke, acCheck] = await parallel([
+      () => (a.gateDebt.smoke ? runSmoke('debt:smoke', 'Gate debt') : Promise.resolve({ status: 'pass', commands: [], failures: [] })),
+      () => runAcVerify(a.gateDebt.acs, 'debt:ac-verify', 'Gate debt'),
+    ]);
+    if (!smoke || !acCheck) {
+      return escalate([{
+        kind: 'engine-failure',
+        question: 'A gate-debt agent (smoke or AC verification) did not return; the inherited verdict is unknown. Relaunch?',
+        options: [], context: `gate debt: ${!smoke ? 'smoke' : 'AC verification'} agent ${NO_RESULT}`,
+      }]);
+    }
+    let debtIterations = 0;
+    let plan = repairPlanFrom({ ciResult: smoke, acResult: acCheck, owners });
+    while (plan.featureRepair && debtIterations < a.repair.maxIterations) {
+      debtIterations += 1;
+      log(`gate debt: repair iteration ${debtIterations}/${a.repair.maxIterations}`);
+      await spawn(
+        featureRepairPrompt(plan.featureRepair.diagnosis, { repoRoot: a.repoRoot, featureBranch: a.featureBranch, baseBranch: a.baseBranch, taskIds }),
+        { label: `debt:repair-${debtIterations}`, phase: 'Gate debt', schema: STEP_RESULT_SCHEMA },
+      );
+      [smoke, acCheck] = await parallel([
+        () => (a.gateDebt.smoke ? runSmoke(`debt:smoke-${debtIterations}`, 'Gate debt') : Promise.resolve({ status: 'pass', commands: [], failures: [] })),
+        () => runAcVerify(a.gateDebt.acs, `debt:ac-verify-${debtIterations}`, 'Gate debt'),
+      ]);
+      if (!smoke || !acCheck) {
+        return escalate([{
+          kind: 'engine-failure',
+          question: 'A gate-debt agent (smoke or AC verification) did not return during repair; the verdict is unknown. Relaunch?',
+          options: [], context: `gate debt, repair iteration ${debtIterations}: agent ${NO_RESULT}`,
+        }]);
+      }
+      plan = repairPlanFrom({ ciResult: smoke, acResult: acCheck, owners });
+    }
+    if (plan.featureRepair) {
+      return escalate([{
+        kind: 'repair-exhausted',
+        question: `The gate debt inherited from the prior run is still red after ${a.repair.maxIterations} repair iterations. How should this proceed?`,
+        options: [], context: plan.featureRepair.diagnosis,
+      }]);
+    }
+    log(`gate debt settled in ${debtIterations} repair iteration(s)`);
+  }
 
   for (const { wave, batches } of waves) {
     const label = `wave-${wave}`;
@@ -730,9 +969,9 @@ async function run(rawArgs) {
       return escalate([{
         kind: 'engine-failure',
         wave,
-        question: 'Worktree preparation failed — fix the working copy and relaunch?',
+        question: 'Worktree preparation did not complete. If the context reports a concrete failure, fix that and relaunch; otherwise relaunch as-is.',
         options: [],
-        context: prep?.detail ?? 'prepare-wave agent returned no result',
+        context: prep?.detail ?? `prepare-wave agent ${NO_RESULT}`,
       }]);
     }
 
@@ -751,7 +990,7 @@ async function run(rawArgs) {
           changedFiles: [],
           headSha: '',
           gate: { ac: 'fail', lint: 'fail' },
-          diagnosis: 'task agent returned no result (killed or errored)',
+          diagnosis: 'task agent returned no result (killed, API error, or account rate limit)',
         };
         waveResults.push(result);
         results.push(result);
@@ -780,31 +1019,61 @@ async function run(rawArgs) {
     if (mergeResults === null) {
       return escalate([{
         kind: 'engine-failure', wave,
-        question: 'The merger agent died mid-wave; branch state is unknown. Salvage from trailers and relaunch?',
-        options: [], context: `wave ${wave}: merger returned no result`,
+        question: 'The merger agent did not return mid-wave; verify the branch state from the Task: trailers before relaunching.',
+        options: [], context: `wave ${wave}: merger agent ${NO_RESULT}`,
       }]);
     }
 
-    if (escalations.length > 0) {
+    // Escalation with nothing newly merged: no un-gated code landed, so there is no
+    // gate to run — straight to the human.
+    if (escalations.length > 0 && !mergeResults.some((m) => m.status === 'merged')) {
       return escalate([]);
     }
 
-    const changed = unionChangedFiles(waveResults.filter((r) => r.status === 'passed'));
     const closedNow = acsClosedByWave(a.tasks, mergedIds);
     const closedDelta = closedNow.filter((ac) => !closedBefore.includes(ac));
     closedBefore = closedNow;
 
-    let ci = await runCi(a.ci.scope, changed, closedDelta, `${label}:ci`, `Wave ${wave}`);
-    if (!ci) {
+    let [smoke, acCheck] = await parallel([
+      () => runSmoke(`${label}:smoke`, `Wave ${wave}`),
+      () => runAcVerify(closedDelta, `${label}:ac-verify`, `Wave ${wave}`),
+    ]);
+    if (!smoke || !acCheck) {
       return escalate([{
         kind: 'engine-failure', wave,
-        question: 'The wave CI agent died; the wave verdict is unknown. Relaunch?',
-        options: [], context: `wave ${wave}: CI agent returned no result`,
+        question: 'A wave gate agent (smoke or AC verification) did not return; the wave verdict is unknown. Relaunch?',
+        options: [], context: `wave ${wave}: ${!smoke ? 'smoke' : 'AC verification'} agent ${NO_RESULT}`,
       }]);
+    }
+    const acVerdicts = new Map();
+    for (const v of acCheck.acs ?? []) acVerdicts.set(v.id, v);
+
+    // Escalation path: the gate RAN (merged tasks deserve their verdict, and the next
+    // run's worktrees are cut from this branch) but repair does NOT — the pending human
+    // decision may invalidate any fix. The red remainder is returned as the wave
+    // report's gateDebt; the main thread passes it back via args.gateDebt on relaunch.
+    if (escalations.length > 0) {
+      waveReports.push({
+        wave,
+        tasks: waveTasks.map((t) => t.id),
+        merged: mergedIds.filter((id) => order.has(id)),
+        smoke: { status: smoke.status },
+        acVerification: {
+          status: [...acVerdicts.values()].some((v) => v.verdict === 'unverified') ? 'fail' : 'pass',
+          acs: [...acVerdicts.values()],
+        },
+        repairIterations: 0,
+        closedAcs: closedDelta,
+        gateDebt: {
+          smoke: smoke.status === 'fail',
+          acs: (acCheck.acs ?? []).filter((v) => v.verdict === 'unverified').map((v) => v.id),
+        },
+      });
+      return escalate([]);
     }
 
     let iterations = 0;
-    let plan = repairPlanFrom({ taskResults: waveResults, mergeResults, ciResult: ci });
+    let plan = repairPlanFrom({ taskResults: waveResults, mergeResults, ciResult: smoke, acResult: acCheck, owners });
     while ((plan.worktreeRepairs.length > 0 || plan.featureRepair) && iterations < a.repair.maxIterations) {
       iterations += 1;
       log(`${label}: repair iteration ${iterations}/${a.repair.maxIterations}`);
@@ -820,7 +1089,7 @@ async function run(rawArgs) {
               { label: `${task.id}:repair-${iterations}`, phase: `Wave ${wave}`, schema: TASK_RESULT_SCHEMA })),
         )).map((r, i) => r ?? {
           id: repairTasks[i].id, status: 'failed', changedFiles: [], headSha: '',
-          gate: { ac: 'fail', lint: 'fail' }, diagnosis: 'repair agent returned no result',
+          gate: { ac: 'fail', lint: 'fail' }, diagnosis: 'repair agent returned no result (killed, API error, or account rate limit)',
         });
         const escalatedRepairs = repairResults.filter((r) => r.status === 'escalated');
         if (escalatedRepairs.length > 0) {
@@ -835,8 +1104,8 @@ async function run(rawArgs) {
         if (rm === null) {
           return escalate([{
             kind: 'engine-failure', wave,
-            question: 'The merger agent died during a repair merge. Salvage from trailers and relaunch?',
-            options: [], context: `wave ${wave}, repair iteration ${iterations}`,
+            question: 'The merger agent did not return during a repair merge; verify the branch state from the Task: trailers before relaunching.',
+            options: [], context: `wave ${wave}, repair iteration ${iterations}: merger agent ${NO_RESULT}`,
           }]);
         }
         mergeResults = rm;
@@ -846,21 +1115,28 @@ async function run(rawArgs) {
 
       if (plan.featureRepair) {
         await spawn(
-          featureRepairPrompt(plan.featureRepair.diagnosis, { repoRoot: a.repoRoot, featureBranch: a.featureBranch, baseBranch: a.baseBranch }),
+          featureRepairPrompt(plan.featureRepair.diagnosis, { repoRoot: a.repoRoot, featureBranch: a.featureBranch, baseBranch: a.baseBranch, taskIds }),
           { label: `${label}:repair-${iterations}`, phase: `Wave ${wave}`, schema: STEP_RESULT_SCHEMA },
         );
       }
 
-      const repairChanged = unionChangedFiles(repairResults.filter((r) => r.status === 'passed'));
-      ci = await runCi(a.ci.scope, repairChanged.length > 0 ? repairChanged : changed, closedDelta, `${label}:ci-${iterations}`, `Wave ${wave}`);
-      if (!ci) {
+      // Re-verification is FULL, never scoped to the still-unverified subset: a repair
+      // may delete or weaken the very test that made an AC "covered-by-test" in the
+      // previous iteration, and neither the smoke nor the close full CI would notice a
+      // test that no longer runs — this re-check is the only tripwire.
+      [smoke, acCheck] = await parallel([
+        () => runSmoke(`${label}:smoke-${iterations}`, `Wave ${wave}`),
+        () => runAcVerify(closedDelta, `${label}:ac-verify-${iterations}`, `Wave ${wave}`),
+      ]);
+      if (!smoke || !acCheck) {
         return escalate([{
           kind: 'engine-failure', wave,
-          question: 'The wave CI agent died during repair; the verdict is unknown. Relaunch?',
-          options: [], context: `wave ${wave}, repair iteration ${iterations}`,
+          question: 'A wave gate agent (smoke or AC verification) did not return during repair; the verdict is unknown. Relaunch?',
+          options: [], context: `wave ${wave}, repair iteration ${iterations}: agent ${NO_RESULT}`,
         }]);
       }
-      plan = repairPlanFrom({ taskResults: repairResults, mergeResults, ciResult: ci });
+      for (const v of acCheck.acs ?? []) acVerdicts.set(v.id, v);
+      plan = repairPlanFrom({ taskResults: repairResults, mergeResults, ciResult: smoke, acResult: acCheck, owners });
     }
 
     if (plan.worktreeRepairs.length > 0 || plan.featureRepair) {
@@ -879,7 +1155,11 @@ async function run(rawArgs) {
       wave,
       tasks: waveTasks.map((t) => t.id),
       merged: mergedIds.filter((id) => order.has(id)),
-      ci: { status: ci.status, scope: ci.scope },
+      smoke: { status: smoke.status },
+      acVerification: {
+        status: [...acVerdicts.values()].some((v) => v.verdict === 'unverified') ? 'fail' : 'pass',
+        acs: [...acVerdicts.values()],
+      },
       repairIterations: iterations,
       closedAcs: closedDelta,
     });
@@ -893,10 +1173,10 @@ async function run(rawArgs) {
   phase('Close');
   const close = {};
 
-  let fullCi = await runCi('full', [], [], 'close:ci', 'Close');
+  let fullCi = await runCloseCi('close:ci');
   if (!fullCi) {
     return escalate([{
-      kind: 'engine-failure', question: 'The feature-close CI agent died. Relaunch?', options: [], context: 'close: full CI returned no result',
+      kind: 'engine-failure', question: 'The feature-close CI agent did not return. Relaunch?', options: [], context: `close: full CI agent ${NO_RESULT}`,
     }]);
   }
   let closeIterations = 0;
@@ -904,13 +1184,13 @@ async function run(rawArgs) {
     closeIterations += 1;
     const plan = repairPlanFrom({ ciResult: fullCi });
     await spawn(
-      featureRepairPrompt(plan.featureRepair.diagnosis, { repoRoot: a.repoRoot, featureBranch: a.featureBranch, baseBranch: a.baseBranch }),
+      featureRepairPrompt(plan.featureRepair.diagnosis, { repoRoot: a.repoRoot, featureBranch: a.featureBranch, baseBranch: a.baseBranch, taskIds }),
       { label: `close:repair-${closeIterations}`, phase: 'Close', schema: STEP_RESULT_SCHEMA },
     );
-    fullCi = await runCi('full', [], [], `close:ci-${closeIterations}`, 'Close');
+    fullCi = await runCloseCi(`close:ci-${closeIterations}`);
     if (!fullCi) {
       return escalate([{
-        kind: 'engine-failure', question: 'The feature-close CI agent died during repair. Relaunch?', options: [], context: `close repair iteration ${closeIterations}`,
+        kind: 'engine-failure', question: 'The feature-close CI agent did not return during repair. Relaunch?', options: [], context: `close repair iteration ${closeIterations}: CI agent ${NO_RESULT}`,
       }]);
     }
   }
@@ -929,7 +1209,7 @@ async function run(rawArgs) {
   );
   if (!diffStep || diffStep.status !== 'ok') {
     return escalate([{
-      kind: 'engine-failure', question: 'Writing the review diff failed. Relaunch?', options: [], context: diffStep?.detail ?? 'diff agent returned no result',
+      kind: 'engine-failure', question: 'Writing the review diff did not complete. Relaunch?', options: [], context: diffStep?.detail ?? `close: diff agent ${NO_RESULT}`,
     }]);
   }
 
@@ -939,7 +1219,7 @@ async function run(rawArgs) {
   );
   if (!cr) {
     return escalate([{
-      kind: 'engine-failure', question: 'The code-review agent died. Relaunch?', options: [], context: 'close: CR returned no result',
+      kind: 'engine-failure', question: 'The code-review agent did not return. Relaunch?', options: [], context: `close: CR agent ${NO_RESULT}`,
     }]);
   }
   const { mechanical, judgment } = classifyFindings(cr.findings);
@@ -955,7 +1235,7 @@ async function run(rawArgs) {
     await spawn(
       featureRepairPrompt(
         mechanical.map((f) => `${f.location}: ${f.detail}`).join('\n'),
-        { repoRoot: a.repoRoot, featureBranch: a.featureBranch, baseBranch: a.baseBranch },
+        { repoRoot: a.repoRoot, featureBranch: a.featureBranch, baseBranch: a.baseBranch, taskIds },
       ),
       { label: 'close:cr-fixes', phase: 'Close', schema: STEP_RESULT_SCHEMA },
     );
@@ -969,18 +1249,18 @@ async function run(rawArgs) {
   if (!squash || squash.status !== 'ok') {
     return escalate([{
       kind: 'engine-failure',
-      question: 'Autosquash failed or died; fixups are still separate commits. Resolve manually and relaunch?',
-      options: [], context: squash?.detail ?? 'autosquash agent returned no result',
+      question: 'Autosquash failed or did not return; fixups are still separate commits. Resolve manually and relaunch?',
+      options: [], context: squash?.detail ?? `close: autosquash agent ${NO_RESULT}`,
     }]);
   }
 
-  const finalCi = await runCi('full', [], [], 'close:final-ci', 'Close');
+  const finalCi = await runCloseCi('close:final-ci');
   if (!finalCi || finalCi.status === 'fail') {
     return escalate([{
       kind: 'repair-exhausted',
       question: 'The FINAL full CI after code-review fixes and autosquash is red — the close regressed. How should this proceed?',
       options: [],
-      context: (finalCi?.failures ?? [{ location: 'ci', detail: 'final CI agent returned no result' }])
+      context: (finalCi?.failures ?? [{ location: 'ci', detail: `final CI agent ${NO_RESULT}` }])
         .map((f) => `${f.location}: ${f.detail}`).join('\n'),
     }]);
   }
