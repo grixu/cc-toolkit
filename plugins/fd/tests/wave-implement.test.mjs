@@ -131,6 +131,12 @@ test('parseArgs: corruption tripwires — self-reference, ref format, declared t
   assert.equal(parseArgs(validArgs({ tasksCount: 1 })).tasks.length, 1);
 });
 
+test('parseArgs: graphMcp defaults to false and only a literal true enables it', () => {
+  assert.equal(parseArgs(validArgs()).graphMcp, false);
+  assert.equal(parseArgs(validArgs({ graphMcp: true })).graphMcp, true);
+  assert.equal(parseArgs(validArgs({ graphMcp: 'true' })).graphMcp, false);
+});
+
 test('parseArgs: gateDebt — absent or empty folds to null, populated normalizes, malformed throws', () => {
   assert.equal(parseArgs(validArgs()).gateDebt, null);
   assert.equal(parseArgs(validArgs({ gateDebt: null })).gateDebt, null);
@@ -386,6 +392,26 @@ test('taskPrompt: embeds the task file path, per-task ACs, the stub rule, and th
   assert.match(p, /Escalation rule:/);
 });
 
+test('taskPrompt: the contract bans spec.md, other tasks\' files, and workspace state', () => {
+  const p = taskPrompt(task(), 'implement');
+  assert.match(p, /never read spec\.md, other tasks' files/);
+  assert.match(p, /feature\.lock\.json/);
+  assert.match(p, /not a license to hunt/);
+});
+
+test('taskPrompt: graphMcp switches code retrieval to the Codebase Memory graph', () => {
+  const graph = taskPrompt(task(), 'implement', { graphMcp: true });
+  assert.match(graph, /mcp__codebase-memory-mcp__search_graph/);
+  assert.match(graph, /get_code_snippet/);
+  assert.match(graph, /trace_path/);
+  assert.match(graph, /INSTEAD of Grep\/Glob/);
+  assert.match(graph, /uncommitted work is NOT in it/);
+
+  const native = taskPrompt(task(), 'implement');
+  assert.doesNotMatch(native, /search_graph/);
+  assert.doesNotMatch(native, /Codebase Memory/);
+});
+
 test('taskPrompt: repair mode carries the diagnosis; a HIL decision block appears when set', () => {
   const impl = taskPrompt(task({ acIds: [] }), 'implement');
   assert.doesNotMatch(impl, /Repair diagnosis/);
@@ -494,6 +520,15 @@ test('result schemas: the shapes the run path depends on', () => {
 
   assert.deepEqual(CR_RESULT_SCHEMA.required, ['status', 'skillsRun', 'findings']);
   assert.deepEqual(CR_RESULT_SCHEMA.properties.findings.items.properties.kind.enum, ['mechanical', 'judgment']);
+});
+
+test('run path routes agent types and effort: implementer for tasks, low effort for mechanical stages', () => {
+  const implementerSpawns = source.match(/agentType: 'fd:implementer'/g) ?? [];
+  assert.equal(implementerSpawns.length, 2, 'task dispatch and worktree repair both run as fd:implementer');
+  const mergerCall = source.match(/agentType: 'fd:merger'[^}]*/);
+  assert.match(mergerCall[0], /effort: 'low'/);
+  const lowEffort = source.match(/effort: 'low'/g) ?? [];
+  assert.ok(lowEffort.length >= 4, `prepare, merger, smoke, and the diff step run at low effort (got ${lowEffort.length})`);
 });
 
 test('the script carries no exports beyond meta (Workflow runtime constraint)', () => {

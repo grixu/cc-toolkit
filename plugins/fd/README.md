@@ -187,10 +187,16 @@ back to `/fd:to-tasks` (the single owner of task-file writes).
 **One run, whole cycle.** `/fd:implement` launches the shipped
 `scripts/wave-implement.mjs` workflow script once; the run computes waves as
 topological layers of the task dependencies (there is no materialized plan) and
-carries each wave through implementation, merge, CI, and repair — then closes the
-feature (full CI → code review → fixes → autosquash → final CI) in the same run.
+carries each wave through implementation, merge, the wave gate (smoke ∥ AC
+verification), and repair — then closes the feature (full CI → code review → fixes →
+autosquash → final CI) in the same run.
 Each task runs in its own git worktree; tasks with overlapping file footprints
-serialize, disjoint ones run in parallel. A dedicated merger subagent squash-merges
+serialize, disjoint ones run in parallel. Task agents run as the dedicated
+`implementer` subagent — a restricted toolset (native tools plus the supported
+context7 / firecrawl / codebase-memory-mcp servers) that keeps each agent's fixed
+context small, retrieving code through the Codebase Memory graph when `/fd:config`
+detected it; mechanical stages (worktree prep, merger, smoke) run at low reasoning
+effort. A dedicated merger subagent squash-merges
 each passing task into the feature branch as exactly one commit carrying a
 `Task: <id>` trailer — strictly serially, so there are no branch races. Those
 trailers are the durable ledger: the main conversation records the manifest from

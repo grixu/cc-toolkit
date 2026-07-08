@@ -81,7 +81,12 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
   scalony kod — jako fixupy na feature branchu, ściśle szeregowo); po ostatniej fali —
   domknięcie (§4.1). Lint i pełne testy celowo NIE biegną między falami: oceniają stan końcowy
   i fałszywie flagują stany pośrednie (np. eksporty, których konsumenci przyjdą w późniejszej
-  fali), a fałszywa czerwień karmi pętlę napraw. Main thread zostaje z:
+  fali), a fałszywa czerwień karmi pętlę napraw. Agenty taskowe biegną jako subagent
+  **`fd:implementer`** — obcięta lista tooli (natywne pliki/shell + wspierane MCP: `context7`,
+  `firecrawl`, `codebase-memory-mcp`), żeby stały kontekst startowy każdego agenta był mały
+  (run polowy: baseline 43–92k tokenów przy dziedziczeniu wszystkiego vs 21k obciętego mergera,
+  re-czytany przy każdym z ~90 wywołań na agenta). Etapy mechaniczne — przygotowanie worktree,
+  merger, smoke — biegną na **niskim effort** rozumowania. Main thread zostaje z:
   prekondycjami, budową args, zapisem stanu na granicach runu (przez `record-impl.mjs`,
   z trailerów `Task:`) i każdym HIL. **„Jeden run" nazywa własność wznawialności, nie
   gwarancję czasu:** cykl jest logiczny — duża funkcjonalność (dziesiątki tasków, eskalacje
@@ -98,8 +103,9 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
     tasksCount, tasks: [{ id, worktree, branch, taskFile, deps, serializeAfter?, acIds, diagnosis?,
     decision? }], gate: { lintChanged: true }, ci: { typecheck, lint, test,
     build, packageManager } (komendy `tooling.*` verbatim, null = potwierdzony brak),
-    gateDebt?: { smoke, acs }, worktreeSetup, worktreeCleanup, codeReview: { skills },
-    repair: { maxIterations }, close: true }`. Per task: `deps` = intra-feature producenci
+    gateDebt?: { smoke, acs }, graphMcp (`true` ⇔ `mcp.detected` zawiera `codebase-memory-mcp` —
+    agenty taskowe pobierają wtedy kod przez graf), worktreeSetup, worktreeCleanup,
+    codeReview: { skills }, repair: { maxIterations }, close: true }`. Per task: `deps` = intra-feature producenci
     (z krawędzi sc-map), `acIds` = AC pokryte w całości, `decision` = odpowiedź człowieka przy
     relaunchu po eskalacji. `gateDebt` = czerwona resztka bramki eskalowanej fali poprzedniego
     runu (skopiowana z jej raportu fali) — silnik spłaca ją (świeży smoke + re-weryfikacja +
@@ -126,7 +132,14 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
   utrwal postęp (trailery → `record-impl.mjs`), potem działaj wg statusu.
 - **Dyrektywy agenta taskowego** (jedno źródło prawdy — skrypt osadza je verbatim, fallback
   reużywa): plik taska jest samowystarczalny (bez re-grepowania ścieżek już nazwanych w treści /
-  `codeDeps`); **batch edits**, potem typecheck + lint **raz** na końcu; **stub, nie odtwarzaj**
+  `codeDeps`) i jest **jedynym materiałem fd** — zakaz czytania `spec.md`, cudzych tasków
+  i stanu workspace'u (luka w tasku = diagnoza/eskalacja do zgłoszenia, nie licencja na
+  polowanie; run polowy: 3 agenty czytały cały spec, jeden — cztery cudze taski); **pobieranie
+  kodu** przy `graphMcp: true` przez graf (`search_graph`/`search_code`, `get_code_snippet`,
+  `trace_path`) zamiast Grep/Glob/shellowych `cat | grep` — Read zostaje dla edytowanych plików,
+  `codeDeps` i configów, a własne niezacommitowane zmiany worktree czyta się Readem/gitem, nie
+  grafem (graf indeksuje checkout repo-root); **batch edits**, potem typecheck + lint **raz** na
+  końcu; **stub, nie odtwarzaj**
   brakującego pliku zależności; commit atomowo z rationale; **reguła eskalacji** — spec milczy,
   a rozwiązań jest kilka ⇒ `status: "escalated"` z pytaniem/opcjami/kontekstem, zero breadcrumba;
   **finalny akt po zielonym self-gate = jeden pusty commit-breadcrumb** z trailerami
@@ -134,7 +147,8 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
 - **Dostępność i fallback:** dostępność dynamic workflows wykrywa `/config`, `/implement`
   weryfikuje na wejściu. Brak (lub `implement.engine: "subagents"`) → **main thread wykonuje TEN
   SAM pełny cykl sam**, przez subagenty Agent-toolowe: izolacja worktree, te same prompty i
-  bramki, szeregowe wywołania mergera, własny Bash dla CI, pętla napraw i kroki domknięcia —
+  bramki (taski także tu jako `fd:implementer`), szeregowe wywołania mergera, własny Bash dla CI,
+  pętla napraw i kroki domknięcia —
   eskalacje stają się bezpośrednimi AskUserQuestion. Degradacja raportowana, nie blokuje.
   Orkiestracja: **czekaj bezpośrednio** na zakończenie runu / subagentów — nigdy
   foreground-`sleep`, nigdy polling plików.

@@ -133,6 +133,7 @@ function parseArgs(rawArgs) {
 
   return {
     mode, featureDir, slug, repoRoot, featureBranch, baseBranch, tasks, gate, ci, gateDebt,
+    graphMcp: a.graphMcp === true,
     worktreeSetup: Array.isArray(worktreeSetup) ? worktreeSetup : [],
     worktreeCleanup: worktreeCleanup === 'keep-failed' ? 'keep-failed' : 'always',
     codeReview,
@@ -556,6 +557,7 @@ const STEP_RESULT_SCHEMA = {
 const TASK_CONTRACT = [
   'Task-agent contract — follow exactly:',
   '- The task file is self-contained. Do NOT re-grep or rediscover paths, symbols, or contracts already named in its body or codeDeps — read the task file once and trust it.',
+  '- The task file is your ONLY fd material: never read spec.md, other tasks\' files, or feature workspace state (feature.lock.json, state.json, analysis/) — a gap in the task file is a diagnosis or escalation to report, not a license to hunt.',
   '- Batch your edits: make all code changes first, then run typecheck and lint ONCE at the end — never after every edit.',
   '- Stub rule: if a dependency file you need does not exist yet, a peer task owns it — write a MINIMAL, contract-satisfying stub, never recreate or fully implement a peer\'s file. Do not touch files this task does not own.',
   '- Commit atomically, piece by piece, on your worktree branch, with the decision rationale in each commit message.',
@@ -568,8 +570,9 @@ const TASK_CONTRACT = [
 
 // Builds one task agent's prompt: where to work, its self-gate, the mode (repair carries
 // the diagnosis to fix), the HIL decision when one resolved an earlier escalation, and
-// the shared task-agent contract verbatim (with the breadcrumb).
-function taskPrompt(task, mode) {
+// the shared task-agent contract verbatim (with the breadcrumb). opts.graphMcp switches
+// code retrieval to the Codebase Memory graph (set when /fd:config detected the server).
+function taskPrompt(task, mode, opts = {}) {
   const acIds = task.acIds ?? [];
   const acLine = acIds.length
     ? acIds.join(', ')
@@ -603,6 +606,16 @@ function taskPrompt(task, mode) {
       '',
       'HIL decision — a human already resolved this task\'s open question; implement per this decision, do not re-litigate it:',
       task.decision,
+    );
+  }
+
+  if (opts.graphMcp) {
+    lines.push(
+      '',
+      'Code retrieval — the repository is indexed in Codebase Memory (MCP):',
+      '- Locate symbols and usages with mcp__codebase-memory-mcp__search_graph / search_code, fetch exact source with get_code_snippet, follow call chains with trace_path — INSTEAD of Grep/Glob or shell `cat | grep` hunts, and instead of reading a whole file to find one symbol.',
+      '- Read stays for: files you are about to edit, files the task file names (codeDeps), and configs.',
+      '- The graph indexes the repository-root checkout — your worktree\'s own uncommitted work is NOT in it; use Read or `git -C <worktree>` for files you just created or changed.',
     );
   }
 
@@ -867,6 +880,8 @@ async function run(rawArgs) {
   };
   // Skipping is loud, never silent: a repo with neither typecheck nor build has NO
   // between-waves integration signal, and the wave report must say so.
+  // Mechanical stages (worktree prep, merge sequence, smoke) run at low effort: they
+  // execute a known command sequence, and reasoning output is a top context/limit stream.
   const runSmoke = async (label, phaseName) => {
     if (smokeCommands.length === 0) {
       log(`${label}: smoke skipped — tooling has neither typecheck nor build configured`);
@@ -874,7 +889,7 @@ async function run(rawArgs) {
     }
     const raw = await spawn(
       smokePrompt(a.ci, { repoRoot: a.repoRoot }),
-      { label, phase: phaseName, schema: CI_RESULT_SCHEMA },
+      { label, phase: phaseName, schema: CI_RESULT_SCHEMA, effort: 'low' },
     );
     return reconcileCi(raw);
   };
@@ -891,7 +906,7 @@ async function run(rawArgs) {
     if (passing.length === 0) return [];
     const merged = await spawn(
       mergerPrompt(passing, { repoRoot: a.repoRoot, featureBranch: a.featureBranch, worktreeCleanup: a.worktreeCleanup }),
-      { label, phase: phaseName, agentType: 'fd:merger', schema: MERGE_RESULT_SCHEMA },
+      { label, phase: phaseName, agentType: 'fd:merger', schema: MERGE_RESULT_SCHEMA, effort: 'low' },
     );
     if (!merged) return null;
     for (const m of merged.results) {
@@ -963,7 +978,7 @@ async function run(rawArgs) {
     // Serial worktree preparation, cut from the feature branch AFTER the prior wave's merges.
     const prep = await spawn(
       prepareWavePrompt(waveTasks, { repoRoot: a.repoRoot, featureBranch: a.featureBranch, worktreeSetup: a.worktreeSetup }),
-      { label: `${label}:prepare`, phase: `Wave ${wave}`, schema: PREP_RESULT_SCHEMA },
+      { label: `${label}:prepare`, phase: `Wave ${wave}`, schema: PREP_RESULT_SCHEMA, effort: 'low' },
     );
     if (!prep || prep.status !== 'ready') {
       return escalate([{
@@ -979,8 +994,8 @@ async function run(rawArgs) {
     for (const batch of batches) {
       const batchResults = await parallel(
         batch.map((task) => () =>
-          spawn(taskPrompt(task, a.mode === 'repair' ? 'repair' : 'implement'),
-            { label: task.id, phase: `Wave ${wave}`, schema: TASK_RESULT_SCHEMA })),
+          spawn(taskPrompt(task, a.mode === 'repair' ? 'repair' : 'implement', { graphMcp: a.graphMcp }),
+            { label: task.id, phase: `Wave ${wave}`, agentType: 'fd:implementer', schema: TASK_RESULT_SCHEMA })),
       );
       batchResults.forEach((r, i) => {
         const task = batch[i];
@@ -1085,8 +1100,8 @@ async function run(rawArgs) {
           .filter((t) => t.id);
         repairResults = (await parallel(
           repairTasks.map((task) => () =>
-            spawn(taskPrompt(task, 'repair'),
-              { label: `${task.id}:repair-${iterations}`, phase: `Wave ${wave}`, schema: TASK_RESULT_SCHEMA })),
+            spawn(taskPrompt(task, 'repair', { graphMcp: a.graphMcp }),
+              { label: `${task.id}:repair-${iterations}`, phase: `Wave ${wave}`, agentType: 'fd:implementer', schema: TASK_RESULT_SCHEMA })),
         )).map((r, i) => r ?? {
           id: repairTasks[i].id, status: 'failed', changedFiles: [], headSha: '',
           gate: { ac: 'fail', lint: 'fail' }, diagnosis: 'repair agent returned no result (killed, API error, or account rate limit)',

@@ -210,3 +210,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `record-impl.mjs branch --set` verb records branch adoption/creation (no more hand
   edits of `state.json`). Docs now state plainly that "one run = full cycle" names the
   resumability property, not a wall-clock guarantee.
+- Task agents now run as the new **`implementer` subagent** (`agents/implementer.md`):
+  a restricted toolset — native file/shell tools plus the supported MCP servers
+  (`context7`, `firecrawl`, `codebase-memory-mcp`) — instead of inheriting every session
+  tool. The run analysis measured the inherited-everything startup baseline at 43–92k
+  tokens per agent, re-read on each of ~90 API calls (42–63% of all engine cache
+  traffic), while the already-restricted merger sat at a flat 21k — the fixed context is
+  the engine's single biggest cost lever.
+- Task prompts switch code retrieval to the Codebase Memory graph when `/fd:config`
+  detected the server (`args.graphMcp` ⇔ `codebase-memory-mcp` in `mcp.detected`):
+  `search_graph`/`search_code`, `get_code_snippet`, `trace_path` instead of Grep/Glob or
+  shell `cat | grep` sweeps (the field run accumulated 480k chars of shell exploration),
+  with Read kept for edited files, `codeDeps`, configs, and the worktree's own
+  uncommitted work. The self-containment ban is now explicit in the task contract:
+  never `spec.md`, other tasks' files, or workspace state — a gap is a
+  diagnosis/escalation, not a license to hunt.
+- Mechanical engine stages — worktree prep, the merger, the smoke — run at **low
+  reasoning effort** (reasoning output, invisible in transcripts but billed and carried
+  in context, averaged ~35k tokens per task agent in the field run).

@@ -791,7 +791,7 @@ jako `--fixup <commit-taska>`, zero konfliktów w całym runie. Diagramy przebie
 
 ### K9. ℹ️ Wszystkie agenty silnika biegną na modelu/effort sesji
 
-- [ ] ~93% konsumpcji limitu w runie to agenty silnika (519M cache read, śr. ~65 wywołań
+- [x] ~93% konsumpcji limitu w runie to agenty silnika (519M cache read, śr. ~65 wywołań
   API na agenta), a etapy mechaniczne — merger (skryptowa sekwencja squash-merge'ów),
   smoke (odpal 2 komendy, zraportuj exit code), prepare-wave — biegną na pełnym modelu
   i effort sesji tak samo jak task-agenty. Docs workflows: „Every agent in a workflow
@@ -801,10 +801,14 @@ jako `--fixup <commit-taska>`, zero konfliktów w całym runie. Diagramy przebie
   (ew. tańszy model) — merger, smoke, prepare-wave; task-agenty, repair, AC-verify i CR
   zostają na modelu sesji. Wymaga testu polowego, czy jakość mergera (konflikt-checki,
   trailery) nie siada na niższym tierze — dopiero potem ewentualny cichy default.
+- **Fix (2026-07-08):** `wave-implement.mjs` — `effort: 'low'` na spawnach prepare-wave,
+  mergera i smoke'a (krok diff miał je już wcześniej); task-agenty, repair, AC-verify,
+  CR i close-CI bez zmian (model/effort sesji). Bez knoba w configu — cichy default do
+  zweryfikowania testem polowym (jakość mergera). Test source-level pilnuje routingu.
 
 ### K10. ⚠️ Baseline task-agentów dominuje limit; eksploracja shellem zamiast grafu
 
-- [ ] Anatomia kontekstu 31 task-agentów (runy 2+4): prompt delegacyjny to ~2k znaków,
+- [x] Anatomia kontekstu 31 task-agentów (runy 2+4): prompt delegacyjny to ~2k znaków,
   ale baseline startowy (system prompt + odziedziczone schematy WSZYSTKICH
   tooli/MCP sesji + CLAUDE.md targetu) = 43k tok w runie 2 → 92k w runie 4; przy
   medianie 93 wywołań API na agenta baseline × wywołania = 42–63% całego cache read
@@ -829,6 +833,18 @@ jako `--fixup <commit-taska>`, zero konfliktów w całym runie. Diagramy przebie
   (lepszą metodą pobierania jest graf); (c) zakaz czytania spec.md i cudzych task files
   zostaje i wymaga utwardzenia w prompcie task-agenta (dziś umowa, nie bramka).
   Routing effort/model etapów mechanicznych: patrz K9.
+- **Fix (2026-07-08):** (a) nowy subagent `agents/implementer.md` — `tools:` ograniczone
+  do Bash/Read/Write/Edit/Grep/Glob + wzorce server-level `mcp__codebase-memory-mcp`,
+  `mcp__context7`, `mcp__firecrawl` (pole `mcpServers` w agentach pluginów jest
+  ignorowane; allowlist `tools` wystarcza dla serwerów już skonfigurowanych w sesji);
+  silnik spawni taski i worktree-repairy z `agentType: 'fd:implementer'`, fallback
+  subagentowy tak samo. (b) nowy arg silnika `graphMcp` (main thread ustawia z
+  `mcp.detected`), blok „Code retrieval" w `taskPrompt` + protokół grafu w definicji
+  agenta (z zastrzeżeniem: graf indeksuje checkout repo-root, własne zmiany worktree
+  przez Read/git). (c) zakaz spec.md / cudzych tasków / stanu workspace'u dopisany do
+  TASK_CONTRACT (osadzany verbatim w każdym prompcie). Testy: parseArgs.graphMcp, oba
+  warianty taskPrompt, routing agentType/effort source-level; mirrory implement.md /
+  COMMAND_IMPLEMENT.md / README / CHANGELOG.
 
 ---
 
