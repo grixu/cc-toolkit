@@ -201,13 +201,27 @@ boundaries (via `record-impl.mjs`, from `Task:` trailers), and every HIL.
     from that run's wave report — see Escalations); the engine settles it (fresh smoke +
     re-verification + repair loop) **before** wave 0, so new worktrees are never cut from a
     known-red branch.
-  - **returns (discriminated on `status`):**
-    - `{ status: "completed", waves, tasks, close: { fullCi, cr, finalCi } }` — the cycle finished.
-    - `{ status: "continue", reason, waves, tasks, remaining }` — internal agent budget spent;
-      **persist and relaunch immediately with the remaining tasks — no HIL.**
-    - `{ status: "escalated", escalations: [{ kind, taskId?, wave?, question, options, context }],
-      waves, tasks, remaining }` — a human decision is required (see Escalations below). An
-      escalated wave's report entry carries `gateDebt` when its gate ended red.
+  - **returns (discriminated on `status`) — a SLIM summary plus a `report` pointer.** The full
+    run detail (per-task diagnoses and changed files, per-AC verdicts with evidence, CR findings)
+    is written by the engine to `<featureDir>/impl-run-report.json` (overwritten per launch); the
+    return keeps only what this conversation acts on (a field run measured its two biggest context
+    jumps, +54k and +51k tokens, as exactly these return reads):
+    - `{ status: "completed", report, waves, tasks, close: { fullCi, cr, finalCi } }` — the cycle
+      finished. `tasks` entries are `{ id, status, headSha }`; wave entries carry gate **statuses**
+      without per-AC detail; `close.cr` carries the verdict, `findingsCount`, and `reportFile` —
+      not the findings.
+    - `{ status: "continue", report, reason, waves, tasks, remaining }` — internal agent budget
+      spent; **persist and relaunch immediately with the remaining tasks — no HIL.**
+    - `{ status: "escalated", report, escalations: [{ kind, taskId?, wave?, question, options,
+      context }], waves, tasks, remaining }` — a human decision is required (see Escalations
+      below). Escalations arrive **complete in the return** — run the HIL from them, no file read.
+      An escalated wave's entry carries `gateDebt` when its gate ended red — also in the return,
+      copied verbatim into the relaunch args.
+    Read the report file **selectively** (`jq` or `node -e` on specific keys — e.g. failed tasks'
+    `diagnosis`, an unverified AC's evidence), never wholesale, and on a clean `completed` not at
+    all — pulling it whole re-creates the very context spike the pointer exists to prevent.
+    `report: null` means the report writer died; the same payload then arrives fat in the return
+    as a fallback — nothing is lost, only slimness.
 - **Fallback** (no Workflow tool, or `implement.engine == "subagents"`) → this main thread runs the
   **same full cycle itself** via parallel **Agent-tool** subagents: per-task worktree isolation, the
   same task-agent prompts and gates (dispatch task subagents as `fd:implementer` here too), serial

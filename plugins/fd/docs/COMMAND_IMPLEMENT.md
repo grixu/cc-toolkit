@@ -111,11 +111,21 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
     runu (skopiowana z jej raportu fali) — silnik spłaca ją (świeży smoke + re-weryfikacja +
     pętla napraw) **przed falą 0**, żeby nowe worktree nie były cięte ze znanego-czerwonego
     brancha.
-  - **zwrot (dyskryminowany po `status`):** `completed` (+ `waves`, `tasks`,
-    `close: { fullCi, cr, finalCi }`) | `continue` (+ `reason`, `remaining` — budżet agentów
-    wyczerpany; **zapis i natychmiastowy relaunch z resztą, zero HIL**) | `escalated`
-    (+ `escalations: [{ kind, taskId?, wave?, question, options, context }]`, `remaining`;
-    wpis raportu eskalowanej fali niesie `gateDebt`, gdy jej bramka skończyła na czerwono).
+  - **zwrot (dyskryminowany po `status`) — SZCZUPŁE podsumowanie + wskaźnik `report`.** Pełny
+    detal runu (per-task diagnozy i changedFiles, per-AC werdykty z dowodami, findings CR)
+    silnik pisze do `<featureDir>/impl-run-report.json` (nadpisywany per launch); zwrot niesie
+    tylko to, na czym main thread działa (run polowy: dwa największe skoki kontekstu sesji —
+    +54k i +51k tokenów — to były właśnie odczyty zwrotów): `completed` (+ `report`, `waves`,
+    `tasks` = `{ id, status, headSha }`, `close: { fullCi, cr, finalCi }` — `cr` z werdyktem,
+    `findingsCount` i `reportFile`, bez findings) | `continue` (+ `report`, `reason`,
+    `remaining` — budżet agentów wyczerpany; **zapis i natychmiastowy relaunch z resztą, zero
+    HIL**) | `escalated` (+ `report`, `escalations: [{ kind, taskId?, wave?, question, options,
+    context }]` — eskalacje przychodzą w zwrocie **w całości**, HIL biegnie z nich bez odczytu
+    pliku; wpis eskalowanej fali niesie `gateDebt` — też w zwrocie, kopiowany verbatim do args
+    relaunchu). Plik raportu czyta się **wybiórczo** (`jq`/`node -e` po konkretnych kluczach,
+    np. `diagnosis` failniętych tasków), nigdy w całości, a przy czystym `completed` wcale.
+    `report: null` = writer raportu padł; ten sam payload przychodzi wtedy tłusty w zwrocie
+    (fallback — ginie szczupłość, nie detal).
 - **Eskalacje (jedyne przerwania w środku cyklu):** `architectural` (agent taskowy trafił na
   lukę specu z >1 sensownym rozwiązaniem — zatrzymał się zamiast zgadywać → AskUserQuestion,
   relaunch z odpowiedzią jako `decision` taska; bramka eskalowanej fali pobiegła, naprawa NIE —

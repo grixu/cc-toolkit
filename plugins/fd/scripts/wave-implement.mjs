@@ -17,6 +17,13 @@
 // the `Task: <id>` trailers on the feature branch are the in-run ledger, and the main
 // thread persists them via record-impl.mjs at every return.
 //
+// The return itself is a SLIM summary: the full run detail (per-task diagnoses and
+// changed files, per-AC verdicts with evidence, CR findings) goes to
+// <featureDir>/impl-run-report.json — written by a low-effort agent, because this
+// script has no filesystem access — and the return carries the pointer as `report`.
+// Escalations stay complete in the return (HIL acts on them without a file read);
+// if the report writer dies, the fat payload returns as-is with `report: null`.
+//
 // The runtime provides `args` and the `agent`/`parallel`/`phase`/`log` globals, wraps
 // the body in an async context, and takes the body's top-level `return` as the workflow
 // result — hence the final `return await run(args)` line. That line is illegal under
@@ -28,7 +35,7 @@
 export const meta = {
   name: 'wave-implement',
   description:
-    'Full /fd:implement cycle in one run: waves from task deps (worktree isolation, per-task self-gate, breadcrumb), serial squash-merge per wave, per-wave smoke (typecheck+build) plus AC verification with a bounded repair loop, then feature close (first full CI, code review, mechanical fixes, autosquash, final CI). Returns completed | continue | escalated; the main thread persists state from Task: trailers at every return.',
+    'Full /fd:implement cycle in one run: waves from task deps (worktree isolation, per-task self-gate, breadcrumb), serial squash-merge per wave, per-wave smoke (typecheck+build) plus AC verification with a bounded repair loop, then feature close (first full CI, code review, mechanical fixes, autosquash, final CI). Returns completed | continue | escalated as a slim summary plus a pointer to the full run report at <featureDir>/impl-run-report.json; the main thread persists state from Task: trailers at every return.',
 };
 
 // Defensive: the Workflow tool should pass `args` as a real object, but a live-authored
@@ -818,6 +825,66 @@ function autosquashPrompt({ repoRoot, baseBranch, featureBranch }) {
   ].join('\n');
 }
 
+// The return lands verbatim in the main conversation's context: a field run measured its
+// two biggest context jumps of a 12h session (+54k and +51k tokens) as exactly these
+// payloads. Keep only what the main thread acts on — statuses, ids, SHAs, escalations
+// verbatim (HIL reads them straight from the return), and gateDebt (copied into relaunch
+// args). Everything else lives in the report file the `report` field points at.
+function slimReturn(full, reportPath) {
+  const slim = {
+    status: full.status,
+    report: reportPath,
+    remaining: full.remaining ?? [],
+    tasks: (full.tasks ?? []).map((t) => ({ id: t.id, status: t.status, headSha: t.headSha })),
+    waves: (full.waves ?? []).map((w) => {
+      const wave = {
+        wave: w.wave,
+        tasks: w.tasks,
+        merged: w.merged,
+        smoke: { status: w.smoke?.status },
+        acVerification: { status: w.acVerification?.status },
+        repairIterations: w.repairIterations,
+        closedAcs: w.closedAcs,
+      };
+      if (w.gateDebt) wave.gateDebt = w.gateDebt;
+      return wave;
+    }),
+  };
+  if (full.reason !== undefined) slim.reason = full.reason;
+  if (full.escalations !== undefined) slim.escalations = full.escalations;
+  if (full.close !== undefined) {
+    slim.close = full.close?.cr
+      ? {
+          ...full.close,
+          // CR findings already live in cr.reportFile AND the run report — the return
+          // keeps the verdict and the count, enough to say "clean" without a file read.
+          cr: {
+            status: full.close.cr.status,
+            skillsRun: full.close.cr.skillsRun,
+            findingsCount: (full.close.cr.findings ?? []).length,
+            reportFile: full.close.cr.reportFile ?? null,
+          },
+        }
+      : full.close;
+  }
+  return slim;
+}
+
+function reportWritePrompt(reportPath, payloadJson) {
+  return [
+    'Persist the engine run report.',
+    '',
+    `Write the JSON between the BEGIN/END markers below to ${reportPath} VERBATIM — markers excluded, overwriting any previous file.`,
+    'Use the Write tool ONLY — never a Bash heredoc or echo (the payload carries free text that can trip repo hooks). Do not reformat, summarize, or fix anything in it.',
+    '',
+    'BEGIN REPORT JSON',
+    payloadJson,
+    'END REPORT JSON',
+    '',
+    'Return JSON: status ("ok"|"failed"), path (the file you wrote), detail on failure.',
+  ].join('\n');
+}
+
 // ---------------------------------------------------------------------------------
 // Run path (harness only). Everything below references the agent/parallel/phase/log
 // globals, so importing this module under plain node (for the tests) has no side effects.
@@ -865,7 +932,19 @@ async function run(rawArgs) {
 
   const remaining = () => a.tasks.map((t) => t.id).filter((id) => !mergedIds.includes(id));
   const payload = (extra) => ({ waves: waveReports, tasks: results, remaining: remaining(), ...extra });
-  const escalate = (list) => payload({ status: 'escalated', escalations: [...escalations, ...list] });
+  // Every exit goes through finish(): an agent persists the full report (this script
+  // cannot touch the filesystem), the caller gets the slim summary + pointer. A dead
+  // writer degrades to the fat payload — losing slimness beats losing the fail detail.
+  const reportPath = `${a.featureDir}/impl-run-report.json`;
+  const finish = async (full) => {
+    const step = await spawn(
+      reportWritePrompt(reportPath, JSON.stringify(full, null, 2)),
+      { label: 'report:write', phase: 'Report', schema: STEP_RESULT_SCHEMA, effort: 'low' },
+    );
+    if (!step || step.status !== 'ok') return { ...full, report: null };
+    return slimReturn(full, reportPath);
+  };
+  const escalate = (list) => finish(payload({ status: 'escalated', escalations: [...escalations, ...list] }));
 
   const owners = acOwners(a.tasks);
   const taskIds = a.tasks.map((t) => t.id);
@@ -972,7 +1051,7 @@ async function run(rawArgs) {
 
     if (agentCalls >= a.budget.maxAgents) {
       log(`agent budget spent (${agentCalls}/${a.budget.maxAgents}) — checkpointing before wave ${wave}`);
-      return payload({ status: 'continue', reason: 'agent-budget' });
+      return finish(payload({ status: 'continue', reason: 'agent-budget' }));
     }
 
     // Serial worktree preparation, cut from the feature branch AFTER the prior wave's merges.
@@ -1181,7 +1260,7 @@ async function run(rawArgs) {
   }
 
   if (!a.close) {
-    return payload({ status: 'completed', close: null });
+    return finish(payload({ status: 'completed', close: null }));
   }
 
   // ------------------------------ Feature close ------------------------------
@@ -1281,7 +1360,7 @@ async function run(rawArgs) {
   }
   close.finalCi = { status: finalCi.status };
 
-  return payload({ status: 'completed', close });
+  return finish(payload({ status: 'completed', close }));
 }
 
 // Workflow-runtime entry — MUST stay the last line; plain `node` cannot parse a

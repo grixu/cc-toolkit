@@ -778,7 +778,7 @@ jako `--fixup <commit-taska>`, zero konfliktów w całym runie. Diagramy przebie
 
 ### K8. ℹ️ Return silnika wciągany w całości do main threadu
 
-- [ ] Dwa największe skoki kontekstu sesji to odczyt returnów Workflow: +54k (160→214k)
+- [x] Dwa największe skoki kontekstu sesji to odczyt returnów Workflow: +54k (160→214k)
   i +51k (306→357k) — ponad 40% całego przyrostu main threadu w ~12h. Analiza
   workflow-vs-subagenty na tym runie: orkiestracja przez Workflow to ledwie ~7%
   konsumpcji limitu (147 wywołań API main threadu vs 4141 agentów silnika; 24,9M vs
@@ -788,6 +788,17 @@ jako `--fixup <commit-taska>`, zero konfliktów w całym runie. Diagramy przebie
   diagnozy repair), a return niesie wskaźnik + minimalne podsumowanie (status, fale,
   taski id→status→commit, eskalacje z pytaniami); main thread czyta z pliku wybiórczo —
   tylko kontekst eskalacji i sekcje fail, nigdy całość przy `completed`.
+- **Fix (2026-07-08):** `wave-implement.mjs` — każde wyjście z `run()` przechodzi przez
+  `finish()`: agent `report:write` (effort low, Write tool — nigdy heredoc) utrwala pełny
+  payload do `<featureDir>/impl-run-report.json` (skrypt Workflow nie ma dostępu do fs),
+  a zwrot to `slimReturn()`: taski `{id, status, headSha}`, fale ze statusami bramek bez
+  per-AC detali, `close.cr` = werdykt + `findingsCount` + `reportFile`; eskalacje i
+  `gateDebt` zostają w zwrocie w całości (HIL/relaunch bez odczytu pliku). Padnięty
+  writer ⇒ fallback: stary tłusty return z `report: null`. Wczesny `invalid-args`
+  (przed parseArgs) celowo bez raportu. Main thread czyta raport wybiórczo
+  (`jq`/`node -e`), przy czystym `completed` wcale. Testy: slimReturn ×2,
+  reportWritePrompt, source-level (0× `return payload(`, 3× `finish(payload(`,
+  eskalacje przez finish, fallback obecny); mirrory implement.md/COMMAND_IMPLEMENT/README.
 
 ### K9. ℹ️ Wszystkie agenty silnika biegną na modelu/effort sesji
 

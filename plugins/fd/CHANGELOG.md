@@ -228,3 +228,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mechanical engine stages — worktree prep, the merger, the smoke — run at **low
   reasoning effort** (reasoning output, invisible in transcripts but billed and carried
   in context, averaged ~35k tokens per task agent in the field run).
+- The engine return slimmed to a summary plus a `report` pointer: the full run detail
+  (per-task diagnoses and changed files, per-AC verdicts with evidence, CR findings) is
+  written to `<featureDir>/impl-run-report.json` by a low-effort agent at every exit
+  (the script itself has no filesystem access), while escalations and `gateDebt` stay
+  complete in the return for immediate HIL/relaunch. The field run's two biggest
+  main-thread context jumps (+54k and +51k tokens — over 40% of a 12h session's growth)
+  were exactly these return reads; the main thread now reads the report selectively
+  (`jq`/`node -e`), never wholesale, and not at all on a clean `completed`. A dead
+  report writer degrades to the old fat return (`report: null`) — detail over slimness.

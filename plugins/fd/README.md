@@ -189,7 +189,10 @@ back to `/fd:to-tasks` (the single owner of task-file writes).
 topological layers of the task dependencies (there is no materialized plan) and
 carries each wave through implementation, merge, the wave gate (smoke ∥ AC
 verification), and repair — then closes the feature (full CI → code review → fixes →
-autosquash → final CI) in the same run.
+autosquash → final CI) in the same run. The run's full report (per-task diagnoses,
+per-AC verdicts, review findings) lands in the feature workspace as
+`impl-run-report.json`; the return itself is a slim summary plus that pointer, so
+run boundaries no longer spike the main conversation's context.
 Each task runs in its own git worktree; tasks with overlapping file footprints
 serialize, disjoint ones run in parallel. Task agents run as the dedicated
 `implementer` subagent — a restricted toolset (native tools plus the supported

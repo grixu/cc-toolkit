@@ -17,6 +17,7 @@ const importable = source.slice(0, cut)
   + '\nexport { parseArgs, scheduleFromSerializeAfter, scheduleWaves, taskPrompt, ciPrompt,'
   + ' smokePrompt, acVerifyPrompt, featureRepairPrompt, unionChangedFiles, acOwners,'
   + ' acsClosedByWave, reconcileCi, reconcileAc, repairPlanFrom, classifyFindings,'
+  + ' slimReturn, reportWritePrompt,'
   + ' TASK_RESULT_SCHEMA, CI_RESULT_SCHEMA, AC_RESULT_SCHEMA, MERGE_RESULT_SCHEMA, CR_RESULT_SCHEMA };\n';
 const {
   parseArgs,
@@ -34,6 +35,8 @@ const {
   reconcileAc,
   repairPlanFrom,
   classifyFindings,
+  slimReturn,
+  reportWritePrompt,
   TASK_RESULT_SCHEMA,
   CI_RESULT_SCHEMA,
   AC_RESULT_SCHEMA,
@@ -535,4 +538,84 @@ test('the script carries no exports beyond meta (Workflow runtime constraint)', 
   const exportLines = source.split('\n').filter((l) => /^export /.test(l));
   assert.deepEqual(exportLines, ['export const meta = {']);
   assert.ok(!/^import /m.test(source));
+});
+
+test('slimReturn: strips per-task/per-AC/CR detail, keeps escalations and gateDebt verbatim, points at the report', () => {
+  const escalations = [{ kind: 'architectural', taskId: 'T-002', wave: 0, question: 'q?', options: [{ label: 'a', detail: 'd' }], context: 'ctx' }];
+  const full = {
+    status: 'escalated',
+    reason: undefined,
+    escalations,
+    remaining: ['T-002'],
+    tasks: [
+      { id: 'T-001', status: 'passed', changedFiles: ['src/a.ts', 'src/b.ts'], headSha: 'abc123', gate: { ac: 'pass', lint: 'pass' } },
+      { id: 'T-002', status: 'failed', changedFiles: [], headSha: '', gate: { ac: 'fail', lint: 'fail' }, diagnosis: 'long repair-facing diagnosis' },
+    ],
+    waves: [{
+      wave: 0,
+      tasks: ['T-001', 'T-002'],
+      merged: ['T-001'],
+      smoke: { status: 'fail' },
+      acVerification: { status: 'fail', acs: [{ id: 'AC-1', verdict: 'unverified', detail: 'evidence prose' }] },
+      repairIterations: 0,
+      closedAcs: ['AC-1'],
+      gateDebt: { smoke: true, acs: ['AC-1'] },
+    }],
+  };
+  const slim = slimReturn(full, '/repo/docs/features/x/impl-run-report.json');
+
+  assert.equal(slim.status, 'escalated');
+  assert.equal(slim.report, '/repo/docs/features/x/impl-run-report.json');
+  assert.deepEqual(slim.escalations, escalations);
+  assert.deepEqual(slim.remaining, ['T-002']);
+  assert.deepEqual(slim.tasks, [
+    { id: 'T-001', status: 'passed', headSha: 'abc123' },
+    { id: 'T-002', status: 'failed', headSha: '' },
+  ]);
+  assert.deepEqual(slim.waves[0].gateDebt, { smoke: true, acs: ['AC-1'] });
+  assert.deepEqual(slim.waves[0].acVerification, { status: 'fail' });
+  assert.equal(slim.waves[0].smoke.status, 'fail');
+  assert.ok(!('reason' in slim) || slim.reason === undefined);
+  assert.ok(!('close' in slim));
+  assert.ok(!JSON.stringify(slim).includes('diagnosis'));
+  assert.ok(!JSON.stringify(slim).includes('changedFiles'));
+});
+
+test('slimReturn: close keeps CI verdicts, reduces CR to verdict + count + reportFile; gateDebt-free waves stay debt-free', () => {
+  const full = {
+    status: 'completed',
+    remaining: [],
+    tasks: [],
+    waves: [{ wave: 0, tasks: ['T-001'], merged: ['T-001'], smoke: { status: 'pass' }, acVerification: { status: 'pass', acs: [] }, repairIterations: 1, closedAcs: [] }],
+    close: {
+      fullCi: { status: 'pass', repairIterations: 2 },
+      cr: { status: 'findings', skillsRun: ['code-review'], findings: [{ kind: 'mechanical', location: 'x', detail: 'y' }], reportFile: '/f/cr-report.md' },
+      finalCi: { status: 'pass' },
+    },
+  };
+  const slim = slimReturn(full, '/f/impl-run-report.json');
+  assert.deepEqual(slim.close.fullCi, { status: 'pass', repairIterations: 2 });
+  assert.deepEqual(slim.close.finalCi, { status: 'pass' });
+  assert.deepEqual(slim.close.cr, { status: 'findings', skillsRun: ['code-review'], findingsCount: 1, reportFile: '/f/cr-report.md' });
+  assert.ok(!('gateDebt' in slim.waves[0]));
+
+  const noClose = slimReturn({ status: 'completed', remaining: [], tasks: [], waves: [], close: null }, '/f/r.json');
+  assert.equal(noClose.close, null);
+});
+
+test('reportWritePrompt: Write-tool-only, verbatim, at the given path', () => {
+  const p = reportWritePrompt('/f/impl-run-report.json', '{"status":"completed"}');
+  assert.match(p, /Write the JSON between the BEGIN\/END markers below to \/f\/impl-run-report\.json VERBATIM/);
+  assert.match(p, /Use the Write tool ONLY — never a Bash heredoc or echo/);
+  assert.match(p, /overwriting any previous file/);
+  assert.ok(p.includes('{"status":"completed"}'));
+  assert.match(p, /status \("ok"\|"failed"\), path/);
+});
+
+test('run path: every exit persists the report via finish() and falls back fat when the writer dies', () => {
+  assert.equal((source.match(/return payload\(/g) ?? []).length, 0, 'no exit may bypass finish()');
+  assert.equal((source.match(/return finish\(payload\(/g) ?? []).length, 3, 'continue + both completed exits go through finish()');
+  assert.match(source, /const escalate = \(list\) => finish\(payload\(/);
+  assert.match(source, /label: 'report:write'[^}]*effort: 'low'/);
+  assert.match(source, /if \(!step \|\| step\.status !== 'ok'\) return \{ \.\.\.full, report: null \};/);
 });
