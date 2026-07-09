@@ -105,6 +105,9 @@ downstream adaptations to land in the same PR.
 
 7. **Produce PR branches** as pointers into the linear history. Optionally open PRs; optionally run
    per-PR CI when `prs.verifyPerPrCi` (an **optional block** gate — a failing PR's CI stops the run).
+   When `state.json.close.waivedAcs` is non-empty, every waived AC appears in its **owning task's
+   PR description** (id + reason + who/when from the waiver entry; owners via ac-map) — a reviewer
+   must see what was consciously not verified, or the waiver silently becomes a pass.
 
 8. **Checkpoint.**
 

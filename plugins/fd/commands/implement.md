@@ -188,10 +188,11 @@ boundaries (via `record-impl.mjs`, from `Task:` trailers), and every HIL.
   never an inline edit of the payload. Include `tasksCount` (= `tasks.length`) — the engine
   cross-checks it as a truncation tripwire. It may reach the script as a JSON string, which the
   script parses defensively:
-  - **args:** `{ mode: "full"|"repair", featureDir, slug, repoRoot, featureBranch, baseBranch,
+  - **args:** `{ mode: "full"|"repair"|"close-only", featureDir, slug, repoRoot, featureBranch, baseBranch,
     tasksCount, tasks: [{ id, worktree, branch, taskFile, deps, serializeAfter?, acIds, diagnosis?, decision? }],
     gate: { lintChanged: true }, ci: { typecheck, lint, test, build, packageManager } (the
     `tooling.*` commands verbatim, `null` = confirmed absence), gateDebt?: { smoke, acs },
+    waivedAcs?: [{ id, reason }],
     graphMcp (`true` iff `mcp.detected` includes `codebase-memory-mcp` — task agents then retrieve
     code through the graph), worktreeSetup, worktreeCleanup, codeReview: { skills },
     repair: { maxIterations }, close: true }`.
@@ -201,6 +202,13 @@ boundaries (via `record-impl.mjs`, from `Task:` trailers), and every HIL.
     from that run's wave report — see Escalations); the engine settles it (fresh smoke +
     re-verification + repair loop) **before** wave 0, so new worktrees are never cut from a
     known-red branch.
+    **`mode: "close-only"`** = every task is already merged (last-wave escalation resolved, or a
+    manual repair finished): `tasks` still carries the **full list** — fixup attribution and the
+    autosquash need the ids — and the engine skips the waves, going straight to gate-debt
+    settlement and the close. **`waivedAcs`** = HIL-approved AC waivers, only ever from an
+    `AskUserQuestion` decision and recorded FIRST via `record-impl close --waive`; the engine
+    subtracts them from `gateDebt` and from every verification scope, and echoes them in the
+    report as `waived`, never `pass`.
   - **returns (discriminated on `status`) — a SLIM summary plus a `report` pointer.** The full
     run detail (per-task diagnoses and changed files, per-AC verdicts with evidence, CR findings)
     is written by the engine to `<featureDir>/impl-run-report.json` (overwritten per launch); the
@@ -208,30 +216,43 @@ boundaries (via `record-impl.mjs`, from `Task:` trailers), and every HIL.
     jumps, +54k and +51k tokens, as exactly these return reads):
     - `{ status: "completed", report, waves, tasks, close: { fullCi, cr, finalCi } }` — the cycle
       finished. `tasks` entries are `{ id, status, headSha }`; wave entries carry gate **statuses**
-      without per-AC detail; `close.cr` carries the verdict, `findingsCount`, and `reportFile` —
-      not the findings.
+      without per-AC detail; `close.cr` carries the verdict, `findingsCount`, `mechanicalApplied`,
+      and `reportFile` — not the findings.
     - `{ status: "continue", report, reason, waves, tasks, remaining }` — internal agent budget
       spent; **persist and relaunch immediately with the remaining tasks — no HIL.**
     - `{ status: "escalated", report, escalations: [{ kind, taskId?, wave?, question, options,
       context }], waves, tasks, remaining }` — a human decision is required (see Escalations
-      below). Escalations arrive **complete in the return** — run the HIL from them, no file read.
-      An escalated wave's entry carries `gateDebt` when its gate ended red — also in the return,
-      copied verbatim into the relaunch args.
-    Read the report file **selectively** (`jq` or `node -e` on specific keys — e.g. failed tasks'
-    `diagnosis`, an unverified AC's evidence), never wholesale, and on a clean `completed` not at
-    all — pulling it whole re-creates the very context spike the pointer exists to prevent.
+      below). Escalations arrive **complete in the return** — run the HIL from them; **on
+      `escalated` do not read the report at all** (a field run pulled all 33k chars of it on an
+      escalation that needed none of it). An escalated wave's entry carries `gateDebt` when its
+      gate ended red — also in the return, copied verbatim into the relaunch args.
+    Read the report file only for **fail diagnosis**, and **selectively** (`jq` or `node -e` on
+    specific keys — e.g. a failed task's `diagnosis`, an unverified AC's evidence), never
+    wholesale (no bare `Read` of it, ever), and on a clean `completed` not at all — pulling it
+    whole re-creates the very context spike the pointer exists to prevent.
     `report: null` means the report writer died; the same payload then arrives fat in the return
     as a fallback — nothing is lost, only slimness.
 - **Fallback** (no Workflow tool, or `implement.engine == "subagents"`) → this main thread runs the
   **same full cycle itself** via parallel **Agent-tool** subagents: per-task worktree isolation, the
   same task-agent prompts and gates (dispatch task subagents as `fd:implementer` here too), serial
-  merger calls, its own Bash for CI, the repair loop, and the close steps — escalations become
-  direct `AskUserQuestion`s. Report the degradation; do not block on it.
+  merger calls, its own Bash for CI, and the repair loop — escalations become direct
+  `AskUserQuestion`s. The close's heavy legs are NEVER run inline here either: the review goes to
+  the **`fd:reviewer`** subagent (it fans out per skill internally) and post-HIL fixes to
+  **`fd:fixer`** — this thread keeps only the background-Bash CI runs, the HIL, and the state
+  writes, and reads neither the diff nor the findings wholesale (a field run's inline close grew
+  this conversation by ~270k tokens — the exact cost these two subagents exist to absorb).
+  Report the degradation; do not block on it.
 - **Orchestration rule.** Await the run's (or the subagents') completion **directly**. Never
   foreground-`sleep`, never poll the filesystem — the harness returns the structured results when the
   agents finish.
 
 ### Escalations & HIL (the only mid-cycle interrupts)
+
+**Every escalation goes through `AskUserQuestion` before anything is accepted, waived, or worked
+around.** Verifying the evidence yourself first is encouraged — but the verification result
+becomes the **recommendation inside the question**, never a substitute for the human's call (a
+field run self-accepted a `repair-exhausted` escalation on its own evidence; the protocol is the
+gate, not your confidence). The return's `options` are the canonical choices — present them.
 
 The run early-returns `status: "escalated"` **only** for:
 
@@ -243,11 +264,21 @@ The run early-returns `status: "escalated"` **only** for:
   carries `gateDebt` — **copy it into the relaunch's `args.gateDebt`** so the next run settles
   it before cutting new worktrees; fold `--gate` only for waves whose gate ended green.
 - **`repair-exhausted`** — a wave (or the close, or an inherited gate debt) is still red after K
-  repair iterations. → Present the diagnosis; the user decides (fix by hand and relaunch / drop
-  scope / stop).
+  repair iterations. → `AskUserQuestion` with the diagnosis and the return's canonical options:
+  **waive** the unfixable ACs — only for failures no code change can satisfy (e.g. E2E tests
+  needing an environment the sandbox lacks): record via `record-impl close --waive AC-…
+  --reason "…"`, then relaunch with `waivedAcs` (mode `full` with the remaining tasks, or
+  `close-only` when everything is merged); **retry** — copy `gateDebt` into the relaunch args
+  for a fresh repair budget; or **stop** — the user fixes by hand, then a `close-only` relaunch.
 - **`cr-judgment`** — a code-review finding that needs a human call (design trade-off, scope
-  question). → Present finding + report file; on "fix it" answers, relaunch (the remaining-task
-  list may be empty except the repair) or apply the fix via the fallback path, then re-close.
+  question). The engine has **already applied the `mechanical` findings** as fixups and returns
+  one escalation per `judgment` finding, each with the reviewer's `recommendation`. → One
+  `AskUserQuestion` (multiSelect) across the findings: fix per recommendation / accept as-is /
+  custom instruction. Then spawn **`fd:fixer`** (Agent tool) with the accepted decisions, the
+  branch/base, the task ids, and the CI commands — it applies the fixes with the same commit
+  surgery, autosquashes, runs the final CI, and returns a slim verdict; record
+  `close … --cr pass --final-ci <verdict>` from it. **Never relaunch the engine to apply CR
+  decisions** — a fresh close re-runs the whole CI + review and surfaces the same findings again.
 - **`engine-failure`** — an engine agent returned no result. The engine **cannot see why**
   (`agent()` yields null for a kill, a terminal API error, and an account rate limit alike), so
   **classify before asking anything**: if the failure coincided with a session/rate limit (the
@@ -264,6 +295,26 @@ The run early-returns `status: "escalated"` **only** for:
 On **every** return (completed, continue, escalated): first persist progress — re-resolve merged
 tasks from `Task:` trailers and record them (State ownership below) — then act on the status.
 `continue` never asks anything: persist, relaunch with `remaining`.
+
+### Relaunch matrix — the engine's complete lever set
+
+This table IS the engine's contract; **never read `wave-implement.mjs` to look for more levers**
+(a field run read the source five times to learn a lever did not exist — the answer belongs
+here, and source reading is for diagnosing a crashed run only). `tasks` must be **non-empty in
+every mode**, close-only included.
+
+| Return | Relaunch args | HIL first? |
+|---|---|---|
+| `continue` | same args, `tasks` = `remaining` | no |
+| `escalated: invalid-args` | regenerated `engine-args.json`, verbatim | only if the error reproduces |
+| `escalated: architectural` | remaining tasks, the answer as the task's `decision`; red gate → copy `gateDebt` | yes |
+| `escalated: repair-exhausted` | retry: copy `gateDebt`; or waive: `waivedAcs` (recorded first via `record-impl close --waive`), mode `full` with remaining or `close-only` when all merged | yes |
+| `escalated: cr-judgment` | **no relaunch** — `fd:fixer` applies the decisions (a fresh close would re-run CI + CR and re-find them) | yes |
+| `escalated: engine-failure` | classify limit-vs-crash first; same args (or the salvaged remainder) | not for limits |
+| all merged, close unfinished (any cause) | mode `close-only`, **full task list**, `waivedAcs` as decided | per its cause |
+
+`resumeFromRunId` is never relied on across sessions — every relaunch is a fresh run whose args
+carry only the outstanding work; git trailers carry the rest.
 
 ### Task-agent contract (single source of truth)
 
@@ -309,6 +360,9 @@ never by hand-editing JSON. The engine's durable ledger is git: every squash-mer
   `state.close`); a completed close → `record … --task <all-implemented> --cr pass` **and**
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/record-impl.mjs" close <featureDir> --full-ci pass --cr pass --final-ci pass`
   (incremental: an escalated close records whatever already ran, e.g. `--full-ci pass` alone).
+  An AC waiver the HIL just approved is recorded the same way, **before** the relaunch that
+  carries it: `close <featureDir> --waive AC-…[,AC-…] --reason "…"` — it lands in
+  `state.close.waivedAcs` (`/fd:to-prs` surfaces waivers in the owning task's PR description).
 - **Canonical commit identity is the `Task: <id>` trailer;** `impl.commits` is a derived cache.
   After the close's autosquash the SHAs changed — the trailer re-resolve at the `completed` return
   refreshes the cache (plain `record`, not `--append`; append is for adding SHAs to a live task).
@@ -432,14 +486,20 @@ Once all waves are merged and green, the engine closes the feature in the same r
    code (its consumers may live in a future feature) — never auto-deleted. Red → the serial
    feature-branch repair loop (K cap) → still red ⇒ `escalated`.
 2. **Whole-feature code review (gate).** The engine writes `git diff <base>...<feature>` (with the
-   name list) to `<featureDir>/cr-diff.patch` and hands the CR agent that **file path** — the agent
-   `Read`s it; the diff is **never inlined** into a prompt. The CR agent invokes **each**
-   `codeReview.skills` skill **by name via the Skill tool** (≥1), writes the full report to
-   `<featureDir>/cr-report.md`, and classifies every finding `mechanical` (objectively fixable) or
-   `judgment` (needs a human). **No** nested fan-out and **no** network research.
-3. **Findings:** `judgment` → `escalated` (one escalation per finding, report file attached);
-   `mechanical` → the serial feature-branch repair agent fixes them as `--fixup` commits.
-   A contract-bearing unused export is classified `judgment`, never `mechanical`.
+   name list) to `<featureDir>/cr-diff.patch` and spawns the review as the **`fd:reviewer`**
+   subagent with that **file path** — the diff is **never inlined** into a prompt. The reviewer
+   **fans out one subagent per `codeReview.skills` skill** (each reads the diff file itself — a
+   whole-feature diff does not fit one context times N skills, and independent lenses corroborating
+   a finding is signal a single pass cannot give), dedupes findings across lenses, verifies
+   blockers against the checked-out code, writes the full report to `<featureDir>/cr-report.md`,
+   and classifies every finding `mechanical` (objectively fixable) or `judgment` (needs a human —
+   each with a `recommendation`). **No** network research.
+3. **Findings:** `mechanical` → the serial feature-branch repair agent fixes them as `--fixup`
+   commits **first**; then `judgment` → `escalated` (one escalation per finding, recommendation +
+   report file attached; the applied mechanical fixups stay on the branch — `fd:fixer`
+   autosquashes them together with the accepted fixes after the HIL). A clean-CR run (no judgment
+   findings) continues below without any HIL. A contract-bearing unused export is classified
+   `judgment`, never `mechanical`.
 4. **Autosquash.** `git rebase --autosquash <base>` folds fixups into their targets (conflict →
    abort the rebase, `escalated`); the engine verifies every `Task:` trailer survived.
 5. **Final full CI** confirms the tree is still green after fixes + autosquash. Red ⇒ `escalated`.
@@ -449,9 +509,10 @@ The `completed` return carries `close: { fullCi, cr, finalCi }`; the main thread
 --cr pass --final-ci pass` (the block `/fd:to-prs` gates on), refreshes `impl.commits` from the
 post-autosquash trailers, flips `waveInProgress = false`, and reports.
 
-**Resume:** entry finds **all** tasks `implemented` but `impl.cr` not `pass` on all ⇒ nothing to
-implement — perform the close steps via the subagent fallback (the engine needs tasks to run), then
-record identically.
+**Resume:** entry finds **all** tasks `implemented` but the close unfinished ⇒ nothing to
+implement — relaunch the engine with **`mode: "close-only"`** (full task list in the args,
+`waivedAcs` as previously decided); the subagent fallback performs the same close steps only when
+Workflow is unavailable. Record identically either way.
 
 ---
 
@@ -491,9 +552,10 @@ record identically.
 | Args validation (`invalid-args`: self-ref, count mismatch) | launch → early return | auto-regenerate + relaunch (no HIL) |
 | Architectural spec gap found by a task agent | in run → early return | HIL |
 | K-iteration repair exhaustion (wave, close, or gate debt) | in run → early return | HIL |
+| AC waiver (unfixable failure; `record-impl close --waive`, then `waivedAcs`) | HIL → relaunch | HIL-only |
 | Feature-close full-repo CI | in run, close | block |
-| Feature-close whole-feature code review (≥1 skill) | in run, close | gate |
-| CR judgment finding | in run → early return | HIL |
+| Feature-close whole-feature code review (fd:reviewer, ≥1 skill fan-out) | in run, close | gate |
+| CR judgment finding (mechanical already applied) | in run → early return → fd:fixer | HIL |
 | Internal agent-budget checkpoint | in run → early return | auto-relaunch (no HIL) |
 
 ---
@@ -505,8 +567,8 @@ Report: tasks implemented (with `Task: <id>` commit SHAs); per-wave smoke status
 repair iterations used; any
 `continue` checkpoints (count them — they are invisible to the user otherwise); on a resumed
 session, which tasks were **salvaged** vs **re-run**; the feature-close **full CI + code-review**
-results (findings + report file); any HIL escalations and their resolutions; and whether the run
-degraded to subagents. The feature branch now holds the whole feature as a linear,
+results (findings + report file); any **waived ACs with their reasons**; any HIL escalations and
+their resolutions; and whether the run degraded to subagents. The feature branch now holds the whole feature as a linear,
 one-commit-per-task history (plus any explicit `Integration-Fix` commits, each riding its
 culprit's `Task:` trailer). Suggest as prose (do **not** run it): self-review the feature branch,
 then `/fd:to-prs`.

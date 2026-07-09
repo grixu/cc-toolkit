@@ -29,7 +29,8 @@
       "properties": {
         "fullCi": { "type": "string", "enum": ["pass", "fail"] },
         "cr": { "type": "string", "enum": ["pass", "fail"] },
-        "finalCi": { "type": "string", "enum": ["pass", "fail"] }
+        "finalCi": { "type": "string", "enum": ["pass", "fail"] },
+        "waivedAcs": { "type": "array", "items": { "$ref": "#/$defs/waiver" } }
       }
     },
     "readiness": {
@@ -59,7 +60,8 @@
       "properties": {
         "id": { "type": "string" },
         "by": { "type": "string" },
-        "at": { "type": "string" }
+        "at": { "type": "string" },
+        "reason": { "type": "string" }
       }
     }
   }

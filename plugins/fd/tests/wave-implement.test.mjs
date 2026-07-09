@@ -17,7 +17,8 @@ const importable = source.slice(0, cut)
   + '\nexport { parseArgs, scheduleFromSerializeAfter, scheduleWaves, taskPrompt, ciPrompt,'
   + ' smokePrompt, acVerifyPrompt, featureRepairPrompt, unionChangedFiles, acOwners,'
   + ' acsClosedByWave, reconcileCi, reconcileAc, repairPlanFrom, classifyFindings,'
-  + ' slimReturn, reportWritePrompt,'
+  + ' slimReturn, reportWritePrompt, crPrompt,'
+  + ' REPAIR_EXHAUSTED_OPTIONS, CLOSE_CI_RED_OPTIONS, CR_JUDGMENT_OPTIONS,'
   + ' TASK_RESULT_SCHEMA, CI_RESULT_SCHEMA, AC_RESULT_SCHEMA, MERGE_RESULT_SCHEMA, CR_RESULT_SCHEMA };\n';
 const {
   parseArgs,
@@ -37,6 +38,10 @@ const {
   classifyFindings,
   slimReturn,
   reportWritePrompt,
+  crPrompt,
+  REPAIR_EXHAUSTED_OPTIONS,
+  CLOSE_CI_RED_OPTIONS,
+  CR_JUDGMENT_OPTIONS,
   TASK_RESULT_SCHEMA,
   CI_RESULT_SCHEMA,
   AC_RESULT_SCHEMA,
@@ -596,7 +601,7 @@ test('slimReturn: close keeps CI verdicts, reduces CR to verdict + count + repor
   const slim = slimReturn(full, '/f/impl-run-report.json');
   assert.deepEqual(slim.close.fullCi, { status: 'pass', repairIterations: 2 });
   assert.deepEqual(slim.close.finalCi, { status: 'pass' });
-  assert.deepEqual(slim.close.cr, { status: 'findings', skillsRun: ['code-review'], findingsCount: 1, reportFile: '/f/cr-report.md' });
+  assert.deepEqual(slim.close.cr, { status: 'findings', skillsRun: ['code-review'], findingsCount: 1, mechanicalApplied: 0, reportFile: '/f/cr-report.md' });
   assert.ok(!('gateDebt' in slim.waves[0]));
 
   const noClose = slimReturn({ status: 'completed', remaining: [], tasks: [], waves: [], close: null }, '/f/r.json');
@@ -615,7 +620,101 @@ test('reportWritePrompt: Write-tool-only, verbatim, at the given path', () => {
 test('run path: every exit persists the report via finish() and falls back fat when the writer dies', () => {
   assert.equal((source.match(/return payload\(/g) ?? []).length, 0, 'no exit may bypass finish()');
   assert.equal((source.match(/return finish\(payload\(/g) ?? []).length, 3, 'continue + both completed exits go through finish()');
-  assert.match(source, /const escalate = \(list\) => finish\(payload\(/);
+  assert.match(source, /const escalate = \(list, extra = \{\}\) => finish\(payload\(/);
   assert.match(source, /label: 'report:write'[^}]*effort: 'low'/);
   assert.match(source, /if \(!step \|\| step\.status !== 'ok'\) return \{ \.\.\.full, report: null \};/);
+});
+
+test('parseArgs: close-only is a valid mode; tasks stay required; close:false contradicts it', () => {
+  const out = parseArgs(validArgs({ mode: 'close-only' }));
+  assert.equal(out.mode, 'close-only');
+  assert.equal(out.close, true);
+  assert.throws(() => parseArgs(validArgs({ mode: 'close-only', close: false })), /does nothing/);
+  assert.throws(() => parseArgs(validArgs({ mode: 'close-only', tasks: [] })), /non-empty array/);
+});
+
+test('parseArgs: waivedAcs validated + normalized, and subtracted from gateDebt', () => {
+  const out = parseArgs(validArgs({
+    waivedAcs: [{ id: 'AC-1', reason: 'env-blocked' }, { id: 'AC-2' }],
+    gateDebt: { smoke: false, acs: ['AC-1', 'AC-2', 'AC-3'] },
+  }));
+  assert.deepEqual(out.waivedAcs, [{ id: 'AC-1', reason: 'env-blocked' }, { id: 'AC-2' }]);
+  assert.deepEqual(out.gateDebt, { smoke: false, acs: ['AC-3'] });
+
+  const settled = parseArgs(validArgs({
+    waivedAcs: [{ id: 'AC-1' }],
+    gateDebt: { smoke: false, acs: ['AC-1'] },
+  }));
+  assert.equal(settled.gateDebt, null, 'a fully-waived AC debt has nothing left to settle');
+
+  const smokeDebt = parseArgs(validArgs({
+    waivedAcs: [{ id: 'AC-1' }],
+    gateDebt: { smoke: true, acs: ['AC-1'] },
+  }));
+  assert.deepEqual(smokeDebt.gateDebt, { smoke: true, acs: [] });
+
+  assert.equal(parseArgs(validArgs()).waivedAcs.length, 0);
+  assert.throws(() => parseArgs(validArgs({ waivedAcs: [{ id: 'T-1' }] })), /must match AC-<n>/);
+  assert.throws(() => parseArgs(validArgs({ waivedAcs: ['AC-1'] })), /must match AC-<n>/);
+  assert.throws(() => parseArgs(validArgs({ waivedAcs: { id: 'AC-1' } })), /must be an array/);
+  assert.throws(() => parseArgs(validArgs({ waivedAcs: [{ id: 'AC-1', reason: 42 }] })), /reason must be a string/);
+});
+
+test('crPrompt: the reviewer orchestrates a per-skill fan-out over the diff file', () => {
+  const p = crPrompt({ skills: ['code-review', 'quality-review:quality-review'] }, { diffFile: '/f/cr-diff.patch', featureDir: '/f' });
+  assert.match(p, /Dispatch ONE subagent per skill, ALL in a single message/);
+  assert.ok(p.includes('/f/cr-diff.patch'));
+  assert.match(p, /code-review, quality-review:quality-review/);
+  assert.match(p, /dedupe findings/i);
+  assert.match(p, /include a `recommendation`/);
+  assert.match(p, /never inline its content/);
+  assert.match(p, /\/f\/cr-report\.md/);
+  assert.ok(CR_RESULT_SCHEMA.properties.findings.items.properties.recommendation, 'findings carry the reviewer recommendation');
+});
+
+test('ciPrompt: names the parallel-runner OOM signature and the serialized retry', () => {
+  const p = ciPrompt({ lint: 'pnpm lint', test: 'pnpm test', build: 'pnpm build' }, { repoRoot: '/repo' });
+  assert.match(p, /out-of-memory kill/);
+  assert.match(p, /--concurrency=1/);
+  assert.match(p, /serialized verdict as final/);
+});
+
+test('escalation options are canonical, never empty, and route to the right lever', () => {
+  for (const opts of [REPAIR_EXHAUSTED_OPTIONS, CLOSE_CI_RED_OPTIONS, CR_JUDGMENT_OPTIONS]) {
+    assert.ok(opts.length >= 2);
+    for (const o of opts) {
+      assert.ok(o.label.length > 0);
+      assert.ok(o.detail.length > 0);
+    }
+  }
+  assert.match(REPAIR_EXHAUSTED_OPTIONS[0].detail, /record-impl close --waive/);
+  assert.match(REPAIR_EXHAUSTED_OPTIONS[0].detail, /close-only/);
+  assert.match(CLOSE_CI_RED_OPTIONS[0].detail, /close-only/);
+  assert.match(CR_JUDGMENT_OPTIONS[0].detail, /fd:fixer/);
+  const exhaustedSites = source.match(/kind: 'repair-exhausted',[\s\S]{0,220}?options: [A-Za-z_[\]]+/g) ?? [];
+  assert.equal(exhaustedSites.length, 4, 'gate debt, wave, close CI, final CI');
+  for (const site of exhaustedSites) {
+    assert.doesNotMatch(site, /options: \[\]/, 'a repair-exhausted escalation must hand the human ready choices');
+  }
+});
+
+test('run path: close-only skips the waves, review runs as fd:reviewer, mechanical fixes precede the judgment escalation', () => {
+  assert.match(source, /a\.mode === 'close-only' \? \[\] : waves/);
+  assert.match(source, /label: 'close:review', phase: 'Close', agentType: 'fd:reviewer'/);
+  const mechanicalIdx = source.indexOf("label: 'close:cr-fixes'");
+  const judgmentIdx = source.indexOf("kind: 'cr-judgment'");
+  assert.ok(mechanicalIdx > 0 && judgmentIdx > mechanicalIdx, 'cr-fixes spawn must precede the cr-judgment escalation');
+  assert.match(source, /const closedDelta = closedNow\.filter\(\(ac\) => !closedBefore\.includes\(ac\) && !waivedIds\.has\(ac\)\)/);
+});
+
+test('slimReturn: waivedAcs ride through; the cr slim carries mechanicalApplied', () => {
+  const slim = slimReturn({ status: 'escalated', remaining: [], tasks: [], waves: [], waivedAcs: [{ id: 'AC-1', reason: 'x' }] }, '/f/r.json');
+  assert.deepEqual(slim.waivedAcs, [{ id: 'AC-1', reason: 'x' }]);
+
+  const withCr = slimReturn({
+    status: 'completed', remaining: [], tasks: [], waves: [],
+    close: { cr: { status: 'findings', skillsRun: [], findings: [{}, {}], mechanicalApplied: 2, reportFile: null } },
+  }, '/f/r.json');
+  assert.equal(withCr.close.cr.mechanicalApplied, 2);
+  assert.equal(withCr.close.cr.findingsCount, 2);
 });

@@ -334,7 +334,10 @@ istnieją. Wiąże verdykt DoR tasków (§5.4).
 `state.json` dostaje też opcjonalny blok `close` — feature-level werdykty domknięcia
 `/implement` (`{ "fullCi": "pass", "cr": "pass", "finalCi": "pass" }`, zapis przyrostowy
 przez `record-impl.mjs close`); `close.finalCi == "pass"` to twarda prekondycja
-`/to-prs` — jedyny pełno-pipeline'owy werdykt feature'a.
+`/to-prs` — jedyny pełno-pipeline'owy werdykt feature'a. Blok niesie też
+`close.waivedAcs` — AC-ki zwaivowane decyzją człowieka (`record-impl.mjs close --waive`,
+kształt waivera z §5.2 + `reason`): silnik wyłącza je z weryfikacji przy relaunchu
+(`args.waivedAcs`), a `/to-prs` pokazuje każdy w opisie PR-a taska-właściciela.
 
 `phase` ∈ `spec | tasks | implementing | shipped` — gruby wskaźnik progresji (dla
 `/status` i sugestii następnego kroku): `spec` ustawiają `/start` / `/from-docs`;
@@ -489,9 +492,10 @@ wiążący verdykt DoR; `opcjonalny block` = bramka włączana configiem (`/to-p
 | Walidacja args (`invalid-args`: self-referencja, licznik tasków) | `/implement` — launch → wczesny zwrot | auto-regeneracja + relaunch (bez HIL) |
 | Luka architektoniczna znaleziona przez agenta taskowego | `/implement` — w runie → wczesny zwrot | HIL |
 | Domknięcie: pełne CI repo | `/implement` — w runie, domknięcie | block |
-| Domknięcie: code review całej funkcjonalności (≥1 skill) | `/implement` — w runie, domknięcie | gate |
-| Finding CR typu judgment | `/implement` — w runie → wczesny zwrot | HIL |
+| Domknięcie: code review całej funkcjonalności (fd:reviewer, fan-out ≥1 skill) | `/implement` — w runie, domknięcie | gate |
+| Finding CR typu judgment (mechaniczne już zaaplikowane; fixy przez fd:fixer, bez relaunchu) | `/implement` — w runie → wczesny zwrot | HIL |
 | K-iter fail — eskalacja (fala, domknięcie lub gateDebt) | `/implement` — w runie → wczesny zwrot | HIL |
+| Waiver AC nienaprawialnej porażki (`record-impl close --waive` → `waivedAcs` relaunchu; ślad w `state.close.waivedAcs` i opisie PR-a) | `/implement` — obsługa zwrotu | wyłącznie HIL |
 | Checkpoint budżetu agentów | `/implement` — w runie → wczesny zwrot | auto-relaunch (bez HIL) |
 | Klasyfikacja `engine-failure` (zbieg z limitem sesji ⇒ „czekaj i relaunch") | `/implement` — obsługa zwrotu | raport (bez HIL) / salvage |
 | Kompletność implementacji (wszystkie taski `implemented`) | `/to-prs` — wejście | block |

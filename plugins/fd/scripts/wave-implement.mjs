@@ -13,9 +13,12 @@
 // for invalid args (kind "invalid-args": regenerate engine-args.json, relaunch, no HIL);
 // status "continue" means the internal agent budget is spent — the main thread
 // relaunches with the remaining tasks, no HIL. An escalated wave's red gate returns as
-// gateDebt, settled at the start of the relaunch. State files are NOT written here:
-// the `Task: <id>` trailers on the feature branch are the in-run ledger, and the main
-// thread persists them via record-impl.mjs at every return.
+// gateDebt, settled at the start of the relaunch. Mode "close-only" skips the waves
+// (every task already merged by a prior run) and goes straight to debt settlement and
+// close; args.waivedAcs carries HIL-approved AC waivers, excluded from every
+// verification and echoed in the report as waived, not pass. State files are NOT
+// written here: the `Task: <id>` trailers on the feature branch are the in-run ledger,
+// and the main thread persists them via record-impl.mjs at every return.
 //
 // The return itself is a SLIM summary: the full run detail (per-task diagnoses and
 // changed files, per-AC verdicts with evidence, CR findings) goes to
@@ -35,7 +38,7 @@
 export const meta = {
   name: 'wave-implement',
   description:
-    'Full /fd:implement cycle in one run: waves from task deps (worktree isolation, per-task self-gate, breadcrumb), serial squash-merge per wave, per-wave smoke (typecheck+build) plus AC verification with a bounded repair loop, then feature close (first full CI, code review, mechanical fixes, autosquash, final CI). Returns completed | continue | escalated as a slim summary plus a pointer to the full run report at <featureDir>/impl-run-report.json; the main thread persists state from Task: trailers at every return.',
+    'Full /fd:implement cycle in one run: waves from task deps (worktree isolation, per-task self-gate, breadcrumb), serial squash-merge per wave, per-wave smoke (typecheck+build) plus AC verification with a bounded repair loop, then feature close (first full CI, fan-out code review via fd:reviewer, mechanical fixes, autosquash, final CI). Mode close-only skips the waves; args.waivedAcs carries HIL-approved AC waivers. Returns completed | continue | escalated as a slim summary plus a pointer to the full run report at <featureDir>/impl-run-report.json; the main thread persists state from Task: trailers at every return.',
 };
 
 // Defensive: the Workflow tool should pass `args` as a real object, but a live-authored
@@ -60,8 +63,11 @@ function parseArgs(rawArgs) {
   } = a;
   const close = a.close === undefined ? true : a.close;
 
-  if (mode !== 'full' && mode !== 'repair') {
-    throw new Error(`wave-implement: args.mode must be "full" or "repair", got ${JSON.stringify(mode)}`);
+  if (mode !== 'full' && mode !== 'repair' && mode !== 'close-only') {
+    throw new Error(`wave-implement: args.mode must be "full", "repair" or "close-only", got ${JSON.stringify(mode)}`);
+  }
+  if (mode === 'close-only' && close === false) {
+    throw new Error('wave-implement: mode "close-only" with close:false does nothing — drop one of them');
   }
   for (const [name, value] of [
     ['featureDir', featureDir], ['slug', slug], ['repoRoot', repoRoot],
@@ -122,6 +128,25 @@ function parseArgs(rawArgs) {
   if (!repair || !Number.isInteger(repair.maxIterations) || repair.maxIterations < 1) {
     throw new Error('wave-implement: args.repair.maxIterations must be a positive integer');
   }
+  // waivedAcs: ACs a human explicitly accepted as unmet/unrunnable (an AskUserQuestion
+  // decision relayed by the main thread — never an agent's call). They are excluded from
+  // every AC verification this run performs and echoed in the report as waived, not pass.
+  const waivedAcs = [];
+  if (a.waivedAcs !== undefined && a.waivedAcs !== null) {
+    if (!Array.isArray(a.waivedAcs)) {
+      throw new Error('wave-implement: args.waivedAcs must be an array of {id, reason} when present');
+    }
+    a.waivedAcs.forEach((w, i) => {
+      if (!w || typeof w !== 'object' || typeof w.id !== 'string' || !/^AC-\d+$/.test(w.id)) {
+        throw new Error(`wave-implement: waivedAcs[${i}].id must match AC-<n>`);
+      }
+      if (w.reason !== undefined && typeof w.reason !== 'string') {
+        throw new Error(`wave-implement: waivedAcs[${i}].reason must be a string when present`);
+      }
+      waivedAcs.push(w.reason ? { id: w.id, reason: w.reason } : { id: w.id });
+    });
+  }
+
   // gateDebt: the un-repaired gate verdict of a prior run's escalated wave (its gate ran
   // but repair waited for the human). Settled before wave 0 so new worktrees are not cut
   // from a known-red branch.
@@ -131,15 +156,19 @@ function parseArgs(rawArgs) {
     if (typeof g !== 'object' || Array.isArray(g)) {
       throw new Error('wave-implement: args.gateDebt must be an object { smoke, acs } when present');
     }
-    const acs = g.acs ?? [];
+    let acs = g.acs ?? [];
     if (!Array.isArray(acs) || acs.some((x) => typeof x !== 'string' || x === '')) {
       throw new Error('wave-implement: args.gateDebt.acs must be an array of AC ids');
     }
+    // A waived AC is settled by the human, not by re-verification — repairing it would
+    // loop an unrepairable failure straight back into the same escalation.
+    const waivedIds = new Set(waivedAcs.map((w) => w.id));
+    acs = acs.filter((id) => !waivedIds.has(id));
     if (g.smoke === true || acs.length > 0) gateDebt = { smoke: g.smoke === true, acs };
   }
 
   return {
-    mode, featureDir, slug, repoRoot, featureBranch, baseBranch, tasks, gate, ci, gateDebt,
+    mode, featureDir, slug, repoRoot, featureBranch, baseBranch, tasks, gate, ci, gateDebt, waivedAcs,
     graphMcp: a.graphMcp === true,
     worktreeSetup: Array.isArray(worktreeSetup) ? worktreeSetup : [],
     worktreeCleanup: worktreeCleanup === 'keep-failed' ? 'keep-failed' : 'always',
@@ -378,6 +407,44 @@ function repairPlanFrom({ taskResults = [], mergeResults = [], ciResult = null, 
   return { worktreeRepairs, featureRepair };
 }
 
+// Canonical HIL options — the escalation return must hand the human ready choices, not
+// an empty list the main thread has to invent (field-tested failure: options []).
+// Every escalation goes through AskUserQuestion before anything is accepted or waived.
+const REPAIR_EXHAUSTED_OPTIONS = [
+  {
+    label: 'Waive the unfixable ACs',
+    detail: 'For red ACs no code change can satisfy (e.g. tests needing an environment the sandbox lacks): record the waiver via `record-impl close --waive`, then relaunch with args.waivedAcs — mode "full" with the remaining tasks, or "close-only" when every task is already merged.',
+  },
+  {
+    label: 'Retry with the debt',
+    detail: 'Copy the gateDebt from the report into args.gateDebt and relaunch — a fresh repair loop gets another round of iterations (add your guidance as `decision` on the stuck tasks).',
+  },
+  {
+    label: 'Stop and fix manually',
+    detail: 'Repair the branch by hand (fixup commits with Task: trailers), then relaunch — mode "close-only" once every task is merged.',
+  },
+];
+const CLOSE_CI_RED_OPTIONS = [
+  {
+    label: 'Relaunch close-only',
+    detail: 'Relaunch with mode "close-only" — the full CI re-runs with a fresh repair budget.',
+  },
+  {
+    label: 'Stop and fix manually',
+    detail: 'Fix the failures by hand (fixup commits with Task: trailers), then relaunch with mode "close-only".',
+  },
+];
+const CR_JUDGMENT_OPTIONS = [
+  {
+    label: 'Fix now',
+    detail: 'Send the accepted findings to the fd:fixer subagent — it applies them as attributable commits, then autosquashes and runs the final CI; no engine relaunch (a relaunch would re-run the whole CI + review and surface these same findings again).',
+  },
+  {
+    label: 'Accept as-is',
+    detail: 'Ship without the change; the finding stays recorded in the review report. fd:fixer still runs the autosquash + final CI leg.',
+  },
+];
+
 // CR findings default to the human: only an explicit kind "mechanical" is auto-fixed,
 // anything else escalates as a judgment call.
 function classifyFindings(findings) {
@@ -542,6 +609,7 @@ const CR_RESULT_SCHEMA = {
           severity: { type: 'string' },
           location: { type: 'string' },
           detail: { type: 'string' },
+          recommendation: { type: 'string', description: 'judgment findings: the reviewer\'s recommended resolution — the human sees it as the default choice' },
         },
       },
     },
@@ -700,6 +768,8 @@ function ciPrompt(ci, { repoRoot }) {
     `Repository root: ${repoRoot}`,
     `Configured commands: ${commands.length ? commands.join(' | ') : '(none configured — report status "pass" with an empty commands list and note it in failures as location "config", detail "no CI commands configured")'}`,
     '',
+    'A command that dies with NO error output (bare non-zero exit, "ELIFECYCLE Command failed" and nothing else) under a parallel runner (turbo/nx/lerna) is the signature of an out-of-memory kill, not a code failure: re-run that command ONCE serialized (e.g. `--concurrency=1`) and report the serialized verdict as final, noting the retry in its command entry.',
+    '',
     'Return JSON: status, commands = [{cmd, exitCode, tail (last lines when non-zero)}], failures = [{location, detail}] (empty when green).',
   ].join('\n');
 }
@@ -795,21 +865,25 @@ function writeDiffPrompt({ repoRoot, baseBranch, featureBranch, featureDir }) {
   ].join('\n');
 }
 
+// The reviewer ORCHESTRATES: one subagent per review skill, each reading the diff file
+// itself. A single context applying every skill over a whole-feature diff was the old
+// design — a field diff of 456K chars (~114k tokens) cannot fit one context four times
+// over, and independent lenses corroborating a finding is signal a single pass cannot give.
 function crPrompt(codeReview, { diffFile, featureDir }) {
   return [
-    'You run the whole-feature code review. The diff is already written to a file — Read it from the path below; NEVER ask for it inline.',
+    'You orchestrate the whole-feature code review. The diff is already written to a file — pass the PATH along; never inline its content into a prompt.',
     '',
     `Diff file: ${diffFile}`,
-    `Review skills to apply — invoke EACH by name via the Skill tool, in order: ${codeReview.skills.join(', ')}`,
-    '(If the Skill tool cannot resolve a name, read that skill\'s SKILL.md from the plugin cache and apply its instructions manually; record it in skillsRun either way.)',
+    `Review skills to apply: ${codeReview.skills.join(', ')}`,
     '',
-    'Rules: no nested subagent fan-out, no network research. Judge only what the diff shows.',
-    `Write the full review report to ${featureDir}/cr-report.md.`,
+    `Dispatch ONE subagent per skill, ALL in a single message: each reads ${diffFile} itself, applies exactly its named skill (Skill tool; if the name does not resolve, apply the skill's SKILL.md instructions manually), and reports findings with file:line locations. No network research — judge only what the diff shows.`,
+    'Aggregate: dedupe findings that several skills reported (same location, same issue = ONE finding; name the corroborating skills in its detail — independent corroboration raises confidence and belongs in the report).',
     '',
-    'Classify every finding: kind "mechanical" = objectively fixable in place (bug, missed rename, lint-grade smell, missing null-check with an obvious guard); kind "judgment" = needs a human decision (design trade-off, scope question, spec ambiguity). When unsure, choose "judgment".',
+    'Classify every finding: kind "mechanical" = objectively fixable in place (bug, missed rename, lint-grade smell, missing null-check with an obvious guard); kind "judgment" = needs a human decision (design trade-off, scope question, spec ambiguity). When unsure, choose "judgment". For every judgment finding include a `recommendation` — the resolution you would pick; the human sees it as the default.',
     'An exported-but-unused symbol that maps to a spec element or a task\'s `produces` contract is NOT dead code — its consumers may arrive in a later feature; if it looks genuinely dead, classify as "judgment", never "mechanical".',
+    `Write the full aggregated review report to ${featureDir}/cr-report.md.`,
     '',
-    'Return JSON: status ("pass" when no findings), skillsRun, findings = [{kind, severity, location, detail}], reportFile.',
+    'Return JSON: status ("pass" when no findings), skillsRun, findings = [{kind, severity, location, detail, recommendation?}], reportFile.',
   ].join('\n');
 }
 
@@ -852,6 +926,7 @@ function slimReturn(full, reportPath) {
   };
   if (full.reason !== undefined) slim.reason = full.reason;
   if (full.escalations !== undefined) slim.escalations = full.escalations;
+  if (full.waivedAcs !== undefined) slim.waivedAcs = full.waivedAcs;
   if (full.close !== undefined) {
     slim.close = full.close?.cr
       ? {
@@ -862,6 +937,7 @@ function slimReturn(full, reportPath) {
             status: full.close.cr.status,
             skillsRun: full.close.cr.skillsRun,
             findingsCount: (full.close.cr.findings ?? []).length,
+            mechanicalApplied: full.close.cr.mechanicalApplied ?? 0,
             reportFile: full.close.cr.reportFile ?? null,
           },
         }
@@ -930,8 +1006,14 @@ async function run(rawArgs) {
   const escalations = [];
   let closedBefore = [];
 
-  const remaining = () => a.tasks.map((t) => t.id).filter((id) => !mergedIds.includes(id));
-  const payload = (extra) => ({ waves: waveReports, tasks: results, remaining: remaining(), ...extra });
+  // In close-only every task was merged by a prior run — "not merged this run" would
+  // mislead the relaunch into re-running finished work.
+  const remaining = () => (a.mode === 'close-only' ? [] : a.tasks.map((t) => t.id).filter((id) => !mergedIds.includes(id)));
+  const payload = (extra) => ({
+    waves: waveReports, tasks: results, remaining: remaining(),
+    ...(a.waivedAcs.length > 0 ? { waivedAcs: a.waivedAcs } : {}),
+    ...extra,
+  });
   // Every exit goes through finish(): an agent persists the full report (this script
   // cannot touch the filesystem), the caller gets the slim summary + pointer. A dead
   // writer degrades to the fat payload — losing slimness beats losing the fail detail.
@@ -944,9 +1026,10 @@ async function run(rawArgs) {
     if (!step || step.status !== 'ok') return { ...full, report: null };
     return slimReturn(full, reportPath);
   };
-  const escalate = (list) => finish(payload({ status: 'escalated', escalations: [...escalations, ...list] }));
+  const escalate = (list, extra = {}) => finish(payload({ status: 'escalated', escalations: [...escalations, ...list], ...extra }));
 
   const owners = acOwners(a.tasks);
+  const waivedIds = new Set(a.waivedAcs.map((w) => w.id));
   const taskIds = a.tasks.map((t) => t.id);
   const smokeCommands = [a.ci.typecheck, a.ci.build].filter(Boolean);
 
@@ -1038,13 +1121,17 @@ async function run(rawArgs) {
       return escalate([{
         kind: 'repair-exhausted',
         question: `The gate debt inherited from the prior run is still red after ${a.repair.maxIterations} repair iterations. How should this proceed?`,
-        options: [], context: plan.featureRepair.diagnosis,
+        options: REPAIR_EXHAUSTED_OPTIONS,
+        context: plan.featureRepair.diagnosis,
       }]);
     }
     log(`gate debt settled in ${debtIterations} repair iteration(s)`);
   }
 
-  for (const { wave, batches } of waves) {
+  if (a.mode === 'close-only') {
+    log('close-only: waves skipped — every task was merged by a prior run, straight to close');
+  }
+  for (const { wave, batches } of (a.mode === 'close-only' ? [] : waves)) {
     const label = `wave-${wave}`;
     phase(`Wave ${wave}`);
     const waveTasks = batches.flat();
@@ -1125,7 +1212,7 @@ async function run(rawArgs) {
     }
 
     const closedNow = acsClosedByWave(a.tasks, mergedIds);
-    const closedDelta = closedNow.filter((ac) => !closedBefore.includes(ac));
+    const closedDelta = closedNow.filter((ac) => !closedBefore.includes(ac) && !waivedIds.has(ac));
     closedBefore = closedNow;
 
     let [smoke, acCheck] = await parallel([
@@ -1241,7 +1328,7 @@ async function run(rawArgs) {
       return escalate([{
         kind: 'repair-exhausted', wave,
         question: `Wave ${wave} is still red after ${a.repair.maxIterations} repair iterations. How should this proceed?`,
-        options: [], context: stuck,
+        options: REPAIR_EXHAUSTED_OPTIONS, context: stuck,
       }]);
     }
 
@@ -1292,7 +1379,7 @@ async function run(rawArgs) {
     return escalate([{
       kind: 'repair-exhausted',
       question: `Feature-close CI is still red after ${a.repair.maxIterations} repair iterations. How should this proceed?`,
-      options: [], context: (fullCi.failures ?? []).map((f) => `${f.location}: ${f.detail}`).join('\n'),
+      options: CLOSE_CI_RED_OPTIONS, context: (fullCi.failures ?? []).map((f) => `${f.location}: ${f.detail}`).join('\n'),
     }]);
   }
   close.fullCi = { status: fullCi.status, repairIterations: closeIterations };
@@ -1309,22 +1396,17 @@ async function run(rawArgs) {
 
   const cr = await spawn(
     crPrompt(a.codeReview, { diffFile: diffStep.path, featureDir: a.featureDir }),
-    { label: 'close:review', phase: 'Close', schema: CR_RESULT_SCHEMA, effort: 'high' },
+    { label: 'close:review', phase: 'Close', agentType: 'fd:reviewer', schema: CR_RESULT_SCHEMA, effort: 'high' },
   );
   if (!cr) {
     return escalate([{
       kind: 'engine-failure', question: 'The code-review agent did not return. Relaunch?', options: [], context: `close: CR agent ${NO_RESULT}`,
     }]);
   }
+  // Mechanical fixes land BEFORE any judgment escalation: the human decision only
+  // concerns judgment findings, and the fd:fixer that applies it autosquashes the branch
+  // anyway — leaving the mechanical fixups already in place, not lost behind the HIL.
   const { mechanical, judgment } = classifyFindings(cr.findings);
-  if (judgment.length > 0) {
-    return escalate(judgment.map((f) => ({
-      kind: 'cr-judgment',
-      question: `Code review judgment call at ${f.location}: ${f.detail}`,
-      options: [],
-      context: `severity: ${f.severity ?? 'unspecified'}; full report: ${cr.reportFile ?? 'n/a'}`,
-    })));
-  }
   if (mechanical.length > 0) {
     await spawn(
       featureRepairPrompt(
@@ -1334,7 +1416,18 @@ async function run(rawArgs) {
       { label: 'close:cr-fixes', phase: 'Close', schema: STEP_RESULT_SCHEMA },
     );
   }
-  close.cr = { status: cr.status, skillsRun: cr.skillsRun, findings: cr.findings, reportFile: cr.reportFile ?? null };
+  close.cr = {
+    status: cr.status, skillsRun: cr.skillsRun, findings: cr.findings,
+    reportFile: cr.reportFile ?? null, mechanicalApplied: mechanical.length,
+  };
+  if (judgment.length > 0) {
+    return escalate(judgment.map((f) => ({
+      kind: 'cr-judgment',
+      question: `Code review judgment call at ${f.location}: ${f.detail}`,
+      options: CR_JUDGMENT_OPTIONS,
+      context: `severity: ${f.severity ?? 'unspecified'}; recommendation: ${f.recommendation ?? 'none given'}; mechanical findings already applied as fixups: ${mechanical.length}; full report: ${cr.reportFile ?? 'n/a'}`,
+    })), { close });
+  }
 
   const squash = await spawn(
     autosquashPrompt({ repoRoot: a.repoRoot, baseBranch: a.baseBranch, featureBranch: a.featureBranch }),
@@ -1353,10 +1446,10 @@ async function run(rawArgs) {
     return escalate([{
       kind: 'repair-exhausted',
       question: 'The FINAL full CI after code-review fixes and autosquash is red — the close regressed. How should this proceed?',
-      options: [],
+      options: CLOSE_CI_RED_OPTIONS,
       context: (finalCi?.failures ?? [{ location: 'ci', detail: `final CI agent ${NO_RESULT}` }])
         .map((f) => `${f.location}: ${f.detail}`).join('\n'),
-    }]);
+    }], { close });
   }
   close.finalCi = { status: finalCi.status };
 

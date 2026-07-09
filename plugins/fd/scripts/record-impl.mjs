@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertValid } from './lib/validate.mjs';
-import { serializeJson, atomicWrite, readJson } from './lib/json-io.mjs';
+import { serializeJson, atomicWrite, readJson, compareIds } from './lib/json-io.mjs';
 
 // Surgical patcher for the implement/ship phase. It never recomputes hashes and never
 // touches task files: the spec is frozen while implementing, and /fd:implement's
@@ -123,7 +123,9 @@ export function recordPhase(featureDir, options = {}) {
 
 // Feature-level close verdicts (the feature's FIRST full CI, the code review, and the
 // final CI after autosquash). Recorded incrementally: an escalated close (e.g. a
-// cr-judgment after a green full CI) persists what already ran.
+// cr-judgment after a green full CI) persists what already ran. AC waivers land here
+// too — they are human-only (an AskUserQuestion decision relayed by the main thread,
+// never an agent's call).
 export function recordClose(featureDir, options = {}) {
   const dir = path.resolve(featureDir);
   const updates = {};
@@ -134,11 +136,28 @@ export function recordClose(featureDir, options = {}) {
     }
     updates[key] = options[key];
   }
-  if (Object.keys(updates).length === 0) {
-    throw new RecordImplError('close requires at least one of --full-ci, --cr, --final-ci');
+  const waived = options.waive ?? [];
+  for (const id of waived) {
+    if (!/^AC-\d+$/.test(id)) {
+      throw new RecordImplError(`--waive expects AC ids (AC-<n>), got ${JSON.stringify(id)}`);
+    }
+  }
+  if (Object.keys(updates).length === 0 && waived.length === 0) {
+    throw new RecordImplError('close requires at least one of --full-ci, --cr, --final-ci, --waive');
   }
   const state = readState(dir);
   state.close = { ...(state.close ?? {}), ...updates };
+  if (waived.length > 0) {
+    const at = options.at ?? new Date().toISOString();
+    // Re-waiving an AC replaces its entry — the latest HIL decision wins.
+    const kept = (state.close.waivedAcs ?? []).filter((w) => !waived.includes(w.id));
+    const fresh = waived.map((id) => {
+      const w = { id, by: 'user', at };
+      if (options.reason) w.reason = options.reason;
+      return w;
+    });
+    state.close.waivedAcs = [...kept, ...fresh].sort((a, b) => compareIds(a.id, b.id));
+  }
   writeState(dir, state);
   return { close: state.close };
 }
@@ -176,6 +195,9 @@ function parseCliArgs(argv) {
     else if (a === '--cr') o.cr = argv[++i];
     else if (a === '--full-ci') o.fullCi = argv[++i];
     else if (a === '--final-ci') o.finalCi = argv[++i];
+    else if (a === '--waive') o.waive = argv[++i].split(',').map((s) => s.trim()).filter(Boolean);
+    else if (a === '--reason') o.reason = argv[++i];
+    else if (a === '--at') o.at = argv[++i];
     else if (a === '--set') o.set = argv[++i];
     else if (a === '--deliver') {
       o.deliver = {};
@@ -199,7 +221,7 @@ function main() {
       error: 'usage: record-impl.mjs <record|ship|phase|close|branch> <featureDir> '
         + '[--task T-1[,T-2]] [--commit SHA]... [--append] [--status S] [--gate pass|fail] [--cr pass|fail] '
         + '[--deliver EL=sha256:...,...] [--phase implementing|shipped] [--wave-in-progress true|false] '
-        + '[--full-ci pass|fail] [--final-ci pass|fail] [--set <branch>]',
+        + '[--full-ci pass|fail] [--final-ci pass|fail] [--waive AC-1[,AC-2] --reason "..." [--at ISO]] [--set <branch>]',
     }) + '\n');
     process.exit(1);
   }

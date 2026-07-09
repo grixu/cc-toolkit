@@ -193,6 +193,16 @@ autosquash → final CI) in the same run. The run's full report (per-task diagno
 per-AC verdicts, review findings) lands in the feature workspace as
 `impl-run-report.json`; the return itself is a slim summary plus that pointer, so
 run boundaries no longer spike the main conversation's context.
+The close's review runs as the dedicated `reviewer` subagent — one sub-reviewer per
+configured skill over the diff file, findings deduplicated and classified — and the
+engine auto-applies the mechanical findings; judgment findings come back as
+recommendations for a human decision, and the accepted ones are applied by the
+`fixer` subagent (fix commits, autosquash, final CI) without relaunching the engine.
+When a red gate turns out to be unfixable by code (say, an E2E test that needs a
+live environment), the human can waive those ACs — recorded in `state.close`
+(`record-impl close --waive`), surfaced later in the owning task's PR description —
+and relaunch the engine in `close-only` mode, which skips the already-merged waves
+and just finishes the close.
 Each task runs in its own git worktree; tasks with overlapping file footprints
 serialize, disjoint ones run in parallel. Task agents run as the dedicated
 `implementer` subagent — a restricted toolset (native tools plus the supported

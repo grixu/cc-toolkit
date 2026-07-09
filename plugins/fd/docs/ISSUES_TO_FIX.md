@@ -875,7 +875,7 @@ dokładnie klasę błędów, którą miały łapać zablokowane E2E.
 
 ### L1. ⚠️ Brak dźwigni close-only / AC-waiver po eskalacji ostatniej fali
 
-- [ ] Eskalacja `repair-exhausted` dotyczyła 4 ACs nienaprawialnych kodem (testy E2E
+- [x] Eskalacja `repair-exhausted` dotyczyła 4 ACs nienaprawialnych kodem (testy E2E
   istnieją, kompilują się i są discoverowane przez Playwrighta; brakuje wyłącznie live
   stagingu do ich wykonania), a wszystkie 39 tasków było już zmergowanych — do zrobienia
   został sam close. Main thread nie miał drogi powrotu do silnika: parseArgs żąda
@@ -899,6 +899,14 @@ dokładnie klasę błędów, którą miały łapać zablokowane E2E.
   `reason`; zapis wyłącznie przez `record-impl close --waive AC-109,AC-110 --reason "…"`
   (stempel `at` od skryptu; protokół w implement.md: waiver tylko z decyzji
   AskUserQuestion); `/to-prs` surfacuje waivery w opisie PR-a taska-właściciela.
+- **Fix (2026-07-09):** wave-implement.mjs — trzeci mode `close-only` (walidacja: `tasks`
+  niepuste, `close:false` sprzeczne), `waivedAcs` walidowane i odejmowane z `gateDebt`
+  w parseArgs oraz ze scope'u weryfikacji AC w pętli fal, echo w payloadzie/slim returnie;
+  `state.schema.json` + `record-impl close --waive/--reason/--at` (merge po id, ostatnia
+  decyzja wygrywa, sort `compareIds`); implement.md (args, Resume = relaunch close-only,
+  zapis waivera w State ownership, wiersz gate table), to-prs.md (waivery w opisie PR),
+  mirrory COMMAND_IMPLEMENT/SPEC §5.5/README. Testy: record-impl waive, parseArgs ×2,
+  slimReturn passthrough, source-level skip fal.
 
 ### L2. ℹ️ Version-skew manifestu zablokował record-impl (zamknięte: won't-fix)
 
@@ -911,20 +919,20 @@ dokładnie klasę błędów, którą miały łapać zablokowane E2E.
 
 ### L3. ℹ️ Raport runu czytany w całości przy `escalated`
 
-- [ ] Main thread na eskalacji wczytał cały `impl-run-report.json` (33k znaków ≈ 8k tok)
+- [x] Main thread na eskalacji wczytał cały `impl-run-report.json` (33k znaków ≈ 8k tok)
   zwykłym Read, mimo zapisu „selectively… never wholesale" — instrukcja podaje przepis
   tylko dla sekcji fail, dla `escalated` nie ma ścieżki, a eskalacje są w returnie
   kompletne właśnie po to, żeby pliku nie czytać.
-- **Fix:** implement.md (+ mirror): przy `escalated` raportu NIE czytać — decyzję HIL
+- **Fix (2026-07-09):** implement.md (+ mirror): przy `escalated` raportu NIE czytać — decyzję HIL
   buduje się z `escalations[].context` z returnu; raport wyłącznie wybiórczo
   (`jq`/`node -e` na konkretnych kluczach) dla sekcji fail, Read bez zakresu nigdy.
 
 ### L4. ℹ️ Main thread czyta źródło silnika zamiast dokumentacji relaunchu
 
-- [ ] Żeby ustalić, czy istnieje relaunch close-only, main thread 5× czytał/grepował
+- [x] Żeby ustalić, czy istnieje relaunch close-only, main thread 5× czytał/grepował
   `wave-implement.mjs` (~15k znaków do kontekstu) — możliwości silnika nie są nigdzie
   wypisane, więc źródło robiło za dokumentację (ta sama klasa co I3).
-- **Fix:** implement.md (+ mirror): tabela „opcje relaunchu" — dla każdego statusu
+- **Fix (2026-07-09):** implement.md (+ mirror): tabela „opcje relaunchu" — dla każdego statusu
   returnu (completed / continue / escalated per kind) dozwolone kombinacje args
   (`remaining`, `gateDebt`, `decision`, po L1: close-only + `waivedAcs`) i ich
   ograniczenia; zakaz czytania źródła silnika w main thread poza diagnozą awarii
@@ -932,13 +940,13 @@ dokładnie klasę błędów, którą miały łapać zablokowane E2E.
 
 ### L5. ⚠️ Eskalacja rozstrzygnięta bez HIL; silnik zwraca puste `options`
 
-- [ ] Wbrew tabeli bramek (`repair-exhausted` → HIL) main thread sam zweryfikował
+- [x] Wbrew tabeli bramek (`repair-exhausted` → HIL) main thread sam zweryfikował
   ewidencję (testy kompilują się i są discoverowane), sam uznał 4 ACs za
   „satisfied-by-construction / deferred" i pojechał z close — jedyny AskUserQuestion
   dotyczył późniejszych findings CR. Decyzja zapewne słuszna, protokół złamany.
   Współwinny silnik: eskalacja przyszła z `options: []`, więc main thread nie dostał
   gotowych wyborów do przekazania.
-- **Fix:** (a) implement.md (+ mirror): KAŻDA eskalacja przechodzi przez AskUserQuestion,
+- **Fix (2026-07-09):** (a) implement.md (+ mirror): KAŻDA eskalacja przechodzi przez AskUserQuestion,
   zanim cokolwiek zostanie zaakceptowane/waived; własna weryfikacja ewidencji jest
   wskazana, ale trafia do pytania jako rekomendacja — nie zastępuje decyzji;
   (b) wave-implement.mjs: `repair-exhausted` niesie kanoniczne opcje (waive ACs →
@@ -951,16 +959,16 @@ dokładnie klasę błędów, którą miały łapać zablokowane E2E.
 
 ### L6. ℹ️ `ciPrompt` bez heurystyki OOM równoległego runnera
 
-- [ ] Full CI dwukrotnie padał „gołym" `ELIFECYCLE Command failed` bez treści błędu —
+- [x] Full CI dwukrotnie padał „gołym" `ELIFECYCLE Command failed` bez treści błędu —
   sygnatura OOM przy równoległym `turbo run`; main thread doszedł do tego po dwóch
   iteracjach diagnostyki i przeszedł na `--concurrency=1` (green).
-- **Fix:** jedno zdanie w `ciPrompt` (wave-implement.mjs): fail bez komunikatu błędu
+- **Fix (2026-07-09):** jedno zdanie w `ciPrompt` (wave-implement.mjs): fail bez komunikatu błędu
   w równoległym runnerze → podejrzewaj OOM, powtórz raz serializowane
   (`--concurrency=1`) i raportuj serializowany werdykt jako ostateczny.
 
 ### L7. ℹ️ Close/CR/fixy poza silnikiem orkiestrowane inline w main thread (obserwacja usera)
 
-- [ ] W tym runie CR (4 agenty), naprawy po HIL (2 agenty specjalistyczne +
+- [x] W tym runie CR (4 agenty), naprawy po HIL (2 agenty specjalistyczne +
   comment-strip) i 4 przebiegi CI pobiegły „osobno", poza workflow — a orkiestrował je
   main thread inline, stąd 75k→396k. User: nie wpychać ich do workflow na siłę, ale
   orkiestrację tej części powinien przejąć dedykowany subagent, żeby główny wątek
@@ -985,6 +993,18 @@ dokładnie klasę błędów, którą miały łapać zablokowane E2E.
   w tle (Bash), HIL (AskUserQuestion nie działa w subagentach) i zapisy stanu — main
   thread nigdy nie czyta diffa ani findings w całości, tylko slim werdykty + ścieżki
   raportów.
+- **Fix (2026-07-09):** nowe `agents/reviewer.md` (fan-out per skill nad plikiem diffa,
+  dedupe + weryfikacja blockerów na kodzie, klasyfikacja z `recommendation`, raport do
+  pliku, slim JSON; degradacja do sekwencyjnego Skill toola gdy brak Agent toola —
+  głośna) i `agents/fixer.md` (subagenty napraw na rozłącznych drzewach, edycje bez
+  commitów — chirurgię commitów robi wyłącznie fixer, autosquash + finalny CI z pętlą
+  ograniczoną, slim JSON); silnik: `close:review` z `agentType: 'fd:reviewer'`,
+  `crPrompt` przepisany na kontrakt orkiestracji, `CR_RESULT_SCHEMA.findings` +
+  `recommendation`, mechaniczne fixy PRZED eskalacją judgment (`close.cr` z
+  `mechanicalApplied`, eskalacja niesie `close` w payloadzie); implement.md (Feature
+  close, Fallback, cr-judgment → fd:fixer) + mirrory COMMAND_IMPLEMENT/SPEC/README/
+  CHANGELOG. Testy: crPrompt fan-out, kolejność mechanical→judgment source-level,
+  slim `mechanicalApplied`.
 
 ---
 

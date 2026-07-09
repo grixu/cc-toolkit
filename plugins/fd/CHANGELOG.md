@@ -237,3 +237,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   were exactly these return reads; the main thread now reads the report selectively
   (`jq`/`node -e`), never wholesale, and not at all on a clean `completed`. A dead
   report writer degrades to the old fat return (`report: null`) — detail over slimness.
+
+### Changed (after the round-4 close field run)
+
+- New engine mode **`close-only`** plus **HIL-approved AC waivers**: when a
+  repair-exhausted gate is unfixable by code (the field run's last wave carried four
+  E2E ACs needing a live staging environment the sandbox lacks), the human waives those
+  ACs (`record-impl.mjs close --waive AC-… --reason "…"` → `state.close.waivedAcs`,
+  reusing the readiness waiver shape plus a `reason`) and relaunches with
+  `args.waivedAcs`; the engine subtracts them from `gateDebt` and every verification
+  scope and reports them as `waived`, never `pass`. `close-only` keeps the full task
+  list (fixup attribution and autosquash need the ids) and skips only the waves. The
+  field run had no such lever: the entire close ran inline in the main thread, growing
+  its context ~270k tokens. `/fd:to-prs` surfaces waivers in the owning task's PR
+  description.
+- Feature-close code review restructured around two new subagents: **`reviewer`**
+  (`agents/reviewer.md`) fans out one sub-reviewer per configured skill over the diff
+  file (a 456K-char field diff cannot fit one context times four skills; independent
+  lenses corroborating a finding is signal a single pass cannot give), dedupes,
+  verifies blockers against the checked-out code, and classifies findings — each
+  judgment finding now carries a `recommendation`. The engine applies **mechanical
+  findings before escalating** the judgment ones; after the HIL, the accepted fixes are
+  applied by **`fixer`** (`agents/fixer.md`: fix subagents over disjoint trees, commit
+  surgery with `Task:` trailers, autosquash, final CI) — never by an engine relaunch,
+  which would re-run the whole CI + review and re-find the same findings. The same pair
+  serves the subagents fallback, where the field run's inline close is exactly the cost
+  they absorb.
+- Escalation handling hardened: **every escalation goes through AskUserQuestion before
+  anything is accepted or waived** (the field run self-accepted a repair-exhausted
+  escalation on its own evidence — protocol, not confidence, is the gate), and the
+  engine now ships canonical `options` per escalation site (waive / retry-with-debt /
+  stop; relaunch-close-only / stop; fix-now / accept-as-is) instead of the empty list
+  the field run had to invent choices for. `implement.md` gained a **relaunch matrix**
+  — the engine's complete lever set — after the field run read the engine source five
+  times to learn a lever did not exist; on `escalated` the run report is not read at
+  all (escalations are complete in the return; the field run pulled all 33k chars for
+  an escalation that needed none of it).
+- `ciPrompt` names the parallel-runner OOM signature: a command dying with no error
+  output (bare `ELIFECYCLE Command failed`) under turbo/nx/lerna re-runs once
+  serialized (`--concurrency=1`) with the serialized verdict as final — the field run
+  burned two diagnostic iterations rediscovering this.

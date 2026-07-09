@@ -99,40 +99,63 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
   skorumpowało w teście polowym krawędź `serializeAfter` w self-referencję); do wywołania
   Workflow trafia zawartość pliku **verbatim**, każda zmiana = najpierw regeneracja pliku.
   `tasksCount` (= `tasks.length`) jedzie w args jako tripwire obcięcia.
-  - **args:** `{ mode: "full"|"repair", featureDir, slug, repoRoot, featureBranch, baseBranch,
+  - **args:** `{ mode: "full"|"repair"|"close-only", featureDir, slug, repoRoot, featureBranch, baseBranch,
     tasksCount, tasks: [{ id, worktree, branch, taskFile, deps, serializeAfter?, acIds, diagnosis?,
     decision? }], gate: { lintChanged: true }, ci: { typecheck, lint, test,
     build, packageManager } (komendy `tooling.*` verbatim, null = potwierdzony brak),
-    gateDebt?: { smoke, acs }, graphMcp (`true` ⇔ `mcp.detected` zawiera `codebase-memory-mcp` —
+    gateDebt?: { smoke, acs }, waivedAcs?: [{ id, reason }],
+    graphMcp (`true` ⇔ `mcp.detected` zawiera `codebase-memory-mcp` —
     agenty taskowe pobierają wtedy kod przez graf), worktreeSetup, worktreeCleanup,
     codeReview: { skills }, repair: { maxIterations }, close: true }`. Per task: `deps` = intra-feature producenci
     (z krawędzi sc-map), `acIds` = AC pokryte w całości, `decision` = odpowiedź człowieka przy
     relaunchu po eskalacji. `gateDebt` = czerwona resztka bramki eskalowanej fali poprzedniego
     runu (skopiowana z jej raportu fali) — silnik spłaca ją (świeży smoke + re-weryfikacja +
     pętla napraw) **przed falą 0**, żeby nowe worktree nie były cięte ze znanego-czerwonego
-    brancha.
+    brancha. **`mode: "close-only"`** = wszystkie taski już scalone (rozstrzygnięta eskalacja
+    ostatniej fali albo ręczna naprawa): `tasks` nadal niesie **pełną listę** (atrybucja fixupów
+    i autosquash potrzebują id), a silnik pomija fale — prosto do spłaty długu i domknięcia.
+    **`waivedAcs`** = waivery AC zatwierdzone przez HIL (wyłącznie z decyzji AskUserQuestion,
+    NAJPIERW zapisane przez `record-impl close --waive`); silnik odejmuje je z `gateDebt`
+    i z każdego zakresu weryfikacji, a w raporcie znaczy jako `waived`, nigdy `pass`.
   - **zwrot (dyskryminowany po `status`) — SZCZUPŁE podsumowanie + wskaźnik `report`.** Pełny
     detal runu (per-task diagnozy i changedFiles, per-AC werdykty z dowodami, findings CR)
     silnik pisze do `<featureDir>/impl-run-report.json` (nadpisywany per launch); zwrot niesie
     tylko to, na czym main thread działa (run polowy: dwa największe skoki kontekstu sesji —
     +54k i +51k tokenów — to były właśnie odczyty zwrotów): `completed` (+ `report`, `waves`,
     `tasks` = `{ id, status, headSha }`, `close: { fullCi, cr, finalCi }` — `cr` z werdyktem,
-    `findingsCount` i `reportFile`, bez findings) | `continue` (+ `report`, `reason`,
-    `remaining` — budżet agentów wyczerpany; **zapis i natychmiastowy relaunch z resztą, zero
-    HIL**) | `escalated` (+ `report`, `escalations: [{ kind, taskId?, wave?, question, options,
-    context }]` — eskalacje przychodzą w zwrocie **w całości**, HIL biegnie z nich bez odczytu
-    pliku; wpis eskalowanej fali niesie `gateDebt` — też w zwrocie, kopiowany verbatim do args
-    relaunchu). Plik raportu czyta się **wybiórczo** (`jq`/`node -e` po konkretnych kluczach,
-    np. `diagnosis` failniętych tasków), nigdy w całości, a przy czystym `completed` wcale.
+    `findingsCount`, `mechanicalApplied` i `reportFile`, bez findings) | `continue` (+ `report`,
+    `reason`, `remaining` — budżet agentów wyczerpany; **zapis i natychmiastowy relaunch z
+    resztą, zero HIL**) | `escalated` (+ `report`, `escalations: [{ kind, taskId?, wave?,
+    question, options, context }]` — eskalacje przychodzą w zwrocie **w całości**; **przy
+    `escalated` raportu NIE czyta się wcale** — run polowy wciągnął jego 33k znaków przy
+    eskalacji, która nie potrzebowała żadnego; wpis eskalowanej fali niesie `gateDebt` — też
+    w zwrocie, kopiowany verbatim do args relaunchu). Plik raportu czyta się wyłącznie do
+    **diagnozy faili**, i **wybiórczo** (`jq`/`node -e` po konkretnych kluczach, np. `diagnosis`
+    failniętych tasków — nigdy gołym Readem całości), a przy czystym `completed` wcale.
     `report: null` = writer raportu padł; ten sam payload przychodzi wtedy tłusty w zwrocie
     (fallback — ginie szczupłość, nie detal).
-- **Eskalacje (jedyne przerwania w środku cyklu):** `architectural` (agent taskowy trafił na
+- **Eskalacje (jedyne przerwania w środku cyklu).** **Każda eskalacja przechodzi przez
+  AskUserQuestion, zanim cokolwiek zostanie zaakceptowane, zwaivowane lub obejście** — własna
+  weryfikacja ewidencji jest wskazana, ale jej wynik staje się rekomendacją WEWNĄTRZ pytania,
+  nigdy substytutem decyzji (run polowy sam zaakceptował `repair-exhausted` na własnej
+  ewidencji; bramką jest protokół, nie pewność modelu). `options` ze zwrotu to kanoniczne
+  wybory — prezentuj je. Rodzaje: `architectural` (agent taskowy trafił na
   lukę specu z >1 sensownym rozwiązaniem — zatrzymał się zamiast zgadywać → AskUserQuestion,
   relaunch z odpowiedzią jako `decision` taska; bramka eskalowanej fali pobiegła, naprawa NIE —
   czerwony werdykt kopiuje się do `args.gateDebt` relaunchu, `--gate` folduje się tylko dla
   fal z zieloną bramką), `repair-exhausted` (fala/domknięcie/odziedziczony dług bramkowy
-  czerwone po K iteracjach → user decyduje), `cr-judgment` (finding CR wymagający decyzji →
-  prezentacja + plik raportu), `engine-failure` (agent nie zwrócił wyniku — silnik **nie widzi
+  czerwone po K iteracjach → opcje kanoniczne: **waive** nienaprawialnych AC — wyłącznie dla
+  porażek, których żadna zmiana kodu nie zaspokoi, np. E2E wymagające środowiska, którego
+  sandbox nie ma: zapis `record-impl close --waive AC-… --reason "…"`, relaunch z `waivedAcs`
+  — `full` z resztą tasków albo `close-only`, gdy wszystko scalone; **retry** — kopiuj
+  `gateDebt` do args; **stop** — naprawa ręczna, potem relaunch `close-only`), `cr-judgment`
+  (silnik JUŻ zaaplikował findingi `mechanical` jako fixupy i zwraca po eskalacji na każdy
+  finding `judgment` z `recommendation` reviewera → jedno AskUserQuestion multiSelect: fix wg
+  rekomendacji / accept as-is / własna instrukcja; potem spawn **`fd:fixer`** z przyjętymi
+  decyzjami — aplikuje fixy z chirurgią commitów, autosquash, finalny CI, slim werdykt; zapis
+  `close … --cr pass --final-ci <werdykt>`. **Nigdy relaunch silnika do aplikacji decyzji CR**
+  — świeży close powtórzyłby cały CI + review i znalazł te same findingi), `engine-failure`
+  (agent nie zwrócił wyniku — silnik **nie widzi
   przyczyny**: `agent()` daje null tak samo dla killa, błędu API i limitu konta; **najpierw
   klasyfikuj**: zbieg z limitem sesji ⇒ to nie bug — branch i trailery nietknięte, raportuj
   „limit — poczekaj do resetu i relaunch", bez straszącego HIL; brak sygnału limitu ⇒ salvage
@@ -140,6 +163,14 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
   niezgodny licznik; **nic nie pobiegło** → regeneruj engine-args.json i relaunch bez HIL;
   HIL dopiero, gdy błąd reprodukuje się z czystych wejść). Na **każdym** zwrocie najpierw
   utrwal postęp (trailery → `record-impl.mjs`), potem działaj wg statusu.
+- **Macierz relaunchu = kompletny zestaw dźwigni silnika** (tabela w `commands/implement.md`;
+  **zakaz czytania źródła `wave-implement.mjs` w poszukiwaniu dodatkowych** — run polowy czytał
+  je pięciokrotnie, żeby odkryć, że dźwigni nie ma; źródło czyta się tylko przy diagnozie
+  awarii): `continue` → te same args z `remaining`; `invalid-args` → regeneracja pliku;
+  `architectural` → reszta tasków + `decision` (+ `gateDebt`); `repair-exhausted` → retry
+  z `gateDebt` albo waive z `waivedAcs`; `cr-judgment` → **bez relaunchu**, `fd:fixer`;
+  wszystko scalone a close niedokończony → `mode: "close-only"` z pełną listą tasków.
+  `tasks` niepuste w każdym trybie; `resumeFromRunId` nigdy między sesjami.
 - **Dyrektywy agenta taskowego** (jedno źródło prawdy — skrypt osadza je verbatim, fallback
   reużywa): plik taska jest samowystarczalny (bez re-grepowania ścieżek już nazwanych w treści /
   `codeDeps`) i jest **jedynym materiałem fd** — zakaz czytania `spec.md`, cudzych tasków
@@ -158,8 +189,12 @@ specu, wyczerpanie iteracji napraw, judgment call z code review.
   weryfikuje na wejściu. Brak (lub `implement.engine: "subagents"`) → **main thread wykonuje TEN
   SAM pełny cykl sam**, przez subagenty Agent-toolowe: izolacja worktree, te same prompty i
   bramki (taski także tu jako `fd:implementer`), szeregowe wywołania mergera, własny Bash dla CI,
-  pętla napraw i kroki domknięcia —
-  eskalacje stają się bezpośrednimi AskUserQuestion. Degradacja raportowana, nie blokuje.
+  pętla napraw — eskalacje stają się bezpośrednimi AskUserQuestion. Ciężkie nogi domknięcia
+  NIGDY nie biegną tu inline: review idzie do subagenta **`fd:reviewer`** (fan-out per skill
+  w środku), fixy po HIL do **`fd:fixer`** — main thread zostaje z CI w tle (Bash), HIL
+  i zapisami stanu, i nie czyta ani diffa, ani findings w całości (inline'owy close runu
+  polowego napompował główny wątek o ~270k tokenów — dokładnie ten koszt te dwa subagenty
+  zdejmują). Degradacja raportowana, nie blokuje.
   Orkiestracja: **czekaj bezpośrednio** na zakończenie runu / subagentów — nigdy
   foreground-`sleep`, nigdy polling plików.
 
@@ -260,14 +295,19 @@ Po scaleniu i zazielenieniu wszystkich fal silnik domyka funkcjonalność w tym 
    automatycznie. Fail ⇒ szeregowa pętla napraw na feature branchu (próg K), dalej czerwone ⇒
    `escalated`.
 2. **CR całości (bramka):** silnik zapisuje `git diff <base>...<feature>` (z listą plików) do
-   `<featureDir>/cr-diff.patch`; agent CR dostaje **ścieżkę pliku** i go `Read`-uje — **diff
-   nigdy nie jest inline'owany**. Agent CR wywołuje **każdy** skill z `codeReview.skills` **po
-   nazwie przez Skill tool** (≥1), pisze pełny raport do `<featureDir>/cr-report.md` i
-   klasyfikuje findingi: `mechanical` (obiektywnie naprawialny) | `judgment` (wymaga człowieka).
-   **Bez** zagnieżdżonego fan-outu i **bez** researchu sieciowego.
-3. **Findingi:** `judgment` → `escalated` (po jednym na finding, z plikiem raportu);
-   `mechanical` → szeregowy agent napraw na feature branchu (commity `--fixup`). Nieużywany
-   eksport niosący kontrakt to zawsze `judgment`, nigdy `mechanical`.
+   `<featureDir>/cr-diff.patch` i spawni review jako subagent **`fd:reviewer`** ze **ścieżką
+   pliku** — **diff nigdy nie jest inline'owany**. Reviewer **fan-outuje po subagencie na każdy
+   skill z `codeReview.skills`** (każdy sam czyta plik diffa — diff całej feature nie mieści
+   się w jednym kontekście razy N skilli, a niezależne soczewki potwierdzające finding to
+   sygnał, którego jeden przebieg nie da), deduplikuje findingi między soczewkami, weryfikuje
+   blockery na wycheckoutowanym kodzie, pisze pełny raport do `<featureDir>/cr-report.md` i
+   klasyfikuje: `mechanical` (obiektywnie naprawialny) | `judgment` (wymaga człowieka — każdy
+   z `recommendation`). **Bez** researchu sieciowego.
+3. **Findingi:** `mechanical` → NAJPIERW szeregowy agent napraw na feature branchu (commity
+   `--fixup`); potem `judgment` → `escalated` (po jednym na finding, z rekomendacją i plikiem
+   raportu; zaaplikowane mechaniczne fixupy zostają na branchu — `fd:fixer` autosquashuje je
+   razem z przyjętymi fixami po HIL). Czysty CR (zero judgment) leci dalej bez żadnego HIL.
+   Nieużywany eksport niosący kontrakt to zawsze `judgment`, nigdy `mechanical`.
 4. **Autosquash:** `git rebase --autosquash <base>` wciąga fixupy w oryginalne commity
    (konflikt → abort rebase'u, `escalated`); silnik weryfikuje, że każdy trailer `Task:` przeżył.
 5. **Finalne pełne CI** — potwierdzenie, że drzewo dalej zielone po fixach + autosquashu;
@@ -278,11 +318,16 @@ utrwala werdykty feature-level przez `record-impl.mjs close <featureDir> --full-
 --cr pass --final-ci pass` (blok `state.close`, na którym bramkuje `/to-prs`; zapis
 przyrostowy — eskalowane domknięcie utrwala to, co już pobiegło), odświeża `impl.commits`
 z po-autosquashowych trailerów, flipuje `waveInProgress = false`
-i raportuje. `phase` **zostaje `implementing`** — flip do `shipped` to nadal robota detekcji
+i raportuje. Zatwierdzony przez HIL waiver AC zapisuje się tym samym verbem, **przed**
+relaunchem, który go niesie: `close <featureDir> --waive AC-…[,AC-…] --reason "…"` → ląduje w
+`state.close.waivedAcs` (`/to-prs` pokazuje waivery w opisie PR-a taska-właściciela).
+`phase` **zostaje `implementing`** — flip do `shipped` to nadal robota detekcji
 shipu (`SPEC.md` §2.4), po merge feature brancha do `baseBranch`.
 
-**Wznowienie:** wejście z wszystkimi taskami `implemented` i niepełnym `impl.cr` ⇒ kroki
-domknięcia przez fallback subagentowy (silnik potrzebuje tasków), zapis identyczny.
+**Wznowienie:** wejście z wszystkimi taskami `implemented` i niedokończonym close ⇒ relaunch
+silnika z **`mode: "close-only"`** (pełna lista tasków w args, `waivedAcs` wg wcześniejszych
+decyzji); fallback subagentowy wykonuje te same kroki domknięcia tylko przy braku Workflow.
+Zapis identyczny w obu ścieżkach.
 
 ---
 
@@ -333,9 +378,10 @@ entry → guard(config) → reconcile-detect(hashe + ship) ──drift──→ 
       → recovery(waveInProgress): done-set z trailerów + defensywny autosquash + salvage → relaunch reszty
       → record-impl phase(implementing, waveInProgress=true)
       → run = Workflow(scripts/wave-implement.mjs, args={tasksCount, tasks+deps+acIds, ci=tooling,
-              gateDebt?, close:true})
+              gateDebt?, waivedAcs?, close:true})   [mode close-only: fale pominięte]
               │  na starcie: walidacja args (self-ref/licznik → zwrot invalid-args, nic nie pobiegło)
-              │    → spłata gateDebt (świeży smoke + re-weryfikacja AC + pętla napraw) przed falą 0
+              │    → spłata gateDebt minus waivedAcs (świeży smoke + re-weryfikacja AC + pętla napraw)
+              │      przed falą 0
               │  wewnątrz runu, per fala:
               │    prepare worktrees (szeregowo, z tipa po merge'ach) → agenty taskowe (self-gate+breadcrumb)
               │    → merger (raz na falę, squash serial) → smoke (typecheck+build) ∥ weryfikacja AC
@@ -343,16 +389,19 @@ entry → guard(config) → reconcile-detect(hashe + ship) ──drift──→ 
               │    → pętla napraw ≤K (worktree | feature-branch: fixupy + commity integration-fix;
               │      re-weryfikacja WSZYSTKICH AC fali) → następna fala
               │    (eskalacja fali: bramka biegnie, naprawa nie — czerwień wraca jako gateDebt)
-              │  po ostatniej fali: pełne CI → CR (skille, diff z pliku) → mechanical fixes
-              │    → autosquash → finalne pełne CI
+              │  po ostatniej fali: pełne CI → CR (fd:reviewer, fan-out per skill, diff z pliku)
+              │    → mechanical fixes → judgment? eskalacja (fd:fixer po HIL) : autosquash
+              │    → finalne pełne CI
               ▼
       zwrot: completed ──▶ record(trailery, --gate/--cr) → record-impl close → waveInProgress=false → raport
              continue  ──▶ record(trailery) → relaunch(remaining) [bez HIL]
              escalated ──▶ record(trailery) → klasyfikacja: limit sesji→„czekaj i relaunch" (bez HIL)
                            | invalid-args→regeneracja engine-args.json + relaunch (bez HIL)
-                           | HIL(architectural[+gateDebt do args] | repair-exhausted | cr-judgment
-                                | engine-failure→salvage) → relaunch(remaining+decision)
+                           | HIL(architectural[+gateDebt do args] | repair-exhausted[waive→waivedAcs]
+                                | cr-judgment→fd:fixer (bez relaunchu) | engine-failure→salvage)
+                                → relaunch(remaining+decision | close-only)
       | fallback (brak Workflow / engine=subagents): main thread wykonuje ten sam cykl subagentami
+        (review: fd:reviewer, fixy po HIL: fd:fixer)
 ```
 
 Task wchodzi z `/to-tasks` jako `ready`; silnik go przepracowuje, a main thread zapisuje
@@ -387,9 +436,10 @@ czasu naprawy lub eskalacji.
 | Walidacja args (`invalid-args`: self-ref, licznik) | launch → wczesny zwrot | auto-regeneracja + relaunch (bez HIL) |
 | Luka architektoniczna znaleziona przez agenta taskowego | w runie → wczesny zwrot | HIL |
 | Wyczerpanie K iteracji napraw (fala, domknięcie lub gateDebt) | w runie → wczesny zwrot | HIL |
+| Waiver AC (nienaprawialna porażka; `record-impl close --waive`, potem `waivedAcs`) | HIL → relaunch | wyłącznie HIL |
 | Pełne CI przy domknięciu | w runie, domknięcie | block |
-| Code review całości przy domknięciu (≥1 skill) | w runie, domknięcie | gate |
-| Finding CR typu judgment | w runie → wczesny zwrot | HIL |
+| Code review całości przy domknięciu (fd:reviewer, fan-out ≥1 skill) | w runie, domknięcie | gate |
+| Finding CR typu judgment (mechaniczne już zaaplikowane) | w runie → wczesny zwrot → fd:fixer | HIL |
 | Checkpoint budżetu agentów | w runie → wczesny zwrot | auto-relaunch (bez HIL) |
 
 ---
@@ -400,7 +450,7 @@ Raport: zaimplementowane taski (z SHA commitów `Task: <id>`); per-fala status s
 **głośne skipy**) + werdykty AC z **metodą, która dowiodła każdego AC** (test / inspekcja)
 i ile iteracji napraw zużyto; ewentualne checkpointy `continue` (policz je — inaczej są dla usera niewidoczne); na
 wznowionej sesji — które taski **salvage'owane** vs **re-run**; wynik **domknięcia** (pełne CI +
-CR całości: findingi + plik raportu); eskalacje i ich rozstrzygnięcia; czy run zdegradował do
-subagentów. Feature branch z całością pracy jako liniowa historia 1-commit-per-task (plus
+CR całości: findingi + plik raportu); **zwaivowane AC z powodami**; eskalacje i ich
+rozstrzygnięcia; czy run zdegradował do subagentów. Feature branch z całością pracy jako liniowa historia 1-commit-per-task (plus
 ewentualne jawne commity `Integration-Fix`, każdy na trailerze swojego winowajcy). Sugestia
 następnego kroku prozą — self-review całości, potem `/to-prs` — bez uruchamiania.

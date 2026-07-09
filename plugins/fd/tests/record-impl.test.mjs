@@ -84,6 +84,34 @@ test('close records feature-level verdicts incrementally and validates values', 
   }
 });
 
+test('close --waive records HIL waivers sorted by id; re-waiving replaces the entry', () => {
+  const dir = setup();
+  try {
+    const res = recordClose(dir, { waive: ['AC-10', 'AC-2'], reason: 'E2E needs live staging', at: '2026-07-09T00:00:00.000Z' });
+    assert.deepEqual(res.close.waivedAcs, [
+      { id: 'AC-2', by: 'user', at: '2026-07-09T00:00:00.000Z', reason: 'E2E needs live staging' },
+      { id: 'AC-10', by: 'user', at: '2026-07-09T00:00:00.000Z', reason: 'E2E needs live staging' },
+    ]);
+
+    recordClose(dir, { fullCi: 'pass' });
+    assert.equal(state(dir).close.waivedAcs.length, 2);
+
+    recordClose(dir, { waive: ['AC-2'], reason: 'superseded rationale', at: '2026-07-09T01:00:00.000Z' });
+    const waived = state(dir).close.waivedAcs;
+    assert.equal(waived.length, 2);
+    assert.deepEqual(waived[0], { id: 'AC-2', by: 'user', at: '2026-07-09T01:00:00.000Z', reason: 'superseded rationale' });
+    assert.equal(waived[1].at, '2026-07-09T00:00:00.000Z');
+
+    const noReason = recordClose(dir, { waive: ['AC-3'], at: '2026-07-09T02:00:00.000Z' });
+    assert.deepEqual(noReason.close.waivedAcs.find((w) => w.id === 'AC-3'), { id: 'AC-3', by: 'user', at: '2026-07-09T02:00:00.000Z' });
+
+    assert.throws(() => recordClose(dir, { waive: ['T-001'] }), /--waive expects AC ids/);
+    assert.throws(() => recordClose(dir, { waive: ['ac-1'] }), /--waive expects AC ids/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('branch sets state.branch and rejects an empty name', () => {
   const dir = setup();
   try {
