@@ -859,6 +859,135 @@ jako `--fixup <commit-taska>`, zero konfliktów w całym runie. Diagramy przebie
 
 ---
 
+## L. Testy polowe — runda 4 (implement, domknięcie feature, 2026-07-08)
+
+Kontynuacja sesji 7baed842 na wersji z K1–K10 (launch 10:29 UTC, 3 min po commicie K8).
+Jeden run silnika (`wf_255cf27f`): 11 pozostałych tasków, fale 0–4, 56 agentów (w tym
+11× `fd:implementer`, 5× `fd:merger`), repair użyty konstruktywnie (fala 0: 2 iteracje),
+eskalacja `repair-exhausted` na fali 4 — 4 ACs E2E wymagające live stagingu, którego
+sandbox nie ma. Close wykonany ręcznie w main thread (14:09→17:01). Wynik: 39/39 tasków,
+close `fullCi/cr/finalCi: pass`, fixy z CR zacommitowane, branch PR-ready. Potwierdzenia
+w polu: **K8** (slim return ~14 kB ≈ 3,5k tok vs +54k/+51k poprzednio; raport 31 kB na
+dysku; `report:write` → ok), **K9/K10** (routing effort + `fd:implementer` na wszystkich
+taskach), **J1** (smoke pass na falach 0–3), a CR znalazł 3 realne regresje autoryzacji
+(blocker: `organization_admin` z `actions: ['*']` zagarnia `admin:change_status`) —
+dokładnie klasę błędów, którą miały łapać zablokowane E2E.
+
+### L1. ⚠️ Brak dźwigni close-only / AC-waiver po eskalacji ostatniej fali
+
+- [ ] Eskalacja `repair-exhausted` dotyczyła 4 ACs nienaprawialnych kodem (testy E2E
+  istnieją, kompilują się i są discoverowane przez Playwrighta; brakuje wyłącznie live
+  stagingu do ich wykonania), a wszystkie 39 tasków było już zmergowanych — do zrobienia
+  został sam close. Main thread nie miał drogi powrotu do silnika: parseArgs żąda
+  niepustych `tasks`, a `gateDebt` re-weryfikuje i naprawia, więc nienaprawialne ACs
+  zapętlają się w tę samą eskalację. Skutek: cała faza close (full CI ×4, CR, fixy,
+  commit) ręcznie w main thread — kontekst 75k→396k (~270k tok na pracę, którą
+  projektowo robi silnik), ~3h ręcznej orkiestracji.
+- **Kierunek (user 2026-07-09):** dwie dźwignie: (a) `waivedAcs: [{id, reason}]` w args —
+  wyłącznie z decyzji HIL (spójne z „waiver tylko-ludzki"); spłata gateDebt je pomija,
+  raport i stan znaczą je `waived`, nie `pass`; (b) `mode: "close-only"` — silnik od razu
+  wykonuje close na feature branchu. Relaunch po eskalacji ostatniej fali = close-only +
+  waivedAcs. Zmiany: wave-implement.mjs (parseArgs, ścieżka close, raport), implement.md
+  (protokół relaunchu — patrz L4), mirrory, testy.
+- **Decyzja (grill 2026-07-09):** `waivedAcs` honorowane w KAŻDYM trybie (odejmowane
+  z gateDebt, pomijane w scope weryfikacji AC, echo w raporcie i slim returnie).
+  `mode: "close-only"`: `tasks` ZOSTAJE wymagane — pełna lista z engine-args.json
+  (taskIds są potrzebne do atrybucji fixupów/integration-fixów i autosquasha), silnik
+  pomija wyłącznie pętlę fal; rezydualny (nie-zwaivowany) gateDebt spłacany normalnie
+  przed close tym samym kodem co dziś (wyczerpanie → `repair-exhausted`). Trwały zapis:
+  `state.close.waivedAcs` — istniejący `$def waiver {id, by, at}` + nowe opcjonalne
+  `reason`; zapis wyłącznie przez `record-impl close --waive AC-109,AC-110 --reason "…"`
+  (stempel `at` od skryptu; protokół w implement.md: waiver tylko z decyzji
+  AskUserQuestion); `/to-prs` surfacuje waivery w opisie PR-a taska-właściciela.
+
+### L2. ℹ️ Version-skew manifestu zablokował record-impl (zamknięte: won't-fix)
+
+- [x] Rename `impl.ci` → `impl.gate` (K7) + `additionalProperties: false` w schemacie:
+  21 tasków z legacy kluczem wysadzało walidację CAŁEGO manifestu — wszystkie zapisy
+  `record` padły i main thread napisał jednorazowy skrypt migracji (21 tasków,
+  0 konfliktów). **Decyzja (user 2026-07-09): nie patchujemy** — jednorazowy skutek
+  renamu wjechanego mid-feature na niepublikowanym pluginie, w normalnym cyklu życia
+  się nie powtórzy.
+
+### L3. ℹ️ Raport runu czytany w całości przy `escalated`
+
+- [ ] Main thread na eskalacji wczytał cały `impl-run-report.json` (33k znaków ≈ 8k tok)
+  zwykłym Read, mimo zapisu „selectively… never wholesale" — instrukcja podaje przepis
+  tylko dla sekcji fail, dla `escalated` nie ma ścieżki, a eskalacje są w returnie
+  kompletne właśnie po to, żeby pliku nie czytać.
+- **Fix:** implement.md (+ mirror): przy `escalated` raportu NIE czytać — decyzję HIL
+  buduje się z `escalations[].context` z returnu; raport wyłącznie wybiórczo
+  (`jq`/`node -e` na konkretnych kluczach) dla sekcji fail, Read bez zakresu nigdy.
+
+### L4. ℹ️ Main thread czyta źródło silnika zamiast dokumentacji relaunchu
+
+- [ ] Żeby ustalić, czy istnieje relaunch close-only, main thread 5× czytał/grepował
+  `wave-implement.mjs` (~15k znaków do kontekstu) — możliwości silnika nie są nigdzie
+  wypisane, więc źródło robiło za dokumentację (ta sama klasa co I3).
+- **Fix:** implement.md (+ mirror): tabela „opcje relaunchu" — dla każdego statusu
+  returnu (completed / continue / escalated per kind) dozwolone kombinacje args
+  (`remaining`, `gateDebt`, `decision`, po L1: close-only + `waivedAcs`) i ich
+  ograniczenia; zakaz czytania źródła silnika w main thread poza diagnozą awarii
+  (rozszerzenie Script contract z I3).
+
+### L5. ⚠️ Eskalacja rozstrzygnięta bez HIL; silnik zwraca puste `options`
+
+- [ ] Wbrew tabeli bramek (`repair-exhausted` → HIL) main thread sam zweryfikował
+  ewidencję (testy kompilują się i są discoverowane), sam uznał 4 ACs za
+  „satisfied-by-construction / deferred" i pojechał z close — jedyny AskUserQuestion
+  dotyczył późniejszych findings CR. Decyzja zapewne słuszna, protokół złamany.
+  Współwinny silnik: eskalacja przyszła z `options: []`, więc main thread nie dostał
+  gotowych wyborów do przekazania.
+- **Fix:** (a) implement.md (+ mirror): KAŻDA eskalacja przechodzi przez AskUserQuestion,
+  zanim cokolwiek zostanie zaakceptowane/waived; własna weryfikacja ewidencji jest
+  wskazana, ale trafia do pytania jako rekomendacja — nie zastępuje decyzji;
+  (b) wave-implement.mjs: `repair-exhausted` niesie kanoniczne opcje (waive ACs →
+  close-only [L1] / relaunch z `gateDebt` / stop i naprawa ręczna).
+- **Decyzja (grill 2026-07-09):** opcje różnicowane per miejsce eskalacji: fala →
+  [waive czerwone ACs + relaunch (close-only, gdy fale wyczerpane) / relaunch
+  z `gateDebt` / stop i naprawa ręczna]; close-CI i finalny CI → [relaunch / stop];
+  `cr-judgment` → opcje per finding [fix wg rekomendacji / accept as-is / własna
+  instrukcja] — aplikacją wybranych zajmuje się `fd:fixer` (patrz L7).
+
+### L6. ℹ️ `ciPrompt` bez heurystyki OOM równoległego runnera
+
+- [ ] Full CI dwukrotnie padał „gołym" `ELIFECYCLE Command failed` bez treści błędu —
+  sygnatura OOM przy równoległym `turbo run`; main thread doszedł do tego po dwóch
+  iteracjach diagnostyki i przeszedł na `--concurrency=1` (green).
+- **Fix:** jedno zdanie w `ciPrompt` (wave-implement.mjs): fail bez komunikatu błędu
+  w równoległym runnerze → podejrzewaj OOM, powtórz raz serializowane
+  (`--concurrency=1`) i raportuj serializowany werdykt jako ostateczny.
+
+### L7. ℹ️ Close/CR/fixy poza silnikiem orkiestrowane inline w main thread (obserwacja usera)
+
+- [ ] W tym runie CR (4 agenty), naprawy po HIL (2 agenty specjalistyczne +
+  comment-strip) i 4 przebiegi CI pobiegły „osobno", poza workflow — a orkiestrował je
+  main thread inline, stąd 75k→396k. User: nie wpychać ich do workflow na siłę, ale
+  orkiestrację tej części powinien przejąć dedykowany subagent, żeby główny wątek
+  nie puchł.
+- **Decyzja (grill 2026-07-09):** dwa subagenty z HIL pomiędzy, zamiast jednego
+  orkiestratora: **`fd:reviewer`** — wykonuje CR fan-outem per skonfigurowany skill
+  (po subagencie na skill nad plikiem diffa; nesting subagentów dostępny od v2.1.172,
+  zweryfikowano w docs — wariant „jeden agent + Skill tool sekwencyjnie" ODRZUCONY:
+  456K-znakowy diff ≈ 114k tok nie mieści się z 4 skillami w jednym kontekście,
+  a niezależne soczewki wzajemnie potwierdzają findings), deduplikuje, klasyfikuje
+  mechanical/judgment, pisze raport findings do pliku, zwraca slim werdykt +
+  rekomendacje; **`fd:fixer`** — po decyzji HIL orkiestruje aplikację wybranych
+  findings (spawnuje agentów napraw stosownie do rozmiaru zestawu), potem autosquash +
+  finalny CI (bounded loop), zwraca slim werdykt. Mapowanie na silnik: krok
+  `close:review` spawnowany jako `agentType: 'fd:reviewer'` (jeden kontrakt CR w obu
+  trybach); findings MECHANICZNE silnik aplikuje sam i DOMYKA run (autosquash + finalny
+  CI — czysty CR = zero HIL); judgment → eskalacja `cr-judgment` z rekomendacjami
+  (mechaniczne już zaaplikowane, odnotowane w raporcie), a autosquash + finalny CI
+  przejmuje `fd:fixer` po HIL — NIE relaunch silnika, który powtórzyłby cały CI + CR
+  nad diffem i zeskalował te same findings w kółko. Fallback `engine=subagents`: ta
+  sama para przejmuje close; w main thread zostają wyłącznie prekondycje, odpalenie CI
+  w tle (Bash), HIL (AskUserQuestion nie działa w subagentach) i zapisy stanu — main
+  thread nigdy nie czyta diffa ani findings w całości, tylko slim werdykty + ścieżki
+  raportów.
+
+---
+
 ## Mocne strony (bez zmian)
 
 - Rozdział manifest (commitowany, autorytatywny) / meta / frontmatter-pointer.
