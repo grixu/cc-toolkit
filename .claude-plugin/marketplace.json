@@ -1,5 +1,4 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "cc-toolkit",
   "owner": {
     "name": "Mateusz Gostański (grixu)",
@@ -168,6 +167,25 @@
         "firecrawl",
         "citations",
         "workflow"
+      ]
+    },
+    {
+      "name": "hermes-tweet",
+      "source": "./plugins/hermes-tweet",
+      "description": "Native Hermes Agent X/Twitter plugin guide for Xquik read-first workflows and approval-gated actions.",
+      "version": "0.1.6",
+      "author": {
+        "name": "Xquik",
+        "url": "https://github.com/Xquik-dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "hermes-agent",
+        "xquik",
+        "twitter",
+        "x",
+        "social-media",
+        "automation"
       ]
     }
   ]
