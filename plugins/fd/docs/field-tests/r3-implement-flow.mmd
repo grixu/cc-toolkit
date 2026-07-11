@@ -1,0 +1,66 @@
+%% Runda 3 testow polowych — /fd:implement (sesja 7baed842, run 2026-07-07/08, repo console-test-fd,
+%% feature cerbos-authz-phase2-org-migration). Przebieg faz + przyrost kontekstu glownego watku (czasy CEST).
+flowchart TD
+    classDef big fill:#ffdddd,stroke:#cc0000,color:#000
+    classDef hil fill:#fff3cd,stroke:#b8860b,color:#000
+    classDef sub fill:#e7f0ff,stroke:#3366cc,color:#000
+
+    S(["START 20:26 — baseline 73k tok
+    system prompt + komenda /fd:implement + skill listing + CLAUDE.md + memory"])
+    P1["1. Preconditions  20:26-20:29
+    fd-config, wykrycie feature, freshness sc-map/ac-map, specHash,
+    ancestry gita, state.json phase
+    ctx 91k  (+18k)"]
+    P2["2. Fale z zaleznosci  20:29-20:31
+    graf dep (81 krawedzi), serializacja exact-file (5 par),
+    9 fal, state.phase=implementing
+    ctx 108k  (+17k)"]
+    P3["3. Args silnika  20:32
+    build args 14,4k zn (39 taskow, 143 acIds)
+    ctx 110k  (+2k)"]
+    P4["4. Launch run-1  20:33-20:35
+    Workflow w tle (podwojny: wtbil2i3i -> regen args -> wq4p3rdqv)
+    ctx 160k  (+50k: 2x pelne args + launch)"]
+    AN1["run-1 wq4p3rdqv  (~2,5h, 26 agentow)
+    wave 0: 10 taskow squash-merge, CI full pass po 3 iter. repair
+    14 taskow passed; eskalacja T-010 (architectural)"]:::sub
+    R1["5. Return run-1  23:08
+    wciagniecie return.json (26 agentow, wave 0 + per-task)
+    ctx 214k  (+54k) — SKOK: return silnika do main"]:::big
+    C1["6. Record run-1  23:09
+    weryfikacja Task: trailerow, record-impl 14 taskow implemented
+    ctx 247k  (+33k)"]
+    H1["7. HIL-1 + relaunch run-2  23:11-23:56
+    AskUserQuestion: T-010 Cerbos gRPC ESM-only blokuje typecheck
+    ~43 min czekania na usera -> launch run-2 (wcx3y2ip8)
+    ctx 263k  (+16k)"]:::hil
+    SL1["8. Session-limit 1  23:56 -> 05:26
+    limit konta (reset 12:40am); user: /schedule, potem 'Continue'
+    ~5,5h nocnej przerwy (poza main threadem)"]:::hil
+    P8["9. Relaunch run-2  05:28-05:30
+    rekonstrukcja z trailerow, ponowny launch run-2 (w2dxzj3fx)
+    ctx 306k  (+43k)"]
+    AN2["run-2 w2dxzj3fx  (~1,5h, 29 agentow)
+    wave 0: 5 taskow smoke pass (0 repair); wave 1: 6 taskow (1 repair)
+    14 passed; eskalacje T-021 + T-036 (architectural)"]:::sub
+    R2["10. Return run-2  07:01
+    wciagniecie statusu escalated (2 fale, 11 remaining)
+    ctx 357k  (+51k) — SKOK: return silnika do main"]:::big
+    CH2["11. Record run-2 + HIL-2  07:02-07:39
+    record nowych impl (28/39 lacznie) + AskUserQuestion:
+    T-021 parser YAML + T-036 seed roli partner; ~35 min czekania
+    ctx 370k  (+13k)"]:::hil
+    P12["12. Launch run-3  07:40
+    relaunch finalnych 11 taskow + obie decyzje HIL (w40eozhuc)
+    ctx 390k  (+20k)  PEAK"]
+    AN3["run-3 w40eozhuc  (~4 min, 6 agentow)
+    0 fal ukonczonych — 6 agentow padlo na session-limit konta
+    (reset 10:20am) -> engine-failure"]:::sub
+    E(["KONIEC 07:45 — 390k tok, session-limit 2 (reset 10:20am)
+    28/39 taskow zmergowane, 11 remaining; run-3 padl na limit konta
+    wall-clock ~11h19m: ~5,5h nocny limit + ~1h18m HIL + ~4h silnik w tle"])
+
+    S --> P1 --> P2 --> P3 --> P4 --> R1 --> C1 --> H1 --> SL1 --> P8 --> R2 --> CH2 --> P12 --> E
+    P4 -.-> AN1 -.-> R1
+    P8 -.-> AN2 -.-> R2
+    P12 -.-> AN3 -.-> E

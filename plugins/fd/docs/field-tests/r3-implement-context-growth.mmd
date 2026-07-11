@@ -1,0 +1,7 @@
+%% Runda 3 testów polowych — /fd:implement (sesja 7baed842, run 2026-07-07/08).
+%% Kontekst głównego wątku (input + cache_read + cache_creation) na końcu każdej fazy; silnik biegnie w tle (Workflow), main thread czeka na returny/HIL.
+xychart-beta
+    title "implement: kontekst glownego watku (tys. tokenow)"
+    x-axis ["start", "1 prekond.", "2 fale", "3 args", "4 launch r1", "5 return r1", "6 record r1", "7 HIL-1", "8 cont r2", "9 return r2", "10 HIL-2", "11 launch r3"]
+    y-axis "k tokenow" 0 --> 400
+    bar [73, 91, 108, 110, 160, 214, 247, 263, 306, 357, 370, 390]

@@ -12,3 +12,5 @@ output.json
 # fd eval sandboxes — throwaway per-run copies of plugins/fd/evals/fixtures/ that the
 # fd commands mutate; the pristine fixtures under fixtures/ stay committed.
 plugins/fd/evals/.sandbox/
+
+.DS_Store

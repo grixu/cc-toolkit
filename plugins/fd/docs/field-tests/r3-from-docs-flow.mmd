@@ -1,0 +1,67 @@
+%% Runda 3 testów polowych — /fd:from-docs (sesja 8897b6fc, 2026-07-07, repo console-test-fd,
+%% feature cerbos-authz-phase2-org-migration). Przebieg faz + przyrost kontekstu głównego wątku.
+flowchart TD
+    classDef big fill:#ffdddd,stroke:#cc0000,color:#000
+    classDef hil fill:#fff3cd,stroke:#b8860b,color:#000
+    classDef sub fill:#e7f0ff,stroke:#3366cc,color:#000
+
+    S(["START 15:32 — baseline 93k tok
+    system prompt + komenda + skill listing (36k zn) + CLAUDE.md + memory"])
+    P1["1. Preconditions + seed  15:32–15:35
+    walidacja fd-config, apply.mjs seed-state,
+    build-manifest --seed, ingest 108 plikow do sources/
+    ctx 116k  (+23k)"]
+    P2["2. Fan-out analitykow  15:36–15:38
+    6x fd:analyst — ale w 3 wiadomosciach 2+2+2  (REGRESJA S2)
+    ctx 137k  (+21k, glownie 6 promptow + referencje)"]
+    AN["6x fd:analyst  (rownolegle, 4–6 min)
+    pisza SA-1..SA-6 na dysk (21–39k znakow kazdy)
+    zwroty do main: ~0,2k tok kazdy — wzorcowo"]:::sub
+    P3["3. Main czyta CALE SA-1..SA-6  15:41–15:43
+    ctx 211k  (+74k) — NAJWIEKSZY SKOK RUNU
+    ~44k tok samych plikow + ~30k myslenia/syntezy"]:::big
+    H1["4. Grill + 2x AskUserQuestion  15:46–16:00
+    researcher #1 sflakowal (0 tool calls) → retry
+    ~13 min czekania na usera
+    ctx 243k  (+32k)"]:::hil
+    RE["fd:researcher (retry)
+    context7 + firecrawl, 9 snapshotow web
+    zwrot 2,9k tok — wykryl sprzecznosc:
+    cacheDuration NIE jest deprecated,
+    /admin/store/reload nie dziala z PostgreSQL"]:::sub
+    P5["5. CONTEXT.md + 9x ADR  16:03–16:06
+    ctx 263k  (+20k)"]
+    P6["6. spec.md — jeden Write 71k znakow  16:07–16:16
+    ctx 313k  (+50k: ~18k tresci + ~23k myslenia)"]:::big
+    H2["HIL: sprzecznosc groundingu  16:16–16:58
+    42 min namyslu usera (cache TTL 5 min → re-cache prefiksu)"]:::hil
+    P7["7. Pivot cacheDuration  16:58–17:04
+    ADR-0010 + edycje CONTEXT + 4 batche edycji spec
+    ctx 353k  (+40k)"]
+    P8["8. sources-map + hash + manifest  17:06–17:07
+    inline skrypt build-sources-map.mjs 21k znakow (S3!),
+    hasher czysty, build-manifest --history-summary
+    ctx 376k  (+23k)"]
+    P9["9. Walidacja R1  17:07–17:13
+    6 walidatorow w JEDNEJ wiadomosci — poprawka dziala
+    structural FAIL (FR-9 stale), coverage FAIL (AC wielozachowaniowe),
+    decomposability pass + blocking doubt (22 vs 23)
+    ctx 398k  (+23k, w tym ~13,5k zwrotow-werdyktow)"]
+    VA["6x fd:validator
+    zwroty 0,9–2,0k tok kazdy
+    pelne JSON-y z cytatami takze dla PASS"]:::sub
+    P10["10. Fixy  17:14–17:18
+    doubt rozwiazany groundingiem (grep → 22), bez HIL;
+    ~20 edycji spec, +5 AC, re-hash, re-projekcja (284 el.)
+    ctx 432k  (+33k)"]
+    P11["11. Re-walidacja 3 dotknietych wymiarow  17:18–17:22
+    wszystkie pass → apply.mjs readiness-spec → READY
+    update memory, raport koncowy
+    ctx 456k  (+24k)"]
+    E(["KONIEC 17:24 — 456k tok
+    1h52m wall-clock, w tym ~55 min czekania na HIL"])
+
+    S --> P1 --> P2 --> P3 --> H1 --> P5 --> P6 --> H2 --> P7 --> P8 --> P9 --> P10 --> P11 --> E
+    P2 -.-> AN -.-> P3
+    H1 -.-> RE -.-> H2
+    P9 -.-> VA

@@ -1,0 +1,7 @@
+%% Runda 3 testów polowych — /fd:from-docs (sesja 8897b6fc, 2026-07-07).
+%% Kontekst głównego wątku (input + cache_read + cache_creation) na końcu każdej fazy.
+xychart-beta
+    title "from-docs: kontekst glownego watku (tys. tokenow)"
+    x-axis ["start", "1 seed", "2 fanout", "3 6xSA", "4 grill", "5 ADR", "6 spec", "7 pivot", "8 hash", "9 walid.", "10 fixy", "11 re-walid."]
+    y-axis "k tokenow" 0 --> 500
+    bar [93, 116, 137, 211, 243, 263, 313, 353, 376, 398, 432, 456]
