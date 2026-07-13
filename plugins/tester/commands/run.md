@@ -1,0 +1,163 @@
+---
+description: On-demand manual verification of a running app against a spec or a changed scope. Discovers the live stack, builds an ephemeral environment brief, derives test suites from ACs (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, agent-browser for UI, fault-injection (dependency pause/stop or a WireMock proxy) for error handling — each returning only an evidence-backed PASS/FAIL table. No persisted plan, no config. User-run only.
+argument-hint: "[<spec-path-or-url> | free-text scope]  (empty → scope from git diff)"
+disable-model-invocation: true
+---
+
+`/tester:run` verifies a **running** application against what it is supposed to do. It is
+the light counterpart to `mt`: no config, no persisted test plan, no staleness tracking.
+One pass, one ephemeral **brief**, then it forgets. You stay **in the execution loop, out
+of the verdict loop** — every check is a concrete command whose recorded output decides
+pass/fail; a pass without command proof does not exist.
+
+`$ARGUMENTS` is the **scope**:
+- a **spec** path or URL (e.g. `architecture/fd/<slug>/spec.md`) → derive checks from its ACs;
+- **free-text** ("the org-role assignment endpoints") → derive checks from that area;
+- **empty** → derive scope from `git diff` (see step 1).
+
+## Hard rules (non-negotiable)
+
+- **Non-production only.** If any discovered base-URL looks like production (public host,
+  prod-shaped domain, non-local + non-staging), **refuse** and stop. Verification mutates
+  and injects faults; it never touches prod.
+- **Never perform an ALLOW mutation over HTTP/UI without explicit consent.** Default is a
+  *read-only + expected-denial* matrix: safe `GET`s (expect 200/403) and mutation attempts
+  you expect to be **denied** (the 403 fires before anything changes). Use a non-mutating
+  probe endpoint (e.g. a `can`/dry-run route) for the ALLOW side when one exists. Real
+  ALLOW mutations run only for the surface the mutation-consent gate cleared.
+- **Credentials and session tokens live in the ephemeral work dir and env, never in
+  context.** Do not echo cookie values, tokens, or passwords into your messages or into
+  any file that could be committed.
+- **A subagent's verdict is its returned table only.** The main thread triages; it does
+  not re-run checks blindly.
+
+## Ephemeral work dir
+
+Create one temp dir **outside the repo** for this run and use it for the brief, cookies,
+and evidence:
+
+```bash
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/tester.XXXXXX")"; echo "$WORK"
+```
+
+Everything here is disposable and secret-bearing. Never write it into the repo, never
+commit it.
+
+## Flow
+
+### 1. Resolve scope
+
+- **Spec given** → read it. Extract the ACs (and the FR/NFR they cover), the error/edge-case
+  sections, and any API/DB/config contracts. These are your *expected behavior*.
+- **Free-text given** → locate the relevant code and any nearby spec/ACs; read the changed
+  contracts.
+- **Empty** → `git diff <base>...HEAD --stat` then read the changed files. Derive what to
+  test from the diff: touched endpoints, UI flows, and error paths. `<base>` = the merge
+  base with the main branch unless the user named one. Expected behavior comes from the
+  code contracts (types, guards, error shapes) plus any spec/ACs the diff references.
+
+Surfaces the scope implies:
+- **API** (routes, DB effects) → `tester:api` (curl).
+- **UI** (pages, flows, visibility) → `tester:ui` (agent-browser).
+- **Error handling** that requires *causing* a failure (dependency down, 5xx, timeout,
+  malformed response, fail-closed) → `tester:fault`.
+
+### 2. Runtime discovery → build the brief
+
+Discover the live stack **fresh** (this is what rots in stored config, so never assume it):
+- **Ports / services** — `docker ps` and/or the project's process list; identify frontend,
+  backend, DB, and any swappable dependency.
+- **Real routes** — from an OpenAPI/router artifact if present, or the code. Confirm the
+  base path and any envelope (e.g. `{success,data}`), and correct any assumed route
+  (`/me` vs `/user`, `/api/v1` prefix or not) against reality.
+- **Personas + roles** — the test accounts and their roles/permissions, from the DB or a
+  seed. Record user ids and expected roles.
+- **Auth** — establish each persona's session once (log in via `agent-browser`, export the
+  session cookie for curl; or a token/hook per the app). Store cookie headers as one-line
+  files in `$WORK`.
+- **Dependencies for fault-injection** — the container/process name and how the app reaches
+  it (so a suite can pause/stop it or front it with a proxy).
+
+Write it all into a single **`$WORK/BRIEF.md`** using
+`${CLAUDE_PLUGIN_ROOT}/references/BRIEF_TEMPLATE.md` as the skeleton. The brief is the
+shared contract every subagent reads — it must be self-sufficient (base-URL + quirks,
+personas + cookie files, topology, curl pattern, DB pattern, dependency/fault surface, the
+**expected-behavior / enforcement model**, safety rules, and the strict return format).
+
+If a piece cannot be discovered (no DB access, a persona won't log in, a route can't be
+confirmed), record the concrete lack in the brief — the affected checks become `blocked`,
+never guessed and never a false FAIL.
+
+### 3. Derive suites
+
+Project the ACs (or the diff) into **suites** — one suite per coherent area (a resource, a
+flow, an error class), each a small list of checks. A check is
+`| AC/ref | check | expected | actual | PASS/FAIL |`. Positive per observable behavior;
+negatives only for error paths the scope actually enumerates. A behavior that needs
+infrastructure or human judgment (perf thresholds, UX quality, live time-window events) is
+**out of scope** — list it as an uncovered gap, do not invent a check for it.
+
+Show the derived suites (count + one line each) and the surface each needs.
+
+### 4. Confirm scope + mutation consent (HIL)
+
+Ask once with `AskUserQuestion`:
+- **which suites** to run (or all);
+- **mutation consent** — `all` / `selected` / `none` (default `none`): whether real ALLOW
+  mutations may be performed, and for which endpoints. Under `none`, the matrix runs
+  read-only + expected-denial as above.
+
+### 5. Execute — fan out, one subagent per suite
+
+Dispatch the API and UI suites **in parallel**, each in its own subagent
+(`tester:api` / `tester:ui`), every one pointed at `$WORK/BRIEF.md`. Each returns **only**
+its results table + up to 5 notes — no curl bodies, no logs, no context flooding. The hard
+assertion contract holds: every row backed by a concrete command whose output is recorded;
+`blocked` (precondition unavailable, e.g. cookie expired) and `error` (harness broke) are
+distinct from `FAIL`.
+
+### 6. Fault-injection suite — solo, last
+
+Run any `tester:fault` suite **alone, after** the read suites finish (it perturbs the
+shared stack — pausing a dependency or fronting it with a proxy would corrupt parallel
+suites). It picks the mechanism per fault kind
+(`${CLAUDE_PLUGIN_ROOT}/references/FAULT_INJECTION.md`): **pause/stop the dependency** for
+"dependency unavailable / fail-closed", a **WireMock proxy** for a specific HTTP response
+shape (5xx body, timeout, malformed/empty). **Teardown is mandatory** — the dependency
+must be restored and any proxy removed even if a check errors. After it returns,
+**independently confirm** the stack is healthy again (don't trust the subagent's word).
+
+### 7. Triage + report
+
+For each genuine `FAIL` (never `blocked`/`error`), read the check and its evidence and
+classify:
+- **impl-defect** — faithful check, behavior ≠ expected → code bug;
+- **test-defect** — the check mis-projected the scope (wrong route/expected/stale
+  assumption) → fix the check, not the code;
+- **spec-defect** — faithful check, defensible impl, the conflict is rooted in an
+  ambiguous/contradictory spec.
+
+**Default under uncertainty = impl-defect**; the other two need concrete evidence.
+
+Report: a consolidated table per suite (pass/fail/blocked/skipped counts), every FAIL bound
+to its AC/ref with the verdict and actual-vs-expected, the uncovered gaps, and one line of
+suggested next action. Then **stop** — never auto-run a follow-up. The brief and `$WORK`
+are ephemeral; mention the path but do not commit anything.
+
+## Gate table
+
+| Gate | Where | Type |
+|---|---|---|
+| Production-looking base-URL | step 2 | hard refuse |
+| Scope unresolvable (no spec, empty diff, no code) | step 1 | block — ask the user to name a scope |
+| No live stack reachable | step 2 | block affected suites |
+| Persona login fails | step 2 | that persona's checks `blocked` (no cascade) |
+| Mutation consent | step 4 | HIL (all / selected / none) |
+| Fault dependency not swappable / not pausable | step 6 | skip that fault check with reason |
+| Cookie expired mid-run | step 5/6 | `blocked` "cookie expired", never a FAIL |
+
+## Not in scope of this command (use `mt` instead)
+
+A persisted, versioned test corpus that reconciles with spec drift (hashed `deps`,
+staleness, lock files, a DoR-gated plan) is `mt`'s job. `tester` is the "verify it now"
+pass — it deliberately keeps no artifacts beyond the ephemeral brief.
