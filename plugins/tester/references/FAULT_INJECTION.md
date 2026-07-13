@@ -45,7 +45,8 @@ curl -s -o /dev/null -w "recovery HTTP %{http_code}\n" -H "$A" <base>/<guarded-r
 For **"the dependency returns a specific bad response"**: a 5xx with a domain error body, a
 response slower than the client timeout, a malformed/empty body, or "first call ok, then
 fail". The app must reach the dependency through a **swappable base-URL** (2nd-party services
-usually do; if it doesn't, `skip` the check with that reason).
+usually do; if it doesn't — confirmed by checking the config/env, not assumed — `skip` the
+check with that reason).
 
 ```bash
 # 1. ephemeral proxy

@@ -93,9 +93,43 @@ never guessed and never a false FAIL.
 Project the ACs (or the diff) into **suites** — one suite per coherent area (a resource, a
 flow, an error class), each a small list of checks. A check is
 `| AC/ref | check | expected | actual | PASS/FAIL |`. Positive per observable behavior;
-negatives only for error paths the scope actually enumerates. A behavior that needs
-infrastructure or human judgment (perf thresholds, UX quality, live time-window events) is
-**out of scope** — list it as an uncovered gap, do not invent a check for it.
+negatives only for error paths the scope actually enumerates.
+
+#### 3a. Widen from the spec — scan the code's behavior, not just its routes
+
+The AC list and the route map under-cover on their own: they miss behavior that is
+authz/logic-dependent but has no dedicated route or AC of its own. Before finalizing suites,
+read the code around the changed surface and expand:
+
+- **State transitions & behavioral branches, not just routes.** A guarded behavior often
+  hangs off a *generic* endpoint — accepting an invitation is a `status: pending → active`
+  transition on `PATCH member/:id` that then grants a role, not a route named `accept`. For
+  each changed resource/permission, trace the service methods that branch on it or on a status
+  enum and produce a side-effect (`search_graph`/`trace_path`, or read the service). Each such
+  branch is a candidate check even when no route or AC names it.
+- **Transitive consumers of the changed surface.** The diff may change a *mechanism* (an authz
+  policy, a resolver, a derived role) whose own code its callers don't touch — yet their
+  behavior rides on it. Expand from "what changed" to "what consumes what changed": who reads
+  the changed attribute, who is gated by the changed derived role, who calls the changed guard.
+  Those consumers are in scope even when their files are untouched.
+- **Causal chains as one scenario.** A permission model exists so that one action changes what
+  a principal may do next — accept an invite → a role is assigned → a formerly-403 read now
+  returns 200. Model the chain as a single ordered suite and assert the *consequence*, not just
+  the action's 2xx (the BRIEF's expected-behavior model carries the oracle for this).
+- **Permission matrix × derived-roles as a checklist.** Enumerate every
+  `(resource, action, derived-role)` cell the changed policy defines and cross it off against
+  what a check actually drives. One derived role (`self`) gates *several* actions — delete own
+  membership **and** accept/reject own invitation — cover each, not only the first you hit.
+
+#### 3b. A gap needs a code-level reason
+
+A behavior is an **uncovered gap** only when it needs infrastructure or human judgment (perf
+thresholds, UX quality, multi-pod convergence, live time-window events), or when a code search
+confirms there is no route or state transition to drive it. "No endpoint for X" must be
+*verified in the code*, never assumed — a behavior reachable through a non-obvious route or a
+status transition is **not** uncoverable, and writing it off as such is a false negative worse
+than a FAIL. Do not invent a check for a genuine gap; list it with its concrete, code-cited
+reason.
 
 Show the derived suites (count + one line each) and the surface each needs.
 
@@ -106,6 +140,11 @@ Ask once with `AskUserQuestion`:
 - **mutation consent** — `all` / `selected` / `none` (default `none`): whether real ALLOW
   mutations may be performed, and for which endpoints. Under `none`, the matrix runs
   read-only + expected-denial as above.
+- **disposable email** — *only if* a suite needs a **brand-new** user (an invite-new-user or
+  sign-up flow with an email not yet in the system): ask the user for a disposable address to
+  use. Never fabricate one — the invite/sign-up path may send a real message and registers the
+  account in a possibly-shared IdP, so it must be an address the user controls and can clean up.
+  None given → those checks are `blocked`, never run against a made-up email.
 
 ### 5. Execute — fan out, one subagent per suite
 
@@ -126,6 +165,10 @@ suites). It picks the mechanism per fault kind
 shape (5xx body, timeout, malformed/empty). **Teardown is mandatory** — the dependency
 must be restored and any proxy removed even if a check errors. After it returns,
 **independently confirm** the stack is healthy again (don't trust the subagent's word).
+
+Skipping a fault check needs a reason **verified in the config/code** — the swappable base-URL
+env was checked and is absent, the dependency is a signed 3rd-party, the fault is pure-infra
+beyond an HTTP proxy — never an assumed "probably can't". Same bar as a derivation gap (3b).
 
 ### 7. Triage + report
 
@@ -153,7 +196,8 @@ are ephemeral; mention the path but do not commit anything.
 | No live stack reachable | step 2 | block affected suites |
 | Persona login fails | step 2 | that persona's checks `blocked` (no cascade) |
 | Mutation consent | step 4 | HIL (all / selected / none) |
-| Fault dependency not swappable / not pausable | step 6 | skip that fault check with reason |
+| New-user (invite/sign-up) scenario in scope | step 4 | HIL — ask for a disposable email; none given → those checks `blocked` |
+| Fault dependency not swappable / not pausable | step 6 | skip **only** with a reason verified in config/code (swappable base-URL env checked and absent), never assumed |
 | Cookie expired mid-run | step 5/6 | `blocked` "cookie expired", never a FAIL |
 
 ## Not in scope of this command (use `mt` instead)

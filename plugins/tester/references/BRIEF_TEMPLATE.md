@@ -54,6 +54,9 @@ Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
 - <deny-by-default? → 403>; <no auth → 401>; <dependency down → 500 / fail-closed>.
 - <per-role / per-route matrix: who is allowed what; which routes are global vs scoped>.
 - <enumerated error paths from the spec's critical-errors / edge-case sections>.
+- <consequence chains: an action that grants/revokes capability, then the change it causes —
+  e.g. accept invite (status → active) → role assigned → a formerly-403 read now 200. Assert the
+  downstream effect, not just the action's 2xx.>
 
 ## Safety rules (non-negotiable)
 - NEVER perform an ALLOW mutation over HTTP/UI unless explicitly cleared below — it really
@@ -62,6 +65,9 @@ Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
   2. exercise the real guard only with SAFE GETs (expect 200/403) and mutations you expect
      DENIED (403 fires before any change).
 - Mutation consent cleared this run: `<none | all | the specific endpoints>`.
+- New-user flows (invite-new-user / sign-up) use the disposable email the user provided this
+  run: `<address | none — new-user checks blocked>`. Never invent an address — real mail may be
+  sent and the registration lands in a possibly-shared IdP.
 - Credentials/tokens stay in `$WORK` and env — never echoed into a returned table.
 
 ## Known issues already found (verify precisely if in your suite, don't blindly re-confirm)
@@ -82,7 +88,10 @@ No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run
 - **Personas & cookie files** — auth is stateful; establish it once in the main thread and
   hand subagents ready-to-use cookie headers, so five suites don't each re-login.
 - **Expected-behavior model** — without an oracle, a subagent can only report what happened,
-  not whether it was *right*. This section is what turns observation into a verdict.
+  not whether it was *right*. This section is what turns observation into a verdict. Include
+  **consequence chains**, not just single-endpoint cells: a permission model exists so one
+  action changes what the principal may do next — a check that stops at the action's 2xx misses
+  the behavior the model is *for*.
 - **Safety rules** — the difference between a verification pass and an accidental data-mutation
   spree. The default is read-only + expected-denial; real mutations are opt-in.
 - **Known issues** — prevents a re-run from "discovering" a bug you already filed, and lets a
