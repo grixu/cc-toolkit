@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Thirteen new rules, grouped into a family taxonomy** distilled from Kent Beck's
+  *Smalltalk Best Practice Patterns*. The rule vocabulary grows from 7 flat names to
+  **7 families × 20 rules**, with the family as the stable top-level label:
+  - **`readability`** — new `guard-clause` (early-return over deep nesting),
+    `explaining-variable` (name an opaque expression), `magic-literal` (name domain
+    literals), `composed-method` (one function, one level of abstraction; a
+    temp-heavy method becomes a method object) — alongside existing `openness`,
+    `ordering`.
+  - **`naming`** (new family, now **in scope**) — `intent-name` (name after *what*,
+    not *how*), `role-name` (name by role, not type), `command-query` (queries return
+    without mutating; commands mutate; `is`/`has`/`can` booleans).
+  - **`objects`** (new family) — `full-construction` (fully-formed objects; hidden
+    representation), `lazy-init` (defer the expensive-and-maybe-unneeded),
+    `leaky-collection` (never return a raw internal mutable collection).
+  - **`patterns`** (new family, **conservative**) — `composition` (delegate over
+    inherit), `polymorphism` (replace a repeated type-discriminant switch),
+    `execute-around` (bracket paired actions). Flagged **only when the friction
+    already exists in the code**, never proactively — patterns are refactoring
+    targets, not upfront mandates.
+  - Existing `test-structure`, `style-mix`, `barrel`, `over-complex`, `needless-cast`
+    are regrouped under `tests`, `module`, and `simplicity` families unchanged.
+
+### Changed
+
+- **Report contract: findings are now tagged `` `family` · rule severity `` instead
+  of `` `name` severity ``.** The family is the stable, backticked top-level
+  vocabulary (7 labels); the rule is its fixed sub-tag. Existing rule names are
+  unchanged — they now sit under a family.
+- **Naming is in scope.** The skill's stated exclusions drop "naming" (correctness,
+  security, performance, and test coverage remain out of scope). `lazy-init` is
+  framed as a *state-initialization* pattern flagged conservatively, so the
+  performance exclusion still holds.
+- **Fan-out lenses rebalanced from 3 to 4**, aligned to the family clusters
+  (readability+tests · naming+module · objects+patterns · simplicity), each keeping
+  whole files so cross-file rules still see context.
+
 ## [0.3.0] - 2026-06-10
 
 ### Changed
