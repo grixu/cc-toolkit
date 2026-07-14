@@ -137,7 +137,7 @@
     {
       "name": "quality-review",
       "source": "./plugins/quality-review",
-      "description": "Single-skill code review focused on code quality and craft, not correctness — readability and vertical openness, given/when/then test structure, Clean Code stepdown ordering, OOP/functional style consistency, pointless barrel exports, unnecessary type casts, and over-complicated code that collapses into one parameterized function. Reviews the current branch diff by default (or explicit paths), with calibration against common false positives.",
+      "description": "Single-skill code review focused on code quality and craft, not correctness — twenty rules in seven families distilled from Kent Beck and Clean Code: readability (blank-line openness, guard clauses, explaining variables, named literals, composed methods, stepdown ordering), given/when/then test structure, naming (intent- and role-revealing names, command/query separation), module shape (OOP/functional consistency, pointless barrel exports), object & state design (fully-formed construction, lazy init, safe collection accessors), design patterns applied only under real friction (composition over inheritance, polymorphism over repeated conditionals, execute-around bracketing), and simplicity (over-complicated code that collapses into one parameterized function, unnecessary type casts). Reviews the current branch diff by default (or explicit paths), with calibration against common false positives.",
       "version": "0.3.0",
       "author": {
         "name": "Mateusz Gostański (grixu)",
