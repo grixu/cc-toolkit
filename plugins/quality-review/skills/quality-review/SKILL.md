@@ -181,7 +181,7 @@ invented this run:
 | `tests`       | test-structure      | arrange/act/assert (given/when/then) interleaved or out of order | medium |
 | `naming`      | intent-name         | a name after mechanism/algorithm, not intent | medium |
 | `naming`      | role-name           | a name carrying the type instead of the role | nit |
-| `naming`      | command-query       | a query that mutates, or a boolean not named `is`/`has`/`can` | high |
+| `naming`      | command-query       | a query that mutates, or a command relied on only for its return | high |
 | `module`      | style-mix           | OOP and functional mixed ad hoc (a misplaced free function or class) | high |
 | `module`      | barrel              | a pointless re-export `index.*` that narrows nothing | medium |
 | `objects`     | full-construction   | a half-initialized object, or leaked representation callers couple to | high |
@@ -439,22 +439,24 @@ from context, so a type suffix/prefix adds noise instead of meaning.
 
 A query answers a question and returns a value **without** side effects; a command
 changes state. When one function does both, the caller can't tell from the call site
-that reading also mutated — a footgun. Booleans that answer a question should read
-like one (`is`/`has`/`can`).
+that reading also mutated — a footgun, and the reason this rule is graded `high`.
 
 - **Flag** when:
   - a query that reads like a question also mutates — `getUser()` that lazily
     creates and inserts, an `isValid()` that sets an error field, a `size()` that
     reorders;
-  - a command returns internal state that callers then start depending on;
-  - a boolean-returning check isn't named as a question (`is`/`has`/`can`).
-- **Suggested fix**: split into a pure query (no side effects) and a command (mutates,
-  returns only what the caller uses); or rename so the side effect is honest.
+  - a command returns internal state that callers then start depending on, so a
+    later change to that return quietly breaks them.
+- **Suggested fix**: split into a pure query (no side effects — name the boolean one
+  `is`/`has`/`can` so it reads as the question it is) and a command (mutates, returns
+  only what the caller uses); or rename so the side effect is honest.
 - **Calibration → not a finding**: idiomatic mutate-and-return (`stack.pop()`,
   `map.set()` fluent chaining, `array.splice()`), builders returning `this`, and
   cache-on-read where the lazy write causes **no observable state change** — that's
-  `lazy-init`, not a CQS break. Flag the *surprising* side effect, not every non-void
-  mutator.
+  `lazy-init`, not a CQS break. A merely mis-named boolean predicate with no hidden
+  mutation (`valid()` that should be `isValid()`) is at most a `naming` nit, **not** a
+  `command-query` finding — this rule is the *surprising side effect*. Flag that, not
+  every non-void mutator.
 
 ---
 
