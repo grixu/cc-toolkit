@@ -166,9 +166,18 @@ shape (5xx body, timeout, malformed/empty). **Teardown is mandatory** — the de
 must be restored and any proxy removed even if a check errors. After it returns,
 **independently confirm** the stack is healthy again (don't trust the subagent's word).
 
-Skipping a fault check needs a reason **verified in the config/code** — the swappable base-URL
-env was checked and is absent, the dependency is a signed 3rd-party, the fault is pure-infra
-beyond an HTTP proxy — never an assumed "probably can't". Same bar as a derivation gap (3b).
+Before skipping a fault check, read `${CLAUDE_PLUGIN_ROOT}/references/FAULT_INJECTION.md`
+(*Scope / when to skip*) and apply the real test: **does a base-URL env for the dependency
+exist?** That the env currently points at a stage/remote host does **not** make it unswappable —
+what matters is that the env *exists* to repoint, not its present value. If a `*_BASE_URL` env
+exists (e.g. `NUCLEUS_API_BASE_URL`), Mechanism B **applies and must be attempted** — restart the
+backend with that env aimed at a WireMock proxy — even for an HTTPS dependency with a shared secret
+(WireMock terminates TLS; a catch-all proxy does not validate the secret) and even for a 2nd-party
+service (another team's own API). Skip **only** when no base-URL env exists to swap (a pure-infra
+fault beyond an HTTP proxy) or the dependency is a real 3rd-party vendor whose base-URL is fixed or
+whose *per-request signatures* (not a static shared secret) would break stub matching — then prefer
+mocking at the client boundary. A skip reason reads "no `*_BASE_URL` env — checked `<file>`", never
+an assumed "probably can't". Same bar as a derivation gap (3b).
 
 ### 7. Triage + report
 
@@ -197,7 +206,7 @@ are ephemeral; mention the path but do not commit anything.
 | Persona login fails | step 2 | that persona's checks `blocked` (no cascade) |
 | Mutation consent | step 4 | HIL (all / selected / none) |
 | New-user (invite/sign-up) scenario in scope | step 4 | HIL — ask for a disposable email; none given → those checks `blocked` |
-| Fault dependency not swappable / not pausable | step 6 | skip **only** with a reason verified in config/code (swappable base-URL env checked and absent), never assumed |
+| Fault dependency not swappable / not pausable | step 6 | a `*_BASE_URL` env that *exists* is swappable — repoint it (even if it now holds a stage/HTTPS URL) → attempt Mechanism B; skip **only** if no base-URL env exists or it's a fixed/signature-bound 3rd-party, never assumed |
 | Cookie expired mid-run | step 5/6 | `blocked` "cookie expired", never a FAIL |
 
 ## Not in scope of this command (use `mt` instead)

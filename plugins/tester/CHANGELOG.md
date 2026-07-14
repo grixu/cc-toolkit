@@ -20,7 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     assumption;
   - new-user (invite/sign-up) flows require a user-provided disposable email (HIL) — never a
     fabricated one, since real mail may be sent and the registration lands in a possibly-shared
-    IdP — and skipping a fault check likewise needs a config/code-cited reason;
+    IdP — and a fault check is skipped only when no `*_BASE_URL` env exists to repoint or the
+    dependency is a fixed/signature-bound 3rd-party: an env that merely *points* at a stage/HTTPS
+    host is still swappable (Mechanism B applies), so "external stage API" is not a skip;
   - three per-suite executor subagents under the hard assertion contract (no pass without
     command proof) — `api` (curl + read-only DB), `ui` (agent-browser), `fault`
     (fault-injection, runs solo with guaranteed teardown);

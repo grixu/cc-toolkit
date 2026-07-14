@@ -44,9 +44,10 @@ curl -s -o /dev/null -w "recovery HTTP %{http_code}\n" -H "$A" <base>/<guarded-r
 
 For **"the dependency returns a specific bad response"**: a 5xx with a domain error body, a
 response slower than the client timeout, a malformed/empty body, or "first call ok, then
-fail". The app must reach the dependency through a **swappable base-URL** (2nd-party services
-usually do; if it doesn't — confirmed by checking the config/env, not assumed — `skip` the
-check with that reason).
+fail". The app must reach the dependency through a **swappable base-URL** — an env like
+`<DEP>_BASE_URL` you can repoint. Its *existence* is the test, not its current value: an env
+that today holds a stage/HTTPS URL is still swappable (restart the app with it aimed at the
+proxy). `skip` only when no such env exists — confirmed by reading the config, not assumed.
 
 ```bash
 # 1. ephemeral proxy
@@ -92,10 +93,15 @@ docker rm -f tester-fault
 
 ## Scope / when to skip
 
-- **2nd-party with a configurable base-URL** (your own other services) → both mechanisms work;
-  proxy gives you exact response shapes.
-- **3rd-party behind TLS + signatures** (vendors) → intercepting is brittle; prefer mocking at
-  the app's client boundary or `skip` with the reason.
+- **2nd-party with a base-URL env** (your own other team's service — e.g. a Cloud/platform API)
+  → **both mechanisms work**; Mechanism B gives exact response shapes. HTTPS and a *static shared
+  secret* do **not** exempt it: WireMock terminates TLS and a catch-all proxy doesn't validate the
+  secret. "It's an external stage API" is not a skip — the base-URL env still swaps. Restart the
+  app with the env aimed at the proxy.
+- **3rd-party vendor whose base-URL is fixed, or whose *per-request signatures* break stub
+  matching** → intercepting is brittle; prefer mocking at the app's client boundary, or `skip`
+  with that specific reason. A static shared secret is **not** a per-request signature — don't
+  conflate the two into a skip.
 - **Infrastructure faults** (Redis restart, sidecar kill, DB cut, pure-TCP faults) → beyond an
   HTTP proxy. Mechanism A (pause/stop that container) covers the "it's down" case; anything
   finer is a gap, not a check — say so.
