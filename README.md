@@ -115,6 +115,22 @@ Analyze a conversation for friction signals (corrections, repeated instructions,
 
 See [plugin README](plugins/session-learner/README.md) for details.
 
+### code-review
+
+Unified code review that fans out five parallel lenses over a change — comments + readability&tests + naming&module + objects&patterns + simplicity&types — and merges them into one per-file report. The bundled `/start-cr` command runs all five; the standalone `comment-review` and `quality-review` skills stay invocable for a single-lens pass.
+
+| Command | Description |
+|---------|-------------|
+| `/start-cr [paths] [--base <branch>]` | Run all five review lenses and merge into one combined report |
+
+```
+/plugin install code-review@cc-toolkit
+```
+
+**Migration:** `comment-review` and `quality-review` are **deprecated** and superseded by `code-review`. After installing `code-review`, uninstall the old two. Known collision: with both an old plugin **and** `code-review` installed, you will see two same-named skills (namespaced `code-review:comment-review` vs `comment-review:comment-review`) — uninstalling the old plugins resolves it.
+
+See [plugin README](plugins/code-review/README.md) for details.
+
 ## License
 
 MIT
