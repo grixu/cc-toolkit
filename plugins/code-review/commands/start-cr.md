@@ -294,7 +294,31 @@ category when you actually have findings that fall into it:
 - **Report only** — change nothing.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
-without an explicit yes**. Walk the structural ones one at a time.
+without an explicit yes**.
+
+**Scanner line numbers are estimates, not ground truth.** A finding's `path:line`
+is where the Scanner *thought* the code sat; before each edit, Read the file and
+locate the exact site by its **content**, not its line number. If the code or
+comment a finding describes is not actually there, it is a **Scanner false
+positive** — skip it and note it in the wrap-up. Never edit a nearby line to force
+the match.
+
+**Split the safe batch across editor subagents when it is large.** The safe fixes
+are mechanical and file-local, so when they span more than a few files, do not
+apply them one-by-one yourself — **partition the files into a handful of balanced
+groups and dispatch one `Task` editor per group, in parallel**. Ownership is
+**disjoint by file**: never let two editors touch the same file (concurrent
+`Edit`s to one file race). Each editor receives its file subset, the exact
+approved fix for every site in those files, the Step 2 conventions note, and these
+invariants — locate each site by content before editing (per the estimate rule
+above), re-scrub every replacement, apply nothing beyond the listed fixes, and
+**do not run build/tests** (you run them once, after). Each returns what it applied
+per file and what it skipped, with the reason. For a small safe batch, apply it
+inline instead.
+
+**Walk the structural fixes yourself, one at a time — never fan these out.** They
+move code, must be sequenced, and are verified by build/tests, so they stay under
+your control even when the safe batch is parallelized.
 
 For a confirmed comment **MOVE**, apply the deletion at the declaration and insert
 the rewritten comment at the destination **only when a single unambiguous site was
@@ -304,5 +328,7 @@ replacement text** for leftover spec-id fragments (`(R2)`, `F1:`, `§4.1`, a fil
 path) and strip them — the whole point of the fix is that the citation does not
 survive into the file.
 
-After any structural change, re-run the project's build/tests if it has them —
-reordering and unification can break things a blank line cannot.
+Once every edit has landed — inline, from the editor subagents, and from the
+structural walk — re-run the project's build/tests if it has them, **once**:
+reordering and unification can break things a blank line cannot. Then aggregate
+what each editor applied or skipped into the wrap-up.

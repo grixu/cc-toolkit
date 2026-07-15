@@ -17,7 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   module, objects & patterns, simplicity & types. It merges their findings
   (dedup, most-specific wins), re-grades quality severities centrally, renders one
   per-file report with the comment and quality vocabularies side by side, and ends
-  in a single risk-cut apply menu. It never edits during the review.
+  in a single risk-cut apply menu. It never edits during the review; once fixes are
+  approved, mechanical batches fan out across per-file editor subagents (ownership
+  disjoint by file) while structural changes are walked one at a time, and every
+  site is re-located by content — Scanner line numbers are treated as estimates.
 - **Standalone skills stay invocable**: `comment-review` (comment quality only)
   and `quality-review` (quality & craft only) remain available for a single-lens
   pass, sharing the same rule text as `/start-cr`.
