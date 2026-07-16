@@ -179,6 +179,12 @@ stateful and long-running: dispatch it as **one** subagent that owns the whole c
 into parallel fragments, and never let its waiting sit in the main context — long stateful
 verification inline is how a run ends up compacting mid-flight.
 
+Before firing an **expensive trigger** (minutes of wall-clock, real tokens, real side
+effects like a PR or an email), re-verify its preconditions from the brief **at fire time**,
+not discovery time: restart-volatile state (a container-local binary, a warmed cache, a
+linked integration) can vanish between the two — and a known gotcha from memory or a prior
+run that kills the trigger is a wasted run, not a finding.
+
 After any consented mutation, compare the **actual blast radius** against what was cleared:
 fan-out triggers (a retrigger that re-runs a whole pipeline, a job that spawns children)
 can exceed the consented surface by orders of magnitude — read the trigger's implementation

@@ -50,6 +50,11 @@ Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
 - App reaches it at `<addr>`; host-published at `<addr>` (if any).
 - Swappable base-URL env: `<ENV_NAME | none — only pause/stop is possible>`.
 
+## Expensive triggers & their preconditions
+| Trigger | Cost / side effects | Verify RIGHT BEFORE firing |
+|---|---|---|
+| <e.g. POST /ai-agent/…/runs> | <~20 min, real LLM tokens, opens a real draft PR> | <binary X present in worker; integration linked; no active run> |
+
 ## Expected-behavior model (what SHOULD happen — the assertion oracle)
 - <deny-by-default? → 403>; <no auth → 401>; <dependency down → 500 / fail-closed>.
 - <per-role / per-route matrix: who is allowed what; which routes are global vs scoped>.
@@ -91,6 +96,11 @@ No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run
   route/prefix/envelope. Pin the real ones once, here.
 - **Personas & cookie files** — auth is stateful; establish it once in the main thread and
   hand subagents ready-to-use cookie headers, so five suites don't each re-login.
+- **Expensive triggers & preconditions** — a trigger that costs minutes, real tokens, or real
+  side effects deserves a pre-flight: its preconditions are re-verified at fire time, not
+  discovery time, because restart-volatile state (a container-local binary, a warmed cache, a
+  linked integration) can vanish between the two. A known gotcha that kills the trigger is a
+  wasted run, not a finding.
 - **Expected-behavior model** — without an oracle, a subagent can only report what happened,
   not whether it was *right*. This section is what turns observation into a verdict. Include
   **consequence chains**, not just single-endpoint cells: a permission model exists so one

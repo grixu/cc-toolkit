@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     suite list states its `fault surface:` explicitly (or `none` with a code-cited reason);
     pipeline (trigger → wait → verify) suites run as one stateful subagent; a mutation's
     actual blast radius is compared against the consented surface;
+  - expensive triggers (real tokens / real side effects / minutes of wall-clock) get a
+    preconditions row in the brief, re-verified at fire time — restart-volatile state
+    (a container-local binary, a linked integration) is checked when firing, not at
+    discovery;
   - dual fault-injection: pause/stop the dependency for "unavailable / fail-closed", or a
     WireMock proxy for a specific HTTP response shape (5xx body, timeout, malformed/empty);
   - `references/BRIEF_TEMPLATE.md` — the ephemeral shared environment-brief skeleton (base
