@@ -30,6 +30,17 @@ pass/fail; a pass without command proof does not exist.
   any file that could be committed.
 - **A subagent's verdict is its returned table only.** The main thread triages; it does
   not re-run checks blindly.
+- **No verdict on an unfired stimulus.** Asserting an effect is *absent* (no trace, no
+  span, no row, no field) is valid only with proof that the producing action actually
+  executed — an outbound call, a log marker, a cache write, a queue entry. Caches and async
+  layers swallow triggers silently: a hit skips the producer and the "missing" effect
+  becomes a false defect. No proof → `ERROR "stimulus not fired"`, never FAIL. (The
+  fault-suite form — prove the fault fired — lives in FAULT_INJECTION.md; this is its
+  general case.)
+- **An absence read through a partial view is not an absence.** CLI/API list views with
+  field groups return empty for fields they were not asked for. Before asserting a
+  field/link is missing, run a positive control — the same query surface must show that
+  field on a known-good object — or fetch the full object.
 
 ## Ephemeral work dir
 
@@ -61,6 +72,8 @@ Surfaces the scope implies:
 - **UI** (pages, flows, visibility) → `tester:ui` (agent-browser).
 - **Error handling** that requires *causing* a failure (dependency down, 5xx, timeout,
   malformed response, fail-closed) → `tester:fault`.
+- **Pipeline effects** (trigger → wait → verify a downstream export/consumer/spawned job)
+  → one stateful subagent owning the whole chain (see step 5).
 
 ### 2. Runtime discovery → build the brief
 
@@ -131,7 +144,11 @@ status transition is **not** uncoverable, and writing it off as such is a false 
 than a FAIL. Do not invent a check for a genuine gap; list it with its concrete, code-cited
 reason.
 
-Show the derived suites (count + one line each) and the surface each needs.
+Show the derived suites (count + one line each) and the surface each needs, plus an
+explicit **`fault surface:`** line — the fault checks derived (step 6 mechanisms), or
+`none` with a code-cited reason (same bar as 3b). The step-6 skip gate can only fire on a
+check that exists: a fault surface never stated is how fail-open/fail-closed behavior
+escapes verification silently.
 
 ### 4. Confirm scope + mutation consent (HIL)
 
@@ -154,6 +171,19 @@ its results table + up to 5 notes — no curl bodies, no logs, no context floodi
 assertion contract holds: every row backed by a concrete command whose output is recorded;
 `blocked` (precondition unavailable, e.g. cookie expired) and `error` (harness broke) are
 distinct from `FAIL`.
+
+A suite that is a **pipeline** — trigger → wait (minutes) → verify the downstream effect
+(an export landing in an observability backend, a queue consumer, a spawned job) — is
+stateful and long-running: dispatch it as **one** subagent that owns the whole chain
+(trigger, wait, verification), with the waiting in background polls. Never split the chain
+into parallel fragments, and never let its waiting sit in the main context — long stateful
+verification inline is how a run ends up compacting mid-flight.
+
+After any consented mutation, compare the **actual blast radius** against what was cleared:
+fan-out triggers (a retrigger that re-runs a whole pipeline, a job that spawns children)
+can exceed the consented surface by orders of magnitude — read the trigger's implementation
+*before* firing to know its fan-out. Exceeded anyway → report the delta immediately and
+hold further mutations of that class until re-consented.
 
 ### 6. Fault-injection suite — solo, last
 
@@ -191,6 +221,12 @@ classify:
 
 **Default under uncertainty = impl-defect**; the other two need concrete evidence.
 
+A root cause is a **hypothesis**, not a finding. Reading the code and locating a plausible
+mechanism makes it at most **PLAUSIBLE**; call it **CONFIRMED** only after a discriminating
+experiment — a minimal repro, an isolation harness, a second telemetry source — whose
+outcome the hypothesis predicts. Report the FAIL (the fact) separately from the root cause
+(the hypothesis + its confidence); a confident wrong root cause poisons the fix downstream.
+
 Report: a consolidated table per suite (pass/fail/blocked/skipped counts), every FAIL bound
 to its AC/ref with the verdict and actual-vs-expected, the uncovered gaps, and one line of
 suggested next action. Then **stop** — never auto-run a follow-up. The brief and `$WORK`
@@ -207,6 +243,8 @@ are ephemeral; mention the path but do not commit anything.
 | Mutation consent | step 4 | HIL (all / selected / none) |
 | New-user (invite/sign-up) scenario in scope | step 4 | HIL — ask for a disposable email; none given → those checks `blocked` |
 | Fault dependency not swappable / not pausable | step 6 | a `*_BASE_URL` env that *exists* is swappable — repoint it (even if it now holds a stage/HTTPS URL) → attempt Mechanism B; skip **only** if no base-URL env exists or it's a fixed/signature-bound 3rd-party, never assumed |
+| Negative check ("X is absent") without proof the producer ran | step 5/6 | `ERROR "stimulus not fired"`, never FAIL — prove it via log marker / cache write / outbound call |
+| Mutation blast radius exceeds consent | step 5/6 | report the delta, hold that mutation class pending re-consent |
 | Cookie expired mid-run | step 5/6 | `blocked` "cookie expired", never a FAIL |
 
 ## Not in scope of this command (use `mt` instead)

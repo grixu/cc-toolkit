@@ -57,6 +57,10 @@ Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
 - <consequence chains: an action that grants/revokes capability, then the change it causes —
   e.g. accept invite (status → active) → role assigned → a formerly-403 read now 200. Assert the
   downstream effect, not just the action's 2xx.>
+- Stimulus proof for negative checks: <how to prove the producer actually ran — log marker,
+  cache write, outbound call>. Caches/async layers that can swallow a trigger:
+  <e.g. redis suggestion cache `new_audits:*` — clear/bust before checks asserting on the
+  effect | none>.
 
 ## Safety rules (non-negotiable)
 - NEVER perform an ALLOW mutation over HTTP/UI unless explicitly cleared below — it really

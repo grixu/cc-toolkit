@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - three per-suite executor subagents under the hard assertion contract (no pass without
     command proof) — `api` (curl + read-only DB), `ui` (agent-browser), `fault`
     (fault-injection, runs solo with guaranteed teardown);
+  - the assertion contract also covers negative checks and diagnosis: an absence verdict
+    needs proof the producing action fired (`ERROR "stimulus not fired"` otherwise — caches
+    swallow triggers silently) and a positive control when read through a partial CLI/API
+    view; a root cause stays PLAUSIBLE until a discriminating experiment confirms it; every
+    suite list states its `fault surface:` explicitly (or `none` with a code-cited reason);
+    pipeline (trigger → wait → verify) suites run as one stateful subagent; a mutation's
+    actual blast radius is compared against the consented surface;
   - dual fault-injection: pause/stop the dependency for "unavailable / fail-closed", or a
     WireMock proxy for a specific HTTP response shape (5xx body, timeout, malformed/empty);
   - `references/BRIEF_TEMPLATE.md` — the ephemeral shared environment-brief skeleton (base
