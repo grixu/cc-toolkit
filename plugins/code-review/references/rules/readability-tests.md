@@ -19,6 +19,7 @@ table, so your severity is a first pass.
 | `readability` | composed-method     | a function doing many tasks or mixing abstraction levels | high |
 | `readability` | ordering            | helpers not in stepdown / newspaper order under their caller | medium |
 | `tests`       | test-structure      | arrange/act/assert (given/when/then) interleaved or out of order | medium |
+| `tests`       | test-fidelity       | a test's name or fixture claims a boundary its assertions don't actually check | medium |
 
 ### `readability` family
 
@@ -185,3 +186,27 @@ test before they can trust it.
   step. Also: Clean Code's "declare variables near their use" is a real principle,
   but in tests the AAA grouping wins because it communicates intent — that is the
   deliberate trade-off, not a contradiction to point out.
+
+#### `test-fidelity` — the test must actually check what its name claims
+
+A test is trusted for what its name and fixtures say it guards. When the
+`describe`/`it` title, or a fixture chosen to sit at a boundary, names a value or
+condition the assertions don't actually exercise, the test passes while guarding the
+wrong thing — and a regression that relaxes the real boundary slips through green.
+
+- **Flag** when:
+  - an `it`/`describe` title states a concrete boundary or value (`"rejects titles
+    over 250 characters"`) the code under test or the assertion doesn't match (the
+    schema caps at 200);
+  - a fixture literal picked to represent a boundary no longer matches the boundary
+    it probes, so the test would still pass if the boundary moved;
+  - a test named for behaviour X asserts only behaviour Y.
+- **Suggested fix**: align the claim with the real behaviour — retitle to the actual
+  boundary and adjust the fixture, or tighten the assertion so it genuinely guards the
+  claimed boundary.
+- **Calibration → not a finding**: a deliberately illustrative, round-number, or
+  paraphrase name that asserts no exact value and stays on the correct side of the
+  boundary (`"rejects an over-long title"`); property-based tests whose boundary is
+  intentionally abstract. This rule is about a test's *factual claim*, not a symbol
+  named after mechanism (`intent-name`) or phase grouping/order (`test-structure`) —
+  most-specific wins.

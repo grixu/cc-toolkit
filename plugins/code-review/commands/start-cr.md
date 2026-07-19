@@ -6,7 +6,7 @@ description: >-
   — never auto-triggered. It resolves scope once, dispatches five scanner
   subagents, re-grades severity centrally, and offers a single apply menu. It
   never edits code during the review.
-allowed-tools: Read, Bash, Grep, Glob, Task, AskUserQuestion, Edit
+allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit
 argument-hint: "[paths...] [--base <branch>]"
 ---
 
@@ -86,10 +86,13 @@ standard here and must not be flagged. Capture what you learn in one short
 conventions note and **pass it to every Scanner**, so a documented convention does
 not surface as a finding.
 
-## Step 3 — Dispatch five Scanners in parallel (Task tool)
+## Step 3 — Dispatch five Scanners in parallel (foreground Agent subagents)
 
-Dispatch **five** `Task` subagents, **one per Lens, in parallel** (all five Task
-calls in a single message). Each Scanner receives:
+Dispatch all five Scanners as **foreground** subagents (`run_in_background: false`),
+**one per Lens**, issued together in **one message** so they run concurrently and each
+returns its findings directly as its result. **Never run a Scanner in the
+background** — background spins up the heavier agent-teams/mailbox path and forces you
+to poll for results. Each Scanner receives:
 
 - the resolved **in-scope file list** (paths) and the `diff_args` from Step 1;
 - how to view each file (tracked → `git diff <diff_args> -- <path>`; untracked →
@@ -146,11 +149,35 @@ Tell each Scanner that **severity is a first pass** — you re-grade every quali
 finding centrally in Step 4, so it should grade honestly against its rules but not
 agonize over the boundary.
 
+**Two conventions every Scanner uses:**
+
+- **`(verify)` marker** — append `(verify)` to any finding you cannot confirm without
+  checking a type, signature, or runtime behaviour (a `needless-cast` is the common
+  case). The Orchestrator resolves every `(verify)` in Step 4 before the report; do
+  not drop the finding, and do not silently keep an unverified one.
+- **`HANDOFF` block** — a real problem that belongs to another Lens's family goes in a
+  separate block at the end of your output, never mixed into your own findings and
+  never buried in prose:
+
+  ```
+  ## HANDOFF (out-of-my-family — noticed but not mine to grade)
+  - `<suggested-family>` · <rule if known> · `path:line` — <what the reader loses> → <why it isn't my family>
+  ```
+
+  One terse line each, with the family you think owns it. Omit the block when empty.
+
 ## Step 4 — Merge and re-grade
 
 - **Collect** all five Scanners' outputs.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses — keep the **most-specific** one and drop the rest.
+- **Route every `HANDOFF` entry**: assign it the correct family and rule, grade its
+  severity from the master table, dedup it against the existing findings, and fold it
+  into the per-file report. A `HANDOFF` must never be dropped or left only as prose.
+- **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
+  confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
+  positive** — drop it and note it under `Not flagged`. **Never carry an unresolved
+  `(verify)` finding into an apply batch.**
 - **Re-grade every quality finding's severity yourself** against the master
   severity table below. Do **not** trust a single-lens Scanner's severity — a
   single-lens agent is the one most prone to the anchoring the table forbids.
@@ -170,6 +197,7 @@ Re-grade against this table — the family, the rule, and the severity are all
 | `readability` | composed-method     | a function doing many tasks or mixing abstraction levels | high |
 | `readability` | ordering            | helpers not in stepdown / newspaper order under their caller | medium |
 | `tests`       | test-structure      | arrange/act/assert (given/when/then) interleaved or out of order | medium |
+| `tests`       | test-fidelity       | a test's name or fixture claims a boundary its assertions don't actually check | medium |
 | `naming`      | intent-name         | a name after mechanism/algorithm, not intent | medium |
 | `naming`      | role-name           | a name carrying the type instead of the role | nit |
 | `naming`      | command-query       | a query that mutates, or a command relied on only for its return | high |
@@ -192,8 +220,9 @@ Severity definitions:
   mutates (`command-query`), a half-formed object or leaked representation
   (`full-construction`, `leaky-collection`), a cast that masks a stale type
   (`needless-cast`).
-- **medium** — readability friction a reader feels every time: `ordering`,
-  `test-structure` interleaving, `guard-clause` nesting, an unexplained
+- **medium** — readability friction a reader feels every time, or a latent gap that
+  matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
+  that claims more than its assertions check, `guard-clause` nesting, an unexplained
   `magic-literal`, a mechanism `intent-name`, eager `lazy-init`, pointless
   indirection (`barrel`), and the pattern rules (`composition`, `polymorphism`,
   `execute-around`) once their friction is real.
@@ -209,6 +238,12 @@ interleaving has a *medium* finding, not a nit. The only lever that legitimately
 moves severity down is a rule's own calibration turning a candidate into a
 **non-finding** — once something is a finding, its severity comes from this table,
 full stop.
+
+**Severity self-check.** Before rendering, verify that every quality finding's
+severity equals its rule's row in the table above, and that no rule appears with two
+different severities anywhere in the report. A mismatch is a bug — fix it. The only
+lever that legitimately changes an outcome is a rule's own calibration turning a
+candidate into a non-finding, never a per-file severity nudge.
 
 ## Step 5 — Report (one per-file skeleton, two vocabularies side by side)
 
@@ -263,6 +298,9 @@ Rules for filling it in:
   passed on, not a paragraph per item; drop the line if empty.
 - **`Boy-scout`** holds only findings in code the change did not touch; omit the
   whole block when there are none.
+- **Resolved findings only.** Every `(verify)` finding must have been confirmed or
+  refuted in Step 4 before the report — list only confirmed findings in the body; a
+  refuted one goes in `Not flagged` as a Scanner false positive.
 - **The headline may not contradict the combined tally.** If there is any quality
   `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE, the
   headline names the worst one — it must not call the change "clean",
@@ -279,7 +317,10 @@ REMOVE/REWRITE/MOVE to look clean.
 
 Never edit during the review. After the report, use **one** `AskUserQuestion`
 (`multiSelect: true`) with categories cut **by risk, not by origin**. Only offer a
-category when you actually have findings that fall into it:
+category when you actually have findings that fall into it. **`AskUserQuestion`
+accepts at most four options** — the four canonical risk buckets below are the whole
+menu; never add a fifth. `Report only` is always offered; a finding that doesn't fit
+cleanly goes to the nearest bucket (a mechanical test retitle → Safe fixes):
 
 - **Safe fixes** — mechanical, easy to eyeball: quality `openness`,
   `explaining-variable`, `magic-literal`, `role-name`, `guard-clause`,
@@ -296,6 +337,11 @@ category when you actually have findings that fall into it:
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
 without an explicit yes**.
 
+**The safe batch contains only verified findings.** Never place an unverified
+`(verify)` finding — a `needless-cast` above all — into the safe batch or dispatch it
+to an editor; it must have been confirmed in Step 4 first (a refuted one was already
+dropped there).
+
 **Scanner line numbers are estimates, not ground truth.** A finding's `path:line`
 is where the Scanner *thought* the code sat; before each edit, Read the file and
 locate the exact site by its **content**, not its line number. If the code or
@@ -306,15 +352,18 @@ the match.
 **Split the safe batch across editor subagents when it is large.** The safe fixes
 are mechanical and file-local, so when they span more than a few files, do not
 apply them one-by-one yourself — **partition the files into a handful of balanced
-groups and dispatch one `Task` editor per group, in parallel**. Ownership is
-**disjoint by file**: never let two editors touch the same file (concurrent
-`Edit`s to one file race). Each editor receives its file subset, the exact
+groups and dispatch one `Agent` editor per group, in a single message and in the
+foreground (`run_in_background: false`)**, so they run concurrently and each returns
+its per-file applied/skipped summary directly. **Never background an editor** —
+background spins up the heavier agent-teams/mailbox path and forces you to poll for
+results. Ownership is **disjoint by file**: never let two editors touch the same file
+(concurrent `Edit`s to one file race). Each editor receives its file subset, the exact
 approved fix for every site in those files, the Step 2 conventions note, and these
 invariants — locate each site by content before editing (per the estimate rule
 above), re-scrub every replacement, apply nothing beyond the listed fixes, and
 **do not run build/tests** (you run them once, after). Each returns what it applied
-per file and what it skipped, with the reason. For a small safe batch, apply it
-inline instead.
+per file and what it skipped, with the reason. Run the editors to completion first,
+then walk the structural fixes. For a small safe batch, apply it inline instead.
 
 **Walk the structural fixes yourself, one at a time — never fan these out.** They
 move code, must be sequenced, and are verified by build/tests, so they stay under

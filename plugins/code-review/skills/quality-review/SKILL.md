@@ -179,6 +179,7 @@ invented this run:
 | `readability` | composed-method     | a function doing many tasks or mixing abstraction levels | high |
 | `readability` | ordering            | helpers not in stepdown / newspaper order under their caller | medium |
 | `tests`       | test-structure      | arrange/act/assert (given/when/then) interleaved or out of order | medium |
+| `tests`       | test-fidelity       | a test's name or fixture claims a boundary its assertions don't actually check | medium |
 | `naming`      | intent-name         | a name after mechanism/algorithm, not intent | medium |
 | `naming`      | role-name           | a name carrying the type instead of the role | nit |
 | `naming`      | command-query       | a query that mutates, or a command relied on only for its return | high |
@@ -201,8 +202,9 @@ Severity:
   (`command-query`), a half-formed object or leaked representation
   (`full-construction`, `leaky-collection`), a cast that masks a stale type
   (`needless-cast`). These cost the most to live with.
-- **medium** — readability friction a reader feels every time: `ordering`,
-  `test-structure` interleaving, `guard-clause` nesting, an unexplained
+- **medium** — readability friction a reader feels every time, or a latent gap that
+  matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
+  that claims more than its assertions check, `guard-clause` nesting, an unexplained
   `magic-literal`, a mechanism `intent-name`, eager `lazy-init`, pointless
   indirection (`barrel`), and the pattern rules (`composition`, `polymorphism`,
   `execute-around`) once their friction is real.
