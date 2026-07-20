@@ -47,8 +47,14 @@ See `${CLAUDE_PLUGIN_ROOT}/references/FAULT_INJECTION.md` for the full guide.
 - **A specific HTTP response shape** (a 5xx with a domain error body, a slow response past
   the client timeout, a malformed/empty body, or "first call ok then fail") → **front the
   dependency with an ephemeral WireMock proxy** and stub that shape. This requires the app to
-  reach the dependency through a swappable base-URL; if it doesn't, `skip` the check with the
-  reason. WireMock control is plain `curl` against `/__admin/*`.
+  reach the dependency through a swappable base-URL. WireMock control is plain `curl` against
+  `/__admin/*`.
+- **The base-URL env the brief names was added for this run** (Mechanism C — an injection point
+  introduced in app source, already consented and in place before you were dispatched) → use it
+  exactly like the case above; it is an ordinary env by the time it reaches you. **You never
+  introduce one yourself**: you cannot obtain consent and you have no `Edit` tool. A dependency
+  with no env the brief lists is `skip` with that reason — the main thread decides whether an
+  injection point gets added.
 
 ## Procedure — strictly in this order
 

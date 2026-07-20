@@ -2,8 +2,9 @@
 
 Some behavior can only be verified by **making a dependency fail**: fail-closed authz,
 atomic rollback after a side-effect error, timeout survival, cascade shutdown. You can't
-observe these by calling the real service "normally" — you have to inject the failure. Two
-mechanisms cover the practical range; pick per fault kind.
+observe these by calling the real service "normally" — you have to inject the failure. Three
+mechanisms cover the practical range; pick per fault kind. A dependency with no swappable
+base-URL is not automatically out of reach — Mechanism C adds the seam the other two need.
 
 The fault suite runs **solo and last** (it perturbs the shared stack) and **always restores**
 the dependency. A green check over a fault that never fired, or a stack left broken, is the
@@ -97,8 +98,39 @@ docker rm -f tester-fault
   fail". A stack pointed at the proxy from a clean start avoids the "old base-URL still pooled"
   problem.
 
+## Mechanism C — introduce the injection point (source-level, consented)
+
+For **"there is no base-URL env to swap"** — but the app reaches the dependency through an SDK
+client **your own code constructs** (`new Firecrawl({apiKey})`, `anthropic(model)`). The env
+doesn't exist yet; it can be *added*. This is the difference between "unswappable" and "not yet
+wired", and mistaking the second for the first hides every fault-dependent behavior behind it.
+
+```ts
+// additive, default-preserving: env unset -> the client keeps hitting the real API
+const anthropic = createAnthropic({ baseURL: process.env.ANTHROPIC_BASE_URL });
+const firecrawl = new Firecrawl({ apiKey: …, apiUrl: process.env.FIRECRAWL_BASE_URL });
+```
+
+- **Confirm the option name in the SDK's own types or docs before editing** — `baseURL` vs
+  `apiUrl` vs `basePath` differ per client and a guessed name fails silently (the client keeps
+  using its default and the fault never fires).
+- **Additive and default-preserving.** Unset env → the exact behavior the app had before. A
+  change that alters the no-env path is a code change, not a test harness.
+- **Requires explicit consent** — it edits application source. Log it in the teardown ledger with
+  its revert path when you make it, and state at the end whether it stays (a deliberate decision)
+  or was reverted.
+- **Diagnostic edits are a separate class.** Flipping a flag to isolate a defect (`durable: false`
+  to prove the durable wrapper is what swallows the HTTP status) is a discriminating experiment,
+  not a harness — it is **always** reverted, immediately after the experiment yields its verdict.
+- Then continue with **Mechanism B**: point the new env at a stub/proxy and restart the app. The
+  restart opens a new environment generation — evidence from before it does not carry over.
+
 ## Scope / when to skip
 
+- **No base-URL env** → before skipping, check whether Mechanism C applies: is the dependency
+  reached through a client **constructed in the app's own code**? If yes, the injection point can
+  be added — ask for consent, don't write the check off. "No `*_BASE_URL` env" is a reason to
+  reach for C, not a skip reason on its own.
 - **2nd-party with a base-URL env** (your own other team's service — e.g. a Cloud/platform API)
   → **both mechanisms work**; Mechanism B gives exact response shapes. HTTPS and a *static shared
   secret* do **not** exempt it: WireMock terminates TLS and a catch-all proxy doesn't validate the

@@ -152,10 +152,11 @@ than a FAIL. Do not invent a check for a genuine gap; list it with its concrete,
 reason.
 
 Show the derived suites (count + one line each) and the surface each needs, plus an
-explicit **`fault surface:`** line — the fault checks derived (step 6 mechanisms), or
-`none` with a code-cited reason (same bar as 3b). The step-6 skip gate can only fire on a
-check that exists: a fault surface never stated is how fail-open/fail-closed behavior
-escapes verification silently.
+explicit **`fault surface:`** line naming the mechanism each fault check will use (A pause/stop,
+B base-URL swap, C introduce the injection point), or `none` with a code-cited reason that
+accounts for **all three** — a `none` that only rules out A and B is the failure mode this line
+exists to catch. Same bar as 3b. The step-6 skip gate can only fire on a check that exists: a
+fault surface never stated is how fail-open/fail-closed behavior escapes verification silently.
 
 ### 4. Confirm scope + mutation consent (HIL)
 
@@ -221,17 +222,24 @@ must be restored and any proxy removed even if a check errors. After it returns,
 **independently confirm** the stack is healthy again (don't trust the subagent's word).
 
 Before skipping a fault check, read `${CLAUDE_PLUGIN_ROOT}/references/FAULT_INJECTION.md`
-(*Scope / when to skip*) and apply the real test: **does a base-URL env for the dependency
-exist?** That the env currently points at a stage/remote host does **not** make it unswappable —
-what matters is that the env *exists* to repoint, not its present value. If a `*_BASE_URL` env
-exists (e.g. `NUCLEUS_API_BASE_URL`), Mechanism B **applies and must be attempted** — restart the
-backend with that env aimed at a WireMock proxy — even for an HTTPS dependency with a shared secret
-(WireMock terminates TLS; a catch-all proxy does not validate the secret) and even for a 2nd-party
-service (another team's own API). Skip **only** when no base-URL env exists to swap (a pure-infra
-fault beyond an HTTP proxy) or the dependency is a real 3rd-party vendor whose base-URL is fixed or
-whose *per-request signatures* (not a static shared secret) would break stub matching — then prefer
-mocking at the client boundary. A skip reason reads "no `*_BASE_URL` env — checked `<file>`", never
-an assumed "probably can't". Same bar as a derivation gap (3b).
+(*Scope / when to skip*) and walk the three rungs in order — each one down is a claim you must
+have evidence for, never an assumption:
+
+1. **A base-URL env exists** → Mechanism B **applies and must be attempted**. Its present value is
+   irrelevant: an env pointing at a stage/HTTPS host still repoints. Neither a shared secret nor a
+   2nd-party owner exempts it (WireMock terminates TLS; a catch-all proxy doesn't validate a static
+   secret).
+2. **No env, but the app constructs the dependency's client itself** → **Mechanism C**: the
+   injection point can be *added* — an additive, default-preserving env read on the client's
+   base-URL option, cleared through the capability question in step 4. "No `*_BASE_URL`" is the
+   trigger for C, not a skip. It edits app source: log it in the teardown ledger, and revert any
+   diagnostic edit made alongside it.
+3. **Neither** → skip, with the concrete reason: a pure-infra fault beyond an HTTP proxy, or a real
+   3rd-party whose base-URL is fixed or whose *per-request signatures* (not a static shared secret)
+   break stub matching — then prefer mocking at the client boundary.
+
+A skip reason names what was checked (`no base-URL env and no in-code client — checked <file>`),
+never an assumed "probably can't". Same bar as a derivation gap (3b).
 
 ### 7. Triage + report
 
@@ -271,7 +279,7 @@ are ephemeral; mention the path but do not commit anything.
 | Persona login fails | step 2 | that persona's checks `blocked` (no cascade) |
 | Mutation consent | step 4 | HIL (all / selected / none) |
 | New-user (invite/sign-up) scenario in scope | step 4 | HIL — ask for a disposable email; none given → those checks `blocked` |
-| Fault dependency not swappable / not pausable | step 6 | a `*_BASE_URL` env that *exists* is swappable — repoint it (even if it now holds a stage/HTTPS URL) → attempt Mechanism B; skip **only** if no base-URL env exists or it's a fixed/signature-bound 3rd-party, never assumed |
+| Fault dependency not swappable / not pausable | step 6 | walk the three rungs: env exists → Mechanism B (a stage/HTTPS value is still swappable); no env but an in-code client → Mechanism C (consented, additive); neither → skip with the checked reason, never assumed |
 | Negative check ("X is absent") without proof the producer ran | step 5/6 | `ERROR "stimulus not fired"`, never FAIL — prove it via log marker / cache write / outbound call |
 | Finding evidence outside the suite's stimulus window | step 5/7 | invalid row — re-verify directly, scoped to the window |
 | Mutation blast radius exceeds consent | step 5/6 | report the delta, hold that mutation class pending re-consent |
