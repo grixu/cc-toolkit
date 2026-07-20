@@ -41,6 +41,12 @@ pass/fail; a pass without command proof does not exist.
   Step 7 reports the ledger in full. Anything left in place on purpose (a migration kept, a
   consented injection point) is stated as a decision with its reason — a leftover the user has to
   discover for themselves is a defect of the run.
+- **Artifacts in the user's data are deleted by recorded path, never by pattern.** When a check
+  makes the app write into a real user-owned store — a note vault, a bucket, a mailbox — capture
+  the exact name at *creation* time from the app's own record (the DB column it wrote, the API
+  response, the log line) and delete precisely those. A glob or a substring sweep over a directory
+  you do not own deletes the user's data; a delete count that doesn't match what you created is a
+  stop-and-report, not a cleanup to push through.
 - **Credentials and session tokens live in the ephemeral work dir and env, never in
   context.** Do not echo cookie values, tokens, or passwords into your messages or into
   any file that could be committed.
@@ -108,6 +114,12 @@ Discover the live stack **fresh** (this is what rots in stored config, so never 
 - **Auth** — establish each persona's session once (log in via `agent-browser`, export the
   session cookie for curl; or a token/hook per the app). Store cookie headers as one-line
   files in `$WORK`.
+- **Pre-state snapshot** — before the first mutation of any kind, record the baseline the run
+  will have to restore *to*: row counts per status, singleton/state rows, which processes and
+  ports are up, and what already exists in any user-owned store the app writes to. This is what
+  "restored" gets measured against at step 7. Without it you are restoring to an *assumption* of
+  what pristine looks like — and a state row the app creates during the run reads as pre-existing
+  or as litter with equal plausibility.
 - **Dependencies for fault-injection** — the container/process name, how the app reaches
   it (so a suite can pause/stop it or front it with a proxy), and **how the stack is
   supervised**: read the launcher (compose flags, restart policy) to learn what a single
@@ -308,8 +320,9 @@ outcome the hypothesis predicts. Report the FAIL (the fact) separately from the 
 
 Report: a consolidated table per suite (pass/fail/blocked/skipped counts), every FAIL bound
 to its AC/ref with the verdict and actual-vs-expected, the uncovered gaps, the **teardown
-ledger** in full (what was changed, what was reverted, what deliberately stays and why), and one
-line of suggested next action. Then **stop** — never auto-run a follow-up. The brief and `$WORK`
+ledger** in full (what was changed, what was reverted, what deliberately stays and why) with
+restoration verified against the step-2 snapshot and quoted, and one line of suggested next
+action. Then **stop** — never auto-run a follow-up. The brief and `$WORK`
 are ephemeral; mention the path but do not commit anything.
 
 ## Gate table

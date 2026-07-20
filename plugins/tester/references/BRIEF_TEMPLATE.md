@@ -28,6 +28,13 @@ Cookie header = one line, ready for `curl -H "Cookie: $(cat FILE)"`. Files live 
 |---|---|---|---|---|
 | <name> | <email> | <id> | <roles> | `<name>.cookieheader.txt` |
 
+## Pre-state snapshot (taken before the first mutation — the restore target)
+- Rows: `<per-status counts, e.g. COMPLETED:15>`; singleton/state rows: `<table: present/absent>`.
+- Processes/ports up at start: `<…>` (so you know what you started and must stop).
+- User-owned stores the app writes to: `<vault path / bucket / mailbox>` — contents at start
+  `<count or listing method>`, and how to enumerate what *this run* created
+  `<the DB column / API field / log line that records each artifact's exact name>`.
+
 ## Domain topology (what exists to test against)
 - <entities, ids, ownership, relationships the checks rely on — e.g. orgs 1420/1483, who owns what>
 
@@ -121,7 +128,13 @@ No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run
   **consequence chains**, not just single-endpoint cells: a permission model exists so one
   action changes what the principal may do next — a check that stops at the action's 2xx misses
   the behavior the model is *for*.
+- **Pre-state snapshot** — "restored" is a comparison, not a feeling. Without a baseline captured
+  before the first write, a state row the app itself created during the run is indistinguishable
+  from one that was always there, and cleanup either leaves litter or deletes something real. It
+  also pins how to enumerate this run's artifacts by exact name — the only safe way to remove
+  them from a store the user owns.
 - **Safety rules** — the difference between a verification pass and an accidental data-mutation
-  spree. The default is read-only + expected-denial; real mutations are opt-in.
+  spree. The default is read-only + expected-denial; real mutations are opt-in, in both classes:
+  the feature's own and the environment's.
 - **Known issues** — prevents a re-run from "discovering" a bug you already filed, and lets a
   post-fix run confirm precisely.
