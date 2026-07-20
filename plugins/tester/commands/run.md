@@ -193,6 +193,17 @@ assertion contract holds: every row backed by a concrete command whose output is
 `blocked` (precondition unavailable, e.g. cookie expired) and `error` (harness broke) are
 distinct from `FAIL`.
 
+**Fan-out is the default; running a suite yourself is the exception** and needs one of exactly
+three reasons: it is the only suite; it is a stateful chain that must be owned end-to-end (the
+pipeline and fault cases below); or it needs a capability a subagent **provably** lacks. "The DB
+is behind an MCP tool rather than `psql`" is *not* such a case — subagents reach the same MCP
+tools, and the brief carries the ids. Quietly absorbing every suite into the main thread is how
+an hour of evidence ends up in one context, which is the failure the fan-out exists to prevent.
+
+The brief is the contract the subagents read. If the criteria above genuinely put everything in
+the main thread, keep it short — a discovery record you cite in the report, not a full contract
+written for nobody.
+
 A suite that is a **pipeline** — trigger → wait (minutes) → verify the downstream effect
 (an export landing in an observability backend, a queue consumer, a spawned job) — is
 stateful and long-running: dispatch it as **one** subagent that owns the whole chain

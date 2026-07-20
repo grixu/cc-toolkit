@@ -44,7 +44,9 @@ readable output decides pass/fail. You never decide by judgment.
      before any change);
    - ALLOW side → use the brief's non-mutating probe (e.g. a `can`/dry-run route) unless the
      mutation-consent surface in the brief cleared a real mutation;
-   - DB effects → read-only `SELECT` via the brief's DB pattern.
+   - DB effects → read-only `SELECT` via the brief's DB pattern, whichever form it names — a
+     shell client (`psql`) or an MCP tool with the ids the brief pins. Use those ids verbatim;
+     never re-resolve the project/branch yourself.
    Capture status + the specific field/row each check asserts on.
 3. **Never perform an ALLOW mutation over HTTP** unless the brief's consent surface lists
    that exact endpoint. When in doubt, treat it as denial-only and note the limitation.

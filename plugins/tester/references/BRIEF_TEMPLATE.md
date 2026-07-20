@@ -40,9 +40,16 @@ curl -s -o /tmp/body -w "HTTP %{http_code}\n" -H "$A" <base>/<route>; cat /tmp/b
 Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
 "cookie expired", never a false FAIL.
 
-## DB access (read-only SELECTs; disposable local dev)
+## DB access (read-only SELECTs unless the safety rules clear a seed)
+Whichever of these the stack actually offers — a subagent has the same MCP tools as the main
+thread, so a DB reachable only through MCP is **not** a reason to skip the fan-out.
 ```bash
+# shell client
 <e.g. docker exec -e PGPASSWORD=… <pg-container> psql -U … -d … -c "SQL">
+```
+```
+# or MCP: tool <mcp__…__run_sql>, projectId=<…>, branchId=<… — the non-prod branch
+# verified in step 2>. Pass these exact ids; never re-resolve them yourself.
 ```
 
 ## Dependency / fault surface (for the fault suite)
