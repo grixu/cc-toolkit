@@ -45,10 +45,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - stop/restart-class faults require knowing the stack's supervisor first (compose
     `--abort-on-container-exit` turns a one-container restart into a full-stack teardown —
     prefer `pause`, which emits no exit event), recorded in the brief's fault surface;
-  - dual fault-injection: pause/stop the dependency for "unavailable / fail-closed", or a
-    WireMock proxy for a specific HTTP response shape (5xx body, timeout, malformed/empty);
+  - triple fault-injection: pause/stop the dependency for "unavailable / fail-closed", a
+    WireMock proxy for a specific HTTP response shape (5xx body, timeout, malformed/empty), or
+    — when no base-URL env exists but the app builds the dependency's client itself —
+    **introducing** the injection point, additively and defaulting to the real API when the env
+    is unset (consented, ledgered, with diagnostic edits always reverted); the skip gate becomes
+    three rungs so "no `*_BASE_URL`" stops reading as "unswappable";
+  - blockers are questions, not verdicts: step 4 asks which missing capability the user could
+    supply for every check heading toward `blocked` (a CLI on `PATH`, an injection point, a
+    container, a credential, a disposable email), and a gap counts as final only once that ask
+    was declined or is genuinely out of the user's reach;
+  - fan-out stays the default — the brief carries the DB handle in whichever form the stack
+    offers (shell client *or* an MCP tool with pinned ids, since subagents reach the same MCP
+    tools), and running suites in the main thread needs one of three named reasons;
+  - environment mutations (migration, source edit, restart under changed env, auth/config rows,
+    killing a process or DB backend) form their own consent class, each appended to a teardown
+    ledger when made and reported in full, with restoration measured against a pre-state
+    snapshot taken before the first write;
+  - artifacts written into user-owned stores (a vault, a bucket, a mailbox) are removed by the
+    exact names the app itself recorded — never by glob or substring, and a mismatched delete
+    count stops the cleanup;
+  - each restart of the app under test opens a numbered **environment generation** with its own
+    log file; baselines, stub hit counts and sessions do not cross that boundary, and evidence
+    cites its generation beside the stimulus window;
+  - an anomaly noticed while diagnosing another FAIL becomes its own `observation` row marked
+    not-investigated, instead of being folded into the neighbouring root cause;
   - `references/BRIEF_TEMPLATE.md` — the ephemeral shared environment-brief skeleton (base
-    URLs + quirks, personas + cookie files, topology, curl/DB patterns, fault surface,
-    expected-behavior oracle, safety rules, strict return format);
-  - `references/FAULT_INJECTION.md` — mechanism guide (pause/stop vs proxy), the two traps
-    (non-deterministic payloads, stateful sequences), and the always-restore invariant.
+    URLs + quirks, personas + cookie files, pre-state snapshot, topology, curl/DB patterns,
+    environment generations, fault surface, expected-behavior oracle, safety rules, strict
+    return format);
+  - `references/FAULT_INJECTION.md` — mechanism guide (pause/stop, proxy, introduce the
+    injection point), the two traps (non-deterministic payloads, stateful sequences), and the
+    always-restore invariant.
