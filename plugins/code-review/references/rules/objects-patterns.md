@@ -7,8 +7,10 @@ leave it out.
 
 Each finding gets one **family**, one **rule**, and one **severity**. Grade severity
 from the rows below (a finding's severity is the property of its rule, never the
-file's overall impression). The orchestrator re-grades centrally against the master
-table, so your severity is a first pass.
+file's overall impression). Severity is exactly one of `high`, `medium`, or `nit` —
+never `low`, never a number, even when the rows below happen to show only one of the
+three. The orchestrator re-grades centrally against the master table, so your severity
+is a first pass.
 
 | family | rule | what it catches | severity |
 |--------|------|-----------------|----------|

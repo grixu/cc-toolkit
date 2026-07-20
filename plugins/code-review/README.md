@@ -60,6 +60,13 @@ Five equal lenses, each a scanner with its own rules file:
 Reviews source files that carry human-authored comments / code. Skips JSON,
 lockfiles, generated/minified files, Markdown/docs, config, and license headers.
 
+**This is a craft review, not a security or correctness audit.** The five lenses
+judge how code reads and is structured — they do not hunt for bugs, injection,
+authz gaps, unsafe deserialization, or dependency risk. A vulnerability will surface
+here only by accident, as a side effect of some readability or test rule. Run a
+dedicated security review alongside it; do not read a clean `/start-cr` report as
+"this change is safe".
+
 With no path arguments it reviews the current branch diff. The base is detected
 defensively (`@{upstream}` → `origin/main` → `origin/master` → `main` → `master`,
 or `--base <branch>`), and both **committed** and **uncommitted** changes are

@@ -143,6 +143,15 @@ boy-scout, each in this exact shape:
 `family` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
 ```
 
+**Severity is exactly one of `high`, `medium`, or `nit`** — never `low`, never a
+number, never a paraphrase. A Scanner whose own rules file happens to list only one
+of the three still uses the full vocabulary.
+
+**The FINDINGS section holds findings only.** Anything a Scanner checked and cleared
+belongs in one prose line, never in the finding shape — a "none found" or "is **not**
+a finding" bullet with a dash where the severity goes reads as a finding to everything
+downstream.
+
 Instruct each quality Scanner to follow its rules file's calibrations — every rule
 ends with the look-alike that is **not** a violation; check it before emitting.
 Tell each Scanner that **severity is a first pass** — you re-grade every quality
@@ -151,10 +160,13 @@ agonize over the boundary.
 
 **Two conventions every Scanner uses:**
 
-- **`(verify)` marker** — append `(verify)` to any finding you cannot confirm without
-  checking a type, signature, or runtime behaviour (a `needless-cast` is the common
-  case). The Orchestrator resolves every `(verify)` in Step 4 before the report; do
-  not drop the finding, and do not silently keep an unverified one.
+- **`(verify)` marker** — a Scanner that doubts a finding **resolves it itself first**:
+  you have `Read`, so open the type, the signature, or the call site and confirm or
+  drop it (a `needless-cast` is the common case — check what the value's type actually
+  is before claiming the cast is redundant). Append `(verify)` only when confirming
+  would take something you don't have — runtime behaviour, or a file outside the review
+  scope. Then the Orchestrator resolves it in Step 4. Never silently keep an unverified
+  finding.
 - **`HANDOFF` block** — a real problem that belongs to another Lens's family goes in a
   separate block at the end of your output, never mixed into your own findings and
   never buried in prose:
@@ -171,13 +183,21 @@ agonize over the boundary.
 - **Collect** all five Scanners' outputs.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses — keep the **most-specific** one and drop the rest.
+- **Count the lenses that converged.** Independent Scanners landing on the same code
+  is the strongest signal this review produces — they read the file separately and had
+  no way to coordinate. Treat a finding several lenses reached (directly or via
+  `HANDOFF`) as **confirmed**: it leads its file, and it is a candidate for the
+  headline. Convergence raises confidence and ordering, **never severity** — that stays
+  verbatim from the table.
 - **Route every `HANDOFF` entry**: assign it the correct family and rule, grade its
   severity from the master table, dedup it against the existing findings, and fold it
   into the per-file report. A `HANDOFF` must never be dropped or left only as prose.
 - **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
   confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
   positive** — drop it and note it under `Not flagged`. **Never carry an unresolved
-  `(verify)` finding into an apply batch.**
+  `(verify)` finding into an apply batch.** Most runs will have none — the Scanners
+  resolve their own doubts. When no Scanner emitted one, say nothing about `(verify)`
+  anywhere; do not claim to have resolved an empty list.
 - **Re-grade every quality finding's severity yourself** against the master
   severity table below. Do **not** trust a single-lens Scanner's severity — a
   single-lens agent is the one most prone to the anchoring the table forbids.
@@ -264,7 +284,8 @@ order — do not improvise a different structure between runs:
 ### <path/to/another/file>
 - `family` · rule severity · L<lines> — <…>
 
-**Not flagged:** <one compact line of look-alikes deliberately passed on, or omit>
+**Not flagged:** <look-alikes deliberately passed on — one compact line, or a bullet
+each when one is a real problem with no rule to land on; omit when empty>
 
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
@@ -294,8 +315,11 @@ Rules for filling it in:
   replacement text; for MOVE, name the destination.
 - **Quote comments verbatim.** Every comment verdict carries the verbatim comment
   text and its `path:line`.
-- **`Not flagged`** is **one line total** — a comma-separated list of look-alikes
-  passed on, not a paragraph per item; drop the line if empty.
+- **`Not flagged`** lists the look-alikes deliberately passed on — one line when they
+  are all genuine non-findings, a short bullet each when one of them is a *real*
+  problem that merely has no rule to land on. Never compress a real problem into a
+  subordinate clause to keep the line short; that is how something worth acting on
+  disappears. Drop the block if empty.
 - **`Boy-scout`** holds only findings in code the change did not touch; omit the
   whole block when there are none.
 - **Resolved findings only.** Every `(verify)` finding must have been confirmed or
@@ -349,12 +373,18 @@ comment a finding describes is not actually there, it is a **Scanner false
 positive** — skip it and note it in the wrap-up. Never edit a nearby line to force
 the match.
 
-**Split the safe batch across editor subagents when it is large.** The safe fixes
-are mechanical and file-local, so when they span more than a few files, do not
-apply them one-by-one yourself — **partition the files into a handful of balanced
-groups and dispatch one `Agent` editor per group, in a single message and in the
-foreground (`run_in_background: false`)**, so they run concurrently and each returns
-its per-file applied/skipped summary directly. **Never background an editor** —
+**Split the safe batch across editor subagents by what you have already read.** An
+editor pays a full file read before its first `Edit`, so fanning out a file you
+already hold in context buys nothing and costs that read twice. Count the safe-batch
+files you have **not** read in this session: **four or more → fan out** (those files
+only); **three or fewer → apply the whole batch inline**. Files you already read in
+Step 4 stay with you either way.
+
+When you do fan out, do not apply them one-by-one yourself — **partition those files
+into a handful of balanced groups and dispatch one `Agent` editor per group, in a
+single message and in the foreground (`run_in_background: false`)**, so they run
+concurrently and each returns its per-file applied/skipped summary directly.
+**Never background an editor** —
 background spins up the heavier agent-teams/mailbox path and forces you to poll for
 results. Ownership is **disjoint by file**: never let two editors touch the same file
 (concurrent `Edit`s to one file race). Each editor receives its file subset, the exact
@@ -363,7 +393,7 @@ invariants — locate each site by content before editing (per the estimate rule
 above), re-scrub every replacement, apply nothing beyond the listed fixes, and
 **do not run build/tests** (you run them once, after). Each returns what it applied
 per file and what it skipped, with the reason. Run the editors to completion first,
-then walk the structural fixes. For a small safe batch, apply it inline instead.
+then walk the structural fixes.
 
 **Walk the structural fixes yourself, one at a time — never fan these out.** They
 move code, must be sequenced, and are verified by build/tests, so they stay under

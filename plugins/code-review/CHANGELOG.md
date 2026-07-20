@@ -43,6 +43,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the master table before rendering, so one rule can't appear with two severities.
 - **Apply menu capped at four options** — the four canonical risk buckets are the
   whole menu, honoring `AskUserQuestion`'s limit.
+- **Severity vocabulary pinned** — a Scanner grades `high`, `medium`, or `nit` and
+  nothing else, including in lenses whose own rules file lists only one of the three.
+- **Cross-lens convergence is a confidence signal** — a finding several Scanners
+  reached independently leads its file and is a headline candidate; convergence never
+  moves severity, which stays verbatim from the master table.
+- **Editor fan-out has a countable threshold** — the safe batch fans out on four or
+  more files not yet read this session, and is applied inline otherwise, so an editor
+  never pays a second read for a file the orchestrator already holds.
+- **Scanners resolve their own doubts** — `(verify)` is reserved for what a Scanner
+  genuinely cannot check (runtime behaviour, out-of-scope files) instead of being the
+  default for any uncertain finding.
+- **`Not flagged` may itemize** — a real problem with no rule to land on gets its own
+  bullet instead of being compressed into a subordinate clause.
+- **Findings sections hold findings only** — a checked-and-cleared item goes in prose,
+  never in the finding shape with a dash where the severity belongs.
+
+### Documentation
+
+- README states plainly that this is a craft review, not a security or correctness
+  audit.
 
 ## [0.0.0]
 
