@@ -77,6 +77,10 @@ See `${CLAUDE_PLUGIN_ROOT}/references/FAULT_INJECTION.md` for the full guide.
 
 - **Prove the fault before asserting behavior.** A green check over a fault that never fired
   is the worst output; the state/journal check guards it.
+- **A restart resets your baselines.** Injecting through a base-URL env means restarting the app,
+  which opens a new environment generation: the pre-fault sanity call, the proxy's hit count and
+  any log offset you took before it are void. Re-establish them after the restart — an
+  under-fault reading compared against a baseline from the previous generation proves nothing.
 - **Teardown always runs.** Never leave the dependency paused/stopped or a proxy container
   behind. If recovery cannot be confirmed, say so loudly in the notes.
 - **`blocked`/`error`/`skip` ≠ FAIL.** Mechanism unavailable (not pausable, base-URL not

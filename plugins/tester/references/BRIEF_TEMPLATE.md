@@ -67,6 +67,11 @@ thread, so a DB reachable only through MCP is **not** a reason to skip the fan-o
   docker compose up --abort-on-container-exit → any single exit tears down the whole stack;
   prefer pause over stop/restart>`.
 
+## Environment generations (one row per restart of the app under test)
+| gen | started | config delta vs previous | log file |
+|---|---|---|---|
+| gen-1 | <ts> | <baseline — as discovered> | `<$WORK/app-gen1.log>` |
+
 ## Expensive triggers & their preconditions
 | Trigger | Cost / side effects | Expected duration (source) | Verify RIGHT BEFORE firing |
 |---|---|---|---|
@@ -116,6 +121,10 @@ No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run
   route/prefix/envelope. Pin the real ones once, here.
 - **Personas & cookie files** — auth is stateful; establish it once in the main thread and
   hand subagents ready-to-use cookie headers, so five suites don't each re-login.
+- **Environment generations** — a restart under changed env or after a source edit produces a
+  different app; evidence gathered against the previous one silently stops meaning what it meant.
+  Numbering the generations and keeping a log file per generation is what lets a later assertion
+  ("the stub was never hit during the re-drive") rest on a baseline taken under the same config.
 - **Expensive triggers & preconditions** — a trigger that costs minutes, real tokens, or real
   side effects deserves a pre-flight: its preconditions are re-verified at fire time, not
   discovery time, because restart-volatile state (a container-local binary, a warmed cache, a

@@ -242,6 +242,14 @@ stateful and long-running: dispatch it as **one** subagent that owns the whole c
 into parallel fragments, and never let its waiting sit in the main context — long stateful
 verification inline is how a run ends up compacting mid-flight.
 
+**Every restart of the app under test opens a new environment generation.** Label them
+(`gen-1`, `gen-2`, …) with what changed — env vars, a source edit, a config row — and keep each
+generation's logs in its own file. Evidence does **not** cross the boundary: a log-line baseline,
+a stub's hit count, an established session, a row written under the previous config all belong to
+the generation that produced them. Fault suites restart the app by design (Mechanisms B and C), so
+this is the common case, not an edge one; every evidence row cites its generation alongside the
+stimulus window.
+
 A background monitor is part of the evidence chain: its cap must exceed the watched
 process's expected duration (from the brief's expensive-triggers row), it heartbeats each
 poll to its log, and its final line states the outcome explicitly — `DONE <state>` vs
@@ -308,9 +316,10 @@ classify:
 **Default under uncertainty = impl-defect**; the other two need concrete evidence.
 
 Before triaging a subagent's finding, cross-check its cited evidence against the suite's
-own stimulus window: a trace/row id or timestamp that predates the suite's trigger (an
-earlier probe, a previous run) invalidates the row — re-verify directly, scoped to the
-window, before classifying.
+own stimulus window **and its environment generation**: a trace/row id or timestamp that
+predates the suite's trigger (an earlier probe, a previous run), or a baseline taken before a
+restart that changed the app's config, invalidates the row — re-verify directly, scoped to the
+window and the current generation, before classifying.
 
 A root cause is a **hypothesis**, not a finding. Reading the code and locating a plausible
 mechanism makes it at most **PLAUSIBLE**; call it **CONFIRMED** only after a discriminating
@@ -339,6 +348,7 @@ are ephemeral; mention the path but do not commit anything.
 | Fault dependency not swappable / not pausable | step 6 | walk the three rungs: env exists → Mechanism B (a stage/HTTPS value is still swappable); no env but an in-code client → Mechanism C (consented, additive); neither → skip with the checked reason, never assumed |
 | Negative check ("X is absent") without proof the producer ran | step 5/6 | `ERROR "stimulus not fired"`, never FAIL — prove it via log marker / cache write / outbound call |
 | Finding evidence outside the suite's stimulus window | step 5/7 | invalid row — re-verify directly, scoped to the window |
+| Evidence carried across an app restart (baseline, hit count, session from an earlier generation) | step 5/6/7 | invalid — re-establish the baseline in the current generation before asserting |
 | Mutation blast radius exceeds consent | step 5/6 | report the delta, hold that mutation class pending re-consent |
 | Environment mutation not yet cleared (migration, source edit, restart under changed env, auth/config row, killing a process/backend) | any step | HIL — ask at that moment; once cleared, append to the teardown ledger before proceeding |
 | Cookie expired mid-run | step 5/6 | `blocked` "cookie expired", never a FAIL |
