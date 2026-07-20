@@ -97,6 +97,7 @@ SUITE <id> — <one-line what it covers> (fault-injection, ran solo)
 NOTES:
 - up to 5 bullets: anomalies, skipped mechanisms with the reason, suspected bugs
 TEARDOWN: dependency restored — <name> running/healthy; sanity call <code>
+LEDGER: <environment mutations you made and reverted, one per line — or "none">
 ```
 
 Use `PASS` / `FAIL`; `ERROR` (fault not injected / harness) or `SKIP` (mechanism

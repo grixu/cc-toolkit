@@ -25,6 +25,22 @@ pass/fail; a pass without command proof does not exist.
   you expect to be **denied** (the 403 fires before anything changes). Use a non-mutating
   probe endpoint (e.g. a `can`/dry-run route) for the ALLOW side when one exists. Real
   ALLOW mutations run only for the surface the mutation-consent gate cleared.
+- **Two mutation classes, two consents.** The gate above covers **feature mutations** — ALLOW
+  mutations of the surface under test, driven through its own API/UI. Everything that changes the
+  stack *around* the feature is an **environment mutation**: applying a migration, editing app
+  source, restarting the app with different env, writing auth/rate-limit/config rows, seeding rows
+  straight into the DB, killing a process or a DB backend. These are not covered by feature consent
+  — each needs its own clearance (step 4, or an ask at the moment it becomes necessary) and an
+  entry in the **teardown ledger** (`$WORK/TEARDOWN.md`), appended **when you make the change**,
+  never reconstructed from memory at the end:
+
+  ```
+  | changed | how to revert | reverted? |
+  ```
+
+  Step 7 reports the ledger in full. Anything left in place on purpose (a migration kept, a
+  consented injection point) is stated as a decision with its reason — a leftover the user has to
+  discover for themselves is a defect of the run.
 - **Credentials and session tokens live in the ephemeral work dir and env, never in
   context.** Do not echo cookie values, tokens, or passwords into your messages or into
   any file that could be committed.
@@ -169,7 +185,10 @@ tool rejects more):
 - **which suites** to run (or all);
 - **mutation consent** — `all` / `selected` / `none` (default `none`): whether real ALLOW
   mutations may be performed, and for which endpoints. Under `none`, the matrix runs
-  read-only + expected-denial as above.
+  read-only + expected-denial as above. Cover **both classes**: alongside the feature mutations,
+  list the environment mutations the suites will need (a pending migration, seeding rows, a
+  restart under changed env, a source-level injection point) — each one the user clears goes
+  into the teardown ledger the moment it happens.
 - **missing capabilities** — the one question that decides how much of the scope is reachable at
   all. For every check heading for `blocked` or an uncovered gap, name the **single concrete thing
   the user could do** to unlock it, and ask. Typical unlocks: start a service or put a CLI the app
@@ -288,8 +307,9 @@ outcome the hypothesis predicts. Report the FAIL (the fact) separately from the 
 (the hypothesis + its confidence); a confident wrong root cause poisons the fix downstream.
 
 Report: a consolidated table per suite (pass/fail/blocked/skipped counts), every FAIL bound
-to its AC/ref with the verdict and actual-vs-expected, the uncovered gaps, and one line of
-suggested next action. Then **stop** — never auto-run a follow-up. The brief and `$WORK`
+to its AC/ref with the verdict and actual-vs-expected, the uncovered gaps, the **teardown
+ledger** in full (what was changed, what was reverted, what deliberately stays and why), and one
+line of suggested next action. Then **stop** — never auto-run a follow-up. The brief and `$WORK`
 are ephemeral; mention the path but do not commit anything.
 
 ## Gate table
@@ -307,6 +327,7 @@ are ephemeral; mention the path but do not commit anything.
 | Negative check ("X is absent") without proof the producer ran | step 5/6 | `ERROR "stimulus not fired"`, never FAIL — prove it via log marker / cache write / outbound call |
 | Finding evidence outside the suite's stimulus window | step 5/7 | invalid row — re-verify directly, scoped to the window |
 | Mutation blast radius exceeds consent | step 5/6 | report the delta, hold that mutation class pending re-consent |
+| Environment mutation not yet cleared (migration, source edit, restart under changed env, auth/config row, killing a process/backend) | any step | HIL — ask at that moment; once cleared, append to the teardown ledger before proceeding |
 | Cookie expired mid-run | step 5/6 | `blocked` "cookie expired", never a FAIL |
 
 ## Not in scope of this command (use `mt` instead)

@@ -84,6 +84,9 @@ thread, so a DB reachable only through MCP is **not** a reason to skip the fan-o
   2. exercise the real guard only with SAFE GETs (expect 200/403) and mutations you expect
      DENIED (403 fires before any change).
 - Mutation consent cleared this run: `<none | all | the specific endpoints>`.
+- Environment mutations cleared this run: `<none | migration X, seeding rows in <table>, restart
+  under <env>, injection point in <file>>`. Anything not listed here needs a fresh ask. Every one
+  performed is appended to the teardown ledger `<$WORK/TEARDOWN.md>` at the moment it happens.
 - New-user flows (invite-new-user / sign-up) use the disposable email the user provided this
   run: `<address | none — new-user checks blocked>`. Never invent an address — real mail may be
   sent and the registration lands in a possibly-shared IdP.
