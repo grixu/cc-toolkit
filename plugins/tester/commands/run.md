@@ -40,7 +40,11 @@ pass/fail; a pass without command proof does not exist.
 - **An absence read through a partial view is not an absence.** CLI/API list views with
   field groups return empty for fields they were not asked for. Before asserting a
   field/link is missing, run a positive control — the same query surface must show that
-  field on a known-good object — or fetch the full object.
+  field on a known-good object — or fetch the full object. The same trap covers runtime
+  config: an env read from a sibling process (`docker exec printenv`, a fresh `node -e`)
+  is **not** the app's effective config when the app loads it at boot (dotenv) — prove
+  enablement with a live effect probe or the app's own introspection, never a parallel
+  process read.
 
 ## Ephemeral work dir
 
@@ -88,8 +92,11 @@ Discover the live stack **fresh** (this is what rots in stored config, so never 
 - **Auth** — establish each persona's session once (log in via `agent-browser`, export the
   session cookie for curl; or a token/hook per the app). Store cookie headers as one-line
   files in `$WORK`.
-- **Dependencies for fault-injection** — the container/process name and how the app reaches
-  it (so a suite can pause/stop it or front it with a proxy).
+- **Dependencies for fault-injection** — the container/process name, how the app reaches
+  it (so a suite can pause/stop it or front it with a proxy), and **how the stack is
+  supervised**: read the launcher (compose flags, restart policy) to learn what a single
+  container's exit does — under `docker compose up --abort-on-container-exit`, restarting
+  one service tears the whole stack down.
 
 Write it all into a single **`$WORK/BRIEF.md`** using
 `${CLAUDE_PLUGIN_ROOT}/references/BRIEF_TEMPLATE.md` as the skeleton. The brief is the
@@ -152,7 +159,8 @@ escapes verification silently.
 
 ### 4. Confirm scope + mutation consent (HIL)
 
-Ask once with `AskUserQuestion`:
+Ask once with `AskUserQuestion` (group choices into at most 4 options per question — the
+tool rejects more):
 - **which suites** to run (or all);
 - **mutation consent** — `all` / `selected` / `none` (default `none`): whether real ALLOW
   mutations may be performed, and for which endpoints. Under `none`, the matrix runs
@@ -179,11 +187,21 @@ stateful and long-running: dispatch it as **one** subagent that owns the whole c
 into parallel fragments, and never let its waiting sit in the main context — long stateful
 verification inline is how a run ends up compacting mid-flight.
 
+A background monitor is part of the evidence chain: its cap must exceed the watched
+process's expected duration (from the brief's expensive-triggers row), it heartbeats each
+poll to its log, and its final line states the outcome explicitly — `DONE <state>` vs
+`TIMEOUT after <n>s`. A cap-exit that reads like completion sends the orchestrator chasing
+phantom results; an empty log must mean a dead monitor, not a quiet one.
+
 Before firing an **expensive trigger** (minutes of wall-clock, real tokens, real side
 effects like a PR or an email), re-verify its preconditions from the brief **at fire time**,
 not discovery time: restart-volatile state (a container-local binary, a warmed cache, a
 linked integration) can vanish between the two — and a known gotcha from memory or a prior
-run that kills the trigger is a wasted run, not a finding.
+run that kills the trigger is a wasted run, not a finding. At the same moment, establish
+its **expected duration** from history (a previous run's rows or logs) into the brief's
+expensive-triggers table: it sizes the monitors and wakeups, and it is the fact to cite
+when the user proposes intervening in a run that only *looks* stuck — resetting a healthy
+30-minute run at minute 24 pays for the same run twice.
 
 After any consented mutation, compare the **actual blast radius** against what was cleared:
 fan-out triggers (a retrigger that re-runs a whole pipeline, a job that spawns children)
@@ -227,6 +245,11 @@ classify:
 
 **Default under uncertainty = impl-defect**; the other two need concrete evidence.
 
+Before triaging a subagent's finding, cross-check its cited evidence against the suite's
+own stimulus window: a trace/row id or timestamp that predates the suite's trigger (an
+earlier probe, a previous run) invalidates the row — re-verify directly, scoped to the
+window, before classifying.
+
 A root cause is a **hypothesis**, not a finding. Reading the code and locating a plausible
 mechanism makes it at most **PLAUSIBLE**; call it **CONFIRMED** only after a discriminating
 experiment — a minimal repro, an isolation harness, a second telemetry source — whose
@@ -250,6 +273,7 @@ are ephemeral; mention the path but do not commit anything.
 | New-user (invite/sign-up) scenario in scope | step 4 | HIL — ask for a disposable email; none given → those checks `blocked` |
 | Fault dependency not swappable / not pausable | step 6 | a `*_BASE_URL` env that *exists* is swappable — repoint it (even if it now holds a stage/HTTPS URL) → attempt Mechanism B; skip **only** if no base-URL env exists or it's a fixed/signature-bound 3rd-party, never assumed |
 | Negative check ("X is absent") without proof the producer ran | step 5/6 | `ERROR "stimulus not fired"`, never FAIL — prove it via log marker / cache write / outbound call |
+| Finding evidence outside the suite's stimulus window | step 5/7 | invalid row — re-verify directly, scoped to the window |
 | Mutation blast radius exceeds consent | step 5/6 | report the delta, hold that mutation class pending re-consent |
 | Cookie expired mid-run | step 5/6 | `blocked` "cookie expired", never a FAIL |
 

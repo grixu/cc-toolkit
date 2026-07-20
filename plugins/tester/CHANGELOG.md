@@ -36,7 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - expensive triggers (real tokens / real side effects / minutes of wall-clock) get a
     preconditions row in the brief, re-verified at fire time — restart-volatile state
     (a container-local binary, a linked integration) is checked when firing, not at
-    discovery;
+    discovery — plus an expected duration taken from history (a previous run's rows/logs),
+    which sizes background monitors and answers "is it stuck?";
+  - observation discipline: runtime config is proved by a live effect or the app's own
+    introspection, never a sibling-process env read (dotenv loads at boot); a finding's
+    evidence must pin identifiers inside the suite's own stimulus window; background
+    monitors end with an explicit `DONE`-vs-`TIMEOUT` line and heartbeat their log;
+  - stop/restart-class faults require knowing the stack's supervisor first (compose
+    `--abort-on-container-exit` turns a one-container restart into a full-stack teardown —
+    prefer `pause`, which emits no exit event), recorded in the brief's fault surface;
   - dual fault-injection: pause/stop the dependency for "unavailable / fail-closed", or a
     WireMock proxy for a specific HTTP response shape (5xx body, timeout, malformed/empty);
   - `references/BRIEF_TEMPLATE.md` — the ephemeral shared environment-brief skeleton (base

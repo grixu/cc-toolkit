@@ -37,6 +37,12 @@ curl -s -o /dev/null -w "recovery HTTP %{http_code}\n" -H "$A" <base>/<guarded-r
   instantly reversible — prefer it. `docker stop` if you need the port actually closed;
   restart with `docker start`.
 - Non-container process: stop it (note the exact restart command first) and restart after.
+- **Know the supervisor before any stop/restart.** The same command has a different blast
+  radius under different supervision: a stack launched via `docker compose up
+  --abort-on-container-exit` tears down *entirely* when one container exits; an orchestrator
+  with a restart policy may recreate what you stopped. Read the launcher (script flags,
+  restart policy) first — it's recorded in the brief's fault surface — and prefer `pause`
+  (no exit event) when the supervisor reacts to exits.
 - **Prove `paused`/`exited` before asserting.** If you can't confirm the fault is active, the
   check is `ERROR "fault not injected"`, never `PASS`.
 

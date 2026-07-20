@@ -49,11 +49,14 @@ Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
 - Dependency: container/process `<name>`, image `<…>`.
 - App reaches it at `<addr>`; host-published at `<addr>` (if any).
 - Swappable base-URL env: `<ENV_NAME | none — only pause/stop is possible>`.
+- Supervision: `<how the stack runs and what one container's exit does — e.g. run.sh =
+  docker compose up --abort-on-container-exit → any single exit tears down the whole stack;
+  prefer pause over stop/restart>`.
 
 ## Expensive triggers & their preconditions
-| Trigger | Cost / side effects | Verify RIGHT BEFORE firing |
-|---|---|---|
-| <e.g. POST /ai-agent/…/runs> | <~20 min, real LLM tokens, opens a real draft PR> | <binary X present in worker; integration linked; no active run> |
+| Trigger | Cost / side effects | Expected duration (source) | Verify RIGHT BEFORE firing |
+|---|---|---|---|
+| <e.g. POST /ai-agent/…/runs> | <real LLM tokens, opens a real draft PR> | <~30 min — last SUCCEEDED row in `agent_run`> | <binary X present in worker; integration linked; no active run> |
 
 ## Expected-behavior model (what SHOULD happen — the assertion oracle)
 - <deny-by-default? → 403>; <no auth → 401>; <dependency down → 500 / fail-closed>.
@@ -100,7 +103,9 @@ No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run
   side effects deserves a pre-flight: its preconditions are re-verified at fire time, not
   discovery time, because restart-volatile state (a container-local binary, a warmed cache, a
   linked integration) can vanish between the two. A known gotcha that kills the trigger is a
-  wasted run, not a finding.
+  wasted run, not a finding. The expected duration comes from history (a previous run's rows
+  or logs), never a guess — it sizes the monitors and is the answer when a healthy long run
+  starts to look stuck.
 - **Expected-behavior model** — without an oracle, a subagent can only report what happened,
   not whether it was *right*. This section is what turns observation into a verdict. Include
   **consequence chains**, not just single-endpoint cells: a permission model exists so one
