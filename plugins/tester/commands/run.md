@@ -151,6 +151,10 @@ status transition is **not** uncoverable, and writing it off as such is a false 
 than a FAIL. Do not invent a check for a genuine gap; list it with its concrete, code-cited
 reason.
 
+A gap is only **final** once step 4's capability question has been asked and declined. A missing
+CLI, an absent injection point, a service that isn't up are *this environment's* limits, not the
+behavior's — and they are usually one user action away from gone.
+
 Show the derived suites (count + one line each) and the surface each needs, plus an
 explicit **`fault surface:`** line naming the mechanism each fault check will use (A pause/stop,
 B base-URL swap, C introduce the injection point), or `none` with a code-cited reason that
@@ -166,11 +170,19 @@ tool rejects more):
 - **mutation consent** — `all` / `selected` / `none` (default `none`): whether real ALLOW
   mutations may be performed, and for which endpoints. Under `none`, the matrix runs
   read-only + expected-denial as above.
-- **disposable email** — *only if* a suite needs a **brand-new** user (an invite-new-user or
-  sign-up flow with an email not yet in the system): ask the user for a disposable address to
-  use. Never fabricate one — the invite/sign-up path may send a real message and registers the
-  account in a possibly-shared IdP, so it must be an address the user controls and can clean up.
-  None given → those checks are `blocked`, never run against a made-up email.
+- **missing capabilities** — the one question that decides how much of the scope is reachable at
+  all. For every check heading for `blocked` or an uncovered gap, name the **single concrete thing
+  the user could do** to unlock it, and ask. Typical unlocks: start a service or put a CLI the app
+  shells out to on `PATH`; clear a Mechanism C injection point (step 6) for a dependency with no
+  base-URL env; bring up a container; hand over a credential; supply a **disposable email** for a
+  brand-new-user flow (invite/sign-up with an address not yet in the system) — never fabricate that
+  one, the path may send real mail and registers the account in a possibly-shared IdP.
+
+  A blocker the user can clear in one action is a **question, not a verdict**. Ask before the
+  report, not after it: capabilities the user could have granted in a sentence are the difference
+  between a run that verifies the feature and one that reports it unverifiable. Unlocks declined
+  (or genuinely outside the user's reach — perf thresholds, human judgment, multi-pod convergence)
+  become `blocked` checks and gaps *then*.
 
 ### 5. Execute — fan out, one subagent per suite
 
@@ -278,6 +290,7 @@ are ephemeral; mention the path but do not commit anything.
 | No live stack reachable | step 2 | block affected suites |
 | Persona login fails | step 2 | that persona's checks `blocked` (no cascade) |
 | Mutation consent | step 4 | HIL (all / selected / none) |
+| Check heading for `blocked` / a gap that a user action could unlock | step 4 | HIL — name the one concrete unlock (CLI on `PATH`, Mechanism C, a container, a credential) and ask; only a declined or out-of-reach unlock becomes a gap |
 | New-user (invite/sign-up) scenario in scope | step 4 | HIL — ask for a disposable email; none given → those checks `blocked` |
 | Fault dependency not swappable / not pausable | step 6 | walk the three rungs: env exists → Mechanism B (a stage/HTTPS value is still swappable); no env but an in-code client → Mechanism C (consented, additive); neither → skip with the checked reason, never assumed |
 | Negative check ("X is absent") without proof the producer ran | step 5/6 | `ERROR "stimulus not fired"`, never FAIL — prove it via log marker / cache write / outbound call |
