@@ -327,9 +327,15 @@ experiment — a minimal repro, an isolation harness, a second telemetry source 
 outcome the hypothesis predicts. Report the FAIL (the fact) separately from the root cause
 (the hypothesis + its confidence); a confident wrong root cause poisons the fix downstream.
 
+An anomaly noticed **while** diagnosing something else — a counter reading higher than the retry
+budget allows, a loop that ran twice, a state that shouldn't exist — gets its own row classified
+`observation`, with its evidence and an explicit "not investigated". A confirmed mechanism
+explains what it was tested against, not everything sitting next to it; folding the odd number
+into the neighbouring defect's narrative is how a second defect leaves the run undiscovered.
+
 Report: a consolidated table per suite (pass/fail/blocked/skipped counts), every FAIL bound
-to its AC/ref with the verdict and actual-vs-expected, the uncovered gaps, the **teardown
-ledger** in full (what was changed, what was reverted, what deliberately stays and why) with
+to its AC/ref with the verdict and actual-vs-expected, the `observation` rows, the uncovered
+gaps, the **teardown ledger** in full (what was changed, what was reverted, what deliberately stays and why) with
 restoration verified against the step-2 snapshot and quoted, and one line of suggested next
 action. Then **stop** — never auto-run a follow-up. The brief and `$WORK`
 are ephemeral; mention the path but do not commit anything.

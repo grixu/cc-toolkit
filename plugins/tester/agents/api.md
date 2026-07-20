@@ -91,6 +91,8 @@ SUITE <id> — <one-line what it covers>
 
 NOTES:
 - up to 5 bullets: anomalies, blocked checks with the reason, limitations, suspected bugs
+- an anomaly seen next to a FAIL gets its own bullet — never merged into that FAIL's
+  explanation, however well the two seem to fit
 ```
 
 Use `PASS` / `FAIL` for executed checks; `BLOCKED` or `ERROR` (not FAIL) in the verdict cell
