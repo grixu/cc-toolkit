@@ -53,8 +53,10 @@ five Scanners receive the same list and the same `diff_args`.
     **Both** (base → working tree) — putting the file counts you just saw in each
     option's description.
 
-  Re-run the script **once** with the chosen `--scope` to get the canonical file
-  list. Each entry carries `path`, `status`, `binary`, an optional `untracked`,
+  The detection calls above already returned the full file list for `uncommitted` and
+  for `committed`, so **reuse that list** when the chosen scope is one of them — re-run
+  the script with the chosen `--scope` only when the choice is one you didn't compute
+  above (**Both**). Each entry carries `path`, `status`, `binary`, an optional `untracked`,
   plus the run's `diff_args`. To see a file's change:
 
   - tracked → `git diff <diff_args> -- <path>`;
@@ -78,26 +80,30 @@ it in one line so coverage is honest.
 
 ## Step 2 — Read project conventions (once)
 
-Before dispatch, read `CLAUDE.md`, `AGENTS.md`, `.cursor/rules`, and
-`CONTRIBUTING.md` at the repo root **and** in the directory being reviewed. These
-override the structural rules: if the project documents barrel exports as its
-public-API style, a layered file ordering, or a naming convention, that *is* the
-standard here and must not be flagged. Capture what you learn in one short
-conventions note and **pass it to every Scanner**, so a documented convention does
-not surface as a finding.
+Before dispatch, read the convention sources at the **repo root** (never skip the root)
+**and** in the directory being reviewed: `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`,
+`.cursor/rules`, and every file under `.claude/rules/` (glob `.claude/rules/*.md`).
+These override the structural rules: if the project documents barrel exports as its
+public-API style, a layered file ordering, a naming convention, or a sanctioned
+anchor-comment prefix (e.g. `AGENTS-NOTE:`), that *is* the standard here and must not be
+flagged. Capture what you learn in one short conventions note and **pass it to every
+Scanner**, so a documented convention does not surface as a finding.
 
 ## Step 3 — Dispatch five Scanners in parallel
 
-Dispatch the five Scanners — **one per Lens** — so they run concurrently. The `Agent`
-tool **defaults to background**, so the preferred foreground fan-out only happens when
-you pass `run_in_background: false` **and** emit all five calls in a **single message**;
-separate messages run foreground Scanners one-at-a-time (serial — the slow path). Run
-that way, each Scanner returns its findings directly as its result.
+Emit all five Scanner calls — **one per Lens** — with the `Agent` tool in a **single
+message**. Batching them in one message is what makes them run concurrently, and a
+concurrent fan-out **runs in the background**: five agents cannot each block and return
+inline at once, so the harness backgrounds them — this holds **even if you pass
+`run_in_background: false`**, because the flag cannot make a concurrent fan-out
+synchronous. Each Scanner's findings arrive as a **completion notification** in a later
+turn.
 
-Background is an acceptable fallback when you don't batch into one message: the Scanners
-still run concurrently and each delivers via a completion notification — **wait for the
-notifications, never poll with `SendMessage`**. Either path, merge only once all five
-have reported. Each Scanner receives:
+**Wait for all five notifications, then merge — never poll.** Do not `SendMessage` to
+chase a Scanner: results are delivered automatically, and merging before all five report
+loses findings. While you wait, do work that doesn't depend on them — **pre-read the
+diff and the changed files** so you can re-grade and locate sites the moment findings
+land. Each Scanner receives:
 
 - the resolved **in-scope file list** (paths) and the `diff_args` from Step 1;
 - how to view each file (tracked → `git diff <diff_args> -- <path>`; untracked →

@@ -30,11 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`tests` · `test-fidelity` rule** — flags a test whose name or fixture claims a
   boundary its assertions don't actually check (passes while guarding the wrong
   thing).
-- **Concurrent fan-out** — `/start-cr` runs its five scanners concurrently. Foreground
-  dispatch (findings returned inline) is preferred and requires an explicit
-  `run_in_background: false` plus a single-message batch; if the scanners run in the
-  background instead, the orchestrator waits for their completion notifications rather
-  than polling. Editor subagents in the apply phase stay foreground-only.
+- **Concurrent fan-out runs in the background** — `/start-cr` emits its five scanners in
+  one message, which runs them concurrently; a concurrent fan-out is backgrounded by the
+  harness (a `run_in_background: false` flag can't make it synchronous), so the
+  orchestrator waits for the five completion notifications and never polls, pre-reading
+  the diff while it waits. Editor subagents in the apply phase stay foreground.
 - **Cross-lens `HANDOFF`** — a Scanner routes an out-of-family finding to the
   orchestrator, which grades it against the master table instead of losing it in
   prose.
@@ -65,6 +65,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Duplication findings sweep the whole file** — a Scanner flagging repeated code lists
   every copy in the file, not just the ones inside the diffed hunk, so the extraction
   fix can't leave a straggler behind.
+- **Convention sources include `.claude/rules/`** — Step 2 reads every `.claude/rules/*.md`
+  (and re-asserts the repo-root `CLAUDE.md`/`AGENTS.md`) before dispatch, so a
+  repo-sanctioned convention such as an `AGENTS-NOTE:` anchor-comment prefix can't surface
+  as a finding.
+- **Scope list reused, not recomputed** — Step 1 reuses the file list detection already
+  produced for `uncommitted`/`committed`, re-running the script only for the `Both` scope.
 
 ### Documentation
 
