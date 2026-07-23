@@ -43,8 +43,9 @@ Five equal lenses, each a scanner with its own rules file:
   commented-out code, no comment that contradicts the code, rationale pinned where
   the behavior lives.
 - **readability & tests** — openness (blank-line separation), guard-clause,
-  explaining-variable, magic-literal, composed-method, stepdown ordering, and
-  arrange/act/assert test structure.
+  explaining-variable, magic-literal, composed-method, stepdown ordering,
+  arrange/act/assert test structure, and test-fidelity (a test must check the
+  boundary its name claims).
 - **naming & module** — intent-revealing names, role- (not type-) names,
   command/query separation, no ad-hoc OOP/functional style-mix, no pointless
   barrel re-exports.
@@ -52,8 +53,9 @@ Five equal lenses, each a scanner with its own rules file:
   collections, composition over inheritance, polymorphism over repeated
   type-switches, execute-around for paired actions. Patterns are flagged **only
   under real friction**, never because one could apply.
-- **simplicity & types** — over-complex code that collapses (the priority) and
-  needless casts the type already guarantees.
+- **simplicity & types** — over-complex code that collapses (the priority),
+  needless casts the type already guarantees, and dead code that can never run or
+  is never used.
 
 ## Scope
 

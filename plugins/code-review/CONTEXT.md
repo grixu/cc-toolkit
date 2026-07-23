@@ -25,7 +25,7 @@ The single source of truth for one Lens's rule text: `references/rules/<lens>.md
 One of the seven stable top-level labels in the quality vocabulary (`readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`).
 
 **Rule**:
-A specific sub-tag under a Family (20 total), or one of the comment rules `R1`–`R12`.
+A specific sub-tag under a Family (22 total), or one of the comment rules `R1`–`R12`.
 
 **Finding**:
 The quality-side unit of output: `family` · rule · severity · lines → fix.

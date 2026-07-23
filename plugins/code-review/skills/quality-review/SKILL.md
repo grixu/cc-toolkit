@@ -140,7 +140,7 @@ and get no lens):
 
 - **Lens 1 — readability & tests:** `readability` (openness, guard-clause,
   explaining-variable, magic-literal, composed-method, ordering), `tests`
-  (test-structure) → `references/rules/readability-tests.md`
+  (test-structure, test-fidelity) → `references/rules/readability-tests.md`
 - **Lens 2 — naming & module shape:** `naming` (intent-name, role-name,
   command-query), `module` (style-mix, barrel) → `references/rules/naming-module.md`
 - **Lens 3 — objects & patterns:** `objects` (full-construction, lazy-init,
