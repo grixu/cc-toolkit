@@ -62,6 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never in the finding shape with a dash where the severity belongs.
 - **A fully added file has no boy-scout findings** — every finding in a status-`A` file
   is primary, since the whole file is code the change introduced.
+- **Duplication findings sweep the whole file** — a Scanner flagging repeated code lists
+  every copy in the file, not just the ones inside the diffed hunk, so the extraction
+  fix can't leave a straggler behind.
 
 ### Documentation
 

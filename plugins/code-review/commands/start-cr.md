@@ -164,6 +164,13 @@ Tell each Scanner that **severity is a first pass** — you re-grade every quali
 finding centrally in Step 4, so it should grade honestly against its rules but not
 agonize over the boundary.
 
+**A duplication finding sweeps the whole file.** "Target what the change touched" holds
+for most rules, but duplication is the exception: when you flag repeated code (an
+`over-complex` duplication, a copy-pasted predicate), scan the **rest of the file** for
+every other copy of the same pattern and list all the call sites in the one finding —
+including copies in code the change didn't touch. A finding that names two of three
+copies makes the extraction fix leave a straggler behind.
+
 **Two conventions every Scanner uses:**
 
 - **`(verify)` marker** — a Scanner that doubts a finding **resolves it itself first**:
