@@ -127,10 +127,16 @@ Dispatch these five:
 
 1. **comments** → `${CLAUDE_PLUGIN_ROOT}/references/rules/comments.md`
    Returns per-comment **VERDICTS**, one per comment:
-   `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE · `path:line` · "verbatim comment" — one-line reason → concrete suggested fix ``.
+   `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD · `path:line` · "verbatim comment" — one-line reason → concrete suggested fix ``.
    Run the deletion test on every comment first. Surface **R9
    (contradicts-the-code) findings first**. The **test-file bar is higher (R11)**:
-   default to REMOVE when unsure in tests. The suggested fix must itself obey the
+   default to REMOVE when unsure in tests. **`ADD` is the one verdict with no
+   existing comment to quote** — an R2 *missing WHY* at genuinely non-obvious code
+   (a magic constant, a workaround, a specific timeout/retry/batch size, a silent
+   catch); it drops the verbatim-comment slot for a site description:
+   `` `comments` · R2 · ADD · `path:line` — <what is non-obvious> → <the exact comment to add> ``.
+   Raise `ADD` only where you can state the reason concretely — never a guess
+   dressed as a WHY. The suggested fix must itself obey the
    comment rules — **no spec-id fragments** (`(R2)`, `F1:`, `§4.1`), no new
    file/doc cross-references (R4), no banners (R5); scrub the replacement text
    before returning it. For MOVE, name the destination and give the exact text to
@@ -302,7 +308,7 @@ order — do not improvise a different structure between runs:
 
 ### <path/to/file>
 - `family` · rule severity · L<lines> — <what the reader loses> → <the fix, as a clause>
-- `comments` · R# · KEEP/REMOVE/REWRITE/MOVE · L<line> — <reason> → <fix>
+- `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD · L<line> — <reason> → <fix>
 
 ### <path/to/another/file>
 - `family` · rule severity · L<lines> — <…>
@@ -313,7 +319,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
 
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · W keep) · F files. Skipped: <files + reason>.
+**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Skipped: <files + reason>.
 ```
 
 Rules for filling it in:
@@ -322,11 +328,11 @@ Rules for filling it in:
   severity `` (family is one of the seven fixed labels `readability`, `tests`,
   `naming`, `module`, `objects`, `patterns`, `simplicity`; rule and severity are
   verbatim from the Step 4 table). Comment verdicts use `` `comments` · R# ·
-  KEEP/REMOVE/REWRITE/MOVE ``. **No severity↔verdict mapping** — keep them
+  KEEP/REMOVE/REWRITE/MOVE/ADD ``. **No severity↔verdict mapping** — keep them
   distinct.
 - **Findings are markdown bullets** under a `###` file header (not inside a ```
   fence) so every `path:line` stays clickable.
-- **Order files** by their highest-severity quality finding; a REMOVE/REWRITE/MOVE
+- **Order files** by their highest-severity quality finding; a REMOVE/REWRITE/MOVE/ADD
   comment weighs like a medium for ordering. Within a file: high → medium → nit,
   then by line; put any **R9 (contradicts-the-code)** comment verdict first.
 - **Collapse repeats**: one `family` · rule breaking in several spots is a single
@@ -349,7 +355,7 @@ Rules for filling it in:
   refuted in Step 4 before the report — list only confirmed findings in the body; a
   refuted one goes in `Not flagged` as a Scanner false positive.
 - **The headline may not contradict the combined tally.** If there is any quality
-  `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE, the
+  `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE / ADD, the
   headline names the worst one — it must not call the change "clean",
   "well-structured", or "only cosmetic nits". Reserve the clean verdict for a tally
   that is genuinely nits-only-and-all-KEEP (or empty).
@@ -358,7 +364,7 @@ Collapse the whole report to the title line plus a one-sentence verdict and the
 tally **only when the change reads cleanly** — the quality tally is empty or
 nits-only and every comment is KEEP. Do not pad a clean report to look thorough;
 do not collapse one that has a medium-or-higher finding or a
-REMOVE/REWRITE/MOVE to look clean.
+REMOVE/REWRITE/MOVE/ADD to look clean.
 
 ## Step 6 — Apply menu (single AskUserQuestion, multiSelect; never edit during review)
 
@@ -372,7 +378,10 @@ cleanly goes to the nearest bucket (a mechanical test retitle → Safe fixes):
 - **Safe fixes** — mechanical, easy to eyeball: quality `openness`,
   `explaining-variable`, `magic-literal`, `role-name`, `guard-clause`,
   verified-redundant `needless-cast`, trivial `over-complex`; **plus** comment
-  **REMOVE** and **REWRITE**.
+  **REMOVE** and **REWRITE**, and a comment **ADD** whose rationale the review
+  actually confirmed — locate the code site by content and insert the comment
+  above it. An `ADD` whose WHY you could only guess is **report-only**: hand the
+  author the suggested text, since only they know the real reason.
 - **Walk the structural ones (one at a time)** — riskier, they move code:
   `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
   `full-construction` / `leaky-collection` reshaping, the `patterns` refactors

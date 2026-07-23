@@ -31,7 +31,7 @@ A specific sub-tag under a Family (22 total), or one of the comment rules `R1`�
 The quality-side unit of output: `family` · rule · severity · lines → fix.
 
 **Verdict**:
-The comment-side unit of output: per-comment KEEP / REMOVE / REWRITE / MOVE.
+The comment-side unit of output: per-comment KEEP / REMOVE / REWRITE / MOVE / ADD. `ADD` is the only verdict with no existing comment to quote — an R2 *missing WHY* to write at non-obvious code.
 
 ## Relationships
 

@@ -69,9 +69,11 @@ the trade-off, the gotcha that the code itself cannot show.
   rate-limits per source IP`).
 - **REWRITE** a "what" comment into a "why" when a real reason exists but the
   comment states the mechanics instead.
-- Surface a **missing WHY** as a finding (suggest the comment text) only at
-  *non-obvious* code: magic constants, workarounds, surprising/inverted logic,
-  silent catch blocks, specific timeouts/retries/batch sizes.
+- Surface a **missing WHY** as a finding — **verdict `ADD`**, suggesting the exact
+  comment text — only at *non-obvious* code: magic constants, workarounds,
+  surprising/inverted logic, silent catch blocks, specific timeouts/retries/batch
+  sizes. `ADD` is the one verdict with no existing comment to quote; raise it only
+  when you can state the reason concretely, never as a guess.
 - **Exception**: do **not** demand a comment on obvious code or on very common,
   well-known patterns (a standard getter, a plain map/filter, a textbook
   singleton). Asking for a WHY there is just noise.

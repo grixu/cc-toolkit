@@ -13,7 +13,7 @@ description: >-
   process-narration disguised as a decision, no commented-out code, and nothing
   that contradicts the code, and no rationale parked on the wrong declaration when
   it belongs where the behavior lives — and returns a per-comment verdict (KEEP /
-  REMOVE / REWRITE / MOVE) with a concrete suggested fix.
+  REMOVE / REWRITE / MOVE / ADD) with a concrete suggested fix.
 allowed-tools: Read, Bash, Grep, Glob, Edit, AskUserQuestion
 ---
 
@@ -108,9 +108,10 @@ keyword match.
 
 ## Step 3 — Judge each comment against the rules
 
-For every comment, assign one verdict: **KEEP**, **REMOVE**, **REWRITE**, or
-**MOVE**. Run the **deletion test** from the top of this skill on every comment
-first — most findings fall out of it directly.
+For every comment, assign one verdict: **KEEP**, **REMOVE**, **REWRITE**,
+**MOVE**, or **ADD** (an R2 *missing WHY* at genuinely non-obvious code — the one
+verdict with no existing comment). Run the **deletion test** from the top of this
+skill on every comment first — most findings fall out of it directly.
 
 **MANDATORY — read the full rule set before judging.** Read
 `${CLAUDE_PLUGIN_ROOT}/references/rules/comments.md` completely
@@ -119,7 +120,7 @@ the examples, the exceptions, and the false-positive traps that keep this review
 from being noisy. The index here is only a map; the verdicts live in that file.
 
 - **R1** — No narrating *what* the code does (a restatement, at any abstraction, is dead weight).
-- **R2** — Comments explain *decisions* (the WHY); surface a *missing* WHY only at genuinely non-obvious code.
+- **R2** — Comments explain *decisions* (the WHY); surface a *missing* WHY (verdict **ADD**) only at genuinely non-obvious code.
 - **R3** — Not too long; trim to the single load-bearing sentence.
 - **R4** — No cross-file / internal-doc / **spec-id** references — file paths *and* bare requirement tokens (`F1`, `Q1`, `R2`, `§4.1`, `AC-3`); strip the token, keep the fact. External pins (RFC/CVE) stay.
 - **R5** — No banner / section-divider comments (a real information-bearing diagram stays).
@@ -144,7 +145,7 @@ Group findings by file. For each finding give:
 
 - `path:line` and the **verbatim quoted comment**
 - the rule it matches (`R1`–`R12`) and the **verdict** (KEEP / REMOVE / REWRITE /
-  MOVE)
+  MOVE / ADD)
 - a one-line reason
 - a concrete **suggested fix** — the exact replacement text for REWRITE, or
   "delete these lines" for REMOVE, or the proposed new comment for a missing-WHY.
@@ -161,7 +162,7 @@ Group findings by file. For each finding give:
 List any **R9 (contradicts-the-code)** findings first — they mislead readers and
 are the most urgent to fix. Otherwise order findings within a file by line
 number. End with a short tally
-(`N comments reviewed · X remove · Y rewrite · W move · Z keep-as-is`) and the
+(`N comments reviewed · X remove · Y rewrite · W move · V add · Z keep-as-is`) and the
 list of skipped files with reasons. If you found nothing, say so plainly — do not invent
 findings to look thorough.
 
@@ -169,8 +170,8 @@ findings to look thorough.
 
 Never edit during the review. After presenting the report, ask whether to apply
 the REMOVE, REWRITE, and MOVE fixes. Apply with `Edit` only the ones the user
-confirms; leave missing-WHY suggestions for the author to write, since only they
-know the real reason. Before writing each `Edit`, check the replacement text one
+confirms; leave **ADD** (missing-WHY) suggestions for the author to write, since
+only they know the real reason. Before writing each `Edit`, check the replacement text one
 last time for any leftover R4 fragment — a `(R2)`, an `F1:`, a `§4.1`, a file
 path — and strip it; the whole point of the fix is that the citation does not
 survive into the file.
