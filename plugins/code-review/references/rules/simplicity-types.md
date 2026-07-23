@@ -16,6 +16,7 @@ is a first pass.
 |--------|------|-----------------|----------|
 | `simplicity`  | over-complex        | code that collapses into something smaller (duplication → one parameter) | high |
 | `simplicity`  | needless-cast       | a type cast the value's type already guarantees | high |
+| `simplicity`  | dead-code           | code that can never run or whose result is never used (an unreachable branch, an unread binding) | high |
 
 ### `simplicity` family
 
@@ -71,3 +72,25 @@ type — and a stale one actively hides a bug.
   `as unknown as T` test double where structural typing truly cannot be satisfied
   otherwise; casts that silence a *correct* compiler complaint about a real type
   gap. Casts at genuine boundaries are the type system working as intended.
+
+#### `dead-code` — code that can never run or is never used
+
+Dead code is waste that also misleads: a reader reasons about a branch that can never
+execute, or trusts a value nothing consumes. It often marks a real mistake — a guard
+meant to fire, a rename that orphaned the old path — so the dead branch is the visible
+end of a live bug.
+
+- **Flag** when:
+  - a branch is unreachable — a condition always true or always false given the
+    surrounding code (nothing sets the field it tests, an earlier `return`/`throw`
+    precedes it), so one arm never runs;
+  - a binding is computed but never read — a variable, parameter, or import with no use;
+  - a function, method, or export introduced by the change has no caller in scope.
+- **Suggested fix**: delete the unreachable arm or the unused binding; or, if the code
+  was meant to run, name what makes it dead so the real bug (the guard that never fires)
+  is fixed rather than the symptom deleted.
+- **Calibration → not a finding**: an intentionally exhaustive `default:`/`else` kept as
+  a defensive assertion; a public API, route handler, exported hook, or test helper
+  whose caller is out of the reviewed scope; a parameter required by an interface or
+  signature it must match. Reachability you cannot settle from the change alone is a
+  **(verify)**, not an assertion — a wrong "this is dead" deletes live code.

@@ -250,6 +250,7 @@ Re-grade against this table — the family, the rule, and the severity are all
 | `patterns`    | execute-around      | a paired setup/teardown left to callers, already duplicated or forgotten | medium |
 | `simplicity`  | over-complex        | code that collapses into something smaller (duplication → one parameter) | high |
 | `simplicity`  | needless-cast       | a type cast the value's type already guarantees | high |
+| `simplicity`  | dead-code           | code that can never run or whose result is never used (an unreachable branch, an unread binding) | high |
 
 Severity definitions:
 
@@ -258,7 +259,7 @@ Severity definitions:
   OOP/functional break that misplaces code (`style-mix`), a query that secretly
   mutates (`command-query`), a half-formed object or leaked representation
   (`full-construction`, `leaky-collection`), a cast that masks a stale type
-  (`needless-cast`).
+  (`needless-cast`), and dead or unreachable code (`dead-code`).
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
   that claims more than its assertions check, `guard-clause` nesting, an unexplained

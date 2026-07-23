@@ -145,7 +145,7 @@ and get no lens):
   command-query), `module` (style-mix, barrel) → `references/rules/naming-module.md`
 - **Lens 3 — objects & patterns:** `objects` (full-construction, lazy-init,
   leaky-collection), `patterns` (composition, polymorphism, execute-around) → `references/rules/objects-patterns.md`
-- **Lens 4 — simplicity & types:** `simplicity` (over-complex, needless-cast) → `references/rules/simplicity-types.md`
+- **Lens 4 — simplicity & types:** `simplicity` (over-complex, needless-cast, dead-code) → `references/rules/simplicity-types.md`
 
 Each lens keeps whole files, so the cross-file rules in its cluster still see the
 surrounding code. Give every subagent: the in-scope file list (paths), its lens's
@@ -193,6 +193,7 @@ invented this run:
 | `patterns`    | execute-around      | a paired setup/teardown left to callers, already duplicated or forgotten | medium |
 | `simplicity`  | over-complex        | code that collapses into something smaller (duplication → one parameter) | high |
 | `simplicity`  | needless-cast       | a type cast the value's type already guarantees | high |
+| `simplicity`  | dead-code           | code that can never run or whose result is never used (an unreachable branch, an unread binding) | high |
 
 Severity:
 
@@ -201,7 +202,8 @@ Severity:
   break that misplaces code (`style-mix`), a query that secretly mutates
   (`command-query`), a half-formed object or leaked representation
   (`full-construction`, `leaky-collection`), a cast that masks a stale type
-  (`needless-cast`). These cost the most to live with.
+  (`needless-cast`), and dead or unreachable code (`dead-code`). These cost the most to
+  live with.
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
   that claims more than its assertions check, `guard-clause` nesting, an unexplained

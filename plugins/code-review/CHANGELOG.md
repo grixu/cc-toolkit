@@ -71,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as a finding.
 - **Scope list reused, not recomputed** — Step 1 reuses the file list detection already
   produced for `uncommitted`/`committed`, re-running the script only for the `Both` scope.
+- **`simplicity · dead-code` rule** — flags code that can never run or whose result is
+  never used (an unreachable branch, an unread binding); graded `high`.
 
 ### Documentation
 
