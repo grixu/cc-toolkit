@@ -86,13 +86,18 @@ standard here and must not be flagged. Capture what you learn in one short
 conventions note and **pass it to every Scanner**, so a documented convention does
 not surface as a finding.
 
-## Step 3 — Dispatch five Scanners in parallel (foreground Agent subagents)
+## Step 3 — Dispatch five Scanners in parallel
 
-Dispatch all five Scanners as **foreground** subagents (`run_in_background: false`),
-**one per Lens**, issued together in **one message** so they run concurrently and each
-returns its findings directly as its result. **Never run a Scanner in the
-background** — background spins up the heavier agent-teams/mailbox path and forces you
-to poll for results. Each Scanner receives:
+Dispatch the five Scanners — **one per Lens** — so they run concurrently. The `Agent`
+tool **defaults to background**, so the preferred foreground fan-out only happens when
+you pass `run_in_background: false` **and** emit all five calls in a **single message**;
+separate messages run foreground Scanners one-at-a-time (serial — the slow path). Run
+that way, each Scanner returns its findings directly as its result.
+
+Background is an acceptable fallback when you don't batch into one message: the Scanners
+still run concurrently and each delivers via a completion notification — **wait for the
+notifications, never poll with `SendMessage`**. Either path, merge only once all five
+have reported. Each Scanner receives:
 
 - the resolved **in-scope file list** (paths) and the `diff_args` from Step 1;
 - how to view each file (tracked → `git diff <diff_args> -- <path>`; untracked →
@@ -105,7 +110,8 @@ to poll for results. Each Scanner receives:
   change added or modified, or structure the change introduced or made worse;
   *boy-scout* = a problem in **untouched** code noticed only while reading for
   context — optional, kept strictly separate, never mixed into the primary
-  findings.
+  findings. A **fully added file** (status `A`) has no boy-scout findings — every
+  finding in it is primary, because the whole file is code the change introduced.
 
 A Scanner **returns findings/verdicts only**. It does **not** render a report,
 does **not** edit files, and does **not** re-grade centrally. Read the whole

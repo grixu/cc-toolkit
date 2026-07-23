@@ -30,9 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`tests` · `test-fidelity` rule** — flags a test whose name or fixture claims a
   boundary its assertions don't actually check (passes while guarding the wrong
   thing).
-- **Foreground fan-out** — `/start-cr` dispatches scanners and editor subagents in
-  the foreground (results returned directly), never as background agents, avoiding
-  the heavier agent-teams/mailbox path and the polling it forces.
+- **Concurrent fan-out** — `/start-cr` runs its five scanners concurrently. Foreground
+  dispatch (findings returned inline) is preferred and requires an explicit
+  `run_in_background: false` plus a single-message batch; if the scanners run in the
+  background instead, the orchestrator waits for their completion notifications rather
+  than polling. Editor subagents in the apply phase stay foreground-only.
 - **Cross-lens `HANDOFF`** — a Scanner routes an out-of-family finding to the
   orchestrator, which grades it against the master table instead of losing it in
   prose.
@@ -58,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bullet instead of being compressed into a subordinate clause.
 - **Findings sections hold findings only** — a checked-and-cleared item goes in prose,
   never in the finding shape with a dash where the severity belongs.
+- **A fully added file has no boy-scout findings** — every finding in a status-`A` file
+  is primary, since the whole file is code the change introduced.
 
 ### Documentation
 
