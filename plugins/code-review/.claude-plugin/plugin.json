@@ -1,0 +1,17 @@
+{
+  "name": "code-review",
+  "version": "0.0.0",
+  "description": "Unified code review that fans out five parallel scanners over a change — comment quality plus four quality/craft lenses (readability & tests, naming & module, objects & patterns, simplicity & types) — and merges them into one per-file report. The bundled /start-cr command runs all five scanners; the standalone comment-review and quality-review skills stay invocable for a single-lens pass. Reviews the current branch diff by default (or explicit paths / --base). Quality findings are tagged family · rule · severity; comment verdicts are R1–R12 · KEEP/REMOVE/REWRITE/MOVE, shown side by side in one combined report and applied through a single risk-cut menu. Successor to the comment-review and quality-review plugins.",
+  "author": {
+    "name": "grixu",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "code-review",
+    "code-quality",
+    "comments",
+    "clean-code",
+    "refactoring"
+  ]
+}

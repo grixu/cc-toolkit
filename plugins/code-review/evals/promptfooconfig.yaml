@@ -1,0 +1,240 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: code-review plugin — comment-quality verdicts (R1–R12) on fixtures
+
+prompts:
+  # Natural-language trigger (not a literal "/comment-review" slash — the Agent SDK reads a
+  # leading "/" as a command and rejects it; the skill fires on description match instead).
+  - file://prompts/review.txt
+
+providers:
+  - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
+    label: code-review
+    config:
+      apiKeyRequired: false # use the local Claude Code subscription, no API key for the target
+      model: claude-sonnet-4-6 # override per run; a capable model is needed for evals 3/4 to pass
+      permission_mode: bypassPermissions # the skill's Read/Grep/Bash run unattended
+      allow_dangerously_skip_permissions: true # required alongside bypassPermissions
+      working_dir: ../../.. # repo root, so the plugin path and {{file}} paths resolve
+      max_budget_usd: 1 # per-run cost guard
+      plugins:
+        - type: local
+          path: plugins/code-review # loads the skill under test
+      skills: all
+      setting_sources: [] # keep this repo's CLAUDE.md / hooks OUT of the eval
+      ask_user_question:
+        behavior: first_option # file-path mode shouldn't prompt, but never block if it does
+
+defaultTest:
+  options:
+    # Grader for llm-rubric. No ANTHROPIC_API_KEY in this environment, so grade on the
+    # subscription via the agent SDK (single-turn, no tools). For a faster/cheaper grader,
+    # set ANTHROPIC_API_KEY and replace this with:  provider: anthropic:messages:claude-opus-4-8
+    provider:
+      id: anthropic:claude-agent-sdk
+      config:
+        apiKeyRequired: false
+        model: claude-sonnet-4-6
+        max_turns: 1
+
+tests:
+  # ----------------------------------------------------------------------------
+  - description: 'eval-0 banners-and-doc-refs (datadog-integration.tf)'
+    vars:
+      file: plugins/code-review/evals/fixtures/datadog-integration.tf
+    assert:
+      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
+      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
+      # report uses the skill's own R1–R12 rule taxonomy instead.
+      - type: regex
+        value: '\bR(1[0-2]|[1-9])\b'
+      - type: llm-rubric
+        value: >-
+          Flags the top `# ===== Datadog =====` banner as R5 with verdict REMOVE.
+      - type: llm-rubric
+        value: >-
+          Flags `# ----- Provider credentials -----` as R5 REMOVE.
+      - type: llm-rubric
+        value: >-
+          Flags the titled banner `# ----- DD GCP integration — per-env SA + STS
+          registration -----` as R5 REMOVE (a descriptive title does not redeem the fence).
+      - type: llm-rubric
+        value: >-
+          Flags `# ----- Metric namespace allowlist -----` as R5 REMOVE.
+      - type: llm-rubric
+        value: >-
+          Flags the `account scoping lives in DD_ARCH.md §3.2` comment under R4
+          (internal-doc reference).
+      - type: llm-rubric
+        value: >-
+          Flags the `DD_PLAN.md T4.1` comment under R4 — keeps the "hard-stop is
+          intentional" rationale but drops the internal-doc reference.
+      - type: llm-rubric
+        value: >-
+          Keeps `# Retry-After handling per RFC 9110 §10.2.4` (R4 external-pinned-spec
+          exception) — it is not flagged for removal.
+      - type: llm-rubric
+        value: >-
+          Keeps the metric-allowlist WHY rationale ("only gcp.* and custom.app.* are
+          billed … so an accidental high-cardinality metric can't blow the bill").
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-1 file-refs-and-diagram (scheduler.ts)'
+    vars:
+      file: plugins/code-review/evals/fixtures/scheduler.ts
+    assert:
+      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
+      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
+      # report uses the skill's own R1–R12 rule taxonomy instead.
+      - type: regex
+        value: '\bR(1[0-2]|[1-9])\b'
+      - type: llm-rubric
+        value: >-
+          Flags the comment that references `utils/backoff.ts` and `docs/scheduling.md`
+          under R4 (cross-file / internal-doc references).
+      - type: llm-rubric
+        value: >-
+          Flags `// ----- helpers -----` as R5 REMOVE.
+      - type: llm-rubric
+        value: >-
+          Flags the top `// ===== Scheduler =====` banner as R5 REMOVE.
+      - type: llm-rubric
+        value: >-
+          Flags `// increment the attempt counter` as R1 REMOVE.
+      - type: llm-rubric
+        value: >-
+          Keeps the ASCII state-machine / job-lifecycle diagram (IDLE → QUEUED → RUNNING …)
+          — the R5 exception for a diagram that encodes information; it is NOT flagged.
+      - type: llm-rubric
+        value: >-
+          Keeps `// Sequential, not parallel — the broker rate-limits per worker token`
+          as a genuine decision/WHY (R2); it is NOT flagged.
+      - type: llm-rubric
+        value: >-
+          Keeps the `CVE-2024-1234` reference (R4 external exception); it is NOT flagged
+          for removal.
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-2 misplaced-and-duplicated-rationale (dlq-codes.ts + dlq.handler.ts)'
+    vars:
+      file: plugins/code-review/evals/fixtures/dlq-codes.ts plugins/code-review/evals/fixtures/dlq.handler.ts
+    assert:
+      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
+      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
+      # report uses the skill's own R1–R12 rule taxonomy instead.
+      - type: regex
+        value: '\bR(1[0-2]|[1-9])\b'
+      - type: llm-rubric
+        value: >-
+          Flags `// the conditional UPDATE can't distinguish a missing row from an
+          ineligible status` sitting on the enum member `DLQ_STATUS_NOT_ELIGIBLE` as R12
+          (rationale parked on a declaration).
+      - type: llm-rubric
+        value: >-
+          For that enum-member comment the verdict is REMOVE — the same rationale already
+          lives at the handler's `updateIfEligible` call, so the declaration copy is the
+          redundant/duplicated one.
+      - type: llm-rubric
+        value: >-
+          For the `// we swallow the duplicate …` comment on `DLQ_DUPLICATE_DROPPED` the
+          verdict is MOVE — the rationale exists only at the declaration, and the fix names
+          the handler method (`handle` / its duplicate branch) as the destination.
+      - type: llm-rubric
+        value: >-
+          Keeps `// 0 means unbounded, not disabled` on the `DLQ_MAX_RETRIES` constant —
+          a value-meaning note every reader needs (R12 contrast, not a MOVE/REMOVE).
+      - type: llm-rubric
+        value: >-
+          Keeps the genuine WHY already located at the handler's `updateIfEligible`
+          (R2); it is NOT flagged.
+      - type: llm-rubric
+        value: >-
+          Does not flag the bare enum members that carry no comment
+          (`DLQ_MESSAGE_RECEIVED`, `DLQ_REQUEUED`).
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-3 spec-id-references (payment-validator.ts)'
+    vars:
+      file: plugins/code-review/evals/fixtures/payment-validator.ts
+    assert:
+      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
+      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
+      # report uses the skill's own R1–R12 rule taxonomy instead.
+      - type: regex
+        value: '\bR(1[0-2]|[1-9])\b'
+      - type: llm-rubric
+        value: >-
+          Flags `// F1: users can submit a payment with a saved card` as R4 with verdict
+          REMOVE.
+      - type: llm-rubric
+        value: >-
+          Flags `// see Q1` as R4 REMOVE (a pure spec-id pointer; nothing survives stripping it).
+      - type: llm-rubric
+        value: >-
+          Flags `// §4.1 caps a single charge at 500_000 minor units` under R4 with a
+          verdict of REWRITE *or* REMOVE — both are defensible: once the `§4.1` spec-id
+          is stripped, the remainder ("caps a single charge at 500_000 minor units")
+          borders on R1 narration of `MAX_CHARGE_MINOR_UNITS = 500_000` + its guard, so a
+          strong model may delete it rather than rewrite. It must NOT be kept as-is.
+      - type: llm-rubric
+        value: >-
+          The handling of the `§4.1` comment never retains the token `§4.1` or `4.1`: a
+          REWRITE drops it from the replacement text, and a REMOVE (delete the line)
+          satisfies this trivially.
+      - type: llm-rubric
+        value: >-
+          Flags `// R7: charge in source order — the ledger rejects out-of-order sequence
+          numbers` as R4 REWRITE, keeping the ordering rationale.
+      - type: llm-rubric
+        value: >-
+          The suggested fix for the `R7` comment does NOT contain the token `R7` but keeps
+          the ordering meaning ("source order" / "out-of-order").
+      - type: llm-rubric
+        value: >-
+          Flags `/** Implements AC-3 and AC-4. */` as R4 REMOVE (a pure spec-id pointer doc).
+      - type: llm-rubric
+        value: >-
+          Keeps `// Retry-After handling per RFC 9110 §10.2.4` (R4 external-pin exception);
+          it is NOT flagged for removal.
+      - type: llm-rubric
+        value: >-
+          Keeps `// region R2 is EU-only; never route US tenants here` — `R2` is a real
+          string-literal value (`const REGION = "R2"`), not a spec-id; it is NOT flagged.
+      - type: llm-rubric
+        value: >-
+          Keeps `// sequential, not parallel — the gateway rate-limits per merchant IP`
+          as a genuine WHY (R2); it is NOT flagged.
+      - type: llm-rubric
+        value: >-
+          No kept or rewritten comment text in the report retains any spec-id fragment
+          (`F1`, `Q1`, `AC-3`, `AC-4`, `§4.1`, `R7`). Quoting the ORIGINAL comment in a
+          finding header is fine; the requirement is about the kept/rewritten text.
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-4 spec-id-embedded-midsentence (host-allowlist.ts)'
+    vars:
+      file: plugins/code-review/evals/fixtures/host-allowlist.ts
+    assert:
+      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
+      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
+      # report uses the skill's own R1–R12 rule taxonomy instead.
+      - type: regex
+        value: '\bR(1[0-2]|[1-9])\b'
+      - type: llm-rubric
+        value: >-
+          All three genuine-WHY comments (the R2 normalize note, the F3/registry note,
+          and the §2.3/§2.4 two-pass-validation note) are REWRITE — not a blanket REMOVE,
+          and not KEEP-as-is.
+      - type: llm-rubric
+        value: >-
+          No rewritten comment retains the tokens `R2`, `F3`, `Q4`, `§2.3` or `§2.4`.
+      - type: llm-rubric
+        value: >-
+          The ordering / failure-mode rationale of each comment is preserved in its rewrite
+          (the WHY survives; only the spec-id token is stripped).
+      - type: llm-rubric
+        value: >-
+          The bare R1 narration line `// hosts are matched case-insensitively` is REMOVE.
+      - type: llm-rubric
+        value: >-
+          The reasoning checks whether each token is a real code value before stripping it,
+          rather than rationalizing the spec-id `R2` as a code value.

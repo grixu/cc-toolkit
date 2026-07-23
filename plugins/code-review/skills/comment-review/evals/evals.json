@@ -1,0 +1,88 @@
+{
+  "skill_name": "comment-review",
+  "evals": [
+    {
+      "id": 0,
+      "name": "banners-and-doc-refs",
+      "prompt": "/comment-review fixture/datadog-integration.tf",
+      "expected_output": "Flags every section-divider banner (empty or titled, ===== and -----) as R5 REMOVE, and every internal doc reference (DD_ARCH.md, DD_PLAN.md) as R4. Keeps the external RFC reference and the genuine WHY rationale.",
+      "files": ["fixture/datadog-integration.tf"],
+      "assertions": [
+        "Flags top '===== Datadog =====' banner as R5 REMOVE",
+        "Flags '# ----- Provider credentials -----' as R5 REMOVE",
+        "Flags '# ----- DD GCP integration ... -----' titled banner as R5 REMOVE",
+        "Flags '# ----- Metric namespace allowlist -----' as R5 REMOVE",
+        "Flags 'DD_ARCH.md §3.2' under R4",
+        "Flags 'DD_PLAN.md T4.1' under R4 (keep rationale, drop ref)",
+        "Keeps 'RFC 9110 §10.2.4' (R4 external exception)",
+        "Keeps metric-allowlist WHY rationale"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "file-refs-and-diagram",
+      "prompt": "/comment-review fixture/scheduler.ts",
+      "expected_output": "Flags the source-file references and dividers, keeps the ASCII state-machine diagram, the decision comment, and the external CVE reference.",
+      "files": ["fixture/scheduler.ts"],
+      "assertions": [
+        "Flags 'docs/scheduling.md' + 'utils/backoff.ts' under R4",
+        "Flags '// ----- helpers -----' as R5 REMOVE",
+        "Flags top '===== Scheduler =====' banner as R5 REMOVE",
+        "Flags '// increment the attempt counter' as R1 REMOVE",
+        "Keeps ASCII state-machine diagram (R5 exception)",
+        "Keeps 'Sequential, not parallel ...' decision comment (R2)",
+        "Keeps 'CVE-2024-1234' external reference (R4 exception)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "misplaced-and-duplicated-rationale",
+      "prompt": "/comment-review fixture/dlq-codes.ts fixture/dlq.handler.ts",
+      "expected_output": "Flags the behavioral rationale parked on the enum log-code as R12: MOVE when it only lives on the declaration, REMOVE when the same reason is already present at the handler that performs the conditional UPDATE. Keeps a value-meaning note on a declaration (R12 contrast) and a genuine WHY that already sits at its method.",
+      "files": ["fixture/dlq-codes.ts", "fixture/dlq.handler.ts"],
+      "assertions": [
+        "Flags '// the conditional UPDATE can't distinguish a missing row from an ineligible status' on the enum member as R12",
+        "Verdict is REMOVE when the same rationale already exists at the handler's UPDATE (duplicated)",
+        "Verdict is MOVE (naming the handler method) when the rationale exists only on the enum declaration",
+        "Keeps '// 0 means unbounded, not disabled' value-meaning note on a constant (R12 contrast)",
+        "Keeps the genuine WHY already located at the handler method (R2)",
+        "Does not flag bare enum members that carry no comment"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "spec-id-references",
+      "prompt": "/comment-review fixture/payment-validator.ts",
+      "expected_output": "Treats bare spec/requirement-ID tokens (F1, Q1, §4.1, R7, AC-3/AC-4) as R4 internal-doc references even without a filename: REMOVE the pure pointers (F1 narration, 'see Q1', 'Implements AC-3 and AC-4'), REWRITE the ones that carry a real constraint by stripping the token and keeping only the load-bearing sentence (§4.1 cap, R7 ordering rule). Crucially, no kept/rewritten comment retains the token. Keeps the external RFC pin, the genuine WHY, and the value-meaning note where 'R2' is a real string literal the code uses.",
+      "files": ["fixture/payment-validator.ts"],
+      "assertions": [
+        "Flags '// F1: users can submit a payment with a saved card' as R4 with verdict REMOVE",
+        "Flags '// see Q1' as R4 REMOVE (pure pointer, nothing survives the strip)",
+        "Flags '// §4.1 caps a single charge at 500_000 minor units' as R4 REWRITE",
+        "The §4.1 suggested fix does NOT contain the token '§4.1' or '4.1'",
+        "Flags '// R7: charge in source order ...' as R4 REWRITE and keeps the ordering rationale",
+        "The R7 suggested fix does NOT contain the token 'R7' but keeps 'out-of-order' / 'source order'",
+        "Flags '/** Implements AC-3 and AC-4. */' as R4 REMOVE (pure pointer doc)",
+        "Keeps '// Retry-After handling per RFC 9110 §10.2.4' (R4 external-pin exception)",
+        "Keeps '// region R2 is EU-only; never route US tenants here' (R2 is a real string literal, value-meaning note)",
+        "Keeps '// sequential, not parallel — the gateway rate-limits per merchant IP' (genuine WHY)",
+        "No kept or rewritten comment text in the report retains any spec-id fragment (F1, Q1, AC-3, AC-4, §4.1, R7)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "spec-id-embedded-midsentence",
+      "prompt": "/comment-review fixture/host-allowlist.ts",
+      "expected_output": "Spec/requirement-ID tokens woven mid-sentence into otherwise genuine WHY comments (R2, F3, Q4, §2.3, §2.4) are the hard case: the comment is worth keeping but the token must not ride along. Each of the three real-WHY comments is REWRITE with the token scrubbed and the rationale (silent fail-open, revoked-token window, validation ordering) preserved. The bare R1 narration line is REMOVE. Reasoning must check whether a token is a real code value before stripping rather than rationalizing it as one.",
+      "files": ["fixture/host-allowlist.ts"],
+      "assertions": [
+        "The lines 4-6 comment is REWRITE, scrubbing both 'R2' and 'F3' while keeping the silent-fail-open rationale",
+        "The lines 11-12 comment is REWRITE, scrubbing 'Per Q4' while keeping the revoked-token constraint",
+        "The lines 17-18 comment is REWRITE, scrubbing 'see §2.3 then §2.4' while keeping the shape-before-semantics ordering rationale",
+        "No rewritten comment retains R2, F3, Q4, §2.3 or §2.4",
+        "The bare R1 line '// hosts are matched case-insensitively' is REMOVE",
+        "Reasoning does not rationalize a prose-only token as a real code value"
+      ]
+    }
+  ]
+}

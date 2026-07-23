@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+
+- **Superseded by the `code-review` plugin**, which merges `comment-review` and
+  `quality-review` under one fan-out orchestrator (`/start-cr`). This plugin is
+  frozen during the deprecation window — rule fixes now land in `code-review` only —
+  and will be removed in a later release. Install `code-review` and uninstall this
+  plugin. The `comment-review` skill lives on inside `code-review`.
+
 ## [0.5.0] - 2026-06-16
 
 ### Added
