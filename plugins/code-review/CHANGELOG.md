@@ -73,6 +73,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   produced for `uncommitted`/`committed`, re-running the script only for the `Both` scope.
 - **`simplicity · dead-code` rule** — flags code that can never run or whose result is
   never used (an unreachable branch, an unread binding); graded `high`.
+- **Dedup keeps the higher severity** — when overlapping findings merge across a severity
+  gap, the surviving bullet carries the highest severity of the overlap, so a `high` can't
+  be demoted under a `medium` root cause.
 
 ### Documentation
 

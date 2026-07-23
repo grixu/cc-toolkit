@@ -201,7 +201,10 @@ copies makes the extraction fix leave a straggler behind.
 
 - **Collect** all five Scanners' outputs.
 - **Dedup overlaps**: when two findings point at the same code — including across
-  different lenses — keep the **most-specific** one and drop the rest.
+  different lenses — keep the **most-specific** one and drop the rest. When the overlap
+  spans two severities (a `high` symptom folding into a lower-severity root cause, or the
+  reverse), the surviving bullet keeps the **highest** severity of the overlap — deduping
+  must never quietly demote a `high` under a `medium`.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
