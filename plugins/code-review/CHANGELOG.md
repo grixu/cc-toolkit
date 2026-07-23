@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-23
+
 ### Added
 
 - Initial release: `code-review` merges the `comment-review` (0.5.0) and
