@@ -93,7 +93,8 @@ Parse the invocation arguments:
 ### In scope vs skip
 
 Review source files that carry human-authored comments: `.ts .tsx .js .jsx .py
-.go .rs .java .kt .swift .c .cpp .h .rb .php .vue .sh` and similar. **Skip**:
+.go .rs .java .kt .swift .c .cpp .h .rb .php .vue .sh`, **infrastructure-as-code**
+(`.tf`/HCL and similar declarative surfaces), and similar. **Skip**:
 JSON, lockfiles, generated/minified files, `.md`/docs (the prose *is* the
 content), and license/SPDX headers. When you skip a changed file, note it in
 one line so coverage is honest.

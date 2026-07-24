@@ -50,6 +50,15 @@ the standard here and you must not flag it. A rule you'd otherwise raise becomes
 non-finding when the project has deliberately chosen it. Note which conventions you
 picked up.
 
+**Language applicability.** The rule families are written against imperative,
+object-oriented code (mostly JS/TS). When the change targets a language where a family
+has no counterpart, clear that family in one line instead of inventing findings to fit:
+HCL/Terraform and other declarative infrastructure-as-code have no module system
+(`module`), no object construction (`objects`), no type casts (`needless-cast`), and no
+tests inside the config itself (`tests`); SQL, protobuf, and plain config-as-code are
+similar. A family that *does* have a counterpart — `naming`, `readability`, duplication
+(`over-complex`) — stays in play; never wave a whole family off on language alone.
+
 ## Step 1 — Resolve scope
 
 Parse the invocation arguments:
@@ -114,9 +123,11 @@ introduced — that inversion is exactly what makes a review feel like noise.
 ### In scope vs skip
 
 Review source files: `.ts .tsx .js .jsx .py .go .rs .java .kt .swift .c .cpp .h
-.rb .php .vue .scala .cs` and similar. **Skip**: JSON, lockfiles,
-generated/minified files (`.d.ts` from a generator, `*_pb.*`, anything under
-`dist/`, `build/`, `node_modules/`), `.md`/docs, and config. When you skip a
+.rb .php .vue .scala .cs`, **infrastructure-as-code** (`.tf`/HCL and similar
+declarative surfaces that still carry comments and structure worth reviewing), and
+similar. **Skip**: JSON, lockfiles, generated/minified files (`.d.ts` from a
+generator, `*_pb.*`, anything under `dist/`, `build/`, `node_modules/`), `.md`/docs,
+and **static config data** (`.yaml`/`.toml`/`.ini` settings, `.env`). When you skip a
 changed file, note it in one line so coverage is honest.
 
 ## Step 1.5 — Pick the review mode: inline by default, fan-out for large diffs

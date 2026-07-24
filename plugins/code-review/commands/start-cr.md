@@ -72,11 +72,13 @@ five Scanners receive the same list and the same `diff_args`.
 ### In scope vs skip
 
 Review source files that carry human-authored code and comments: `.ts .tsx .js
-.jsx .py .go .rs .java .kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh` and
-similar. **Skip**: JSON, lockfiles, generated/minified files (`.d.ts` from a
-generator, `*_pb.*`, anything under `dist/`, `build/`, `node_modules/`),
-`.md`/docs, config, and license/SPDX headers. When you skip a changed file, note
-it in one line so coverage is honest.
+.jsx .py .go .rs .java .kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`,
+**infrastructure-as-code** (`.tf`/HCL and similar declarative surfaces that still
+carry comments and structure worth reviewing), and similar. **Skip**: JSON,
+lockfiles, generated/minified files (`.d.ts` from a generator, `*_pb.*`, anything
+under `dist/`, `build/`, `node_modules/`), `.md`/docs, **static config data**
+(`.yaml`/`.toml`/`.ini` settings, `.env`), and license/SPDX headers. When you skip
+a changed file, note it in one line so coverage is honest.
 
 ## Step 2 — Read project conventions (once)
 
@@ -88,6 +90,16 @@ public-API style, a layered file ordering, a naming convention, or a sanctioned
 anchor-comment prefix (e.g. `AGENTS-NOTE:`), that *is* the standard here and must not be
 flagged. Capture what you learn in one short conventions note and **pass it to every
 Scanner**, so a documented convention does not surface as a finding.
+
+**Language applicability.** The rule families are written against imperative,
+object-oriented code (mostly JS/TS). When the change targets a language where a family
+has no counterpart, name that family **N/A** in the conventions note so its owning
+Scanner clears it in one line instead of inventing findings to fit: HCL/Terraform and
+other declarative infrastructure-as-code have no module system (`module`), no object
+construction (`objects`), no type casts (`needless-cast`), and no tests inside the
+config itself (`tests`); SQL, protobuf, and plain config-as-code are similar. A family
+that *does* have a counterpart — `naming`, `comments`, duplication (`over-complex`),
+`readability` — stays in play; never wave a whole lens off on language alone.
 
 ## Step 3 — Dispatch five Scanners in parallel
 
