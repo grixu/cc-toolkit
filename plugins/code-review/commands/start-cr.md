@@ -217,9 +217,15 @@ copies makes the extraction fix leave a straggler behind.
   `HANDOFF`) as **confirmed**: it leads its file, and it is a candidate for the
   headline. Convergence raises confidence and ordering, **never severity** — that stays
   verbatim from the table.
-- **Route every `HANDOFF` entry**: assign it the correct family and rule, grade its
-  severity from the master table, dedup it against the existing findings, and fold it
-  into the per-file report. A `HANDOFF` must never be dropped or left only as prose.
+- **Route every `HANDOFF` entry to a visible home**: assign it the correct family and
+  rule, grade its severity from the master table, and dedup it against the existing
+  findings. If it stands as a finding — or merges into a converging one — it goes in
+  the per-file report; if it re-grades to a **non-finding** (a look-alike its rule
+  clears, a documented convention, an out-of-family quirk), it goes in **`Not flagged`**
+  with its one-line reason. Every `HANDOFF` lands in one of those two places — never
+  dropped, never left only as prose. The one that no primary finding corroborates is the
+  one that slips, so before rendering, confirm each `HANDOFF` you received appears by
+  name in the report or in `Not flagged`.
 - **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
   confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
   positive** — drop it and note it under `Not flagged`. **Never carry an unresolved
