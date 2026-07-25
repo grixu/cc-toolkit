@@ -253,7 +253,9 @@ copies makes the extraction fix leave a straggler behind.
   positive** — drop it and note it under `Not flagged`. **Never carry an unresolved
   `(verify)` finding into an apply batch.** Most runs will have none — the Scanners
   resolve their own doubts. When no Scanner emitted one, say nothing about `(verify)`
-  anywhere; do not claim to have resolved an empty list.
+  anywhere; do not claim to have resolved an empty list, and do not relabel some other
+  mechanism as a `(verify)` — a routed `HANDOFF` or a refuted scanner doubt is resolved
+  under its own name, not as a `(verify)`.
 - **Re-grade every quality finding's severity yourself** against the master
   severity table below. Do **not** trust a single-lens Scanner's severity — a
   single-lens agent is the one most prone to the anchoring the table forbids.
