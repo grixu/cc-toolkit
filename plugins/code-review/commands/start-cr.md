@@ -400,23 +400,47 @@ Never edit during the review. After the report, use **one** `AskUserQuestion`
 (`multiSelect: true`) with categories cut **by risk, not by origin**. Only offer a
 category when you actually have findings that fall into it. **`AskUserQuestion`
 accepts at most four options** — the four canonical risk buckets below are the whole
-menu; never add a fifth. `Report only` is always offered; a finding that doesn't fit
-cleanly goes to the nearest bucket (a mechanical test retitle → Safe fixes):
+menu; never add a fifth. `Report only` is always offered:
 
 - **Safe fixes** — mechanical, easy to eyeball: quality `openness`,
   `explaining-variable`, `magic-literal`, `role-name`, `guard-clause`,
-  verified-redundant `needless-cast`, trivial `over-complex`; **plus** comment
+  verified-redundant `needless-cast`, trivial `over-complex`, and `dead-code` that is an
+  unread binding or an always-true/false guard; **plus** comment
   **REMOVE** and **REWRITE**, and a comment **ADD** whose rationale the review
   actually confirmed — locate the code site by content and insert the comment
   above it. An `ADD` whose WHY you could only guess is **report-only**: hand the
   author the suggested text, since only they know the real reason.
-- **Walk the structural ones (one at a time)** — riskier, they move code:
+- **Walk the structural ones (one at a time)** — riskier, they move or remove code:
   `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
   `full-construction` / `leaky-collection` reshaping, the `patterns` refactors
   (`composition`, `polymorphism`, `execute-around`), large `over-complex`
-  unifications, `test-structure` restructuring; **plus** comment **MOVE**.
+  unifications, `test-structure` restructuring, and `dead-code` removal of a branch that
+  looks reachable; **plus** comment **MOVE**.
 - **Boy-scout extras** — apply the untouched-code findings, or skip them.
 - **Report only** — change nothing.
+
+**Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
+edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
+moves or restructures code, or removes a branch that looks reachable → structural.
+
+**Degenerate and edge menus.** The four buckets are a ceiling, not a quota, and the menu
+must stay honest when findings don't spread across them:
+
+- **One bucket only** (every finding is Safe, say) → offer that bucket + `Report only`; a
+  single-select `AskUserQuestion` is fine here. Never manufacture an "apply everything"
+  option that is a **superset** of narrower ones — `multiSelect` options must be
+  **disjoint**. You *may* split one bucket into disjoint sub-options by what they touch
+  ("comment rewrites" vs "the one nit") when that hands the user a real, non-overlapping
+  choice.
+- **A freed slot** — when a canonical bucket is empty (no boy-scout, no structural), you
+  may split a populated bucket into two risk-ranked disjoint options in the freed slot,
+  still never exceeding four options total.
+- **A confirmed correctness problem no rule cleanly names** — the kind that lands in
+  `Not flagged` or spans untouched code, yet the review actually verified — is offer-able
+  as its own apply bucket. Do not bury the review's most valuable output in `Report only`
+  or `Boy-scout extras` just because it lacks a rule tag.
+- A before/after **preview** diff belongs in an `AskUserQuestion` option, never in the
+  report body — Step 5 stays clause-only.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
 without an explicit yes**.

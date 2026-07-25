@@ -338,13 +338,15 @@ that actually apply to this review, for example:
 - **Apply the safe fixes** — local, mechanical, easy to eyeball: `openness` blank
   lines, `explaining-variable` locals, `magic-literal` constants, `role-name`
   renames, `guard-clause` inversions, verified-redundant `needless-cast`, trivial
-  `over-complex` simplifications.
-- **Walk the structural ones** — one at a time, since they move code across
+  `over-complex` simplifications, and `dead-code` that is an unread binding or an
+  always-true guard.
+- **Walk the structural ones** — one at a time, since they move or remove code across
   boundaries and are riskier: `ordering` reordering, `composed-method` extraction,
   `style-mix` extract/move/split, `command-query` splits, `full-construction` /
   `leaky-collection` reshaping, the `patterns` refactors (`composition`,
   `polymorphism`, `execute-around`), large `over-complex` unifications,
-  `test-structure` restructuring.
+  `test-structure` restructuring, and `dead-code` removal of a branch that looks
+  reachable.
 - **Include the boy-scout extras**, or skip them and touch only the changed code.
 - **Report only** — change nothing.
 
