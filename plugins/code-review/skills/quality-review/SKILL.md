@@ -42,8 +42,11 @@ Every finding carries a **family** (the stable top-level label) and a specific
 
 ## Step 0 — Read the project's own conventions first
 
-Before judging structure, read `CLAUDE.md`, `AGENTS.md`, and any `.cursor/rules`
-or `CONTRIBUTING.md` at the repo root (and in the directory being reviewed). They
+Before judging structure, gather conventions **mechanically, by exact path** — Read the
+repo-root `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.cursor/rules`, and every
+`.claude/rules/*.md` **first** (the root files are the ones most often skipped; never let
+a directory-level file or the harness's auto-load stand in for the root), then the same
+files down the directory chain to each reviewed file. They
 override the structural rules below: if the project documents barrel exports as
 its public-API style, or a layered file ordering, or a naming convention, that *is*
 the standard here and you must not flag it. A rule you'd otherwise raise becomes a

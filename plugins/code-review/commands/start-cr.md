@@ -82,9 +82,19 @@ a changed file, note it in one line so coverage is honest.
 
 ## Step 2 — Read project conventions (once)
 
-Before dispatch, read the convention sources at the **repo root** (never skip the root)
-**and** in the directory being reviewed: `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`,
-`.cursor/rules`, and every file under `.claude/rules/` (glob `.claude/rules/*.md`).
+Gather conventions **mechanically, by exact path** — not by eyeballing an `ls`, which is
+how the repo-root files (the ones that most often carry the decisive rule) get skipped.
+Work this fixed order and Read each path that exists:
+
+1. **Repository root, always first:** `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`,
+   `.cursor/rules`. Read these before anything directory-level; never let a dir-level
+   file stand in for the root, and never assume the harness auto-loaded the root file —
+   Read it yourself.
+2. **The directory chain:** for each reviewed file, walk root → its directory and Read
+   any `CLAUDE.md` / `AGENTS.md` along the way.
+3. **Rule files:** every file matched by `.claude/rules/*.md` at the root (and the same
+   glob inside a reviewed subtree that carries its own).
+
 These override the structural rules: if the project documents barrel exports as its
 public-API style, a layered file ordering, a naming convention, or a sanctioned
 anchor-comment prefix (e.g. `AGENTS-NOTE:`), that *is* the standard here and must not be
