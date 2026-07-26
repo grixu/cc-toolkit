@@ -35,9 +35,13 @@ decides pass/fail.
 
 ## Procedure
 
-1. **Session** — run everything under `agent-browser --session <persona>` (or
-   `AGENT_BROWSER_SESSION=<persona>`). Reuse saved auth state; absent → perform the login
-   flow once (credentials only from env vars named in the brief) and save it. Login failure →
+1. **Session — isolate it first.** Export `AGENT_BROWSER_SESSION=<your suite id>` (e.g. `s3s4`)
+   as the very first thing you do, before any other `agent-browser` command: UI suites run in
+   parallel and a shared browser state collides. Close **only** your own session at the end
+   (`agent-browser close`) — **never** `agent-browser close --all`, which kills a sibling suite's
+   browser mid-run. Within the session, reuse saved auth state; absent → perform the login flow
+   once (credentials only from env vars named in the brief) and save it; switch persona (e.g.
+   signed-out → signed-in) by clearing cookies, not by opening a second session. Login failure →
    that persona's checks `blocked` with the concrete cause, never a fabricated session.
 2. **Steps** — navigate and interact exactly as the check describes, using semantic
    selectors (`find role/label/testid`, stable CSS). A snapshot to orient yourself is fine;

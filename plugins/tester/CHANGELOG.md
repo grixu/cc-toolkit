@@ -58,6 +58,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - fan-out stays the default — the brief carries the DB handle in whichever form the stack
     offers (shell client *or* an MCP tool with pinned ids, since subagents reach the same MCP
     tools), and running suites in the main thread needs one of three named reasons;
+  - suites are dispatched **foreground** (`run_in_background: false`) as one parallel batch, so
+    each subagent's final table returns as the tool result; the background/teammate path breaks
+    the return contract — the table never reaches the main thread, which then pings idle agents
+    for a deliverable that was never routed and leaves them alive to be killed by hand;
+  - a stack found **down** (no processes, missing `.env`, stopped Docker) is brought up as a
+    first-class consent-gated path rather than blocked — starting servers, provisioning a test
+    persona, and seeding a fixture a state needs are environment mutations (cleared in step 4,
+    ledgered, only what discovery proved absent);
+  - `ui` executors isolate their browser first (`AGENT_BROWSER_SESSION=<suite id>` before any
+    other command, never `close --all`) so parallel UI suites don't corrupt each other; the brief
+    template carries an `agent-browser pattern` section (login flow, `--json` discipline, the
+    surface's `data-testid` hooks) alongside the curl pattern;
   - environment mutations (migration, source edit, restart under changed env, auth/config rows,
     killing a process or DB backend) form their own consent class, each appended to a teardown
     ledger when made and reported in full, with restoration measured against a pre-state

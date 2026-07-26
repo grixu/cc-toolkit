@@ -28,8 +28,9 @@ pass/fail; a pass without command proof does not exist.
 - **Two mutation classes, two consents.** The gate above covers **feature mutations** — ALLOW
   mutations of the surface under test, driven through its own API/UI. Everything that changes the
   stack *around* the feature is an **environment mutation**: applying a migration, editing app
-  source, restarting the app with different env, writing auth/rate-limit/config rows, seeding rows
-  straight into the DB, killing a process or a DB backend. These are not covered by feature consent
+  source, starting a service that wasn't running or restarting the app with different env,
+  provisioning a test account, writing auth/rate-limit/config rows, seeding rows straight into the
+  DB, killing a process or a DB backend. These are not covered by feature consent
   — each needs its own clearance (step 4, or an ask at the moment it becomes necessary) and an
   entry in the **teardown ledger** (`$WORK/TEARDOWN.md`), appended **when you make the change**,
   never reconstructed from memory at the end:
@@ -125,6 +126,14 @@ Discover the live stack **fresh** (this is what rots in stored config, so never 
   supervised**: read the launcher (compose flags, restart policy) to learn what a single
   container's exit does — under `docker compose up --abort-on-container-exit`, restarting
   one service tears the whole stack down.
+
+**If discovery finds the stack down** — no processes, a missing `.env`, a stopped Docker daemon —
+bringing it up is a first-class path, not an automatic block. Starting the servers, provisioning a
+test persona (generate its password into `$WORK`, never print it, never a real user), and seeding
+any DB fixture a state needs (e.g. a `COMPLETED` row so the 409/duplicate path is drivable) are
+**environment mutations**: clear them through step 4 (or ask the moment one becomes necessary),
+ledger each as you make it, and start only what discovery proved absent. Consent declined → the
+affected suites are `blocked` with the concrete lack, never a false FAIL.
 
 Write it all into a single **`$WORK/BRIEF.md`** using
 `${CLAUDE_PLUGIN_ROOT}/references/BRIEF_TEMPLATE.md` as the skeleton. The brief is the
@@ -223,6 +232,16 @@ its results table + up to 5 notes — no curl bodies, no logs, no context floodi
 assertion contract holds: every row backed by a concrete command whose output is recorded;
 `blocked` (precondition unavailable, e.g. cookie expired) and `error` (harness broke) are
 distinct from `FAIL`.
+
+**Dispatch foreground (`run_in_background: false`)** — one batch of parallel calls the main
+thread blocks on. A subagent's deliverable *is* its final message (the return contract every
+executor states: "your final message is only the table"), and foreground is what routes that
+message back to you as the tool result. The background/teammate path breaks the contract end to
+end: the final table never reaches the main thread, so you fall to pinging idle agents for a
+deliverable that was never routed — burning the main context on coordination while the agents sit
+alive to be killed by hand at the end. Fire the read/UI suites as one parallel foreground batch;
+the only suite dispatched differently is the long-running **pipeline** below, and even it delivers
+its table back on completion rather than leaving the main thread polling it.
 
 **Fan-out is the default; running a suite yourself is the exception** and needs one of exactly
 three reasons: it is the only suite; it is a stateful chain that must be owned end-to-end (the
@@ -346,7 +365,8 @@ are ephemeral; mention the path but do not commit anything.
 |---|---|---|
 | Production-looking base-URL | step 2 | hard refuse |
 | Scope unresolvable (no spec, empty diff, no code) | step 1 | block — ask the user to name a scope |
-| No live stack reachable | step 2 | block affected suites |
+| No live stack reachable | step 2 | bring it up under consent (env mutation: start servers, provision persona, seed fixtures → ledger); block only what consent declines |
+| Suite dispatch | step 5 | foreground (`run_in_background: false`) so each subagent's table returns as the tool result; background/teammate breaks the return contract |
 | Persona login fails | step 2 | that persona's checks `blocked` (no cascade) |
 | Mutation consent | step 4 | HIL (all / selected / none) |
 | Check heading for `blocked` / a gap that a user action could unlock | step 4 | HIL — name the one concrete unlock (CLI on `PATH`, Mechanism C, a container, a credential) and ask; only a declined or out-of-reach unlock becomes a gap |

@@ -28,6 +28,9 @@ Cookie header = one line, ready for `curl -H "Cookie: $(cat FILE)"`. Files live 
 |---|---|---|---|---|
 | <name> | <email> | <id> | <roles> | `<name>.cookieheader.txt` |
 
+For UI login the plaintext password is in `$WORK/<persona>.pass` (generated for this run,
+UI-login only — read into a shell var, never echoed into a table, note, or filename).
+
 ## Pre-state snapshot (taken before the first mutation — the restore target)
 - Rows: `<per-status counts, e.g. COMPLETED:15>`; singleton/state rows: `<table: present/absent>`.
 - Processes/ports up at start: `<…>` (so you know what you started and must stop).
@@ -46,6 +49,24 @@ curl -s -o /tmp/body -w "HTTP %{http_code}\n" -H "$A" <base>/<route>; cat /tmp/b
 ```
 Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
 "cookie expired", never a false FAIL.
+
+## agent-browser pattern (UI suites)
+`agent-browser <version>` on PATH. Drive the browser **only** through this CLI; every verdict
+comes from an assertion command with `--json` (`is visible`, `get text`, `get url`, `get count`,
+`eval`), never from eyeballing a snapshot. Screenshot failing checks into `$WORK/`.
+
+⚠️ **Session isolation is mandatory** — UI suites run in parallel. Each suite exports
+`AGENT_BROWSER_SESSION=<suite id>` (e.g. `s3s4`) as its first command and closes only its own
+session at the end — **never** `agent-browser close --all`.
+```bash
+PW="$(cat "$WORK/<persona>.pass")"          # read into a var; never echo it
+agent-browser open <ui-base>/login
+agent-browser fill '[type=email]' '<email>'
+agent-browser fill '[type=password]' "$PW"
+# submit, then assert you land on an authenticated route
+```
+Stable UI hooks on the surface under test (prefer them over raw CSS):
+`<data-testid list, e.g. share-card / share-success / share-error — or "none, use role/label">`.
 
 ## DB access (read-only SELECTs unless the safety rules clear a seed)
 Whichever of these the stack actually offers — a subagent has the same MCP tools as the main
@@ -121,6 +142,11 @@ No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run
   route/prefix/envelope. Pin the real ones once, here.
 - **Personas & cookie files** — auth is stateful; establish it once in the main thread and
   hand subagents ready-to-use cookie headers, so five suites don't each re-login.
+- **agent-browser pattern** — the UI equivalent of the curl pattern: pin the login flow, the
+  `--json`-assertion discipline, and the stable `data-testid` hooks once, here, so parallel UI
+  suites don't each rediscover them. The session-isolation line is load-bearing — without a
+  distinct `AGENT_BROWSER_SESSION` per suite, two UI suites share one browser and corrupt each
+  other's state (and a stray `close --all` kills a sibling mid-run).
 - **Environment generations** — a restart under changed env or after a source edit produces a
   different app; evidence gathered against the previous one silently stops meaning what it meant.
   Numbering the generations and keeping a log file per generation is what lets a later assertion
