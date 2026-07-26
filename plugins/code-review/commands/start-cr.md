@@ -78,7 +78,11 @@ carry comments and structure worth reviewing), and similar. **Skip**: JSON,
 lockfiles, generated/minified files (`.d.ts` from a generator, `*_pb.*`, anything
 under `dist/`, `build/`, `node_modules/`), `.md`/docs, **static config data**
 (`.yaml`/`.toml`/`.ini` settings, `.env`), and license/SPDX headers. When you skip
-a changed file, note it in one line so coverage is honest.
+a changed file, note it in one line so coverage is honest. **When a skipped file is the
+*substance* of the change — a dependency manifest (`package.json`, `composer.json`, …) on
+a dependency-bump or upgrade branch — say so explicitly rather than burying it in the skip
+list: its dependency changes aren't line-graded, and the reader should read that as a
+deliberate scope boundary, not an oversight.**
 
 ## Step 2 — Read project conventions (once)
 
