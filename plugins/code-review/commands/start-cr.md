@@ -266,9 +266,13 @@ copies makes the extraction fix leave a straggler behind.
   the per-file report; if it re-grades to a **non-finding** (a look-alike its rule
   clears, a documented convention, an out-of-family quirk), it goes in **`Not flagged`**
   with its one-line reason. Every `HANDOFF` lands in one of those two places — never
-  dropped, never left only as prose. The one that no primary finding corroborates is the
-  one that slips, so before rendering, confirm each `HANDOFF` you received appears by
-  name in the report or in `Not flagged`.
+  dropped, never left only as prose. **The one that no primary finding corroborates is the
+  one that slips, so reconcile by an itemized check, not by assertion.** Before rendering,
+  write the check out: enumerate every `HANDOFF` you received, and against each name its
+  home — the report bullet (`path:line`) it became, the converging finding it merged into,
+  or the `Not flagged` line that clears it. A `HANDOFF` with no home on that list is a
+  bug: route it before you render. "All lenses merged" is not the check — the itemized
+  list is.
 - **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
   confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
   positive** — drop it and note it under `Not flagged`. **Never carry an unresolved
