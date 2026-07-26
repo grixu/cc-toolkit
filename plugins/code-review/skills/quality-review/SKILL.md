@@ -169,6 +169,12 @@ severity · L<lines> — what the reader loses → the fix ``, primary vs boy-sc
 split. A subagent **returns findings only**; it does not render the Step 3
 skeleton, does not edit files, and does not run Step 4.
 
+**Collect defensively — a backgrounded subagent can signal done without delivering.** If
+a lens comes back with no findings (an idle/empty result, not a genuine "nothing to
+flag"), pull it by name for its output; if it still delivers nothing, **judge that lens's
+families inline yourself** rather than merging a silently-empty lens. Never let a lost
+subagent quietly shrink the review to the lenses that happened to answer.
+
 You then **merge**: collect all lenses' findings, dedup overlaps (most-specific
 wins, exactly as inline), and **re-grade every finding yourself against the Step 2
 severity table** — do not trust a subagent's severity, since a single-lens agent is
