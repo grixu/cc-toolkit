@@ -138,6 +138,13 @@ clears becomes a **non-finding** and earns one mention on the `Not flagged` line
 survives is a finding, and it gets its severity from the table, never from how the
 file reads overall.
 
+**A site you cannot settle either way lands in `Not flagged` with the doubt named.**
+The rules files tell a scanner to park such a site in a `CANDIDATES` block for whoever
+merges the review — here both passes are yours, so there is no one to hand it to and
+no `CANDIDATES` section in the skeleton. Decide it, and when you genuinely cannot, say
+which calibration you could not settle on the `Not flagged` line. Dropping it silently
+is the one outcome that costs the finding.
+
 When two rules touch the same code, the most specific finding wins.
 
 The **`patterns`** family is special: the design principles behind it are
@@ -248,9 +255,11 @@ Rules for filling it in:
   the wall-of-text this format exists to kill. The full refactor belongs in Step 4
   (apply time) or when the user asks to see it. If a fix genuinely cannot be named
   without a few tokens of code, inline at most a short expression.
-- **`Not flagged`** is **one line total** — a comma-separated list of the
-  look-alikes you considered and passed on, not a paragraph per item. If there's
-  nothing worth noting, drop the line entirely.
+- **`Not flagged`** is **one line** — a comma-separated list of the look-alikes you
+  considered and passed on, not a paragraph per item. The exception is an entry that
+  is a *real* problem with no rule to land on: that one keeps its own bullet, since
+  compressing it into a subordinate clause is how something worth acting on
+  disappears. If there's nothing worth noting, drop the line entirely.
 - **`Boy-scout`** holds only findings in code the change did not touch; omit the
   whole block when there are none.
 - Keep `Conventions` and `Headline` to one line each; neither grows into a summary
