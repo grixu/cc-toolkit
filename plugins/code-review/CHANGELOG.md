@@ -52,10 +52,12 @@ prompting best practices, and the Skill authoring best practices.
 - **`comment-review` enumerates every comment before judging any of them** — a run of
   similar-looking banners is where one quietly went unlisted, and a skipped comment
   reads as a KEEP to the author.
-- `/start-cr` is 528 → 503 lines and `quality-review` 367 → 311, despite the worked
-  examples and tone blocks, through the shared-reference extraction. Both skill bodies
-  (`quality-review` 311, `comment-review` 205) sit under the 500-line guidance; that
-  guidance covers SKILL.md, not the command.
+- **Length, measured against 0.1.0.** `quality-review` is 341 → 320 lines and
+  `comment-review` 182 → 205; `/start-cr` grew 436 → 530, carrying the collection
+  protocol and the reconciliation check on top of the worked examples and tone blocks.
+  The shared-reference extraction paid for the additions on the skills but not on the
+  command. Both skill bodies sit under the 500-line guidance, which covers SKILL.md
+  rather than the command.
 - **The report skeleton is stated as unconditional and code-free.** A `simplicity`
   rule had told the scanner to "show the unified version concretely", which the model
   read as a licence to paste a rewritten body into the report — directly against the
@@ -96,6 +98,19 @@ prompting best practices, and the Skill authoring best practices.
 - **`allowed-tools` was missing `Write`.** Two of four measured runs used it in the apply
   phase — creating a spec file the review found missing, and rewriting a util wholesale —
   both squarely within what the apply menu offers, so the declaration was the stale half.
+  Step 6 now scopes it: `Write` creates a file that does not exist yet, every change to a
+  file already on disk goes through `Edit`, and a Scanner still writes nothing at all.
+  Without that scope the frontmatter and the body pulled opposite ways — the body said
+  "apply with `Edit` only" — and the wholesale-rewrite run is what the `Edit`-only half
+  was there to prevent.
+- **`CANDIDATES` had no home in `quality-review`.** The skill reads all four quality rules
+  files, and each tells the reader to park an unsettleable site in a `CANDIDATES` block
+  for whoever merges the review — but the skill runs both passes in one head, has no
+  merger, and declares its skeleton the whole report. The site would have left as a stray
+  section or not at all. It now lands on `Not flagged` with the doubt named. `Not flagged`
+  had drifted the same way: `/start-cr` gained an own-bullet escape for an entry that is a
+  real problem with no rule to land on, while `quality-review` still mandated one line
+  total — the compression that loses it.
 - **Scanners are dispatched unnamed and collected from their `<task-notification>`.**
   The collect step had named each Scanner and told the Orchestrator to `SendMessage` it
   and "block on that reply". `SendMessage` does not block — it returns a routing receipt
