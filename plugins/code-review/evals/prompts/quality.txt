@@ -1,0 +1,5 @@
+quality review {{file}}
+
+Review the file path(s) above for code quality and craft, tagging each finding with
+its quality rule family (readability, tests, naming, module, objects, patterns,
+simplicity) and rule. Do not edit any files.
