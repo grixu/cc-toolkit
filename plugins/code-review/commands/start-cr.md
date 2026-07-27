@@ -88,33 +88,40 @@ families that have no counterpart in the language under review. Work it there, t
 ## Step 3 — Dispatch five Scanners in parallel
 
 Emit all five Scanner calls — **one per Lens** — with the `Agent` tool in a **single
-message**, and give each a **name** so you can address it when you collect. Batching them
-in one message is what makes them run concurrently, and a concurrent fan-out **runs in
-the background**: five agents cannot each block and return inline at once, so the harness
-backgrounds them — this holds **even if you pass `run_in_background: false`**, because the
-flag cannot make a concurrent fan-out synchronous.
+message**. Batching them in one message is what makes them run concurrently, and a
+concurrent fan-out **runs in the background**: five agents cannot each block and return
+inline at once, so the harness backgrounds them — this holds **even if you pass
+`run_in_background: false`**, because the flag cannot make a concurrent fan-out
+synchronous. Let them background; that is the working path.
 
-**A background Scanner signals completion without delivering its findings — so collecting
-is an active pull, not a wait.** The completion/idle notification carries *status only*;
-the findings do **not** ride back on it, and a Scanner's plain output is invisible to
-you. Collect deliberately:
+**Never pass `name:` to a Scanner call.** Naming routes the Scanner into the agent-teams
+mailbox, where its findings come back only if you ask for them and it answers — a channel
+that has failed outright in practice, leaving an orchestrator with five Scanners signalling
+`{"type":"idle_notification","idleReason":"available"}` and no findings to merge, and that
+costs a round trip per lens even when it does work. An **unnamed** agent needs no asking:
+its full output arrives on its own in the `<result>` block of its `<task-notification>`.
+You give up nothing by leaving them unnamed — there is nothing you need to say to a Scanner
+once it has its brief.
 
-1. **Pull every Scanner by name.** As each signals idle/available, `SendMessage` it to
-   return its full findings block verbatim, and **block on that reply** — the reply is the
-   only channel that carries the findings. A Scanner that went idle with no payload has
-   **not** reported; go get it. (This reverses the old "never `SendMessage`, results
-   arrive on their own" rule — in this harness they do not.)
-2. **Fail closed — never silently single-pass.** If a Scanner still returns nothing after
-   the pull (or errors), do **not** quietly review that lens yourself and pass the result
-   off as a five-lens review. Re-dispatch that one Scanner **foreground**
-   (`run_in_background: false`), **one per message** — sequentially, since batching would
-   background them again — so its result returns inline. If it *still* will not deliver,
+**Collect from the `<task-notification>`.** Each Scanner's completion notification carries
+its findings verbatim inside `<result>` — that is the delivery, and it arrives on its own:
+
+1. **Wait for five `<result>` blocks — do not chase them.** An unnamed Scanner delivers
+   unprompted, and `SendMessage` could not make you wait anyway: it returns an immediate
+   routing receipt (`{"success":true,"message":"Message sent to …'s inbox"}`) and hands
+   control straight back, so "ask and block on the reply" is not a thing the tool can do.
+   Chasing a Scanner that is merely slow makes it regenerate its whole output, which can
+   land after you have already merged.
+2. **Fail closed on an empty `<result>`, not on silence.** The failure to catch is a
+   notification whose `<result>` is missing, empty, or truncated mid-block — that Scanner
+   has **not** reported. Re-dispatch that one Lens as a fresh **unnamed** `Agent` and
+   collect its `<task-notification>` the same way. Never quietly review that lens yourself
+   and pass the result off as a five-lens review. If the re-dispatch also comes back empty,
    **tell the user that lens is unavailable** and ask whether to proceed without it or
    abort. A single-pass or missing-lens review is a **labelled, user-acknowledged
-   degradation**, never the silent default — that silent fallback is exactly how a
-   single perspective's false positive reaches the report unchecked.
-3. **Merge only once every lens has actually delivered** — not merely gone idle. Merging
-   before all five have returned findings loses findings.
+   degradation**, never the silent default — that silent fallback is exactly how a single
+   perspective's false positive reaches the report unchecked.
+3. **Merge only once all five have delivered a `<result>`.** Merging early loses findings.
 
 While the Scanners run, do work that doesn't depend on them — **pre-read the diff and the
 changed files** so you can re-grade and locate sites the moment findings land.
@@ -248,9 +255,9 @@ One terse line each. Omit a block when it is empty.
 
 ## Step 4 — Merge and re-grade
 
-- **Collect** all five Scanners' outputs — every lens pulled and actually delivered per
-  Step 3, not merely gone idle; a lens you could not collect is a labelled degradation you
-  already surfaced to the user, never a silent gap in the merge.
+- **Collect** all five Scanners' outputs — every lens's `<result>` actually in hand per
+  Step 3, not merely a notification that fired; a lens you could not collect is a labelled
+  degradation you already surfaced to the user, never a silent gap in the merge.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses — keep the **most-specific** one and drop the rest. When the overlap
   spans two severities (a `high` symptom folding into a lower-severity root cause, or the
@@ -466,15 +473,15 @@ Step 4 stay with you either way. If one editor can finish the batch, use one rat
 than several, and keep the group count low.
 
 When you do fan out, partition those files into a handful of balanced groups and
-dispatch one `Agent` editor per group, **in a single message and in the foreground
-(`run_in_background: false`)**, so they run concurrently and each returns its per-file
-applied/skipped summary directly. **Never background an editor** — background spins up
-the heavier agent-teams/mailbox path and forces you to poll for results. Ownership is
-**disjoint by file**: never let two editors touch the same file (concurrent `Edit`s to
-one file race). Each editor receives its file subset, the exact approved fix for every
-site in those files, the Step 2 conventions note, and these invariants — locate each
-site by content before editing, scrub every replacement, apply nothing beyond the listed
-fixes, and **do not run build/tests** (you run them once, after). Each returns what it
+dispatch one `Agent` editor per group **in a single message** and, as with the Scanners,
+**unnamed** — a batched fan-out backgrounds whatever you pass for `run_in_background`, and
+each editor's per-file applied/skipped summary comes back in the `<result>` block of its
+`<task-notification>`. Naming one puts its summary behind the same unreliable mailbox pull
+as a Scanner's findings. Ownership is **disjoint by file**: never let two editors touch the
+same file (concurrent `Edit`s to one file race). Each editor receives its file subset, the
+exact approved fix for every site in those files, the Step 2 conventions note, and these
+invariants — locate each site by content before editing, scrub every replacement, apply
+nothing beyond the listed fixes, and **do not run build/tests** (you run them once, after). Each returns what it
 applied per file and what it skipped, with the reason. Run the editors to completion
 first, then walk the structural fixes.
 
