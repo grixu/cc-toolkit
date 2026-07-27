@@ -155,8 +155,11 @@ Send each Scanner a brief in this shape, filling every slot:
 
 Read the rules file **completely first**, then judge only the families that belong to
 that Lens. A Scanner **returns findings/verdicts only**: it does not render a report,
-does not edit files, and does not re-grade centrally. Read the whole changed file for
-context, and target what the change touched.
+does not re-grade centrally, and **writes nothing into the tree** — not the files under
+review, and not a scratch or probe file to test a hypothesis against. It is reading the
+user's working copy, so it settles a doubt by reading the type, the signature, or the call
+site, and marks the rest `(verify)`. Read the whole changed file for context, and target
+what the change touched.
 
 ### The five Lenses
 
