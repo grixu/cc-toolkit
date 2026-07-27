@@ -82,6 +82,27 @@ prompting best practices, and the Skill authoring best practices.
 
 ### Fixed
 
+- **Scanners are dispatched unnamed and collected from their `<task-notification>`.**
+  The collect step had named each Scanner and told the Orchestrator to `SendMessage` it
+  and "block on that reply". `SendMessage` does not block — it returns a routing receipt
+  and hands control straight back — so the step specified behaviour the tool does not
+  have. Naming also routes a Scanner into the agent-teams mailbox, which replied in one
+  measured run and not at all in another: five lenses idle, nothing merged, and roughly
+  half the run's scanner compute spent on lenses that never delivered a word. An unnamed
+  Scanner instead delivers its full output unprompted in the `<result>` block of its
+  completion notification, in three of three measured runs. Fail-closed now triggers on
+  an empty or truncated `<result>` rather than on an idle signal, and chasing a slow
+  Scanner is called out as counterproductive — it makes the Scanner regenerate its whole
+  output, which can land after the merge has already rendered. The apply-phase editor
+  fan-out rested on the same misattribution (it blamed backgrounding for what naming
+  causes) and is corrected alongside it.
+- **A Scanner could write into the working tree.** Its contract said only "does not edit
+  files", and in two measured runs a Scanner created a scratch TypeScript file inside the
+  user's repository to typecheck a hypothesis against. The brief now states that a
+  Scanner writes nothing into the tree — neither the files under review nor a probe file
+  — and settles a doubt by reading the type, the signature, or the call site, marking the
+  rest `(verify)`. Scanners still spawn as `general-purpose` and hold `Write`, so this is
+  a contract, not an enforcement.
 - **`quality-review`'s `description` was 1153 characters, over the hard 1024-character
   limit** for a Skill description; trimmed to 1007 with every trigger phrase kept.
 - **`quality-review` declared `allowed-tools: … Task`** while the subagent tool is
