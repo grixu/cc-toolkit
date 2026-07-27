@@ -1,10 +1,14 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-description: code-review plugin — comment-quality verdicts (R1–R12) on fixtures
+description: code-review plugin — comment verdicts (R1–R12) and quality findings (family · rule · severity)
 
 prompts:
-  # Natural-language trigger (not a literal "/comment-review" slash — the Agent SDK reads a
-  # leading "/" as a command and rejects it; the skill fires on description match instead).
-  - file://prompts/review.txt
+  # Natural-language triggers (not literal "/comment-review" slashes — the Agent SDK reads a
+  # leading "/" as a command and rejects it; the skills fire on description match instead).
+  # Each test binds to one label, so the two tracks don't cross-run.
+  - id: file://prompts/review.txt
+    label: comment-track
+  - id: file://prompts/quality.txt
+    label: quality-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -15,7 +19,10 @@ providers:
       permission_mode: bypassPermissions # the skill's Read/Grep/Bash run unattended
       allow_dangerously_skip_permissions: true # required alongside bypassPermissions
       working_dir: ../../.. # repo root, so the plugin path and {{file}} paths resolve
-      max_budget_usd: 1 # per-run cost guard
+      # Per-run cost guard. The quality track needs the higher cap: quality-review reads
+      # four rules files plus severity.md and scope.md before it judges, and a $1 cap
+      # aborted the calibration test mid-run with an empty result.
+      max_budget_usd: 3
       plugins:
         - type: local
           path: plugins/code-review # loads the skill under test
@@ -37,8 +44,12 @@ defaultTest:
         max_turns: 1
 
 tests:
-  # ----------------------------------------------------------------------------
+  # ============================================================================
+  # Comment track — comment-review, verdicts R1–R12
+  # ============================================================================
+
   - description: 'eval-0 banners-and-doc-refs (datadog-integration.tf)'
+    prompts: [comment-track]
     vars:
       file: plugins/code-review/evals/fixtures/datadog-integration.tf
     assert:
@@ -79,12 +90,10 @@ tests:
 
   # ----------------------------------------------------------------------------
   - description: 'eval-1 file-refs-and-diagram (scheduler.ts)'
+    prompts: [comment-track]
     vars:
       file: plugins/code-review/evals/fixtures/scheduler.ts
     assert:
-      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
-      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
-      # report uses the skill's own R1–R12 rule taxonomy instead.
       - type: regex
         value: '\bR(1[0-2]|[1-9])\b'
       - type: llm-rubric
@@ -115,12 +124,10 @@ tests:
 
   # ----------------------------------------------------------------------------
   - description: 'eval-2 misplaced-and-duplicated-rationale (dlq-codes.ts + dlq.handler.ts)'
+    prompts: [comment-track]
     vars:
       file: plugins/code-review/evals/fixtures/dlq-codes.ts plugins/code-review/evals/fixtures/dlq.handler.ts
     assert:
-      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
-      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
-      # report uses the skill's own R1–R12 rule taxonomy instead.
       - type: regex
         value: '\bR(1[0-2]|[1-9])\b'
       - type: llm-rubric
@@ -153,12 +160,10 @@ tests:
 
   # ----------------------------------------------------------------------------
   - description: 'eval-3 spec-id-references (payment-validator.ts)'
+    prompts: [comment-track]
     vars:
       file: plugins/code-review/evals/fixtures/payment-validator.ts
     assert:
-      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
-      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
-      # report uses the skill's own R1–R12 rule taxonomy instead.
       - type: regex
         value: '\bR(1[0-2]|[1-9])\b'
       - type: llm-rubric
@@ -211,12 +216,10 @@ tests:
 
   # ----------------------------------------------------------------------------
   - description: 'eval-4 spec-id-embedded-midsentence (host-allowlist.ts)'
+    prompts: [comment-track]
     vars:
       file: plugins/code-review/evals/fixtures/host-allowlist.ts
     assert:
-      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
-      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
-      # report uses the skill's own R1–R12 rule taxonomy instead.
       - type: regex
         value: '\bR(1[0-2]|[1-9])\b'
       - type: llm-rubric
@@ -238,3 +241,121 @@ tests:
         value: >-
           The reasoning checks whether each token is a real code value before stripping it,
           rather than rationalizing the spec-id `R2` as a code value.
+
+  # ============================================================================
+  # Quality track — quality-review, findings tagged family · rule · severity
+  # ============================================================================
+
+  - description: 'eval-5 vocabulary-and-skeleton (quality-vocabulary.ts)'
+    prompts: [quality-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/quality-vocabulary.ts
+    assert:
+      # "skill actually ran" proxy: the report uses the skill's own family vocabulary.
+      - type: regex
+        value: '`(readability|tests|naming|module|objects|patterns|simplicity)\b'
+      - type: llm-rubric
+        value: >-
+          Flags the local `placedIso` in `buildReceipt` — computed from `order.placedAt`
+          but never read and never returned — under the `simplicity` family, rule
+          `dead-code`.
+      - type: llm-rubric
+        value: >-
+          That `dead-code` finding is graded severity **high**. It is not downgraded to
+          `medium` or `nit` on the grounds that the file is otherwise small, tidy, or
+          correct.
+      - type: llm-rubric
+        value: >-
+          Every severity in the report is exactly one of `high`, `medium`, or `nit` — the
+          word "low", a numeric score, or an invented severity word appears nowhere.
+      - type: llm-rubric
+        value: >-
+          If the report flags `openness` (blocks jammed together with no blank line) at
+          more than one site, those sites are collapsed into a SINGLE bullet listing the
+          lines together (e.g. "L20, L34, L51") rather than repeated as one bullet per
+          site.
+      - type: llm-rubric
+        value: >-
+          The report carries an explicit `**Headline:**` line, and it does NOT call the
+          change clean, well-structured, or cosmetic-nits-only — a high-severity finding
+          exists, so the headline names the worst problem instead.
+      - type: llm-rubric
+        value: >-
+          The report follows the skill's fixed skeleton: it opens with a `**Conventions:**`
+          line and a `**Headline:**` line, its `###` headers are FILE PATHS (not
+          "Findings", "Finding 1", or a family name), and each finding is a single
+          markdown bullet rather than a numbered or bolded entry block.
+      - type: llm-rubric
+        value: >-
+          The report body contains NO fenced code blocks and no before/after listing, and
+          no suggested fix pastes a multi-line rewritten function body. (The skill allows
+          at most a short inline expression inside backticks when a fix cannot be named
+          without one, so a single inline expression does NOT fail this assertion —
+          a fenced block or a multi-line rewrite does.)
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-6 recall-across-families (quality-recall.ts)'
+    prompts: [quality-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/quality-recall.ts
+    assert:
+      - type: regex
+        value: '`(readability|tests|naming|module|objects|patterns|simplicity)\b'
+      - type: llm-rubric
+        value: >-
+          Flags the duplication between `renderInvoiceLine` and `renderCreditNoteLine`
+          (identical bodies differing only by the literal label "INVOICE" vs
+          "CREDIT NOTE") as `simplicity` · `over-complex`, severity **high**, and the fix
+          collapses them into one function taking the label as a parameter.
+      - type: llm-rubric
+        value: >-
+          Flags the bare `86400 * 30` in `findOverdueInvoices` as `readability` ·
+          `magic-literal`, severity **medium**, proposing a name for the 30-day overdue
+          window.
+      - type: llm-rubric
+        value: >-
+          Flags the local `currencyMap` in `groupByCurrency` as `naming` · `role-name`,
+          severity **nit** — the name carries the type (`Map`) instead of the role.
+      - type: llm-rubric
+        value: >-
+          All three problems above are present in the report. Missing any one of them
+          fails this assertion, regardless of how well the others are described.
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-7 calibration-look-alikes (quality-calibration.ts)'
+    prompts: [quality-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/quality-calibration.ts
+    assert:
+      # This fixture is deliberately clean, so a family tag may be absent from a collapsed
+      # report. Use the skeleton's tally line as the "skill actually ran" proxy instead.
+      - type: regex
+        value: '[Tt]ally'
+      - type: llm-rubric
+        value: >-
+          Does NOT flag `JSON.parse(raw) as Config` in `parseConfig` as `needless-cast` —
+          narrowing an `unknown` boundary is the rule's documented exception.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `default:` branch of the `switch` in `area` as `dead-code` —
+          an intentionally exhaustive default kept as a defensive assertion is the rule's
+          documented exception.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the arithmetic in `median` (`Math.floor(sorted.length / 2)`,
+          `% 2 === 1`, `sorted[middle - 1]`) as `magic-literal` — these are
+          self-evidently themselves, not domain constants.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag `items.length > 0` in `hasResults` as `explaining-variable` — the
+          expression is already idiomatic and plain.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the two-branch conditional in `describeStock` as `guard-clause` —
+          both arms do real, comparable work, which the rule documents as a legitimate
+          `if/else` rather than a guard plus body.
+      - type: llm-rubric
+        value: >-
+          The overall verdict is clean: the report has no high or medium findings. Any
+          look-alike the review considered and passed on is named on the "Not flagged"
+          line rather than raised as a finding.

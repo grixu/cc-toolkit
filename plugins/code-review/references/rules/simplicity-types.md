@@ -2,8 +2,19 @@
 
 Full rule text for the `simplicity-types` scanner (part of the `code-review` plugin). Read
 this whole file before judging. When two rules touch the same code, the
-most-specific finding wins; when genuinely unsure whether something is a problem,
-leave it out.
+most-specific finding wins.
+
+Report what you find; the filter runs after. Judge each site against the rules,
+then against that rule's own calibration paragraph — the look-alike that is *not* a
+violation. A site the calibration clears is a non-finding. A site you cannot settle
+either way belongs in `CANDIDATES`, not in the bin: whoever merges the review
+decides it with everything in view, and a rejected candidate costs one line in
+`Not flagged` — an unreported one costs the finding.
+
+**A suggested fix is one clause, never a code block.** Name the symbol, the move, or
+the constant — "name `SECONDS_PER_DAY`", "collapse into `discountFor(tier)` and call
+it at each site", "drop the `as User` cast". The surface that renders your findings
+has no room for a rewritten body, a merged function, or a before/after block.
 
 Each finding gets one **family**, one **rule**, and one **severity**. Grade severity
 from the rows below (a finding's severity is the property of its rule, never the
@@ -35,9 +46,10 @@ They write five lines where two read better. Hunt for the smaller version.
   - code is simply longer or more nested than the idea needs (a chain of
     `if/else` that is a lookup table, a manual loop that is a `map`/`filter`, an
     intermediate variable used once with no clarifying value).
-- **Suggested fix**: show the unified version concretely — the merged signature
-  with its new parameter and the conditional that absorbs the difference, or the
-  shorter expression. Treat this as a real defect, not a nicety: duplication that
+- **Suggested fix**: name the unified version precisely — the merged function and
+  the parameter that absorbs the difference ("collapse into
+  `renderLine(invoice, label)` and pass the label at each site"), or the shorter
+  expression it becomes. Treat this as a real defect, not a nicety: duplication that
   drifts out of sync is a future bug.
 - **Calibration → the flag-argument trade-off**: Clean Code also warns that a
   **boolean/flag argument is a smell** — it usually means the function does two

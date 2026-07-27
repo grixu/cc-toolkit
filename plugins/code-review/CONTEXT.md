@@ -31,13 +31,18 @@ A specific sub-tag under a Family (22 total), or one of the comment rules `R1`�
 The quality-side unit of output: `family` · rule · severity · lines → fix.
 
 **Verdict**:
-The comment-side unit of output: per-comment KEEP / REMOVE / REWRITE / MOVE.
+The comment-side unit of output: per-comment KEEP / REMOVE / REWRITE / MOVE / ADD. `ADD` is the only verdict with no existing comment to quote — an R2 *missing WHY* to write at non-obvious code.
+
+**Candidate**:
+A site a Scanner confirmed and owns, but whose rule fit or calibration it could not settle. It travels in the Scanner's `CANDIDATES` block and the Orchestrator decides it — promoting it to a graded Finding or clearing it into `Not flagged`. Distinct from `(verify)` (the *fact* is unconfirmable) and `HANDOFF` (another Lens's family owns it); the three are never used interchangeably.
+_Avoid_: maybe-finding, soft finding, low-confidence finding
 
 ## Relationships
 
 - **start-cr** fans out to exactly **5 Scanners**, one per **Lens**
 - Every **Lens** has exactly one **Rules file**; both the standalone skills and **start-cr** read the same file
 - A **Scanner** returns **Findings**/**Verdicts** only; the **Orchestrator** merges, dedups, and re-grades severity centrally
+- A **Scanner** detects; the **Orchestrator** filters. Uncertainty travels as a **Candidate** rather than being dropped at detection, so the filter decides it with the whole review in view
 - The skills `comment-review` and `quality-review` stay independently invocable alongside **start-cr**
 - The **start-cr** report groups by **file**, not by Scanner; **Findings** and **Verdicts** keep their own vocabularies side by side (no severity↔verdict mapping)
 
