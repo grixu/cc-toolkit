@@ -6,7 +6,7 @@ description: >-
   — never auto-triggered. It resolves scope once, dispatches five scanner
   subagents, re-grades severity centrally, and offers a single apply menu. It
   never edits code during the review.
-allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit
+allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
 argument-hint: "[paths...] [--base <branch>]"
 ---
 
@@ -281,8 +281,13 @@ One terse line each. Omit a block when it is empty.
   write the check out: enumerate every `HANDOFF` and every candidate you received, and
   against each name its home — the report bullet (`path:line`) it became, the converging
   finding it merged into, or the `Not flagged` line that clears it. An entry with no home
-  on that list is a bug: route it before you render. "All lenses merged" is not the
-  check — the itemized list is.
+  on that list is a bug: route it before you render.
+- **Publish that check as one counted line above the report** — `Reconciliation: N
+  handoffs + M candidates → A merged · B own bullet · C boy-scout · D Not flagged` —
+  where `A + B + C + D` equals `N + M`. The arithmetic is what makes the check real: a
+  run that states "every handoff routed" without it has asserted rather than reconciled,
+  and loses the entry nothing else corroborates. When the sums disagree, an entry is
+  unrouted — find it, never adjust a number to close the gap.
 - **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
   confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
   positive** — drop it and note it under `Not flagged`. An unresolved `(verify)` finding
@@ -307,6 +312,8 @@ comment verdicts **together**. Render with **exactly this template**, in this
 order — keep the structure identical between runs:
 
 ```markdown
+Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged
+
 ## Code review — <scope>
 
 **Conventions:** <one line on what Step 2 picked up, or "none that change the verdict">
@@ -331,6 +338,8 @@ each when one is a real problem with no rule to land on; omit when empty>
 A filled-in report reads like this:
 
 <example>
+Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged
+
 ## Code review — committed (base → HEAD), 3 files
 
 **Conventions:** repo `CLAUDE.md` documents barrel exports as the public-API style, so `module` · barrel is not flagged here.
@@ -357,7 +366,9 @@ per reviewed file — and each finding is a single markdown bullet beneath its f
 not paste the code under review, the rewritten body, or a before/after block: a finding
 that seems to need a code block is one whose fix is not yet stated as a clause, so state
 it as a clause. Every report opens with `Conventions` and `Headline`, and closes with
-`Tally`.
+`Tally`. The `Reconciliation` line is the only thing that precedes `## Code review` — it
+belongs to Step 4's check rather than to the report, which is why it carries counts and
+not prose.
 
 Rules for filling it in:
 
