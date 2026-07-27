@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-27
+
 Prompt-surface pass against the published guidance for Claude Opus 5, the general
 prompting best practices, and the Skill authoring best practices.
 
