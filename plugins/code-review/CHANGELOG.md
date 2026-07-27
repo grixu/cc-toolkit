@@ -82,6 +82,20 @@ prompting best practices, and the Skill authoring best practices.
 
 ### Fixed
 
+- **The `HANDOFF`/`CANDIDATES` reconciliation is published as one counted line above the
+  report.** Step 4 already required an itemized check, but left it unwritten, and across
+  four measured runs 2 of 74 side-channel entries still reached no home — both `HANDOFF`s
+  into the `tests` family, one of them (a spec file's free-string `describe`) gone with no
+  `Not flagged` line to show for it. Both losing runs had asserted "every handoff routed"
+  without counting; the one run that published counts matched an independent recount
+  exactly and lost nothing. The line now reads `N handoffs + M candidates → A merged ·
+  B own bullet · C boy-scout · D Not flagged` with `A+B+C+D = N+M`, so an unrouted entry
+  surfaces as arithmetic that will not close instead of a check never written down. Volume
+  is a partial confound — the two losing runs were also the largest (19 and 29 entries
+  against 18 and 8).
+- **`allowed-tools` was missing `Write`.** Two of four measured runs used it in the apply
+  phase — creating a spec file the review found missing, and rewriting a util wholesale —
+  both squarely within what the apply menu offers, so the declaration was the stale half.
 - **Scanners are dispatched unnamed and collected from their `<task-notification>`.**
   The collect step had named each Scanner and told the Orchestrator to `SendMessage` it
   and "block on that reply". `SendMessage` does not block — it returns a routing receipt
