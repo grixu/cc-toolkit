@@ -32,6 +32,10 @@ status=0
 for cfg in "${configs[@]}"; do
   name="$(basename "$(dirname "$(dirname "$cfg")")")"
   echo "==> ${name}  (${cfg})"
+  # A suite whose commands mutate their working dir ships a reset script; without it the
+  # suite runs against the previous run's leftovers and can score green on work it never did.
+  reset="$(dirname "$cfg")/reset-sandbox.sh"
+  [ -x "$reset" ] && bash "$reset"
   if ! "$bin" eval -c "$cfg" --no-cache --no-share -o "/tmp/eval-${name}.json" "$@"; then
     echo "!! ${name} eval reported failures" >&2
     status=1
