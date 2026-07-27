@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Prompt-surface pass against the published guidance for Claude Opus 5, the general
+prompting best practices, and the Skill authoring best practices.
+
+### Added
+
+- **`CANDIDATES` channel** — a Scanner now reports a site it confirmed and owns but
+  whose rule fit or calibration it could not settle, instead of dropping it at
+  detection. The Orchestrator promotes it to a graded finding or clears it into
+  `Not flagged`. Detection and filtering are now separate jobs: suppressing at
+  detection made the review under-report, since a model that is told to be
+  conservative follows that instruction literally. The standalone skills run the same
+  split as two passes in one head. `(verify)`, `HANDOFF`, and `CANDIDATES` carry three
+  distinct meanings and a disambiguation table keeps them from being conflated.
+- **`references/severity.md`** — the master severity table (22 rules), the definition
+  of each severity, and the anti-anchoring rule, in one place. `/start-cr` and
+  `quality-review` read it instead of each carrying a copy that had to stay
+  byte-identical.
+- **`references/scope.md`** — the in-scope/skip lists, the language-applicability
+  rules, the dependency-manifest note, and the mechanical convention read, shared by
+  all three surfaces.
+- **A worked report example** in each surface, alongside the skeleton — a filled-in
+  report steers format more reliably than a template of placeholders.
+- **An XML `<scanner_brief>` template** for the `/start-cr` fan-out, replacing the
+  prose list of what each Scanner receives.
+- **`Contents` blocks** in the rules files over 100 lines, so a partial read still
+  shows the full scope of the file.
+- **A quality eval track** — `prompts/quality.txt` plus three fixtures: vocabulary and
+  skeleton adherence, a recall gate (a seeded high + medium + nit must all surface),
+  and a noise gate (five documented look-alikes must stay non-findings). The suite
+  previously covered only `comment-review`. The recall and noise gates pass on both
+  sonnet-4-6 and opus-5 in every measured run; the skeleton test is flaky (4/8–7/8,
+  no stable model split) and is documented in `evals/README.md` as indicative rather
+  than pass/fail.
+
+### Changed
+
+- **Narration and length** — each surface carries a short `<review_tone>` block:
+  one sentence before the first tool call, updates only on a real finding or a change
+  of direction, outcome first in the wrap-up, and the report matched to the findings.
+- **Register calmed.** `MANDATORY`, stacked emphasis, and the most redundant negative
+  phrasings are gone; the instructions they carried are unchanged. Aggressive phrasing
+  now overtriggers rather than helping.
+- **`comment-review` enumerates every comment before judging any of them** — a run of
+  similar-looking banners is where one quietly went unlisted, and a skipped comment
+  reads as a KEEP to the author.
+- `/start-cr` is 528 → 503 lines and `quality-review` 367 → 311, despite the worked
+  examples and tone blocks, through the shared-reference extraction. Both skill bodies
+  (`quality-review` 311, `comment-review` 205) sit under the 500-line guidance; that
+  guidance covers SKILL.md, not the command.
+- **The report skeleton is stated as unconditional and code-free.** A `simplicity`
+  rule had told the scanner to "show the unified version concretely", which the model
+  read as a licence to paste a rewritten body into the report — directly against the
+  report's clause-only contract. All four quality rules files now state that a
+  suggested fix is one clause. This reliably removed fenced code blocks from quality
+  reports; the surrounding header structure is still not deterministic (see above).
+
+### Removed
+
+- **Self-verification scaffolding** — the separate severity self-check pass (redundant
+  with the anti-anchoring rule beside it) and the repeated "read your own suggested fix
+  back one more time" re-checks, which were stated up to five times across the
+  surfaces. Opus 5 verifies its own work unprompted, and these compound into wasted
+  tokens. External checks — build/tests after a structural change, Read-before-edit,
+  locating a site by content rather than line number — all stay.
+- **`quality-review`'s >20-file fan-out (Step 1.5, ~50 lines).** The path was never
+  validated, the background-subagent plumbing it relied on delivers status without
+  findings, and Opus 5 delegates more readily than the models it was written for. The
+  skill is now inline-only and points at `/start-cr` for a diff too large to hold at
+  once; `Task` is gone from its `allowed-tools`.
+- The stray `skills/comment-review/evals/` directory — its fixtures were byte-identical
+  duplicates of the canonical suite and its `evals.json` was superseded by
+  `promptfooconfig.yaml`.
+
+### Fixed
+
+- **`quality-review`'s `description` was 1153 characters, over the hard 1024-character
+  limit** for a Skill description; trimmed to 1007 with every trigger phrase kept.
+- **`quality-review` declared `allowed-tools: … Task`** while the subagent tool is
+  named `Agent`. Moot now that the skill does not delegate, but it would have failed
+  had the fan-out ever fired.
+
 ## [0.1.0] - 2026-07-23
 
 ### Added
