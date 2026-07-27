@@ -92,12 +92,10 @@ Parse the invocation arguments:
 
 ### In scope vs skip
 
-Review source files that carry human-authored comments: `.ts .tsx .js .jsx .py
-.go .rs .java .kt .swift .c .cpp .h .rb .php .vue .sh`, **infrastructure-as-code**
-(`.tf`/HCL and similar declarative surfaces), and similar. **Skip**:
-JSON, lockfiles, generated/minified files, `.md`/docs (the prose *is* the
-content), and license/SPDX headers. When you skip a changed file, note it in
-one line so coverage is honest.
+Which files get judged — the in-scope extensions, the skip list, and the rule about
+a skipped dependency manifest that is the substance of the change — is in
+`${CLAUDE_PLUGIN_ROOT}/references/scope.md`. Docs and `.md` files are skipped here:
+the prose *is* the content. Note every skipped file in one line so coverage is honest.
 
 ## Step 2 — Read the comments
 
@@ -107,6 +105,11 @@ regions with context. You must read the **code around each comment** — every
 verdict is a judgment about the comment *relative to its code*, never a
 keyword match.
 
+**Enumerate before you judge.** List every comment in the file first — banners and
+dividers included, since a run of similar-looking fences is where one quietly goes
+unlisted — then work that list. A comment you never enumerated cannot get a verdict,
+and a silently skipped one reads as a KEEP to the author.
+
 ## Step 3 — Judge each comment against the rules
 
 For every comment, assign one verdict: **KEEP**, **REMOVE**, **REWRITE**,
@@ -114,9 +117,9 @@ For every comment, assign one verdict: **KEEP**, **REMOVE**, **REWRITE**,
 verdict with no existing comment). Run the **deletion test** from the top of this
 skill on every comment first — most findings fall out of it directly.
 
-**MANDATORY — read the full rule set before judging.** Read
-`${CLAUDE_PLUGIN_ROOT}/references/rules/comments.md` completely
-(do not range-limit it). It holds the load-bearing detail for every rule below —
+**Read the full rule set before judging.** Read
+`${CLAUDE_PLUGIN_ROOT}/references/rules/comments.md` completely (read it whole,
+without a range limit). It holds the load-bearing detail for every rule below —
 the examples, the exceptions, and the false-positive traps that keep this review
 from being noisy. The index here is only a map; the verdicts live in that file.
 
@@ -153,32 +156,50 @@ Group findings by file. For each finding give:
   For **MOVE**, name the **destination** (the method/usage site you located, or
   "the method that performs the behavior" if the search was inconclusive) and
   give the exact comment text to place there, plus "delete from the declaration."
-  The fix must itself obey the rules: never introduce a file/doc cross-reference
-  (R4) or a divider/banner (R5) in a replacement — inline the fact instead. **In
-  particular, scrub every spec/requirement-ID fragment out of the replacement
+  The fix must itself obey the rules: a replacement introduces no file/doc
+  cross-reference (R4) and no divider/banner (R5) — inline the fact instead. **In
+  particular, every spec/requirement-ID fragment is scrubbed out of the replacement
   text** — the most common leak is rewriting a comment but leaving the `(R2)`,
-  the `F1:`, or the `§4.1` glued on. Read your own suggested-fix string back and
-  delete any such token before you emit it.
+  the `F1:`, or the `§4.1` glued on. The replacement ships without any such token.
 
 List any **R9 (contradicts-the-code)** findings first — they mislead readers and
 are the most urgent to fix. Otherwise order findings within a file by line
 number. End with a short tally
 (`N comments reviewed · X remove · Y rewrite · W move · V add · Z keep-as-is`) and the
-list of skipped files with reasons. If you found nothing, say so plainly — do not invent
-findings to look thorough.
+list of skipped files with reasons. If you found nothing, say so plainly.
+
+A filled-in report reads like this:
+
+<example>
+### src/gateway/retry.ts
+- L12 · `// Retry-After handling per RFC 9110 §10.2.4` — **KEEP** (R4 external pin) — an externally pinned spec stays.
+- L31 · `// increment the attempt counter` — **REMOVE** (R1) — restates `attempts++` on the next line → delete these lines.
+- L44 · `// §4.1 caps a single charge at 500_000 minor units` — **REWRITE** (R4) — the spec-id points at an internal doc; the cap itself is worth keeping → `// the ledger rejects a single charge above 500_000 minor units`
+- L58 — **ADD** (R2) — the 250 ms retry gap is a gateway constraint no reader can infer → `// 250 ms — the gateway rejects retries closer than its own debounce window`
+
+### src/gateway/backoff.ts
+- L7 · `// ===== Backoff =====` — **REMOVE** (R5) — a section fence carrying no information → delete these lines.
+
+**Tally:** 14 comments reviewed · 2 remove · 1 rewrite · 0 move · 1 add · 10 keep-as-is. Skipped: pnpm-lock.yaml (lockfile).
+</example>
 
 ## Step 5 — Offer to apply (only on confirmation)
 
 Never edit during the review. After presenting the report, ask whether to apply
 the REMOVE, REWRITE, and MOVE fixes. Apply with `Edit` only the ones the user
 confirms; leave **ADD** (missing-WHY) suggestions for the author to write, since
-only they know the real reason. Before writing each `Edit`, check the replacement text one
-last time for any leftover R4 fragment — a `(R2)`, an `F1:`, a `§4.1`, a file
-path — and strip it; the whole point of the fix is that the citation does not
-survive into the file.
+only they know the real reason. Locate each site by its **content** rather than the
+line number you recorded, and apply the already-scrubbed replacement text from the
+report.
 
 For a confirmed **MOVE**, delete the comment at the declaration, and insert the
 rewritten comment at the destination **only when you located a single
 unambiguous usage site**; if the destination was ambiguous, apply just the
 deletion and hand the user the exact text to paste, so you never drop a comment
 into the wrong method.
+
+<review_tone>
+Say in one sentence what you are about to do before the first tool call, then work.
+Lead the wrap-up with the outcome: what the review found, then the detail. Match the
+report to the findings — a clean file gets a short report, not a padded one.
+</review_tone>
