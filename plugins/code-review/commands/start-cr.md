@@ -465,6 +465,12 @@ must stay honest when findings don't spread across them:
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
 without an explicit yes**. Only findings confirmed in Step 4 enter an apply batch.
 
+**`Write` creates a file that does not exist yet, and nothing else.** The one case is
+a new file the user picked from the menu — the missing spec a correctness bucket
+offered, say. Every change to a file already on disk goes through `Edit`, so a
+targeted fix can never turn into a wholesale rewrite of a file the review only read
+in part. This is the Orchestrator's alone: a Scanner still writes nothing at all.
+
 **Scanner line numbers are estimates, not ground truth.** A finding's `path:line`
 is where the Scanner *thought* the code sat; before each edit, Read the file and
 locate the exact site by its **content**. If the code or comment a finding describes
