@@ -76,8 +76,9 @@ considered — when both exist, it asks which scope to review.
 
 ## Migration
 
-`code-review` supersedes `comment-review` and `quality-review`. After installing
-it, **uninstall the old two** to avoid duplicate skills: a user with both
+`code-review` supersedes `comment-review` and `quality-review`, which are no
+longer published in the `grixu/cc-toolkit` marketplace. If you still have either
+installed, **uninstall it** to avoid duplicate skills: a user with both
 generations installed sees two `comment-review` and two `quality-review` skills —
 the new namespaced `code-review:comment-review` alongside the old
 `comment-review:comment-review`.

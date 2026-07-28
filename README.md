@@ -127,7 +127,7 @@ Unified code review that fans out five parallel lenses over a change — comment
 /plugin install code-review@cc-toolkit
 ```
 
-**Migration:** `comment-review` and `quality-review` are **deprecated** and superseded by `code-review`. After installing `code-review`, uninstall the old two. Known collision: with both an old plugin **and** `code-review` installed, you will see two same-named skills (namespaced `code-review:comment-review` vs `comment-review:comment-review`) — uninstalling the old plugins resolves it.
+**Migration:** `comment-review` and `quality-review` were superseded by `code-review` and are **no longer published** in this marketplace. If you still have either installed, uninstall it — with both an old plugin **and** `code-review` installed you will see two same-named skills (namespaced `code-review:comment-review` vs `comment-review:comment-review`).
 
 See [plugin README](plugins/code-review/README.md) for details.
 
