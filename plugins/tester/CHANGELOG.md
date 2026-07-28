@@ -58,10 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - fan-out stays the default — the brief carries the DB handle in whichever form the stack
     offers (shell client *or* an MCP tool with pinned ids, since subagents reach the same MCP
     tools), and running suites in the main thread needs one of three named reasons;
-  - suites are dispatched **foreground** (`run_in_background: false`) as one parallel batch, so
-    each subagent's final table returns as the tool result; the background/teammate path breaks
-    the return contract — the table never reaches the main thread, which then pings idle agents
-    for a deliverable that was never routed and leaves them alive to be killed by hand;
+  - suites are dispatched as one parallel batch in a single message with
+    `run_in_background: false` and no `name` on any subagent; a suite's table reaches the main
+    thread either as the tool result or inside the `<result>` block of a completion
+    notification, and both deliveries are complete — a notification carrying a `<result>` *is*
+    the table, so the run aggregates it instead of waiting, polling, or scheduling a wakeup for
+    a suite that already reported;
   - a stack found **down** (no processes, missing `.env`, stopped Docker) is brought up as a
     first-class consent-gated path rather than blocked — starting servers, provisioning a test
     persona, and seeding a fixture a state needs are environment mutations (cleared in step 4,
@@ -89,3 +91,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `references/FAULT_INJECTION.md` — mechanism guide (pause/stop, proxy, introduce the
     injection point), the two traps (non-deterministic payloads, stateful sequences), and the
     always-restore invariant.
+- `evals/` — a promptfoo suite that runs `/tester:run` end to end against a purpose-built
+  two-container target app (API + UI + a pausable PDP dependency behind `PDP_BASE_URL`) carrying
+  planted defects with a committed answer key. Scores safety invariants (stack restored,
+  no stray proxy, source unmodified, store back at its seed) separately from verdict quality
+  (recall on the planted defects, false positives on correct behaviour). `verify-fixture.mjs`
+  drives every probe in the key during reset, so a fixture that drifts fails before tokens are
+  spent rather than silently making recall meaningless. Dev tooling, not shipped runtime.
+  - the suite refuses to start while another tester eval is live. One stack on fixed ports makes
+    two runs mutually destructive — they mutate each other's store, one fault suite's
+    `docker pause` reads as a real fail-open to the other, and the second reset restarts
+    containers under the first run and overwrites the `preflight.json` its assertions bind to,
+    so a completed run gets scored as a stall;
+  - the recall denominator and the correct-behaviour list are derived from the answer key's `ac`
+    fields rather than restated in the assertion. They had drifted: the fixture carried a fourth
+    defect nobody planted (`PATCH /api/memberships/{id}` exempts admins from an ownership check
+    the spec denies unconditionally), and a run that correctly reported it was scored a false
+    positive against a key that called that criterion clean;
+  - proof of execution accepts either the command's work dir or a transcript for this run that
+    reached a tool call. A run that finds the shared stack contended may stand up its own
+    isolated copy and name its work dir after that, which the `tester.*` search never finds;
+  - a run driven by two concurrent sessions is reported as contaminated rather than scored. The
+    provider has been seen retrying a slow query and starting a second `/tester:run` a minute
+    into the first, which no lock outside the harness can prevent;
+  - the stray-container check covers any surviving `tester-*` container, not only the WireMock
+    proxy named `tester-fault`;
+  - verdicts are read from the per-suite tables the executors return, whose format the agent
+    return contract pins, rather than from the orchestrator's free-form closing report. The
+    report had produced five distinct false-positive modes and is now only a secondary signal for
+    checks the main thread ran itself. Both delivery paths are parsed: a synchronous dispatch
+    returns the table as the Agent call's tool result, an asynchronous one delivers it inside the
+    `<result>` block of a completion notification, and reading only the former scored four
+    recorded runs as having returned nothing;
+  - a criterion a run's own suites failed but its closing report does not is reported as an
+    `AGGREGATION GAP` — a finding lost between subagent and reader is a different defect from one
+    never detected;
+  - `replay.js` (`pnpm eval:tester:replay`) re-scores every recorded transcript against the
+    current matcher for free and exits non-zero on any false positive. Every matcher bug so far
+    was found by replaying a real run and none by reading the code.
+- `CLAUDE.md` — the plugin's prompt-layer conventions (vocabulary, emphasis, the
+  same-context-only deduplication rule, and why the executors restate the command's hard rules).
+
+### Changed
+
+- Prompt layer tuned for Opus 5:
+  - **the step 5 dispatch contract stated something untrue and is corrected.** It claimed the
+    background path means "the final table never reaches the main thread". Eval traces show the
+    opposite: suites dispatched in the background deliver their full table inside the `<result>`
+    block of a completion notification. The run still succeeded despite the wrong rationale, but
+    it paid for it in coordination — three `ScheduleWakeup` heartbeats spent waiting for
+    deliveries it had already received. Describing both delivery paths as complete removed that
+    entirely (3 wakeups → 0 on the next run);
+  - new Working rules section in `run.md`: where verification belongs (product gates over other
+    agents' output are never softened, re-checking your own reasoning is not wanted), run scope
+    (a run reports, it does not repair), narration cadence, and length calibration for the brief
+    and the report;
+  - fan-out damping alongside the existing bias toward delegation — one subagent per suite, no
+    subagent to re-check another's table, nothing delegated that finishes in a few tool calls;
+  - vocabulary unified on `block` / `halt` / `HIL`, with check verdicts kept as a separate
+    backticked axis so the gate action and the `BLOCKED` verdict stop colliding;
+  - emphasis normalised: ~92 mid-sentence bolds carrying intensifiers and noun phrases became
+    plain prose, leaving bold for lead-in labels and genuine gates;
+  - `run.md` step 6 and `agents/fault.md` no longer restate the mechanism ladder they tell the
+    reader to load from `FAULT_INJECTION.md`;
+  - both references gained a Contents block, each being over 100 lines.
+- Per-surface model routing: `api` and `ui` execute on `sonnet`, `fault` inherits the session
+  model. The downgraded surfaces run a brief that has already resolved every ambiguity, while
+  `fault` is the one executor that perturbs a shared stack and whose failure mode is leaving it
+  broken. Measured one run per variant on the eval fixture: identical recall (4/4), no false
+  positives and clean safety in both, with the routed variant spending 42.0k Opus output tokens
+  against 86.3k and finishing in 12m against 19m. That is no regression in a single run rather
+  than a confirmation — both variants saturate the metric, so the fixture cannot discriminate
+  model tiers, only catch a downgrade bad enough to lose or invent a defect.
