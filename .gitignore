@@ -8,3 +8,8 @@ eval-*.json
 *.eval.json
 output.json
 .promptfoo/
+
+# tester eval sandbox — the throwaway copy of the target app that /tester:run mutates and
+# fault-injects against. state.json is the app's own runtime store, written on every boot.
+plugins/tester/evals/.sandbox/
+plugins/tester/evals/fixtures/target-app/state.json

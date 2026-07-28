@@ -1,0 +1,30 @@
+{
+  "users": [
+    {
+      "id": "u-admin",
+      "email": "admin@example.test",
+      "password": "eval-admin-pw",
+      "role": "admin",
+      "orgId": "org-1"
+    },
+    {
+      "id": "u-member",
+      "email": "member@example.test",
+      "password": "eval-member-pw",
+      "role": "member",
+      "orgId": "org-1"
+    }
+  ],
+  "projects": [
+    { "id": "p-1", "orgId": "org-1", "name": "Apollo" },
+    { "id": "p-2", "orgId": "org-2", "name": "Borealis" }
+  ],
+  "memberships": [
+    { "id": "m-1", "userId": "u-member", "orgId": "org-1", "status": "active", "role": "member" },
+    { "id": "m-2", "userId": "u-member", "orgId": "org-2", "status": "pending", "role": "viewer" }
+  ],
+  "auditEvents": [
+    { "id": "a-1", "action": "project.created", "actor": "u-admin", "at": "2026-01-04T09:00:00.000Z" },
+    { "id": "a-2", "action": "membership.invited", "actor": "u-admin", "at": "2026-01-05T11:30:00.000Z" }
+  ]
+}

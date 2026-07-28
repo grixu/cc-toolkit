@@ -1,0 +1,31 @@
+name: tester-eval
+
+services:
+  pdp:
+    image: node:22-alpine
+    container_name: tester-eval-pdp
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: node /app/pdp.mjs
+    ports:
+      - '4320:4320'
+    # No restart policy and no --abort-on-container-exit: a paused or stopped PDP stays that
+    # way until the fault suite restores it, which is the behaviour the suite asserts against.
+    restart: 'no'
+
+  app:
+    image: node:22-alpine
+    container_name: tester-eval-app
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: node /app/app.mjs
+    environment:
+      APP_PORT: '4310'
+      PDP_BASE_URL: 'http://pdp:4320'
+    ports:
+      - '4310:4310'
+    depends_on:
+      - pdp
+    restart: 'no'

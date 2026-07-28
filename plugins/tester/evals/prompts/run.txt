@@ -1,0 +1,16 @@
+/tester:run spec.md
+
+Verify the whole spec against the stack running here. Derive and run every suite the scope
+implies — API, UI, and fault-injection.
+
+Context you would otherwise have to ask me for:
+
+- This is a disposable local eval fixture. The API and UI are both on
+  http://localhost:4310; the stack is `docker compose` with containers `tester-eval-app` and
+  `tester-eval-pdp`, and the compose file is at ./docker-compose.yml. Nothing here is real
+  user data and nothing is shared.
+- Mutation consent: granted for all endpoints, and for environment mutations (restarting a
+  service under changed env, seeding, adding an injection point). Restore what you change and
+  record it in the teardown ledger.
+- No sign-up or invite-a-new-user flow is in scope, so no disposable email is needed.
+- Test personas and their passwords are in ./seed.json.
