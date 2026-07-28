@@ -15,7 +15,7 @@ description: >-
   assistant: "Restoring the superadmin and member sessions, navigating to the dashboard, asserting the Members nav item is visible for superadmin and absent for member via agent-browser is visible --json, screenshotting each, and returning one row per check."
   <commentary>agent-browser is the sole driver; each expected outcome is an assertion command whose --json output decides the verdict, never a glance at a snapshot.</commentary>
   </example>
-model: inherit
+model: sonnet
 tools: ["Bash", "Read", "Write"]
 ---
 

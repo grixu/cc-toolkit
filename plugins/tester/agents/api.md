@@ -14,7 +14,7 @@ description: >-
   assistant: "Reading the brief, building the three persona cookie headers, probing the ALLOW/DENY matrix via GET /authz/can and safe GETs, checking a DB row with psql where a check needs it, and returning one row per check: | AC | check | expected | actual | PASS/FAIL |."
   <commentary>Every expected outcome is a curl/psql command whose output decides the verdict — the executor never rules by judgment, and never performs an ALLOW mutation over HTTP.</commentary>
   </example>
-model: inherit
+model: sonnet
 tools: ["Bash", "Read", "Write"]
 ---
 
