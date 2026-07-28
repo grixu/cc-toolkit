@@ -1,11 +1,21 @@
 # BRIEF_TEMPLATE — the shared environment brief
 
-`/tester:run` fills this in at step 2 and writes it to `$WORK/BRIEF.md`. It is the **only**
-artifact of a run and the **single shared contract** every suite subagent reads. It must be
+`/tester:run` fills this in at step 2 and writes it to `$WORK/BRIEF.md`. It is the only
+artifact of a run and the single shared contract every suite subagent reads. It must be
 self-sufficient: a subagent that reads only the brief can run its suite without re-deriving
-anything. Everything below is discovered **fresh** each run — never copied from stale config.
+anything. Everything below is discovered fresh each run — never copied from stale config.
 
 Keep it tight. Delete sections that don't apply. Fill every `<…>`.
+
+## Contents
+
+The template below, section by section — then *Why each section earns its place*, which gives
+the reason for the ones whose value is not obvious.
+
+- Base URLs & quirks · Personas & cookie files · Pre-state snapshot · Domain topology
+- Access patterns: curl · agent-browser (UI) · DB (read-only)
+- Dependency / fault surface · Environment generations · Expensive triggers & preconditions
+- Expected-behavior model (the assertion oracle) · Safety rules · Known issues · Return format
 
 ---
 
@@ -51,13 +61,13 @@ Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
 "cookie expired", never a false FAIL.
 
 ## agent-browser pattern (UI suites)
-`agent-browser <version>` on PATH. Drive the browser **only** through this CLI; every verdict
+`agent-browser <version>` on PATH. Drive the browser only through this CLI; every verdict
 comes from an assertion command with `--json` (`is visible`, `get text`, `get url`, `get count`,
 `eval`), never from eyeballing a snapshot. Screenshot failing checks into `$WORK/`.
 
 ⚠️ **Session isolation is mandatory** — UI suites run in parallel. Each suite exports
 `AGENT_BROWSER_SESSION=<suite id>` (e.g. `s3s4`) as its first command and closes only its own
-session at the end — **never** `agent-browser close --all`.
+session at the end — never `agent-browser close --all`.
 ```bash
 PW="$(cat "$WORK/<persona>.pass")"          # read into a var; never echo it
 agent-browser open <ui-base>/login
@@ -70,7 +80,7 @@ Stable UI hooks on the surface under test (prefer them over raw CSS):
 
 ## DB access (read-only SELECTs unless the safety rules clear a seed)
 Whichever of these the stack actually offers — a subagent has the same MCP tools as the main
-thread, so a DB reachable only through MCP is **not** a reason to skip the fan-out.
+thread, so a DB reachable only through MCP is not a reason to skip the fan-out.
 ```bash
 # shell client
 <e.g. docker exec -e PGPASSWORD=… <pg-container> psql -U … -d … -c "SQL">
@@ -111,7 +121,7 @@ thread, so a DB reachable only through MCP is **not** a reason to skip the fan-o
   effect | none>.
 
 ## Safety rules (non-negotiable)
-- NEVER perform an ALLOW mutation over HTTP/UI unless explicitly cleared below — it really
+- Never perform an ALLOW mutation over HTTP/UI unless explicitly cleared below — it really
   mutates. Test the matrix WITHOUT side effects:
   1. use a non-mutating probe (`<can/dry-run route>`) for the ALLOW side if one exists;
   2. exercise the real guard only with SAFE GETs (expect 200/403) and mutations you expect
@@ -128,8 +138,8 @@ thread, so a DB reachable only through MCP is **not** a reason to skip the fan-o
 ## Known issues already found (verify precisely if in your suite, don't blindly re-confirm)
 - <🔴 endpoint X returns 500 because …>  (or "none yet")
 
-## Return format (STRICT)
-Return ONLY a compact markdown table — one row per check —
+## Return format
+Return only a compact markdown table — one row per check —
 `| AC/ref | check | expected | actual | PASS/FAIL |` — then `NOTES:` up to 5 bullets.
 No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run.
 ```
