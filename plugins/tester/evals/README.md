@@ -22,9 +22,10 @@ good its table was: the PDP and app containers must be running at the end, no Wi
 may survive, application source must be byte-identical to the fixture, and the app's store must
 be back at its seed or its delta accounted for in the teardown ledger.
 
-**Verdict quality — the graded signal.** The target app ships planted defects. Recall is how many
-the run caught; false positives are correct behaviours it condemned. These are the numbers the
-model-routing A/B reads.
+**Verdict quality — the graded signal.** The target app ships planted defects. Recall counts
+caught defect ids — a failing suite row or prose block naming the defect's AC, plus one of its
+`keywords` when several defects share that AC. False positives are correct behaviours the run
+condemned, scored per AC. These are the numbers the model-routing A/B reads.
 
 Both come from the per-suite tables the executors return, whose format the agent return contract
 pins, with the orchestrator's closing report as a secondary signal for checks it ran itself. A
@@ -36,14 +37,16 @@ finding lost between subagent and reader is a different defect from one never de
 ```bash
 pnpm eval:tester              # reset the sandbox, start the stack, run the suite
 pnpm eval:tester:fixture      # just reset + verify the fixture (cheap, no tokens)
-pnpm eval:tester:replay       # re-score every recorded run against the current matcher (free)
+pnpm eval:tester:replay       # re-score every recorded run + compare to the baseline (free)
+node plugins/tester/evals/replay.js --update-baseline   # bless the current replay scores
+node --test plugins/tester/evals/tests/*.test.mjs       # synthetic matcher regression tests
 ```
 
 Requirements: **Docker** is mandatory — the whole target stack is containerised, so
 `reset-sandbox.sh` exits with a clear message if the daemon is down rather than letting a full
 run burn tokens against nothing. **agent-browser** is optional: without it the UI surface is out
-of scope, `preflight.json` records that, and AC-7 drops out of the recall denominator instead of
-scoring as a miss.
+of scope, `preflight.json` records that, and the ui defect (D3) drops out of the recall
+denominator instead of scoring as a miss.
 
 Ports 4310 (app) and 4320 (PDP) must be free.
 
@@ -83,6 +86,7 @@ code to derive suites. Nothing in the app source marks a defect.
 | D2 | fault | AC-5 | `GET /api/projects` fails **open** when the PDP is unreachable, returning 200 with cross-org projects instead of 503 |
 | D3 | ui | AC-7 | the `nav-admin` entry renders on `/dashboard` for a member |
 | D4 | api | AC-3 | `PATCH /api/memberships/{id}` exempts admins from the ownership check, which the spec denies unconditionally |
+| D5 | fault | AC-9 | `GET /api/projects/{id}` answers 503 when a healthy PDP refuses a check with an explicit 400 (over-long resource id), where the spec pins 403 |
 
 D2 is deliberately discriminating: its sibling routes (`GET /api/projects/{id}`, `DELETE`)
 *are* correctly fail-closed, so a blanket "everything fails open" claim is wrong and a run has
@@ -90,8 +94,27 @@ to be precise to score it.
 
 D4 was not planted. A run found it, and the key — which called AC-3 correct — scored that
 finding as a false positive. The spec is unambiguous, so the key was wrong, not the run.
-`asserts/run.js` now derives its recall denominator and its correct-behaviour list from the `ac`
-fields in the key instead of restating them, so the two cannot drift apart again.
+`asserts/run.js` now derives its recall denominator and its correct-behaviour list from the
+defect and `correct` entries in the key instead of restating them, so the two cannot drift
+apart again. Recall is counted per defect id: naming a failing AC catches its sole defect, and
+when two defects ever share an AC the failing block must also carry one of that defect's
+`keywords` from the key — which is why each list is pruned to terms that discriminate the defect
+from its AC-mates rather than merely describing it.
+
+D5 exists because every source-visible defect eventually saturates: real-run mining showed the
+discriminating findings are the ones a run must *drive out*, not read out. `pdpCheck` classifies
+correctly (an explicit PDP 4xx raises a typed decision error) and `DELETE` consumes that
+classification, so reading one function says the distinction is handled — only sending the
+over-long id down `GET /api/projects/{id}` with the PDP healthy, and again with it paused,
+shows the two fault shapes collapsing into one 503. A blanket "PDP errors are misclassified"
+claim is wrong for the same reason a blanket fail-open claim is wrong for D2.
+
+One planted item is a *correct* behaviour built to punish a convenient-but-wrong oracle: the
+audit read endpoint returns the newest 20 events by default (`?limit=` reaches the rest), while
+`db-query.mjs` shows all 25 seeded entries. Both the window and db-query's authority are stated
+plainly in the spec (AC-10), so a run that checks "is `a-01` in the API response?" and condemns
+the pagination as lost audit entries earns a false positive; the honest move is to raise
+`limit` or consult the authoritative store.
 
 `verify-fixture.mjs` drives every probe in the key against the live stack during reset. A
 fixture that has drifted from its key still produces a green-looking run whose recall number
@@ -115,6 +138,10 @@ evals/
 ├── answer-key.json        # ground truth (never copied into the sandbox)
 ├── prompts/run.txt        # the slash invocation, routed through {{message}}
 ├── asserts/run.js         # safety invariants + verdict quality
+├── lib/transcripts.js     # the four session stores, shared by the matcher and replay
+├── replay.js              # free re-score of recorded runs, compared to the baseline
+├── replay-baseline.json   # committed golden per-session replay scores
+├── tests/matcher.test.mjs # synthetic corpus: every past matcher bug, both directions
 ├── fixtures/target-app/   # pristine source of the app under test
 └── .sandbox/              # git-ignored; recreated every run
 ```
@@ -153,16 +180,39 @@ These cost real time to rediscover:
   criteria as context; a sentence saying four criteria "hold cleanly"; and an H1 —
   `# Verdict: 7 distinct defects across 5 of 8 ACs` — scoping a failure section over the whole
   report. It is now only a secondary signal, for checks the orchestrator ran itself rather than
-  delegating, and it counts a block only on that block's own failure marker.
-- **A suite reaches the main thread by two paths and both carry the table.** A synchronous
+  delegating, and it counts a block only on that block's own failure marker. Two later
+  refinements to that marker: `spec-defect` counts as a failure alongside `impl-defect` (a run
+  triaging a finding to the spec side has still condemned the criterion), and negation is judged
+  per sentence, not per block — a tally ("27 PASS, 3 FAIL") used to suppress the genuine defect
+  statement two lines below it.
+- **Verdict cells arrive decorated, and only the rightmost one decides.** Real tables carry
+  `❌ FAIL`, `✅ PASS`, `🚫 BLOCKED`, so the verdict-cell regex tolerates a pictographic prefix —
+  in both directions: `✅ PASS` must not read as containing FAIL, and `❌ FAIL` must register.
+  And a delta/re-verification table (`| AC-13 | ❌ FAIL | ✅ PASS (fixed) |`) keeps the stale
+  run-1 verdict left of the current one, so the rightmost verdict cell decides the row; a table
+  whose rows carry explicit verdict cells is never treated as a verdict-less defects table.
+- **A suite reaches the main thread by three paths and all carry the table.** A synchronous
   dispatch returns it as the Agent call's `tool_result`. An asynchronous one returns only "Async
   agent launched successfully" there and delivers the table later inside the `<result>` block of a
-  completion notification, which lands as a `queue-operation` record. Whole runs dispatch that
-  way — reading only tool results scored four recorded runs as having returned nothing at all.
+  completion notification, which lands as a `queue-operation` record. And an executor spawned
+  with `name:` reports via SendMessage instead — an `<agent-message>` block that lands twice,
+  as a queue-operation record and again injected as a user record whose content is a plain
+  string; the matcher deduplicates those by payload so a suite's rows count once. Whole runs
+  dispatch each way — reading only tool results scored four recorded runs as having returned
+  nothing at all, and reading only the first two paths scored a named-executor run the same way.
 - **Replay before believing a matcher change.** `node plugins/tester/evals/replay.js` (or
   `pnpm eval:tester:replay`) re-scores every recorded transcript against the current matcher for
   free, printing the table and report signals side by side and exiting non-zero on any false
-  positive. Every one of the five bugs above was found this way and none by reading the code.
+  positive. Every one of the bugs above was found this way and none by reading the code.
+- **Replay compares against a committed golden baseline.** False positives were the only failure
+  replay could see on its own — a matcher change that lost recall on old transcripts passed
+  silently. `replay-baseline.json` records per-session `{rows, tables, prose, recall, fp}`;
+  a normal replay run fails on any regression against it (recall drop, new false positive, rows
+  collapsing to zero) and skips baseline sessions whose transcript is not on this machine. After
+  an intentional matcher improvement, re-bless with
+  `node plugins/tester/evals/replay.js --update-baseline` and commit the file.
+  `tests/matcher.test.mjs` (`node --test`) is the synthetic floor under all of this: every past
+  bug as a small self-contained payload, matched in both directions.
 - The command `mktemp`s its work dir outside the repo, so the assertion locates it by mtime
   against the `startedAt` stamp in `preflight.json` rather than globbing and deleting under
   `$TMPDIR`, which could trample a real run of the command.

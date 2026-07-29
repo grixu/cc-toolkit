@@ -40,6 +40,12 @@ const server = http.createServer((req, res) => {
       res.writeHead(400, { 'content-type': 'application/json' });
       return res.end(JSON.stringify({ error: 'bad_request' }));
     }
+    // Protocol bound: a resource id past 64 word characters is refused outright, never evaluated.
+    const rid = parsed.resource?.id;
+    if (rid !== undefined && !/^[\w-]{1,64}$/.test(String(rid))) {
+      res.writeHead(400, { 'content-type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'invalid_resource_id' }));
+    }
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify(decide(parsed)));
   });

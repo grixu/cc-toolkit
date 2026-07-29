@@ -66,6 +66,9 @@ function membershipsOf(userId) {
   return store.memberships.filter((m) => m.userId === userId);
 }
 
+// The PDP answered and refused the check itself — an explicit decision, not an outage.
+class PdpDecisionError extends Error {}
+
 async function pdpCheck(user, action, resource) {
   const r = await fetch(`${PDP_BASE_URL}/check`, {
     method: 'POST',
@@ -73,6 +76,7 @@ async function pdpCheck(user, action, resource) {
     body: JSON.stringify({ user, action, resource }),
     signal: AbortSignal.timeout(2000),
   });
+  if (r.status >= 400 && r.status < 500) throw new PdpDecisionError(`pdp refused the check: ${r.status}`);
   if (!r.ok) throw new Error(`pdp status ${r.status}`);
   return r.json();
 }
@@ -125,18 +129,21 @@ route('GET', /^\/api\/projects\/([\w-]+)$/, async (req, res, [id]) => {
   const user = currentUser(req);
   if (!user) return err(res, 401, 'unauthenticated');
   const project = store.projects.find((p) => p.id === id);
-  if (!project) return err(res, 404, 'not_found');
 
   let decision;
   try {
     decision = await pdpCheck(user, 'project.read', {
-      orgId: project.orgId,
+      id,
+      orgId: project?.orgId,
       memberships: membershipsOf(user.id),
     });
   } catch {
     return err(res, 503, 'authorization_unavailable');
   }
-  if (!decision.allow) return err(res, 403, 'forbidden');
+  // Denials on unknown ids answer 404: an unauthorized caller learns nothing it could not
+  // learn from a well-formed miss.
+  if (!decision.allow) return err(res, project ? 403 : 404, project ? 'forbidden' : 'not_found');
+  if (!project) return err(res, 404, 'not_found');
   return ok(res, project);
 });
 
@@ -144,15 +151,16 @@ route('DELETE', /^\/api\/projects\/([\w-]+)$/, async (req, res, [id]) => {
   const user = currentUser(req);
   if (!user) return err(res, 401, 'unauthenticated');
   const idx = store.projects.findIndex((p) => p.id === id);
-  if (idx === -1) return err(res, 404, 'not_found');
 
   let decision;
   try {
-    decision = await pdpCheck(user, 'project.delete', { orgId: store.projects[idx].orgId });
-  } catch {
+    decision = await pdpCheck(user, 'project.delete', { id, orgId: store.projects[idx]?.orgId });
+  } catch (e) {
+    if (e instanceof PdpDecisionError) return err(res, 403, 'forbidden');
     return err(res, 503, 'authorization_unavailable');
   }
-  if (!decision.allow) return err(res, 403, 'forbidden');
+  if (!decision.allow) return err(res, idx === -1 ? 404 : 403, idx === -1 ? 'not_found' : 'forbidden');
+  if (idx === -1) return err(res, 404, 'not_found');
 
   const [removed] = store.projects.splice(idx, 1);
   persist();
@@ -182,7 +190,10 @@ route('GET', /^\/api\/admin\/audit$/, async (req, res) => {
   const user = currentUser(req);
   if (!user) return err(res, 401, 'unauthenticated');
   if (!user.role) return err(res, 403, 'forbidden');
-  return ok(res, store.auditEvents);
+  // A recent-activity window, not the ledger: the store keeps every event.
+  const n = Number(new URL(req.url, 'http://x').searchParams.get('limit'));
+  const limit = Number.isInteger(n) && n > 0 ? n : 20;
+  return ok(res, store.auditEvents.slice(-limit).reverse());
 });
 
 const page = (title, body) => `<!doctype html>

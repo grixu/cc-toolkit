@@ -119,16 +119,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - verdicts are read from the per-suite tables the executors return, whose format the agent
     return contract pins, rather than from the orchestrator's free-form closing report. The
     report had produced five distinct false-positive modes and is now only a secondary signal for
-    checks the main thread ran itself. Both delivery paths are parsed: a synchronous dispatch
-    returns the table as the Agent call's tool result, an asynchronous one delivers it inside the
-    `<result>` block of a completion notification, and reading only the former scored four
-    recorded runs as having returned nothing;
+    checks the main thread ran itself. All three delivery paths are parsed: a synchronous
+    dispatch returns the table as the Agent call's tool result, an asynchronous one delivers it
+    inside the `<result>` block of a completion notification, and an executor spawned with
+    `name:` reports via SendMessage as an `<agent-message>` block that lands both as a
+    queue-operation record and as an injected user record (deduplicated by payload). Reading only
+    the first path scored four recorded runs as having returned nothing, and reading only the
+    first two scored a whole named-executor run the same way;
+  - the matcher tolerates how real tables and reports are written: verdict cells arrive
+    emoji-prefixed (`❌ FAIL`, `✅ PASS`, `🚫 BLOCKED`) and only the rightmost verdict cell
+    decides a row, so a re-verification table's stale run-1 `❌ FAIL` beside `✅ PASS (fixed)`
+    no longer condemns the criterion; `spec-defect` counts as a failure marker alongside
+    `impl-defect`, since triaging a finding to the spec side still condemns that criterion; and
+    negation is judged per sentence rather than per block, so a tally ("27 PASS, 3 FAIL") no
+    longer suppresses the genuine defect statement beside it;
   - a criterion a run's own suites failed but its closing report does not is reported as an
     `AGGREGATION GAP` — a finding lost between subagent and reader is a different defect from one
     never detected;
   - `replay.js` (`pnpm eval:tester:replay`) re-scores every recorded transcript against the
-    current matcher for free and exits non-zero on any false positive. Every matcher bug so far
-    was found by replaying a real run and none by reading the code.
+    current matcher for free and exits non-zero on any false positive or any regression against
+    `replay-baseline.json` — the committed golden record of per-session scores
+    (`--update-baseline` blesses them after an intentional change; baseline sessions with no
+    local transcript are skipped silently). Without the baseline, a change that lost recall on
+    old transcripts passed silently. Every matcher bug so far was found by replaying a real run
+    and none by reading the code;
+  - `lib/transcripts.js` — the four session-store paths and their realpath deduplication, shared
+    by the matcher and replay so the corpus they see cannot drift apart;
+  - `tests/matcher.test.mjs` (`node --test`) — a synthetic corpus covering every past matcher
+    bug in both directions, with payloads synthesized rather than copied from real transcripts;
+  - the fixture is hardened against saturation in both directions, after mining real
+    `/tester:run` transcripts showed the four original defects were one-line and source-visible
+    while the genuinely discriminating findings were emergent or masked by a convenient oracle.
+    D5 (fault, AC-9) is a recall-discriminating error-classification defect:
+    `GET /api/projects/{id}` conflates a healthy PDP's explicit 400 (over-long resource id, the
+    protocol bound stated in the spec) with an outage and answers 503 where AC-9 pins 403 —
+    `pdpCheck` raises a typed decision error and `DELETE` consumes it correctly, so source-reading
+    one function misleads and only driving both fault shapes on the route exposes the collapse.
+    AC-10 is a precision-discriminating *correct* behaviour: the audit endpoint returns the
+    newest 20 of 25 seeded events by default with a working `?limit=`, both documented, with
+    `db-query.mjs` named authoritative — condemning the window as lost audit entries scores a
+    false positive;
+  - recall is scored per defect id instead of per AC: a defect is caught when a failing suite
+    row or prose block names its AC, and when several defects share an AC the block must also
+    carry one of that defect's `keywords` from the answer key — previously dead weight, now
+    load-bearing and pruned to discriminating terms. False positives stay AC-based on
+    fully-correct criteria, which is what the AC-10 trap feeds. `replay.js` prints caught defect
+    ids per signal, and the baseline is re-blessed under the enlarged key: the ten recorded
+    sessions keep identical caught sets and zero false positives, with the recall denominator
+    moving from 4 to 5.
 - `CLAUDE.md` — the plugin's prompt-layer conventions (vocabulary, emphasis, the
   same-context-only deduplication rule, and why the executors restate the command's hard rules).
 

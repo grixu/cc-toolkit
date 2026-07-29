@@ -12,6 +12,7 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { transcriptFiles } = require('../lib/transcripts.js');
 
 const EVALS_DIR = path.resolve(__dirname, '..');
 const SANDBOX = path.join(EVALS_DIR, '.sandbox');
@@ -21,6 +22,8 @@ const FIXTURE = path.join(EVALS_DIR, 'fixtures', 'target-app');
 // Derived from the answer key rather than restated here. Hardcoding the split let the two drift:
 // the fixture grew a fourth defect nobody planted (an admin carve-out in the ownership check),
 // the key did not know about it, and a run that correctly reported it was scored a false positive.
+// Recall is per defect id, not per AC: two defects on one criterion would otherwise count as one
+// catch, and the key's `keywords` disambiguate exactly that case.
 const KEY = JSON.parse(fs.readFileSync(path.join(EVALS_DIR, 'answer-key.json'), 'utf8'));
 const DEFECTS = KEY.defects;
 const ACS_WITH_DEFECT = [...new Set(DEFECTS.map((d) => d.ac))];
@@ -77,51 +80,24 @@ const readIf = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null);
 // Returns every top-level /tester:run session that began after this run started, newest-written
 // first. More than one means the shared stack was driven by two agents at once — see the caller.
 function sessionsForRun(startedAt) {
-  // Resolved and deduplicated: the per-instance store paths are symlinks into the shared one, so
-  // taking them at face value finds a single session three times and reads as three concurrent runs.
-  const stores = [...new Set(
-    [
-      path.join(os.homedir(), '.claude', 'projects'),
-      path.join(os.homedir(), '.ccs', 'instances', 'personal', 'projects'),
-      path.join(os.homedir(), '.ccs', 'instances', 'work', 'projects'),
-      path.join(os.homedir(), '.ccs', 'shared', 'context-groups', 'mg', 'projects'),
-    ].map((p) => {
-      try {
-        return fs.realpathSync(p);
-      } catch {
-        return p;
-      }
-    }),
-  )];
-  const encoded = APP.replace(/[^A-Za-z0-9]/g, '-');
   const found = [];
-  for (const store of stores) {
-    const dir = path.join(store, encoded);
-    let files;
+  for (const full of transcriptFiles(APP)) {
     try {
-      files = fs.readdirSync(dir).filter((f) => f.endsWith('.jsonl'));
+      // Bind by the session's OWN start timestamp, not the file's mtime: this directory
+      // accumulates a transcript per run, and an mtime-based pick lets a run that produced
+      // nothing score an earlier run's report as if it were its own.
+      const raw = fs.readFileSync(full, 'utf8');
+      const first = raw.split('\n').find((l) => l.trim());
+      if (!first) continue;
+      const startedIso = JSON.parse(first).timestamp;
+      const started = startedIso ? Date.parse(startedIso) / 1000 : null;
+      if (started === null || started < startedAt - 5) continue;
+      // Subagent sidecars do not land here, but require the slash invocation anyway so only
+      // genuine top-level runs are counted when deciding the stack was contended.
+      if (!raw.includes('<command-name>/tester:run</command-name>')) continue;
+      found.push({ full, started, mtimeMs: fs.statSync(full).mtimeMs });
     } catch {
-      continue;
-    }
-    for (const f of files) {
-      const full = path.join(dir, f);
-      try {
-        // Bind by the session's OWN start timestamp, not the file's mtime: this directory
-        // accumulates a transcript per run, and an mtime-based pick lets a run that produced
-        // nothing score an earlier run's report as if it were its own.
-        const raw = fs.readFileSync(full, 'utf8');
-        const first = raw.split('\n').find((l) => l.trim());
-        if (!first) continue;
-        const startedIso = JSON.parse(first).timestamp;
-        const started = startedIso ? Date.parse(startedIso) / 1000 : null;
-        if (started === null || started < startedAt - 5) continue;
-        // Subagent sidecars do not land here, but require the slash invocation anyway so only
-        // genuine top-level runs are counted when deciding the stack was contended.
-        if (!raw.includes('<command-name>/tester:run</command-name>')) continue;
-        found.push({ full, started, mtimeMs: fs.statSync(full).mtimeMs });
-      } catch {
-        /* unreadable or malformed — cannot be attributed to this run */
-      }
+      /* unreadable or malformed — cannot be attributed to this run */
     }
   }
   return found.sort((a, b) => b.mtimeMs - a.mtimeMs);
@@ -172,11 +148,14 @@ function usedTools(file) {
 // deterministically, where the orchestrator's closing report is free-form prose that has fooled
 // the matcher below five separate ways.
 //
-// A suite reaches the main thread by one of two paths and both must be read. A synchronous
+// A suite reaches the main thread by one of three paths and all must be read. A synchronous
 // dispatch puts the table in the Agent call's tool_result. An asynchronous one puts only a launch
 // acknowledgement there and delivers the table later, inside the `<result>` block of a completion
-// notification — which lands as a `queue-operation` record, not as a tool result. Reading only
-// tool results loses every backgrounded suite, and whole runs dispatch that way.
+// notification — which lands as a `queue-operation` record, not as a tool result. And an executor
+// spawned with `name:` reports back via SendMessage, which lands as an `<agent-message>` block —
+// in a queue-operation record and again injected as a plain user record whose content is a
+// string, not a block array. Reading only the first two paths scores a whole named-executor run
+// as "no suite tables".
 function suiteRows(file) {
   const records = [];
   for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
@@ -196,14 +175,26 @@ function suiteRows(file) {
   }
 
   const payloads = [];
+  // One SendMessage delivery is recorded twice — as a queue-operation record and again as the
+  // injected user record — so key these by payload text or every named executor's rows count
+  // double. The tag carries attributes (`<agent-message from="S5-enqueue">`), hence the [^>]*.
+  const AGENT_MESSAGE = /<agent-message\b[^>]*>([\s\S]*?)<\/agent-message>/g;
+  const agentMessages = new Set();
   for (const rec of records) {
     if (rec.type === 'queue-operation') {
-      for (const m of String(rec.content || '').matchAll(/<result>([\s\S]*?)<\/result>/g)) {
+      const content = String(rec.content || '');
+      for (const m of content.matchAll(/<result>([\s\S]*?)<\/result>/g)) {
         payloads.push(m[1]);
       }
+      for (const m of content.matchAll(AGENT_MESSAGE)) agentMessages.add(m[1]);
       continue;
     }
-    if (rec.type !== 'user' || !Array.isArray(rec.message?.content)) continue;
+    if (rec.type !== 'user') continue;
+    if (typeof rec.message?.content === 'string') {
+      for (const m of rec.message.content.matchAll(AGENT_MESSAGE)) agentMessages.add(m[1]);
+      continue;
+    }
+    if (!Array.isArray(rec.message?.content)) continue;
     for (const b of rec.message.content) {
       if (b.type !== 'tool_result' || !agentCalls.has(b.tool_use_id)) continue;
       payloads.push(
@@ -211,6 +202,7 @@ function suiteRows(file) {
       );
     }
   }
+  payloads.push(...agentMessages);
 
   const rows = [];
   for (const payload of payloads) {
@@ -222,21 +214,36 @@ function suiteRows(file) {
       if (!cells.length) continue;
       if (cells.every((c) => /^:?-+:?$/.test(c))) continue;
       if (cells.some((c) => /PASS\s*\/\s*FAIL/i.test(c))) continue; // the header names both
-      const verdictCell = [...cells].reverse().find((c) => VERDICT_CELL.test(c));
-      if (!verdictCell) continue;
+      const verdict = rowVerdict(line);
+      if (!verdict) continue;
       // The contract puts the criterion in the first column; fall back to the whole row for the
       // occasional check whose id sits elsewhere.
       const scope = /\bAC-\d+/.test(cells[0]) ? cells[0] : line;
       rows.push({
-        verdict: verdictCell.match(VERDICT_CELL)[1].toUpperCase(),
+        verdict,
         acs: [...new Set([...scope.matchAll(/\bAC-\d+\b/g)].map((m) => m[0]))],
+        text: line,
       });
     }
   }
   return rows;
 }
 
-const VERDICT_CELL = /^\**\s*(PASS|FAIL|FAILED|BLOCKED|ERROR|SKIP)\b/i;
+// Real verdict cells arrive decorated — `❌ FAIL`, `✅ PASS`, `🚫 BLOCKED`, `**FAIL**` — so
+// tolerate a prefix of emphasis, whitespace and pictographs before the word. The class is
+// deliberately that narrow: opening it to any non-letter would let `(failed handshake)` or a
+// backticked `/login?failed=1` start matching, which is the URL mistake in table form.
+const VERDICT_CELL =
+  /^[*\s\p{Extended_Pictographic}\u{FE0F}\u{200D}]*(PASS|FAIL|FAILED|BLOCKED|ERROR|SKIP)\b/iu;
+
+// The rightmost verdict cell decides the row. Two shapes force this: a cell citing the URL
+// `/login?failed=1` sits left of the real verdict, and a delta table's run-1-vs-run-2 columns
+// (`| AC-13 | ❌ FAIL | ✅ PASS (fixed) |`) carry a stale verdict left of the current one —
+// any-cell matching read both as FAIL rows.
+const rowVerdict = (row) => {
+  const cell = row.split('|').map((c) => c.trim()).reverse().find((c) => VERDICT_CELL.test(c));
+  return cell ? cell.match(VERDICT_CELL)[1].toUpperCase() : null;
+};
 
 const acsFailedInTables = (rows) => {
   const hit = new Set();
@@ -246,6 +253,32 @@ const acsFailedInTables = (rows) => {
   }
   return hit;
 };
+
+// The failing signals as blocks — text kept alongside the AC ids, because per-defect attribution
+// may need to search the block for a defect's keywords, not just match its criterion.
+const failingBlocksFromRows = (rows) =>
+  rows
+    .filter((r) => r.verdict === 'FAIL' || r.verdict === 'FAILED')
+    .map((r) => ({ text: r.text, acs: r.acs }));
+
+// A defect is caught when a failing block names its AC. When the AC is shared by several
+// defects, naming it no longer identifies one of them, so the block must also carry one of the
+// defect's keywords — which is why the key keeps those lists pruned to discriminating terms.
+// `defects` is injectable for the synthetic tests; real scoring always passes the key's list.
+function matchDefects(blocks, defects = DEFECTS) {
+  const caught = new Set();
+  for (const d of defects) {
+    const named = blocks.filter((b) => b.acs.includes(d.ac));
+    if (!named.length) continue;
+    if (defects.filter((x) => x.ac === d.ac).length === 1) {
+      caught.add(d.id);
+      continue;
+    }
+    const kws = (d.keywords || []).map((k) => k.toLowerCase());
+    if (named.some((b) => kws.some((k) => b.text.toLowerCase().includes(k)))) caught.add(d.id);
+  }
+  return caught;
+}
 
 function longestAssistantText(file) {
   let best = '';
@@ -273,13 +306,32 @@ function longestAssistantText(file) {
 const NEGATED =
   /did not score|not a (?:second )?(?:FAIL|anomaly)|no FAIL|never a FAIL|\d+\s*FAIL|hold(?:s)? cleanly|pass(?:es)? (?:in full|cleanly)/i;
 
-// A table row fails when its verdict CELL is FAIL, not merely when the row contains the letters
-// — a row citing the URL `/login?failed=1` is a PASS row.
-const rowIsFail = (row) =>
-  row.split('|').map((c) => c.trim()).some((c) => /^(FAIL|FAILED)$/i.test(c));
+// Negation is judged sentence by sentence, not block-wide: a paragraph tallying "3 FAILs" and
+// then stating a genuine defect used to be suppressed wholesale by the tally. A failure signal is
+// ruled out only when its own sentence carries the negation. A table row is already sentence-
+// sized, and a block whose failure verdict is not textual (a verdict-less defects-table row)
+// keeps the whole-text test — it has no marker sentence to anchor on.
+const negationSuppresses = (text, isRow) => {
+  if (isRow) return NEGATED.test(text);
+  const sentences = text.split('\n').flatMap((l) => l.split(/(?<=[.!?…])\s+/));
+  const marked = sentences.filter((s) => proseIsFail(s));
+  if (!marked.length) return NEGATED.test(text);
+  return marked.every((s) => NEGATED.test(s));
+};
 
-// Prose reports a defect through an explicit marker rather than the bare word.
-const proseIsFail = (text) => /🔴|impl-defect|fails\s+open|\bFAIL\b/.test(text);
+// A table row fails when its RIGHTMOST verdict cell is FAIL, not when any cell contains the
+// letters — a row citing the URL `/login?failed=1` is a PASS row, and a re-verification row's
+// run-1 column keeps a stale `❌ FAIL` to the left of the `✅ PASS (fixed)` that superseded it.
+const rowIsFail = (row) => {
+  const v = rowVerdict(row);
+  return v === 'FAIL' || v === 'FAILED';
+};
+
+// Prose reports a defect through an explicit marker rather than the bare word. `spec-defect`
+// counts exactly like `impl-defect`: a run triaging a finding to the spec side has still
+// condemned that criterion — the behaviour does not satisfy the AC as written, whichever
+// artifact turns out to be wrong.
+const proseIsFail = (text) => /🔴|impl-defect|spec-defect|fails\s+open|\bFAIL\b/.test(text);
 
 // An AC id inside a range ("AC-1…AC-8") names the span, not a failing criterion.
 const acMentioned = (block, ac) =>
@@ -291,7 +343,7 @@ const acMentioned = (block, ac) =>
 // made this matcher a liability — it swept in clean suite rows, sentences saying four criteria
 // "hold cleanly", and everything under a title reading "7 distinct defects across 5 of 8 ACs".
 // suiteRows() now covers the format that heuristic existed for, so it is gone.
-function acsMarkedFailed(report) {
+function markedFailedBlocks(report) {
   // A heading announcing product failures — but not one about the run's own mistakes, an
   // unexplored observation, or the ledger. A "test-defect I hit and corrected" section names the
   // criteria whose checks the run itself mis-built; counting those as product defects would punish
@@ -314,32 +366,40 @@ function acsMarkedFailed(report) {
     }
     const tableLines = para.split('\n').filter((l) => l.trim().startsWith('|'));
     // The one case a heading may still decide: a defects table with no verdict column, where
-    // membership in the table IS the verdict. Nothing else inherits.
+    // membership in the table IS the verdict. Nothing else inherits — and a table whose rows
+    // carry explicit verdict cells is never verdict-less, even when none of them says FAIL: a
+    // re-verification table ending all `✅ PASS (fixed)` under a "failed ACs" heading must not
+    // be condemned by membership.
     const verdictless =
-      tableLines.length && !tableLines.some((l) => rowIsFail(l) || DECLARES_VERDICTS.test(l));
+      tableLines.length && !tableLines.some((l) => rowVerdict(l) || DECLARES_VERDICTS.test(l));
     const byHeading = verdictless && isFailureHeading(heading);
     for (const row of tableLines) {
-      blocks.push({ text: row, failed: rowIsFail(row) || byHeading });
+      blocks.push({ text: row, failed: rowIsFail(row) || byHeading, row: true });
     }
     const prose = para.split('\n').filter((l) => !l.trim().startsWith('|')).join('\n');
     if (prose.trim()) blocks.push({ text: prose, failed: proseIsFail(prose) });
   }
-  const hit = new Set();
+  const out = [];
   const allAcs = [...ACS_WITH_DEFECT, ...ACS_FULLY_CORRECT];
-  for (const { text, failed } of blocks) {
-    if (!failed || NEGATED.test(text)) continue;
+  for (const { text, failed, row } of blocks) {
+    if (!failed || negationSuppresses(text, row)) continue;
     // A defect write-up names the criterion it is about in its lead-in and then cites others as
     // context — "the spec grants admins global reach everywhere else (AC-1, AC-2)" sits inside an
     // AC-3 finding. Attributing the failure to every id in the block condemned two criteria the
     // same report called passing. Blocks with no id in the lead-in fall back to naming them all.
     const lead = text.split('\n').find((l) => l.trim()) || '';
     const subjects = allAcs.filter((ac) => acMentioned(lead, ac));
-    for (const ac of subjects.length ? subjects : allAcs.filter((ac) => acMentioned(text, ac))) {
-      hit.add(ac);
-    }
+    const acs = subjects.length ? subjects : allAcs.filter((ac) => acMentioned(text, ac));
+    if (acs.length) out.push({ text, acs });
   }
-  return hit;
+  return out;
 }
+
+const acsMarkedFailed = (report) => {
+  const hit = new Set();
+  for (const b of markedFailedBlocks(report)) for (const ac of b.acs) hit.add(ac);
+  return hit;
+};
 
 module.exports = async (output) => {
   const safety = [];
@@ -459,11 +519,13 @@ module.exports = async (output) => {
       : 'no suite tables in the transcript — scored from the closing report alone',
   );
   const dropped = [...tableAcs].filter((ac) => !proseAcs.has(ac));
-  const expectedDefects = [
-    ...new Set(DEFECTS.filter((d) => uiInScope || d.surface !== 'ui').map((d) => d.ac)),
-  ];
-  const caught = expectedDefects.filter((ac) => failedAcs.has(ac));
-  const missed = expectedDefects.filter((ac) => !failedAcs.has(ac));
+  // Recall counts defect ids, not criteria: pooling both signals' failing blocks lets a defect
+  // be caught by either, while a shared-AC defect still has to be named by its own keywords.
+  const expectedDefects = DEFECTS.filter((d) => uiInScope || d.surface !== 'ui');
+  const caughtIds = matchDefects([...failingBlocksFromRows(rows), ...markedFailedBlocks(report)]);
+  const caught = expectedDefects.filter((d) => caughtIds.has(d.id)).map((d) => d.id);
+  const missed = expectedDefects.filter((d) => !caughtIds.has(d.id)).map((d) => d.id);
+  // False positives stay AC-based: a fully-correct criterion condemned by any failing signal.
   const falsePositives = ACS_FULLY_CORRECT.filter((ac) => failedAcs.has(ac));
 
   if (!uiInScope) notes.push('agent-browser absent: the ui-surface defects are excluded from recall');
@@ -511,13 +573,20 @@ module.exports = async (output) => {
 };
 
 // Exposed so a past run's report can be re-scored offline, which is the only way this matcher has
-// ever been debugged. It has been wrong in five separate ways — a URL containing "failed", an AC
-// id inside a range, a report format with no verdict column, a defect write-up citing other
-// criteria as context, and an H1 title announcing defects that swallowed the whole report — and
-// each was found by replaying real transcripts, never by reasoning about the code. Replay all of
-// them after any change here.
+// ever been debugged. It has been wrong ten separate ways. Five in the prose signal — a URL
+// containing "failed", an AC id inside a range, a report format with no verdict column, a defect
+// write-up citing other criteria as context, and an H1 title announcing defects that swallowed
+// the whole report. Five more since — a named executor's tables arriving as `<agent-message>`
+// records, emoji-prefixed verdict cells, a delta table's stale run-1 verdict, `spec-defect`
+// triage not counting as a failure, and a tally suppressing the defect sentence beside it. Every
+// one was found by replaying real transcripts, never by reasoning about the code. Replay after
+// any change here (`node evals/replay.js` compares against replay-baseline.json), and keep
+// tests/matcher.test.mjs covering each mode in both directions.
 module.exports.acsMarkedFailed = acsMarkedFailed;
 module.exports.acsFailedInTables = acsFailedInTables;
 module.exports.suiteRows = suiteRows;
-module.exports.ACS_WITH_DEFECT = ACS_WITH_DEFECT;
+module.exports.markedFailedBlocks = markedFailedBlocks;
+module.exports.failingBlocksFromRows = failingBlocksFromRows;
+module.exports.matchDefects = matchDefects;
+module.exports.DEFECTS = DEFECTS;
 module.exports.ACS_FULLY_CORRECT = ACS_FULLY_CORRECT;

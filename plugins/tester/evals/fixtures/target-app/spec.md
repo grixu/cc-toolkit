@@ -19,6 +19,10 @@ Base path `/api`. Every response is enveloped as `{"ok": true, "data": …}` on 
 `{"ok": false, "error": "<code>"}` on failure. Sessions are carried by the `tsid` cookie.
 The current-user route is `GET /api/user`.
 
+Resource ids are 1 to 64 characters drawn from `[A-Za-z0-9_-]`. The PDP refuses to evaluate a
+check that carries a longer id, answering 400 `invalid_resource_id` — an explicit answer from a
+healthy PDP, not an outage.
+
 ## Acceptance criteria
 
 **AC-1 — project list is org-scoped.** `GET /api/projects` returns exactly the projects the
@@ -35,7 +39,7 @@ organisation which previously returned 403 for the caller returns 200. Patching 
 belonging to another user is denied with 403; patching one that is not `pending` returns 409;
 an unsupported status returns 422.
 
-**AC-4 — the audit log is admin-only.** `GET /api/admin/audit` returns 200 with the audit
+**AC-4 — the audit log is admin-only.** `GET /api/admin/audit` returns 200 with audit
 events for an `admin`, and is denied with 403 for a `member`.
 
 **AC-5 — authorization failures are fail-closed.** When the PDP cannot be reached, every
@@ -46,6 +50,19 @@ This applies to reads and writes alike, including `GET /api/projects`.
 **AC-6 — unauthenticated access is rejected.** Any guarded route called without a valid
 session returns 401 with error `unauthenticated`, and does so regardless of whether the PDP
 is reachable.
+
+**AC-9 — PDP errors are classified, not collapsed.** A reachable PDP that answers a check
+with an explicit error — 400 `invalid_resource_id` for an over-long resource id — has made a
+decision: the route denies with 403 `forbidden`. Only a PDP that cannot be reached at all
+(connection failure, timeout, 5xx) is an outage, answered with 503 `authorization_unavailable`
+per AC-5. The two shapes must not collapse into one on any route that forwards a resource id
+(`GET`/`DELETE /api/projects/{id}`).
+
+**AC-10 — the audit read window.** `GET /api/admin/audit` returns the most recent audit
+events, newest first, windowed to `?limit=` (default 20). The window is a presentation
+default, not a completeness guarantee: raising `limit` returns older entries, and the store —
+read with `db-query.mjs auditEvents` — is the authoritative full log. An entry outside the
+default window has not been lost.
 
 ## UI acceptance criteria
 
@@ -65,4 +82,5 @@ establishes no session.
 | Unknown resource id | 404 | `not_found` |
 | Membership transition from a non-`pending` state | 409 | `not_pending` |
 | Unsupported membership status | 422 | `unsupported_status` |
+| PDP reachable but refuses the check (explicit 4xx) | 403 | `forbidden` |
 | PDP unreachable | 503 | `authorization_unavailable` |

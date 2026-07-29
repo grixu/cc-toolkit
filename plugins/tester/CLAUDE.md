@@ -96,19 +96,27 @@ then prices the run at Opus 4.5 rates, so its `costUSD` is a fallback estimate a
 third of what the same usage costs at Opus rates. The token columns come from the API and are the
 only spend figures here worth quoting.
 
-Read that as no regression in a single run, not as confirmation. Both variants saturate the
-metric at 1.0, so this fixture cannot discriminate between model tiers — it can only catch a
-downgrade bad enough to lose a defect or invent one. The sonnet executors returned well-formed
-tables under the assertion contract, and both variants' standout extra findings came from the
-main thread and the fault suite, which are the session model in both arms.
+Read that as no regression in a single run, not as confirmation. Both variants saturated the
+metric at 1.0 — every defect then planted was one-line and source-visible, so the fixture could
+only catch a downgrade bad enough to lose a defect or invent one. The sonnet executors returned
+well-formed tables under the assertion contract, and both variants' standout extra findings came
+from the main thread and the fault suite, which are the session model in both arms.
 
-Before changing this, make the fixture harder rather than running more replicates: replicates of
-a saturated metric buy nothing.
+The fixture has since been hardened in both directions rather than re-run: D5 is a
+recall-discriminating defect (a PDP-error misclassification that only shows when a run drives
+both fault shapes on one route and compares — the shape real runs actually miss), and AC-10 is a
+precision-discriminating correct behaviour (a documented audit read window whose convenient
+API-only check looks like lost data; condemning it is a false positive). Recall is scored per
+defect id against the enlarged key, so the runs in the table above now replay as 4/5. Whether
+the new items separate model tiers is a hypothesis until a paid run lands on this fixture — no
+run has been scored against D5 or the AC-10 trap yet. Replicates of a saturated metric still buy
+nothing; if the next A/B saturates again, harden further before rerunning.
 
 ## Evals
 
 `evals/` is a promptfoo suite that runs `/tester:run` against a purpose-built two-container app
-with three planted defects; see `evals/README.md`. It is dev tooling, not shipped runtime.
+with five planted defects and one oracle-trap correct behaviour; see `evals/README.md`. It is
+dev tooling, not shipped runtime.
 
 ```bash
 pnpm eval:tester            # full run (needs Docker; agent-browser optional)
