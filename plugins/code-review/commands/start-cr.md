@@ -414,11 +414,18 @@ nits-only and every comment is KEEP. Match the report to what you found: neither
 a clean one to look thorough, nor collapse one carrying a medium-or-higher finding or
 a REMOVE/REWRITE/MOVE/ADD to look clean.
 
+**`Tally` ends the report text, not the turn.** Go straight into Step 6's
+`AskUserQuestion` — same turn, no pause, nothing between it and the tally. A turn that
+ends on the report leaves the run stalled with the findings unactionable until the user
+prods it, and the report then costs a second render to get back on screen. The closure
+cues above (`closes with Tally`, `the skeleton is the whole report`) bound the report's
+*shape*; they do not license ending the turn.
+
 ## Step 6 — Apply menu (single AskUserQuestion, multiSelect; never edit during review)
 
-Never edit during the review. After the report, use **one** `AskUserQuestion`
-(`multiSelect: true`) with categories cut **by risk, not by origin**. Only offer a
-category when you actually have findings that fall into it. **`AskUserQuestion`
+Never edit during the review. Immediately after the report, in the **same turn**, use
+**one** `AskUserQuestion` (`multiSelect: true`) with categories cut **by risk, not by
+origin**. Only offer a category when you actually have findings that fall into it. **`AskUserQuestion`
 accepts at most four options** — the four canonical risk buckets below are the whole
 menu; never add a fifth. `Report only` is always offered:
 
@@ -526,5 +533,6 @@ The review you render is the Step 5 skeleton, nothing else: a `**Conventions:**`
 and a `**Headline:**` line first, `###` headers that are **file paths** (never
 "Findings" or "Finding 1"), one markdown bullet per finding or verdict, then
 `Not flagged`, `Boy-scout`, and `Tally`. No fenced code blocks anywhere in the report:
-every fix is a clause naming a symbol or a move.
+every fix is a clause naming a symbol or a move. The tally ends the report, and the
+Step 6 `AskUserQuestion` follows it in the same turn — never end the turn on the report.
 </report_shape_reminder>

@@ -185,8 +185,10 @@ A filled-in report reads like this:
 
 ## Step 5 — Offer to apply (only on confirmation)
 
-Never edit during the review. After presenting the report, ask whether to apply
-the REMOVE, REWRITE, and MOVE fixes. Apply with `Edit` only the ones the user
+Never edit during the review. Immediately after presenting the report, in the **same
+turn**, ask whether to apply the REMOVE, REWRITE, and MOVE fixes — the tally ends the
+report, not the turn, and a turn that ends on the report leaves the verdicts
+unactionable until the user prods it. Apply with `Edit` only the ones the user
 confirms; leave **ADD** (missing-WHY) suggestions for the author to write, since
 only they know the real reason. Locate each site by its **content** rather than the
 line number you recorded, and apply the already-scrubbed replacement text from the

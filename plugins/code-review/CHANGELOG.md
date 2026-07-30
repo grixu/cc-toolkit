@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The apply menu no longer gets stranded behind the end of a turn.** In a real run
+  the Orchestrator rendered the whole Step 5 report and ended its turn (`end_turn`,
+  14k output tokens) without the Step 6 `AskUserQuestion`, so the review sat idle with
+  its findings unactionable until the user prodded it — and the report then cost a
+  second full render to come back on screen. Step 5's closure cues (`closes with
+  Tally`, `the skeleton is the whole report`) bounded the report's shape and read as
+  permission to stop; nothing said the menu belongs in the same turn. Step 5, Step 6,
+  and the `<report_shape_reminder>` now say so, with parity in `quality-review`
+  (Step 4) and `comment-review` (Step 5).
+
 ## [0.2.0] - 2026-07-27
 
 Prompt-surface pass against the published guidance for Claude Opus 5, the general

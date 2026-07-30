@@ -277,10 +277,10 @@ collapse one carrying a medium-or-higher finding to look clean.
 
 ## Step 4 — Follow up with the user (AskUserQuestion)
 
-Never edit during the review. After the report, **use the `AskUserQuestion`
-tool** to ask how to proceed — a concrete menu gets a faster, cleaner decision than
-an open-ended "want me to apply these?". Offer the choices that actually apply to
-this review, for example:
+Never edit during the review. Immediately after the report, in the **same turn**,
+**use the `AskUserQuestion` tool** to ask how to proceed — a concrete menu gets a
+faster, cleaner decision than an open-ended "want me to apply these?". Offer the
+choices that actually apply to this review, for example:
 
 - **Apply the safe fixes** — local, mechanical, easy to eyeball: `openness` blank
   lines, `explaining-variable` locals, `magic-literal` constants, `role-name`
@@ -316,5 +316,6 @@ Your deliverable is the Step 3 skeleton, nothing else: a `**Conventions:**` line
 "Finding 1"), one markdown bullet per finding in the
 `` `family` · rule severity · L<lines> — loss → fix `` shape, then `Not flagged`, then
 `Tally`. No fenced code blocks anywhere in the report: every fix is a clause naming a
-symbol or a move.
+symbol or a move. The tally ends the report, and the Step 4 `AskUserQuestion` follows it
+in the same turn — never end the turn on the report.
 </report_shape_reminder>
