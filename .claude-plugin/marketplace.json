@@ -151,6 +151,21 @@
         "citations",
         "workflow"
       ]
+    },
+    {
+      "name": "fd3",
+      "source": "./plugins/fd3",
+      "description": "TBD",
+      "version": "0.1.0",
+      "author": {
+        "name": "Mateusz Gostański (grixu)",
+        "email": "mateusz.gostanski@gmail.com"
+      },
+      "category": "productivity",
+      "tags": [
+        "spec-driven-development",
+        "spec"
+      ]
     }
   ]
 }

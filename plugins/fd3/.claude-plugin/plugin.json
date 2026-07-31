@@ -1,0 +1,14 @@
+{
+  "name": "fd3",
+  "version": "0.1.0",
+  "description": "TBD",
+  "author": {
+    "name": "grixu",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "spec-driven-development",
+    "spec"
+  ]
+}
