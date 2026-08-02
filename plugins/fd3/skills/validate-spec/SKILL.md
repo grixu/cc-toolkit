@@ -134,11 +134,12 @@ Tell each agent what it needs to work in the tree you are sending it to: the rep
 working tree is dirty, and which search tools function there. An agent that has to discover its own
 constraints spends its budget on that instead of on your question.
 
-Never pass `name:` when dispatching a sub-agent. An unnamed one delivers its whole report in the task
-notification; a named one only answers a later pull, and may deliver nothing at all. Dispatch at most one
-agent per section, or one per repository when the claims are all reference checks in the same tree — never
-one per claim. A repository here means one tree with one root, so two disjoint subtrees of a monorepo that
-the spec treats as separate components may take one agent each.
+Dispatch at most one agent per section, or one per repository when the claims are all reference checks in
+the same tree — never one per claim. A repository here means one tree with one root, so two disjoint
+subtrees of a monorepo that the spec treats as separate components may take one agent each. An agent may
+fan its own workload out further — that is its call, not a violation. Two constraints travel down with
+it: every sub-agent gets the same tree context you gave its parent, and no agent is ever dispatched with
+a `name:` — a named agent delivers its result only when pulled, and pulls get forgotten.
 
 **A sub-agent returns observations, not findings.** Resolve every identifier it reasoned about — a team
 alias, an account, a role, a project, a version — before you record its conclusion. A report that a
