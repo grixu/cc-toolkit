@@ -55,6 +55,11 @@ names and resolve each to a local path. Ask the user for the ones you cannot fin
 about their machine, not a fact you can look up. A repository still unresolved goes into "Not
 validated" in the report; never report its files as missing.
 
+Then bring every resolved repository up to date: `git fetch`, and check whether the local tree is
+behind the branch the spec describes. A clone a day behind produces false citation drift, and
+"correcting" the spec against it rewrites a correct document backwards. Record the commit each
+repository is checked against, and put that commit in every dispatch prompt that targets it.
+
 ### 1. Enumerate
 
 Read the spec in full and record, in this order:
