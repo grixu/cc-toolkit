@@ -69,6 +69,11 @@ the skills and the template, and when they and this file disagree, the skills an
   its repository mergeable. **One task = one branch = one worktree = one pull request** — an
   identity `split-to-tasks` enforces, not a guideline. A repository always cuts, even under a single
   owner; inside a monorepo, ownership (one review-and-apply owner per subtree) cuts.
+- **Operational task** — the sanctioned exception to that identity: hand-run work against the live
+  system (`gcloud`, a console) with no pull request, existing because a spec gate needs an owner
+  and no repository carries it. Frontmatter: `repository: none`, `branch` empty; body closes with
+  a `## Note` saying why. The frontmatter stays machine-readable — prose in those fields breaks
+  whatever parses them.
 - **Index card rule** — a task file carries pointers (element codes, section headings), never
   copies of spec content. The spec stays the single source of truth; with hashing rejected, a
   copied contract that rots is undetectable.
