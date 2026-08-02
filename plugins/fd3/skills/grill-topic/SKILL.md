@@ -1,6 +1,6 @@
 ---
 name: grill-topic
-description: Grill the user relentlessly about a given topic, decision, plan or idea - round by round. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
+description: Grill the user relentlessly about a topic until its design tree is settled. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
 argument-hint: "<topic, plan, decision or idea to grill>"
 ---
 

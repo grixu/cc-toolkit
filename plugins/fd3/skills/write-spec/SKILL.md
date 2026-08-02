@@ -1,6 +1,6 @@
 ---
 name: write-spec
-description: Write a specification from a design understanding that is already settled — decisions, elements, rollout, verification and an evidence appendix, against the fd3 spec template. Use after a grilling session reaches confirmed shared understanding, or when the user wants a settled design written up as a SPEC.
+description: Write a specification from a design understanding that is already settled. Use after a grilling session reaches confirmed shared understanding, or when the user wants a settled design written up as a SPEC.
 argument-hint: "[<path to write the spec to>]"
 ---
 

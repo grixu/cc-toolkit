@@ -1,6 +1,6 @@
 ---
 name: split-to-tasks
-description: Split a spec into task files — one task per branch, worktree and pull request, cut along repository and ownership boundaries, sized for review, ordered by rollout phase and dependency. Use when the user wants a SPEC divided into implementable tasks.
+description: Split a spec into task files — one task per branch, worktree and pull request. Use when the user wants a SPEC divided into implementable tasks.
 argument-hint: "<path to the spec file>"
 ---
 

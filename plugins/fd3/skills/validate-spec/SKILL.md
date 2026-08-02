@@ -1,6 +1,6 @@
 ---
 name: validate-spec
-description: Validate a spec for implementation readiness — contradicting decisions, scope that misses a decision, unconfirmed external contracts, stale code references, vague criteria, missing build order — and back every load-bearing claim with recorded evidence. Use when the user wants a SPEC, PRD or design document checked before implementation or before splitting it into tasks.
+description: Validate a spec for implementation readiness, backing every load-bearing claim with recorded evidence. Use when the user wants a SPEC, PRD or design document checked before implementation or before splitting it into tasks.
 argument-hint: "<path to the spec file>"
 ---
 
