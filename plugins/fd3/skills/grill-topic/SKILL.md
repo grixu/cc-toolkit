@@ -24,7 +24,7 @@ Each round the user answers reshapes the tree — settled decisions push the fro
 
 Number every question, and give each one **named options with a marked recommendation**: two or three alternatives that are actually live, each with the cost of choosing it, and one marked as your recommendation. The recommendation is the point — an even-handed menu makes the user do the comparison you were meant to do. Where one decision has parts that cannot be settled separately, sub-letter them (`4a`, `4b`, `4c`) rather than splitting them across rounds or collapsing them into one question.
 
-Never bury a question in the tail of another one. Every question a user is meant to answer carries its own number.
+Every question a user is meant to answer carries its own number — none arrives buried in the tail of another.
 
 Track which numbered questions came back answered. A question the user skipped is still open: re-put it in the next round, labelled as carried over. Silence is not assent.
 
