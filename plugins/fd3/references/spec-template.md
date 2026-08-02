@@ -1,7 +1,7 @@
 # Spec template
 
 The shape a spec needs to be implementable, or splittable into tasks, without a second conversation.
-`validate-spec` reads this file to decide what a section is missing; `build-spec` writes against it.
+`validate-spec` reads this file to decide what a section is missing; `write-spec` writes against it.
 
 Sections are ordered as a reader needs them, not as they are written. Drop a section the subject
 genuinely has no instance of, and say in one line that it has none — a silently absent section reads
@@ -21,7 +21,9 @@ the same as a forgotten one. Everything below is prose and tables; there is no s
 - [10. Out of scope](#10-out-of-scope)
 - [11. Tickets](#11-tickets)
 - [12. Appendix — the evidence record](#12-appendix--the-evidence-record)
-- [Rules that hold everywhere](#rules-that-hold-everywhere)
+
+The invariants that hold in every section — declared gaps, vague verbs, citations, element codes —
+live in `spec-rules.md`, beside this file. Read it alongside this one.
 
 ## 1. Header and precedence
 
@@ -178,21 +180,3 @@ A table. This is the spec's proof of work, and it is what a validation pass spot
 A claim that rests on inference says so — "no documentation states the negative explicitly; treat as
 strong inference, confirmed empirically at stage before prod" is honest and actionable. Softening it
 into a confirmation is the one thing this table exists to prevent.
-
-## Rules that hold everywhere
-
-- **A declared gap passes; an undeclared one does not.** Anything the spec cannot settle is fine if
-  the spec says so and names an owner and a placement. The spec's own team is the default owner, so
-  an owner needs naming only when it is somebody else. A placement has to be specific enough to act
-  on.
-- **No vague verb carries a claim.** "Handles", "supports", "properly", "as needed", "where
-  appropriate" — each hides the decision a reader needs.
-- **No undecided either/or.** "Redis or Postgres", "sync or async" with no decision recorded is a
-  question wearing a statement's clothes. A choice consciously handed to a named owner is deferred,
-  which is different.
-- **Every citation resolves.** A `path:line` that no longer points at what the spec says it does is
-  worse than no citation, because it reads as verified.
-- **Elements are cited by code.** `API-2` names the same element for as long as the spec lives;
-  "the second endpoint" and "section 4.2" both break the first time the document is reorganised.
-- **Every referenced document is named precisely enough to open.** "The ADRs from last month" is not
-  a reference.

@@ -4,9 +4,12 @@ description: Write a specification from a design understanding that is already s
 argument-hint: "[<path to write the spec to>]"
 ---
 
-The shape to write against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`. Read it before
-writing anything. It defines the sections, and it is the same file `fd3:validate-spec` measures a spec
-against — a section it names and you omit is a finding waiting to happen.
+Where to write the spec: **$ARGUMENTS**
+
+The shape to write against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and the
+invariants that hold in every section are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
+Read both before writing anything. They are the same two files `fd3:validate-spec` measures a spec
+against — a section they name and you omit is a finding waiting to happen.
 
 ## Precondition
 
@@ -65,13 +68,9 @@ worth more than any prose you could write instead. Two rules:
 
 ## 4. Declared gaps
 
-Anything the session could not settle is fine in the document, on one condition: the spec says so and
-names both an **owner** and a **placement** — a gate, a ticket number, or the verification substitute
-that stands in for a test. The team writing the spec is the default owner, so an owner needs naming
-only when it is somebody else. A placement has to be specific enough to act on.
-
-A spec that documents its own gaps is the well-written one. A gap left as confident prose is the
-failure this whole section exists to prevent.
+Anything the session could not settle goes into the document as a **declared gap**, on the terms
+`spec-rules.md` sets. A gap left as confident prose is the failure this whole section exists to
+prevent.
 
 ## 5. Length and tone
 

@@ -20,9 +20,8 @@ load-bearing claim is verified or deferred to a named owner, and no check in ste
 
 - **Claim** — anything the spec asserts that must hold for it to be implementable: a design decision, a
   prerequisite, a stated fact, a judgement that some permission or code path is unused.
-- **Element** — anything the spec says will be built: an endpoint, a table, a module, a job, an
-  infrastructure resource. An element is cited by its **element code** (`DB-1`, `API-2`) — the
-  write-once identifier the spec assigns where the element is defined.
+- **Element** — anything the spec says will be built, cited by its **element code** (`DB-1`, `API-2`).
+  The template defines both.
 - **Section** — one numbered section of the spec. Evidence is grouped by section, never per claim.
 - A claim is `verified`, `deferred`, `open` or `blocked`:
   - `verified` — the evidence holds.
@@ -30,9 +29,10 @@ load-bearing claim is verified or deferred to a named owner, and no check in ste
   - `blocked` — nothing settles it and the spec names no owner and no placement.
   - `open` — not yet settled during this run.
 
-The shape a spec is measured against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`. Read
-it before step 2 — checks 3, 7, 10 and 11 are section-level questions and that file is what says
-which sections a spec of this kind needs.
+The shape a spec is measured against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and
+the invariants it is measured against are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
+Read both before step 2 — checks 3, 7, 10 and 11 are section-level questions the template answers, and
+checks 1, 6 and 12 are rules the other file states.
 
 ## Workflow
 
@@ -74,14 +74,9 @@ supersedes is context, not an authority: read it to detect silent reversals, nev
 
 ### 2. Spec-level checks
 
-Every check below passes in two ways: the spec supplies the fact, or the spec declares the gap and names
-both an **owner** and a **placement** — the gate it blocks, the ticket it moves to, or the verification
-substitute that stands in for a test. A gap declared without one of those two is the finding. A spec that
-documents its own gaps is the well-written one; never report a gap the spec already owns and places.
-
-The spec's own team is the default owner — an owner needs naming only when it is somebody else. A placement
-has to be specific enough to act on: a gate, a ticket number, or a substitute with its trigger. "Gets its
-own ticket" with no number, or "the pending pull request" with nothing that identifies it, is a finding.
+Every check below passes in two ways: the spec supplies the fact, or the spec declares the gap on the
+terms `spec-rules.md` sets. A gap declared without an owner and a placement is the finding; a gap the spec
+already owns and places is a pass.
 
 Run these once over the enumeration from step 1 — they are properties of the whole document. Each yields a
 pass or a finding that names the spec section it came from, and **every one of the twelve gets a row in the
@@ -105,9 +100,7 @@ report**, whether it passed or not.
 9. The spec is achievable in this project — its stack, its architecture, its conventions.
 10. The spec is splittable into tasks: no gap or unstated assumption visible at spec level.
 11. Every element has a stated way to check the delivered result.
-12. No claim rests on a vague verb or an undecided either/or. Vague: "handles", "supports", "properly", "as
-    needed", "where appropriate". Undecided: "Redis or Postgres", "sync or async" with no decision recorded.
-    A decision consciously handed to a named owner is deferred, not undecided.
+12. No claim rests on a vague verb or an undecided either/or, as `spec-rules.md` defines them.
 
 ### 3. Evidence
 
