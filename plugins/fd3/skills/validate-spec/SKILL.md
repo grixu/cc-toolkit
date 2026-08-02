@@ -21,7 +21,8 @@ load-bearing claim is verified or deferred to a named owner, and no check in ste
 - **Claim** — anything the spec asserts that must hold for it to be implementable: a design decision, a
   prerequisite, a stated fact, a judgement that some permission or code path is unused.
 - **Element** — anything the spec says will be built: an endpoint, a table, a module, a job, an
-  infrastructure resource.
+  infrastructure resource. An element is cited by its **element code** (`DB-1`, `API-2`) — the
+  write-once identifier the spec assigns where the element is defined.
 - **Section** — one numbered section of the spec. Evidence is grouped by section, never per claim.
 - A claim is `verified`, `deferred`, `open` or `blocked`:
   - `verified` — the evidence holds.
@@ -89,7 +90,7 @@ report**, whether it passed or not.
    the spec puts out of scope is exempt from this — instead, each out-of-scope item names its owner and its
    placement. Check every out-of-scope item against the rest of the document: an item whose body describes
    work the spec actually does is in scope, and the contradiction is the finding.
-3. Every element has a description, a schema or pseudocode.
+3. Every element has a description, a schema or pseudocode, and carries its element code.
 4. Every dependency exists already, is planned in the spec, or is deferred with an owner and a gate.
 5. Every external contract — third-party API, SDK, protocol — is confirmed against its documentation, or
    names the substitute that stands in where the documentation is silent.
@@ -194,7 +195,7 @@ names no owner. A `blocked` claim goes into the report; do not put it to the use
 | # | Check | Result |
 |---|---|---|
 | 1 | decisions do not contradict | pass |
-| 2 | scope covers every decision | §10 — <the finding> |
+| 2 | scope covers every decision | section 10 — <the finding> |
 
 ## Blocking findings
 - <finding> — <spec section> — <what would close it>
@@ -217,11 +218,14 @@ names no owner. A `blocked` claim goes into the report; do not put it to the use
 ## Claim status
 | Section | Verified | Deferred | Open | Blocked |
 |---|---|---|---|---|
-| §5.1 | 11 | 0 | 0 | 0 |
+| 5.1 | 11 | 0 | 0 | 0 |
 
 ## Spec edits applied
 - <section> — <what changed, and which finding forced it>
 ```
+
+A finding about an element cites the element's code; a finding about the document anchors to a
+section written as "section N" — never the `§` symbol.
 
 A finding you found and closed in this same run belongs under **Closed during this run**, not deleted: the
 phase table then reads `yes`, and the record still shows the spec was not implementable as written. Only
