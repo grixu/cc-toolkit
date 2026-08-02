@@ -35,7 +35,8 @@ and ask — once — whether to validate first or split as-is.
 
 ## Workflow
 
-Copy this checklist into your first message and check items off as you go:
+Post this checklist before your first tool call, and post it again with the marks updated each time
+a step completes — it is how the user sees progress:
 
 ```
 - [ ] 1. Enumerate: work items, element codes, phases, ownership, tickets
