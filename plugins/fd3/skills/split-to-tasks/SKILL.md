@@ -1,5 +1,5 @@
 ---
-name: to-tasks
+name: split-to-tasks
 description: Split a spec into task files — one task per branch, worktree and pull request, cut along repository and ownership boundaries, sized for review, ordered by rollout phase and dependency. Use when the user wants a SPEC divided into implementable tasks.
 argument-hint: "<path to the spec file>"
 ---
@@ -46,8 +46,9 @@ Copy this checklist into your first message and check items off as you go:
 Read the spec in full. List every work item from the per-repository section with the element codes
 it names, every rollout phase, the ownership table, and the ticket identifiers. A fact the spec
 does not give you — a repository's branch naming convention, the plausible blast radius of an item
-— is yours to look up: dispatch `Explore` into the repository, never ask the user what you can
-read. Never pass `name:` when dispatching a sub-agent.
+— is yours to look up: dispatch `Explore` into the repository rather than asking the user what
+you can read, following the dispatch rules in
+`${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`.
 
 ### 2. Cut
 
@@ -68,9 +69,11 @@ edge cases:
    queues up behind the environment. Expand early; the contracting half lives in the spec's cleanup
    section and becomes its own late task, behind the gate the spec names.
 5. **Review size cuts.** Split further when a task would plausibly exceed **80 changed files or
-   2000 changed lines**, generated files excluded. Estimate from the items' citations, and put a
-   genuine doubt in the step-5 batch. These are defaults the user can override, and they are policy
-   of this skill — they never appear in the spec.
+   2000 changed lines**, generated files excluded — past that size a reviewer stops reading and
+   starts skimming, and the review approves the shape of the change rather than the change.
+   Estimate from the items' citations, and put a genuine doubt in the step-5 batch. These are
+   defaults the user can override, and they are policy of this skill — they never appear in the
+   spec.
 
 Within what survives the boundaries, prefer the smallest task that makes one verification row
 pass. Where one repository owns a whole behaviour, that yields a vertical slice — schema, endpoint
