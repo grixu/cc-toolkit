@@ -18,6 +18,11 @@ passing.
   its repository mergeable. **One task = one branch = one worktree = one pull request.** That is an
   identity, not a guideline: work that cannot land as one pull request is more than one task, and
   work whose pull request would not build on its own is less than one.
+- **Operational task** — the one sanctioned exception to that identity: work done by hand against
+  the live system (a `gcloud` sequence, a console action) with no pull request. It exists only when
+  the spec names a gate that other tasks depend on and no repository carries it. Its frontmatter
+  says `repository: none` and leaves `branch` empty — these fields are machine-read, so prose in
+  them breaks the reader — and its body closes with a `## Note` saying why no pull request exists.
 - **The index card rule** — a task file carries pointers, never copies. The spec stays the single
   source of truth. Contract prose copied into a task is a second source of truth that rots
   silently, because nothing detects that the spec moved on.
