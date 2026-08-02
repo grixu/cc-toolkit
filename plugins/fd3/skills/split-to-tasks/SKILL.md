@@ -96,6 +96,12 @@ Dependencies come from the spec's build order and its phase table. Record each a
 edge between task slugs: an edge means the other task must land first. Propose each task's branch
 name following its repository's visible convention — existing branches show it.
 
+Then fix the reading order: a topological sort of the `depends-on` graph, ties broken by the
+spec's phase-table order, then alphabetically by slug. This ordinal becomes the filename prefix in
+step 6. It is a review order for a human walking the directory, not an execution constraint —
+parallel threads have to interleave somewhere, and the truth about ordering stays in the
+`depends-on` edges.
+
 ### 4. Coverage
 
 Before writing anything, check — and say in the report — that:
@@ -116,8 +122,11 @@ rules above already decided, so report it rather than ask.
 
 ### 6. Write and report
 
-One Markdown file per task, named by its slug, in English regardless of the conversation's
-language. YAML frontmatter carries the machine-readable fields; the body carries the brief.
+One Markdown file per task, named `<NNNN>-<slug>.md` — a zero-padded four-digit ordinal from the
+reading order of step 3, then the slug — in English regardless of the conversation's language.
+The ordinal lives only in the filename: `depends-on` and every other reference carry the bare
+slug, so a regeneration may renumber freely without breaking an edge. YAML frontmatter carries
+the machine-readable fields; the body carries the brief.
 
 ```markdown
 ---
