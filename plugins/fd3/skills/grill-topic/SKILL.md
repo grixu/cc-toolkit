@@ -30,15 +30,9 @@ Track which numbered questions came back answered. A question the user skipped i
 
 ## Facts
 
-Finding *facts* is your job, never the user's. Don't ask the user for anything you could look up yourself. The *decisions* are the user's — put each to them and wait.
+Finding *facts* is your job, never the user's. The *decisions* are the user's — put each to them and wait.
 
-Three routes, by where the fact lives:
-
-- **The codebase** — dispatch the `Explore` subagent.
-- **Documentation, prior art, alternative solutions, opinions** — dispatch the `fd3:researcher` subagent.
-- **The live system** — dispatch the `general-purpose` subagent, which can run the CLI the answer needs (`gcloud`, `kubectl`, `gh`, a database client). Live state is authoritative over both code and documentation when they disagree, and it is the only place drift shows up: anything true in production and declared nowhere in code exists only here.
-
-Never pass `name:` when dispatching a sub-agent. An unnamed one delivers its whole report in the task notification; a named one only answers a later pull, and may deliver nothing at all.
+Route every lookup by where the fact lives — the routes and dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
 
 A question you dispatched a lookup for is **blocked by that lookup** — no exceptions. Do not predict what the lookup will return, or which questions it will turn out to touch: whether a fact changes a question is knowable only once you hold the fact. Never write that a pending lookup "only affects the next round". Questions you sent nobody to answer are not blocked — ask those now; a running lookup is an unsettled prerequisite for its own question only.
 

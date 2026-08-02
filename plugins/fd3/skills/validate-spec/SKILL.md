@@ -127,14 +127,8 @@ Split the cost of verification:
   or narrowing something. Take the rest at the spec's word once its citation resolves.
 
 For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
-Three routes, by where the fact lives:
-
-- **The codebase** — dispatch the `Explore` subagent.
-- **Documentation, external contracts, prior art** — dispatch the `fd3:researcher` subagent.
-- **The live system** — dispatch the `general-purpose` subagent, which can run the CLI the answer needs
-  (`gcloud`, `kubectl`, `gh`, a database client). Live state is authoritative over both code and
-  documentation when they disagree, and it is the only source for drift: anything true in production and
-  declared nowhere in code exists only here.
+Route the lookup by where the fact lives — the routes and dispatch rules are in
+`${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`.
 
 Tell each agent what it needs to work in the tree you are sending it to: the repository root, whether the
 working tree is dirty, and which search tools function there. An agent that has to discover its own
