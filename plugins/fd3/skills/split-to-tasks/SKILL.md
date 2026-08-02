@@ -51,9 +51,10 @@ Copy this checklist into your first message and check items off as you go:
 Read the spec in full. List every work item from the per-repository section with the element codes
 it names, every rollout phase, the ownership table, and the ticket identifiers. A fact the spec
 does not give you — a repository's branch naming convention, the plausible blast radius of an item
-— is yours to look up: dispatch `Explore` into the repository rather than asking the user what
-you can read, following the dispatch rules in
-`${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`.
+— is yours to look up yourself: a direct command for a specific fact (`git branch -r`, a tracker
+query), `Explore` dispatched into the repository when finding it takes searching, following the
+dispatch rules in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`. Never ask the user what
+you can read.
 
 ### 2. Cut
 
