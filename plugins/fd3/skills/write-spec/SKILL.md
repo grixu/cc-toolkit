@@ -24,8 +24,8 @@ specification's clothes.
 ## 1. Where it goes
 
 Ask once, before writing: the path, and whether anything besides Markdown is wanted. Give your
-recommended answer first. `$ARGUMENTS` already names the path when the user supplied one — then do not
-ask, just confirm the directory exists.
+recommended answer first. Where `$ARGUMENTS` already names the path, skip the question and confirm the
+directory exists.
 
 Ask this once and never again. A spec is written in one pass; do not stop mid-document to ask where
 the next section goes.
