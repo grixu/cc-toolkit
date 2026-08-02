@@ -156,10 +156,8 @@ Then, per claim:
 
 ### 4. Ask the user
 
-Ask every collected question in one batch. Number them, and give a recommended answer per question: when
-you ask through `AskUserQuestion`, put the recommendation first and begin its description with
-`Recommended — `. Options with balanced descriptions and no recommendation make the user do the
-comparison you were meant to do. Then wait for the answers.
+Ask every collected question at once, following the batching protocol in
+`${CLAUDE_SKILL_DIR}/../../references/question-batching.md`. Then wait for the answers.
 
 A fact you cannot reach because *you* lack access — an expired token, a console-only setting — is not a
 decision. Ask for that one command in the same message, outside the numbered questions.

@@ -108,9 +108,9 @@ Before writing anything, check — and say in the report — that:
 
 ### 5. Ask
 
-Put every judgment call to the user in one numbered batch, each with a recommendation first — when
-you ask through `AskUserQuestion`, put the recommended option first and begin its description with
-`Recommended — `. The target directory joins the same batch: recommend `<spec-dir>/tasks/`.
+Put every judgment call to the user at once, following the batching protocol in
+`${CLAUDE_SKILL_DIR}/../../references/question-batching.md`. The target directory joins the first
+batch: recommend `<spec-dir>/tasks/`.
 Grouping calls, size doubts and a missing branch convention are the user's; everything else the
 rules above already decided, so report it rather than ask.
 
