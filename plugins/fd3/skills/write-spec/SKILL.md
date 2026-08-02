@@ -43,6 +43,9 @@ session maps into it:
   placements — "each gets its own ticket" places nothing.
 - **The concrete work, per repository** is what gets split into tasks, so an item nobody
   could start from is not finished being written.
+- **Rollout.** The phase table opens at phase 1 and places every work item from the
+  per-repository section. Independent groundwork is not a note beside the table — it is
+  phase 1.
 
 ## 3. The evidence appendix
 
