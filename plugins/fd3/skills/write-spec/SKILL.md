@@ -81,7 +81,15 @@ where the reasoning is the rationale of a decision.
 
 Write in English regardless of the language of the grilling.
 
-## 6. After writing
+## 6. The spec is written when
+
+Every section the template names is present, or absent with the one line that says the subject has no
+instance of it; every decision the session settled has a row in the decision table; every element
+carries its element code; and every load-bearing claim has either an evidence row or a declared gap
+with an owner and a placement. Check this against the document you wrote, not against your memory of
+writing it.
+
+## 7. After writing
 
 Report where it went and how long it is. Then say plainly what is not yet settled in it: the declared
 gaps, and anything you were unable to verify. Offer `fd3:validate-spec` on the file as the next step —
