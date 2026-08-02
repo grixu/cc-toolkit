@@ -71,10 +71,10 @@ worth more than any prose you could write instead. Two rules:
 - **A claim that rests on inference says so.** "No documentation states the negative explicitly; treat
   as strong inference, confirmed empirically at stage before prod" is honest and actionable. Turning
   it into a confirmation is the single most damaging thing you can do to this table.
-- **A claim with no evidence does not become an assertion.** Look it up — the codebase via `Explore`,
-  documentation via `fd3:researcher`, live state via `general-purpose` running the CLI that answers
-  it. If it stays unsettled, it goes into the document as a declared gap with an owner and a
-  placement, never as a bare statement.
+- **A claim with no evidence does not become an assertion.** Look it up, routed by where the
+  fact lives — the routes and dispatch rules are in
+  `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`. If it stays unsettled, it goes into
+  the document as a declared gap with an owner and a placement, never as a bare statement.
 
 ## 4. Declared gaps
 
