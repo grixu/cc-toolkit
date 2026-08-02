@@ -28,6 +28,27 @@ Every question a user is meant to answer carries its own number — none arrives
 
 Track which numbered questions came back answered. A question the user skipped is still open: re-put it in the next round, labelled as carried over. Silence is not assent.
 
+## Question style
+
+Brevity comes from leaving things out, not from compressing the wording: drop whatever does not change the user's choice, and write what remains in plain, complete sentences. A question is one or two sentences; an option is its name, what choosing it means, and its cost — a sentence or two each; the recommendation says *why* in one sentence, because a bare "recommended" pushes the comparison back onto the user.
+
+Two rules guard against false brevity:
+
+- **Every question is self-contained.** Restate the one fact it turns on, even when a lookup or an earlier answer already established it — "as established in Q3" or "per the ADR" sends the user digging through history, and a restated half-sentence is cheaper than that trip.
+- **Use only names and terms the user has already met.** Spell abbreviations out, and gloss any term of art the first time a round uses it. A user who cannot parse the question will guess, or follow the recommendation blind — both defeat the grilling.
+
+One question from a round, formatted as every question should be:
+
+```
+3. Where should retry state live? Today the worker keeps it in memory, so a pod restart
+   loses the count and the job starts its retries from zero.
+   - **a) Redis, alongside the job queue** — state survives restarts and is visible across
+     workers; the cost is one more thing Redis has to stay up for. **Recommended**: the
+     queue already runs on Redis, so this adds no new dependency to operate.
+   - **b) A column on the jobs table** — no new infrastructure, but every retry becomes a
+     write to what is already the busiest table in the system.
+```
+
 ## Facts
 
 Finding *facts* is your job, never the user's. The *decisions* are the user's — put each to them and wait.
