@@ -119,6 +119,10 @@ prepares.
 | # | Phase | Where | Switches anything? |
 |---|---|---|---|
 
+The table opens at phase 1 and places every work item from section 6. There is no pre-phase and
+nothing lives beside the table: work that depends on nothing — groundwork, dead-code removal, an
+enabling release — is the beginning of the rollout, so it is phase 1.
+
 Then the order across environments, with the waiting period and the reason for its length. Then
 every **hard dependency** — anything outside this spec that must land first — each identified
 precisely enough to check: a pull-request number, a release, a gate. "The pending pull request" names
