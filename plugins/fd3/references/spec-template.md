@@ -33,10 +33,12 @@ ADRs, a previous iteration — a **precedence declaration**: what it supersedes,
 where they disagree. Follow it with the list of what is actually reversed, one entry per reversal,
 each naming the document, the decision, and where this spec decides otherwise.
 
-Two failure modes to write around. A declaration with no list ("the reversals are listed below") is
+Three failure modes to write around. A declaration with no list ("the reversals are listed below") is
 an empty promise. A categorical closing claim ("everything else is carried forward unchanged") is
 unauditable unless it enumerates — so enumerate, and name any decision that was already superseded
 inside the source set, so a reader who finds the disagreement does not read it as a silent reversal.
+And a count in the prose has to match the list it introduces — "three design choices" followed by two
+entries is a defect a reader finds in ten seconds.
 
 ## 2. Problem and goal
 

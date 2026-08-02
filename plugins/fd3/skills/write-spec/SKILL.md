@@ -29,36 +29,20 @@ the next section goes.
 
 ## 2. What goes in
 
-Only what the session settled or established. Concretely, in the template's order:
+Only what the session settled or established. The template defines every section's shape —
+write against the file, not from memory of it. What the template cannot know is how a grilling
+session maps into it:
 
-- **The precedence declaration.** If this spec disagrees with anything already written — an earlier
-  design note, a set of ADRs, a previous iteration, a document the user pointed you at — declare what
-  it supersedes, and then **enumerate every reversal**: the document, the decision, and where this
-  spec decides otherwise. Two things this list must get right, because both were got wrong before:
-  - A count in the prose has to match the list. "Three design choices" with two entries is a defect a
-    reader finds in ten seconds.
-  - A decision that was **already superseded inside its own source set** is not reversed by you. Name
-    it as such, with its successor, so a reader who finds the disagreement does not read it as a
-    silent reversal. Check the status field of every document in the set before writing the sentence
-    "everything else is carried forward" — and if you write it, enumerate what "everything else" is.
-- **The decision table.** One row per decision the user actually ratified, `D1`…`Dn`, each with the
-  rationale that settles it and the cost that was accepted. A decision you took yourself, that the
-  user's closing confirmation covered without answering directly, still goes in — and its rationale
-  says that it followed from another answer.
-- **Elements, with a contract each.** Description, schema or pseudocode; fields, types, errors, auth,
-  limits. Real code for code-shaped elements. A gotcha that would cost someone an afternoon earns an
-  inline comment. Assign each element its **element code** — a category prefix and an ordinal,
-  `DB-1`, `API-2`; the template lists the categories — where the element first appears, and cite it
-  by code everywhere afterwards. Codes are write-once: never renumbered, never reused.
-- **The concrete work, per repository**, every item naming the element codes it builds and citing
-  the `path:line` it touches. This is what gets split into tasks, so an item nobody could start from
-  is not finished.
-- **Rollout, verification, cleanup** — phases with whether each one switches behaviour, environment
-  order with the reason for its length, hard dependencies identified precisely enough to check, and a
-  verification row for every phase.
-- **Out of scope**, each item with an owner and a placement. Check the tracker for the ticket number
-  rather than writing "each gets its own ticket" — that sentence places nothing. Where the boundary
-  cuts through the middle of an item, say which half is in scope and where that half lives.
+- **Decisions.** One row per decision the user actually ratified, `D1`…`Dn`. A decision you
+  took yourself, that the user's closing confirmation covered without answering directly,
+  still goes in — and its rationale says that it followed from another answer.
+- **Precedence.** Before writing "everything else is carried forward unchanged", check the
+  status field of every document in the superseded set, and enumerate what "everything
+  else" is.
+- **Out of scope.** Check the tracker for the actual ticket numbers before writing
+  placements — "each gets its own ticket" places nothing.
+- **The concrete work, per repository** is what gets split into tasks, so an item nobody
+  could start from is not finished being written.
 
 ## 3. The evidence appendix
 
