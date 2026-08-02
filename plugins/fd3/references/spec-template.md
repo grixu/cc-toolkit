@@ -121,7 +121,10 @@ prepares.
 
 The table opens at phase 1 and places every work item from section 6. There is no pre-phase and
 nothing lives beside the table: work that depends on nothing — groundwork, dead-code removal, an
-enabling release — is the beginning of the rollout, so it is phase 1.
+enabling release — is the beginning of the rollout, so it is phase 1. Phases form one numbered
+sequence — a side thread that runs in parallel or hangs off another phase says so in its
+description ("parallel to phases 2–7", "after phase 2"), never by switching to letters or a
+second labelling scheme.
 
 Then the order across environments, with the waiting period and the reason for its length. Then
 every **hard dependency** — anything outside this spec that must land first — each identified
