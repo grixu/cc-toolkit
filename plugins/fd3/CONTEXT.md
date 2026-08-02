@@ -7,9 +7,16 @@ the skills and the template, and when they and this file disagree, the skills an
 
 - **Spec** — the deliverable: a document precise enough to implement, or split into tasks, without a
   second conversation. Written by `write-spec`, measured by `validate-spec`.
-- **Template** (`references/spec-template.md`) — the shape a spec is written against and measured
-  against. Twelve sections plus rules that hold everywhere. Both skills point at this one file, so a
-  section added here changes what `validate-spec` expects *and* what `write-spec` writes.
+- **Template** (`references/spec-template.md`) — the twelve sections a spec is written against and
+  measured against. Both skills point at it, so a section added here changes what `validate-spec`
+  expects *and* what `write-spec` writes.
+- **Spec rules** (`references/spec-rules.md`) — the invariants that hold in every section, split out
+  of the template because they bind statements rather than sections: declared gaps, vague verbs,
+  undecided either/ors, citations, element codes, document references. The single source of truth
+  for all three, so neither skill restates them.
+- **Output shapes** — every document fd3 produces has its shape in `references/`: the spec in the
+  template, the validation report in `validation-report.md`, a task file in `task-template.md`. A
+  skill points at its shape; it never inlines one.
 - **Closing summary** — grill-topic's final artifact: every settled decision, plus the decisions the
   user never answered directly. The user confirming it is the gate between grilling and writing.
 
