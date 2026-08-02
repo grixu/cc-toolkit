@@ -16,3 +16,7 @@ Three routes, by where the fact lives:
 Dispatch every sub-agent unnamed — never pass `name:`. An unnamed one delivers its whole
 report in the task notification; a named one only answers a later pull, and may deliver
 nothing at all.
+
+A fact no route can reach because *you* lack access — an expired token, a console-only
+setting — is still not a decision. Ask the user for that one command, outside the numbered
+questions, and the question it feeds stays blocked meanwhile.

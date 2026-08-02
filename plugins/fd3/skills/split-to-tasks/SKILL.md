@@ -53,9 +53,9 @@ Read the spec in full. List every work item from the per-repository section with
 it names, every rollout phase, the ownership table, and the ticket identifiers. A fact the spec
 does not give you — a repository's branch naming convention, the plausible blast radius of an item
 — is yours to look up yourself: a direct command for a specific fact (`git branch -r`, a tracker
-query), `Explore` dispatched into the repository when finding it takes searching, following the
-dispatch rules in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`. Never ask the user what
-you can read.
+query), `Explore` dispatched into the repository when finding it takes searching. The routes and
+dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before
+dispatching anything. Never ask the user what you can read.
 
 ### 2. Cut
 

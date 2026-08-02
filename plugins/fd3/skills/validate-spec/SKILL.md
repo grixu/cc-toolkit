@@ -132,8 +132,8 @@ Split the cost of verification:
   or narrowing something. Take the rest at the spec's word once its citation resolves.
 
 For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
-Route the lookup by where the fact lives — the routes and dispatch rules are in
-`${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`.
+Route every lookup by where the fact lives — the routes and dispatch rules are in
+`${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
 
 Tell each agent what it needs to work in the tree you are sending it to: the repository root, whether the
 working tree is dirty, and which search tools function there. An agent that has to discover its own
@@ -143,8 +143,8 @@ Dispatch at most one agent per section, or one per repository when the claims ar
 the same tree — never one per claim. A repository here means one tree with one root, so two disjoint
 subtrees of a monorepo that the spec treats as separate components may take one agent each. An agent may
 fan its own workload out further — that is its call, not a violation. Two constraints travel down with
-it: every sub-agent gets the same tree context you gave its parent, and no agent is ever dispatched with
-a `name:` — a named agent delivers its result only when pulled, and pulls get forgotten.
+it: every sub-agent gets the same tree context you gave its parent, and `fact-routes.md`'s dispatch
+rules bind at every level.
 
 **A sub-agent returns observations, not findings.** Resolve every identifier it reasoned about — a team
 alias, an account, a role, a project, a version — before you record its conclusion. A report that a
@@ -164,9 +164,6 @@ Then, per claim:
 
 Ask every collected question at once, following the batching protocol in
 `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`. Then wait for the answers.
-
-A fact you cannot reach because *you* lack access — an expired token, a console-only setting — is not a
-decision. Ask for that one command in the same message, outside the numbered questions.
 
 ### 5. Apply
 
