@@ -74,10 +74,10 @@ prevent.
 
 ## 5. Length and tone
 
-As long as its content needs and no longer. Every sentence either records a decision, an element, a
-fact with its source, or a gap with its owner. Nothing restates what a table already says, and nothing
-narrates the process that produced the document — a reader implementing this needs the conclusion, not
-the reasoning that reached it, except where the reasoning is the rationale of a decision.
+Every sentence either records a decision, an element, a fact with its source, or a gap with its
+owner. Nothing restates what a table already says, and nothing narrates the process that produced the
+document — a reader implementing this needs the conclusion, not the reasoning that reached it, except
+where the reasoning is the rationale of a decision.
 
 Write in English regardless of the language of the grilling.
 
