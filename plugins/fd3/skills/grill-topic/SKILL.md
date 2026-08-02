@@ -55,9 +55,7 @@ Finding *facts* is your job, never the user's. The *decisions* are the user's �
 
 Route every lookup by where the fact lives — the routes and dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
 
-A question you dispatched a lookup for is **blocked by that lookup** — no exceptions. Do not predict what the lookup will return, or which questions it will turn out to touch: whether a fact changes a question is knowable only once you hold the fact. Never write that a pending lookup "only affects the next round". Questions you sent nobody to answer are not blocked — ask those now; a running lookup is an unsettled prerequisite for its own question only.
-
-A fact you cannot reach because *you* lack access — an expired token, a console-only setting — is still not a decision. Ask the user for that one command outside the numbered questions, and keep the question it feeds blocked meanwhile.
+A question you dispatched a lookup for is **blocked by that lookup** — no exceptions. Do not predict what the lookup will return, or which questions it will turn out to touch: whether a fact changes a question is knowable only once you hold the fact. Questions you sent nobody to answer are not blocked — ask those now; a running lookup is an unsettled prerequisite for its own question only.
 
 ## Corrections
 
