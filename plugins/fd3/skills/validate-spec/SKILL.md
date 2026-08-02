@@ -36,7 +36,8 @@ checks 1, 6 and 12 are rules the other file states.
 
 ## Workflow
 
-Copy this checklist into your first message and check items off as you go:
+Post this checklist before your first tool call, and post it again with the marks updated each time a
+step completes — it is how the user sees progress:
 
 ```
 - [ ] 0. Locate every repository the spec touches
