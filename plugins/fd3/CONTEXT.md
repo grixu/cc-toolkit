@@ -67,7 +67,7 @@ the skills and the template, and when they and this file disagree, the skills an
 
 - **Task** — the smallest set of a spec's work items that is independently verifiable and leaves
   its repository mergeable. **One task = one branch = one worktree = one pull request** — an
-  identity `to-tasks` enforces, not a guideline. A repository always cuts, even under a single
+  identity `split-to-tasks` enforces, not a guideline. A repository always cuts, even under a single
   owner; inside a monorepo, ownership (one review-and-apply owner per subtree) cuts.
 - **Index card rule** — a task file carries pointers (element codes, section headings), never
   copies of spec content. The spec stays the single source of truth; with hashing rejected, a
@@ -77,5 +77,5 @@ the skills and the template, and when they and this file disagree, the skills an
   Stage-granular because a mass implementation run can be interrupted by usage limits and must
   resume knowing what each task already passed.
 - **Size policy** — split further above 80 changed files or 2000 changed lines, generated files
-  excluded. Defaults of `to-tasks`, user-overridable; policy lives in the skill, never in the
-  spec.
+  excluded. Defaults of `split-to-tasks`, user-overridable; policy lives in the skill, never in
+  the spec.
