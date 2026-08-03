@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: fd3 researcher tests — network-dependent (firecrawl/context7 MCP), local-only, run via an explicit filter
+# Required env vars: FIRECRAWL_API_KEY, CONTEXT7_API_KEY.
+# With setting_sources [] the user's MCP servers do not load, so the two servers the
+# researcher's tools name (mcp__firecrawl__*, mcp__context7__*) are configured here explicitly.
+
+prompts:
+  - '{{query}}'
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      setting_sources: []
+      max_budget_usd: 2.0
+      max_turns: 60
+      allow_all_tools: true
+      permission_mode: bypassPermissions
+      allow_dangerously_skip_permissions: true
+      ask_user_question:
+        behavior: first_option
+      plugins:
+        - type: local
+          path: ..
+      mcp:
+        servers:
+          - name: firecrawl
+            url: 'https://mcp.firecrawl.dev/{{env.FIRECRAWL_API_KEY}}/v2/mcp'
+          - name: context7
+            url: 'https://mcp.context7.com/mcp'
+            headers:
+              CONTEXT7_API_KEY: '{{env.CONTEXT7_API_KEY}}'
+
+tests:
+  # researcher-output-contract runs the agent definition directly as the provider's target
+  # (decision, plan section 6). If `fd3:researcher` does not resolve as an agent name in
+  # your SDK version, try `researcher`.
+  - description: researcher-output-contract
+    vars: { query: file://prompts/researcher-output-contract.txt }
+    options: { working_dir: .sandbox/researcher-output-contract, agent: 'fd3:researcher' }
+    assert:
+      - type: javascript
+        value: file://lib/checks/researcher-output-contract.mjs
+
+  # The other two go through a dispatching prompt that spawns the fd3:researcher subagent —
+  # the wiring the fd3 skills actually use.
+  - description: researcher-multiple-questions
+    vars: { query: file://prompts/researcher-multiple-questions.txt }
+    options: { working_dir: .sandbox/researcher-multiple-questions }
+    assert:
+      - type: javascript
+        value: file://lib/checks/researcher-multiple-questions.mjs
+
+  - description: researcher-unanswered
+    vars: { query: file://prompts/researcher-unanswered.txt }
+    options: { working_dir: .sandbox/researcher-unanswered }
+    assert:
+      - type: javascript
+        value: file://lib/checks/researcher-unanswered.mjs

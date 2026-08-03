@@ -12,3 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `grill-topic` skill — round-by-round design-tree interview over a topic passed as an argument
 - `/fd3:build-spec` command — thin entry point that delegates to the `grill-topic` skill
 - `researcher` sub-agent skeleton for documentation lookups dispatched from the skills
+- promptfoo eval suite under `evals/` — deterministic skill-contract scenarios (validate-spec,
+  split-to-tasks, write-spec, grill-topic, build-spec gate) plus explicit-only e2e and
+  network/researcher groups, hand-authored fixtures with `DEFECTS.md` contracts, sandbox reset
+  script, and a CI smoke workflow

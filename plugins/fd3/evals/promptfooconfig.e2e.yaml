@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: fd3 end-to-end chain (write → validate → split) — one shared sandbox, strict order, never concurrent, never repeated
+
+prompts:
+  - '{{query}}'
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      setting_sources: []
+      max_budget_usd: 2.0
+      max_turns: 60
+      allow_all_tools: true
+      permission_mode: bypassPermissions
+      allow_dangerously_skip_permissions: true
+      ask_user_question:
+        behavior: first_option
+      plugins:
+        - type: local
+          path: ..
+
+# The three steps share .sandbox/e2e-chain/ and depend on listed order — serial by config,
+# regardless of CLI flags. This group must never run with --repeat (section 3 of the plan).
+evaluateOptions:
+  maxConcurrency: 1
+
+tests:
+  - description: e2e-step1-write-spec
+    vars: { query: file://prompts/e2e-step1-write-spec.txt }
+    options: { working_dir: .sandbox/e2e-chain }
+    assert:
+      - type: javascript
+        value: file://lib/checks/e2e-step1-write-spec.mjs
+
+  - description: e2e-step2-validate-spec
+    vars: { query: file://prompts/e2e-step2-validate-spec.txt }
+    options: { working_dir: .sandbox/e2e-chain, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/e2e-step2-validate-spec.mjs
+
+  - description: e2e-step3-split-to-tasks
+    vars: { query: file://prompts/e2e-step3-split-to-tasks.txt }
+    options: { working_dir: .sandbox/e2e-chain, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/e2e-step3-split-to-tasks.mjs

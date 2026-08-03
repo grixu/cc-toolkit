@@ -1,0 +1,3 @@
+Input question:
+
+1. In promptfoo (the LLM eval framework, current 0.x releases), what does the CLI flag `--filter-pattern` match against when selecting which tests to run?

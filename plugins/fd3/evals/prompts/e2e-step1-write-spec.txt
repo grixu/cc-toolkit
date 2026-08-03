@@ -1,0 +1,2 @@
+/fd3:write-spec spec/out.md
+The grilling for this topic is done and I confirmed its closing summary; the confirmed summary is in notes/grilling-summary.md. Treat that file as the settled design and write the spec to spec/out.md.

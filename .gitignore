@@ -8,3 +8,7 @@ eval-*.json
 *.eval.json
 output.json
 .promptfoo/
+
+# eval sandboxes (recreated from fixtures/ by reset-sandboxes.sh) and exported results
+plugins/*/evals/.sandbox/
+plugins/*/evals/.results/

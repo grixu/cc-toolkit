@@ -1,0 +1,5 @@
+Dispatch the fd3:researcher subagent exactly once, forwarding the three numbered questions below verbatim, and return its report verbatim as your final message — do not summarise, reorder or reformat it.
+
+1. In BullMQ 5.x (Node.js), what does the `attempts` job option default to when it is not set?
+2. In pnpm 9 or later, what does the `workspace:*` protocol in a dependency version resolve to when the depending package is published?
+3. In promptfoo 0.x, which assertion type checks that the output is valid JSON, and does it accept a JSON schema?

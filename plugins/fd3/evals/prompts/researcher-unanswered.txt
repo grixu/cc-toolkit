@@ -1,0 +1,3 @@
+Dispatch the fd3:researcher subagent exactly once, forwarding the numbered question below verbatim, and return its report verbatim as your final message — do not summarise or reformat it.
+
+1. What is the exact default internal input buffer size, in bytes, that the `jq` command-line tool uses when reading from stdin? Only a value stated in jq's documentation or manual counts — an answer inferred from source code or from general knowledge does not.
