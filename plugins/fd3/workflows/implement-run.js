@@ -15,14 +15,16 @@ export const meta = {
 //   tasks         [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }]
 //                 repository is an absolute path, or 'none' for an operational task; baseBranch is
 //                 the branch this task's target branch stacks on, or null for the repository's
-//                 default branch; status is one of todo | implemented | blocked | done (stale
+//                 base ref; status is one of todo | implemented | blocked | done (stale
 //                 in-progress is reset by the skill before launch)
+//   repos         { [repository path]: { defaultRef } } — the ref new branches are cut from
+//                 (e.g. "origin/main"); the skill fetches before launch, so origin/* is fresh
 //   reviewSkills  code-review skill names to run during validation, may be empty
 //   maxFixRounds  CI fix attempts per branch before giving up
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
-const { tasksDir, specPath, tasks, reviewSkills, maxFixRounds } = input
+const { tasksDir, specPath, tasks, repos, reviewSkills, maxFixRounds } = input
 
 const status = new Map(tasks.map((t) => [t.slug, t.status]))
 // Whether a task's branch reached its target is git's knowledge, never a task-file field: the
@@ -34,6 +36,7 @@ const hil = [] // everything that needs a human: operational tasks, blockers, co
 const taskBranch = (t) => `task/${t.slug}`
 // Worktrees live beside the repository, never inside it, so validation tooling cannot pick them up.
 const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-')}`
+const repoDefault = (repo) => (repos && repos[repo] && repos[repo].defaultRef) || "the repository's default branch"
 const byRepo = (list) => {
   const groups = new Map()
   for (const t of list) {
@@ -42,6 +45,10 @@ const byRepo = (list) => {
   }
   return groups
 }
+// One retry rides out transient API failures (529s, brief limit blips). A second null is a real
+// no-verdict — absence of evidence that must never be reported as a validation verdict.
+const tryTwice = async (prompt, opts) =>
+  (await agent(prompt, opts)) ?? agent(prompt, { ...opts, label: `${opts.label}:retry` })
 
 // ---- Recon: detect each repository's validation toolchain (kept in memory for this run only)
 
@@ -51,7 +58,7 @@ const repositories = [...new Set(tasks.filter((t) => t.repository !== 'none').ma
 
 const toolchainReports = await parallel(
   repositories.map((repo) => () =>
-    agent(
+    tryTwice(
       `Repository to analyse: ${repo}\n` +
         `Detect how this repository is validated and return your full report.`,
       { agentType: 'fd3:toolchain-scout', label: `scout:${repo.split('/').pop()}`, phase: 'Recon' },
@@ -59,6 +66,11 @@ const toolchainReports = await parallel(
   ),
 )
 const toolchain = new Map(repositories.map((repo, i) => [repo, toolchainReports[i]]))
+for (const repo of repositories) {
+  if (!toolchain.get(repo)) {
+    hil.push({ slug: null, kind: 'no-verdict', stage: 'toolchain', reason: `${repo}: the toolchain scout returned no result after a retry; branches of this repository get no validation verdict this run.` })
+  }
+}
 
 // ---- Implement: waves of parallel tasks gated by depends-on, each wave merged before the next
 
@@ -96,8 +108,9 @@ const implementPrompt = (task) => {
     `2. In the task file set \`status: in-progress\` and \`worktree: ${worktreePath(task.repository, taskBranch(task))}\`.`,
     `3. In the repository ${task.repository}, create that worktree on a new branch ${taskBranch(task)}`,
     `   (git worktree add <path> -b <branch> <start-point>). Start it from ${task.branch} if that`,
-    `   branch exists, otherwise from ${task.baseBranch || "the repository's default branch"} —`,
-    `   everything this task depends on is already merged there.`,
+    `   branch exists, otherwise from ${task.baseBranch || repoDefault(task.repository)} —`,
+    `   everything this task depends on is already merged there. If the worktree already exists`,
+    `   from an interrupted attempt, continue in it instead of recreating anything.`,
     `4. Implement exactly what the task's Goal and Done-when describe — nothing more. Work only`,
     `   inside your worktree; the only file you touch outside it is the task file itself.`,
     `5. Do not run linters, test suites or builds — validation is batched later for the whole`,
@@ -152,7 +165,7 @@ const mergePrompt = (repo, repoTasks) => {
   const plan = [...targets.entries()]
     .map(
       ([branch, g]) =>
-        `- target ${branch} (stacks on ${g.base || 'the default branch'}, worktree ${worktreePath(repo, branch)}):\n` +
+        `- target ${branch} (stacks on ${g.base || repoDefault(repo)}, worktree ${worktreePath(repo, branch)}):\n` +
         g.tasks.map((t) => `    - ${taskBranch(t)} (task ${t.slug})`).join('\n'),
     )
     .join('\n')
@@ -178,11 +191,12 @@ const mergePrompt = (repo, repoTasks) => {
   ].join('\n')
 }
 
-const units = [] // { repo, branch, worktree, tasks } — the units validation runs on, in merge order
+const units = [] // { repo, branch, worktree, base, tasks } — the units validation runs on, in merge order
 const recordUnit = (repo, b, slugs) => {
   let unit = units.find((u) => u.repo === repo && u.branch === b.branch)
   if (!unit) {
-    unit = { repo, branch: b.branch, worktree: b.worktree, tasks: [] }
+    const sample = tasks.find((t) => t.repository === repo && t.branch === b.branch)
+    unit = { repo, branch: b.branch, worktree: b.worktree, base: (sample && sample.baseBranch) || repoDefault(repo), tasks: [] }
     units.push(unit)
   }
   for (const slug of slugs) if (!unit.tasks.includes(slug)) unit.tasks.push(slug)
@@ -204,7 +218,7 @@ while (true) {
 
     const results = await parallel(
       ready.map((task) => () =>
-        agent(implementPrompt(task), {
+        tryTwice(implementPrompt(task), {
           label: `wave${wave}:${task.slug}`,
           phase: 'Implement',
           schema: IMPLEMENT_RESULT,
@@ -220,8 +234,10 @@ while (true) {
         status.set(task.slug, 'blocked')
         hil.push({
           slug: task.slug,
-          kind: 'implementation',
-          reason: result ? result.reason || result.summary : 'The implementation agent died without a result.',
+          kind: result ? 'implementation' : 'no-verdict',
+          reason: result
+            ? result.reason || result.summary
+            : 'The implementation agent died twice without a result; its worktree may hold partial work — inspect before rerunning.',
         })
       }
     })
@@ -238,7 +254,7 @@ while (true) {
     const groups = byRepo(toMerge)
     const mergeReports = await parallel(
       [...groups.entries()].map(([repo, repoTasks]) => () =>
-        agent(mergePrompt(repo, repoTasks), {
+        tryTwice(mergePrompt(repo, repoTasks), {
           label: `merge${wave ? wave : ''}:${repo.split('/').pop()}`,
           phase: 'Implement',
           schema: MERGE_RESULT,
@@ -249,7 +265,7 @@ while (true) {
       const report = mergeReports[i]
       if (!report) {
         repoTasks.forEach((t) => conflicted.add(t.slug))
-        hil.push({ slug: null, kind: 'merge', reason: `The merge agent for ${repo} died without a result.` })
+        hil.push({ slug: null, kind: 'no-verdict', stage: 'merge', reason: `The merge agent for ${repo} died twice without a result; git holds the actual merge state.` })
         return
       }
       for (const b of report.branches) {
@@ -317,15 +333,16 @@ const fixPrompt = (unit, problems, source) =>
     ``,
     ...problems.map((p) => `- ${p}`),
     ``,
-    `Fix only what is listed — no refactoring, no drive-by changes. Commit the fixes with a`,
-    `conventional-commit message. Do not run the full validation suite; it is rerun after you.`,
+    `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
+    `that pre-date this branch. Commit the fixes with a conventional-commit message. Do not run`,
+    `the full validation suite; it is rerun after you.`,
   ].join('\n')
 
 const reviewPrompt = (unit, skillName) =>
   [
     `In the worktree ${unit.worktree} (repository ${unit.repo}), review the branch ${unit.branch}:`,
-    `invoke the \`${skillName}\` skill via the Skill tool on the diff between this branch and the`,
-    `repository's default branch. Report, do not fix.`,
+    `invoke the \`${skillName}\` skill via the Skill tool on the diff between this branch and`,
+    `${unit.base}. Report, do not fix.`,
     ``,
     `Return only the findings worth fixing, one entry each: file, the problem, and why it matters.`,
     `An empty findings array is a valid result.`,
@@ -338,52 +355,100 @@ for (const unit of units) {
   const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, reviewFindings: 0 }
   validation.push(summary)
 
-  let ci = await agent(ciPrompt(unit), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT })
+  if (!toolchain.get(unit.repo)) {
+    summary.ci = 'no-verdict' // the scout's death is already on the HIL list, once per repository
+    continue
+  }
+
+  let ci = await tryTwice(ciPrompt(unit), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT })
   while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    await agent(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate' })
-    ci = await agent(ciPrompt(unit), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT })
+    await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate' })
+    ci = await tryTwice(ciPrompt(unit), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT })
   }
-  if (!ci || !ci.passed) {
+  if (!ci) {
+    summary.ci = 'no-verdict'
+    hil.push({
+      slug: null,
+      kind: 'no-verdict',
+      stage: 'ci',
+      reason: `${unit.repo} ${unit.branch}: the CI agent returned no result after a retry (transient API failure); the branch has no verdict after ${summary.fixRounds} fix rounds — absence of evidence, not a failure.`,
+    })
+    continue
+  }
+  if (!ci.passed) {
     summary.ci = 'failed'
     hil.push({
       slug: null,
       kind: 'ci',
-      reason: `${unit.repo} ${unit.branch}: CI still failing after ${maxFixRounds} fix rounds: ${ci ? ci.failures.join('; ') : 'CI agent died'}`,
+      reason: `${unit.repo} ${unit.branch}: CI still failing after ${summary.fixRounds} fix rounds: ${ci.failures.join('; ')}`,
     })
     continue
   }
   summary.ci = 'passed'
 
   // Review skills are read-only lenses; they can run in parallel — unlike CI they hog no cores.
+  let deadLenses = []
   if (reviewSkills.length > 0) {
     const reviews = await parallel(
       reviewSkills.map((skillName) => () =>
-        agent(reviewPrompt(unit, skillName), { label: `cr:${skillName}:${repoName}`, phase: 'Validate', schema: CR_RESULT }),
+        tryTwice(reviewPrompt(unit, skillName), { label: `cr:${skillName}:${repoName}`, phase: 'Validate', schema: CR_RESULT }),
       ),
     )
+    deadLenses = reviewSkills.filter((_, i) => !reviews[i])
     const findings = reviews.filter(Boolean).flatMap((r) => r.findings)
     summary.reviewFindings = findings.length
     if (findings.length > 0) {
-      await agent(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${repoName}`, phase: 'Validate' })
-      const finalCi = await agent(ciPrompt(unit), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT })
-      if (!finalCi || !finalCi.passed) {
+      await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${repoName}`, phase: 'Validate' })
+      const finalCi = await tryTwice(ciPrompt(unit), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT })
+      if (!finalCi) {
+        summary.ci = 'no-verdict'
+        hil.push({
+          slug: null,
+          kind: 'no-verdict',
+          stage: 'ci-final',
+          reason: `${unit.repo} ${unit.branch}: CI passed but the re-run after review fixes returned no result after a retry; the branch has no final verdict.`,
+        })
+        continue
+      }
+      if (!finalCi.passed) {
         summary.ci = 'failed-after-review-fixes'
         hil.push({
           slug: null,
           kind: 'ci',
-          reason: `${unit.repo} ${unit.branch}: review fixes broke CI: ${finalCi ? finalCi.failures.join('; ') : 'CI agent died'}`,
+          reason: `${unit.repo} ${unit.branch}: review fixes broke CI: ${finalCi.failures.join('; ')}`,
         })
         continue
       }
     }
   }
 
-  await agent(
+  // A dead lens is not an empty findings list: the branch stays implemented until reviewed.
+  if (deadLenses.length > 0) {
+    hil.push({
+      slug: null,
+      kind: 'no-verdict',
+      stage: 'review',
+      reason: `${unit.repo} ${unit.branch}: review lens ${deadLenses.join(', ')} returned no result after a retry; CI passed, but the branch keeps status implemented until the lens has run.`,
+    })
+    continue
+  }
+
+  const markedDone = await tryTwice(
     `In ${tasksDir}, set \`status: done\` in the frontmatter of these task files, changing nothing else:\n` +
       unit.tasks.map((slug) => `- ${tasks.find((t) => t.slug === slug).file}`).join('\n'),
     { label: `done:${repoName}`, phase: 'Validate', effort: 'low' },
   )
+  if (markedDone == null) {
+    // The files are the state store; in-memory state must never outrun them.
+    hil.push({
+      slug: null,
+      kind: 'no-verdict',
+      stage: 'done-marking',
+      reason: `${unit.repo} ${unit.branch}: validation passed but the done-marking agent returned no result; the task files still read implemented — a relaunch re-validates cheaply and finishes the marking.`,
+    })
+    continue
+  }
   unit.tasks.forEach((slug) => status.set(slug, 'done'))
 }
 

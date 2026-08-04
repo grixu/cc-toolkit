@@ -57,11 +57,16 @@ Then make the graph launchable:
 - **Resolve repositories to absolute paths.** A `repository:` value that is not an existing
   directory needs resolving — look for it near the tasks directory and among the user's checkouts
   before asking; a genuine ambiguity joins the step-2 batch.
+- **Sync with origin.** In every resolved repository run `git fetch origin` — mandatory, stale
+  local refs poison every branch cut from them. Record the default branch and its
+  `origin/<default>` ref; note which branch the checkout currently sits on and whether that
+  branch carries commits beyond `origin/<default>`. A repository parked on a non-default branch,
+  or a base candidate behind `origin/<default>`, joins the step-2 batch.
 - **Derive each branch's stack base.** Order each repository's distinct `branch:` values by their
   tasks' rollout phase (the numeric prefix of `phase:`): the first stacks on the repository's
-  default branch (`baseBranch: null`), each later one on the previous unit's branch; branches
-  sharing a phase share a base. The workflow starts worktrees and the pull-request chain from
-  these.
+  base ref (`baseBranch: null` — resolved to the `defaultRef` confirmed in step 2), each later
+  one on the previous unit's branch; branches sharing a phase share a base. The workflow starts
+  worktrees and the pull-request chain from these.
 - **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that exists,
   every status is one of the five. A broken graph stops the run — recommend re-running
   `fd3:split-to-tasks` rather than patching by hand.
@@ -79,6 +84,12 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   pick; none is a valid answer;
 - the spec path, when the `spec:` pointers did not resolve to an existing file in step 1;
 - any unresolved repository paths and stale `in-progress` calls from step 1;
+- per repository parked on a non-default branch: is that branch the intended base for this work,
+  or does the run start clean from `origin/<default>`? Asked once per touched repository — a
+  user mid-feature may already have chosen the branch the work belongs on;
+- per chosen base branch behind `origin/<default>`: merge it up before work starts. On consent
+  the skill performs that merge itself, before launch; a merge that conflicts becomes a HIL item
+  instead of a silent stale base;
 - confirmation of scope when the directory mixes done and pending work.
 
 Everything else — wave composition, branch names, merge order — the task files already decided;
@@ -95,6 +106,7 @@ Workflow({
     tasksDir: "<absolute path>",
     specPath: "<absolute path to the spec file, resolved in step 1>",
     tasks: [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }, ...],
+    repos: { "<repository path>": { defaultRef: "<the step-1/2 base, e.g. origin/main>" }, ... },
     reviewSkills: [<the step-2 answer>],
     maxFixRounds: 3
   }
@@ -103,14 +115,19 @@ Workflow({
 
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
-repository's default branch. Do not re-implement the loop in conversation and do not dispatch
-implementation agents yourself — the workflow owns everything between launch and report.
+repository's `defaultRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
+Worktrees and target branches are cut from that ref (or the task's stack base); the workflow
+owns everything between launch and report. This section is the whole launch contract — do not
+read the workflow script, and do not re-implement the loop in conversation or dispatch
+implementation agents yourself.
 
 ### 4. Work the report
 
 The workflow returns per-task statuses, per-branch validation outcomes, the HIL list, and the
 tasks left unreachable behind blockers. Relay it faithfully — a failed CI stays failed in the
-telling.
+telling — with one distinction the report already draws: `no-verdict` items are absence of
+evidence (an agent died twice on a transient API failure), never failures. Relay them as "no
+verdict" and simply include them in the relaunch.
 
 For each HIL item, put the decision to the user: an operational task is theirs to execute (offer
 the task file's steps as a script to follow; mark `done` only when they confirm); a blocker or
