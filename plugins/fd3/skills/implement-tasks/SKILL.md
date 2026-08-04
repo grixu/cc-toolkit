@@ -123,17 +123,42 @@ implementation agents yourself.
 
 ### 4. Work the report
 
-The workflow returns per-task statuses, per-branch validation outcomes, the HIL list, and the
-tasks left unreachable behind blockers. Relay it faithfully — a failed CI stays failed in the
-telling — with one distinction the report already draws: `no-verdict` items are absence of
-evidence (an agent died twice on a transient API failure), never failures. Relay them as "no
-verdict" and simply include them in the relaunch.
+The workflow returns per-task statuses, per-branch validation outcomes, the HIL list, the tasks
+left unreachable behind blockers, and its `toolchain` and `baseline` knowledge. Relay it
+faithfully — a failed CI stays failed in the telling — with one distinction the report already
+draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
+failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
 
 For each HIL item, put the decision to the user: an operational task is theirs to execute (offer
 the task file's steps as a script to follow; mark `done` only when they confirm); a blocker or
-conflict needs their call on how to proceed. When their answers unblock tasks, update the
-affected task files and relaunch the workflow the same way — statuses make the rerun skip
-everything finished. Repeat until every task is `done` or the user stops.
+conflict needs their call on how to proceed. The answers split into two lanes:
+
+- **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
+  the same way; statuses make the rerun skip everything finished.
+- **Decisions that change existing branches** — compose them into `repairs` and launch the
+  repair workflow; do not edit worktrees yourself:
+
+  ```
+  Workflow({
+    scriptPath: "${CLAUDE_SKILL_DIR}/../../workflows/repair-run.js",
+    args: {
+      repairs: [{ repo, branch, worktree, base, instructions: [<the user's decisions for this
+                 branch, quoted verbatim>], taskFiles: [<task files to flip to done on pass>] }, ...],
+      repos: <as at launch>,
+      toolchain: <from the report>,
+      baseline: <from the report>,
+      maxFixRounds: 3
+    }
+  })
+  ```
+
+  `base` is the branch's stack base (or the repo's `defaultRef`). Passing `toolchain` and
+  `baseline` through spares a re-scout; repair agents receive the decision as their sole
+  authority and never read the spec. Repair validation is CI only — no code review.
+
+Never run two workflows at once — validation tolerates exactly one build/lint/test pipeline on
+the machine. Repairs first, then the implement relaunch. Repeat until every task is `done` or
+the user stops.
 
 ### 5. Propose, never push
 

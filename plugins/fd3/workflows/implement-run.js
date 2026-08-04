@@ -3,7 +3,7 @@ export const meta = {
   description: 'Implement spec tasks in dependency-ordered waves, merging each wave into its target branch, then validate each branch once',
   whenToUse: 'Launched by the fd3:implement-tasks skill with a parsed task graph; not meant to be invoked bare.',
   phases: [
-    { title: 'Recon', detail: 'toolchain detection, one scout per repository' },
+    { title: 'Recon', detail: 'toolchain detection and a baseline run per repository' },
     { title: 'Implement', detail: 'parallel waves gated by the depends-on graph, each wave merged into its target branch' },
     { title: 'Validate', detail: 'CI then code review, one branch at a time' },
   ],
@@ -50,7 +50,8 @@ const byRepo = (list) => {
 const tryTwice = async (prompt, opts) =>
   (await agent(prompt, opts)) ?? agent(prompt, { ...opts, label: `${opts.label}:retry` })
 
-// ---- Recon: detect each repository's validation toolchain (kept in memory for this run only)
+// ---- Recon: detect each repository's validation toolchain, then baseline it on the clean base
+//      (both kept in memory for this run and returned in the report for a later repair-run)
 
 phase('Recon')
 
@@ -70,6 +71,69 @@ for (const repo of repositories) {
   if (!toolchain.get(repo)) {
     hil.push({ slug: null, kind: 'no-verdict', stage: 'toolchain', reason: `${repo}: the toolchain scout returned no result after a retry; branches of this repository get no validation verdict this run.` })
   }
+}
+
+const BASELINE_RESULT = {
+  type: 'object',
+  required: ['commands'],
+  properties: {
+    commands: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['command', 'passed'],
+        properties: {
+          command: { type: 'string' },
+          passed: { type: 'boolean' },
+          failures: { type: 'array', items: { type: 'string' }, description: 'the load-bearing output lines, one entry per distinct problem; only when passed is false' },
+        },
+      },
+    },
+  },
+}
+
+const baselinePrompt = (repo) =>
+  [
+    `Establish the validation baseline of the repository ${repo} on its clean base.`,
+    ``,
+    `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${repoDefault(repo)}`,
+    `   (git worktree add <path> <ref>) unless it already exists — then reuse it as is.`,
+    `2. Run every runnable validation command from the toolchain report below, in the reported`,
+    `   order, sequentially — never in parallel. Skip what the report lists as not runnable here.`,
+    `3. Fix nothing, change nothing. Record, per command, whether it exited 0, and for each`,
+    `   failure the output lines that matter.`,
+    ``,
+    toolchain.get(repo),
+  ].join('\n')
+
+// What already fails on the clean base is noise this run must not fight or report as its own.
+// Sequential on purpose — at most one build/lint/test pipeline on the machine — and unawaited
+// until Validate, so it overlaps the implement waves, which run no pipelines.
+const baseline = new Map()
+const baselineReady = (async () => {
+  for (const repo of repositories) {
+    if (!toolchain.get(repo)) continue
+    const report = await tryTwice(baselinePrompt(repo), {
+      label: `baseline:${repo.split('/').pop()}`,
+      phase: 'Recon',
+      schema: BASELINE_RESULT,
+      model: 'haiku',
+      effort: 'high',
+    })
+    if (report) baseline.set(repo, report)
+    else hil.push({ slug: null, kind: 'no-verdict', stage: 'baseline', reason: `${repo}: the baseline agent returned no result after a retry; failures cannot be told apart from pre-existing ones this run.` })
+  }
+})()
+
+const baselineText = (repo) => {
+  const b = baseline.get(repo)
+  if (!b) return 'No baseline is available for this repository — treat every failure as introduced by the branch.'
+  const lines = b.commands.map((c) =>
+    c.passed
+      ? `- ${c.command}: passed`
+      : `- ${c.command}: FAILED on the clean base:\n` + (c.failures || []).map((f) => `    ${f}`).join('\n'),
+  )
+  return `Baseline on the clean base (${repoDefault(repo)}):\n${lines.join('\n')}`
 }
 
 // ---- Implement: waves of parallel tasks gated by depends-on, each wave merged before the next
@@ -296,12 +360,15 @@ const unreachable = tasks.filter((t) => status.get(t.slug) === 'todo').map((t) =
 
 phase('Validate')
 
+await baselineReady
+
 const CI_RESULT = {
   type: 'object',
   required: ['passed', 'failures'],
   properties: {
-    passed: { type: 'boolean' },
-    failures: { type: 'array', items: { type: 'string' }, description: 'one entry per failing command, with the load-bearing output lines' },
+    passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
+    failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
+    preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
   },
 }
 
@@ -313,7 +380,7 @@ const CR_RESULT = {
   },
 }
 
-const ciPrompt = (unit) =>
+const ciPrompt = (unit, mode) =>
   [
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
     `in the worktree ${unit.worktree}. Run them in the reported order, sequentially — never in`,
@@ -321,9 +388,19 @@ const ciPrompt = (unit) =>
     ``,
     toolchain.get(unit.repo),
     ``,
+    baselineText(unit.repo),
+    ``,
+    mode === 'scoped'
+      ? `Scope the run to this branch's changes: list them with` +
+        `\n\`git diff --name-only ${unit.base}...HEAD\` and use each command's scoped form from the` +
+        `\nreport on those paths; run a command in full only when the report marks it not scopeable.`
+      : `Run every command in full — this is the branch's final gate before it is handed over.`,
+    ``,
     `Skip everything the report lists as not runnable here. Do not fix anything.`,
-    `Return passed=true only when every runnable command exits 0; otherwise return each failing`,
-    `command with the output lines that matter.`,
+    `A failure whose location and message match the baseline is pre-existing: return it under`,
+    `preExisting, never under failures, and do not count it against the branch. Return`,
+    `passed=true only when every runnable command exits 0 or fails only on baseline entries;`,
+    `otherwise return each newly failing command with the output lines that matter.`,
   ].join('\n')
 
 const fixPrompt = (unit, problems, source) =>
@@ -344,15 +421,22 @@ const reviewPrompt = (unit, skillName) =>
     `invoke the \`${skillName}\` skill via the Skill tool on the diff between this branch and`,
     `${unit.base}. Report, do not fix.`,
     ``,
+    baselineText(unit.repo),
+    ``,
+    `Report only findings this branch's diff introduces. An issue that exists identically on the`,
+    `clean base — including everything in the baseline above — is pre-existing: leave it out.`,
+    ``,
     `Return only the findings worth fixing, one entry each: file, the problem, and why it matters.`,
     `An empty findings array is a valid result.`,
   ].join('\n')
+
+const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
 const validation = [] // per-branch summary for the final report
 
 for (const unit of units) {
   const repoName = unit.repo.split('/').pop()
-  const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, reviewFindings: 0 }
+  const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, reviewFindings: 0, preExisting: 0 }
   validation.push(summary)
 
   if (!toolchain.get(unit.repo)) {
@@ -360,11 +444,11 @@ for (const unit of units) {
     continue
   }
 
-  let ci = await tryTwice(ciPrompt(unit), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT })
+  let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
     await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate' })
-    ci = await tryTwice(ciPrompt(unit), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT })
+    ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   }
   if (!ci) {
     summary.ci = 'no-verdict'
@@ -376,6 +460,7 @@ for (const unit of units) {
     })
     continue
   }
+  summary.preExisting = (ci.preExisting || []).length
   if (!ci.passed) {
     summary.ci = 'failed'
     hil.push({
@@ -400,27 +485,30 @@ for (const unit of units) {
     summary.reviewFindings = findings.length
     if (findings.length > 0) {
       await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${repoName}`, phase: 'Validate' })
-      const finalCi = await tryTwice(ciPrompt(unit), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT })
-      if (!finalCi) {
-        summary.ci = 'no-verdict'
-        hil.push({
-          slug: null,
-          kind: 'no-verdict',
-          stage: 'ci-final',
-          reason: `${unit.repo} ${unit.branch}: CI passed but the re-run after review fixes returned no result after a retry; the branch has no final verdict.`,
-        })
-        continue
-      }
-      if (!finalCi.passed) {
-        summary.ci = 'failed-after-review-fixes'
-        hil.push({
-          slug: null,
-          kind: 'ci',
-          reason: `${unit.repo} ${unit.branch}: review fixes broke CI: ${finalCi.failures.join('; ')}`,
-        })
-        continue
-      }
     }
+  }
+
+  // The full command list is the branch's final gate — always, review fixes or not.
+  const finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  if (!finalCi) {
+    summary.ci = 'no-verdict'
+    hil.push({
+      slug: null,
+      kind: 'no-verdict',
+      stage: 'ci-final',
+      reason: `${unit.repo} ${unit.branch}: scoped CI passed but the full-gate agent returned no result after a retry; the branch has no final verdict.`,
+    })
+    continue
+  }
+  summary.preExisting = (finalCi.preExisting || []).length
+  if (!finalCi.passed) {
+    summary.ci = 'failed-final'
+    hil.push({
+      slug: null,
+      kind: 'ci',
+      reason: `${unit.repo} ${unit.branch}: the full run after the fix and review rounds failed: ${finalCi.failures.join('; ')}`,
+    })
+    continue
   }
 
   // A dead lens is not an empty findings list: the branch stays implemented until reviewed.
@@ -437,7 +525,7 @@ for (const unit of units) {
   const markedDone = await tryTwice(
     `In ${tasksDir}, set \`status: done\` in the frontmatter of these task files, changing nothing else:\n` +
       unit.tasks.map((slug) => `- ${tasks.find((t) => t.slug === slug).file}`).join('\n'),
-    { label: `done:${repoName}`, phase: 'Validate', effort: 'low' },
+    { label: `done:${repoName}`, phase: 'Validate', model: 'haiku', effort: 'low' },
   )
   if (markedDone == null) {
     // The files are the state store; in-memory state must never outrun them.
@@ -457,4 +545,7 @@ return {
   branches: validation,
   hil,
   unreachable,
+  // Recon knowledge, returned so a follow-up repair-run reuses it instead of re-scouting.
+  toolchain: Object.fromEntries(toolchain),
+  baseline: Object.fromEntries(baseline),
 }

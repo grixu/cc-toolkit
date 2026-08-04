@@ -75,6 +75,8 @@ Orchestrator: <name, or "none"> — <config file, or the absence checked>
 
 Validation commands (in order):
 1. <command> — cwd: <path> — <what it validates> — source: <file that defines it, e.g. .github/workflows/ci.yml step "lint">
+   scoped form: <the same check restricted to a set of changed paths or packages, with a
+   `<paths>` or `<packages>` placeholder — or "not scopeable: <why>">
 2. ...
 
 Not runnable here:
@@ -88,3 +90,10 @@ Order the commands as CI orders them; where CI is silent, install → build → 
 unit tests. Include the install command only when the repository's dependencies are not already
 installed — check, do not assume. Drop the `Doubts` section when there are none; never resolve a
 doubt by guessing.
+
+The scoped form comes from the same sources as the command itself — the orchestrator's filter
+syntax (`turbo run lint --filter=<packages>...`), a linter that accepts file arguments, a tool
+run per directory. It lets the caller validate only what a branch touched and save the full run
+for the final gate. When a check genuinely cannot be narrowed (a global build, a schema check
+spanning the repository), say `not scopeable` and why — never invent a filter the tool does not
+have.

@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   split-to-tasks, write-spec, grill-topic, build-spec gate) plus explicit-only e2e and
   network/researcher groups, hand-authored fixtures with `DEFECTS.md` contracts, sandbox reset
   script, and a CI smoke workflow
+- `implement-run`: baseline pass per repository — after the toolchain scout, a haiku agent runs
+  the full validation suite on the clean base; CI and review agents receive the baseline and
+  classify matching failures as `preExisting`, so fix agents never fight pre-existing noise
+- `implement-run`: scoped CI during fix rounds (orchestrator filters / changed paths), with one
+  full run as the final gate before a branch is marked done
+- `repair-run` workflow — applies the user's HIL decisions to existing branches (decision text
+  is the sole authority; spec reads forbidden), then re-validates with CI only, no code review;
+  reuses `toolchain`/`baseline` from the implement-run report
+- `implement-tasks` skill: step 4 split into an unblock lane (relaunch `implement-run`) and a
+  repair lane (launch `repair-run`), never both workflows at once
 
 ### Changed
 
@@ -29,3 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-tasks` skill: mandatory `git fetch origin` in step 1; per-repo base questions in
   step 2 (repo parked on a non-default branch, base behind `origin/<default>`); step 3 states
   the full launch contract, so the model never reads the workflow script
+- `implement-run`: CI runner, baseline, and done-marking agents run on haiku (mechanical work);
+  code-editing agents keep the session model
+- `toolchain-scout`: the output contract now carries a scoped invocation form per command (or
+  `not scopeable` with the reason)
