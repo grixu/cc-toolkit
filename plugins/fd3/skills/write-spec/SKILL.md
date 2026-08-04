@@ -48,7 +48,14 @@ session maps into it:
   could start from is not finished being written.
 - **Rollout.** The phase table opens at phase 1 and places every work item from the
   per-repository section. Independent groundwork is not a note beside the table — it is
-  phase 1.
+  phase 1. Mark the gates: a phase followed by a deployment boundary — a bake, an
+  environment promotion, an approval between changes — closes a landing unit, and the
+  evidence for each gate is technical, gathered like any other fact. Then estimate each
+  landing unit's aggregate diff from the work items it places; where one plausibly exceeds
+  **80 changed files or 2000 changed lines**, generated files excluded, put the subdivision
+  to the user — with proposed seams, such as phase boundaries or dependency clusters — in
+  the same single batch as the step-1 question. A user-requested split becomes a gate in
+  the table like any other; the threshold itself never appears in the spec.
 
 ## 3. The evidence appendix
 

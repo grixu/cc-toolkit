@@ -101,6 +101,10 @@ Then the approval reality: which paths need whose review, which have no pipeline
 human to run the apply. A spec that plans work in somebody else's repository and does not say how it
 lands there has a gap where its critical path should be.
 
+Landing constraints belong here too: a repository whose process requires every change to land as its
+own pull request — sequentially applied infrastructure is the canonical case — says so in this
+section, because task splitting groups branches by it.
+
 ## 6. The change, per repository
 
 One subsection per repository or module, listing the concrete work items. Every item names the
@@ -115,11 +119,18 @@ evidence for each drop. A drop justified only by "unused" needs the search that 
 
 ## 7. Rollout
 
-A phase table. The last column is the one that matters: whether the phase changes behaviour or only
-prepares.
+A phase table. Two columns carry the load: whether the phase changes behaviour or only prepares,
+and whether a **gate** follows it.
 
-| # | Phase | Where | Switches anything? |
-|---|---|---|---|
+| # | Phase | Where | Switches anything? | Gate after? |
+|---|---|---|---|---|
+
+A gate closes a **landing unit**: the consecutive phases up to and including it land together —
+one branch and one pull request per repository — and the next phase opens a new unit that stacks
+on it. The canonical gate is a deployment boundary: a bake period, an environment promotion, an
+approval that must happen between changes. A deliberately separate pull request the author wants
+for review size marks a gate the same way, and says so. The final phase always closes its unit.
+Phases inside a unit are development phases — they order the work and nothing else.
 
 The table opens at phase 1 and places every work item from section 6. There is no pre-phase and
 nothing lives beside the table: work that depends on nothing — groundwork, dead-code removal, an
