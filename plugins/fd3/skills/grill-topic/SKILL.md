@@ -74,3 +74,5 @@ The session is done when the frontier is empty: every branch of the design tree 
 Close with a summary of every settled decision, and end it with a section listing **the decisions you took that the user never answered** — the places where their answer to one question implied an answer to another, and you resolved it yourself. That section is what makes "nothing left silently assumed" true rather than aspirational; a decision the user ratifies is theirs, one they never saw is yours.
 
 Do not act on any of it until the user confirms you have reached a shared understanding.
+
+Once the user confirms, write the summary to a file in the session scratchpad as three numbered lists with stable IDs: **ratified decisions** — one line each, carrying the question number and the option chosen — **decisions you took yourself**, and **risks the user accepted**. The chat summary stays; the file is what downstream skills consume. When a downstream skill is invoked, its argument is that file's path, never a description of where the notes are.
