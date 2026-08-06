@@ -166,7 +166,8 @@ actually possible:
   for a test, its duration, its signal, and say plainly that it is observation rather than a test.
 
 Every phase needs a row here. A phase with no verification is a phase whose completion is a matter of
-opinion.
+opinion. Per-phase coverage is the floor, not the target — the section is per element, so name any
+element with no verification row and say why it has none.
 
 ## 9. Cleanup
 
