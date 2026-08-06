@@ -65,6 +65,8 @@ A question you dispatched a lookup for is **blocked by that lookup** — no exce
 
 If a late fact contradicts a question you already asked, re-ask that numbered question with the fact, and say plainly that its earlier version and any answer to it are void. The same applies when the faulty premise was *yours* — a recommendation you argued from a wrong fact voids the answer it produced just as hard. Never fold the correction into the next round and leave the user guessing which of their answers still stands.
 
+When an answer collides with a cost you yourself wrote, say so in the acknowledgement before recording it, and name the fact that would settle the collision. Writing the answer down and carrying the contradiction into the summary makes you the author of a conflict the user never saw.
+
 ## Closing
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed.
