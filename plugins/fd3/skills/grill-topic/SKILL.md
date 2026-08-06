@@ -20,6 +20,8 @@ This is the highest-value work in the whole session. A round asked against the d
 
 Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled — the questions you can ask *now* without guessing at answers you haven't heard yet. Ask the whole frontier in one round. Then wait for the user's answers before the next round.
 
+A round stays open until the user answers it. A lookup that returns while a round is open is not an answer and never opens a new round — post what it changed and stop; the only thing it may add is a correction, on the terms the Corrections section sets. Two unanswered rounds are never in flight at once.
+
 Each round the user answers reshapes the tree — settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a *later* round, not this one.
 
 Number every question, and give each one **named options with a marked recommendation**: two or three alternatives that are actually live, each with the cost of choosing it, and one marked as your recommendation. The recommendation is the point — an even-handed menu makes the user do the comparison you were meant to do. Where one decision has parts that cannot be settled separately, sub-letter them (`4a`, `4b`, `4c`) rather than splitting them across rounds or collapsing them into one question.
