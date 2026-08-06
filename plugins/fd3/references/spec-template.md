@@ -59,7 +59,14 @@ A table, one row per decision, numbered `D1`…`Dn` so the rest of the document 
 A rationale is load-bearing: it says what would have to change for the decision to flip. A decision
 whose rationale is "cleaner" or "best practice" is not yet a decision. Where the choice cost
 something, say what was accepted — "cost accepted: a second permission matrix" is a complete
-rationale; "no downsides" is a warning sign.
+rationale; "no downsides" is a warning sign. A rationale also opens by naming the answer that
+produced the decision — the question and option the deciding session chose, or the decision it
+followed from — so a reader can tell whose choice each row records.
+
+Then **risks accepted**: one row per downside the session knowingly accepted that no single
+decision fully carries — a beta dependency, a missing library capability, a blast radius. Each row
+states the risk, what it costs if it lands, and what mitigates it. A risk folded into another
+decision's "cost accepted" clause is a risk a reader will not find.
 
 ## 4. Target architecture
 
