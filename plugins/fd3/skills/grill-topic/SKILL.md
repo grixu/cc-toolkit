@@ -16,6 +16,12 @@ Establish the facts the topic asserts, before asking anything. A topic document 
 
 This is the highest-value work in the whole session. A round asked against the document gets answers about the document; a round asked against reality gets answers you can build on.
 
+Two things come before the first dispatch. `git fetch` the repository and say if the tree is behind the branch the topic describes — facts cited from a stale clone drift on exactly the files the session will argue from. And read the repository's own prior specs, ADRs and decision records (`docs/specs/`, `requirements/`, wherever they live): a question one of them already settles is not a question, and a lookup dispatched without them re-researches a decision the repository has already made.
+
+For every library, service or tool the topic names, open a version table: the version installed in the project, the current release, and the version whose API the discussion will quote. Any row where those differ is a round-1 finding — an API argued from the wrong version becomes pseudocode nobody can run.
+
+Read each lookup's report against its own data before using it: where the prose contradicts its own table, the table wins and the contradiction is a finding. Two lookups that return different numbers for the same thing are a finding too, never a silent pick.
+
 ## Rounds
 
 Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already settled — the questions you can ask *now* without guessing at answers you haven't heard yet. Ask the whole frontier in one round. Then wait for the user's answers before the next round.
