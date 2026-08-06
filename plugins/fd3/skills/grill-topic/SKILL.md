@@ -71,6 +71,8 @@ When an answer collides with a cost you yourself wrote, say so in the acknowledg
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed.
 
+Before declaring the frontier empty, list the gaps you invoked as reasons inside your own recommendations. A gap you argued from more than once is a decision the user never got to make — it belongs in a round, not in the risk list. Closing a session by accepting a risk you spent it citing means you recommended around the question instead of asking it.
+
 Close with a summary of every settled decision, and end it with a section listing **the decisions you took that the user never answered** — the places where their answer to one question implied an answer to another, and you resolved it yourself. That section is what makes "nothing left silently assumed" true rather than aspirational; a decision the user ratifies is theirs, one they never saw is yours.
 
 Do not act on any of it until the user confirms you have reached a shared understanding.
