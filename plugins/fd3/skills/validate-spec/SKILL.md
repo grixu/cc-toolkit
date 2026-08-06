@@ -145,6 +145,14 @@ alias, an account, a role, a project, a version — before you record its conclu
 claim is "inverted" because an unfamiliar name appeared instead of the expected one is an unresolved
 identifier, not a finding, and recording it as one puts a false finding in front of the user.
 
+The rest of a sub-agent's substantive observations do not die in its transcript either: each one ends
+as a finding in the report, as a spec edit the report's edits list names, or as an explicitly dropped
+item with its reason.
+
+A discrepancy that arithmetic or one command settles is a fact, not an open item — settle it.
+Recording it as unresolved, or pushing a reconciliation task into the spec's rollout, plants work in
+the document that a subtraction would have closed.
+
 Then, per claim:
 
 - **The fact is unambiguous** — apply to the spec the smallest edit that records it, append the evidence
@@ -166,7 +174,9 @@ row, and set the claim `verified`. When it opens a new fact to look up, re-enter
 still open only, never for one already settled.
 
 Repeat 3–5 until every claim is `verified`, `deferred`, or `blocked` because nothing settles it and the spec
-names no owner. A `blocked` claim goes into the report; do not put it to the user again.
+names no owner. A `blocked` claim goes into the report; do not put it to the user again. The run never
+ends with a claim `open`: a claim you cannot settle before reporting becomes `blocked`, with the reason
+it could not be settled stated in the report.
 
 ### 6. Report
 
