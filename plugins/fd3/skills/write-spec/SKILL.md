@@ -16,6 +16,12 @@ against — a section they name and you omit is a finding waiting to happen.
 This writes up an understanding that is **already settled**. Normally that is a `fd3:grill-topic`
 session whose closing summary the user has confirmed, in this same conversation.
 
+The invocation normally carries the path to that session's closing-notes file — three numbered
+lists: ratified decisions with their question numbers and chosen options, decisions the assistant
+took, and risks the user accepted. Read it before writing and hold it as the checklist section 6
+walks. Without the file, build the same checklist from the confirmed closing summary in the
+conversation before writing anything.
+
 If you were invoked without that — no grilling in context, or a grilling the user never confirmed —
 say so and stop. Ask whether to grill the topic first, or which document holds the settled design. Do
 not reconstruct the decisions yourself: a spec whose decisions nobody ratified is a proposal wearing a
@@ -23,9 +29,10 @@ specification's clothes.
 
 ## 1. Where it goes
 
-Ask once, before writing: the path, and whether anything besides Markdown is wanted. Give your
-recommended answer first. Where `$ARGUMENTS` already names the path, skip the question and confirm the
-directory exists.
+Ask once, before writing: the path. Give your recommended answer first. Where `$ARGUMENTS` already
+names the path, skip the question and confirm the directory exists. Once the path is known, move the
+closing-notes file beside the spec as `<spec-basename>.notes.md` — it outlives the session, and a
+validation pass can read the decisions' provenance from it.
 
 Ask this once and never again. A spec is written in one pass; do not stop mid-document to ask where
 the next section goes.
