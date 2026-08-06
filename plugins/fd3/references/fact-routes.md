@@ -17,6 +17,25 @@ Dispatch every sub-agent unnamed — never pass `name:`. An unnamed one delivers
 report in the task notification; a named one only answers a later pull, and may deliver
 nothing at all.
 
+Order the dispatches: codebase lookups go out first. A documentation or live-system lookup
+whose question presumes a fact a pending codebase lookup will settle waits for that lookup —
+a premise the code disproves wastes the whole dispatch. Before a live-system dispatch,
+verify its credential with one cheap probe; an agent sent through a logged-out CLI returns
+nothing and the question runs twice.
+
+Parallel codebase lookups get exclusive territories: name in each prompt the files and
+directories that belong to the other agents, and merge two questions whose territories would
+overlap into one dispatch. A dispatch that has grown past roughly five sub-questions splits —
+the researcher's contract takes several numbered input questions, and one overloaded agent
+on the critical path costs more than two focused ones. Web-bound researchers share one
+firecrawl quota: run two or three at a time, never the whole wave at once.
+
+A dispatch prompt asks for the exact line of every cited construct — never the enclosing
+function's range, never a bare path. A range forces the consumer to guess the line, and the
+guess is what ends up quoted.
+
 A fact no route can reach because *you* lack access — an expired token, a console-only
-setting — is still not a decision. Ask the user for that one command, outside the numbered
-questions, and the question it feeds stays blocked meanwhile.
+setting — is still not a decision. Ask the user for that one command at the head of the
+round, before question 1, under its own heading and naming the numbered questions it blocks;
+repeat it at the head of every following round until it is done. An unfulfilled access
+request is the most expensive thing in the session — everything behind it waits.
