@@ -63,6 +63,23 @@ Create custom hooks to prevent unwanted behaviors using simple markdown rule fil
 
 See [plugin README](plugins/hookify/README.md) for details.
 
+### hermes-tweet
+
+Native Hermes Agent X/Twitter plugin guide for Xquik read-first workflows and
+approval-gated actions. Use it to install Hermes Tweet, discover
+`tweet_explore`, run read-only X searches and account reads, and keep
+account-changing actions gated by `HERMES_TWEET_ENABLE_ACTIONS=true`.
+
+**Requires:** [Hermes Agent](https://github.com/NousResearch/hermes-agent),
+`XQUIK_API_KEY` for read tools, optional
+`HERMES_TWEET_ENABLE_ACTIONS=true` for actions.
+
+```
+/plugin install hermes-tweet@cc-toolkit
+```
+
+See [plugin README](plugins/hermes-tweet/README.md) for details.
+
 ### namesmith
 
 Business name discovery — generates candidates across 6 naming archetypes, filters them with a challenger sub-agent (5-dimension scoring), then checks domain availability via bundled Instant Domain Search MCP.
