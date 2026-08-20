@@ -21,8 +21,10 @@ passing.
   branches. The default group is one branch per repository per **landing unit** — the span of
   consecutive rollout phases up to and including a gate in the spec's rollout table.
 - **Operational task** — the one sanctioned exception: work done by hand against
-  the live system (a `gcloud` sequence, a console action) with no pull request. It exists only when
-  the spec names a gate that other tasks depend on and no repository carries it. Its frontmatter
+  the live system (a `gcloud` sequence, a console action) with no pull request. It exists when
+  the spec names a gate whose hand-run steps no repository carries — dependents or not: a final
+  gate nothing waits on still gets its task, or the rollout's last manual steps vanish from the
+  split. Its frontmatter
   says `repository: none` and leaves `branch` empty — these fields are machine-read, so prose in
   them breaks the reader — and its body closes with a `## Note` saying why no pull request exists.
 - **The index card rule** — a task file carries pointers, never copies. The spec stays the single
@@ -116,7 +118,9 @@ is policy of this skill and never appears in the spec.
 Dependencies come from the spec's build order and its phase table. Record each as a `depends-on`
 edge between task slugs: an edge means the other task must land first. Propose each branch's name
 following its repository's visible convention — existing branches show it; the name belongs to the
-group, not the task.
+group, not the task. One exception joins the step-6 batch: when the checkout already sits on a
+branch carrying the spec's commits, whether the first landing unit reuses that branch or cuts
+fresh by the convention is the user's call — a user mid-feature may have chosen it deliberately.
 
 Then fix the reading order: a topological sort of the `depends-on` graph, ties broken by the
 spec's phase-table order, then alphabetically by slug. This ordinal becomes the filename prefix in
@@ -130,7 +134,9 @@ Before writing anything, check — and say in the report — that:
 
 - every work item is in exactly one task;
 - every element code lands in at least one task. An element no work item builds is a spec defect:
-  stop and recommend `fd3:validate-spec`;
+  when exactly one work item's cited files contain it, assign it there and flag the defect in the
+  report for `fd3:validate-spec`; anything less unambiguous — stop and recommend
+  `fd3:validate-spec`;
 - every task has at least one element and a done criterion naming a verification row;
 - the dependency graph has no cycles and every edge points at a task that exists.
 

@@ -43,3 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code-editing agents keep the session model
 - `toolchain-scout`: the output contract now carries a scoped invocation form per command (or
   `not scopeable` with the reason)
+- `split-to-tasks`: an element no work item builds is assigned-and-flagged when exactly one work
+  item's cited files contain it (stop only when its home is ambiguous); an operational task exists
+  for any gate whose hand-run steps no repository carries, dependents or not; a checkout parked on
+  a branch carrying the spec's commits makes the first landing unit's branch identity a user
+  question
