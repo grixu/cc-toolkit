@@ -13,6 +13,10 @@ Three routes, by where the fact lives:
   over both code and documentation when they disagree, and it is the only place drift shows
   up: anything true in production and declared nowhere in code exists only here.
 
+A lookup of one or two authenticated CLI or MCP calls whose exact command is already known —
+`gh pr view`, one tracker query — needs no dispatch: the orchestrator makes it itself, after the
+same cheap credential probe. The routes above govern lookups that take searching.
+
 Dispatch every sub-agent unnamed — never pass `name:`. An unnamed one delivers its whole
 report in the task notification; a named one only answers a later pull, and may deliver
 nothing at all.

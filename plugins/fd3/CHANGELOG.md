@@ -48,3 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for any gate whose hand-run steps no repository carries, dependents or not; a checkout parked on
   a branch carrying the spec's commits makes the first landing unit's branch identity a user
   question
+- `validate-spec`: dispatch may partition by disjoint code territories (exclusive, named in every
+  prompt), not only by section or repository
+- `validation-report` reference: mechanical corrections aggregate into one non-blocking bullet;
+  "Closed during this run" is reserved for findings that would have blocked
+- `fact-routes` reference: a known one-or-two-call authenticated lookup needs no dispatch — the
+  orchestrator makes it itself

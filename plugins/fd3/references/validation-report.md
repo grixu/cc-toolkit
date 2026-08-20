@@ -50,7 +50,10 @@ section written as "section N" — never the `§` symbol.
 
 A finding you found and closed in this same run belongs under **Closed during this run**, not
 deleted: the phase table then reads `yes`, and the record still shows the spec was not
-implementable as written. Only then may the blocking section be dropped as empty.
+implementable as written. Only then may the blocking section be dropped as empty. Mechanical
+corrections — citation fixes and their kin, each already enumerated under **Spec edits applied** —
+aggregate into one **Non-blocking findings** bullet instead; **Closed during this run** is for
+findings that would have blocked.
 
 For an unphased spec, replace the phase table with one word — `ready` or `not ready`. A `deferred`
 claim bounds the phase it gates; it never makes the document not ready. Drop any section that

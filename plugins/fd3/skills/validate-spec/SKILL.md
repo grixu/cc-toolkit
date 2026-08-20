@@ -135,7 +135,9 @@ constraints spends its budget on that instead of on your question.
 
 Dispatch at most one agent per section, or one per repository when the claims are all reference checks in
 the same tree — never one per claim. A repository here means one tree with one root, so two disjoint
-subtrees of a monorepo that the spec treats as separate components may take one agent each. An agent may
+subtrees of a monorepo that the spec treats as separate components may take one agent each — and
+any partition into disjoint code territories works on the same terms, provided the territories
+are exclusive and every prompt names the ones that belong to the other agents. An agent may
 fan its own workload out further — that is its call, not a violation. Two constraints travel down with
 it: every sub-agent gets the same tree context you gave its parent, and `fact-routes.md`'s dispatch
 rules bind at every level.
