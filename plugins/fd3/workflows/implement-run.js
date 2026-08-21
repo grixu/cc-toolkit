@@ -544,7 +544,7 @@ const REFRESH_RESULT = {
 
 for (const unit of units) {
   const repoName = unit.repo.split('/').pop()
-  const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, reviewFindings: 0, preExisting: 0 }
+  const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, reviewFindings: 0, findings: [], preExisting: 0 }
   validation.push(summary)
 
   if (!toolchain.get(unit.repo)) {
@@ -618,6 +618,7 @@ for (const unit of units) {
     deadLenses = reviewSkills.filter((_, i) => !reviews[i])
     const findings = reviews.filter(Boolean).flatMap((r) => r.findings)
     summary.reviewFindings = findings.length
+    summary.findings = findings
     if (findings.length > 0) {
       const fix = await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${repoName}`, phase: 'Validate', schema: FIX_RESULT })
       if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-cr: ${c}`))
