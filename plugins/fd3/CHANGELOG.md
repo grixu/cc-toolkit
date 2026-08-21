@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-run`: stack-base refresh — before validating a branch that stacks on another unit
   validated earlier in the run, a merge agent brings the base's CI/review fixes in, so the
   stacked branch no longer re-fails and re-fixes the base's problems divergently
+- `implement-run`: the full final gate gets one fix round before going to HIL — a mechanical
+  failure (a derived artifact invalidated by review fixes) no longer costs a human round-trip
 
 ### Changed
 

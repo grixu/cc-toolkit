@@ -589,7 +589,15 @@ for (const unit of units) {
   }
 
   // The full command list is the branch's final gate — always, review fixes or not.
-  const finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  let finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  if (finalCi && !finalCi.passed) {
+    // One fix round here: a final-gate failure is often mechanical — a derived artifact the
+    // review fixes invalidated — and only what survives the round deserves a human.
+    summary.fixRounds += 1
+    const fix = await tryTwice(fixPrompt(unit, finalCi.failures, 'final-gate CI'), { label: `fix-final:${repoName}`, phase: 'Validate', schema: FIX_RESULT })
+    if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-final: ${c}`))
+    finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${repoName}:final#2`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  }
   if (!finalCi) {
     summary.ci = 'no-verdict'
     hil.push({
