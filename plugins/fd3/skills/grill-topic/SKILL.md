@@ -71,6 +71,10 @@ Route every lookup by where the fact lives — the routes and dispatch rules are
 
 A question you dispatched a lookup for is **blocked by that lookup** — no exceptions. Do not predict what the lookup will return, or which questions it will turn out to touch: whether a fact changes a question is knowable only once you hold the fact. Questions you sent nobody to answer are not blocked — ask those now; a running lookup is an unsettled prerequisite for its own question only.
 
+A recommendation is never conditional. If you would write "recommended, provided the check confirms it", the question is blocked by that check and stays out of the round — a conditional recommendation gets answered as an unconditional one. The same bar holds inside options: an option whose stated cost is "we would have to verify X" is blocked by that lookup.
+
+A `path:line` that arrived inside a lookup report is that report's claim, not yours. Open it before you put it in front of the user as the reason a decision changes — a citation off by ten lines reads as a citation nobody checked, and it is the finding you most need believed.
+
 ## Corrections
 
 If a late fact contradicts a question you already asked, re-ask that numbered question with the fact, and say plainly that its earlier version and any answer to it are void. The same applies when the faulty premise was *yours* — a recommendation you argued from a wrong fact voids the answer it produced just as hard. Never fold the correction into the next round and leave the user guessing which of their answers still stands.
