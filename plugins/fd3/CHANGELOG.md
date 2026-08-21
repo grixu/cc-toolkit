@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stacked branch no longer re-fails and re-fixes the base's problems divergently
 - `implement-run`: the full final gate gets one fix round before going to HIL — a mechanical
   failure (a derived artifact invalidated by review fixes) no longer costs a human round-trip
+- `implement-run`: accepts optional `toolchain`/`baseline` args like `repair-run`, so a relaunch
+  reuses recon knowledge instead of re-scouting and re-baselining
 
 ### Changed
 

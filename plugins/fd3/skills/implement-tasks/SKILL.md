@@ -108,7 +108,9 @@ Workflow({
     tasks: [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }, ...],
     repos: { "<repository path>": { defaultRef: "<the step-1/2 base, e.g. origin/main>" }, ... },
     reviewSkills: [<the step-2 answer>],
-    maxFixRounds: 3
+    maxFixRounds: 3,
+    toolchain: <on a relaunch: the previous report's toolchain — omit on a first launch>,
+    baseline: <likewise>
   }
 })
 ```

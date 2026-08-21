@@ -21,10 +21,17 @@ export const meta = {
 //                 (e.g. "origin/main"); the skill fetches before launch, so origin/* is fresh
 //   reviewSkills  code-review skill names to run during validation, may be empty
 //   maxFixRounds  CI fix attempts per branch before giving up
+//   toolchain     (optional) { [repository path]: <scout report> } from a previous run's report;
+//                 repositories missing here are scouted
+//   baseline      (optional) { [repository path]: { commands: [...] } } from a previous run's
+//                 report; repositories missing here are re-baselined
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
 const { tasksDir, specPath, tasks, repos, reviewSkills, maxFixRounds } = input
+
+const toolchain = new Map(Object.entries(input.toolchain || {}))
+const baseline = new Map(Object.entries(input.baseline || {}))
 
 const status = new Map(tasks.map((t) => [t.slug, t.status]))
 // Whether a task's branch reached its target is git's knowledge, never a task-file field: the
@@ -58,20 +65,21 @@ phase('Recon')
 
 const repositories = [...new Set(tasks.filter((t) => t.repository !== 'none').map((t) => t.repository))]
 
-const toolchainReports = await parallel(
-  repositories.map((repo) => () =>
-    tryTwice(
-      `Repository to analyse: ${repo}\n` +
-        `Detect how this repository is validated and return your full report.`,
-      { agentType: 'fd3:toolchain-scout', label: `scout:${repo.split('/').pop()}`, phase: 'Recon' },
+const missingToolchain = repositories.filter((repo) => !toolchain.get(repo))
+if (missingToolchain.length > 0) {
+  const reports = await parallel(
+    missingToolchain.map((repo) => () =>
+      tryTwice(
+        `Repository to analyse: ${repo}\n` +
+          `Detect how this repository is validated and return your full report.`,
+        { agentType: 'fd3:toolchain-scout', label: `scout:${repo.split('/').pop()}`, phase: 'Recon' },
+      ),
     ),
-  ),
-)
-const toolchain = new Map(repositories.map((repo, i) => [repo, toolchainReports[i]]))
-for (const repo of repositories) {
-  if (!toolchain.get(repo)) {
-    hil.push({ slug: null, kind: 'no-verdict', stage: 'toolchain', reason: `${repo}: the toolchain scout returned no result after a retry; branches of this repository get no validation verdict this run.` })
-  }
+  )
+  missingToolchain.forEach((repo, i) => {
+    if (reports[i]) toolchain.set(repo, reports[i])
+    else hil.push({ slug: null, kind: 'no-verdict', stage: 'toolchain', reason: `${repo}: the toolchain scout returned no result after a retry; branches of this repository get no validation verdict this run.` })
+  })
 }
 
 const BASELINE_RESULT = {
@@ -110,10 +118,9 @@ const baselinePrompt = (repo) =>
 // What already fails on the clean base is noise this run must not fight or report as its own.
 // Sequential on purpose — at most one build/lint/test pipeline on the machine — and unawaited
 // until Validate, so it overlaps the implement waves, which run no pipelines.
-const baseline = new Map()
 const baselineReady = (async () => {
   for (const repo of repositories) {
-    if (!toolchain.get(repo)) continue
+    if (baseline.get(repo) || !toolchain.get(repo)) continue
     const report = await tryTwice(baselinePrompt(repo), {
       label: `baseline:${repo.split('/').pop()}`,
       phase: 'Recon',
