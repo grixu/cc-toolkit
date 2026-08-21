@@ -1,6 +1,8 @@
 # Question batching
 
-How an fd3 skill puts judgment calls to the user. Collect first, ask once: questions go out after
+How an fd3 skill puts judgment calls to the user **through `AskUserQuestion`**. A skill that grills
+in prose rounds — `grill-topic` — follows the question format in its own SKILL.md; the rules below
+bind only where the tool carries the questions. Collect first, ask once: questions go out after
 the facts are gathered, never one interruption per doubt — and anything you can look up is not a
 question.
 

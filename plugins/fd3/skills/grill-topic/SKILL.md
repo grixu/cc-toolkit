@@ -36,7 +36,11 @@ Before a question goes out, check the facts you already hold for anything that e
 
 Every question a user is meant to answer carries its own number — none arrives buried in the tail of another.
 
-Track which numbered questions came back answered. A question the user skipped is still open: re-put it in the next round, labelled as carried over. Silence is not assent.
+Open every round after the first with one line naming the numbers still unanswered from earlier rounds — `Open from earlier rounds: 18–25` — before any new question. When a round contains sub-lettered questions, close it with the list of labels you expect back (`1, 2, 3a, 3b, 4`): a bare number against a sub-lettered question is one answer short, and you will not know which half it was.
+
+Track which numbered questions came back answered. A question the user skipped is still open: re-put it in the next round under its original number, labelled as carried over, with its options and costs written out in full — a carried-over question compressed to a list of recommendations is not a question, and a user who answers one is ratifying a menu they cannot see. Numbers are never reassigned, so the summary can cite one decision by one name. Silence is not assent, and there is no round count after which it becomes assent.
+
+A defect the user admits to scope is work admitted, not work decided: each admitted defect gets its own numbered question with fix options, or an explicit deferral with an owner. A batch yes/no that sweeps a dozen defects into scope leaves every one of them undesigned.
 
 ## Question style
 
