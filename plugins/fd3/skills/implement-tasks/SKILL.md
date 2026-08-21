@@ -71,9 +71,10 @@ Then make the graph launchable:
   each later one on the previous unit's branch. A derived base is a guess about a decision the
   split made — the report says which bases were read and which derived. The workflow starts
   worktrees and the pull-request chain from these.
-- **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that exists,
-  every status is one of the five. A broken graph stops the run — recommend re-running
-  `fd3:split-to-tasks` rather than patching by hand.
+- **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that
+  exists **and carries a lower ordinal** — the merge planning relies on the file order being
+  topological — and every status is one of the five. A broken graph stops the run — recommend
+  re-running `fd3:split-to-tasks` rather than patching by hand.
 - **Classify what a resumed run inherits**: `done` is skipped; `implemented` re-enters the first
   merge round — whether its branch already reached the target is git's knowledge, and an
   already-merged branch no-ops there; `blocked` is presented as an existing HIL item; a stale

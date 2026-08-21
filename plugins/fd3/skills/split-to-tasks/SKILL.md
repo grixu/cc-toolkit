@@ -155,8 +155,12 @@ Before writing anything, check — and say in the report — that:
   when exactly one work item's cited files contain it, assign it there and flag the defect in the
   report for `fd3:validate-spec`; anything less unambiguous — stop and recommend
   `fd3:validate-spec`;
-- every task has at least one element and a done criterion naming a verification row;
-- the dependency graph has no cycles and every edge points at a task that exists.
+- every delivery task — one that builds or refactors something — has at least one element and a
+  done criterion naming a verification row. A cleanup or operational task may carry neither:
+  it names the gate it inherits instead, as the template directs;
+- the dependency graph has no cycles, every edge points at a task that exists, and every edge
+  points at a lower ordinal — the reading order really is topological, and the implementation
+  workflow's merge planning relies on that.
 
 ### 6. Ask
 
