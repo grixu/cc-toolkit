@@ -137,7 +137,9 @@ working tree is dirty, and which search tools function there. An agent that has 
 constraints spends its budget on that instead of on your question.
 
 Dispatch at most one agent per section, or one per repository when the claims are all reference checks in
-the same tree — never one per claim. A repository here means one tree with one root, so two disjoint
+the same tree — never one per claim. Within that ceiling, split any dispatch that has grown past
+roughly five sub-questions, as `fact-routes.md` directs: several agents over exclusive territories
+beat one agent carrying thirty claims. A repository here means one tree with one root, so two disjoint
 subtrees of a monorepo that the spec treats as separate components may take one agent each — and
 any partition into disjoint code territories works on the same terms, provided the territories
 are exclusive and every prompt names the ones that belong to the other agents. An agent may

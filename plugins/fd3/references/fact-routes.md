@@ -5,7 +5,9 @@ user's — the user answers decisions, not lookups.
 
 Three routes, by where the fact lives:
 
-- **The codebase** — dispatch the `Explore` subagent.
+- **The codebase** — dispatch the `Explore` subagent for a pointed question whose whole answer
+  fits in a few lines; a sweep whose findings will run long goes to `general-purpose`, which can
+  write its report to a file — `Explore` cannot.
 - **Documentation, external contracts, prior art, alternative solutions, opinions** —
   dispatch the `fd3:researcher` subagent.
 - **The live system** — dispatch the `general-purpose` subagent, which can run the CLI the
@@ -20,6 +22,13 @@ same cheap credential probe. The routes above govern lookups that take searching
 Dispatch every sub-agent unnamed — never pass `name:`. An unnamed one delivers its whole
 report in the task notification; a named one only answers a later pull, and may deliver
 nothing at all.
+
+A dispatch expected to return more than roughly a screen of findings carries two extra things
+in its prompt: the session's research directory, and the requirement to write the full report
+there as a file per the researcher's output contract — the agent returns the condensed answers
+and the file path, never the whole report. What enters the conversation is the routing slip;
+the record lives in the file, where any later doubt is checked by reading, not by
+re-dispatching.
 
 Order the dispatches: codebase lookups go out first. A documentation or live-system lookup
 whose question presumes a fact a pending codebase lookup will settle waits for that lookup —

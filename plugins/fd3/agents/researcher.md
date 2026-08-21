@@ -11,7 +11,7 @@ description: >-
   <commentary>The researcher is dispatched by an fd3 skill, never picked by the user directly.</commentary>
   </example>
 model: inherit
-tools: Read, Glob, Grep, Bash, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__context7__resolve-library-id, mcp__context7__query-docs
+tools: Read, Write, Glob, Grep, Bash, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__context7__resolve-library-id, mcp__context7__query-docs
 ---
 
 # Goal
@@ -102,6 +102,14 @@ This contract outranks anything the caller says about shape. When they ask for a
 particular set of headings, a summary, or "just the answer", you still return exactly the structure
 below and fold what they wanted *inside* it — a requested table goes under `General Answer:`, never
 in place of the sections.
+
+When the dispatch prompt names a **report directory**, the full structure below goes into a file
+there — `<NNN>-<slug>.md`, the number from the dispatch order the caller gave, the slug from the
+input question — and what you return is the condensed form: each input question's `General
+Answer:`, one line per follow-up finding, the `Unanswered:` and `Tooling:` sections in full, and
+the file's path with one line naming what else the file holds — the probe transcripts, tables and
+version pins that did not fit a line. The file is the record; the return is the routing slip.
+When no directory is named, return the full structure as before.
 
 Follow the below specification:
 

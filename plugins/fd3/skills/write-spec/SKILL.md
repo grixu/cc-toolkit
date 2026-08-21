@@ -18,9 +18,13 @@ session whose closing summary the user has confirmed, in this same conversation.
 
 The invocation normally carries the path to that session's closing-notes file — three numbered
 lists: ratified decisions with their question numbers and chosen options, decisions the assistant
-took, and risks the user accepted. Read it before writing and hold it as the checklist section 6
-walks. Without the file, build the same checklist from the confirmed closing summary in the
-conversation before writing anything.
+took, risks the user accepted, and the research files the session produced. Read it before writing
+and hold it as the checklist section 6 walks. Without the file, build the same checklist from the
+confirmed closing summary in the conversation before writing anything.
+
+When this skill runs in a sub-agent, the closing-notes file and the research directory it lists
+are the whole input — there is no conversation to consult. A fact in neither file is a gap to
+declare or a lookup to dispatch, never a recollection.
 
 If you were invoked without that — no grilling in context, or a grilling the user never confirmed —
 say so and stop. Ask whether to grill the topic first, or which document holds the settled design. Do
@@ -32,7 +36,9 @@ specification's clothes.
 Ask once, before writing: the path. Give your recommended answer first. Where `$ARGUMENTS` already
 names the path, skip the question and confirm the directory exists. Once the path is known, move the
 closing-notes file beside the spec as `<spec-basename>.notes.md` — it outlives the session, and a
-validation pass can read the decisions' provenance from it.
+validation pass can read the decisions' provenance from it. Move the session's research directory
+the same way, as `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the
+spec cite to the new location — evidence a later pass cannot open is evidence lost.
 
 Ask this once and never again. A spec is written in one pass; do not stop mid-document to ask where
 the next section goes.
@@ -67,7 +73,8 @@ session maps into it:
 ## 3. The evidence appendix
 
 Every load-bearing claim gets a row: the claim as the spec asserts it, and how it was established —
-the command, the `path:line`, the doc quote, the probe output. Not "checked the code".
+the command, the `path:line`, the doc quote, the probe output. Not "checked the code". A claim a
+research file establishes cites that file's path beside the source it quotes.
 
 This table is the spec's proof of work and the thing a validation pass spot-checks first, so it is
 worth more than any prose you could write instead. Two rules:

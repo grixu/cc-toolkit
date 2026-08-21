@@ -69,6 +69,8 @@ Finding *facts* is your job, never the user's. The *decisions* are the user's �
 
 Route every lookup by where the fact lives — the routes and dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
 
+The session's research directory is `research/` in the session scratchpad. Dispatch prompts name it, agents write their full reports there, and what enters this conversation is each report's condensed answers and its file path. When a round argues from a report's findings, cite the file — the user can open the evidence.
+
 A question you dispatched a lookup for is **blocked by that lookup** — no exceptions. Do not predict what the lookup will return, or which questions it will turn out to touch: whether a fact changes a question is knowable only once you hold the fact. Questions you sent nobody to answer are not blocked — ask those now; a running lookup is an unsettled prerequisite for its own question only.
 
 A recommendation is never conditional. If you would write "recommended, provided the check confirms it", the question is blocked by that check and stays out of the round — a conditional recommendation gets answered as an unconditional one. The same bar holds inside options: an option whose stated cost is "we would have to verify X" is blocked by that lookup.
@@ -91,4 +93,4 @@ Close with a summary of every settled decision, and end it with a section listin
 
 Do not act on any of it until the user confirms you have reached a shared understanding.
 
-Once the user confirms, write the summary to a file in the session scratchpad as three numbered lists with stable IDs: **ratified decisions** — one line each, carrying the question number and the option chosen — **decisions you took yourself**, and **risks the user accepted**. The chat summary stays; the file is what downstream skills consume. When a downstream skill is invoked, its argument is that file's path, never a description of where the notes are.
+Once the user confirms, write the summary to a file in the session scratchpad as four numbered lists with stable IDs: **ratified decisions** — one line each, carrying the question number and the option chosen — **decisions you took yourself**, **risks the user accepted**, and **research files** — the path of each report in the session's research directory with one line naming what it establishes. The chat summary stays; the file is what downstream skills consume. When a downstream skill is invoked, its argument is that file's path, never a description of where the notes are.
