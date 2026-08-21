@@ -29,6 +29,7 @@ const { repairs, repos, maxFixRounds } = input
 const toolchain = new Map(Object.entries(input.toolchain || {}))
 const baseline = new Map(Object.entries(input.baseline || {}))
 const hil = [] // decisions an agent could not apply, and everything left without a verdict
+const caveats = [] // agent-flagged facts — deviations, skipped fixes — surfaced in the report
 const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-')}`
 const repoDefault = (repo) => (repos && repos[repo] && repos[repo].defaultRef) || "the repository's default branch"
 // One retry rides out transient API failures (529s, brief limit blips). A second null is a real
@@ -131,6 +132,7 @@ const REPAIR_RESULT = {
     outcome: { enum: ['repaired', 'blocked'] },
     summary: { type: 'string' },
     reason: { type: 'string', description: 'why the decision could not be applied; only when outcome is blocked' },
+    caveats: { type: 'array', items: { type: 'string' }, description: 'side effects of applying the decision literally that the human should see — a degraded type, a narrower behavior than the decision may have intended' },
   },
 }
 
@@ -150,6 +152,8 @@ const repairPrompt = (r) =>
     ``,
     `Return outcome "repaired" with a two-sentence summary of what changed, or outcome "blocked"`,
     `with the reason when the decision cannot be applied as stated. Never guess past an ambiguity.`,
+    `Under caveats, return every side effect of applying the decision literally that the human`,
+    `should see — a degraded type, a narrower behavior than the decision may have intended.`,
   ].join('\n')
 
 // Repair agents edit code and run no pipelines, so they can run in parallel across branches.
@@ -166,6 +170,7 @@ const repairResults = await parallel(
 const units = []
 repairs.forEach((r, i) => {
   const result = repairResults[i]
+  if (result && result.caveats) caveats.push(...result.caveats.map((c) => `${r.branch} repair: ${c}`))
   if (result && result.outcome === 'repaired') {
     units.push(r)
   } else {
@@ -219,6 +224,15 @@ const ciPrompt = (unit, mode) =>
     `otherwise return each newly failing command with the output lines that matter.`,
   ].join('\n')
 
+const FIX_RESULT = {
+  type: 'object',
+  required: ['summary'],
+  properties: {
+    summary: { type: 'string' },
+    caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
+  },
+}
+
 const fixPrompt = (unit, problems) =>
   [
     `Fix CI problems on branch ${unit.branch} in the worktree ${unit.worktree}`,
@@ -227,8 +241,21 @@ const fixPrompt = (unit, problems) =>
     ...problems.map((p) => `- ${p}`),
     ``,
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
-    `that pre-date this branch. Commit the fixes with a conventional-commit message. Do not run`,
-    `the full validation suite; it is rerun after you.`,
+    `that pre-date this branch. A listed problem that cannot be fixed without an action the`,
+    `repository reserves for humans — generating a migration, a production mutation, secrets —`,
+    `is a blocker, not a fix: skip it and record it under caveats. Never guess your way past it.`,
+    ``,
+    `Toolchain report for this repository — when a fix changes something a listed command`,
+    `derives an artifact from, regenerate that artifact the way the report says:`,
+    ``,
+    toolchain.get(unit.repo),
+    ``,
+    `Commit the fixes with a conventional-commit message. To verify a fix you may re-run the`,
+    `exact commands that failed — never the full validation suite; it is rerun after you.`,
+    ``,
+    `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
+    `reason, any judgment call that went beyond the listed problems, and any change that touches`,
+    `a decision recorded in the spec.`,
   ].join('\n')
 
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
@@ -248,7 +275,8 @@ for (const unit of units) {
   let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    await tryTwice(fixPrompt(unit, ci.failures), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate' })
+    const fix = await tryTwice(fixPrompt(unit, ci.failures), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
+    if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
     ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   }
   if (!ci) {
@@ -317,6 +345,9 @@ for (const unit of units) {
 return {
   branches: validation,
   hil,
+  // What agents flagged on the way to success — side effects of literal decisions, skipped
+  // fixes. These must reach the user; they die in transcripts otherwise.
+  caveats,
   toolchain: Object.fromEntries(toolchain),
   baseline: Object.fromEntries(baseline),
 }

@@ -33,6 +33,7 @@ const status = new Map(tasks.map((t) => [t.slug, t.status]))
 const merged = new Set()
 const conflicted = new Set() // merge gave up on these; never retried within this run
 const hil = [] // everything that needs a human: operational tasks, blockers, conflicts, unfixable CI
+const caveats = [] // agent-flagged facts — deviations, skipped fixes, resolved conflicts — surfaced in the report
 const taskBranch = (t) => `task/${t.slug}`
 // Worktrees live beside the repository, never inside it, so validation tooling cannot pick them up.
 const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-')}`
@@ -159,6 +160,7 @@ const IMPLEMENT_RESULT = {
     outcome: { enum: ['implemented', 'blocked'] },
     summary: { type: 'string' },
     reason: { type: 'string', description: 'why the task is blocked; only when outcome is blocked' },
+    caveats: { type: 'array', items: { type: 'string' }, description: 'facts the parent must see even on success: an as-built deviation, a spec discrepancy noticed in passing, a done-criterion that cannot pass until a later task lands' },
   },
 }
 
@@ -187,6 +189,8 @@ const implementPrompt = (task) => {
     `outcome "blocked" with that reason. Never guess your way past a blocker.`,
     ``,
     `Return slug "${task.slug}", the outcome, and a two-sentence summary of what you changed.`,
+    `Under caveats, return anything the parent must see even though you succeeded — an as-built`,
+    `deviation, a spec discrepancy you noticed, a done-criterion that cannot pass yet.`,
   ].join('\n')
 }
 
@@ -211,6 +215,15 @@ const MERGE_RESULT = {
               properties: { slug: { type: 'string' }, description: { type: 'string' } },
             },
             description: 'tasks whose merge was aborted on a judgment conflict',
+          },
+          resolved: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['slug', 'description'],
+              properties: { slug: { type: 'string' }, description: { type: 'string' } },
+            },
+            description: 'conflicts resolved mechanically — one entry each, so later review knows where to look',
           },
         },
       },
@@ -247,11 +260,13 @@ const mergePrompt = (repo, repoTasks) => {
     `   "Already up to date" is expected on a resumed run — count its task as merged.`,
     ``,
     `Resolve a merge conflict only when the two sides are clearly compatible and the resolution`,
-    `is mechanical; commit the resolution. When a conflict needs a judgment call, abort that`,
-    `merge (git merge --abort), record the task under conflicts, and continue with the rest.`,
+    `is mechanical; commit the resolution and record it under resolved — the task's slug and one`,
+    `line on what you chose; a resolved conflict is exactly where a later review should look.`,
+    `When a conflict needs a judgment call, abort that merge (git merge --abort), record the task`,
+    `under conflicts, and continue with the rest.`,
     ``,
     `Return every target branch you touched with its worktree path, the slugs of the tasks now`,
-    `merged in, and the conflicts (empty array when clean).`,
+    `merged in, the conflicts, and the resolved list (empty arrays when clean).`,
   ].join('\n')
 }
 
@@ -292,6 +307,7 @@ while (true) {
 
     ready.forEach((task, i) => {
       const result = results[i]
+      if (result && result.caveats) caveats.push(...result.caveats.map((c) => `${task.slug}: ${c}`))
       if (result && result.outcome === 'implemented') {
         status.set(task.slug, 'implemented')
       } else {
@@ -334,6 +350,7 @@ while (true) {
       }
       for (const b of report.branches) {
         for (const slug of b.mergedSlugs) merged.add(slug)
+        for (const r of b.resolved || []) caveats.push(`${b.branch} merge of ${r.slug}: resolved conflict — ${r.description}`)
         for (const c of b.conflicts) {
           conflicted.add(c.slug)
           hil.push({ slug: c.slug, kind: 'merge-conflict', reason: `${repo} ${b.branch}: ${c.description}` })
@@ -356,6 +373,25 @@ while (true) {
 // the skill relaunches.
 const unreachable = tasks.filter((t) => status.get(t.slug) === 'todo').map((t) => t.slug)
 
+// Deliberate gaps must be visible to the review and fix agents below, or they will "fix" a
+// reserved human step or a blocked task's intentionally missing artifact.
+const reservationLines = hil
+  .filter((h) => h.slug)
+  .map((h) => {
+    const t = tasks.find((x) => x.slug === h.slug)
+    return `- ${h.slug}${t ? ` (${t.name})` : ''}: ${h.reason}`
+  })
+  .concat(
+    unreachable.map((slug) => {
+      const t = tasks.find((x) => x.slug === slug)
+      return `- ${slug}${t ? ` (${t.name})` : ''}: not implemented yet — waits behind a blocked dependency`
+    }),
+  )
+const reservations =
+  reservationLines.length > 0
+    ? `Open work on this task graph — deliberately unfinished, human-owned or blocked:\n${reservationLines.join('\n')}`
+    : ''
+
 // ---- Validate: one branch at a time, so at most one build/lint/test pipeline runs at once
 
 phase('Validate')
@@ -369,6 +405,15 @@ const CI_RESULT = {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
+  },
+}
+
+const FIX_RESULT = {
+  type: 'object',
+  required: ['summary'],
+  properties: {
+    summary: { type: 'string' },
+    caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
   },
 }
 
@@ -410,9 +455,24 @@ const fixPrompt = (unit, problems, source) =>
     ``,
     ...problems.map((p) => `- ${p}`),
     ``,
+    ...(reservations ? [reservations, ``] : []),
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
-    `that pre-date this branch. Commit the fixes with a conventional-commit message. Do not run`,
-    `the full validation suite; it is rerun after you.`,
+    `that pre-date this branch. The open work above is deliberate: never do it and never fill`,
+    `the gaps it leaves. A listed problem that cannot be fixed without an action the repository`,
+    `or a task reserves for humans — generating a migration, a production mutation, secrets —`,
+    `is a blocker, not a fix: skip it and record it under caveats. Never guess your way past it.`,
+    ``,
+    `Toolchain report for this repository — when a fix changes something a listed command`,
+    `derives an artifact from, regenerate that artifact the way the report says:`,
+    ``,
+    toolchain.get(unit.repo),
+    ``,
+    `Commit the fixes with a conventional-commit message. To verify a fix you may re-run the`,
+    `exact commands that failed — never the full validation suite; it is rerun after you.`,
+    ``,
+    `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
+    `reason, any judgment call that went beyond the listed problems, and any change that touches`,
+    `a decision recorded in the spec.`,
   ].join('\n')
 
 const reviewPrompt = (unit, skillName) =>
@@ -423,8 +483,11 @@ const reviewPrompt = (unit, skillName) =>
     ``,
     baselineText(unit.repo),
     ``,
+    ...(reservations ? [reservations, ``] : []),
     `Report only findings this branch's diff introduces. An issue that exists identically on the`,
-    `clean base — including everything in the baseline above — is pre-existing: leave it out.`,
+    `clean base — including everything in the baseline above — is pre-existing: leave it out. So`,
+    `is the open work listed above and its direct consequences: a gap a blocked or human-owned`,
+    `task deliberately leaves is not a finding.`,
     ``,
     `Return only the findings worth fixing, one entry each: file, the problem, and why it matters.`,
     `An empty findings array is a valid result.`,
@@ -447,7 +510,8 @@ for (const unit of units) {
   let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate' })
+    const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
+    if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
     ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   }
   if (!ci) {
@@ -484,7 +548,8 @@ for (const unit of units) {
     const findings = reviews.filter(Boolean).flatMap((r) => r.findings)
     summary.reviewFindings = findings.length
     if (findings.length > 0) {
-      await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${repoName}`, phase: 'Validate' })
+      const fix = await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${repoName}`, phase: 'Validate', schema: FIX_RESULT })
+      if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-cr: ${c}`))
     }
   }
 
@@ -545,7 +610,10 @@ return {
   branches: validation,
   hil,
   unreachable,
-  // Recon knowledge, returned so a follow-up repair-run reuses it instead of re-scouting.
+  // What agents flagged on the way to success — deviations, skipped fixes, resolved conflicts.
+  // These must reach the user; they die in transcripts otherwise.
+  caveats,
+  // Recon knowledge, returned so a relaunch or a follow-up repair-run reuses it instead of re-scouting.
   toolchain: Object.fromEntries(toolchain),
   baseline: Object.fromEntries(baseline),
 }

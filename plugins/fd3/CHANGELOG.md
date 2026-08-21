@@ -26,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reuses `toolchain`/`baseline` from the implement-run report
 - `implement-tasks` skill: step 4 split into an unblock lane (relaunch `implement-run`) and a
   repair lane (launch `repair-run`), never both workflows at once
+- `implement-run`/`repair-run`: reservations channel — review and fix agents receive the run's
+  open HIL items and unreachable tasks, so a deliberate gap (a human-reserved migration, a
+  blocked task's missing artifact) is reported, never "fixed"; fix prompts carry the blocker
+  clause implement prompts already had
+- `implement-run`/`repair-run`: fix agents return a structured result (`FIX_RESULT`) with
+  `caveats`; implement, repair and merge agents gained caveat channels too (as-built deviations,
+  literal-decision side effects, mechanically resolved conflicts), all aggregated into a new
+  `caveats` key of the report — flagged facts no longer die in agent transcripts
 
 ### Changed
 
