@@ -88,6 +88,12 @@ pass. Where one repository owns a whole behaviour, that yields a vertical slice 
 and UI landing together. Where ownership or rollout forbids it, it degrades honestly into
 phase-ordered cuts. Never force a slice across a boundary the rules above drew.
 
+A task that changes the type or shape of a shared identity or contract — a primary-key type, a
+wire format, a schema field — owns the ripple: propagation to every consumer, fixtures, seed
+data and test seeders included, either inside the task or explicitly handed to a named task.
+A ripple nobody owns surfaces as a wall of type errors in whichever branch validates first, and
+gets fixed there twice.
+
 Tickets never drive the split. Attach the spec's ticket identifiers to the tasks they describe, so
 pull requests and commit messages can cite them.
 
@@ -116,7 +122,10 @@ is policy of this skill and never appears in the spec.
 ### 4. Order
 
 Dependencies come from the spec's build order and its phase table. Record each as a `depends-on`
-edge between task slugs: an edge means the other task must land first. Propose each branch's name
+edge between task slugs: an edge means the other task must land first. Never draw an edge onto
+an operational task when the spec lets the code land before that gate — an edge there strands
+implementable work behind human hands, and a whole extra run pays for it; a dependency that only
+gates *verification* belongs in the task's Done-when, not in the graph. Propose each branch's name
 following its repository's visible convention — existing branches show it; the name belongs to the
 group, not the task. One exception joins the step-6 batch: when the checkout already sits on a
 branch carrying the spec's commits, whether the first landing unit reuses that branch or cuts

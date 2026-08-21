@@ -94,3 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `toolchain-scout`: install commands are always listed as required-in-a-fresh-worktree (the
   caller runs commands in worktrees that share no `node_modules`), and command templates that
   write scratch comparison artifacts must remove them
+- `split-to-tasks`: no `depends-on` edge onto an operational task when the spec lets the code
+  land before that gate (verification-only dependencies belong in Done-when); a task changing a
+  shared identity/contract shape owns the propagation to every consumer, fixtures and seeds
+  included, or hands it to a named task
