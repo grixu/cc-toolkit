@@ -6,8 +6,9 @@ argument-hint: "<path to the tasks directory>"
 
 The tasks to implement: **$ARGUMENTS**
 
-If no path was given, ask which tasks directory to implement. If the path does not resolve or
-holds no task files, say so and stop.
+If no path was given, ask which tasks directory to implement. A path that holds no task files
+itself but contains a `tasks/` subdirectory means that subdirectory. If the path does not
+resolve or holds no task files, say so and stop.
 
 Task files are the state store here. Their frontmatter statuses — `todo`, `in-progress`,
 `implemented`, `blocked`, `done` — are what survives an interrupted run, so every status change
