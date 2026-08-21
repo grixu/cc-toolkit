@@ -91,3 +91,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `repos[].parkedBranch` instead of being discovered through git's refusal
 - `implement-run`: per-branch validation summaries carry review `findings` text, not only the
   count — the skill can relay what review caught without mining the journal
+- `toolchain-scout`: install commands are always listed as required-in-a-fresh-worktree (the
+  caller runs commands in worktrees that share no `node_modules`), and command templates that
+  write scratch comparison artifacts must remove them

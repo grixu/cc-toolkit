@@ -87,9 +87,13 @@ Doubts:
 ```
 
 Order the commands as CI orders them; where CI is silent, install → build → typecheck → lint →
-unit tests. Include the install command only when the repository's dependencies are not already
-installed — check, do not assume. Drop the `Doubts` section when there are none; never resolve a
-doubt by guessing.
+unit tests. Always include the install command, marked "required in a fresh worktree": the
+caller runs these commands in git worktrees, which share nothing installed — `node_modules` and
+friends exist per-worktree, so "already installed" is only ever true of the checkout you
+inspected. A command that writes a scratch artifact to compare against (a regenerated schema, a
+diff target) must end by removing it — the caller runs your commands verbatim in many worktrees,
+and a leftover shows up as untracked litter in every one of them. Drop the `Doubts` section when
+there are none; never resolve a doubt by guessing.
 
 The scoped form comes from the same sources as the command itself — the orchestrator's filter
 syntax (`turbo run lint --filter=<packages>...`), a linter that accepts file arguments, a tool
