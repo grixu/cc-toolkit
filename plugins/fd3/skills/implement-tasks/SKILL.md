@@ -30,8 +30,9 @@ task or the spec mid-run is a reason to stop and say so, never something to fix 
 
 ## Workflow
 
-Post this checklist before your first tool call, and post it again with the marks updated each
-time a step completes:
+Post this checklist before your first tool call, again in full — marks updated — before every
+user interaction (the question batch, each report round) and at the close; between those, a
+one-line note as each step completes:
 
 ```
 - [ ] 1. Read the graph: parse task frontmatter, resolve repositories, check integrity

@@ -36,8 +36,9 @@ checks 1, 6 and 12 are rules the other file states.
 
 ## Workflow
 
-Post this checklist before your first tool call, and post it again with the marks updated each time a
-step completes — it is how the user sees progress:
+Post this checklist before your first tool call, again in full — marks updated — before every
+user interaction (a question batch, the report) and at the close; between those, a one-line note
+as each step completes. It is how the user sees progress:
 
 ```
 - [ ] 0. Locate every repository the spec touches

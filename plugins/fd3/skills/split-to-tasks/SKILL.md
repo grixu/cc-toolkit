@@ -42,8 +42,9 @@ verdict; the pass's quality is what the question is about.
 
 ## Workflow
 
-Post this checklist before your first tool call, and post it again with the marks updated each time
-a step completes — it is how the user sees progress:
+Post this checklist before your first tool call, again in full — marks updated — before every
+user interaction (the question batch, the report) and at the close; between those, a one-line
+note as each step completes. It is how the user sees progress:
 
 ```
 - [ ] 1. Enumerate: work items, element codes, phases and gates, ownership, tickets
