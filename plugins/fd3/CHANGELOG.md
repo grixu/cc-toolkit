@@ -98,3 +98,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   land before that gate (verification-only dependencies belong in Done-when); a task changing a
   shared identity/contract shape owns the propagation to every consumer, fixtures and seeds
   included, or hands it to a named task
+- `validate-spec`: check 1 also catches intra-element contradictions — an element whose own
+  requirements cannot all hold at once

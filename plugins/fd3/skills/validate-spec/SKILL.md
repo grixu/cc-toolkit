@@ -87,6 +87,9 @@ report**, whether it passed or not.
    precedence over another document, that declaration settles the disagreement; what to look for instead is
    the **silent reversal** — something the superseded document said, changed here, and not marked as changed.
    A categorical claim that everything else is carried forward is itself a claim: check it, or report it.
+   Contradiction is also intra-element: an element whose own requirements cannot all hold at once — a
+   mandated mode and a mandated mechanism that only works in a different mode — is the same finding, and it
+   surfaces later as an implementation agent blocking mid-run, at the cost of a whole extra cycle.
 2. The described scope covers every design decision, and every part of the scope traces back to one. What
    the spec puts out of scope is exempt from this — instead, each out-of-scope item names its owner and its
    placement. Check every out-of-scope item against the rest of the document: an item whose body describes
