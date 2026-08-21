@@ -25,8 +25,10 @@ tickets: [<identifiers, if any>]
 
 ## Done when
 
-<The verification rows — by element code and kind — that must pass. A task with no row of its own
-inherits its phase's verification, and says so.>
+<The verification rows — by element code and kind — that must pass. Name the row, never restate
+its expected values or counts: the implementing agent reads the row in the spec, and a copied
+number is a second source of truth that rots. A task with no row of its own inherits its phase's
+verification, and says so.>
 
 ## Where to look
 
@@ -43,4 +45,6 @@ the same tooling); `blocked` means only a human can move it; `done` comes only a
 passes. An interrupted mass run resumes on these: `done` is skipped, `implemented` re-enters the
 merge round, where an already-merged branch no-ops.
 
-An operational task closes its body with a `## Note` saying why no pull request exists.
+Any task may close with a `## Note` carrying what no other section does — a spec conflict the
+split resolved and how, a repository convention the work must respect, a standing manual step.
+For an operational task the note is mandatory: it says why no pull request exists.
