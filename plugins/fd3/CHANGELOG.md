@@ -44,6 +44,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-run`: operational tasks get `status: blocked` written to their files (previously
   memory-only, violating the state-store axiom); status writes are owned by this writer and the
   done-marker alone
+- `implement-tasks` skill: step 4 — read the full report from the notification's output file
+  (the inline result truncates), relay totals only from the report's `tasks[]` tally, relay
+  caveats; read-only diagnosis of CI HIL items feeding the repair `instructions`; mechanical
+  git-op carve-out (merge/revert leaving an intentionally incomplete branch); post-relaunch
+  check that branches respect standing HIL decisions; HIL handoff file offer when a run parks
+  on human work
 
 ### Changed
 

@@ -125,15 +125,22 @@ implementation agents yourself.
 
 ### 4. Work the report
 
-The workflow returns per-task statuses, per-branch validation outcomes, the HIL list, the tasks
-left unreachable behind blockers, and its `toolchain` and `baseline` knowledge. Relay it
-faithfully — a failed CI stays failed in the telling — with one distinction the report already
-draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
-failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
+The completion notification truncates the result — read the full report from the notification's
+`<output-file>` path before relaying anything. The workflow returns per-task statuses,
+per-branch validation outcomes (with each branch's review findings), agent `caveats`, the HIL
+list, the tasks left unreachable behind blockers, and its `toolchain` and `baseline` knowledge.
+Relay it faithfully — a failed CI stays failed in the telling, every caveat reaches the user,
+and any totals you state are the report's own `tasks[]` tally, never hand-counted — with one
+distinction the report already draws: `no-verdict` items are absence of evidence (an agent died
+twice on a transient API failure), never failures. Relay them as "no verdict" and simply
+include them in the relaunch.
 
 For each HIL item, put the decision to the user: an operational task is theirs to execute (offer
 the task file's steps as a script to follow; mark `done` only when they confirm); a blocker or
-conflict needs their call on how to proceed. The answers split into two lanes:
+conflict needs their call on how to proceed. A CI failure on the list may be diagnosed first —
+read-only, in the branch's worktree — so the question puts analyzed options before the user
+instead of raw output; the diagnosis then travels verbatim in the repair `instructions`, sparing
+the repair agent a re-investigation. The answers split into two lanes:
 
 - **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
   the same way; statuses make the rerun skip everything finished.
@@ -155,12 +162,27 @@ conflict needs their call on how to proceed. The answers split into two lanes:
   ```
 
   `base` is the branch's stack base (or the repo's `defaultRef`). Passing `toolchain` and
-  `baseline` through spares a re-scout; repair agents receive the decision as their sole
-  authority and never read the spec. Repair validation is CI only — no code review.
+  `baseline` through spares a re-scout — extract both mechanically from the report's output
+  file (jq, node), never retype them by hand; when extraction is impractical, omitting them is
+  the sanctioned trade and the run re-scouts at the cost of one agent. Repair agents receive
+  the decision as their sole authority and never read the spec. Repair validation is CI only —
+  no code review.
+
+One carve-out from the second lane: a purely mechanical git operation — merging an existing
+task branch into its target, reverting a named commit — may be done by this skill directly when
+the decision deliberately leaves the branch incomplete, because a repair-run would fail its own
+CI on that intended state. Anything that touches file content still goes through `repair-run`.
 
 Never run two workflows at once — validation tolerates exactly one build/lint/test pipeline on
-the machine. Repairs first, then the implement relaunch. Repeat until every task is `done` or
-the user stops.
+the machine. Repairs first, then the implement relaunch. When a relaunch completes, check its
+branches against the standing HIL decisions before relaying success — an agent that undid a
+reserved human step is the first thing to report, not a footnote. Repeat until every task is
+`done` or the user stops.
+
+When the run parks on human work — HIL items that need days, not minutes — offer to write an
+ordered handoff file (`HIL_ACTIONS.md` next to the tasks directory): the human steps in order,
+each pointing at its task file and what it unblocks, plus where the branches and worktrees
+live. A pause that survives only in this conversation is state lost.
 
 ### 5. Propose, never push
 
