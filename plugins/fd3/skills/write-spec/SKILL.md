@@ -49,9 +49,18 @@ Only what the session settled or established. The template defines every section
 write against the file, not from memory of it. What the template cannot know is how a grilling
 session maps into it:
 
-- **Decisions.** One row per decision the user actually ratified, `D1`…`Dn`. A decision you
-  took yourself, that the user's closing confirmation covered without answering directly,
-  still goes in — and its rationale says that it followed from another answer.
+- **Decisions.** One row per decision the user actually ratified, `D1`…`Dn`. Each rationale
+  opens with its provenance: the question number and option the user chose, or
+  `assistant-taken` and the answer it followed from. A decision you took yourself, that the
+  user's closing confirmation covered without answering directly, still goes in on those
+  terms — and where a decision supersedes one of the user's own answers, the rationale names
+  that answer and why it fell. An end state whose provenance is missing reads as the user's
+  choice when it was yours.
+- **Facts are not work.** A fact a lookup established belongs in the problem statement and
+  the evidence appendix; it does not by itself put a work item in the per-repository
+  section. Work nobody ratified goes to out-of-scope with an owner and a placement, marked
+  as surfaced during analysis — never into a phase. An option the session explicitly
+  declined does not reappear anywhere.
 - **Precedence.** Before writing "everything else is carried forward unchanged", check the
   status field of every document in the superseded set, and enumerate what "everything
   else" is.
