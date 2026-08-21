@@ -96,6 +96,15 @@ worth more than any prose you could write instead. Two rules:
   `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`. If it stays unsettled, it goes into
   the document as a declared gap with an owner and a placement, never as a bare statement.
 
+A number you chose while writing — a bake period, a waiting window, a threshold, a version — is a
+claim like any other: it gets an evidence row stating its basis, or it becomes a declared gap. A
+plausible reason attached to a number nobody agreed is still a number nobody agreed.
+
+Before the document is reported done, resolve every `path:line` you did not read yourself — the
+citations inherited from lookup reports are the ones that drift. Batch the checks per file. A
+citation that will not resolve is deleted or downgraded to a filename, never left for a validation
+pass to find.
+
 ## 4. Declared gaps
 
 Anything the session could not settle goes into the document as a **declared gap**, on the terms
@@ -119,9 +128,18 @@ carries its element code; and every load-bearing claim has either an evidence ro
 with an owner and a placement. Check this against the document you wrote, not against your memory of
 writing it.
 
+Then two counted passes, both against the file. Walk the closing-notes checklist entry by entry:
+each ratified decision, assistant-taken decision and accepted risk names the `Dn` row, element code,
+gap or rollout step that carries it — an entry with no landing place is a decision you dropped or a
+gap you owe the reader. And count: decision rows, element codes used anywhere in the document,
+element codes defined in the target-architecture section, verification rows, evidence rows, declared
+gaps. Every code used has a definition — a code that appears only in a work item or a verification
+row is defined or deleted.
+
 ## 7. After writing
 
-Report where it went and how long it is. Then say plainly what is not yet settled in it: the declared
-gaps, and anything you were unable to verify. Offer `fd3:validate-spec` on the file as the next step —
+Report where it went, how long it is, the counts from section 6, and how many citations you resolved
+yourself against how many you did not — "the rest resolve" is a claim you did not check. Then say
+plainly what is not yet settled in it: the declared gaps, and anything you were unable to verify. Offer `fd3:validate-spec` on the file as the next step —
 it will spot-check the appendix, resolve every citation and run the section checks — and let the user
 decide whether to run it.
