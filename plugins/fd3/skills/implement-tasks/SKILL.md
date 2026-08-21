@@ -106,7 +106,8 @@ Workflow({
     tasksDir: "<absolute path>",
     specPath: "<absolute path to the spec file, resolved in step 1>",
     tasks: [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }, ...],
-    repos: { "<repository path>": { defaultRef: "<the step-1/2 base, e.g. origin/main>" }, ... },
+    repos: { "<repository path>": { defaultRef: "<the step-1/2 base, e.g. origin/main>",
+             parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
     reviewSkills: [<the step-2 answer>],
     maxFixRounds: 3,
     toolchain: <on a relaunch: the previous report's toolchain — omit on a first launch>,
@@ -118,10 +119,14 @@ Workflow({
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
 repository's `defaultRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
-Worktrees and target branches are cut from that ref (or the task's stack base); the workflow
-owns everything between launch and report. This section is the whole launch contract — do not
-read the workflow script, and do not re-implement the loop in conversation or dispatch
-implementation agents yourself.
+Worktrees and target branches are cut from that ref (or the task's stack base). When step 2
+established that a target branch is the branch the repository itself is parked on, say so via
+`parkedBranch` — git refuses a second worktree for it, and the workflow must know to use the
+main checkout rather than discover the refusal. On a relaunch, pass `toolchain` and `baseline`
+from the previous report so the run skips a re-scout and re-baseline of repositories it already
+knows. The workflow owns everything between launch and report. This section is the whole launch
+contract — do not read the workflow script, and do not re-implement the loop in conversation or
+dispatch implementation agents yourself.
 
 ### 4. Work the report
 

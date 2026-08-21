@@ -17,8 +17,11 @@ export const meta = {
 //                 the branch this task's target branch stacks on, or null for the repository's
 //                 base ref; status is one of todo | implemented | blocked | done (stale
 //                 in-progress is reset by the skill before launch)
-//   repos         { [repository path]: { defaultRef } } — the ref new branches are cut from
-//                 (e.g. "origin/main"); the skill fetches before launch, so origin/* is fresh
+//   repos         { [repository path]: { defaultRef, parkedBranch } } — defaultRef is the ref new
+//                 branches are cut from (e.g. "origin/main"); the skill fetches before launch, so
+//                 origin/* is fresh. parkedBranch (optional) names the target branch checked out
+//                 in the main repository itself — git refuses a second worktree for it, so the
+//                 main checkout serves as that branch's worktree
 //   reviewSkills  code-review skill names to run during validation, may be empty
 //   maxFixRounds  CI fix attempts per branch before giving up
 //   toolchain     (optional) { [repository path]: <scout report> } from a previous run's report;
@@ -193,14 +196,18 @@ const implementPrompt = (task) => {
     `   whole spec.`,
     `2. In the task file set \`status: in-progress\` and \`worktree: ${worktreePath(task.repository, taskBranch(task))}\`.`,
     `3. In the repository ${task.repository}, create that worktree on a new branch ${taskBranch(task)}`,
-    `   (git worktree add <path> -b <branch> <start-point>). Start it from ${task.branch} if that`,
-    `   branch exists, otherwise from ${task.baseBranch || repoDefault(task.repository)} —`,
-    `   everything this task depends on is already merged there. If the worktree already exists`,
-    `   from an interrupted attempt, continue in it instead of recreating anything.`,
+    `   (git worktree add <path> -b <branch> <start-point>). The start-point is the first of these`,
+    `   refs that exists — an early wave can run before the later ones are created:`,
+    `   ${[task.branch, task.baseBranch, repoDefault(task.repository)].filter(Boolean).join(', then ')}.`,
+    `   Everything this task depends on is already merged into whichever you start from. If the`,
+    `   worktree already exists from an interrupted attempt, continue in it instead of recreating`,
+    `   anything.`,
     `4. Implement exactly what the task's Goal and Done-when describe — nothing more. Work only`,
     `   inside your worktree; the only file you touch outside it is the task file itself.`,
     `5. Do not run linters, test suites or builds — validation is batched later for the whole`,
-    `   branch. Commit with a conventional-commit message citing the task's tickets, if any.`,
+    `   branch. One exception: when the task's deliverable is a generated artifact whose`,
+    `   regeneration requires a build, run that build, inside your worktree only. Commit with a`,
+    `   conventional-commit message citing the task's tickets, if any.`,
     `6. On success set \`status: implemented\` in the task file.`,
     ``,
     `If the task requires an action you must not take — a production mutation, secrets, an`,
@@ -251,6 +258,8 @@ const MERGE_RESULT = {
   },
 }
 
+const parked = (repo) => (repos && repos[repo] && repos[repo].parkedBranch) || null
+
 const mergePrompt = (repo, repoTasks) => {
   // repoTasks arrive in the tasks array's ordinal order, which is topological — so targets of
   // earlier landing units are listed, and worked, before the branches that stack on them.
@@ -262,7 +271,7 @@ const mergePrompt = (repo, repoTasks) => {
   const plan = [...targets.entries()]
     .map(
       ([branch, g]) =>
-        `- target ${branch} (stacks on ${g.base || repoDefault(repo)}, worktree ${worktreePath(repo, branch)}):\n` +
+        `- target ${branch} (stacks on ${g.base || repoDefault(repo)}, worktree ${branch === parked(repo) ? `${repo} — the main checkout` : worktreePath(repo, branch)}):\n` +
         g.tasks.map((t) => `    - ${taskBranch(t)} (task ${t.slug})`).join('\n'),
     )
     .join('\n')
@@ -274,7 +283,9 @@ const mergePrompt = (repo, repoTasks) => {
     ``,
     `For each target branch, in order:`,
     `1. If the branch does not exist, create it from its stack base. If its worktree directory is`,
-    `   missing, create it (replace "/" with "-" in the branch name to form the directory name).`,
+    `   missing, create it (replace "/" with "-" in the branch name to form the directory name) —`,
+    `   except a target listed as the main checkout: git refuses a second worktree for a branch`,
+    `   that is already checked out, so work in the main checkout and report it as the worktree.`,
     `2. Merge the stack base into the target first, so the stack stays current.`,
     `3. Merge the listed task branches into it, in the listed order. A branch that answers`,
     `   "Already up to date" is expected on a resumed run — count its task as merged.`,

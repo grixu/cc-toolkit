@@ -85,3 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   command is reported with its reason, never as passed; CI prompts skip commands the baseline
   already shows failing, quote shell paths, and diff against the stated base (never the branch
   itself); merge results record mechanically `resolved` conflicts so review knows where to look
+- `implement-run`: implement prompts state the explicit start-point fallback chain (target
+  branch → stack base → default ref) and allow a build when the task's deliverable is a
+  generated artifact; a target branch parked as the repository's checkout is declared via
+  `repos[].parkedBranch` instead of being discovered through git's refusal
