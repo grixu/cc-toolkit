@@ -113,7 +113,9 @@ yours to relax:
 
 Branches of consecutive landing units in one repository **stack**: the first starts from the
 repository's default branch, each later one from the previous unit's branch. Record each branch's
-base — implementation and the pull-request chain both start from it.
+base in its tasks' `branch-base:` frontmatter field — the same value on every task of the branch,
+and the field implementation reads; a base recorded only in the report is a base lost with the
+conversation.
 
 Then the size check: estimate each branch's aggregate diff from its tasks' citations. Past **80
 changed files or 2000 changed lines**, generated files excluded, a reviewer stops reading and

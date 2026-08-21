@@ -44,8 +44,8 @@ time a step completes:
 ### 1. Read the graph
 
 Parse the YAML frontmatter of every task file in the directory: slug (the filename without its
-ordinal prefix and extension), name, repository, branch, phase, depends-on, status, tickets. The
-spec is not read — the task files are the whole input.
+ordinal prefix and extension), name, repository, branch, branch-base, phase, depends-on, status,
+tickets. The spec is not read — the task files are the whole input.
 
 Then make the graph launchable:
 
@@ -62,10 +62,14 @@ Then make the graph launchable:
   `origin/<default>` ref; note which branch the checkout currently sits on and whether that
   branch carries commits beyond `origin/<default>`. A repository parked on a non-default branch,
   or a base candidate behind `origin/<default>`, joins the step-2 batch.
-- **Derive each branch's stack base.** Order each repository's distinct `branch:` values by their
-  tasks' rollout phase (the numeric prefix of `phase:`): the first stacks on the repository's
-  base ref (`baseBranch: null` — resolved to the `defaultRef` confirmed in step 2), each later
-  one on the previous unit's branch; branches sharing a phase share a base. The workflow starts
+- **Resolve each branch's stack base.** Read it from the tasks' `branch-base:` field — the split
+  records the same value on every task of a branch, and a disagreement inside one branch joins
+  the step-2 batch. Only when the field is absent (tasks split before it existed), derive it:
+  order the repository's distinct `branch:` values by their tasks' rollout phase (the numeric
+  prefix of `phase:`; `cleanup` sorts after every numbered phase), the first stacking on the
+  repository's base ref (`baseBranch: null` — resolved to the `defaultRef` confirmed in step 2),
+  each later one on the previous unit's branch. A derived base is a guess about a decision the
+  split made — the report says which bases were read and which derived. The workflow starts
   worktrees and the pull-request chain from these.
 - **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that exists,
   every status is one of the five. A broken graph stops the run — recommend re-running
@@ -83,7 +87,8 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
 - which code-review skills to run during validation — list what is installed and let the user
   pick; none is a valid answer;
 - the spec path, when the `spec:` pointers did not resolve to an existing file in step 1;
-- any unresolved repository paths and stale `in-progress` calls from step 1;
+- any unresolved repository paths, `branch-base:` disagreements and stale `in-progress` calls
+  from step 1;
 - per repository parked on a non-default branch: is that branch the intended base for this work,
   or does the run start clean from `origin/<default>`? Asked once per touched repository — a
   user mid-feature may already have chosen the branch the work belongs on;
