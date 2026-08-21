@@ -49,6 +49,15 @@ step completes — it is how the user sees progress:
 - [ ] 6. Report the verdict
 ```
 
+**Headless.** A dispatch may declare this run headless — the `fd3:build-spec` orchestration
+does. Then nothing here talks to the user: execute steps 0–3, write the report-so-far to the
+file the dispatch names, with the collected step-4 questions under `## Questions for the user`
+and the claims they would settle marked `awaiting-user`, and return that file's path plus one
+line per question. The caller asks the user; a second headless dispatch — the **apply run** —
+receives the answers and the partial report's path, executes steps 5 and 6 against them, and
+produces the final report. The no-open-claims rule binds the final report, never the partial
+one.
+
 ### 0. Locate the repositories
 
 A spec often describes work in repositories other than the one it lives in. List every repository it
