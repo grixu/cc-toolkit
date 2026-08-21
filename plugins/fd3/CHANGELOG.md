@@ -50,6 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   git-op carve-out (merge/revert leaving an intentionally incomplete branch); post-relaunch
   check that branches respect standing HIL decisions; HIL handoff file offer when a run parks
   on human work
+- `implement-tasks` skill: step 5 triggers on all repository-bearing tasks `done` (operational
+  tasks listed, never gating); cleanup consent decoupled from push consent; untracked tasks-dir
+  state-store warning
 
 ### Changed
 
