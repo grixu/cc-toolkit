@@ -98,6 +98,7 @@ const BASELINE_RESULT = {
         },
       },
     },
+    skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never recorded as passed' },
   },
 }
 
@@ -108,7 +109,8 @@ const baselinePrompt = (repo) =>
     `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${repoDefault(repo)}`,
     `   (git worktree add <path> <ref>) unless it already exists — then reuse it as is.`,
     `2. Run every runnable validation command from the toolchain report below, in the reported`,
-    `   order, sequentially — never in parallel. Skip what the report lists as not runnable here.`,
+    `   order, sequentially — never in parallel. Skip what the report lists as not runnable here,`,
+    `   recording each skip under skipped with its reason — a skip is never recorded as passed.`,
     `3. Fix nothing, change nothing. Record, per command, whether it exited 0, and for each`,
     `   failure the output lines that matter.`,
     ``,
@@ -423,6 +425,7 @@ const CI_RESULT = {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
+    skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never reported as passed' },
   },
 }
 
@@ -455,15 +458,19 @@ const ciPrompt = (unit, mode) =>
     ``,
     mode === 'scoped'
       ? `Scope the run to this branch's changes: list them with` +
-        `\n\`git diff --name-only ${unit.base}...HEAD\` and use each command's scoped form from the` +
-        `\nreport on those paths; run a command in full only when the report marks it not scopeable.`
+        `\n\`git diff --name-only ${unit.base}...HEAD\` — ${unit.base} is the base, never diff the` +
+        `\nbranch against itself — and use each command's scoped form from the report on those` +
+        `\npaths, quoting every path you pass to a shell (unquoted brackets and globs break zsh);` +
+        `\nrun a command in full only when the report marks it not scopeable.`
       : `Run every command in full — this is the branch's final gate before it is handed over.`,
     ``,
-    `Skip everything the report lists as not runnable here. Do not fix anything.`,
-    `A failure whose location and message match the baseline is pre-existing: return it under`,
-    `preExisting, never under failures, and do not count it against the branch. Return`,
-    `passed=true only when every runnable command exits 0 or fails only on baseline entries;`,
-    `otherwise return each newly failing command with the output lines that matter.`,
+    `Skip everything the report lists as not runnable here, and skip a command the baseline`,
+    `shows failing before it produces a verdict — re-proving a baseline failure is wasted time.`,
+    `Every skip goes under skipped with its reason; a skip is never reported as passed. Do not`,
+    `fix anything. A failure whose location and message match the baseline is pre-existing:`,
+    `return it under preExisting, never under failures, and do not count it against the branch.`,
+    `Return passed=true only when every runnable command exits 0 or fails only on baseline`,
+    `entries; otherwise return each newly failing command with the output lines that matter.`,
   ].join('\n')
 
 const fixPrompt = (unit, problems, source) =>

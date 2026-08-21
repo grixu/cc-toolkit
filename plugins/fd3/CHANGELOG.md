@@ -81,3 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Closed during this run" is reserved for findings that would have blocked
 - `fact-routes` reference: a known one-or-two-call authenticated lookup needs no dispatch — the
   orchestrator makes it itself
+- `implement-run`/`repair-run`: CI and baseline schemas gained a `skipped` field — a skipped
+  command is reported with its reason, never as passed; CI prompts skip commands the baseline
+  already shows failing, quote shell paths, and diff against the stated base (never the branch
+  itself); merge results record mechanically `resolved` conflicts so review knows where to look
