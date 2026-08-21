@@ -159,6 +159,17 @@ for (const t of tasks) {
   }
 }
 
+// The files are the state store — a status living only in this run's memory is lost on
+// interruption. Only this writer and the done-marker ever write statuses this workflow owns.
+const operationalFiles = tasks.filter((t) => t.repository === 'none' && status.get(t.slug) === 'blocked').map((t) => t.file)
+if (operationalFiles.length > 0) {
+  await tryTwice(
+    `Set \`status: blocked\` in the frontmatter of these task files, changing nothing else:\n` +
+      operationalFiles.map((f) => `- ${f}`).join('\n'),
+    { label: 'mark-blocked', phase: 'Implement', model: 'haiku', effort: 'low' },
+  )
+}
+
 const IMPLEMENT_RESULT = {
   type: 'object',
   required: ['slug', 'outcome', 'summary'],

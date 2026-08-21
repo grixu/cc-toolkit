@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failure (a derived artifact invalidated by review fixes) no longer costs a human round-trip
 - `implement-run`: accepts optional `toolchain`/`baseline` args like `repair-run`, so a relaunch
   reuses recon knowledge instead of re-scouting and re-baselining
+- `implement-run`: operational tasks get `status: blocked` written to their files (previously
+  memory-only, violating the state-store axiom); status writes are owned by this writer and the
+  done-marker alone
 
 ### Changed
 
