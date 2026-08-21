@@ -33,9 +33,12 @@ passing.
 
 ## Precondition
 
-Splitting propagates the spec's defects into every task. If this conversation holds no
-`fd3:validate-spec` verdict for the spec, and its evidence record shows no validation pass, say so
-and ask — once — whether to validate first or split as-is.
+Splitting propagates the spec's defects into every task. A `fd3:validate-spec` verdict in this
+conversation settles the question. Otherwise read the newest dated block in the spec's evidence
+record: a verdict line with no blocked claims passes silently; a pass recorded with blocked
+claims, a block with no verdict line at all, or no pass anywhere — say what the record shows and
+ask, once, whether to validate first or split as-is. A dated heading over verified rows is not a
+verdict; the pass's quality is what the question is about.
 
 ## Workflow
 
