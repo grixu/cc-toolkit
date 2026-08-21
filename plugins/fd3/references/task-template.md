@@ -14,7 +14,7 @@ repository: <path or name; `none` for an operational task>
 branch: <target branch — shared by every task in the same landing unit; empty for an operational task>
 branch-base: <the branch's stack base — identical on every task of the branch; empty for an operational task>
 worktree:
-phase: <rollout phase label from the spec's phase table>
+phase: <rollout phase label from the spec's phase table; `cleanup` for a cleanup-section task — it sorts after every numbered phase>
 depends-on: [<task slugs>]
 tickets: [<identifiers, if any>]
 ---

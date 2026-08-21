@@ -84,7 +84,9 @@ edge cases:
    contends for a shared environment — a database migration is the canonical case — gets its own
    task, placed as early as its dependencies allow, so it lands on the main branch before anything
    queues up behind the environment. Expand early; the contracting half lives in the spec's cleanup
-   section and becomes its own late task, behind the gate the spec names.
+   section and becomes its own late task, behind the gate the spec names, carrying `phase: cleanup`
+   in its frontmatter — cleanup is not a rollout phase, and a section reference in a machine-read
+   field breaks the reader.
 
 Within what survives the boundaries, prefer the smallest task that makes one verification row
 pass. Where one repository owns a whole behaviour, that yields a vertical slice — schema, endpoint
@@ -109,7 +111,9 @@ yours to relax:
 - A repository whose ownership section declares a landing constraint — every change lands as its
   own pull request — gets one branch per task there.
 - An ownership cut keeps its own branch: a pull request has one review-and-apply owner.
-- An irreversible task keeps its own branch, so it can land before anything queues up behind it.
+- An irreversible task keeps its own branch when a shared environment is actually contended —
+  something would queue up behind it. Where the phase deploys nothing and a revert restores the
+  change, the task cut suffices; the report states which reading applied.
 
 Branches of consecutive landing units in one repository **stack**: the first starts from the
 repository's default branch, each later one from the previous unit's branch. Record each branch's
