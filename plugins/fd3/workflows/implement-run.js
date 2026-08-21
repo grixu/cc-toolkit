@@ -497,6 +497,15 @@ const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret co
 
 const validation = [] // per-branch summary for the final report
 
+const REFRESH_RESULT = {
+  type: 'object',
+  required: ['refreshed'],
+  properties: {
+    refreshed: { type: 'boolean' },
+    conflict: { type: 'string', description: 'what needs a judgment call; only when refreshed is false' },
+  },
+}
+
 for (const unit of units) {
   const repoName = unit.repo.split('/').pop()
   const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, reviewFindings: 0, preExisting: 0 }
@@ -505,6 +514,32 @@ for (const unit of units) {
   if (!toolchain.get(unit.repo)) {
     summary.ci = 'no-verdict' // the scout's death is already on the HIL list, once per repository
     continue
+  }
+
+  // A stacked branch may predate fixes its base received during the base's own validation;
+  // validating against a stale base re-finds the base's problems and re-fixes them divergently.
+  if (units.some((u) => u !== unit && u.repo === unit.repo && u.branch === unit.base)) {
+    const refresh = await tryTwice(
+      [
+        `In the worktree ${unit.worktree} (repository ${unit.repo}), merge ${unit.base} into`,
+        `${unit.branch}, so the branch is validated against its current base. Resolve a conflict`,
+        `only when the resolution is mechanical; commit it. When a conflict needs a judgment`,
+        `call, abort (git merge --abort) and return refreshed=false with the conflict described.`,
+      ].join('\n'),
+      { label: `refresh:${unit.branch.replace(/\//g, '-')}`, phase: 'Validate', schema: REFRESH_RESULT },
+    )
+    if (!refresh || !refresh.refreshed) {
+      summary.ci = refresh ? 'skipped' : 'no-verdict'
+      hil.push({
+        slug: null,
+        kind: refresh ? 'merge-conflict' : 'no-verdict',
+        stage: 'base-refresh',
+        reason: refresh
+          ? `${unit.repo} ${unit.branch}: merging the refreshed base ${unit.base} needs a judgment call: ${refresh.conflict}; the branch was not validated.`
+          : `${unit.repo} ${unit.branch}: the base-refresh agent returned no result after a retry; the branch was not validated.`,
+      })
+      continue
+    }
   }
 
   let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })

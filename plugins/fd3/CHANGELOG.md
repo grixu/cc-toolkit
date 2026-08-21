@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `caveats`; implement, repair and merge agents gained caveat channels too (as-built deviations,
   literal-decision side effects, mechanically resolved conflicts), all aggregated into a new
   `caveats` key of the report — flagged facts no longer die in agent transcripts
+- `implement-run`: stack-base refresh — before validating a branch that stacks on another unit
+  validated earlier in the run, a merge agent brings the base's CI/review fixes in, so the
+  stacked branch no longer re-fails and re-fixes the base's problems divergently
 
 ### Changed
 
