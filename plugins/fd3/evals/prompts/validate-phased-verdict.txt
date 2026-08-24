@@ -1,1 +1,1 @@
-/fd3:validate-spec spec/phased-spec.md
+Invoke the fd3:validate-spec skill on this spec: spec/phased-spec.md

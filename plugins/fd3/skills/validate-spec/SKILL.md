@@ -1,12 +1,15 @@
 ---
 name: validate-spec
-description: Validate a spec for implementation readiness, backing every load-bearing claim with recorded evidence. Use when the user wants a SPEC, PRD or design document checked before implementation or before splitting it into tasks.
-argument-hint: "<path to the spec file>"
+description: Validate a spec for implementation readiness, backing every load-bearing claim with recorded evidence.
+context: fork
+user-invocable: false
 ---
 
-The spec to validate: **$ARGUMENTS**
+The invocation carries the spec's path, and on a later pass the status the previous pass returned:
+**$ARGUMENTS**
 
-If no path was given, ask which spec to validate. If the path does not resolve, say so and stop.
+A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming what you
+need, then end your turn. Do not guess it and do not go looking for it.
 
 **That spec file is the only file you may edit.** Everything else you read is read-only, no matter
 what you find in it.
@@ -45,35 +48,22 @@ checks 1, 6 and 12 are rules the other file states.
 
 ## Workflow
 
-Post this checklist before your first tool call, again in full — marks updated — before every
-user interaction (a question batch, the report) and at the close; between those, a one-line note
-as each step completes. It is how the user sees progress:
+**A previous pass.** Where the invocation carries the status an earlier pass of this skill returned
+for this same spec, read it before step 1: it says which of the twelve checks passed and on what,
+what it left open, and which claims it recorded `verified` or `deferred`.
 
-```
-- [ ] 0. Locate every repository the spec touches
-- [ ] 1. Enumerate claims, elements and stated decisions
-- [ ] 2. Run the spec-level checks
-- [ ] 3. Verify the evidence, and gather what is missing
-- [ ] 4. Put everything still ambiguous to the user, in one batch
-- [ ] 5. Apply the answers, re-enter step 3 for claims still open
-- [ ] 6. Report the verdict
-```
-
-**Headless.** A dispatch may declare this run headless — the `fd3:build-spec` orchestration
-does. Then nothing here talks to the user: execute steps 0–3, write the report-so-far to the
-file the dispatch names, with the collected step-4 questions under `## Questions for the user`
-and the claims they would settle marked `awaiting-user`, and return that file's path plus one
-line per question. The caller asks the user; a second headless dispatch — the **apply run** —
-receives the answers and the partial report's path, executes steps 5 and 6 against them, and
-produces the final report. The no-open-claims rule binds the final report, never the partial
-one.
+Re-derive all twelve checks against the file you now hold. A check the previous pass answered was
+answered about a document that pass then edited, and its own edits are the likeliest thing to have
+broken one — so a check inherits its reasoning, never its result. What you do not repeat is the
+evidence work behind a claim the status records as `verified`, unless an edit since then touched the
+section it rests on. Spend the pass on what the status leaves open.
 
 ### 0. Locate the repositories
 
 A spec often describes work in repositories other than the one it lives in. List every repository it
-names and resolve each to a local path. Ask the user for the ones you cannot find — that is knowledge
-about their machine, not a fact you can look up. A repository still unresolved goes into "Not
-validated" in the report; never report its files as missing.
+names and resolve each to a local path. `SendMessage` to `main` for the ones you cannot find — that
+is knowledge about the user's machine, not a fact you can look up. A repository still unresolved
+goes into "Not validated" in the report; never report its files as missing.
 
 Then bring every resolved repository up to date: `git fetch`, and check whether the local tree is
 behind the branch the spec describes. A clone a day behind produces false citation drift, and
@@ -196,10 +186,11 @@ Then, per claim:
   on. Do not put it to the user.
 - **Anything else** — collect a question for step 4 and leave the claim `open`.
 
-### 4. Ask the user
+### 4. Hand up what only the user can settle
 
-Ask every collected question at once, following the batching protocol in
-`${CLAUDE_SKILL_DIR}/../../references/question-batching.md`. Then wait for the answers.
+`SendMessage` to `main` with every collected question at once, numbered, each with your recommended
+answer first, then end your turn. The answers arrive as a message and you continue from where you
+stopped, with everything this pass established still in front of you.
 
 ### 5. Apply
 
@@ -214,7 +205,8 @@ it could not be settled stated in the report.
 
 ### 6. Report
 
-Report against the shape in `${CLAUDE_SKILL_DIR}/../../references/validation-report.md`. Read that
-file before writing anything. A section is dropped only when it is genuinely empty, on that file's
-terms — a run that edited the spec has a non-empty **Spec edits applied** section, and it enumerates
-every edit the run made.
+End the pass by returning the verdict and this pass's status — nothing is written to a file. The
+shape the return takes is in `${CLAUDE_SKILL_DIR}/../../references/validation-report.md`; read that
+file before composing anything. A section is dropped only when it is genuinely empty, on that file's
+terms — a pass that edited the spec returns a non-empty **Spec edits applied** section, and it
+enumerates every edit the pass made.

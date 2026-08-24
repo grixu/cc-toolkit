@@ -1,45 +1,34 @@
 # Validation report
 
-The shape `validate-spec` reports its verdict in.
+The shape `validate-spec` returns its verdict and its status in.
 
 ```markdown
-## Verdict
+## Run
+spec: <path relative to the repository root>
+pass: <n>
+repositories:
+- <remote name> — <branch> @ <commit> — fetched <date>
 
-<one sentence on what decides it>
+## Verdict
+<ready | not ready> — <one sentence on what decides it>
 
 | Phase | Ready | What holds it |
 |---|---|---|
-| 1 | yes | — |
-| 4 | no | <the finding, or the gate it waits on> |
 
 ## Checks
 | # | Check | Result |
 |---|---|---|
-| 1 | decisions do not contradict | pass |
-| 2 | scope covers every decision | section 10 — <the finding> |
+| 1 | decisions do not contradict | pass (unchanged) |
+| 2 | scope covers every decision | fail — section 10, <the finding> |
 
-## Blocking findings
-- <finding> — <spec section> — <what would close it>
-
-## Closed during this run
-- <finding> — <spec section> — closed by: <the answer or fact that settled it>
-
-## Non-blocking findings
-- <finding> — <spec section>
+## Still open
+- <finding or claim> — <section> — <what would close it> — blocking | non-blocking
 
 ## Deferred
-- <claim> — <spec section> — owner: <who> — placement: <gate, ticket or substitute>
-
-## Blocked
-- <claim> — <spec section> — <what nobody could settle>
+- <claim> — <section> — owner: <who> — placement: <gate, ticket or substitute>
 
 ## Not validated
 - <repository> — unavailable locally, so its references went unchecked
-
-## Claim status
-| Section | Verified | Deferred | Open | Blocked |
-|---|---|---|---|---|
-| 5.1 | 11 | 0 | 0 | 0 |
 
 ## Spec edits applied
 - <section> — <what changed, and which finding forced it>
@@ -48,13 +37,14 @@ The shape `validate-spec` reports its verdict in.
 A finding about an element cites the element's code; a finding about the document anchors to a
 section written as "section N" — never the `§` symbol.
 
-A finding you found and closed in this same run belongs under **Closed during this run**, not
-deleted: the phase table then reads `yes`, and the record still shows the spec was not
-implementable as written. Only then may the blocking section be dropped as empty. Mechanical
-corrections — citation fixes and their kin, each already enumerated under **Spec edits applied** —
-aggregate into one **Non-blocking findings** bullet instead; **Closed during this run** is for
-findings that would have blocked.
+A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`, or `fail —
+<section>, <the finding>`. It is the only thing by which the caller can tell that an iteration
+moved, so a check whose answer changed says so where it changed.
+
+What the next pass needs from this one is what is still open. The durable record of what a pass
+found and closed is the spec's own dated evidence block, not this return.
 
 For an unphased spec, replace the phase table with one word — `ready` or `not ready`. A `deferred`
 claim bounds the phase it gates; it never makes the document not ready. Drop any section that
-would be empty, and keep the report to the length its findings need.
+would be empty, and keep the return to the length its contents need — it travels through the
+caller's context, and every line of it costs there.

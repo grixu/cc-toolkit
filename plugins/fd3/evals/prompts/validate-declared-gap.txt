@@ -1,1 +1,1 @@
-/fd3:validate-spec spec/gap-spec.md
+Invoke the fd3:validate-spec skill on this spec: spec/gap-spec.md
