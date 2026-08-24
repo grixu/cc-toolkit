@@ -30,11 +30,16 @@ and the file path, never the whole report. What enters the conversation is the r
 the record lives in the file, where any later doubt is checked by reading, not by
 re-dispatching.
 
-Order the dispatches: codebase lookups go out first. A documentation or live-system lookup
-whose question presumes a fact a pending codebase lookup will settle waits for that lookup —
-a premise the code disproves wastes the whole dispatch. Before a live-system dispatch,
-verify its credential with one cheap probe; an agent sent through a logged-out CLI returns
-nothing and the question runs twice.
+Which of the three routes a topic needs is your call. What is not your call is leaving the
+codebase and the live system until later: they are the two routes that establish what is
+actually so — the code says what the system does, the live system says what it is doing —
+while documentation, prior art and the topic document itself record what someone once
+intended. A ranking, a size or a rate inferred from source is a hypothesis until the
+measurement lands, and every decision resting on it stays provisional. Where one lookup's
+question rests on a fact another will settle, sequencing them saves a wasted dispatch — weigh
+that against the fact arriving late, which is the more expensive of the two. Before a
+live-system dispatch, verify its credential with one cheap probe; an agent sent through a
+logged-out CLI returns nothing and the question runs twice.
 
 Parallel codebase lookups get exclusive territories: name in each prompt the files and
 directories that belong to the other agents, and merge two questions whose territories would
