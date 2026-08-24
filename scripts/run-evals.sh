@@ -4,7 +4,7 @@
 #   pnpm eval                              # run every suite's default config
 #   pnpm eval -- --filter-pattern split    # forward args to promptfoo (all suites)
 #   scripts/run-evals.sh fd3               # one suite: reset sandboxes, run, export results
-#   scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-precondition|grill-round|build-spec-gate"
+#   scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate"
 #                                          # smoke group via --filter-pattern
 #   scripts/run-evals.sh fd3 e2e           # e2e chain → promptfooconfig.e2e.yaml (serial)
 #   scripts/run-evals.sh fd3 researcher    # researcher group → promptfooconfig.network.yaml

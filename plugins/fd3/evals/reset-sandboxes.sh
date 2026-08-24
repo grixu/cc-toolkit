@@ -17,7 +17,7 @@ MAPPINGS=(
   "split-unvalidated-precondition:unvalidated-rollout-spec:repo-a repo-b"
   "split-orphan-element:orphan-rollout-spec:repo-a repo-b"
   "split-english-artifacts:rollout-spec:repo-a repo-b"
-  "write-precondition-stop:empty-project:"
+  "write-missing-input-stop:empty-project:"
   "write-template-conformance:grilling-summary:."
   "write-no-invented-decisions:no-rollout-order:."
   "grill-round-shape:retry-topic:."

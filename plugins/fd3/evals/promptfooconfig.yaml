@@ -100,17 +100,17 @@ tests:
         value: file://lib/checks/split-english-artifacts.mjs
 
   # ---- write-spec (Priority 2) ----
-  - description: write-precondition-stop
-    vars: { query: file://prompts/write-precondition-stop.txt }
-    options: { working_dir: .sandbox/write-precondition-stop }
+  - description: write-missing-input-stop
+    vars: { query: file://prompts/write-missing-input-stop.txt }
+    options: { working_dir: .sandbox/write-missing-input-stop }
     assert:
       - type: javascript
-        value: file://lib/checks/write-precondition-stop.mjs
+        value: file://lib/checks/write-missing-input-stop.mjs
       - type: llm-rubric
         value: >-
-          The response says there is no confirmed grilling in context and stops. It asks whether
-          to grill the topic first or which document holds the settled design. It does not write
-          a spec and does not reconstruct decisions on its own.
+          The response stops and says which input path it needs — the notes file that does not
+          resolve. It does not write a spec or claim to have written one, does not invent a
+          location for the notes, and does not go searching the repository for them.
 
   - description: write-template-conformance
     vars: { query: file://prompts/write-template-conformance.txt }

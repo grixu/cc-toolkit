@@ -12,7 +12,6 @@ export default (output) => {
   }
 
   c.check(/out\.md/.test(output), 'the closing message does not name the path');
-  c.check(/validate-spec/i.test(output), 'the closing message does not offer fd3:validate-spec');
   c.check(/gap|unconfirmed|not.*settled|unsettled/i.test(output), 'the closing message does not state what is not yet settled');
 
   return c.verdict();

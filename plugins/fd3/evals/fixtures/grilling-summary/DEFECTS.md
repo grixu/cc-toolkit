@@ -5,6 +5,12 @@ The fixture is shared by write-template-conformance and (copied whole) by the e2
 `.sandbox/e2e-chain/`;
 `no-rollout-order` is derived from it.
 
+`notes/research/` holds the session's lookup reports and is the `research-dir` argument every
+write-spec scenario passes; write-spec stops on an input path that does not resolve, so the
+directory must exist and be non-empty. `dispatch-path-lookup.md` cites the same
+`src/notify/dispatch.ts` lines the summary does, and names no environment (see the note at the
+bottom).
+
 The summary in `notes/grilling-summary.md` is a CONFIRMED closing summary: decisions with
 rationales and accepted costs, elements, rollout, verification, two declared gaps with owner and
 placement, the "decisions I took that you never answered" section, and the user's confirmation
@@ -23,4 +29,5 @@ expected to carry them forward.
 
 Environment names: the summary deliberately uses only `sandbox` and `live` — never `staging` or
 `canary` — because the write-no-invented-decisions sentinel asserts the ABSENCE of `staging`/`canary` in the
-spec, and the shared wording must keep that sentinel meaningful in both fixtures.
+spec, and the shared wording must keep that sentinel meaningful in both fixtures. The research
+reports name no environment at all, so they carry into `no-rollout-order` unchanged.

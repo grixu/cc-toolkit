@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
       - name: Run smoke group
-        run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-precondition|grill-round|build-spec-gate"
+        run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate"
       - name: Upload results for triage
         if: always()
         uses: actions/upload-artifact@v4

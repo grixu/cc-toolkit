@@ -21,10 +21,10 @@ Three paths come with the invocation:
 - `$research-dir` — the directory those research files live in.
 - `$spec-path` — where the spec goes.
 
-These two files are your whole input. Read the notes file before writing and hold it as the
-checklist section 6 walks; a fact in neither it nor the research directory is a gap to declare or a
-lookup to dispatch, never a recollection. The decisions in it are ratified — you write them up, you
-do not reopen them.
+The notes file and the research directory are your whole input. Read the notes file before writing
+and hold it as the checklist section 6 walks; a fact in neither it nor the research directory is a
+gap to declare or a lookup to dispatch, never a recollection. The decisions in it are ratified —
+you write them up, you do not reopen them.
 
 A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming which
 one and what you need, then end your turn. Do not guess it, do not derive it from the repository's
@@ -137,6 +137,4 @@ row is defined or deleted.
 
 Report where it went, how long it is, the counts from section 6, and how many citations you resolved
 yourself against how many you did not — "the rest resolve" is a claim you did not check. Then say
-plainly what is not yet settled in it: the declared gaps, and anything you were unable to verify. Offer `fd3:validate-spec` on the file as the next step —
-it will spot-check the appendix, resolve every citation and run the section checks — and let the user
-decide whether to run it.
+plainly what is not yet settled in it: the declared gaps, and anything you were unable to verify.
