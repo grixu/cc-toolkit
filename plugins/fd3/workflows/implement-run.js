@@ -164,17 +164,20 @@ for (const t of tasks) {
   }
 }
 
-// An implementation agent that does not know what a human owns will do that work in passing.
-const humanOwnedLines = hil
-  .filter((h) => h.slug)
-  .map((h) => {
-    const t = tasks.find((x) => x.slug === h.slug)
-    return `- ${h.slug}${t ? ` (${t.name})` : ''}: ${h.reason}`
-  })
-const humanOwned =
-  humanOwnedLines.length > 0
-    ? `Tasks a human owns in this run — never do their work, not even a step of it:\n${humanOwnedLines.join('\n')}`
+// An implementation agent that does not know what a human owns will do that work in passing; a
+// task can become human-owned mid-run, so each wave dispatches with the list as it stands.
+const humanOwnedList = () => {
+  const lines = hil
+    .filter((h) => h.slug)
+    .map((h) => {
+      const t = tasks.find((x) => x.slug === h.slug)
+      return `- ${h.slug}${t ? ` (${t.name})` : ''}: ${h.reason}`
+    })
+  return lines.length > 0
+    ? `Tasks a human owns in this run — never do their work, not even a step of it:\n${lines.join('\n')}`
     : ''
+}
+let humanOwned = ''
 
 // The files are the state store — a status living only in this run's memory is lost on
 // interruption. Only this writer and the done-marker ever write statuses this workflow owns.
@@ -328,6 +331,8 @@ const recordUnit = (repo, b, slugs) => {
 
 let wave = 0
 while (true) {
+  humanOwned = humanOwnedList()
+
   // A dependency counts as satisfied only once its branch is in the target — done tasks
   // passed validation on a merged branch, implemented ones must have cleared a merge round.
   const ready = tasks.filter(

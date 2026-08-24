@@ -27,6 +27,9 @@ repositories:
 ## Deferred
 - <claim> — <section> — owner: <who> — placement: <gate, ticket or substitute>
 
+## Blocked
+- <claim> — <section> — <what nobody could settle> — no further pass closes this
+
 ## Not validated
 - <repository> — unavailable locally, so its references went unchecked
 
@@ -41,8 +44,9 @@ A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`
 <section>, <the finding>`. It is the only thing by which the caller can tell that an iteration
 moved, so a check whose answer changed says so where it changed.
 
-What the next pass needs from this one is what is still open. The durable record of what a pass
-found and closed is the spec's own dated evidence block, not this return.
+What the next pass needs from this one is what is still open; what is blocked is not — no later
+pass closes it. The durable record of what a pass found and closed is the spec's own dated
+evidence block, not this return.
 
 For an unphased spec, replace the phase table with one word — `ready` or `not ready`. A `deferred`
 claim bounds the phase it gates; it never makes the document not ready. Drop any section that

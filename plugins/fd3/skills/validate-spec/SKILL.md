@@ -38,8 +38,8 @@ requirements that cannot both hold, an element nothing verifies. It is **non-blo
 proceeds and the finding only costs a later correction: a stale citation, two counts that disagree, a
 rationale that is true for the wrong reason. A declared gap with an owner and a placement is neither
 — it bounds the phase it gates. The test where you hesitate is the phase table: if the phase would
-read `no` with the finding left open, it is blocking, and it stays blocking in the record after you
-close it.
+read `no` with the finding left open, it is blocking, and it stays blocking in the spec's dated
+evidence block after you close it.
 
 The shape a spec is measured against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and
 the invariants it is measured against are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
@@ -149,7 +149,8 @@ Split the cost of verification:
   it: a citation check confirms a line says what the spec claims, never that the thing it names
   exists yet at the point the spec uses it. Walk it yourself across the target-architecture,
   per-repository and rollout sections, and walk it again after any edit that moves a work item
-  between phases. Take the rest at the spec's word once its citation resolves.
+  between phases. Its result is check 8's row; an evidence row records what you read to derive it.
+  Take the rest at the spec's word once its citation resolves.
 
 For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
 Route every lookup by where the fact lives — the routes and dispatch rules are in
