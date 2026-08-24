@@ -1,47 +1,42 @@
 ---
 name: write-spec
-description: Write a specification from a design understanding that is already settled. Use after a grilling session reaches confirmed shared understanding, or when the user wants a settled design written up as a SPEC.
-argument-hint: "[<path to write the spec to>]"
+description: Write a specification from a settled design understanding, given the closing-notes file that holds the ratified decisions.
+arguments: notes-path research-dir spec-path
+context: fork
+user-invocable: false
 ---
-
-Where to write the spec: **$ARGUMENTS**
 
 The shape to write against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and the
 invariants that hold in every section are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
 Read both before writing anything. They are the same two files `fd3:validate-spec` measures a spec
 against — a section they name and you omit is a finding waiting to happen.
 
-## Precondition
+## Input
 
-This writes up an understanding that is **already settled**. Normally that is a `fd3:grill-topic`
-session whose closing summary the user has confirmed, in this same conversation.
+Three paths come with the invocation:
 
-The invocation normally carries the path to that session's closing-notes file — three numbered
-lists: ratified decisions with their question numbers and chosen options, decisions the assistant
-took, risks the user accepted, and the research files the session produced. Read it before writing
-and hold it as the checklist section 6 walks. Without the file, build the same checklist from the
-confirmed closing summary in the conversation before writing anything.
+- `$notes-path` — the closing-notes file: four numbered lists holding the ratified decisions with
+  their question numbers and chosen options, the decisions the assistant took, the risks the user
+  accepted, and the research files produced alongside them.
+- `$research-dir` — the directory those research files live in.
+- `$spec-path` — where the spec goes.
 
-When this skill runs in a sub-agent, the closing-notes file and the research directory it lists
-are the whole input — there is no conversation to consult. A fact in neither file is a gap to
-declare or a lookup to dispatch, never a recollection.
+These two files are your whole input. Read the notes file before writing and hold it as the
+checklist section 6 walks; a fact in neither it nor the research directory is a gap to declare or a
+lookup to dispatch, never a recollection. The decisions in it are ratified — you write them up, you
+do not reopen them.
 
-If you were invoked without that — no grilling in context, or a grilling the user never confirmed —
-say so and stop. Ask whether to grill the topic first, or which document holds the settled design. Do
-not reconstruct the decisions yourself: a spec whose decisions nobody ratified is a proposal wearing a
-specification's clothes.
+A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming which
+one and what you need, then end your turn. Do not guess it, do not derive it from the repository's
+layout, do not go looking for it. The answer comes back as a message and you continue from there.
 
 ## 1. Where it goes
 
-Ask once, before writing: the path. Give your recommended answer first. Where `$ARGUMENTS` already
-names the path, skip the question and confirm the directory exists. Once the path is known, move the
-closing-notes file beside the spec as `<spec-basename>.notes.md` — it outlives the session, and a
-validation pass can read the decisions' provenance from it. Move the session's research directory
-the same way, as `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the
-spec cite to the new location — evidence a later pass cannot open is evidence lost.
-
-Ask this once and never again. A spec is written in one pass; do not stop mid-document to ask where
-the next section goes.
+Confirm `$spec-path`'s directory exists before writing. Once the spec is there, move the
+closing-notes file beside it as `<spec-basename>.notes.md` — it outlives the session, and a
+validation pass can read the decisions' provenance from it. Move the research directory the same
+way, as `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the spec cite to
+the new location — evidence a later pass cannot open is evidence lost.
 
 ## 2. What goes in
 
@@ -74,10 +69,12 @@ session maps into it:
   environment promotion, an approval between changes — closes a landing unit, and the
   evidence for each gate is technical, gathered like any other fact. Then estimate each
   landing unit's aggregate diff from the work items it places; where one plausibly exceeds
-  **80 changed files or 2000 changed lines**, generated files excluded, put the subdivision
-  to the user — with proposed seams, such as phase boundaries or dependency clusters — in
-  the same single batch as the step-1 question. A user-requested split becomes a gate in
-  the table like any other; the threshold itself never appears in the spec.
+  **80 changed files or 2000 changed lines**, generated files excluded, the subdivision is
+  the user's call. `SendMessage` to `main` with the proposed seams — phase boundaries,
+  dependency clusters — as numbered options with your recommendation first, then end your
+  turn. Write neither the table nor the threshold before the answer arrives; you continue
+  from where you stopped. A user-requested split becomes a gate in the table like any
+  other; the threshold itself never appears in the spec.
 
 ## 3. The evidence appendix
 
