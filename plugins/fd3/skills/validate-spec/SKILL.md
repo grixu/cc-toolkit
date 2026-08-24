@@ -142,8 +142,14 @@ Split the cost of verification:
   mechanical: batch it per repository. A citation that resolves to the wrong line is an unambiguous fact,
   not a question: correct the citation in the spec. Reporting it and leaving it is the one outcome that
   helps nobody.
-- **Re-derive in full** only the claims that gate a phase, or that are the sole justification for removing
-  or narrowing something. Take the rest at the spec's word once its citation resolves.
+- **Re-derive in full** the claims that gate a phase, the claims that are the sole justification for
+  removing or narrowing something, and the document's own internal dependencies — which element each
+  work item builds on, which work item introduces the field, type, table or script another one reads,
+  and which phase each of them lands in. That join is nobody's citation and no sub-agent will return
+  it: a citation check confirms a line says what the spec claims, never that the thing it names
+  exists yet at the point the spec uses it. Walk it yourself across the target-architecture,
+  per-repository and rollout sections, and walk it again after any edit that moves a work item
+  between phases. Take the rest at the spec's word once its citation resolves.
 
 For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
 Route every lookup by where the fact lives — the routes and dispatch rules are in
@@ -163,6 +169,18 @@ are exclusive and every prompt names the ones that belong to the other agents. A
 fan its own workload out further — that is its call, not a violation. Two constraints travel down with
 it: every sub-agent gets the same tree context you gave its parent, and `fact-routes.md`'s dispatch
 rules bind at every level.
+
+A dispatch returns material: which line a file holds, what a document says, what a published package
+exports. The join across that material is yours, and so is every check in step 2. The mechanical
+half is scriptable — extract every `path:line` and print the line it names — and scripting it rather
+than dispatching it is what leaves you the context for the join.
+
+Two families a citation list will never surface. Name them in whichever dispatch owns the territory:
+
+- Every symbol an element's pseudocode names — a type, an export, a function — resolves in the
+  package or module it is taken from, at the version the lockfile resolves.
+- Every "nothing reaches X yet" or "this is inert until Y" rationale names the wiring that would
+  make it false, and the dispatch is asked whether that wiring exists.
 
 **A sub-agent returns observations, not findings.** Resolve every identifier it reasoned about — a team
 alias, an account, a role, a project, a version — before you record its conclusion. A report that a
