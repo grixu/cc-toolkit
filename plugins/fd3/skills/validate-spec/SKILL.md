@@ -29,6 +29,15 @@ load-bearing claim is verified or deferred to a named owner, and no check in ste
   - `blocked` — nothing settles it and the spec names no owner and no placement.
   - `open` — not yet settled during this run.
 
+A finding is **blocking** when an implementer who picked up the work it touches would have to stop
+and ask: a contract that names no fields, a build order whose earlier item cannot compile, two
+requirements that cannot both hold, an element nothing verifies. It is **non-blocking** when the work
+proceeds and the finding only costs a later correction: a stale citation, two counts that disagree, a
+rationale that is true for the wrong reason. A declared gap with an owner and a placement is neither
+— it bounds the phase it gates. The test where you hesitate is the phase table: if the phase would
+read `no` with the finding left open, it is blocking, and it stays blocking in the record after you
+close it.
+
 The shape a spec is measured against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and
 the invariants it is measured against are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
 Read both before step 2 — checks 3, 7, 10 and 11 are section-level questions the template answers, and
@@ -92,6 +101,11 @@ already owns and places is a pass.
 Run these once over the enumeration from step 1 — they are properties of the whole document. Each yields a
 pass or a finding that names the spec section it came from, and **every one of the twelve gets a row in the
 report**, whether it passed or not.
+
+A row is `pass` only when its prose names no unresolved finding. Where a finding genuinely does not
+block — the Terms say when — it is still a finding: give it its own row in the findings list and say
+why it does not block. Calling it non-blocking inside a passing row hides it from the verdict, and
+from whoever splits this into tasks.
 
 1. Design decisions do not contradict one another within the authoritative set. Where the spec declares
    precedence over another document, that declaration settles the disagreement; what to look for instead is
