@@ -164,6 +164,18 @@ for (const t of tasks) {
   }
 }
 
+// An implementation agent that does not know what a human owns will do that work in passing.
+const humanOwnedLines = hil
+  .filter((h) => h.slug)
+  .map((h) => {
+    const t = tasks.find((x) => x.slug === h.slug)
+    return `- ${h.slug}${t ? ` (${t.name})` : ''}: ${h.reason}`
+  })
+const humanOwned =
+  humanOwnedLines.length > 0
+    ? `Tasks a human owns in this run — never do their work, not even a step of it:\n${humanOwnedLines.join('\n')}`
+    : ''
+
 // The files are the state store — a status living only in this run's memory is lost on
 // interruption. Only this writer and the done-marker ever write statuses this workflow owns.
 const operationalFiles = tasks.filter((t) => t.repository === 'none' && status.get(t.slug) === 'blocked').map((t) => t.file)
@@ -209,9 +221,11 @@ const implementPrompt = (task) => {
     `   regeneration requires a build, run that build, inside your worktree only. Commit with a`,
     `   conventional-commit message citing the task's tickets, if any.`,
     `6. On success set \`status: implemented\` in the task file.`,
+    ...(humanOwned ? [``, humanOwned] : []),
     ``,
-    `If the task requires an action you must not take — a production mutation, secrets, an`,
-    `irreversible step — or a decision the task and spec do not settle, stop: set`,
+    `If the task requires an action a human must take or approve — anything that touches`,
+    `production, anything irreversible, any secret or credential, and whatever this repository's`,
+    `own rules reserve — or a decision the task and spec do not settle, stop: set`,
     `\`status: blocked\`, append a \`## Blocked\` section to the task body stating why, and return`,
     `outcome "blocked" with that reason. Never guess your way past a blocker.`,
     ``,
@@ -494,9 +508,10 @@ const fixPrompt = (unit, problems, source) =>
     ...(reservations ? [reservations, ``] : []),
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
     `that pre-date this branch. The open work above is deliberate: never do it and never fill`,
-    `the gaps it leaves. A listed problem that cannot be fixed without an action the repository`,
-    `or a task reserves for humans — generating a migration, a production mutation, secrets —`,
-    `is a blocker, not a fix: skip it and record it under caveats. Never guess your way past it.`,
+    `the gaps it leaves. A listed problem that cannot be fixed without an action a human must`,
+    `take or approve — anything that touches production, anything irreversible, any secret or`,
+    `credential, generating a migration, and whatever this repository's own rules reserve — is a`,
+    `blocker, not a fix: skip it and record it under caveats. Never guess your way past it.`,
     ``,
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
