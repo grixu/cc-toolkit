@@ -125,9 +125,11 @@ from whoever splits this into tasks.
 The spec's own verification table — a `Claim | How it was verified` table, whatever its heading — is the
 record. Spot-check its rows and append to it under a dated sub-heading, so the spec's original evidence
 stays distinguishable from this run's. When the spec has none, add one at the end. Once the verdict
-is known, open the dated block with one line — `Verdict: <the report's verdict> — claims: N
-verified / N deferred / N blocked` — so a later reader, and the split precondition, can tell a
-clean pass from a qualified one without hunting for the session that produced it. A file at
+is known, open the dated block with one line — `Verdict: <the report's verdict> — claims: N verified /
+N deferred / N blocked — spec N lines at this verdict` — so a later reader can tell a clean pass from
+a qualified one without hunting for the session that produced it. Fill the line count in last: write
+the dated block through to its final line, then `wc -l`, then put that number in the verdict line —
+replacing it changes no line count, so the number counts itself. A file at
 `<spec-dir>/evidence/<section>.md` is for overflow only: a probe transcript or a command output too long to
 sit in a table row.
 
@@ -229,3 +231,7 @@ shape the return takes is in `${CLAUDE_SKILL_DIR}/../../references/validation-re
 file before composing anything. A section is dropped only when it is genuinely empty, on that file's
 terms — a pass that edited the spec returns a non-empty **Spec edits applied** section, and it
 enumerates every edit the pass made.
+
+The verdict covers the file as it stands when you write it. A spec edit made after the verdict line
+re-opens the pass: append the edit to the dated block, restate the verdict line beneath it with a
+fresh count, and say in the return what changed since.

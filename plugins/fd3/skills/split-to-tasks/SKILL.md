@@ -34,11 +34,13 @@ passing.
 ## Precondition
 
 Splitting propagates the spec's defects into every task. A `fd3:validate-spec` verdict in this
-conversation settles the question. Otherwise read the newest dated block in the spec's evidence
-record: a verdict line with no blocked claims passes silently; a pass recorded with blocked
-claims, a block with no verdict line at all, or no pass anywhere — say what the record shows and
-ask, once, whether to validate first or split as-is. A dated heading over verified rows is not a
-verdict; the pass's quality is what the question is about.
+conversation settles the question. Otherwise the spec must carry all three: read its evidence record
+**from the bottom** — the last verdict line in the file is the current one, position decides and not
+the date — that line records no blocked claims, and its count equals `wc -l` on the spec.
+
+Anything short of that — blocked claims, a count that does not match, a dated block with no verdict
+line, no pass anywhere — say what the record holds and ask, once, whether to validate first or split
+as-is. A dated heading over verified rows is not a verdict.
 
 ## Workflow
 
