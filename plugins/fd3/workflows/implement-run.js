@@ -335,10 +335,19 @@ while (true) {
 
   // A dependency counts as satisfied only once its branch is in the target — done tasks
   // passed validation on a merged branch, implemented ones must have cleared a merge round.
+
+  // A stacked branch's tasks start from its base, so the base must already carry its work — a task
+  // that starts from a base that is not there yet writes against files it cannot see.
+  const baseReady = (t) =>
+    tasks
+      .filter((x) => x.repository === t.repository && x.branch === t.baseBranch)
+      .every((x) => status.get(x.slug) === 'done' || merged.has(x.slug))
+
   const ready = tasks.filter(
     (t) =>
       status.get(t.slug) === 'todo' &&
-      t.dependsOn.every((dep) => status.get(dep) === 'done' || merged.has(dep)),
+      t.dependsOn.every((dep) => status.get(dep) === 'done' || merged.has(dep)) &&
+      baseReady(t),
   )
 
   if (ready.length > 0) {
@@ -434,7 +443,7 @@ const reservationLines = hil
   .concat(
     unreachable.map((slug) => {
       const t = tasks.find((x) => x.slug === slug)
-      return `- ${slug}${t ? ` (${t.name})` : ''}: not implemented yet — waits behind a blocked dependency`
+      return `- ${slug}${t ? ` (${t.name})` : ''}: not implemented yet — waits behind a blocked dependency or an unfinished base`
     }),
   )
 const reservations =
