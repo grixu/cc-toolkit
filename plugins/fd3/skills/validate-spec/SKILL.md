@@ -58,6 +58,14 @@ broken one — so a check inherits its reasoning, never its result. What you do 
 evidence work behind a claim the status records as `verified`, unless an edit since then touched the
 section it rests on. Spend the pass on what the status leaves open.
 
+The spec's evidence record may hold dated blocks that no handed-down status accounts for — passes
+from earlier runs. Their identity is their date; pass numbers count this run's passes only. They are
+available when a claim's history bears on what you are deciding.
+
+Where your grade of a finding differs from a grade already in the record — blocking where it read
+non-blocking, or the reverse — record the regrade and its reason in the dated evidence block and in
+the return. Two records that disagree without saying so are worse than one.
+
 ### 0. Locate the repositories
 
 A spec often describes work in repositories other than the one it lives in. List every repository it
