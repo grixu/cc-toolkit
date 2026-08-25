@@ -68,7 +68,9 @@ goes into "Not validated" in the report; never report its files as missing.
 Then bring every resolved repository up to date: `git fetch`, and check whether the local tree is
 behind the branch the spec describes. A clone a day behind produces false citation drift, and
 "correcting" the spec against it rewrites a correct document backwards. Record the commit each
-repository is checked against, and put that commit in every dispatch prompt that targets it.
+repository is checked against, and put that commit in every dispatch prompt that targets it. The
+local path you resolved is how you reach the tree; it never appears in the report or in the spec —
+`spec-rules.md` sets the path form for everything you write.
 
 ### 1. Enumerate
 

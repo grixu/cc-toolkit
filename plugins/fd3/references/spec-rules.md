@@ -22,3 +22,10 @@ every section.
   "the second endpoint" and "section 4.2" both break the first time the document is reorganised.
 - **Every referenced document is named precisely enough to open.** "The ADRs from last month" is
   not a reference.
+- **Paths in a document are relative.** A source file is cited relative to its repository root, a
+  sibling document relative to the citing document's directory. The local clone's location is this
+  machine's state and belongs in nothing that outlives the session: name a repository by its remote
+  name and the commit, never by `/Users/…`. The one exception is a path genuinely outside any
+  repository — a scratchpad transcript an evidence row points at — and that row says so.
+- **Sections are written as "section N", never as `§`.** The symbol survives no copy-paste chain
+  intact, and it reads as a citation to something outside the document.

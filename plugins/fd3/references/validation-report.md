@@ -38,7 +38,7 @@ repositories:
 ```
 
 A finding about an element cites the element's code; a finding about the document anchors to a
-section written as "section N" — never the `§` symbol.
+section, on the terms `spec-rules.md` sets.
 
 A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`, or `fail —
 <section>, <the finding>`. It is the only thing by which the caller can tell that an iteration
