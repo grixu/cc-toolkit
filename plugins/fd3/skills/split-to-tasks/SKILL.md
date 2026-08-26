@@ -159,8 +159,10 @@ Before writing anything, check — and say in the report — that:
   report for `fd3:validate-spec`; anything less unambiguous — stop and recommend
   `fd3:validate-spec`;
 - every delivery task — one that builds or refactors something — has at least one element and a
-  done criterion naming a verification row. A cleanup or operational task may carry neither:
-  it names the gate it inherits instead, as the template directs;
+  done criterion naming a verification row. An operational task that stands an element up carries
+  that element's code too, and it counts for coverage: a resource provisioned by hand is still the
+  element the spec says will be built. What an operational or cleanup task may lack is the done
+  criterion — it names the gate it inherits instead, as the template directs;
 - the dependency graph has no cycles, every edge points at a task that exists, and every edge
   points at a lower ordinal — the reading order really is topological, and the implementation
   workflow's merge planning relies on that.
