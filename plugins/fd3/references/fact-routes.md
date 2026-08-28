@@ -53,7 +53,10 @@ function's range, never a bare path. A range forces the consumer to guess the li
 guess is what ends up quoted.
 
 A fact no route can reach because *you* lack access — an expired token, a console-only
-setting — is still not a decision. Ask the user for that one command at the head of the
-round, before question 1, under its own heading and naming the numbered questions it blocks;
-repeat it at the head of every following round until it is done. An unfulfilled access
-request is the most expensive thing in the session — everything behind it waits.
+setting — is still not a decision. Ask the user for the commands under their own heading at the
+head of the round, naming the numbered questions they block — a probe that needs four commands or
+a short script is still one request. It stands at the head of every round until it is done. An
+unfulfilled access request is the most expensive thing in the session — everything behind it
+waits. When the frontier would otherwise be empty and the access has still not come, do not close
+on the assumption silently: put it as the round's last numbered question — proceed on the stated
+assumptions as an accepted risk, or stop and wait.
