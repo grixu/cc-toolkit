@@ -69,6 +69,12 @@ query), `Explore` dispatched into the repository when finding it takes searching
 dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before
 dispatching anything. Never ask the user what you can read.
 
+Before naming a branch or recording a base, `git fetch` every repository the spec touches and record
+what you fetched: the default branch, its `origin/<default>` commit, and whether the checkout's
+current branch is behind it. The base you write into `branch-base:` is the ref the implementation
+stage cuts worktrees from; a base derived from a week-old local ref is a worktree that starts from
+the wrong commit, and nothing downstream re-derives it.
+
 ### 2. Cut
 
 The raw material is the work items. Every task is a subset of them, and every item lands in exactly
