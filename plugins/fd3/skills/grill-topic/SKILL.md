@@ -73,7 +73,7 @@ The session's research directory is `research/` in the session scratchpad. Dispa
 
 A question you dispatched a lookup for is **blocked by that lookup** — no exceptions. Do not predict what the lookup will return, or which questions it will turn out to touch: whether a fact changes a question is knowable only once you hold the fact. Questions you sent nobody to answer are not blocked — ask those now; a running lookup is an unsettled prerequisite for its own question only.
 
-A recommendation is never conditional. If you would write "recommended, provided the check confirms it", the question is blocked by that check and stays out of the round — a conditional recommendation gets answered as an unconditional one. The same bar holds inside options: an option whose stated cost is "we would have to verify X" is blocked by that lookup.
+A recommendation is never conditional. If you would write "recommended, provided the check confirms it", the question is blocked by that check and stays out of the round — a conditional recommendation gets answered as an unconditional one. The same bar holds inside an option's cost, its preamble and the recommendation itself: any admission that something outside this conversation is unchecked — a source unread, a contradiction unresolved, a behaviour unobserved — is a conditional recommendation wearing a cost's clothes, and the question is blocked by that lookup. If you find yourself writing the hedge, you have found the dispatch.
 
 A `path:line` that arrived inside a lookup report is that report's claim, not yours. Open it before you put it in front of the user as the reason a decision changes — a citation off by ten lines reads as a citation nobody checked, and it is the finding you most need believed.
 
