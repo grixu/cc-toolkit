@@ -183,9 +183,9 @@ the repair agent a re-investigation. The answers split into two lanes:
   `base` is the branch's stack base (or the repo's `defaultRef`). Passing `toolchain` and
   `baseline` through spares a re-scout — extract both mechanically from the report's output
   file (jq, node), never retype them by hand; when extraction is impractical, omitting them is
-  the sanctioned trade and the run re-scouts at the cost of one agent. Repair agents receive
-  the decision as their sole authority and never read the spec. Repair validation is CI only —
-  no code review.
+  the sanctioned trade — and the cost is not one agent but a full re-scout plus a full baseline
+  pipeline on every repository in the run. Repair agents receive the decision as their sole
+  authority and never read the spec. Repair validation is CI only — no code review.
 
 One carve-out from the second lane: a purely mechanical git operation — merging an existing
 task branch into its target, reverting a named commit — may be done by this skill directly when

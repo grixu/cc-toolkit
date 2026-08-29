@@ -114,8 +114,9 @@ const baselinePrompt = (repo) =>
     `2. Run every runnable validation command from the toolchain report below, in the reported`,
     `   order, sequentially — never in parallel. Skip what the report lists as not runnable here,`,
     `   recording each skip under skipped with its reason — a skip is never recorded as passed.`,
-    `3. Fix nothing, change nothing. Record, per command, whether it exited 0, and for each`,
-    `   failure the output lines that matter.`,
+    `3. Fix nothing, change nothing. Run each command once, as \`<command> 2>&1; echo "exit $?"\``,
+    `   — that one run gives both the output and the exit status. Record, per command, whether it`,
+    `   exited 0, and for each failure the output lines that matter.`,
     ``,
     toolchain.get(repo),
   ].join('\n')
