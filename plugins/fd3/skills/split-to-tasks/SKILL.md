@@ -75,6 +75,10 @@ current branch is behind it. The base you write into `branch-base:` is the ref t
 stage cuts worktrees from; a base derived from a week-old local ref is a worktree that starts from
 the wrong commit, and nothing downstream re-derives it.
 
+Record each repository's absolute root path and write that path into `repository:`. A remote slug is
+not a location: the next stage resolves it by guessing among the user's checkouts, and a feature
+worked on in a second worktree is exactly where the guess goes wrong.
+
 ### 2. Cut
 
 The raw material is the work items. Every task is a subset of them, and every item lands in exactly

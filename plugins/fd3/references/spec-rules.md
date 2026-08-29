@@ -26,6 +26,8 @@ every section.
   sibling document relative to the citing document's directory. The local clone's location is this
   machine's state and belongs in nothing that outlives the session: name a repository by its remote
   name and the commit, never by `/Users/…`. The one exception is a path genuinely outside any
-  repository — a scratchpad transcript an evidence row points at — and that row says so.
+  repository — a scratchpad transcript an evidence row points at — and that row says so. Machine
+  state a run hands to its own tooling — a task's frontmatter, a workflow's inputs — is not a
+  document, and this rule does not reach it.
 - **Sections are written as "section N", never as `§`.** The symbol survives no copy-paste chain
   intact, and it reads as a citation to something outside the document.

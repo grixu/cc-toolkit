@@ -10,7 +10,7 @@ status: todo
 spec: <relative path to the spec file>
 elements: [DB-1, API-2]
 decisions: [D2, D4]
-repository: <path or name; `none` for an operational task>
+repository: <absolute path of the checkout this task is implemented in; `none` for an operational task>
 branch: <target branch — shared by every task in the same landing unit; empty for an operational task>
 branch-base: <the branch's stack base — identical on every task of the branch; empty for an operational task>
 worktree:
