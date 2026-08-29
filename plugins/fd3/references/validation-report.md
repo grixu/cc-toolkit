@@ -42,11 +42,12 @@ section, on the terms `spec-rules.md` sets.
 
 A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`, or `fail —
 <section>, <the finding>`. It is the only thing by which the caller can tell that an iteration
-moved, so a check whose answer changed says so where it changed.
+moved, so a check whose answer changed says so where it changed. Each cell is one line.
 
 What the next pass needs from this one is what is still open; what is blocked is not — no later
 pass closes it. The durable record of what a pass found and closed is the spec's own dated
-evidence block, not this return.
+evidence block, not this return. A finding is stated once in the report; no section restates
+another's.
 
 For an unphased spec, replace the phase table with one word — `ready` or `not ready`. A `deferred`
 claim bounds the phase it gates; it never makes the document not ready. Drop any section that
