@@ -26,6 +26,11 @@ and hold it as the checklist section 6 walks; a fact in neither it nor the resea
 gap to declare or a lookup to dispatch, never a recollection. The decisions in it are ratified —
 you write them up, you do not reopen them.
 
+The closing notes name each research file and what it establishes; that line is the index. Read
+a report's headings first, then the sections you are about to cite. Do not re-read a file you
+have already read in this pass: if a `cat` trips the tool cap, the payload is on disk and the
+error names its path.
+
 A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming which
 one and what you need, then end your turn. Do not guess it, do not derive it from the repository's
 layout, do not go looking for it. The answer comes back as a message and you continue from there.
