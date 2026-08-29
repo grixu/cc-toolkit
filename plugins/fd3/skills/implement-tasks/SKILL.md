@@ -88,7 +88,9 @@ Then make the graph launchable:
 One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`:
 
 - which code-review skills to run during validation — offer only names present in this session's
-  skill listing, never one recalled from memory; `none` is a valid answer;
+  skill listing, never one recalled from memory; the lens is roughly two fifths of the run, and a
+  review bot on the pull request finds different things, not the same ones — `none` is a valid
+  answer but a real trade;
 - the spec path, when the `spec:` pointers did not resolve to an existing file in step 1;
 - any unresolved repository paths, `branch-base:` disagreements and stale `in-progress` calls
   from step 1;
