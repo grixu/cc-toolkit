@@ -149,6 +149,12 @@ group, not the task. One exception joins the step-6 batch: when the checkout alr
 branch carrying the spec's commits, whether the first landing unit reuses that branch or cuts
 fresh by the convention is the user's call — a user mid-feature may have chosen it deliberately.
 
+When the edge onto an operational task is real, carry it up to the branch: a landing unit that
+mixes a gate-blocked task with implementable ones cannot reach a complete state in one run. Cut
+the blocked task onto its own branch by default. Where the spec's gate genuinely holds the whole
+unit, say in the report — and in the blocked task's `## Note`, naming the branch its output must
+land on — that the unit lands as a draft pull request until the gate clears.
+
 Then fix the reading order: a topological sort of the `depends-on` graph, ties broken by the
 spec's phase-table order, then alphabetically by slug. This ordinal becomes the filename prefix in
 step 7. It is a review order for a human walking the directory, not an execution constraint —

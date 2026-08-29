@@ -47,4 +47,5 @@ merge round, where an already-merged branch no-ops.
 
 Any task may close with a `## Note` carrying what no other section does — a spec conflict the
 split resolved and how, a repository convention the work must respect, a standing manual step.
-For an operational task the note is mandatory: it says why no pull request exists.
+For an operational task the note is mandatory: it says why no pull request exists and, when its
+output is a file that must land in a repository, the branch it lands on.
