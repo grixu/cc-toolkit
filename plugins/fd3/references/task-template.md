@@ -28,7 +28,9 @@ tickets: [<identifiers, if any>]
 <The verification rows — by element code and kind — that must pass. Name the row, never restate
 its expected values or counts: the implementing agent reads the row in the spec, and a copied
 number is a second source of truth that rots. A task with no row of its own inherits its phase's
-verification, and says so.>
+verification, and says so. A row that only passes once the whole branch or phase is in place is
+named as that, not as this task's criterion: validation is batched per target branch, so no
+single task is asked to make one pass on its own.>
 
 ## Where to look
 
