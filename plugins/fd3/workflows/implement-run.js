@@ -235,6 +235,8 @@ const implementPrompt = (task) => {
     `Return slug "${task.slug}", the outcome, and a two-sentence summary of what you changed.`,
     `Under caveats, return anything the parent must see even though you succeeded — an as-built`,
     `deviation, a spec discrepancy you noticed, a done-criterion that cannot pass yet.`,
+    `A caveat says something the parent could not otherwise know. Following this prompt is not a`,
+    `caveat, and neither is a Done-when row the task file already names as branch-level.`,
   ].join('\n')
 }
 
@@ -538,6 +540,8 @@ const fixPrompt = (unit, problems, source) =>
     `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
     `reason, any judgment call that went beyond the listed problems, and any change that touches`,
     `a decision recorded in the spec.`,
+    `A caveat says something the parent could not otherwise know. Following this prompt is not a`,
+    `caveat.`,
   ].join('\n')
 
 const reviewPrompt = (unit, skillName) =>

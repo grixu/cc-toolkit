@@ -144,11 +144,15 @@ The completion notification truncates the result — read the full report from t
 `<output-file>` path before relaying anything. The workflow returns per-task statuses,
 per-branch validation outcomes (with each branch's review findings), agent `caveats`, the HIL
 list, the tasks left unreachable behind blockers, and its `toolchain` and `baseline` knowledge.
-Relay it faithfully — a failed CI stays failed in the telling, every caveat reaches the user,
-and any totals you state are the report's own `tasks[]` tally, never hand-counted — with one
-distinction the report already draws: `no-verdict` items are absence of evidence (an agent died
-twice on a transient API failure), never failures. Relay them as "no verdict" and simply
-include them in the relaunch.
+Relay it faithfully — a failed CI stays failed in the telling, and any totals you state are the
+report's own `tasks[]` tally, never hand-counted — with one distinction the report already
+draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
+failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
+
+Caveats are triaged, not relayed wholesale: one that names a decision the agent took, a risk,
+an as-built deviation or a commit no review saw goes to the user; one that reports compliance
+with its own prompt, or restates what the task file already records, does not. Write the full
+list to `caveats.txt` in the session scratchpad and give its path.
 
 For each HIL item, put the decision to the user: an operational task is theirs to execute (offer
 the task file's steps as a script to follow; mark `done` only when they confirm); a blocker or
