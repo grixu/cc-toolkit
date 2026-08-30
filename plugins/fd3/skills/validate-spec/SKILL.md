@@ -82,7 +82,8 @@ local path you resolved is how you reach the tree; it never appears in the repor
 
 ### 1. Enumerate
 
-Read the spec in full and record, in this order:
+Read the spec in full and record, in this order — read it once, with `Read`; a `cat` truncates and
+costs a second pass:
 
 1. Any declaration of precedence over another document — what it supersedes, and on what.
 2. Every design decision, element and claim.
