@@ -8,8 +8,8 @@ user-invocable: false
 
 The shape to write against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and the
 invariants that hold in every section are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
-Read both before writing anything. They are the same two files `fd3:validate-spec` measures a spec
-against — a section they name and you omit is a finding waiting to happen.
+Read both before writing anything. They are what a spec is measured against — a section they
+name and you omit is a finding waiting to happen.
 
 ## Input
 

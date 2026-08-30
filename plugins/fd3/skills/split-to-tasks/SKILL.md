@@ -9,8 +9,7 @@ The spec to split: **$ARGUMENTS**
 If no path was given, ask which spec to split. If the path does not resolve, say so and stop.
 
 The spec is read-only here. A defect you find in it — an element no work item builds, a work item
-that cites nothing — is a reason to recommend `fd3:validate-spec`, never something to fix in
-passing.
+that cites nothing — is a reason to stop and report it, never something to fix in passing.
 
 ## Terms
 
@@ -33,10 +32,11 @@ passing.
 
 ## Precondition
 
-Splitting propagates the spec's defects into every task. A `fd3:validate-spec` verdict in this
-conversation settles the question. Otherwise the spec must carry all three: read its evidence record
-**from the bottom** — the last verdict line in the file is the current one, position decides and not
-the date — that line records no blocked claims, and its count equals `wc -l` on the spec.
+Splitting propagates the spec's defects into every task. A validation verdict in this
+conversation settles the question. Otherwise the spec must carry all three: read its evidence
+record **from the bottom** — the last verdict line in the file is the current one, position
+decides and not the date — that line records no blocked claims, and its count equals `wc -l` on
+the spec.
 
 Anything short of that — blocked claims, a count that does not match, a dated block with no verdict
 line, no pass anywhere — say what the record holds and ask, once, whether to validate first or split
@@ -173,8 +173,7 @@ Before writing anything, check — and say in the report — that:
   the report records;
 - every element code lands in at least one task. An element no work item builds is a spec defect:
   when exactly one work item's cited files contain it, assign it there and flag the defect in the
-  report for `fd3:validate-spec`; anything less unambiguous — stop and recommend
-  `fd3:validate-spec`;
+  report; anything less unambiguous — stop and report it;
 - every delivery task — one that builds or refactors something — has at least one element and a
   done criterion naming a verification row. An operational task that stands an element up carries
   that element's code too, and it counts for coverage: a resource provisioned by hand is still the
