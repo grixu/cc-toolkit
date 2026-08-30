@@ -431,8 +431,8 @@ while (true) {
   }
 }
 
-// Tasks still todo here sit behind a blocked or conflicted dependency; the human unblocks,
-// the skill relaunches.
+// Tasks still todo here sit behind a blocked or conflicted dependency, or a base that never
+// finished; the human unblocks, the skill relaunches.
 const unreachable = tasks.filter((t) => status.get(t.slug) === 'todo').map((t) => t.slug)
 
 // Deliberate gaps must be visible to the review and fix agents below, or they will "fix" a
