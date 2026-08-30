@@ -200,8 +200,10 @@ The ordinal lives only in the filename: `depends-on` and every other reference c
 slug, so a regeneration may renumber freely without breaking an edge. YAML frontmatter carries
 the machine-readable fields; the body carries the brief.
 
-The shape of each file is `${CLAUDE_SKILL_DIR}/../../references/task-template.md` — read it before
-writing the first one.
+The shape of each file is `${CLAUDE_SKILL_DIR}/../../references/task-template.md` — read it
+before writing the first one. Write each file with the `Write` tool. A heredoc puts the whole
+body through a shell, where a guard hook may block it and an interrupted write leaves half a
+file behind.
 
 The body obeys the index card rule: the goal in the task's own words, pointers by element code and
 section heading, nothing copied out of the spec — no contract prose, no schemas, no `path:line`
