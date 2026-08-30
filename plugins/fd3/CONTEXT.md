@@ -73,10 +73,11 @@ the skills and the template, and when they and this file disagree, the skills an
 ## Tasks
 
 - **Task** — the smallest set of a spec's work items that is independently verifiable and leaves
-  its repository mergeable. **One task = one branch = one worktree = one pull request** — an
-  identity `split-to-tasks` enforces, not a guideline. A repository always cuts, even under a single
-  owner; inside a monorepo, ownership (one review-and-apply owner per subtree) cuts.
-- **Operational task** — the sanctioned exception to that identity: hand-run work against the live
+  its repository mergeable. **One task = one worktree.** The unit of review is the **branch** —
+  one branch = one pull request — and tasks group onto shared branches by the spec's rollout
+  gates. A repository always cuts, even under a single owner; inside a monorepo, ownership (one
+  review-and-apply owner per subtree) cuts.
+- **Operational task** — the sanctioned exception to all of that: hand-run work against the live
   system (`gcloud`, a console) with no pull request, existing because a spec gate needs an owner
   and no repository carries it. Frontmatter: `repository: none`, `branch` empty; body closes with
   a `## Note` saying why. The frontmatter stays machine-readable — prose in those fields breaks
@@ -84,10 +85,11 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Index card rule** — a task file carries pointers (element codes, section headings), never
   copies of spec content. The spec stays the single source of truth; with hashing rejected, a
   copied contract that rots is undetectable.
-- **Task statuses** — `todo`, `in-progress`, `ci`, `cr`, `fixing`, `done`. `ci` marks build/lint/
-  stage verification, `cr` the configured review skills, `fixing` a failed stage being repaired.
-  Stage-granular because a mass implementation run can be interrupted by usage limits and must
-  resume knowing what each task already passed.
-- **Size policy** — split further above 80 changed files or 2000 changed lines, generated files
-  excluded. Defaults of `split-to-tasks`, user-overridable; policy lives in the skill, never in
-  the spec.
+- **Task statuses** — `todo`, `in-progress`, `implemented`, `blocked`, `done`. `implemented`
+  means the code exists on the task's own branch; validation runs batched per target branch, so
+  `done` comes only once that batch passes. `blocked` means only a human can move it. Coarse
+  enough that a mass run interrupted by usage limits resumes on the files alone.
+- **Size policy** — above 80 changed files or 2000 changed lines, generated files excluded, the
+  split **warns and does not subdivide**: the grouping follows the spec's rollout table, and a
+  branch structure the spec does not describe is a second source of truth about the rollout. The
+  threshold is policy of `split-to-tasks`, user-overridable; it never appears in the spec.
