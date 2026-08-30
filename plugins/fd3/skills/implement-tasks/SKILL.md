@@ -12,8 +12,10 @@ resolve or holds no task files, say so and stop.
 
 Task files are the state store here. Their frontmatter statuses — `todo`, `in-progress`,
 `implemented`, `blocked`, `done` — are what survives an interrupted run, so every status change
-happens in the files, never only in conversation. The spec stays read-only; a defect found in a
-task or the spec mid-run is a reason to stop and say so, never something to fix in passing.
+happens in the files, never only in conversation. The spec stays read-only for this run and
+every agent in it: a defect found in a task or the spec mid-run is a reason to stop and say so,
+never something to fix in passing. After the report, a correction the user asks for is theirs
+to have.
 
 ## Terms
 
