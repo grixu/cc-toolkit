@@ -205,17 +205,18 @@ live. A pause that survives only in this conversation is state lost.
 ### 5. Propose, never push
 
 When every repository-bearing task is `done`: one table — repository, branch, its stack base,
-tasks on it, proposed pull-request title citing the tickets — with the still-open operational
-tasks listed alongside; they need the branches landed first, so they never gate this proposal.
-Stacked branches make a pull-request chain: each pull request's base is its branch's stack base,
-and after one lands its successor is retargeted onto the default branch — but only when the
-predecessor landed as a merge commit. After a squash merge the predecessor's branch is no longer
-an ancestor of the default, so a bare retarget shows the whole stack as new: merge
-`origin/<default>` into the successor first, then retarget. Say that in the proposal.
-Then propose pushing the branches and opening the pull requests. Only after explicit
-consent: push, `gh pr create` per branch (`--base` set to the stack base) with a description
-naming the tasks and spec. Offer cleanup — remove the `.worktrees` directories and delete the
-merged `task/<slug>` branches — as its own question, never coupled to the push: declining to
-publish while wanting a clean repository is a normal combination. If push consent does not come,
-leave everything local and say where it lives — and when the tasks directory is untracked, say
-that too: it is the only copy of the run's state store, one `git clean -fd` away from gone.
+tasks on it, the element codes those tasks carry, proposed pull-request title citing the
+tickets — with the still-open operational tasks listed alongside; they need the branches landed
+first, so they never gate this proposal. Stacked branches make a pull-request chain: each pull
+request's base is its branch's stack base, and after one lands its successor is retargeted onto
+the default branch — but only when the predecessor landed as a merge commit. After a squash
+merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget
+shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
+Say that in the proposal. Then propose pushing the branches and opening the pull requests. Only
+after explicit consent: push, `gh pr create` per branch (`--base` set to the stack base) with a
+description naming the tasks, the spec and the branch's element codes. Offer cleanup — remove
+the `.worktrees` directories and delete the merged `task/<slug>` branches — as its own
+question, never coupled to the push: declining to publish while wanting a clean repository is a
+normal combination. If push consent does not come, leave everything local and say where it
+lives — and when the tasks directory is untracked, say that too: it is the only copy of the
+run's state store, one `git clean -fd` away from gone.
