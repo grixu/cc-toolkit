@@ -211,6 +211,13 @@ The body obeys the index card rule: the goal in the task's own words, pointers b
 section heading, nothing copied out of the spec — no contract prose, no schemas, no `path:line`
 lists. The implementation agent reads those from the spec sections the pointers name.
 
+Rendering the files is the one part of this skill worth dispatching. Dispatch the `fork`
+sub-agent, one per repository — unnamed, per `fact-routes.md`: it already holds the cuts, the
+grouping and the pointers, so its prompt names only the files it writes and this section's
+prohibitions. Nothing is left for it to decide; it renders. Then re-run step 5 mechanically
+over the written files — coverage is the one check a fan-out cannot perform on itself. A split
+of five files or fewer is faster written here.
+
 Write the report to `<spec-basename>.split.md` beside the spec — never inside `tasks/`, where
 a task-file glob trips over it. It carries one table (slug, repository, branch, phase,
 depends-on, elements), the branch creation order and stack chain per repository, where the
