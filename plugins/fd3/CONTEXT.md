@@ -14,9 +14,10 @@ the skills and the template, and when they and this file disagree, the skills an
   of the template because they bind statements rather than sections: declared gaps, vague verbs,
   undecided either/ors, citations, element codes, document references. The single source of truth
   for all three, so neither skill restates them.
-- **Output shapes** — everything fd3 produces has its shape in `references/`: the spec in the
-  template, a task file in `task-template.md`, and what a validation pass returns in
-  `validation-report.md`. A skill points at its shape; it never inlines one.
+- **Output shapes** — an artifact two skills share has its shape in `references/`: the spec in
+  the template, a task file in `task-template.md`, and what a validation pass returns in
+  `validation-report.md`. A skill points at a shared shape; it never inlines one. An artifact
+  with a single writer — the split report, the closing notes — is shaped where it is written.
 - **Closing summary** — grill-topic's final artifact: every settled decision, plus the decisions the
   user never answered directly. The user confirming it is the gate between grilling and writing.
 
