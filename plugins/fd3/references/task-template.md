@@ -38,6 +38,9 @@ single task is asked to make one pass on its own.>
 One pointer per element, plus the decisions that constrain the work.>
 ```
 
+The ordinal prefix lives only in the filename. `depends-on` and every cross-reference in the
+body carry the bare slug, so a regeneration may renumber freely without breaking a reference.
+
 `status` is always `todo` at split time, and `worktree` stays empty until implementation claims the
 task. The remaining statuses — `in-progress`, `implemented`, `blocked`, `done` — belong to the
 implementation flow: `implemented` means the code exists on the task's own branch — whether it has
