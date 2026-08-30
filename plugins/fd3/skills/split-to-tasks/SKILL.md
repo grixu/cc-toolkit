@@ -186,8 +186,9 @@ Before writing anything, check — and say in the report — that:
 ### 6. Ask
 
 Put every judgment call to the user at once, following the batching protocol in
-`${CLAUDE_SKILL_DIR}/../../references/question-batching.md`. The target directory joins the first
-batch: recommend `<spec-dir>/tasks/`.
+`${CLAUDE_SKILL_DIR}/../../references/question-batching.md`. The target directory is
+`<spec-dir>/tasks/` unless the invocation named one. It joins the batch only when that
+directory already holds task files from another spec.
 A missing branch convention is the user's; grouping the gates decided and a size breach is a
 report with a recommendation, never a question — everything the rules above already settled,
 report rather than ask.
