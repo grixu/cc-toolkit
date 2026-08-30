@@ -93,3 +93,7 @@ the skills and the template, and when they and this file disagree, the skills an
   split **warns and does not subdivide**: the grouping follows the spec's rollout table, and a
   branch structure the spec does not describe is a second source of truth about the rollout. The
   threshold is policy of `split-to-tasks`, user-overridable; it never appears in the spec.
+- **Where a split's knowledge lands** — the implementation orchestrator reads task frontmatter
+  only, so anything it must act on is a field; the implementation agent reads the whole task
+  file, so anything that changes what *this* task's agent does is that task's `## Note`; the
+  human reads disk, so branch-level and run-level facts go in a file beside the spec.
