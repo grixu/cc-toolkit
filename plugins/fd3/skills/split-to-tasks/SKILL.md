@@ -80,9 +80,10 @@ worked on in a second worktree is exactly where the guess goes wrong.
 
 ### 2. Cut
 
-The raw material is the work items. Every task is a subset of them, and every item lands in exactly
-one task. Apply the boundaries in order — each is a rule with a reason, and the reason decides the
-edge cases:
+The raw material is the work items. Every task is a subset of them, and every item lands in
+exactly one task — unless a rule below cuts through the item itself, in which case it is split
+along that cut and the seam is named. Apply the boundaries in order — each is a rule with a
+reason, and the reason decides the edge cases:
 
 1. **A repository always cuts.** A task is implemented in one worktree of one repository, and two
    repositories cannot share a branch. This holds even when one team owns both repositories.
@@ -168,7 +169,8 @@ parallel threads have to interleave somewhere, and the truth about ordering stay
 
 Before writing anything, check — and say in the report — that:
 
-- every work item is in exactly one task;
+- every work item is accounted for: in exactly one task, or split across tasks along a named seam
+  the report records;
 - every element code lands in at least one task. An element no work item builds is a spec defect:
   when exactly one work item's cited files contain it, assign it there and flag the defect in the
   report for `fd3:validate-spec`; anything less unambiguous — stop and recommend
