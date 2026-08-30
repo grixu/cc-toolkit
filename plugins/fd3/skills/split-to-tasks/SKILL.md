@@ -60,14 +60,14 @@ note as each step completes. It is how the user sees progress:
 
 ### 1. Enumerate
 
-Read the spec in full. List every work item from the per-repository section with the element codes
-it names, every rollout phase with its gate marker, the ownership table with any landing
-constraints, and the ticket identifiers. A fact the spec
-does not give you — a repository's branch naming convention, the plausible blast radius of an item
-— is yours to look up yourself: a direct command for a specific fact (`git branch -r`, a tracker
-query), `Explore` dispatched into the repository when finding it takes searching. The routes and
-dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before
-dispatching anything. Never ask the user what you can read.
+Read the spec in full. List every work item from the per-repository section with the element
+codes it names, every rollout phase with its gate marker, the ownership table with any landing
+constraints, and the ticket identifiers. A fact the spec does not give you — a repository's
+branch naming convention, the plausible blast radius of an item — is yours to look up yourself:
+a direct command for a specific fact (`git branch -r`, a tracker query), `Explore` dispatched
+into the repository when finding it takes searching. When a fact needs a dispatch rather than a
+direct command, read `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md` first — it holds the
+routes and the dispatch rules. Most splits need none. Never ask the user what you can read.
 
 Before naming a branch or recording a base, `git fetch` every repository the spec touches and record
 what you fetched: the default branch, its `origin/<default>` commit, and whether the checkout's
