@@ -180,7 +180,9 @@ Before writing anything, check — and say in the report — that:
   criterion — it names the gate it inherits instead, as the template directs;
 - the dependency graph has no cycles, every edge points at a task that exists, and every edge
   points at a lower ordinal — the reading order really is topological, and the implementation
-  workflow's merge planning relies on that.
+  workflow's merge planning relies on that;
+- the `branch-base` chain is rooted, acyclic, single-parent, identical on every task of a
+  branch, and its one root is the repository's default branch.
 
 ### 6. Ask
 
