@@ -58,8 +58,8 @@ Then make the graph launchable:
   guarantees the path is real. When the resolved path does not exist (or tasks point at different
   files), the spec location joins the step-2 batch.
 - **Resolve repositories to absolute paths.** A `repository:` value that is not an existing
-  directory needs resolving — look for it near the tasks directory and among the user's checkouts
-  before asking; a genuine ambiguity joins the step-2 batch.
+  directory is a missing input, not something to search for: it joins the step-2 batch, naming
+  the tasks it blocks.
 - **Sync with origin.** In every resolved repository run `git fetch origin` — mandatory, stale
   local refs poison every branch cut from them. Record the default branch and its
   `origin/<default>` ref; note which branch the checkout currently sits on and whether that
