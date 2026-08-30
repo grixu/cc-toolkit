@@ -50,7 +50,8 @@ firecrawl quota: run two or three at a time, never the whole wave at once.
 
 A dispatch prompt asks for the exact line of every cited construct — never the enclosing
 function's range, never a bare path. A range forces the consumer to guess the line, and the
-guess is what ends up quoted.
+guess is what ends up quoted. A dispatch prompt states the question, never the topic's answer
+to it.
 
 A fact no route can reach because *you* lack access — an expired token, a console-only
 setting — is still not a decision. Ask the user for the commands under their own heading at the
