@@ -129,12 +129,12 @@ tests:
         value: file://lib/checks/write-no-invented-decisions.mjs
 
   # ---- grill-topic (Priority 3 — smoke) ----
-  # 5.0 for grill-round-shape/grill-numbered-questions: with first_option auto-answering
-  # question-tool rounds a grilling run can go long, and a 2.0 cut-off kills the SDK
+  # 8.0 for grill-round-shape/grill-numbered-questions: with first_option auto-answering
+  # question-tool rounds a grilling run can go long, and a cut-off kills the SDK
   # process (hard exit 1) instead of letting the asserts judge the finished output.
   - description: grill-round-shape
     vars: { query: file://prompts/grill-round-shape.txt }
-    options: { working_dir: .sandbox/grill-round-shape, max_budget_usd: 5.0 }
+    options: { working_dir: .sandbox/grill-round-shape, max_budget_usd: 8.0 }
     assert:
       - type: javascript
         value: file://lib/checks/grill-round-shape.mjs
@@ -153,7 +153,7 @@ tests:
 
   - description: grill-numbered-questions
     vars: { query: file://prompts/grill-numbered-questions.txt }
-    options: { working_dir: .sandbox/grill-numbered-questions, max_budget_usd: 5.0 }
+    options: { working_dir: .sandbox/grill-numbered-questions, max_budget_usd: 8.0 }
     assert:
       - type: javascript
         value: file://lib/checks/grill-numbered-questions.mjs
