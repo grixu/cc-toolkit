@@ -6,7 +6,9 @@ the skills and the template, and when they and this file disagree, the skills an
 ## The documents
 
 - **Spec** — the deliverable: a document precise enough to implement, or split into tasks, without a
-  second conversation. Written by `write-spec`, measured by `validate-spec`.
+  second conversation. Written by `write-spec`, measured by `validate-spec`. Validation is a step
+  the orchestrator dispatches, never a user entry point: no command invokes it, and its absence is
+  not a gap.
 - **Template** (`references/spec-template.md`) — the twelve sections a spec is written against and
   measured against. Both skills point at it, so a section added here changes what `validate-spec`
   expects *and* what `write-spec` writes.
