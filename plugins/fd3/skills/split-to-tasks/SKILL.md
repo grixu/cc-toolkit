@@ -188,6 +188,9 @@ Before writing anything, check — and say in the report — that:
 - the `branch-base` chain is rooted, acyclic, single-parent, identical on every task of a
   branch, and its one root is the repository's default branch.
 
+A stop here is a stop before any file exists. The message that ends the run says nothing was
+written, and what stopped it.
+
 ### 6. Ask
 
 Put every judgment call to the user at once, following the batching protocol in
