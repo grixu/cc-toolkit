@@ -6,7 +6,7 @@ argument-hint: "<topic, plan, decision or idea to grill>"
 
 The topic to grill: **$ARGUMENTS**
 
-If no topic was given, ask the user what to grill before starting the first round.
+If no topic was given, ask the user what to grill and stop until they answer. A topic found in the repository is not the topic you were given.
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
 
