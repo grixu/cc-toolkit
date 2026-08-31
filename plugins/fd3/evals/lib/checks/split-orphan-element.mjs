@@ -4,7 +4,7 @@ export default (output) => {
   const c = h.checker();
 
   c.check(/API-3/.test(output), 'the orphan element API-3 is not named in the output');
-  c.check(/validate-spec/i.test(output), 'the output does not recommend fd3:validate-spec');
+  c.check(/no task files|nothing (?:was )?written|wrote nothing|did not (?:write|split)|stopp(?:ed|ing) the split/i.test(output), 'the output does not say the split stopped without writing');
 
   const diff = h.diffSandbox('split-orphan-element', 'orphan-rollout-spec');
   c.check(diff.added.length === 0, `task files were written despite the coverage defect: ${diff.added.join(', ')}`);

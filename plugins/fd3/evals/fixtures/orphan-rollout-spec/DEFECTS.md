@@ -9,8 +9,8 @@ satisfied and the run reaches the coverage check — which means its verdict lin
 the line count recomputed for this longer file: `spec 226 lines at this verdict` against the base
 fixture's 216. A stale count fails the precondition and the run never reaches the coverage check.
 
-The split-orphan-element assertions: the coverage check catches `API-3`, the skill stops and recommends
-`fd3:validate-spec`; no task files are written; the spec file is byte-identical to this fixture
+The split-orphan-element assertions: the coverage check catches `API-3`, the skill stops and reports
+that it wrote nothing; no task files are written; the spec file is byte-identical to this fixture
 after the run (the spec is read-only for split-to-tasks).
 
 Do not edit the spec here directly — regenerate it from `rollout-spec` (insert the API-3 block
