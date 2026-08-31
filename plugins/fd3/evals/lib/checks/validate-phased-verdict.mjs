@@ -7,8 +7,9 @@ export default (output) => {
 
   const verdict = h.section(output, 'Verdict') || '';
   c.check(/\|\s*Phase\s*\|\s*Ready\s*\|/i.test(verdict), 'verdict is not the Phase|Ready|What holds it table (required for a phased spec)');
-  c.check(/^\|\s*1\s*\|\s*yes\b/im.test(verdict), 'phase 1 row does not read yes');
-  const phase2 = /^\|\s*2\s*\|.*$/im.exec(verdict);
+  // The Phase cell may label the phase ("1 — DB-1 lands…"); only the leading number is contract.
+  c.check(/^\|\s*1\b[^|]*\|\s*yes\b/im.test(verdict), 'phase 1 row does not read yes');
+  const phase2 = /^\|\s*2\b[^|]*\|.*$/im.exec(verdict);
   c.check(phase2 !== null, 'no phase 2 row in the verdict table');
   if (phase2) {
     c.check(/gate|ceiling|platform|confirm/i.test(phase2[0]), 'phase 2 row does not name the gate the deferred claim bounds');
