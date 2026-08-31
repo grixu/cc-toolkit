@@ -218,6 +218,8 @@ pull request cites LED-100.
 
 ### Validation pass — 2026-07-30
 
+Verdict: ready — claims: 1 verified / 0 deferred / 0 blocked — spec 226 lines at this verdict
+
 | Claim | How it was verified |
 |---|---|
 | All 12 spec-level checks pass | `fd3:validate-spec` run of 2026-07-30 — every check row `pass`, no blocking findings |

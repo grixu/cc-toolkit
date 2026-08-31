@@ -86,9 +86,9 @@ CI applies the deploy — no human runs anything by hand.
 
 ## 7. Rollout
 
-| # | Phase | Where | Switches anything? |
-|---|---|---|---|
-| 1 | Both work items land and deploy together | payments-service | yes — the store becomes durable and metrics appear |
+| # | Phase | Where | Switches anything? | Gate after? |
+|---|---|---|---|---|
+| 1 | Both work items land and deploy together | payments-service | yes — the store becomes durable and metrics appear | yes — the final phase, so it closes its landing unit: one branch, one pull request |
 
 Single environment; the deploy on merge is the rollout. No waiting period: the change is exercised
 by the next charge request.

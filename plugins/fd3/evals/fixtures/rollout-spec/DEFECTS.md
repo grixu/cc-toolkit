@@ -44,9 +44,14 @@ waiting period here without unfreezing the task count.
 ## Precondition material
 
 The `### Validation pass — 2026-07-30` sub-heading in section 12 is what satisfies the
-split-to-tasks precondition without conversation context. `unvalidated-rollout-spec` is this spec with
-that sub-heading removed; `orphan-rollout-spec` is this spec plus an `API-3` element that no section 6
-work item names.
+split-to-tasks precondition without conversation context. The dated block opens with the verdict
+line the precondition reads — `Verdict: ready — claims: 1 verified / 0 deferred / 0 blocked — spec
+216 lines at this verdict` — and a dated heading alone would not satisfy it. Two of its numbers are
+load-bearing: zero blocked claims, and a line count equal to `wc -l` on this file. Any edit to the
+spec, anywhere, changes that count and must be followed by rewriting the number.
+`unvalidated-rollout-spec` is this spec with that sub-heading removed; `orphan-rollout-spec` is this
+spec plus an `API-3` element that no section 6 work item names, its verdict line recounted for the
+longer file.
 
 ## Load-bearing line numbers
 
