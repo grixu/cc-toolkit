@@ -1,5 +1,5 @@
 export const REQUIRED_FM_KEYS = [
-  'name', 'status', 'spec', 'elements', 'decisions', 'repository', 'branch',
+  'name', 'status', 'spec', 'elements', 'repository', 'branch',
   'worktree', 'phase', 'depends-on', 'tickets',
 ];
 

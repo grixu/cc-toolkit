@@ -18,7 +18,11 @@ export default (output) => {
   const diff = h.diffSandbox('split-baseline', 'rollout-spec');
   c.check(diff.modified.length === 0, `fixture files modified (spec is read-only here): ${diff.modified.join(', ')}`);
   c.check(diff.removed.length === 0, `fixture files removed: ${diff.removed.join(', ')}`);
-  c.check(diff.added.every((f) => f.startsWith('spec/tasks/')), `files created outside spec/tasks/: ${diff.added.filter((f) => !f.startsWith('spec/tasks/')).join(', ')}`);
+  // The split report belongs beside the spec, named for it; everything else a split adds is a task file.
+  const SPLIT_REPORT = 'spec/rollout-spec.split.md';
+  const stray = diff.added.filter((f) => !f.startsWith('spec/tasks/') && f !== SPLIT_REPORT);
+  c.check(stray.length === 0, `files created outside spec/tasks/: ${stray.join(', ')}`);
+  c.check(diff.added.includes(SPLIT_REPORT), `the split report ${SPLIT_REPORT} was not written beside the spec`);
 
   return c.verdict();
 };
