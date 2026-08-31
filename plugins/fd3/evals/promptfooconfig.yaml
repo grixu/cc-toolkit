@@ -81,11 +81,12 @@ tests:
         value: file://lib/checks/split-unvalidated-precondition.mjs
       - type: llm-rubric
         value: >-
-          The response flags that the spec has no validation pass and says what its evidence
-          record holds. The choice between validating first and splitting as-is is the user's:
-          the response either puts that question or reports the answer it came back with —
-          an answer it attributes to itself does not count. It must not proceed to split the
-          spec into task files, and must not silently ignore the missing validation.
+          The harness auto-answers questions, so a question the response asked is not visible
+          in this text. All four must hold, or the output fails: (a) it states the spec has no
+          validation pass; (b) it states what the spec's evidence record holds; (c) it either
+          poses the choice between validating first and splitting as-is, or states which of the
+          two was chosen — a stated choice counts on its own, no question needed in the text;
+          (d) it does not split the spec into task files.
 
   - description: split-orphan-element
     vars: { query: file://prompts/split-orphan-element.txt }
