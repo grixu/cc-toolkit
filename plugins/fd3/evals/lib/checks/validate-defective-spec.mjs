@@ -12,7 +12,7 @@ export default (output) => {
   c.check(/D2[\s\S]{0,400}D5|D5[\s\S]{0,400}D2/.test(output), 'D2/D5 contradiction not surfaced');
   c.check(/redis/i.test(output) && /postgres/i.test(output), 'undecided Redis-or-Postgres either/or not surfaced');
   c.check(/invoice pdf/i.test(output), 'ownerless out-of-scope item (invoice PDF rendering) not surfaced');
-  c.check(/retry worker/i.test(output) && /element code/i.test(output), 'uncoded "Delivery retry worker" element not surfaced');
+  c.check(/retry[-\s]worker/i.test(output) && /element code/i.test(output), 'uncoded "Delivery retry worker" element not surfaced');
   c.check(/section 3/i.test(output), 'no finding anchored to section 3');
   c.check(/section 10/i.test(output), 'no finding anchored to section 10');
   c.check(/section 4/i.test(output), 'no finding anchored to section 4');
