@@ -24,5 +24,21 @@ Load-bearing facts:
 - OBSERVABILITY-1 is a counter only. The source tree has no queue-consumer loop — `deliver`
   (`src/queue/worker.ts:5`) has no caller — so a `webhook_delivery_queue_depth` gauge would have
   no emission point and this spec creates none.
+- Every element attaches to code that exists in the tree, and names its new dependencies. The tree
+  has no HTTP surface, no `/metrics` route and no `process.env` read: a scraped metric, a metrics
+  endpoint prerequisite or a `curl /metrics` probe has no target here, so OBSERVABILITY-1 counts
+  in module scope and is read through an export the test suite calls. `post`
+  (`src/queue/worker.ts:14`) returns `true` unconditionally, so the `failed` count is declared
+  unexercisable rather than verified.
+- Section 6 names the dependencies the work introduces, `vitest` among them: the `test` script
+  invokes it and no dependency block declares it, so a spec verifying through `npm test` without
+  naming it is a finding.
+- A fact outside the tree is marked as asserted by its owner wherever the spec states it — D2's
+  premise, the prerequisite row, the CI deploy that applies the migration, the section 5 pipeline,
+  the tickets. Each carries an owner and a placement. A statement
+  the repository cannot show, written as plain fact, is a finding.
+- No prerequisite is marked "met" on something outside the tree. The deploy manifest and
+  `DATABASE_URL` do not exist here, so that prerequisite is an assertion with an owner and a
+  placement.
 - The only spec edits the eval accepts are appended evidence rows under a dated sub-heading: the
   assertion checks the fixture content is a prefix of the sandbox content.
