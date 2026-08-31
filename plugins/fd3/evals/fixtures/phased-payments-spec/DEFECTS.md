@@ -43,3 +43,7 @@ Also load-bearing against `spec-template.md`:
 
 Source files are byte-identical to `defective-payments-spec`'s (see that fixture's DEFECTS.md for the
 line map).
+- CONFIG-1's module-load error is named, like DB-1's. "A named error" without the name is an
+  incomplete contract.
+- A rollback criterion names something the deployed process can produce. Nothing calls `deliver`
+  until PAY-262, so a phase-2 reversal read from the delivery counts is unobservable.

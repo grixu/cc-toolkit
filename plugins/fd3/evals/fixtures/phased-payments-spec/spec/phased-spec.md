@@ -89,8 +89,9 @@ module loads and held for the life of the process.
 
 - Fields: one integer environment variable, attempts per second. Default `1`, the phase-1 value.
   The bucket holds one token, so there is no burst allowance above the rate.
-- Errors: the same module-load read throws a named error on a value that is not an integer, is
-  below `1`, or is above `8` — never a silent fallback and never a clamp.
+- Errors: the same module-load read throws `DeliveryRateLimitInvalid` on a value that is not an
+  integer, is below `1`, or is above `8` — never a silent fallback and never a clamp. The error
+  carries the rejected value and the bound it broke.
 - Auth: none — the environment the service runs under.
 - Limits: `8` is the ceiling the read enforces, and phase 2 is what sets the value to it.
 
@@ -149,8 +150,9 @@ Hard dependency: **the platform team's confirmation of the egress rate-limit cei
 2** (the declared gap in section 4). The gate is a confirmation, not a merge or a deploy.
 
 Rollback: phase 1 — revert the merge commit and redeploy; the `idempotency_keys` table stays
-behind, unused. Phase 2 — set `DELIVERY_RATE_LIMIT` back to `1` and redeploy; the reversal is complete when
-`webhook_delivery_attempts_total` climbs at its phase-1 rate again.
+behind, unused. Phase 2 — set `DELIVERY_RATE_LIMIT` back to `1` and redeploy; the reversal is complete when that
+deploy is live. There is no runtime reading to wait for: nothing calls `deliver` in the deployed
+process until the worker is wired in (section 10), so the counts stay at zero either way.
 
 ## 8. Verification
 
@@ -161,7 +163,7 @@ behind, unused. Phase 2 — set `DELIVERY_RATE_LIMIT` back to `1` and redeploy; 
   Before the change the export does not exist. The `failed` count is not exercised — nothing here
   can make a delivery fail (section 10).
 - **CONFIG-1** — triggered, through the same test run: importing the module with
-  `DELIVERY_RATE_LIMIT=abc` throws the named error; with `DELIVERY_RATE_LIMIT=1`, three events
+  `DELIVERY_RATE_LIMIT=abc` throws `DeliveryRateLimitInvalid`; with `DELIVERY_RATE_LIMIT=1`, three events
   delivered concurrently take at least two seconds for their three attempts, which is what a
   per-event delay would not produce — each of those events costs one attempt, so only a shared
   bucket can space them.
