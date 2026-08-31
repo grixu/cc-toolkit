@@ -38,9 +38,10 @@ record **from the bottom** — the last verdict line in the file is the current 
 decides and not the date — that line records no blocked claims, and its count equals `wc -l` on
 the spec.
 
-Anything short of that — blocked claims, a count that does not match, a dated block with no verdict
-line, no pass anywhere — say what the record holds and ask, once, whether to validate first or split
-as-is. A dated heading over verified rows is not a verdict.
+Anything short of that — blocked claims, a count that does not match, a dated block with no
+verdict line, no pass anywhere — say what the record holds and ask, once, whether to validate
+first or split as-is. A dated heading over verified rows is not a verdict. Validating is not
+this skill's work: an answer of *validate first* ends the split, with nothing written.
 
 ## Workflow
 
