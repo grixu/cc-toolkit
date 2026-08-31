@@ -51,10 +51,10 @@ Replaces the in-memory `Map` in `src/store/idempotency.ts`. Contract:
 
 ### OBSERVABILITY-1 — delivery metrics
 
-Counter `webhook_delivery_attempts_total{outcome}` and gauge `webhook_delivery_queue_depth`,
-emitted by the worker (`src/queue/worker.ts:5`) after each attempt and each queue poll.
+Counter `webhook_delivery_attempts_total{outcome}`, emitted by the worker
+(`src/queue/worker.ts:5`) after each delivery attempt.
 
-- Fields: the two metric names and the `outcome` label (`delivered` / `failed`).
+- Fields: the metric name and the `outcome` label (`delivered` / `failed`).
 - Errors: metric emission is best-effort; a failed emission is dropped silently.
 - Auth: none — metrics are scraped from the existing endpoint.
 - Limits: label cardinality is 2.
@@ -81,8 +81,8 @@ CI applies the deploy — no human runs anything by hand.
 
 1. **DB-1** — new: migration adding `idempotency_keys`, plus rewiring `getIdempotencyKey` /
    `saveIdempotencyKey` (`src/store/idempotency.ts:5`, `src/store/idempotency.ts:9`) to the table.
-2. **OBSERVABILITY-1** — new: metric emission inside the retry loop (`src/queue/worker.ts:6`) and
-   after each queue poll.
+2. **OBSERVABILITY-1** — new: counter emission inside the retry loop
+   (`src/queue/worker.ts:6`), once per attempt.
 
 ## 7. Rollout
 
@@ -102,8 +102,8 @@ dropping it is cleanup (section 9), not rollback.
 
 - **DB-1** — probe: `psql "$DATABASE_URL" -c "\d idempotency_keys"` lists the four columns. Before
   the change the same command errors with `did not find any relation`.
-- **OBSERVABILITY-1** — probe: `curl -s localhost:3000/metrics | grep webhook_delivery` shows both
-  metrics. Before the change the grep is empty.
+- **OBSERVABILITY-1** — probe: `curl -s localhost:3000/metrics | grep webhook_delivery` shows the
+  counter under both `outcome` labels. Before the change the grep is empty.
 
 Phase 1 is verified when both checks above pass.
 

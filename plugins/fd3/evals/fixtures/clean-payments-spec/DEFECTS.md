@@ -19,5 +19,8 @@ Load-bearing facts:
   requires one, and its absence is what once made this fixture stop being defect-free.
 - DB-1's `Limits:` bullet promises no deletion, so section 9's "nothing is deleted" holds. Any
   edit reintroducing expiry or a delete job re-plants that contradiction.
+- OBSERVABILITY-1 is a counter only. The source tree has no queue-consumer loop — `deliver`
+  (`src/queue/worker.ts:5`) has no caller — so a `webhook_delivery_queue_depth` gauge would have
+  no emission point and this spec creates none.
 - The only spec edits the eval accepts are appended evidence rows under a dated sub-heading: the
   assertion checks the fixture content is a prefix of the sandbox content.
