@@ -216,7 +216,9 @@ Then, per claim:
   spec, and do not touch a section no finding points at.
 - **The spec declares the gap with an owner and a placement** — record it `deferred` with both, and move
   on. Do not put it to the user.
-- **Anything else** — collect a question for step 4 and leave the claim `open`.
+- **A fact only the user holds** — collect a question for step 4 and leave the claim `open`.
+- **Anything else** — it is a finding. Record it with its blocking status and move on. A defect the
+  author can fix from inside the spec goes in the report, never to the user.
 
 ### 4. Hand up what only the user can settle
 
