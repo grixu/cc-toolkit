@@ -14,8 +14,10 @@ export default (output) => {
   if (phase2) {
     c.check(/gate|ceiling|platform|confirm/i.test(phase2[0]), 'phase 2 row does not name the gate the deferred claim bounds');
   }
-  // The headline is the verdict; the rows below it may say "rather than making the spec not ready".
-  const headline = /\*\*\s*(not ready|ready)\s*\*\*/i.exec(verdict);
+  // The headline is the verdict, bold or not; the rows below it may say "rather than making the
+  // spec not ready".
+  const firstLine = (verdict.split('\n').find((l) => l.trim()) || '').trim();
+  const headline = /^\**\s*(not ready|ready)\b/i.exec(firstLine);
   c.check(headline !== null && /^ready$/i.test(headline[1]), 'the document is not called ready — a deferred claim bounds its phase, not the document');
 
   const deferred = h.section(output, 'Deferred') || '';

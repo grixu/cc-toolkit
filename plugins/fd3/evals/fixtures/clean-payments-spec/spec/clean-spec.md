@@ -95,8 +95,8 @@ by the next charge request.
 
 Hard dependencies: none — everything this spec needs exists already (section 4 prerequisites).
 
-Rollback: revert the merge commit and redeploy. The `idempotency_keys` table stays behind, unused;
-dropping it is cleanup (section 9), not rollback.
+Rollback: revert the merge commit and redeploy. The `idempotency_keys` table stays behind, unused,
+and nothing in this spec drops it — section 9 says so, and rollback does not change that.
 
 ## 8. Verification
 

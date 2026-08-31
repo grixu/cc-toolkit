@@ -163,7 +163,7 @@ tests:
   # is long by design and a 2.0 cut-off kills the SDK process mid-flight (hard exit 1).
   - description: build-spec-gate
     vars: { query: file://prompts/build-spec-gate.txt }
-    options: { working_dir: .sandbox/build-spec-gate, max_budget_usd: 5.0 }
+    options: { working_dir: .sandbox/build-spec-gate, max_budget_usd: 8.0 }
     assert:
       - type: javascript
         value: file://lib/checks/build-spec-gate.mjs

@@ -31,6 +31,12 @@ CONFIG-1's cap is process-wide module state because a per-event delay would not 
 `package.json` declares no dependencies, so section 6 names the ones the work introduces; dropping
 that item puts DB-1's client and the test runner back among the unnamed.
 
+Two facts about the tree the spec must keep declaring, because a validator finds them and they are
+blocking when unsaid: nothing imports `src/queue/worker.ts` and `deliver` has no caller, so no
+production reading can gate phase 2 and the wiring is out of scope; and `post`
+(`src/queue/worker.ts:14`) returns `true` unconditionally, so no check may require a failed
+delivery and the `failed` count is declared unexercisable.
+
 Also load-bearing against `spec-template.md`:
 
 - section 3 carries a **risks accepted** table after the decision table;
