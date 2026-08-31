@@ -39,10 +39,11 @@ decides and not the date — that line records no blocked claims, and its count 
 the spec.
 
 Anything short of that — blocked claims, a count that does not match, a dated block with no
-verdict line, no pass anywhere — say what the record holds and ask, once, whether to validate
-first or split as-is. A dated heading over verified rows is not a verdict. The question is
-asked, never decided for the user. Validating is not this skill's work: on *validate first* the
-split ends with nothing written, and no command is named for it.
+verdict line, no pass anywhere — is a stop before step 1. A dated heading over verified rows is not
+a verdict. Validating is not this skill's work, and no command is named for it: on *validate first*
+the split ends with nothing written. What lifts the stop is the user's answer, never your own — say
+what the record holds, then ask, once, whether to validate first or split as-is. The message that
+ends the run says what the record held and which way the user answered.
 
 ## Workflow
 
