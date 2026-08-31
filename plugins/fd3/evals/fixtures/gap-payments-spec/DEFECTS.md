@@ -18,12 +18,18 @@ The validate-declared-gap assertions require:
 The fixture is authored so the first option of any AskUserQuestion round is the sane one; there
 should be nothing to ask — every other claim is verifiable from the tree.
 
-The spec is `clean-payments-spec`'s plus CONFIG-1, a second phase and the declared gap, and it stays
-that way deliberately: every element attaches to code that exists. The tree is a four-file skeleton
-with no entrypoint, no server and no queue consumer — `deliver` (`src/queue/worker.ts:5`) has no
-caller — so an element whose mechanism needs any of those (a queue-depth gauge, a concurrency
-fan-out, anything "read at startup") is a real finding here, and phase 1 stops reading `yes`.
-CONFIG-1 is written against the retry loop (`src/queue/worker.ts:6`) for exactly that reason.
+Every element attaches to code that is in the tree, and that is what keeps phase 1 reading `yes`.
+`src/` is four modules with no entrypoint, no HTTP surface, no `/metrics` route, no environment
+read and no queue consumer — `deliver` (`src/queue/worker.ts:5`) has no caller. So an element whose
+mechanism needs any of those is a real finding here, not a nitpick: a queue-depth gauge, a
+concurrency fan-out, a scraped metrics endpoint, an HTTP status code in an error contract, or a
+prerequisite marked `met` on evidence the tree does not carry. DB-1, OBSERVABILITY-1 and CONFIG-1
+are written against the retry loop and the existing store functions for exactly that reason, and
+CONFIG-1's cap is process-wide module state because a per-event delay would not bound what section
+8's phase-2 criterion measures.
+
+`package.json` declares no dependencies, so section 6 names the ones the work introduces; dropping
+that item puts DB-1's client and the test runner back among the unnamed.
 
 Also load-bearing against `spec-template.md`:
 
