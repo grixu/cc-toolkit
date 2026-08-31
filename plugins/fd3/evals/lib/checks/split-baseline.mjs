@@ -11,8 +11,21 @@ export default (output) => {
   s.checkBoundaries(c, tasks);
   s.checkIndexCardRule(c, tasks);
 
+  // The report's one table, in a single header row — the column word may be abbreviated (`Repo`).
+  const hasReportTable = (text) => {
+    const header = (text.match(/^\|.*\|.*$/gm) || []).find((line) => /elements/i.test(line));
+    return (
+      header !== undefined &&
+      /\bslug\b/i.test(header) &&
+      /\brepo/i.test(header) &&
+      /\bbranch\b/i.test(header) &&
+      /\bphase\b/i.test(header) &&
+      /depends[-\s]?on/i.test(header)
+    );
+  };
+
   // Closing report: the slug/repository/branch/phase/depends-on/elements table + coverage statement
-  c.check(/\|[^\n]*repository[^\n]*\|/i.test(output) && /\|[^\n]*elements[^\n]*\|/i.test(output) && /\|[^\n]*depends[-\s]?on[^\n]*\|/i.test(output), 'closing report lacks the slug/repository/branch/phase/depends-on/elements table');
+  c.check(hasReportTable(output), 'the conversation lacks the slug/repository/branch/phase/depends-on/elements table');
   c.check(/coverage|every element|all element|every work item/i.test(output), 'closing report lacks a coverage statement');
 
   const diff = h.diffSandbox('split-baseline', 'rollout-spec');
@@ -23,6 +36,8 @@ export default (output) => {
   const stray = diff.added.filter((f) => !f.startsWith('spec/tasks/') && f !== SPLIT_REPORT);
   c.check(stray.length === 0, `files created outside spec/tasks/: ${stray.join(', ')}`);
   c.check(diff.added.includes(SPLIT_REPORT), `the split report ${SPLIT_REPORT} was not written beside the spec`);
+  const report = h.readSandboxFile('split-baseline', SPLIT_REPORT);
+  c.check(report !== null && hasReportTable(report), `${SPLIT_REPORT} lacks the slug/repository/branch/phase/depends-on/elements table`);
 
   return c.verdict();
 };
