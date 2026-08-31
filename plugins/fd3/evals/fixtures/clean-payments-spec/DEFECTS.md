@@ -13,5 +13,9 @@ Load-bearing facts:
   `defective-payments-spec`'s (see that fixture's DEFECTS.md for the line map).
 - The spec has exactly one rollout phase, so the verdict must be the single word, not the phase
   table.
+- Section 3 carries a **risks accepted** table after the decision table — `spec-template.md`
+  requires one, and its absence is what once made this fixture stop being defect-free.
+- DB-1's `Limits:` bullet promises no deletion, so section 9's "nothing is deleted" holds. Any
+  edit reintroducing expiry or a delete job re-plants that contradiction.
 - The only spec edits the eval accepts are appended evidence rows under a dated sub-heading: the
   assertion checks the fixture content is a prefix of the sandbox content.
