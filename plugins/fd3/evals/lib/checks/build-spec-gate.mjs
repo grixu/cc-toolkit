@@ -8,7 +8,8 @@ export default (output) => {
 
   // The gate: without a confirmed closing summary the write-spec half must not start.
   const diff = h.diffSandbox('build-spec-gate', 'retry-topic');
-  const specFiles = diff.added.filter((f) => f.endsWith('.md') && !f.startsWith('notes/'));
+  // The grilling half legitimately writes notes and research reports; the gate is about the spec.
+  const specFiles = diff.added.filter((f) => f.endsWith('.md') && !/^(notes|research)\//.test(f));
   c.check(specFiles.length === 0, `a spec was written without a confirmed closing summary: ${specFiles.join(', ')}`);
   c.check(diff.modified.length === 0, `fixture files modified: ${diff.modified.join(', ')}`);
 

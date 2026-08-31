@@ -16,7 +16,9 @@ Load-bearing facts:
 - Section 7's rollout table carries `spec-template.md`'s five columns, including `Gate after?`;
   its single row gates because the final phase always closes its landing unit.
 - Section 3 carries a **risks accepted** table after the decision table — `spec-template.md`
-  requires one, and its absence is what once made this fixture stop being defect-free.
+  requires one, and its absence is what once made this fixture stop being defect-free. Both rows accept
+  their risk outright: a row that defers instead ("a later change", "a follow-up") is a deferral,
+  and a deferral without an owner and a placement is a finding.
 - DB-1's `Limits:` bullet promises no deletion, so section 9's "nothing is deleted" holds. Any
   edit reintroducing expiry or a delete job re-plants that contradiction.
 - OBSERVABILITY-1 is a counter only. The source tree has no queue-consumer loop — `deliver`

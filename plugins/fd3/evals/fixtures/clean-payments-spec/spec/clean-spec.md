@@ -31,7 +31,7 @@ outcome is observable.
 
 | Risk | What it costs if it lands | Mitigation |
 |---|---|---|
-| `idempotency_keys` grows without bound — nothing in this spec deletes rows, and section 9 adds no cleanup. | Table size grows with order volume, and index maintenance cost rises with it. | One row per order and the primary key as the only index; a retention policy is a later change, not a blocker for this spec. |
+| `idempotency_keys` grows without bound — nothing in this spec deletes rows, and section 9 adds no cleanup. | Table size grows with order volume, and index maintenance cost rises with it. | One row per order and the primary key as the only index, so the table grows linearly with orders and carries no secondary index to maintain. This is accepted, not deferred: nothing in this spec deletes rows and section 9 says so. |
 | A provider charge that succeeds and whose key write then fails leaves the card charged with no key stored, so a redelivery charges twice. D1 keeps the existing lookup-before-charge order (`src/billing/charge.ts:16`). | One duplicate charge per occurrence, refunded by hand. | The write is retried once and the failure is surfaced as HTTP 500 rather than swallowed, so the window is visible when it opens. Closing it entirely needs reserve-before-charge, which this spec does not do. |
 
 ## 4. Target architecture
