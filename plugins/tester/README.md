@@ -1,8 +1,9 @@
 # tester — on-demand manual verification
 
-`tester` is the **light** counterpart to [`mt`](../mt/). Where `mt` maintains a persistent,
-spec-projected, staleness-tracked test corpus, `tester` does one thing: **verify a running
-app right now**, against a spec or against whatever you just changed — then forget.
+`tester` is the **light** counterpart to `mt` (a heavier, plan-persisting sibling not published
+in this marketplace). Where `mt` maintains a persistent, spec-projected, staleness-tracked test
+corpus, `tester` does one thing: **verify a running app right now**, against a spec or against
+whatever you just changed — then forget.
 
 One command, one ephemeral **brief**, no config and no persisted plan. It is the packaged
 form of the ad-hoc flow that already works in practice: point an agent at a running stack
@@ -55,7 +56,7 @@ command proof does not exist.
 - **`mt`** — "maintain a re-runnable test suite that tracks spec drift over many iterations."
   Persisted plan, hashed `deps`, staleness, DoR gates.
 
-They share no code and can be installed independently.
+They share no code and can be installed independently; only `tester` ships here today.
 
 ## Design
 

@@ -1,8 +1,7 @@
 # CLAUDE.md — tester plugin conventions
 
 Guidance for editing the `tester` plugin. The root `CLAUDE.md` still applies; this file covers
-what is specific to tester's prompt layer. These conventions match `plugins/fd/CLAUDE.md` on
-purpose — one marketplace should not carry two prompt dialects.
+what is specific to tester's prompt layer.
 
 ## What the prompt layer is
 
