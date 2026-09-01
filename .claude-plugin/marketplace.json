@@ -156,7 +156,7 @@
       "name": "tester",
       "source": "./plugins/tester",
       "description": "On-demand manual verification of a running app by an agent: one command discovers the live stack, builds an ephemeral environment brief, derives test suites from a spec's acceptance criteria (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, agent-browser for UI, and fault-injection (dependency pause/stop or a WireMock proxy) for error handling — each returning an evidence-backed PASS/FAIL table under a hard assertion contract. The light counterpart to mt: no config, no persisted plan. User-run only.",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "author": {
         "name": "Mateusz Gostański (grixu)",
         "email": "mateusz.gostanski@gmail.com"
