@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`security` lens** (always on) — `secret-in-source`, `injection-sink`,
+  `missing-access-check`, `unvalidated-boundary`, `insecure-setting`; a finding names both
+  source and sink `path:line`, a pattern alone never is one, and it never grades `nit`.
+- **`performance` lens** (only when executable source is in scope; not tests, not IaC,
+  not `.sh`) — `n-plus-one`, `unbounded-fetch`, `blocking-in-async`, `wasted-render`; every
+  finding names the multiplier, the call, the missing bound, and the batch/limit API.
+- **`spec` lens** and the **`--spec <path>`** argument (local file only) —
+  `missing-requirement`, `wrong-implementation`, `partial-requirement`, `scope-creep`;
+  every finding quotes the spec line, requirements met are one prose count line.
+- **Active lens set** — `/start-cr` Step 2b resolves which of the eight lenses run (6 to 8),
+  dispatches and collects exactly N, and the tally carries `Lenses: L of 8` with every
+  skipped lens and its reason.
+- **Coding standards files** — `CODING_STANDARDS.md` + `CODING_STANDARDS.local.md` at the
+  repo root, LAYER semantics (`.local` wins per statement), read by every Scanner and both
+  skills; an explicit quotable rule generates a `standards` finding graded by its keyword
+  (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD → medium, MAY / prefer / consider →
+  nit, no keyword → medium), formatting rules skipped when a linter or
+  formatter config exists, a tracked `.local` noted on the `Conventions` line.
+- **Ten rules folded into existing lenses** — `module` · `dependency-direction`,
+  `misplaced-logic`, `canonical-helper`, `pass-through` (absorbing middle-man and needless
+  indirection); `objects` · `feature-envy`, `data-clump`, `message-chain`; flag bullets on
+  `composed-method` (foreign-concern conditional), `intent-name` (a name that reveals
+  nothing), and `dead-code` (speculative generality).
+- **One-hop cross-file protocol** for naming & module — Grep the importers and imports
+  of each changed module, open matched lines only, no transitive crawl.
+- **File kinds** (`source` / `test` / `iac`) in `references/scope.md`, with the mechanical
+  test-file globs that also tighten comments R11.
+- **Orchestrator file-growth check** — a file the change grows past ~1000 lines with no
+  decomposition gets its own `Not flagged` bullet.
+- **ADR 0002** — the active lens set and standards decision, amending 0001's "exactly five".
+
+### Changed
+
+- **Report** — eleven families, 42 fixed rows; within a file `security` high leads, then
+  R9, high, medium, nit; a confirmed `security` finding is the headline over any craft
+  finding, and a `spec` MISSING/WRONG forbids the clean headline and the collapsed report.
+- **Apply menu** — security, performance, and the new `module`/`objects` rules go to the
+  structural walk (never Safe fixes for security; secret rotation is the user's step);
+  `spec` is report-only except a verified `wrong-implementation` with a one-edit fix.
+- **`objects` · `lazy-init`** hands anything beyond the eager-expensive value to
+  `performance` instead of declaring performance out of scope.
+- **`references/scope.md`** — language applicability widens from family to family-or-rule;
+  a skipped `.env`/manifest/lockfile is stated as not secret/dependency-scanned, pointing
+  to `/security-review`; the convention precedence order includes the standards pair.
+- **Standalone skills** — `quality-review` gains the folded rules, the one-hop protocol,
+  and the standards pair; `comment-review` gains the standards pair. Neither gains
+  security, performance, or spec.
+- **README** — eight lenses, the `--spec` usage, a Coding standards section, and the scope
+  disclaimer rewritten: a craft review plus a narrow security lens and diff-level
+  performance hypotheses, not a dependency, config, or data-flow audit.
+- **`plugin.json` / `marketplace.json`** — description and keywords cover the new lenses
+  and coding standards.
+
 ## [0.2.1] - 2026-07-30
 
 ### Fixed
