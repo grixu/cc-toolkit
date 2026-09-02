@@ -438,11 +438,11 @@ Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet �
 **Headline:** <one line — the single best or worst thing about the change>
 
 ### <path/to/file>
-- `family` · rule severity · L<lines> — <what the reader loses> → <the fix, as a clause>
+- `family` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
 - `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD · L<line> — <reason> → <fix>
 
 ### <path/to/another/file>
-- `family` · rule severity · L<lines> — <…>
+- `family` · rule · severity · L<lines> — <…>
 
 **Not flagged:** <look-alikes deliberately passed on — one compact line, or a bullet
 each when one is a real problem with no rule to land on; omit when empty>
@@ -464,17 +464,17 @@ Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-
 **Headline:** `checkout/total.ts` concatenates the request's coupon code into a raw SQL string at L72.
 
 ### src/checkout/total.ts
-- `security` · injection-sink high · L70, L72 — `couponCode` read from `req.query` at L70 reaches the raw `WHERE` string at L72 by concatenation → bind it as a query parameter
-- `simplicity` · over-complex high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
-- `readability` · magic-literal medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
+- `security` · injection-sink · high · L70, L72 — `couponCode` read from `req.query` at L70 reaches the raw `WHERE` string at L72 by concatenation → bind it as a query parameter
+- `simplicity` · over-complex · high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
+- `readability` · magic-literal · medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
 - `comments` · R1 · REMOVE · L17 — "// multiply by the rate" restates the line beneath it → delete these lines
 
 ### src/checkout/receipt.ts
-- `naming` · role-name nit · L9 — `receiptArray` names the type instead of the role → `receipts`
+- `naming` · role-name · nit · L9 — `receiptArray` names the type instead of the role → `receipts`
 - `comments` · R2 · ADD · L44 — the 250 ms retry gap is a gateway constraint no reader can infer → "// 250 ms — the gateway rejects retries closer than its own debounce window"
 
 ### docs/checkout-spec.md
-- `spec` · missing-requirement high · L14 — "A receipt lists the discount applied per line item" has no implementation in the diff → add the per-line discount to `Receipt`
+- `spec` · missing-requirement · high · L14 — "A receipt lists the discount applied per line item" has no implementation in the diff → add the per-line discount to `Receipt`
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 

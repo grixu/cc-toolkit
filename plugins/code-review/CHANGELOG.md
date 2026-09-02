@@ -66,6 +66,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`plugin.json` / `marketplace.json`** — description and keywords cover the new lenses
   and coding standards.
 
+### Fixed
+
+- **One finding shape everywhere** — the report skeletons and worked examples in
+  `/start-cr` and `quality-review` now render `` `family` · rule · severity · L<lines> ``
+  with the dot, matching the Scanner return contract, `severity.md`, and the rules files;
+  before, the skeleton dropped the dot between rule and severity.
+
 ## [0.2.1] - 2026-07-30
 
 ### Fixed

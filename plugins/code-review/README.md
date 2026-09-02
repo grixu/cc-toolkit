@@ -82,7 +82,7 @@ says which ran:
   checks, unvalidated boundaries, and insecure settings in source files. A
   finding names both the source and the sink; a pattern alone is never a finding.
 - **performance** — only when the change touches executable source (not tests,
-  not infrastructure-as-code). N+1 calls, unbounded fetches, blocking calls on an
+  not infrastructure-as-code, not `.sh`). N+1 calls, unbounded fetches, blocking calls on an
   async path, wasted React renders. Every finding names the multiplier, the call
   inside it, the missing bound, and the batch/limit API that exists; "could be
   slow" is not a finding.
@@ -111,14 +111,14 @@ import-order, and quote rules are skipped when a formatter or linter config
 exists at the root — the tool enforces those, not the review.
 
 The other convention files — `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`,
-`.claude/rules/*.md` — still only **suppress**: a documented convention turns a
+`.claude/rules/*.md`, `.cursor/rules` — still only **suppress**: a documented convention turns a
 would-be finding into a non-finding, but never produces one.
 
 ## Scope
 
 Reviews source files that carry human-authored comments / code. Skips JSON,
 lockfiles, generated/minified files, Markdown/docs, config, and license headers.
-Tests and infrastructure-as-code are reviewed by the craft lenses but not by
+Tests, infrastructure-as-code, and `.sh` files are reviewed by the craft lenses but not by
 `performance`.
 
 **This is a craft review plus a narrow security lens, not a security audit.** The

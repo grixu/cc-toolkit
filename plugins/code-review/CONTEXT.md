@@ -39,10 +39,10 @@ _Avoid_: maybe-finding, soft finding, low-confidence finding
 
 **Standards file**:
 The root pair `CODING_STANDARDS.md` + `CODING_STANDARDS.local.md`, read together under LAYER semantics — both apply, `.local` wins per statement on conflict — and only at the repository root. Unlike every other convention file, a Standards file **generates** `standards` Findings from its explicit, quotable rules; vague prose in it generates nothing.
-_Avoid_: style guide, conventions file (a conventions file — `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.claude/rules` — only suppresses)
+_Avoid_: style guide, conventions file (a conventions file — `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.claude/rules`, `.cursor/rules` — only suppresses)
 
 **Active lens set**:
-The N Lenses (6 to 8) that Step 2b of **start-cr** resolves for one run: the five craft Lenses and security always, performance when the source-kind subset of the resolved files is non-empty, spec when `--spec` was given. The report's `Lenses: L of 8` line records it, naming every inactive Lens with its reason.
+The N Lenses (6 to 8) that Step 2b of **start-cr** resolves for one run: the five craft Lenses and security always, performance when the source-kind subset of the resolved files (minus `.sh`) is non-empty, spec when `--spec` was given. The report's `Lenses: L of 8` line records it, naming every inactive Lens with its reason.
 _Avoid_: lens selection (the user never picks), enabled lenses
 
 ## Relationships

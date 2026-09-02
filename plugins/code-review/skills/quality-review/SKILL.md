@@ -212,7 +212,7 @@ anything:
 | `simplicity` | `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md` |
 
 **Severity comes from `${CLAUDE_PLUGIN_ROOT}/references/severity.md`** — the master
-table of all 29 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
+table of all 42 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
 mapping for `standards` findings, and the anti-anchoring rule. Read it and grade every
 finding against its own row there (a `standards` finding against its keyword). The
 family, the rule, and the severity are all used **verbatim**, so a reader (and a diff
@@ -233,11 +233,11 @@ kind of noise. So render the report with **exactly this template**, in this orde
 **Headline:** <one line — the single best or worst thing about the change>
 
 ### <path/to/file>
-- `family` · rule severity · L<lines> — <what the reader loses> → <the fix, as a clause>
-- `family` · rule severity · L<lines> — <…>
+- `family` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
+- `family` · rule · severity · L<lines> — <…>
 
 ### <path/to/another/file>
-- `family` · rule severity · L<lines> — <…>
+- `family` · rule · severity · L<lines> — <…>
 
 **Not flagged:** <one compact line of look-alikes you deliberately passed on, or omit the line>
 
@@ -256,11 +256,11 @@ A filled-in report reads like this:
 **Headline:** `checkout/total.ts` carries the tier-discount branch in three places that can drift apart independently.
 
 ### src/checkout/total.ts
-- `simplicity` · over-complex high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
-- `readability` · magic-literal medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
+- `simplicity` · over-complex · high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
+- `readability` · magic-literal · medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
 
 ### src/checkout/receipt.ts
-- `naming` · role-name nit · L9 — `receiptArray` names the type instead of the role → `receipts`
+- `naming` · role-name · nit · L9 — `receiptArray` names the type instead of the role → `receipts`
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
@@ -369,7 +369,7 @@ report to the findings; the skeleton is a ceiling, not a quota.
 Your deliverable is the Step 3 skeleton, nothing else: a `**Conventions:**` line and a
 `**Headline:**` line first, `###` headers that are **file paths** (never "Findings" or
 "Finding 1"), one markdown bullet per finding in the
-`` `family` · rule severity · L<lines> — loss → fix `` shape, then `Not flagged`, then
+`` `family` · rule · severity · L<lines> — loss → fix `` shape, then `Not flagged`, then
 `Tally`. No fenced code blocks anywhere in the report: every fix is a clause naming a
 symbol or a move. The tally ends the report, and the Step 4 `AskUserQuestion` follows it
 in the same turn — never end the turn on the report.
