@@ -1,0 +1,11 @@
+Use the `code-review:quality-review` skill to review {{file}}.
+
+Review the file path(s) above for code quality and craft, tagging each finding with
+its family (readability, tests, naming, module, objects, patterns, simplicity,
+standards) and rule. For this review the repository root for convention and standards
+files is `plugins/code-review/evals/fixtures/standards/`: read `CODING_STANDARDS.md`
+and then `CODING_STANDARDS.local.md` from that directory as the standards pair (they
+layer, and `.local` wins per statement), and raise `standards` findings from them
+wherever the code breaks an explicit, quotable rule. Report only: do not edit any
+files, do not offer an apply menu, and do not call AskUserQuestion — the finished
+review report is your final message.

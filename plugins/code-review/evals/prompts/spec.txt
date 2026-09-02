@@ -1,0 +1,18 @@
+Act as the `spec` scanner of the code-review plugin. Read
+`plugins/code-review/references/rules/spec.md` and
+`plugins/code-review/references/severity.md` completely. The `<spec>` slot is the local
+file `{{spec}}` — read it verbatim; it is the whole spec. The `<files>` slot is
+{{file}}, in path mode: those files are the entire implementation, so map each
+requirement to them as they stand. The conventions note is "none".
+
+Enumerate the spec's requirements first (numbered, with the spec's own line numbers),
+then map every one to the files. Return findings only: no report skeleton, no headline,
+no tally, no edits, and nothing written to disk. State each finding as its own markdown
+bullet in exactly this shape:
+
+`spec` · rule · severity · L<lines> — "<quoted spec line>" <what is missing/wrong> → <what would close it>
+
+A `missing-requirement` sits under a `### {{spec}}` header with the spec's own line
+numbers; every other finding sits under a `### <code file path>` header with the code's
+line numbers. Every finding quotes the spec line verbatim. Requirements that are met are
+never findings — close with one prose line `N of M requirements met`.
