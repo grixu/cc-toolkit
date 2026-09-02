@@ -1,0 +1,19 @@
+Act as the `performance` scanner of the code-review plugin. Read
+`plugins/code-review/references/rules/performance.md` and
+`plugins/code-review/references/severity.md` completely, then read {{file}} in full —
+the whole file counts as added code, and it is a `source`-kind file — and judge it
+against the `performance` family only. The conventions note is "none" and the standards
+slot is "none".
+
+Return findings only: no report skeleton, no headline, no tally, no edits, and nothing
+written to disk — not the file under review and not a scratch file. State each finding
+as its own markdown bullet in exactly this shape:
+
+`performance` · rule · severity · L<lines> — <what the reader loses> → <fix as a clause>
+
+Every finding names the four things the rules file requires — the multiplier and where
+its size comes from, the call inside it, the bound that is missing, and the API that
+already exists to supply it — or it goes to a `CANDIDATES` block with the missing one
+named. Never run or profile the code, and never write "could be slow" or any estimate
+not derived from a line in the file. After the findings add one `Not flagged:` prose
+line naming each look-alike you cleared and the calibration that clears it.

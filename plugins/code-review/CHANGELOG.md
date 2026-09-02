@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Orchestrator file-growth check** — a file the change grows past ~1000 lines with no
   decomposition gets its own `Not flagged` bullet.
 - **ADR 0002** — the active lens set and standards decision, amending 0001's "exactly five".
+- **Evals** — scanner-track prompts for the three lenses without a skill, a standards
+  track, and recall/calibration fixtures for security, performance, spec, standards, and
+  the folded rules (eval-8 … eval-15); the quality-track prompt names the skill explicitly
+  and asks for a report-only run.
 
 ### Changed
 

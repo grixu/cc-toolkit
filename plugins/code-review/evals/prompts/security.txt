@@ -1,0 +1,17 @@
+Act as the `security` scanner of the code-review plugin. Read
+`plugins/code-review/references/rules/security.md` and
+`plugins/code-review/references/severity.md` completely, then read {{file}} in full —
+the whole file counts as added code — and judge it against the `security` family only.
+The conventions note is "none" and the standards slot is "none".
+
+Return findings only: no report skeleton, no headline, no tally, no edits, and nothing
+written to disk — not the file under review and not a scratch file. State each finding
+as its own markdown bullet in exactly this shape:
+
+`security` · rule · severity · L<lines> — <what the reader loses> → <fix as a clause>
+
+`L<lines>` names both ends, source first, and the clause says which line is the source
+and which is the sink; a pattern alone is never a finding. After the findings add one
+`Not flagged:` prose line naming each look-alike you cleared and the mitigation that
+clears it, and a `CANDIDATES` block only for a confirmed pair whose mitigation is in
+doubt.
