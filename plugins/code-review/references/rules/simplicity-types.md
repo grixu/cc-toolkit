@@ -97,12 +97,17 @@ end of a live bug.
     surrounding code (nothing sets the field it tests, an earlier `return`/`throw`
     precedes it), so one arm never runs;
   - a binding is computed but never read — a variable, parameter, or import with no use;
-  - a function, method, or export introduced by the change has no caller in scope.
+  - a function, method, or export introduced by the change has no caller in scope;
+  - speculative generality — an interface with a single implementer, a parameter
+    always passed the same value, a hook/extension point nothing calls.
 - **Suggested fix**: delete the unreachable arm or the unused binding; or, if the code
   was meant to run, name what makes it dead so the real bug (the guard that never fires)
   is fixed rather than the symptom deleted.
 - **Calibration → not a finding**: an intentionally exhaustive `default:`/`else` kept as
   a defensive assertion; a public API, route handler, exported hook, or test helper
   whose caller is out of the reviewed scope; a parameter required by an interface or
-  signature it must match. Reachability you cannot settle from the change alone is a
-  **(verify)**, not an assertion — a wrong "this is dead" deletes live code.
+  signature it must match. Speculative generality is never flagged on an abstraction a
+  `patterns` rule would itself ask for under friction, nor on a public API/extension
+  point whose consumer is out of scope — the exported-consumer clearance above holds.
+  Reachability you cannot settle from the change alone is a **(verify)**, not an
+  assertion — a wrong "this is dead" deletes live code.
