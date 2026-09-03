@@ -137,6 +137,13 @@ base in its tasks' `branch-base:` frontmatter field — the same value on every 
 and the field implementation reads; a base recorded only in the report is a base lost with the
 conversation.
 
+Where a landing constraint has produced one branch per task, only a real ordering stacks: a shared
+file, a module its consumers pin, or an environment order the spec states. Tasks applying the same
+change to disjoint targets are siblings — each off the default branch, no edge between them —
+however tempting a tidy sequence looks. A stack link is a serialisation the implementation stage
+pays for per branch: one validation wave each, regardless of diff size, so a chain of N one-file
+branches costs N full validation ladders.
+
 Then the size check: estimate each branch's aggregate diff from its tasks' citations. Past **80
 changed files or 2000 changed lines**, generated files excluded, a reviewer stops reading and
 starts skimming — but the grouping still follows the spec: **warn, never subdivide**. A breach

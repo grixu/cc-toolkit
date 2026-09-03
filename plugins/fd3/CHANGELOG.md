@@ -123,3 +123,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **environment-level** and points at the operational task or gate that exercises it
 - `task-template`: `decisions:` is a named frontmatter field rather than an invention two splits
   reached for independently
+- `split-to-tasks`: under one-branch-per-task only a real ordering stacks — tasks changing disjoint
+  targets are siblings, and a stack link costs one full validation ladder per branch downstream
