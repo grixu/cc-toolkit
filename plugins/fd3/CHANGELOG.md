@@ -39,8 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stacked branch no longer re-fails and re-fixes the base's problems divergently
 - `implement-run`: the full final gate gets one fix round before going to HIL — a mechanical
   failure (a derived artifact invalidated by review fixes) no longer costs a human round-trip
-- `implement-run`: accepts optional `toolchain`/`baseline` args like `repair-run`, so a relaunch
-  reuses recon knowledge instead of re-scouting and re-baselining
+- `implement-run`/`repair-run`: accept an optional `reportPath` — the previous run's report file —
+  and read its `toolchain`/`baseline` knowledge with one cheap agent, so a relaunch reuses recon
+  instead of re-scouting and re-baselining; the older `toolchain`/`baseline` args still work for a
+  caller that already holds the reports
 - `implement-run`: operational tasks get `status: blocked` written to their files (previously
   memory-only, violating the state-store axiom); status writes are owned by this writer and the
   done-marker alone
@@ -135,3 +137,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cost, and the model is stated in the dispatch rather than defaulted
 - `implement-tasks`/`split-to-tasks`: the workflow checklist is posted before any tool call and
   never compressed to a line or summarised
+- `implement-tasks`: the relaunch and repair contracts pass the previous report's path — never its
+  toolchain and baseline knowledge transcribed by hand

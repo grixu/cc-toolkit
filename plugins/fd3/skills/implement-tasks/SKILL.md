@@ -123,8 +123,7 @@ Workflow({
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
     reviewSkills: [<the step-2 answer>],
     maxFixRounds: 3,
-    toolchain: <on a relaunch: the previous report's toolchain — omit on a first launch>,
-    baseline: <likewise>
+    reportPath: <on a relaunch: the previous report's `<output-file>` path — omit on a first launch>
   }
 })
 ```
@@ -135,9 +134,12 @@ repository's `defaultRef` — the ref the user confirmed in step 2, fetched fres
 Worktrees and target branches are cut from that ref (or the task's stack base). When step 2
 established that a target branch is the branch the repository itself is parked on, say so via
 `parkedBranch` — git refuses a second worktree for it, and the workflow must know to use the
-main checkout rather than discover the refusal. On a relaunch, pass `toolchain` and `baseline`
-from the previous report so the run skips a re-scout and re-baseline of repositories it already
-knows. The workflow owns everything between launch and report. This section is the whole launch
+main checkout rather than discover the refusal. On a relaunch, pass `reportPath` — the `<output-file>`
+path from the previous run's completion notification. The workflow reads that file's toolchain and
+baseline knowledge with one cheap agent, so the run skips a re-scout and a re-baseline of every
+repository it already knows. Never transcribe that knowledge into the call yourself: it is tens of
+kilobytes of prose, and a command list that differs by a word from the one the baseline measured
+against is worse than no baseline at all. The workflow owns everything between launch and report. This section is the whole launch
 contract — do not read the workflow script, and do not re-implement the loop in conversation or
 dispatch implementation agents yourself.
 
@@ -176,18 +178,16 @@ the repair agent a re-investigation. The answers split into two lanes:
       repairs: [{ repo, branch, worktree, base, instructions: [<the user's decisions for this
                  branch, quoted verbatim>], taskFiles: [<task files to flip to done on pass>] }, ...],
       repos: <as at launch>,
-      toolchain: <from the report>,
-      baseline: <from the report>,
+      reportPath: <the previous report's `<output-file>` path>,
       maxFixRounds: 3
     }
   })
   ```
 
-  `base` is the branch's stack base (or the repo's `defaultRef`). Passing `toolchain` and
-  `baseline` through spares a re-scout — extract both mechanically from the report's output
-  file (jq, node), never retype them by hand; when extraction is impractical, omitting them is
-  the sanctioned trade — and the cost is not one agent but a full re-scout plus a full baseline
-  pipeline on every repository in the run. Repair agents receive the decision as their sole
+  `base` is the branch's stack base (or the repo's `defaultRef`). `reportPath` is the previous
+  report's output file; the workflow reads its toolchain and baseline knowledge itself, which is
+  what spares a full re-scout plus a full baseline pipeline on every repository in the run. Pass
+  the path, never the knowledge. Repair agents receive the decision as their sole
   authority and never read the spec. Repair validation is CI only — no code review.
 
 One carve-out from the second lane: a purely mechanical git operation — merging an existing

@@ -24,10 +24,13 @@ export const meta = {
 //                 main checkout serves as that branch's worktree
 //   reviewSkills  code-review skill names to run during validation, may be empty
 //   maxFixRounds  CI fix attempts per branch before giving up
-//   toolchain     (optional) { [repository path]: <scout report> } from a previous run's report;
-//                 repositories missing here are scouted
-//   baseline      (optional) { [repository path]: { commands: [...] } } from a previous run's
-//                 report; repositories missing here are re-baselined
+//   reportPath    (optional) absolute path of a previous run's report file; one cheap agent reads
+//                 its toolchain and baseline knowledge, so a relaunch skips the re-scout and the
+//                 re-baseline of every repository it already knows
+//   toolchain     (optional) { [repository path]: <scout report> } — an alternative to reportPath
+//                 for a caller that already holds the reports; repositories missing from both are
+//                 scouted
+//   baseline      (optional) { [repository path]: { commands: [...] } } — likewise
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
@@ -68,6 +71,76 @@ phase('Recon')
 
 const repositories = [...new Set(tasks.filter((t) => t.repository !== 'none').map((t) => t.repository))]
 
+const BASELINE_COMMANDS = {
+  type: 'array',
+  items: {
+    type: 'object',
+    required: ['command', 'passed'],
+    properties: {
+      command: { type: 'string' },
+      passed: { type: 'boolean' },
+      failures: { type: 'array', items: { type: 'string' }, description: 'the load-bearing output lines, one entry per distinct problem; only when passed is false' },
+    },
+  },
+}
+
+const BASELINE_RESULT = {
+  type: 'object',
+  required: ['commands'],
+  properties: {
+    commands: BASELINE_COMMANDS,
+    skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never recorded as passed' },
+  },
+}
+
+const HANDOVER_RESULT = {
+  type: 'object',
+  required: ['toolchain', 'baseline'],
+  properties: {
+    toolchain: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['repository', 'report'],
+        properties: {
+          repository: { type: 'string' },
+          report: { type: 'string', description: "the repository's toolchain report, verbatim and entire" },
+        },
+      },
+    },
+    baseline: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['repository', 'commands'],
+        properties: { repository: { type: 'string' }, commands: BASELINE_COMMANDS },
+      },
+    },
+  },
+}
+
+// A previous run's recon knowledge is already in its report file, and one cheap read of it costs
+// less than one scout of one repository. Hand-copying it into the launch call is what nobody does.
+if (input.reportPath && repositories.some((repo) => !toolchain.get(repo))) {
+  const handover = await tryTwice(
+    [
+      `Read the previous run's report at ${input.reportPath} and return the recon knowledge it holds`,
+      `for these repositories:`,
+      ...repositories.map((repo) => `- ${repo}`),
+      ``,
+      `Return each repository's toolchain report verbatim — the whole string, unedited — and its`,
+      `baseline command list. Omit a repository the report does not carry. Never summarise, reformat`,
+      `or reconstruct a toolchain report: the baseline is matched against it by command string, so a`,
+      `command list that differs from the one the baseline measured is worse than no baseline.`,
+    ].join('\n'),
+    { label: 'handover', phase: 'Recon', schema: HANDOVER_RESULT, model: 'haiku', effort: 'low' },
+  )
+  if (handover) {
+    for (const t of handover.toolchain || []) if (!toolchain.get(t.repository)) toolchain.set(t.repository, t.report)
+    for (const b of handover.baseline || []) if (!baseline.get(b.repository)) baseline.set(b.repository, { commands: b.commands })
+  }
+}
+
 const missingToolchain = repositories.filter((repo) => !toolchain.get(repo))
 if (missingToolchain.length > 0) {
   const reports = await parallel(
@@ -83,26 +156,6 @@ if (missingToolchain.length > 0) {
     if (reports[i]) toolchain.set(repo, reports[i])
     else hil.push({ slug: null, kind: 'no-verdict', stage: 'toolchain', reason: `${repo}: the toolchain scout returned no result after a retry; branches of this repository get no validation verdict this run.` })
   })
-}
-
-const BASELINE_RESULT = {
-  type: 'object',
-  required: ['commands'],
-  properties: {
-    commands: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['command', 'passed'],
-        properties: {
-          command: { type: 'string' },
-          passed: { type: 'boolean' },
-          failures: { type: 'array', items: { type: 'string' }, description: 'the load-bearing output lines, one entry per distinct problem; only when passed is false' },
-        },
-      },
-    },
-    skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never recorded as passed' },
-  },
 }
 
 const baselinePrompt = (repo) =>
