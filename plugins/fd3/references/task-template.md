@@ -9,6 +9,7 @@ name: <a name the user recognises the task by>
 status: todo
 spec: <relative path to the spec file>
 elements: [DB-1, API-2]
+decisions: [<the decision ids this task is bound by, if any — pointers, never copies>]
 repository: <absolute path of the checkout this task is implemented in; `none` for an operational task>
 branch: <target branch — shared by every task in the same landing unit; empty for an operational task>
 branch-base: <the branch's stack base — identical on every task of the branch; empty for an operational task>
