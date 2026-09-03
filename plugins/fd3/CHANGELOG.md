@@ -106,3 +106,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `validate-spec`: check 9 gained a procedure — read how a change of this shape actually lands in
   each repository and check the ownership section's apply mechanism against it; a landing claim
   needs an evidence row, and `pass (unchanged)` there means the check did not run
+- `validate-spec`: check 7 covers elements that are not code-shaped, and a plural claim ("both
+  monitors", "all three stacks") is checked member by member; check 8 also joins each work item's
+  phase and landing shape to the rollout table

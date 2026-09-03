@@ -128,8 +128,16 @@ from whoever splits this into tasks.
 5. Every external contract — third-party API, SDK, protocol — is confirmed against its documentation, or
    names the substitute that stands in where the documentation is silent.
 6. Every referenced document exists, is readable, and is named precisely enough to open.
-7. Each element's contract is complete: fields, types, errors, auth, limits.
-8. The build order of the elements is stated, and it holds given the dependencies.
+7. Each element's contract is complete: fields, types, errors, auth, limits. Where the element is
+   not code-shaped and that list has no instance, the contract is complete when the spec states, per
+   named artifact the element changes, what the change is and what makes it possible — and a plural
+   claim ("both monitors", "all three stacks", "each of the four") is checked member by member, not
+   once.
+8. The build order of the elements is stated, and it holds given the dependencies. Every work item's
+   phase and landing shape are stated and agree with the rollout table: an item whose phase cell
+   names a phase the table does not place it in, or that the table places in two phases while the
+   cell says one, is the finding. Whether a stated landing shape is *achievable* in that repository
+   belongs to check 9, not here.
 9. The spec is achievable in this project. For each repository the spec plans work in, read how a
    change of that shape actually lands there — the module or chart pinning mechanism, what a stack
    consumes and from where, what a pipeline requires of a pull request, who runs the apply — and
