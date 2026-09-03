@@ -103,3 +103,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `validate-spec`/`build-spec`: a pass is one invocation; a `SendMessage` resumes a stopped pass
   rather than starting a new one, and a re-invocation is the fresh reading that re-checks the
   previous pass's own edits
+- `validate-spec`: check 9 gained a procedure — read how a change of this shape actually lands in
+  each repository and check the ownership section's apply mechanism against it; a landing claim
+  needs an evidence row, and `pass (unchanged)` there means the check did not run

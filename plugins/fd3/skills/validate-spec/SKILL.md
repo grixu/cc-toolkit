@@ -130,7 +130,13 @@ from whoever splits this into tasks.
 6. Every referenced document exists, is readable, and is named precisely enough to open.
 7. Each element's contract is complete: fields, types, errors, auth, limits.
 8. The build order of the elements is stated, and it holds given the dependencies.
-9. The spec is achievable in this project — its stack, its architecture, its conventions.
+9. The spec is achievable in this project. For each repository the spec plans work in, read how a
+   change of that shape actually lands there — the module or chart pinning mechanism, what a stack
+   consumes and from where, what a pipeline requires of a pull request, who runs the apply — and
+   check the ownership section's stated apply mechanism against it. A landing claim ("one pull
+   request", "three applies of one commit", "merge then deploy") is a claim like any other: it gets
+   an evidence row naming what you read, or it is a finding. This is the only check whose evidence
+   lives outside the document, and a `pass (unchanged)` here means you did not run it.
 10. The spec is splittable into tasks: no gap or unstated assumption visible at spec level.
 11. Every element has a stated way to check the delivered result.
 12. No claim rests on a vague verb or an undecided either/or, as `spec-rules.md` defines them.
