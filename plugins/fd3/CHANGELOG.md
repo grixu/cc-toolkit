@@ -154,3 +154,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it declared them under is not a skill field and never substituted anything
 - `validate-spec`: one hand-up batch per pass — nothing outstanding when it goes, and steps 3–5
   return there only because an answer opened a new fact, never because a lookup had not finished
+- `split-to-tasks`: the `branch-base` root may be a branch the checkout already carries the spec's
+  commits on — that is the step-6 question, not a coverage failure that aborts an authorised split

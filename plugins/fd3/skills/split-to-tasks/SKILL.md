@@ -204,8 +204,11 @@ Before writing anything, check — and say in the report — that:
 - the dependency graph has no cycles, every edge points at a task that exists, and every edge
   points at a lower ordinal — the reading order really is topological, and the implementation
   workflow's merge planning relies on that;
-- the `branch-base` chain is rooted, acyclic, single-parent, identical on every task of a
-  branch, and its one root is the repository's default branch.
+- the `branch-base` chain is rooted, acyclic, single-parent and identical on every task of a
+  branch. Its one root is the repository's default branch — or, where step 4 found the checkout
+  already sitting on a branch that carries the spec's commits, that branch: the root is then
+  whatever the step-6 answer settles, so a chain rooted there is a question still pending, never a
+  coverage failure. Stopping on it would abort a split the user was never asked about.
 
 A stop here is a stop before any file exists. The message that ends the run says nothing was
 written, and what stopped it.
