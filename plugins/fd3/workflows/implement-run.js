@@ -156,6 +156,9 @@ if (missingToolchain.length > 0) {
     if (reports[i]) toolchain.set(repo, reports[i])
     else hil.push({ slug: null, kind: 'no-verdict', stage: 'toolchain', reason: `${repo}: the toolchain scout returned no result after a retry; branches of this repository get no validation verdict this run.` })
   })
+  // baselineText() matches by command string, so a baseline measured against a different scout
+  // report silently stops covering commands it never named — worse than having no baseline.
+  for (const repo of missingToolchain) baseline.delete(repo)
 }
 
 const baselinePrompt = (repo) =>

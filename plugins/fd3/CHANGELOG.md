@@ -139,3 +139,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never compressed to a line or summarised
 - `implement-tasks`: the relaunch and repair contracts pass the previous report's path — never its
   toolchain and baseline knowledge transcribed by hand
+- `implement-run`/`repair-run`: a repository that had to be re-scouted drops any inherited
+  baseline — `baselineText()` matches by command string, so a baseline from a different scout
+  report silently stops covering commands it never named
