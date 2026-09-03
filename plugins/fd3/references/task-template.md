@@ -28,8 +28,12 @@ tickets: [<identifiers, if any>]
 its expected values or counts: the implementing agent reads the row in the spec, and a copied
 number is a second source of truth that rots. A task with no row of its own inherits its phase's
 verification, and says so. A row that only passes once the whole branch or phase is in place is
-named as that, not as this task's criterion: validation is batched per target branch, so no
-single task is asked to make one pass on its own.>
+named as that — the spec's row says where it runs — not as this task's criterion: validation is
+batched per target branch, so no single task is asked to make one pass on its own. A row that
+cannot pass from a branch at all — it needs a deployed environment, live data, or a human
+`terraform apply` or console action — is named as **environment-level**, together with the
+operational task or rollout gate that will exercise it. The implementing agent must be able to
+tell "not yet true" from "not checkable here".>
 
 ## Where to look
 

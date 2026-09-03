@@ -117,3 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `spec-template`: section 7 distinguishes an ordering that binds the merge from one that binds
   only the deploy — told just "A before B", a split stacks B on A and serialises work that could
   have run in parallel
+- `spec-template`: every verification row states **where** it runs — branch, merged base, or a
+  named deployed environment
+- `task-template`: a Done-when row that cannot pass from a branch at all is named
+  **environment-level** and points at the operational task or gate that exercises it

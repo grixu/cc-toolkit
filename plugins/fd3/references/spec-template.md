@@ -177,8 +177,15 @@ complete.
 
 ## 8. Verification
 
-How the delivered result is checked, per element, each cited by its code. Split by what is
-actually possible:
+How the delivered result is checked, per element, each cited by its code. Every row states **where**
+its check runs — on the branch, on the merged base, or in a named deployed environment — whatever
+its kind. That is the difference between a check a task can pass and one only a rollout can, and a
+row that does not say becomes a task's criterion by default and blocks it.
+
+| Element | Check | Where it runs | Before the change | After |
+|---|---|---|---|---|
+
+Split by what is actually possible:
 
 - **Probes** — cheap, unambiguous, runnable on demand. Give the command and the expected output,
   including what the output looks like *before* the change, so a false pass is recognisable.
