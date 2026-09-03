@@ -246,7 +246,10 @@ lists. The implementation agent reads those from the spec sections the pointers 
 Rendering the files is the one part of this skill worth dispatching. Dispatch the `fork`
 sub-agent, one per repository — unnamed, per `fact-routes.md`: it already holds the cuts, the
 grouping and the pointers, so its prompt names only the files it writes and this section's
-prohibitions. Nothing is left for it to decide; it renders. Then re-run step 5 mechanically
+prohibitions. The territories are exclusive: each prompt lists that agent's own files, names the
+repositories that belong to the other agents, and states that it writes nothing outside its list.
+Two agents that both take a task for theirs write it twice, and the second write wins with nothing
+reporting that it happened. Nothing is left for it to decide; it renders. Then re-run step 5 mechanically
 over the written files — coverage is the one check a fan-out cannot perform on itself. A split
 of five files or fewer is faster written here.
 

@@ -158,3 +158,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commits on — that is the step-6 question, not a coverage failure that aborts an authorised split
 - `split-to-tasks`: a target directory holding task files is always a question, a re-split of the
   same spec included, because implementation writes its state into those files
+- `split-to-tasks`: each rendering fork gets an exclusive territory, naming what belongs to the
+  other agents and writing nothing outside its own list
