@@ -144,3 +144,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   report silently stops covering commands it never named
 - `implement-run`/`repair-run`: every validation label carries the unit (`<repo>:<branch>`), not
   just the repository, and a review skill's own colon is neutralised in the lens segment
+- `build-spec`: step 3 names validation as the step that repairs the spec, not only the one that
+  counts its defects — a verdict listing no edits on a spec that had findings is called out as such
