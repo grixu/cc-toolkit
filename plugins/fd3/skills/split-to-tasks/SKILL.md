@@ -217,8 +217,11 @@ written, and what stopped it.
 
 Put every judgment call to the user at once, following the batching protocol in
 `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`. The target directory is
-`<spec-dir>/tasks/` unless the invocation named one. It joins the batch only when that
-directory already holds task files from another spec.
+`<spec-dir>/tasks/` unless the invocation named one. It joins the batch whenever that directory
+already holds task files at all — say whether they point at this spec (a re-split: replace them, or
+write beside them) or at another one. Files from an earlier split of this same spec are the case
+that looks safe and is not: implementation writes its statuses, worktree paths and notes into them,
+and overwriting unasked destroys the only copy of that.
 A missing branch convention is the user's; grouping the gates decided and a size breach is a
 report with a recommendation, never a question — everything the rules above already settled,
 report rather than ask.

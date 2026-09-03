@@ -156,3 +156,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   return there only because an answer opened a new fact, never because a lookup had not finished
 - `split-to-tasks`: the `branch-base` root may be a branch the checkout already carries the spec's
   commits on — that is the step-6 question, not a coverage failure that aborts an authorised split
+- `split-to-tasks`: a target directory holding task files is always a question, a re-split of the
+  same spec included, because implementation writes its state into those files
