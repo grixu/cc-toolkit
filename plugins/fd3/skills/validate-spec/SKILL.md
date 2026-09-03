@@ -183,6 +183,10 @@ Split the cost of verification:
   between phases. Its result is check 8's row; an evidence row records what you read to derive it.
   Take the rest at the spec's word once its citation resolves.
 
+A change has two directions and a probe measures one. Where you probe what removing something
+costs, ask what adding it costs — the element that introduces rules is checked against every
+existing assertion those rules now touch, not only against the assertions the removal deletes.
+
 For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
 Route every lookup by where the fact lives — the routes and dispatch rules are in
 `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.

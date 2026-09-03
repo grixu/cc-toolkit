@@ -109,3 +109,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `validate-spec`: check 7 covers elements that are not code-shaped, and a plural claim ("both
   monitors", "all three stacks") is checked member by member; check 8 also joins each work item's
   phase and landing shape to the rollout table
+- `validate-spec`: a probe measures one direction — where the pass probes what removing something
+  costs, it asks what adding it costs
