@@ -111,3 +111,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   phase and landing shape to the rollout table
 - `validate-spec`: a probe measures one direction — where the pass probes what removing something
   costs, it asks what adding it costs
+- `spec-template`: work items are a table carrying **Phase** and **Lands as**, the join a task
+  split cannot reconstruct; `write-spec` fills both cells last, once the rollout table and the
+  landing constraints are settled

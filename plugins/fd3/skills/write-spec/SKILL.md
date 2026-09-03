@@ -67,7 +67,11 @@ session maps into it:
 - **Out of scope.** Check the tracker for the actual ticket numbers before writing
   placements — "each gets its own ticket" places nothing.
 - **The concrete work, per repository** is what gets split into tasks, so an item nobody
-  could start from is not finished being written.
+  could start from is not finished being written. Fill each item's phase and landing shape
+  last, once the rollout table and the ownership section's landing constraints are both
+  settled. An item that turns out to land in two phases, or once per stack, stays one item
+  whose cells say so — sub-letter it only when the halves touch disjoint files; where they
+  touch the same lines, the cell carries the seam and the item stays whole.
 - **Rollout.** The phase table opens at phase 1 and places every work item from the
   per-repository section. Independent groundwork is not a note beside the table — it is
   phase 1. Mark the gates: a phase followed by a deployment boundary — a bake, an

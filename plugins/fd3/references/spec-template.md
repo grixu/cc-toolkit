@@ -114,11 +114,27 @@ section, because task splitting groups branches by it.
 
 ## 6. The change, per repository
 
-One subsection per repository or module, listing the concrete work items. Every item names the
-element codes it builds or changes, cites the file and line range it touches, and says whether it
-is new, changed, or removed. This is the section that
-gets split into tasks, so an item a reader cannot start from is an item that is not finished being
-written.
+One subsection per repository or module, listing the concrete work items as a table.
+
+| # | Work item | Elements | Files | Kind | Phase | Lands as |
+|---|---|---|---|---|---|---|
+
+Every item names the element codes it builds or changes, cites the file and line range it touches,
+and says whether it is new, changed or removed.
+
+The last two columns carry the join to section 7, and they are the ones a task split cannot
+reconstruct. **Phase** is the rollout phase this item lands in; where it is genuinely two — one ADR
+amended in the groundwork phase and ten more in the documentation phase, a cleanup run against
+stage and then against production — the cell says both, and that is the answer rather than a
+rounding error. **Lands as** is how many landing events one phase's worth of the item is: `one PR`,
+`one per stack (9)`, `one per environment (3)`, or `two commits — <the first>, then <the second>`
+where a single phase has an ordering inside it. Section 5 states a repository's landing constraint;
+this column is where it meets an individual item, because two items in the same repository can land
+differently — one secret pair created in a single stack, one variable added to nine.
+
+This is the section that gets split into tasks, so an item a reader cannot start from is an item
+that is not finished being written — and an item whose last two cells disagree with section 7 is an
+item the split will cut along a seam it had to invent.
 
 Where a domain model is involved — permissions, schema changes, API surface — give it its own
 section before this one, split into what is kept, what is narrowed, and what is dropped, with the
