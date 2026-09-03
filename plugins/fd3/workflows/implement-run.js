@@ -50,6 +50,10 @@ const caveats = [] // agent-flagged facts — deviations, skipped fixes, resolve
 const taskBranch = (t) => `task/${t.slug}`
 // Worktrees live beside the repository, never inside it, so validation tooling cannot pick them up.
 const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-')}`
+// Every validation label names the unit, never just the repository: one repository carries many
+// target branches, and without the branch a fix loop and a fan-out look identical in the run view.
+const unitTag = (unit) => `${unit.repo.split('/').pop()}:${unit.branch.replace(/\//g, '-')}`
+const lensTag = (skill) => skill.replace(/:/g, '/') // a review skill's own name carries a colon
 const repoDefault = (repo) => (repos && repos[repo] && repos[repo].defaultRef) || "the repository's default branch"
 const byRepo = (list) => {
   const groups = new Map()
@@ -637,7 +641,7 @@ const REFRESH_RESULT = {
 }
 
 for (const unit of units) {
-  const repoName = unit.repo.split('/').pop()
+  const tag = unitTag(unit)
   const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, reviewFindings: 0, findings: [], preExisting: 0 }
   validation.push(summary)
 
@@ -656,7 +660,7 @@ for (const unit of units) {
         `only when the resolution is mechanical; commit it. When a conflict needs a judgment`,
         `call, abort (git merge --abort) and return refreshed=false with the conflict described.`,
       ].join('\n'),
-      { label: `refresh:${unit.branch.replace(/\//g, '-')}`, phase: 'Validate', schema: REFRESH_RESULT },
+      { label: `refresh:${tag}`, phase: 'Validate', schema: REFRESH_RESULT },
     )
     if (!refresh || !refresh.refreshed) {
       summary.ci = refresh ? 'skipped' : 'no-verdict'
@@ -672,12 +676,12 @@ for (const unit of units) {
     }
   }
 
-  let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${tag}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
+    const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
-    ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+    ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${tag}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   }
   if (!ci) {
     summary.ci = 'no-verdict'
@@ -706,7 +710,7 @@ for (const unit of units) {
   if (reviewSkills.length > 0) {
     const reviews = await parallel(
       reviewSkills.map((skillName) => () =>
-        tryTwice(reviewPrompt(unit, skillName), { label: `cr:${skillName}:${repoName}`, phase: 'Validate', schema: CR_RESULT }),
+        tryTwice(reviewPrompt(unit, skillName), { label: `cr:${tag}:${lensTag(skillName)}`, phase: 'Validate', schema: CR_RESULT }),
       ),
     )
     deadLenses = reviewSkills.filter((_, i) => !reviews[i])
@@ -714,20 +718,20 @@ for (const unit of units) {
     summary.reviewFindings = findings.length
     summary.findings = findings
     if (findings.length > 0) {
-      const fix = await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${repoName}`, phase: 'Validate', schema: FIX_RESULT })
+      const fix = await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${tag}`, phase: 'Validate', schema: FIX_RESULT })
       if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-cr: ${c}`))
     }
   }
 
   // The full command list is the branch's final gate — always, review fixes or not.
-  let finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  let finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${tag}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   if (finalCi && !finalCi.passed) {
     // One fix round here: a final-gate failure is often mechanical — a derived artifact the
     // review fixes invalidated — and only what survives the round deserves a human.
     summary.fixRounds += 1
-    const fix = await tryTwice(fixPrompt(unit, finalCi.failures, 'final-gate CI'), { label: `fix-final:${repoName}`, phase: 'Validate', schema: FIX_RESULT })
+    const fix = await tryTwice(fixPrompt(unit, finalCi.failures, 'final-gate CI'), { label: `fix-final:${tag}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-final: ${c}`))
-    finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${repoName}:final#2`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+    finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${tag}:final#2`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   }
   if (!finalCi) {
     summary.ci = 'no-verdict'
@@ -764,7 +768,7 @@ for (const unit of units) {
   const markedDone = await tryTwice(
     `In ${tasksDir}, set \`status: done\` in the frontmatter of these task files, changing nothing else:\n` +
       unit.tasks.map((slug) => `- ${tasks.find((t) => t.slug === slug).file}`).join('\n'),
-    { label: `done:${repoName}`, phase: 'Validate', model: 'haiku', effort: 'low' },
+    { label: `done:${tag}`, phase: 'Validate', model: 'haiku', effort: 'low' },
   )
   if (markedDone == null) {
     // The files are the state store; in-memory state must never outrun them.

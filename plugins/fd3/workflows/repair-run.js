@@ -32,6 +32,9 @@ const baseline = new Map(Object.entries(input.baseline || {}))
 const hil = [] // decisions an agent could not apply, and everything left without a verdict
 const caveats = [] // agent-flagged facts — deviations, skipped fixes — surfaced in the report
 const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-')}`
+// Every label names the unit, never just the repository: one repository carries many branches, and
+// without the branch a fix loop and a fan-out look identical in the run view.
+const unitTag = (unit) => `${unit.repo.split('/').pop()}:${unit.branch.replace(/\//g, '-')}`
 const repoDefault = (repo) => (repos && repos[repo] && repos[repo].defaultRef) || "the repository's default branch"
 // One retry rides out transient API failures (529s, brief limit blips). A second null is a real
 // no-verdict — absence of evidence that must never be reported as a validation verdict.
@@ -217,7 +220,7 @@ const repairPrompt = (r) =>
 const repairResults = await parallel(
   repairs.map((r) => () =>
     tryTwice(repairPrompt(r), {
-      label: `repair:${r.branch.replace(/\//g, '-')}`,
+      label: `repair:${unitTag(r)}`,
       phase: 'Repair',
       schema: REPAIR_RESULT,
     }),
@@ -325,7 +328,7 @@ const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret co
 const validation = [] // per-branch summary for the final report
 
 for (const unit of units) {
-  const repoName = unit.repo.split('/').pop()
+  const tag = unitTag(unit)
   const summary = { repo: unit.repo, branch: unit.branch, ci: 'pending', fixRounds: 0, preExisting: 0 }
   validation.push(summary)
 
@@ -334,12 +337,12 @@ for (const unit of units) {
     continue
   }
 
-  let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${tag}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    const fix = await tryTwice(fixPrompt(unit, ci.failures), { label: `fix-ci:${repoName}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
+    const fix = await tryTwice(fixPrompt(unit, ci.failures), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
-    ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${repoName}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+    ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${tag}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   }
   if (!ci) {
     summary.ci = 'no-verdict'
@@ -363,7 +366,7 @@ for (const unit of units) {
   }
 
   // The full command list is the branch's final gate — repairs go out only fully validated.
-  const finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${repoName}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  const finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${tag}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   if (!finalCi) {
     summary.ci = 'no-verdict'
     hil.push({
@@ -390,7 +393,7 @@ for (const unit of units) {
     const markedDone = await tryTwice(
       `Set \`status: done\` in the frontmatter of these task files, changing nothing else:\n` +
         unit.taskFiles.map((f) => `- ${f}`).join('\n'),
-      { label: `done:${repoName}`, phase: 'Validate', model: 'haiku', effort: 'low' },
+      { label: `done:${tag}`, phase: 'Validate', model: 'haiku', effort: 'low' },
     )
     if (markedDone == null) {
       // The files are the state store; in-memory state must never outrun them.

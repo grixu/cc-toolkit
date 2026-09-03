@@ -142,3 +142,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-run`/`repair-run`: a repository that had to be re-scouted drops any inherited
   baseline — `baselineText()` matches by command string, so a baseline from a different scout
   report silently stops covering commands it never named
+- `implement-run`/`repair-run`: every validation label carries the unit (`<repo>:<branch>`), not
+  just the repository, and a review skill's own colon is neutralised in the lens segment
