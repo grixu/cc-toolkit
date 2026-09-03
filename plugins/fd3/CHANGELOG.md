@@ -165,3 +165,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same spec included, because implementation writes its state into those files
 - `split-to-tasks`: each rendering fork gets an exclusive territory, naming what belongs to the
   other agents and writing nothing outside its own list
+- `implement-run`/`repair-run`: the branch's final gate sets the task files to `done` itself and
+  confirms it in its result — a separate marking agent per branch spent its whole budget booting to
+  edit one frontmatter line; `tasksDir` is no longer an argument, the files are passed by path

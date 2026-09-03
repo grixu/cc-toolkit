@@ -258,10 +258,11 @@ const CI_RESULT = {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
+    marked: { type: 'boolean', description: 'the task files were set to done; asked for on a final gate only' },
   },
 }
 
-const ciPrompt = (unit, mode) =>
+const ciPrompt = (unit, mode, markFiles) =>
   [
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
     `in the worktree ${unit.worktree}. Run them in the reported order, sequentially — never in`,
@@ -286,6 +287,18 @@ const ciPrompt = (unit, mode) =>
     `return it under preExisting, never under failures, and do not count it against the branch.`,
     `Return passed=true only when every runnable command exits 0 or fails only on baseline`,
     `entries; otherwise return each newly failing command with the output lines that matter.`,
+    ...(markFiles
+      ? [
+          ``,
+          `One thing beyond the commands. When — and only when — you return passed=true, set`,
+          `\`status: done\` in the frontmatter of these task files, changing nothing else in them,`,
+          `and return marked=true:`,
+          ...unit.taskFiles.map((f) => `- ${f}`),
+          `They are the run's state store: they live outside the repository, they are never`,
+          `committed, and the no-fixing rule above is about the code, not about them. On any`,
+          `failure leave them untouched and return marked=false.`,
+        ]
+      : []),
   ].join('\n')
 
 const FIX_RESULT = {
@@ -337,12 +350,12 @@ for (const unit of units) {
     continue
   }
 
-  let ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${tag}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  let ci = await tryTwice(ciPrompt(unit, 'scoped', false), { label: `ci:${tag}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
     const fix = await tryTwice(fixPrompt(unit, ci.failures), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
-    ci = await tryTwice(ciPrompt(unit, 'scoped'), { label: `ci:${tag}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+    ci = await tryTwice(ciPrompt(unit, 'scoped', false), { label: `ci:${tag}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   }
   if (!ci) {
     summary.ci = 'no-verdict'
@@ -366,7 +379,7 @@ for (const unit of units) {
   }
 
   // The full command list is the branch's final gate — repairs go out only fully validated.
-  const finalCi = await tryTwice(ciPrompt(unit, 'full'), { label: `ci:${tag}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  const finalCi = await tryTwice(ciPrompt(unit, 'full', !!(unit.taskFiles && unit.taskFiles.length > 0)), { label: `ci:${tag}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   if (!finalCi) {
     summary.ci = 'no-verdict'
     hil.push({
@@ -389,21 +402,16 @@ for (const unit of units) {
   }
   summary.ci = 'passed'
 
-  if (unit.taskFiles && unit.taskFiles.length > 0) {
-    const markedDone = await tryTwice(
-      `Set \`status: done\` in the frontmatter of these task files, changing nothing else:\n` +
-        unit.taskFiles.map((f) => `- ${f}`).join('\n'),
-      { label: `done:${tag}`, phase: 'Validate', model: 'haiku', effort: 'low' },
-    )
-    if (markedDone == null) {
-      // The files are the state store; in-memory state must never outrun them.
-      hil.push({
-        slug: null,
-        kind: 'no-verdict',
-        stage: 'done-marking',
-        reason: `${unit.repo} ${unit.branch}: validation passed but the done-marking agent returned no result; the task files keep their previous status — a relaunch re-validates cheaply and finishes the marking.`,
-      })
-    }
+  // The final gate marks the files itself: it is already in this unit holding the verdict, where
+  // a separate agent per branch spent its whole budget booting to edit one frontmatter line.
+  if (unit.taskFiles && unit.taskFiles.length > 0 && !finalCi.marked) {
+    // The files are the state store; in-memory state must never outrun them.
+    hil.push({
+      slug: null,
+      kind: 'no-verdict',
+      stage: 'done-marking',
+      reason: `${unit.repo} ${unit.branch}: the full gate passed but did not confirm marking the task files; they keep their previous status — a relaunch re-validates cheaply and finishes the marking.`,
+    })
   }
 }
 

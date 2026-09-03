@@ -117,7 +117,6 @@ Launch the dynamic workflow and let it run in the background:
 Workflow({
   scriptPath: "${CLAUDE_SKILL_DIR}/../../workflows/implement-run.js",
   args: {
-    tasksDir: "<absolute path>",
     specPath: "<absolute path to the spec file, resolved in step 1>",
     tasks: [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }, ...],
     repos: { "<repository path>": { defaultRef: "<the step-1/2 base, e.g. origin/main>",
