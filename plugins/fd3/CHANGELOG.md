@@ -114,3 +114,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `spec-template`: work items are a table carrying **Phase** and **Lands as**, the join a task
   split cannot reconstruct; `write-spec` fills both cells last, once the rollout table and the
   landing constraints are settled
+- `spec-template`: section 7 distinguishes an ordering that binds the merge from one that binds
+  only the deploy — told just "A before B", a split stacks B on A and serialises work that could
+  have run in parallel

@@ -165,7 +165,12 @@ second labelling scheme.
 Then the order across environments, with the waiting period and the reason for its length. Then
 every **hard dependency** — anything outside this spec that must land first — each identified
 precisely enough to check: a pull-request number, a release, a gate. "The pending pull request" names
-nothing. Say whether the gate is a merge or a deploy, because they are different gates.
+nothing. Say whether the gate is a merge or a deploy, because they are different gates. The same
+question applies to the orderings *inside* this spec: one that binds the merge and one that binds
+only the deploy produce different branch stacks, and a split told only "A before B" stacks B on A
+and serialises work that could have run in parallel. Say which in the phase row — "the backfill must
+have **run in the environment** before the repoint deploys there" is a deploy ordering; "the
+migration must be **merged** before the service that reads the column" is a merge ordering.
 
 Then rollback: for each phase that switches something, what reverses it and what makes the reversal
 complete.
