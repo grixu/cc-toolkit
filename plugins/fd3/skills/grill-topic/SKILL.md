@@ -69,7 +69,7 @@ One question from a round, formatted as every question should be:
 
 Finding *facts* is your job, never the user's. The *decisions* are the user's — put each to them and wait.
 
-Route every lookup by where the fact lives — the routes and dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
+Route every lookup by where the fact lives — the routes and dispatch rules are in `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything. One of its rules bites hardest here: every dispatch goes out unnamed, and that binds at every level — an agent that fans its own work out is answerable for its children's reports arriving, and a named child is a report that never comes back.
 
 The session's research directory is `research/` in the session scratchpad. Dispatch prompts name it, agents write their full reports there, and what enters this conversation is each report's condensed answers and its file path. When a round argues from a report's findings, cite the file — the user can open the evidence.
 

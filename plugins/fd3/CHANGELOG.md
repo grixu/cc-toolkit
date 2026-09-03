@@ -130,3 +130,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `split-to-tasks`: coverage also checks that every rollout phase reaches a task, that every
   hand-run gate has an operational task, and that every Done-when row carries one of the three
   classes
+- `fact-routes`: the unnamed-dispatch rule binds at every level and travels down in the prompt —
+  an agent that fans out is answerable for its children's reports arriving; routing also weighs
+  cost, and the model is stated in the dispatch rather than defaulted

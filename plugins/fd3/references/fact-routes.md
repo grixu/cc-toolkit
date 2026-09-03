@@ -21,7 +21,14 @@ same cheap credential probe. The routes above govern lookups that take searching
 
 Dispatch every sub-agent unnamed — never pass `name:`. An unnamed one delivers its whole
 report in the task notification; a named one only answers a later pull, and may deliver
-nothing at all.
+nothing at all. This binds at every level: say so in every dispatch prompt, so an agent that
+fans its own work out passes the rule down, and it is answerable for its children's reports
+arriving.
+
+Route by cost as well as by where the fact lives. A dispatch whose whole job is to locate and
+quote — where X is defined, what line N says, which callers exist — runs on a cheaper model; one
+that must judge, reconcile contradictory sources or design a probe does not. State the model in
+the dispatch, so the choice is a decision rather than a default.
 
 A dispatch expected to return more than roughly a screen of findings carries two extra things
 in its prompt: the session's research directory, and the requirement to write the full report
