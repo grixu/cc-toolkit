@@ -46,13 +46,15 @@ The ordinal prefix lives only in the filename. `depends-on` and every cross-refe
 body carry the bare slug, so a regeneration may renumber freely without breaking a reference.
 
 `status` is always `todo` at split time, and `worktree` stays empty until implementation claims the
-task. The remaining statuses — `in-progress`, `implemented`, `blocked`, `done` — belong to the
-implementation flow: `implemented` means the code exists on the task's own branch — whether it has
-reached the target branch is git's knowledge, never a status; validation runs batched per target
+task. The remaining statuses — `in-progress`, `implemented`, `merged`, `blocked`, `done` — belong to the
+implementation flow: `implemented` means the code exists on the task's own branch; `merged` means
+that branch has reached the target branch, which is now waiting on validation — batched per target
 branch (build, lint, tests, then code review — once, never per task, so parallel tasks never race
-the same tooling); `blocked` means only a human can move it; `done` comes only after the batch
-passes. An interrupted mass run resumes on these: `done` is skipped, `implemented` re-enters the
-merge round, where an already-merged branch no-ops.
+the same tooling); `blocked` means only a human can move it; `done` comes only after that batch
+passes its final gate. Which of the two a file records is a report of what happened, never the
+authority on it: whether a branch reached its target is git's knowledge, and an interrupted run
+re-derives it. `done` is skipped on resume; `implemented` and `merged` both re-enter the merge
+round, where an already-merged branch no-ops.
 
 Any task may close with a `## Note` carrying what no other section does — a spec conflict the
 split resolved and how, a repository convention the work must respect, a standing manual step.

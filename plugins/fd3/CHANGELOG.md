@@ -55,6 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-tasks` skill: step 5 triggers on all repository-bearing tasks `done` (operational
   tasks listed, never gating); cleanup consent decoupled from push consent; untracked tasks-dir
   state-store warning
+- task status `merged` — the code has reached its target branch and the target is waiting on
+  validation, distinct from `implemented` (code on the task's own branch only); the merge agent
+  writes it as part of the merge it just performed. The status reports what happened and is never
+  the authority on it: git still decides, and `implemented` and `merged` both re-enter the merge
+  round on a resumed run
 - `validate-spec`: a blocking finding whose repair would change the spec's scope or reverse a
   ratified decision is handed up as a repair choice — the defect, the repairs to pick between, and
   what each costs — instead of being recorded as a defect nobody may touch; one obvious correction

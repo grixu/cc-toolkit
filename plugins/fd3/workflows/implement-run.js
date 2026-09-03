@@ -15,7 +15,7 @@ export const meta = {
 //   tasks         [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }]
 //                 repository is an absolute path, or 'none' for an operational task; baseBranch is
 //                 the branch this task's target branch stacks on, or null for the repository's
-//                 base ref; status is one of todo | implemented | blocked | done (stale
+//                 base ref; status is one of todo | implemented | merged | blocked | done (stale
 //                 in-progress is reset by the skill before launch)
 //   repos         { [repository path]: { defaultRef, parkedBranch } } — defaultRef is the ref new
 //                 branches are cut from (e.g. "origin/main"); the skill fetches before launch, so
@@ -352,7 +352,7 @@ const mergePrompt = (repo, repoTasks) => {
     .map(
       ([branch, g]) =>
         `- target ${branch} (stacks on ${g.base || repoDefault(repo)}, worktree ${branch === parked(repo) ? `${repo} — the main checkout` : worktreePath(repo, branch)}):\n` +
-        g.tasks.map((t) => `    - ${taskBranch(t)} (task ${t.slug})`).join('\n'),
+        g.tasks.map((t) => `    - ${taskBranch(t)} (task ${t.slug}, file ${t.file})`).join('\n'),
     )
     .join('\n')
   return [
@@ -369,6 +369,11 @@ const mergePrompt = (repo, repoTasks) => {
     `2. Merge the stack base into the target first, so the stack stays current.`,
     `3. Merge the listed task branches into it, in the listed order. A branch that answers`,
     `   "Already up to date" is expected on a resumed run — count its task as merged.`,
+    `4. For every task now merged in, including one that was already up to date, set`,
+    `   \`status: merged\` in the task file listed beside it, changing nothing else in that file.`,
+    `   The task files are the run's state store, they live outside the repository, and they are`,
+    `   never committed — a status left at implemented after the merge is the one thing a later`,
+    `   reader cannot tell from a merge that never happened.`,
     ``,
     `Resolve a merge conflict only when the two sides are clearly compatible and the resolution`,
     `is mechanical; commit the resolution and record it under resolved — the task's slug and one`,
@@ -448,7 +453,10 @@ while (true) {
   // Merge round: everything implemented and not yet in its target — including tasks an earlier,
   // interrupted run implemented, whose merge state only git knows.
   const toMerge = tasks.filter(
-    (t) => status.get(t.slug) === 'implemented' && !merged.has(t.slug) && !conflicted.has(t.slug),
+    (t) =>
+      (status.get(t.slug) === 'implemented' || status.get(t.slug) === 'merged') &&
+      !merged.has(t.slug) &&
+      !conflicted.has(t.slug),
   )
   if (ready.length === 0 && toMerge.length === 0) break
 
@@ -471,7 +479,10 @@ while (true) {
         return
       }
       for (const b of report.branches) {
-        for (const slug of b.mergedSlugs) merged.add(slug)
+        for (const slug of b.mergedSlugs) {
+          merged.add(slug)
+          status.set(slug, 'merged')
+        }
         for (const r of b.resolved || []) caveats.push(`${b.branch} merge of ${r.slug}: resolved conflict — ${r.description}`)
         for (const c of b.conflicts) {
           conflicted.add(c.slug)
@@ -754,13 +765,13 @@ for (const unit of units) {
     continue
   }
 
-  // A dead lens is not an empty findings list: the branch stays implemented until reviewed.
+  // A dead lens is not an empty findings list: the branch stays merged until reviewed.
   if (deadLenses.length > 0) {
     hil.push({
       slug: null,
       kind: 'no-verdict',
       stage: 'review',
-      reason: `${unit.repo} ${unit.branch}: review lens ${deadLenses.join(', ')} returned no result after a retry; CI passed, but the branch keeps status implemented until the lens has run.`,
+      reason: `${unit.repo} ${unit.branch}: review lens ${deadLenses.join(', ')} returned no result after a retry; CI passed, but the branch keeps status merged until the lens has run.`,
     })
     continue
   }
