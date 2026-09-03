@@ -1,7 +1,6 @@
 ---
 name: write-spec
 description: Write a specification from a settled design understanding, given the closing-notes file that holds the ratified decisions.
-arguments: notes-path research-dir spec-path
 context: fork
 user-invocable: false
 ---
@@ -13,13 +12,13 @@ name and you omit is a finding waiting to happen.
 
 ## Input
 
-Three paths come with the invocation:
+Three paths come with the invocation, in this order: **$ARGUMENTS**
 
-- `$notes-path` — the closing-notes file: four numbered lists holding the ratified decisions with
+- `notes-path` — the closing-notes file: four numbered lists holding the ratified decisions with
   their question numbers and chosen options, the decisions the assistant took, the risks the user
   accepted, and the research files produced alongside them.
-- `$research-dir` — the directory those research files live in.
-- `$spec-path` — where the spec goes.
+- `research-dir` — the directory those research files live in.
+- `spec-path` — where the spec goes.
 
 The notes file and the research directory are your whole input. Read the notes file before writing
 and hold it as the checklist section 6 walks; a fact in neither it nor the research directory is a
@@ -37,7 +36,7 @@ layout, do not go looking for it. The answer comes back as a message and you con
 
 ## 1. Where it goes
 
-Confirm `$spec-path`'s directory exists before writing. Once the spec is there, move the
+Confirm `spec-path`'s directory exists before writing. Once the spec is there, move the
 closing-notes file beside it as `<spec-basename>.notes.md` — it outlives the session, and a
 validation pass can read the decisions' provenance from it. Move the research directory the same
 way, as `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the spec cite to
