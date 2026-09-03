@@ -55,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-tasks` skill: step 5 triggers on all repository-bearing tasks `done` (operational
   tasks listed, never gating); cleanup consent decoupled from push consent; untracked tasks-dir
   state-store warning
+- `validate-spec`: a blocking finding whose repair would change the spec's scope or reverse a
+  ratified decision is handed up as a repair choice — the defect, the repairs to pick between, and
+  what each costs — instead of being recorded as a defect nobody may touch; one obvious correction
+  is not a choice, and a non-blocking finding never is
 
 ### Changed
 

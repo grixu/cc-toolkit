@@ -242,6 +242,13 @@ Then, per claim:
 - **Anything else** — it is a finding. Record it with its blocking status and move on. A finding is
   never a question: the user is asked for facts, not for defects.
 
+One carve-out, and it is narrow. Where the finding blocks, you have already decided that it *is* a
+defect and what the candidate repairs are, and choosing between them would change the spec's scope
+or reverse a ratified decision — then the choice is the user's, and repairing it yourself decides
+scope on their behalf. Collect it for step 4 as a repair choice: the defect, the repairs you would
+pick between, and what each costs. A finding that admits one obvious correction is not a repair
+choice — make the correction. A non-blocking finding never is: it goes in the report.
+
 ### 4. Hand up what only the user can settle
 
 `SendMessage` to `main` with every collected question at once, numbered, each with your recommended
@@ -251,8 +258,9 @@ stopped, with everything this pass established still in front of you.
 ### 5. Apply
 
 Per answer: when it settles the claim, apply the smallest spec edit that records it, append the evidence
-row, and set the claim `verified`. When it opens a new fact to look up, re-enter step 3 — for the claims
-still open only, never for one already settled.
+row, and set the claim `verified`. When it picks a repair, apply that repair — it is now a decision, and
+the finding stays in the report with the repair the user chose named in it. When it opens a new fact to
+look up, re-enter step 3 — for the claims still open only, never for one already settled.
 
 Repeat 3–5 until every claim is `verified`, `deferred`, or `blocked` because nothing settles it and the spec
 names no owner. A `blocked` claim goes into the report; do not put it to the user again. The run never
