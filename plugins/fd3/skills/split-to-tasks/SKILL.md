@@ -157,7 +157,11 @@ Dependencies come from the spec's build order and its phase table. Record each a
 edge between task slugs: an edge means the other task must land first. Never draw an edge onto
 an operational task when the spec lets the code land before that gate — an edge there strands
 implementable work behind human hands, and a whole extra run pays for it; a dependency that only
-gates *verification* belongs in the task's Done-when, not in the graph. Propose each branch's name
+gates *verification* belongs in the task's Done-when, not in the graph. A gate that blocks
+**authorship** — the work cannot be written until a human action reveals what to write — is the
+exception: it is a real edge, drawn onto the operational task that performs the gate. If no
+operational task exists for that gate, that is a coverage failure in step 5, not a licence to
+record the gate in prose. Propose each branch's name
 following its repository's visible convention — existing branches show it; the name belongs to the
 group, not the task. One exception joins the step-6 batch: when the checkout already sits on a
 branch carrying the spec's commits, whether the first landing unit reuses that branch or cuts

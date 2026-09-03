@@ -125,3 +125,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reached for independently
 - `split-to-tasks`: under one-branch-per-task only a real ordering stacks — tasks changing disjoint
   targets are siblings, and a stack link costs one full validation ladder per branch downstream
+- `split-to-tasks`: a gate that blocks *authorship* is a real `depends-on` edge onto its
+  operational task, and a missing operational task for it is a coverage failure
