@@ -48,6 +48,10 @@ checks 1, 6 and 12 are rules the other file states.
 
 ## Workflow
 
+A pass is one invocation of this skill. A `SendMessage` that resumes a pass you stopped continues
+that pass; it does not start a new one — the status you return carries the pass number the
+invocation gave it, and counts the rounds inside it separately.
+
 **A previous pass.** Where the invocation carries the status an earlier pass of this skill returned
 for this same spec, read it before step 1: it says which of the twelve checks passed and on what,
 what it left open, and which claims it recorded `verified` or `deferred`.

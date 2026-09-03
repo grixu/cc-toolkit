@@ -100,3 +100,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   included, or hands it to a named task
 - `validate-spec`: check 1 also catches intra-element contradictions — an element whose own
   requirements cannot all hold at once
+- `validate-spec`/`build-spec`: a pass is one invocation; a `SendMessage` resumes a stopped pass
+  rather than starting a new one, and a re-invocation is the fresh reading that re-checks the
+  previous pass's own edits
