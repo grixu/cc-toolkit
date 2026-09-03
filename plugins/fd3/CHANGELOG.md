@@ -152,3 +152,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   counts its defects — a verdict listing no edits on a spec that had findings is called out as such
 - `write-spec`: the three input paths arrive through `$ARGUMENTS`; the `arguments:` frontmatter key
   it declared them under is not a skill field and never substituted anything
+- `validate-spec`: one hand-up batch per pass — nothing outstanding when it goes, and steps 3–5
+  return there only because an answer opened a new fact, never because a lookup had not finished

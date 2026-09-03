@@ -251,9 +251,15 @@ choice — make the correction. A non-blocking finding never is: it goes in the 
 
 ### 4. Hand up what only the user can settle
 
-`SendMessage` to `main` with every collected question at once, numbered, each with your recommended
-answer first, then end your turn. The answers arrive as a message and you continue from where you
-stopped, with everything this pass established still in front of you.
+`SendMessage` to `main` with everything collected at once — the facts only the user holds and the
+repair choices alike — numbered, each with your recommended answer first, then end your turn. The
+answers arrive as a message and you continue from where you stopped, with everything this pass
+established still in front of you.
+
+One batch per pass. Nothing may still be outstanding when you send it: a dispatch that has not
+returned is a dispatch whose answer changes what you would ask, and a second message sent while the
+first is being answered tells the user the first was incomplete. Steps 3–5 may bring you back here,
+but only because an answer opened a new fact — never because a lookup had not finished.
 
 ### 5. Apply
 
