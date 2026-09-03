@@ -33,8 +33,10 @@ to have.
 
 ## Workflow
 
-Post this checklist before your first tool call, and again in full — marks updated — before every
-user interaction (the question batch, each report round) and at the close:
+Post this checklist as your first message in the run, before any tool call — a run that then stops
+on an unresolvable path has cost one message. Post it again in full — marks updated, never
+compressed to a line and never summarised — before every user interaction (the question batch, each
+report round) and at the close:
 
 ```
 - [ ] 1. Read the graph: parse task frontmatter, resolve repositories, check integrity

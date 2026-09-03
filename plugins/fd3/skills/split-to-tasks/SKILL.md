@@ -47,8 +47,10 @@ ends the run says what the record held and which way the user answered.
 
 ## Workflow
 
-Post this checklist before your first tool call, and again in full — marks updated — before every
-user interaction (the question batch, the report) and at the close:
+Post this checklist as your first message in the run, before any tool call — a run that then stops
+on an unresolvable path has cost one message. Post it again in full — marks updated, never
+compressed to a line and never summarised — before every user interaction (the question batch, the
+report) and at the close:
 
 ```
 - [ ] 1. Enumerate: work items, element codes, phases and gates, ownership, tickets

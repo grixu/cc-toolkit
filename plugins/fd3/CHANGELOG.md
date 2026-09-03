@@ -133,3 +133,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `fact-routes`: the unnamed-dispatch rule binds at every level and travels down in the prompt —
   an agent that fans out is answerable for its children's reports arriving; routing also weighs
   cost, and the model is stated in the dispatch rather than defaulted
+- `implement-tasks`/`split-to-tasks`: the workflow checklist is posted before any tool call and
+  never compressed to a line or summarised
