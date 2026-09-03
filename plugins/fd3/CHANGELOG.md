@@ -127,3 +127,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   targets are siblings, and a stack link costs one full validation ladder per branch downstream
 - `split-to-tasks`: a gate that blocks *authorship* is a real `depends-on` edge onto its
   operational task, and a missing operational task for it is a coverage failure
+- `split-to-tasks`: coverage also checks that every rollout phase reaches a task, that every
+  hand-run gate has an operational task, and that every Done-when row carries one of the three
+  classes

@@ -193,6 +193,12 @@ Before writing anything, check — and say in the report — that:
   that element's code too, and it counts for coverage: a resource provisioned by hand is still the
   element the spec says will be built. What an operational or cleanup task may lack is the done
   criterion — it names the gate it inherits instead, as the template directs;
+- every rollout phase appears on at least one task, and every gate whose steps no repository
+  carries has an operational task — a deploy-only phase is the case that silently disappears,
+  because it owns no work item and no element;
+- every Done-when row is one of the three classes the task template names — this task's,
+  branch-or-phase-level, or environment-level — and every environment-level row names the
+  operational task or gate that exercises it;
 - the dependency graph has no cycles, every edge points at a task that exists, and every edge
   points at a lower ordinal — the reading order really is topological, and the implementation
   workflow's merge planning relies on that;
