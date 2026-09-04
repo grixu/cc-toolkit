@@ -420,7 +420,7 @@ for (const t of tasks) {
   if (danglingBases.has(key)) continue
   danglingBases.add(key)
   const affected = tasks.filter((x) => x.repository === t.repository && x.baseBranch === t.baseBranch).map((x) => x.slug)
-  hil.push({ slug: null, kind: 'graph', reason: `branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds, so ${affected.join(', ')} start as if they were stack roots. Confirm the base exists, or fix the branch-base.` })
+  hil.push({ slug: null, kind: 'graph', reason: `branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds, so ${affected.join(', ')} start from it if it already exists and as stack roots if it does not. Confirm the base exists, or fix the branch-base.` })
 }
 
 let wave = 0

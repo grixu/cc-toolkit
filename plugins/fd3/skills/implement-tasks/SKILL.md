@@ -163,10 +163,13 @@ report's own `tasks[]` tally, never hand-counted — with one distinction the re
 draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
 failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
 `graph` items are the other kind that is information rather than work — one per `branch-base` that
-named a branch no task builds, naming the tasks the run then implemented, merged and validated as
-stack roots. Relay each as a diagnostic and say what it costs: the stacking that base implied did
-not happen. What it asks for is a corrected task file before the next split or relaunch, never a
-decision that moves those tasks, so it is not one of the items step 4 puts to the user below.
+named a branch no task builds, naming the tasks it carries. The workflow sees the task files alone,
+so step 1's resolution says what each one means: a base that resolved is the pre-existing branch the
+split rooted on, the tasks were cut from it, and the item only confirms that root; a base that
+resolved nowhere is one you launched as stack roots on the step-2 answer, and there the stacking
+that base implied did not happen. Relay each as a diagnostic saying which it was. What the second
+asks for is a corrected task file before the next split or relaunch, never a decision that moves
+those tasks, so neither is one of the items step 4 puts to the user below.
 
 Caveats are triaged, not relayed wholesale: one that names a decision the agent took, a risk,
 an as-built deviation or a commit no review saw goes to the user; one that reports compliance
