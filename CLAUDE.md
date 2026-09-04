@@ -39,6 +39,6 @@ The root `.claude-plugin/marketplace.json` must list every plugin with matching 
 
 The hookify plugin is forked from `anthropics/claude-plugins-official`. Upstream syncs go to the `hookify-upstream` branch via `scripts/sync-hookify.sh` and CI (`.github/workflows/sync-hookify.yml`). Merge conflicts may arise when local changes overlap with upstream.
 
-## Subdirectory Instructions
+## Per-Plugin Conventions
 
-Plugins with complex conventions can add their own `CLAUDE.md` in their directory (e.g., `plugins/hookify/CLAUDE.md`).
+Plugins with complex conventions get a path-scoped rule in `.claude/rules/<plugin>.md` with `paths: ["plugins/<plugin>/**"]` frontmatter (e.g., `.claude/rules/scribe.md`). Do not put a `CLAUDE.md` inside a plugin directory: it ships with the plugin, is never loaded as context for installed plugins, and `claude plugin validate` warns about it.

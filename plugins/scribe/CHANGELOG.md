@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
 
+### Fixed
+
+- `claude plugin validate` warning about `CLAUDE.md` at the plugin root: contributor conventions moved to the repo's `.claude/rules/scribe.md`; nothing shipped to users changes.
+
 ## [0.2.0] - 2026-04-27
 
 ### Changed

@@ -1,6 +1,10 @@
-# CLAUDE.md — tester plugin conventions
+---
+paths:
+  - "plugins/tester/**"
+---
+# tester — plugin conventions
 
-Guidance for editing the `tester` plugin. The root `CLAUDE.md` still applies; this file covers
+Guidance for editing the `tester` plugin; loads only when files under `plugins/tester/` are touched. The root `CLAUDE.md` still applies; this rule covers
 what is specific to tester's prompt layer.
 
 ## What the prompt layer is
