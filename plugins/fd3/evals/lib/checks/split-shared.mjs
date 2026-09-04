@@ -1,6 +1,7 @@
+// Presence only: branch-base is legitimately empty on a root task and on an operational one.
 export const REQUIRED_FM_KEYS = [
-  'name', 'status', 'spec', 'elements', 'repository', 'branch',
-  'worktree', 'phase', 'depends-on', 'tickets',
+  'name', 'status', 'spec', 'elements', 'decisions', 'repository', 'branch',
+  'branch-base', 'worktree', 'phase', 'depends-on', 'tickets',
 ];
 
 export const ELEMENT_CODES = ['DB-1', 'API-1', 'API-2', 'UI-1', 'CONFIG-1', 'INTEGRATION-1'];
