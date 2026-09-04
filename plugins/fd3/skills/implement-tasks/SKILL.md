@@ -76,12 +76,18 @@ Then make the graph launchable:
   each later one on the previous unit's branch. A derived base is a guess about a decision the
   split made — the report says which bases were read and which derived. The workflow starts
   worktrees and the pull-request chain from these.
-- **Check every stack base is reachable.** A base some task's `branch:` builds is produced by this
-  run. One no task builds has to exist already: `origin` is fetched, so resolve the ref in that
-  repository. A base that resolves is a branch the split rooted on and needs nothing; one that
+- **Normalise the root's base.** The split records the first landing unit's `branch-base` as the
+  repository's default branch, so a base naming the ref step 2 confirmed is that repository's root
+  rather than a stack link: it goes to step 3 as `baseBranch: null`. Match by branch name — the
+  split writes `main` where step 2 confirmed `origin/main`. Passed through as a string it is a base
+  no task builds, and every repository's first landing unit would raise a stack-base diagnostic on
+  every run.
+- **Check every remaining stack base is reachable.** A base some task's `branch:` builds is produced
+  by this run. One no task builds has to exist already: `origin` is fetched, so resolve the ref in
+  that repository. A base that resolves is a branch the split rooted on and needs nothing; one that
   resolves nowhere joins the step-2 batch. Only here can the two be told apart — the workflow sees
-  the task files alone, so it cuts the branch from the repository's default ref and reports the
-  lost stacking after the run, when the work is already built on the wrong foundation.
+  the task files alone, so it falls back to the repository's default ref and reports the lost
+  stacking after the run, when the work is already built on the wrong foundation.
 - **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that
   exists **and carries a lower ordinal** — the merge planning relies on the file order being
   topological — and every status is one of the six. A broken graph stops the run — recommend
@@ -112,7 +118,10 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   instead of a silent stale base;
 - per stack base that no task builds and git cannot resolve: correct it in the task files, or
   launch with those tasks as stack roots. Asked once per base — `branch-base` is identical on
-  every task of a branch — and naming the tasks it carries;
+  every task of a branch — and naming the tasks it carries. A launch passes the base through
+  unchanged rather than nulling it, so the workflow raises its stack-base item and the run's own
+  report carries what was consented to; nulled, those tasks would read as genuine roots and
+  nothing would record the anomaly;
 - confirmation of scope when the directory mixes done and pending work.
 
 Everything else — wave composition, branch names, merge order — the task files already decided;
