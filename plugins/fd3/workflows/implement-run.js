@@ -196,7 +196,11 @@ const baselineReady = (async () => {
     if (report) baseline.set(repo, report)
     else hil.push({ slug: null, kind: 'no-verdict', stage: 'baseline', reason: `${repo}: the baseline agent returned no result after a retry; failures cannot be told apart from pre-existing ones this run.` })
   }
-})()
+})().catch((err) => {
+  // Nothing awaits this until Validate, phases away, so an escaping rejection would take the
+  // whole run down. Absorb it into the same no-verdict item a missing baseline already produces.
+  hil.push({ slug: null, kind: 'no-verdict', stage: 'baseline', reason: `the baseline pass threw before Validate (${err && err.message ? err.message : err}); failures cannot be told apart from pre-existing ones this run.` })
+})
 
 const baselineText = (repo) => {
   const b = baseline.get(repo)
