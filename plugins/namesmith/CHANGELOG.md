@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
 
+### Removed
+
+- Unrelated `linear` MCP server from `.mcp.json`; it required Linear OAuth and surfaced an `Unauthorized` MCP error at every session start for no feature.
+
 ## [1.0.0] - 2026-03-27
 
 ### Added
