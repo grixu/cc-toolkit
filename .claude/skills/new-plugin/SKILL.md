@@ -31,8 +31,8 @@ Create `plugins/<name>/` with:
      "version": "0.1.0",
      "description": "<description>",
      "author": {
-       "name": "grixu",
-       "email": "mateusz.gostanski@gmail.com"
+       "name": "Mateusz Gostański",
+       "email": "mg@grixu.dev"
      },
      "repository": "https://github.com/grixu/cc-toolkit",
      "keywords": [<tags>]
@@ -75,8 +75,8 @@ Add the new plugin entry to `.claude-plugin/marketplace.json` in the `plugins` a
   "description": "<description>",
   "version": "0.1.0",
   "author": {
-    "name": "Mateusz Gostański (grixu)",
-    "email": "mateusz.gostanski@gmail.com"
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
   },
   "category": "<category>",
   "tags": [<tags>]

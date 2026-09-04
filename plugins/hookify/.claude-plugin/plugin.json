@@ -3,8 +3,8 @@
   "version": "0.4.0",
   "description": "Easily create hooks to prevent unwanted behaviors by analyzing conversation patterns",
   "author": {
-    "name": "Anthropic",
-    "email": "support@anthropic.com"
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
   },
   "repository": "https://github.com/grixu/cc-toolkit",
   "keywords": [
