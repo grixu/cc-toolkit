@@ -88,8 +88,9 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Index card rule** — a task file carries pointers (element codes, section headings), never
   copies of spec content. The spec stays the single source of truth; with hashing rejected, a
   copied contract that rots is undetectable.
-- **Task statuses** — `todo`, `in-progress`, `implemented`, `blocked`, `done`. `implemented`
-  means the code exists on the task's own branch; validation runs batched per target branch, so
+- **Task statuses** — `todo`, `in-progress`, `implemented`, `merged`, `blocked`, `done`.
+  `implemented` means the code exists on the task's own branch; `merged` means it has reached the
+  target branch, which is then waiting on validation; validation runs batched per target branch, so
   `done` comes only once that batch passes. `blocked` means only a human can move it. Coarse
   enough that a mass run interrupted by usage limits resumes on the files alone.
 - **Size policy** — above 80 changed files or 2000 changed lines, generated files excluded, the
