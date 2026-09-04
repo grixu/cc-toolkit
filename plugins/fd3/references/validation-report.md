@@ -44,6 +44,10 @@ A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`
 <section>, <the finding>`. It is the only thing by which the caller can tell that an iteration
 moved, so a check whose answer changed says so where it changed. Each cell is one line.
 
+Check 9 takes a fourth form and needs it: its evidence lives outside the spec, so `unchanged` there
+reports the document, not the lookup. A check 9 that ran and holds reads `pass (verified — <what you
+read>)`; `pass (unchanged)` on that row says the lookup never happened.
+
 What the next pass needs from this one is what is still open; what is blocked is not — no later
 pass closes it. The durable record of what a pass found and closed is the spec's own dated
 evidence block, not this return. A finding is stated once in the report; no section restates

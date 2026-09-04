@@ -144,7 +144,8 @@ from whoever splits this into tasks.
    check the ownership section's stated apply mechanism against it. A landing claim ("one pull
    request", "three applies of one commit", "merge then deploy") is a claim like any other: it gets
    an evidence row naming what you read, or it is a finding. This is the only check whose evidence
-   lives outside the document, and a `pass (unchanged)` here means you did not run it.
+   lives outside the document, so its pass reads `pass (verified — <what you read>)`; a
+   `pass (unchanged)` here means you did not run it.
 10. The spec is splittable into tasks: no gap or unstated assumption visible at spec level.
 11. Every element has a stated way to check the delivered result.
 12. No claim rests on a vague verb or an undecided either/or, as `spec-rules.md` defines them.

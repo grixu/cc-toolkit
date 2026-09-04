@@ -81,6 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sentence that routes each check to its file sent it to the wrong one
 - fd3 evals: the firecrawl MCP key travels in an `Authorization` header rather than in the URL
   path, where it would reach connection errors, proxy logs and the exported run JSON
+- `validate-spec`/`validation-report`: check 9 has a pass form of its own, `pass (verified — <what
+  you read>)` — the three general `Result` values left a ran-and-holds check 9 with nothing legal to
+  write, since `unchanged` on that row reports the document rather than the lookup
 - fd3 evals: the split assertions require `branch-base` and `decisions`, the two task frontmatter
   fields they did not cover; a skipped check 9 (`pass (unchanged)`) no longer counts as a pass in
   the clean-spec assertion; the defective fixture carries the template's fifth rollout column and a
