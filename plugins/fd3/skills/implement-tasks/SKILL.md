@@ -79,8 +79,8 @@ Then make the graph launchable:
 - **Normalise the root's base.** A `branch-base` no task in that repository builds and naming
   either the repository's default branch or the branch its checkout is parked on is that
   repository's root rather than a stack link: it goes to step 3 as `baseBranch: null`, which
-  resolves to whichever of the two step 2 settles as `defaultRef`. Both are step-1 facts, and both
-  have to match, by branch name — the split roots on the default branch for an ordinary run and
+  resolves to whichever of the two step 2 settles as `defaultRef`. Both are step-1 facts, and each
+  is matched by branch name — the split roots on the default branch for an ordinary run and
   writes `main` where the ref is `origin/main`, but roots on the parked branch where it found the
   checkout carrying the spec's commits, and which of the two this run wants is step 2's to answer.
   Left as a string either way, the base is worse than noise: the start-point chain takes it
