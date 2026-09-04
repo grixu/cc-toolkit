@@ -1,0 +1,2 @@
+Invoke the fd3:write-spec skill with these three arguments, in this order: notes/grilling-summary.md notes/research spec/out.md
+The notes file is the closing summary of a grilling I confirmed, so treat it as the settled design.

@@ -1,0 +1,41 @@
+name: fd3 evals (smoke)
+
+# The smoke group only — one scenario per skill plus the command gate (plan section 5).
+# The e2e chain, --repeat variance runs and the network-dependent researcher tests
+# stay local-only.
+on:
+  pull_request:
+    paths:
+      - 'plugins/fd3/**'
+      # The job runs the shared runner and resolves promptfoo and the agent SDK from the root
+      # manifest, so a change to either breaks these evals without touching the plugin.
+      - 'scripts/run-evals.sh'
+      - 'package.json'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      # No cache: the store cache keys on a committed pnpm-lock.yaml, and this repo
+      # gitignores the lockfile — setup-node fails outright when it cannot find one.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+      - name: Run smoke group
+        run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate"
+      - name: Upload results for triage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fd3-eval-results
+          path: plugins/fd3/evals/.results/latest.json
+          if-no-files-found: ignore

@@ -1,0 +1,148 @@
+---
+name: write-spec
+description: Write a specification from a settled design understanding, given the closing-notes file that holds the ratified decisions.
+context: fork
+user-invocable: false
+---
+
+The shape to write against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and the
+invariants that hold in every section are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
+Read both before writing anything. They are what a spec is measured against — a section they
+name and you omit is a finding waiting to happen.
+
+## Input
+
+Three paths come with the invocation, in this order: **$ARGUMENTS**
+
+- `notes-path` — the closing-notes file: four numbered lists holding the ratified decisions with
+  their question numbers and chosen options, the decisions the assistant took, the risks the user
+  accepted, and the research files produced alongside them.
+- `research-dir` — the directory those research files live in.
+- `spec-path` — where the spec goes.
+
+The notes file and the research directory are your whole input. Read the notes file before writing
+and hold it as the checklist section 6 walks; a fact in neither it nor the research directory is a
+gap to declare or a lookup to dispatch, never a recollection. The decisions in it are ratified —
+you write them up, you do not reopen them.
+
+The closing notes name each research file and what it establishes; that line is the index. Read
+a report's headings first, then the sections you are about to cite. Do not re-read a file you
+have already read in this pass: if a `cat` trips the tool cap, the payload is on disk and the
+error names its path.
+
+A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming which
+one and what you need, then end your turn. Do not guess it, do not derive it from the repository's
+layout, do not go looking for it. The answer comes back as a message and you continue from there.
+
+## 1. Where it goes
+
+Confirm `spec-path`'s directory exists before writing. Once the spec is there, move the
+closing-notes file beside it as `<spec-basename>.notes.md` — it outlives the session, and a
+validation pass can read the decisions' provenance from it. Move the research directory the same
+way, as `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the spec cite to
+the new location — evidence a later pass cannot open is evidence lost.
+
+## 2. What goes in
+
+Only what the session settled or established. The template defines every section's shape —
+write against the file, not from memory of it. What the template cannot know is how a grilling
+session maps into it:
+
+- **Decisions.** One row per decision the user actually ratified, `D1`…`Dn`. Each rationale
+  opens with its provenance: the question number and option the user chose, or
+  `assistant-taken` and the answer it followed from. A decision you took yourself, that the
+  user's closing confirmation covered without answering directly, still goes in on those
+  terms — and where a decision supersedes one of the user's own answers, the rationale names
+  that answer and why it fell. An end state whose provenance is missing reads as the user's
+  choice when it was yours.
+- **Facts are not work.** A fact a lookup established belongs in the problem statement and
+  the evidence appendix; it does not by itself put a work item in the per-repository
+  section. Work nobody ratified goes to out-of-scope with an owner and a placement, marked
+  as surfaced during analysis — never into a phase. An option the session explicitly
+  declined does not reappear anywhere.
+- **Precedence.** Before writing "everything else is carried forward unchanged", check the
+  status field of every document in the superseded set, and enumerate what "everything
+  else" is.
+- **Out of scope.** Check the tracker for the actual ticket numbers before writing
+  placements — "each gets its own ticket" places nothing.
+- **The concrete work, per repository** is what gets split into tasks, so an item nobody
+  could start from is not finished being written. Fill each item's phase and landing shape
+  last, once the rollout table and the ownership section's landing constraints are both
+  settled. An item that turns out to land in two phases, or once per stack, stays one item
+  whose cells say so — sub-letter it only when the halves touch disjoint files; where they
+  touch the same lines, the cell carries the seam and the item stays whole.
+- **Rollout.** The phase table opens at phase 1 and places every work item from the
+  per-repository section. Independent groundwork is not a note beside the table — it is
+  phase 1. Mark the gates: a phase followed by a deployment boundary — a bake, an
+  environment promotion, an approval between changes — closes a landing unit, and the
+  evidence for each gate is technical, gathered like any other fact. Then estimate each
+  landing unit's aggregate diff from the work items it places; where one plausibly exceeds
+  **80 changed files or 2000 changed lines**, generated files excluded, the subdivision is
+  the user's call. `SendMessage` to `main` with the proposed seams — phase boundaries,
+  dependency clusters — as numbered options with your recommendation first, then end your
+  turn. Write neither the table nor the threshold before the answer arrives; you continue
+  from where you stopped. A user-requested split becomes a gate in the table like any
+  other; the threshold itself never appears in the spec.
+
+## 3. The evidence appendix
+
+Every load-bearing claim gets a row: the claim as the spec asserts it, and how it was established —
+the command, the `path:line`, the doc quote, the probe output. Not "checked the code". A claim a
+research file establishes cites that file's path beside the source it quotes.
+
+This table is the spec's proof of work and the thing a validation pass spot-checks first, so it is
+worth more than any prose you could write instead. Two rules:
+
+- **A claim that rests on inference says so.** "No documentation states the negative explicitly; treat
+  as strong inference, confirmed empirically at stage before prod" is honest and actionable. Turning
+  it into a confirmation is the single most damaging thing you can do to this table.
+- **A claim with no evidence does not become an assertion.** Look it up, routed by where the
+  fact lives — the routes and dispatch rules are in
+  `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`. If it stays unsettled, it goes into
+  the document as a declared gap with an owner and a placement, never as a bare statement.
+
+A number you chose while writing — a bake period, a waiting window, a threshold, a version — is a
+claim like any other: it gets an evidence row stating its basis, or it becomes a declared gap. A
+plausible reason attached to a number nobody agreed is still a number nobody agreed.
+
+Before the document is reported done, resolve every `path:line` you did not read yourself — the
+citations inherited from lookup reports are the ones that drift. Batch the checks per file. A
+citation that will not resolve is deleted or downgraded to a filename, never left for a validation
+pass to find.
+
+## 4. Declared gaps
+
+Anything the session could not settle goes into the document as a **declared gap**, on the terms
+`spec-rules.md` sets. A gap left as confident prose is the failure this whole section exists to
+prevent.
+
+## 5. Length and tone
+
+Every sentence either records a decision, an element, a fact with its source, or a gap with its
+owner. Nothing restates what a table already says, and nothing narrates the process that produced the
+document — a reader implementing this needs the conclusion, not the reasoning that reached it, except
+where the reasoning is the rationale of a decision.
+
+Write in English regardless of the language of the grilling.
+
+## 6. The spec is written when
+
+Every section the template names is present, or absent with the one line that says the subject has no
+instance of it; every decision the session settled has a row in the decision table; every element
+carries its element code; and every load-bearing claim has either an evidence row or a declared gap
+with an owner and a placement. Check this against the document you wrote, not against your memory of
+writing it.
+
+Then two counted passes, both against the file. Walk the closing-notes checklist entry by entry:
+each ratified decision, assistant-taken decision and accepted risk names the `Dn` row, element code,
+gap or rollout step that carries it — an entry with no landing place is a decision you dropped or a
+gap you owe the reader. And count: decision rows, element codes used anywhere in the document,
+element codes defined in the target-architecture section, verification rows, evidence rows, declared
+gaps. Every code used has a definition — a code that appears only in a work item or a verification
+row is defined or deleted.
+
+## 7. After writing
+
+Report where it went, how long it is, the counts from section 6, and how many citations you resolved
+yourself against how many you did not — "the rest resolve" is a claim you did not check. Then say
+plainly what is not yet settled in it: the declared gaps, and anything you were unable to verify.

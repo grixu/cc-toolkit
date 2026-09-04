@@ -1,0 +1,1 @@
+Invoke the fd3:write-spec skill with these three arguments, in this order: notes/grilling-summary.md notes/research spec/out.md

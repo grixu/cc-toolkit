@@ -1,0 +1,170 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: fd3 skill-contract evals — deterministic suite (offline-stable; e2e and researcher groups live in their own configs)
+
+prompts:
+  - '{{query}}'
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      setting_sources: []
+      max_budget_usd: 2.0
+      max_turns: 60
+      allow_all_tools: true
+      permission_mode: bypassPermissions
+      allow_dangerously_skip_permissions: true
+      ask_user_question:
+        behavior: first_option
+      plugins:
+        - type: local
+          path: .. # relative to THIS config dir → plugins/fd3
+
+defaultTest:
+  options:
+    # Grader for the few llm-rubric asserts: same SDK auth, one turn, no repo settings.
+    # The append_system_prompt pins the JSON-only reply — without it the grader
+    # occasionally wraps the verdict in prose and promptfoo cannot extract the JSON.
+    provider:
+      id: anthropic:claude-agent-sdk
+      config:
+        apiKeyRequired: false
+        setting_sources: []
+        max_turns: 1
+        append_system_prompt: >-
+          You are being used as an automated grader. Reply with ONLY the JSON object the
+          grading instructions ask for — no prose before or after it, no code fences.
+
+tests:
+  # ---- validate-spec (Priority 1; per-test budget override 5.0 — Explore across a repo) ----
+  - description: validate-defective-spec
+    vars: { query: file://prompts/validate-defective-spec.txt }
+    options: { working_dir: .sandbox/validate-defective-spec, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/validate-defective-spec.mjs
+
+  - description: validate-clean-spec
+    vars: { query: file://prompts/validate-clean-spec.txt }
+    options: { working_dir: .sandbox/validate-clean-spec, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/validate-clean-spec.mjs
+
+  - description: validate-declared-gap
+    vars: { query: file://prompts/validate-declared-gap.txt }
+    options: { working_dir: .sandbox/validate-declared-gap, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/validate-declared-gap.mjs
+
+  - description: validate-phased-verdict
+    vars: { query: file://prompts/validate-phased-verdict.txt }
+    options: { working_dir: .sandbox/validate-phased-verdict, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/validate-phased-verdict.mjs
+
+  # ---- split-to-tasks (Priority 1; same budget override) ----
+  - description: split-baseline
+    vars: { query: file://prompts/split-baseline.txt }
+    options: { working_dir: .sandbox/split-baseline, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/split-baseline.mjs
+
+  - description: split-unvalidated-precondition
+    vars: { query: file://prompts/split-unvalidated-precondition.txt }
+    options: { working_dir: .sandbox/split-unvalidated-precondition, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/split-unvalidated-precondition.mjs
+      - type: llm-rubric
+        value: >-
+          The harness auto-answers questions, so a question the response asked is not visible
+          in this text. All four must hold, or the output fails: (a) it states the spec has no
+          validation pass; (b) it states what the spec's evidence record holds; (c) it either
+          poses the choice between validating first and splitting as-is, or states which of the
+          two was chosen — a stated choice counts on its own, no question needed in the text;
+          (d) it does not split the spec into task files.
+
+  - description: split-orphan-element
+    vars: { query: file://prompts/split-orphan-element.txt }
+    options: { working_dir: .sandbox/split-orphan-element, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/split-orphan-element.mjs
+
+  - description: split-english-artifacts
+    vars: { query: file://prompts/split-english-artifacts.txt }
+    options: { working_dir: .sandbox/split-english-artifacts, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/split-english-artifacts.mjs
+
+  # ---- write-spec (Priority 2) ----
+  - description: write-missing-input-stop
+    vars: { query: file://prompts/write-missing-input-stop.txt }
+    options: { working_dir: .sandbox/write-missing-input-stop }
+    assert:
+      - type: javascript
+        value: file://lib/checks/write-missing-input-stop.mjs
+      - type: llm-rubric
+        value: >-
+          The response stops and says which input path it needs — the notes file that does not
+          resolve. It does not write a spec or claim to have written one, does not invent a
+          location for the notes, and does not go searching the repository for them.
+
+  - description: write-template-conformance
+    vars: { query: file://prompts/write-template-conformance.txt }
+    options: { working_dir: .sandbox/write-template-conformance }
+    assert:
+      - type: javascript
+        value: file://lib/checks/write-template-conformance.mjs
+
+  - description: write-no-invented-decisions
+    vars: { query: file://prompts/write-no-invented-decisions.txt }
+    options: { working_dir: .sandbox/write-no-invented-decisions }
+    assert:
+      - type: javascript
+        value: file://lib/checks/write-no-invented-decisions.mjs
+
+  # ---- grill-topic (Priority 3 — smoke) ----
+  # 8.0 for grill-round-shape/grill-numbered-questions: with first_option auto-answering
+  # question-tool rounds a grilling run can go long, and a cut-off kills the SDK
+  # process (hard exit 1) instead of letting the asserts judge the finished output.
+  - description: grill-round-shape
+    vars: { query: file://prompts/grill-round-shape.txt }
+    options: { working_dir: .sandbox/grill-round-shape, max_budget_usd: 8.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/grill-round-shape.mjs
+      - type: llm-rubric
+        value: >-
+          The message ends awaiting the user's answers to a round of numbered questions. A single
+          question-tool round is acceptable, but the assistant must not answer its own questions
+          or cascade through multiple self-answered rounds to a closing summary.
+
+  - description: grill-no-topic
+    vars: { query: file://prompts/grill-no-topic.txt }
+    options: { working_dir: .sandbox/grill-no-topic }
+    assert:
+      - type: javascript
+        value: file://lib/checks/grill-no-topic.mjs
+
+  - description: grill-numbered-questions
+    vars: { query: file://prompts/grill-numbered-questions.txt }
+    options: { working_dir: .sandbox/grill-numbered-questions, max_budget_usd: 8.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/grill-numbered-questions.mjs
+
+  # ---- build-spec command (gate smoke) ----
+  # 5.0 like the P1 group: first_option auto-answers whole grilling rounds, so this run
+  # is long by design and a 2.0 cut-off kills the SDK process mid-flight (hard exit 1).
+  - description: build-spec-gate
+    vars: { query: file://prompts/build-spec-gate.txt }
+    options: { working_dir: .sandbox/build-spec-gate, max_budget_usd: 8.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/build-spec-gate.mjs

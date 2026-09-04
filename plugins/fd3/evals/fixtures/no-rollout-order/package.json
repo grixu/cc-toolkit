@@ -1,0 +1,8 @@
+{
+  "name": "status-page",
+  "version": "2.1.0",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  }
+}

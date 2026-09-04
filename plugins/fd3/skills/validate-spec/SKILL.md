@@ -1,0 +1,287 @@
+---
+name: validate-spec
+description: Validate a spec for implementation readiness, backing every load-bearing claim with recorded evidence.
+context: fork
+user-invocable: false
+---
+
+The invocation carries the spec's path, and on a later pass the status the previous pass returned:
+**$ARGUMENTS**
+
+A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming what you
+need, then end your turn. Do not guess it and do not go looking for it.
+
+**That spec file is the only file you may edit.** Everything else you read is read-only, no matter
+what you find in it.
+
+## Goal
+
+Decide whether the spec can be implemented, or split into tasks, as written. It can when every
+load-bearing claim is verified or deferred to a named owner, and no check in step 2 is left open.
+
+## Terms
+
+- **Claim** — anything the spec asserts that must hold for it to be implementable: a design decision, a
+  prerequisite, a stated fact, a judgement that some permission or code path is unused.
+- **Element** — anything the spec says will be built, cited by its **element code** (`DB-1`, `API-2`).
+  The template defines both.
+- **Section** — one numbered section of the spec. Evidence is grouped by section, never per claim.
+- A claim is `verified`, `deferred`, `open` or `blocked`:
+  - `verified` — the evidence holds.
+  - `deferred` — the spec declares the gap and names both an owner and a placement. This passes.
+  - `blocked` — nothing settles it and the spec names no owner and no placement.
+  - `open` — not yet settled during this run.
+
+A finding is **blocking** when an implementer who picked up the work it touches would have to stop
+and ask: a contract that names no fields, a build order whose earlier item cannot compile, two
+requirements that cannot both hold, an element nothing verifies. It is **non-blocking** when the work
+proceeds and the finding only costs a later correction: a stale citation, two counts that disagree, a
+rationale that is true for the wrong reason. A declared gap with an owner and a placement is neither
+— it bounds the phase it gates. The test where you hesitate is the phase table: if the phase would
+read `no` with the finding left open, it is blocking, and it stays blocking in the spec's dated
+evidence block after you close it.
+
+The shape a spec is measured against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and
+the invariants it is measured against are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
+Read both before step 2 — checks 1, 3, 7, 10 and 11 are section-level questions the template answers,
+and checks 6 and 12 are rules the other file states.
+
+## Workflow
+
+A pass is one invocation of this skill. A `SendMessage` that resumes a pass you stopped continues
+that pass; it does not start a new one — the status you return carries the pass number the
+invocation gave it, and counts the rounds inside it separately.
+
+**A previous pass.** Where the invocation carries the status an earlier pass of this skill returned
+for this same spec, read it before step 1: it says which of the twelve checks passed and on what,
+what it left open, and which claims it recorded `verified` or `deferred`.
+
+Re-derive all twelve checks against the file you now hold. A check the previous pass answered was
+answered about a document that pass then edited, and its own edits are the likeliest thing to have
+broken one — so a check inherits its reasoning, never its result. What you do not repeat is the
+evidence work behind a claim the status records as `verified`, unless an edit since then touched the
+section it rests on. Spend the pass on what the status leaves open.
+
+The spec's evidence record may hold dated blocks that no handed-down status accounts for — passes
+from earlier runs. Their identity is their date; pass numbers count this run's passes only. They are
+available when a claim's history bears on what you are deciding.
+
+Where your grade of a finding differs from a grade already in the record — blocking where it read
+non-blocking, or the reverse — record the regrade and its reason in the dated evidence block and in
+the return. Two records that disagree without saying so are worse than one.
+
+### 0. Locate the repositories
+
+A spec often describes work in repositories other than the one it lives in. List every repository it
+names and resolve each to a local path. `SendMessage` to `main` for the ones you cannot find — that
+is knowledge about the user's machine, not a fact you can look up. A repository still unresolved
+goes into "Not validated" in the report; never report its files as missing.
+
+Then bring every resolved repository up to date: `git fetch`, and check whether the local tree is
+behind the branch the spec describes. A clone a day behind produces false citation drift, and
+"correcting" the spec against it rewrites a correct document backwards. Record the commit each
+repository is checked against, and put that commit in every dispatch prompt that targets it. The
+local path you resolved is how you reach the tree; it never appears in the report or in the spec —
+`spec-rules.md` sets the path form for everything you write.
+
+### 1. Enumerate
+
+Read the spec in full and record, in this order — read it once, with `Read`; a `cat` truncates and
+costs a second pass:
+
+1. Any declaration of precedence over another document — what it supersedes, and on what.
+2. Every design decision, element and claim.
+3. Every acceptance criterion. When the spec states none, that is the first finding of the report; derive
+   criteria only for the elements that gate delivery, never one per verifiable requirement.
+
+Open every document the spec references. A reference you cannot open is a finding. A document the spec
+supersedes is context, not an authority: read it to detect silent reversals, never to contradict the spec.
+
+### 2. Spec-level checks
+
+Every check below passes in two ways: the spec supplies the fact, or the spec declares the gap on the
+terms `spec-rules.md` sets. A gap declared without an owner and a placement is the finding; a gap the spec
+already owns and places is a pass.
+
+Run these once over the enumeration from step 1 — they are properties of the whole document. Each yields a
+pass or a finding that names the spec section it came from, and **every one of the twelve gets a row in the
+report**, whether it passed or not.
+
+A row is `pass` only when its prose names no unresolved finding. Where a finding genuinely does not
+block — the Terms say when — it is still a finding: give it its own row in the findings list and say
+why it does not block. Calling it non-blocking inside a passing row hides it from the verdict, and
+from whoever splits this into tasks.
+
+1. Design decisions do not contradict one another within the authoritative set. Where the spec declares
+   precedence over another document, that declaration settles the disagreement; what to look for instead is
+   the **silent reversal** — something the superseded document said, changed here, and not marked as changed.
+   A categorical claim that everything else is carried forward is itself a claim: check it, or report it.
+   Contradiction is also intra-element: an element whose own requirements cannot all hold at once — a
+   mandated mode and a mandated mechanism that only works in a different mode — is the same finding, and it
+   surfaces later as an implementation agent blocking mid-run, at the cost of a whole extra cycle.
+2. The described scope covers every design decision, and every part of the scope traces back to one. What
+   the spec puts out of scope is exempt from this — instead, each out-of-scope item names its owner and its
+   placement. Check every out-of-scope item against the rest of the document: an item whose body describes
+   work the spec actually does is in scope, and the contradiction is the finding.
+3. Every element has a description, a schema or pseudocode, and carries its element code.
+4. Every dependency exists already, is planned in the spec, or is deferred with an owner and a gate.
+5. Every external contract — third-party API, SDK, protocol — is confirmed against its documentation, or
+   names the substitute that stands in where the documentation is silent.
+6. Every referenced document exists, is readable, and is named precisely enough to open.
+7. Each element's contract is complete: fields, types, errors, auth, limits. Where the element is
+   not code-shaped and that list has no instance, the contract is complete when the spec states, per
+   named artifact the element changes, what the change is and what makes it possible — and a plural
+   claim ("both monitors", "all three stacks", "each of the four") is checked member by member, not
+   once.
+8. The build order of the elements is stated, and it holds given the dependencies. Every work item's
+   phase and landing shape are stated and agree with the rollout table: an item whose phase cell
+   names a phase the table does not place it in, or that the table places in two phases while the
+   cell says one, is the finding. Whether a stated landing shape is *achievable* in that repository
+   belongs to check 9, not here.
+9. The spec is achievable in this project. For each repository the spec plans work in, read how a
+   change of that shape actually lands there — the module or chart pinning mechanism, what a stack
+   consumes and from where, what a pipeline requires of a pull request, who runs the apply — and
+   check the ownership section's stated apply mechanism against it. A landing claim ("one pull
+   request", "three applies of one commit", "merge then deploy") is a claim like any other: it gets
+   an evidence row naming what you read, or it is a finding. This is the only check whose evidence
+   lives outside the document, so its pass reads `pass (verified — <what you read>)`; a
+   `pass (unchanged)` here means you did not run it.
+10. The spec is splittable into tasks: no gap or unstated assumption visible at spec level.
+11. Every element has a stated way to check the delivered result.
+12. No claim rests on a vague verb or an undecided either/or, as `spec-rules.md` defines them.
+
+### 3. Evidence
+
+The spec's own verification table — a `Claim | How it was verified` table, whatever its heading — is the
+record. Spot-check its rows and append to it under a dated sub-heading, so the spec's original evidence
+stays distinguishable from this run's. When the spec has none, add one at the end. Once the verdict
+is known, open the dated block with one line — `Verdict: <the report's verdict> — claims: N verified /
+N deferred / N blocked — spec N lines at this verdict` — so a later reader can tell a clean pass from
+a qualified one without hunting for the session that produced it. Fill the line count in last: write
+the dated block through to its final line, then `wc -l`, then put that number in the verdict line —
+replacing it changes no line count, so the number counts itself. A file at
+`<spec-dir>/evidence/<section>.md` is for overflow only: a probe transcript or a command output too long to
+sit in a table row.
+
+Spot-check every row whose claim gates a phase or is the sole justification for removing or narrowing
+something, plus a sample of the rest, and say in the report which rows you checked. "17 rows checked" with
+no rule behind the 17 tells the reader nothing.
+
+Split the cost of verification:
+
+- **Every reference the spec cites must resolve.** A `path:line` that no longer points at what the spec
+  says it does is a finding — stale citations are the most common rot in a spec of any age. This is
+  mechanical: batch it per repository. A citation that resolves to the wrong line is an unambiguous fact,
+  not a question: correct the citation in the spec. Reporting it and leaving it is the one outcome that
+  helps nobody.
+- **Re-derive in full** the claims that gate a phase, the claims that are the sole justification for
+  removing or narrowing something, and the document's own internal dependencies — which element each
+  work item builds on, which work item introduces the field, type, table or script another one reads,
+  and which phase each of them lands in. That join is nobody's citation and no sub-agent will return
+  it: a citation check confirms a line says what the spec claims, never that the thing it names
+  exists yet at the point the spec uses it. Walk it yourself across the target-architecture,
+  per-repository and rollout sections, and walk it again after any edit that moves a work item
+  between phases. Its result is check 8's row; an evidence row records what you read to derive it.
+  Take the rest at the spec's word once its citation resolves.
+
+A change has two directions and a probe measures one. Where you probe what removing something
+costs, ask what adding it costs — the element that introduces rules is checked against every
+existing assertion those rules now touch, not only against the assertions the removal deletes.
+
+For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
+Route every lookup by where the fact lives — the routes and dispatch rules are in
+`${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
+
+Tell each agent what it needs to work in the tree you are sending it to: the repository root, whether the
+working tree is dirty, and which search tools function there. An agent that has to discover its own
+constraints spends its budget on that instead of on your question.
+
+Dispatch at most one agent per section, or one per repository when the claims are all reference checks in
+the same tree — never one per claim. Within that ceiling, split any dispatch that has grown past
+roughly five sub-questions, as `fact-routes.md` directs: several agents over exclusive territories
+beat one agent carrying thirty claims. A repository here means one tree with one root, so two disjoint
+subtrees of a monorepo that the spec treats as separate components may take one agent each — and
+any partition into disjoint code territories works on the same terms, provided the territories
+are exclusive and every prompt names the ones that belong to the other agents. An agent may
+fan its own workload out further — that is its call, not a violation. Two constraints travel down with
+it: every sub-agent gets the same tree context you gave its parent, and `fact-routes.md`'s dispatch
+rules bind at every level.
+
+A dispatch returns material: which line a file holds, what a document says, what a published package
+exports. The join across that material is yours, and so is every check in step 2. The mechanical
+half is scriptable — extract every `path:line` and print the line it names — and scripting it rather
+than dispatching it is what leaves you the context for the join.
+
+Two families a citation list will never surface. Name them in whichever dispatch owns the territory:
+
+- Every symbol an element's pseudocode names — a type, an export, a function — resolves in the
+  package or module it is taken from, at the version the lockfile resolves.
+- Every "nothing reaches X yet" or "this is inert until Y" rationale names the wiring that would
+  make it false, and the dispatch is asked whether that wiring exists.
+
+**A sub-agent returns observations, not findings.** Resolve every identifier it reasoned about — a team
+alias, an account, a role, a project, a version — before you record its conclusion. A report that a
+claim is "inverted" because an unfamiliar name appeared instead of the expected one is an unresolved
+identifier, not a finding, and recording it as one puts a false finding in front of the user.
+
+The rest of a sub-agent's substantive observations do not die in its transcript either: each one ends
+as a finding in the report, as a spec edit the report's edits list names, or as an explicitly dropped
+item with its reason.
+
+A discrepancy that arithmetic or one command settles is a fact, not an open item — settle it.
+Recording it as unresolved, or pushing a reconciliation task into the spec's rollout, plants work in
+the document that a subtraction would have closed.
+
+Then, per claim:
+
+- **The fact is unambiguous** — apply to the spec the smallest edit that records it, append the evidence
+  row, set the claim `verified`. Edit only what the fact forces: do not rewrite, reformat or extend the
+  spec, and do not touch a section no finding points at.
+- **The spec declares the gap with an owner and a placement** — record it `deferred` with both, and move
+  on. Do not put it to the user.
+- **A fact only the user holds** — collect a question for step 4 and leave the claim `open`.
+- **Anything else** — it is a finding. Record it with its blocking status and move on. A finding is
+  never a question: the user is asked for facts, not for defects.
+
+One carve-out, and it is narrow. Where the finding blocks, you have already decided that it *is* a
+defect and what the candidate repairs are, and choosing between them would change the spec's scope
+or reverse a ratified decision — then the choice is the user's, and repairing it yourself decides
+scope on their behalf. Collect it for step 4 as a repair choice: the defect, the repairs you would
+pick between, and what each costs. A finding that admits one obvious correction is not a repair
+choice — make the correction. A non-blocking finding never is: it goes in the report.
+
+### 4. Hand up what only the user can settle
+
+`SendMessage` to `main` with everything collected at once — the facts only the user holds and the
+repair choices alike — numbered, each with your recommended answer first, then end your turn. The
+answers arrive as a message and you continue from where you stopped, with everything this pass
+established still in front of you.
+
+One batch per pass. Nothing may still be outstanding when you send it: a dispatch that has not
+returned is a dispatch whose answer changes what you would ask, and a second message sent while the
+first is being answered tells the user the first was incomplete. Steps 3–5 may bring you back here,
+but only because an answer opened a new fact — never because a lookup had not finished.
+
+### 5. Apply
+
+Per answer: when it settles the claim, apply the smallest spec edit that records it, append the evidence
+row, and set the claim `verified`. When it picks a repair, apply that repair — it is now a decision, and
+the finding stays in the report with the repair the user chose named in it. When it opens a new fact to
+look up, re-enter step 3 — for the claims still open only, never for one already settled.
+
+Repeat 3–5 until every claim is `verified`, `deferred`, or `blocked` because nothing settles it and the spec
+names no owner. A `blocked` claim goes into the report; do not put it to the user again. The run never
+ends with a claim `open`: a claim you cannot settle before reporting becomes `blocked`, with the reason
+it could not be settled stated in the report.
+
+### 6. Report
+
+End the pass by returning the verdict and this pass's status — nothing is written to a file. The
+shape the return takes is in `${CLAUDE_SKILL_DIR}/../../references/validation-report.md`; read that
+file before composing anything. A section is dropped only when it is genuinely empty, on that file's
+terms — a pass that edited the spec returns a non-empty **Spec edits applied** section, and it
+enumerates every edit the pass made.
+
+The verdict covers the file as it stands when you write it. A spec edit made after the verdict line
+re-opens the pass: append the edit to the dated block, restate the verdict line beneath it with a
+fresh count, and say in the return what changed since.
