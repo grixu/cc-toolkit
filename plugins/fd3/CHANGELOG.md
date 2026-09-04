@@ -64,6 +64,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ratified decision is handed up as a repair choice — the defect, the repairs to pick between, and
   what each costs — instead of being recorded as a defect nobody may touch; one obvious correction
   is not a choice, and a non-blocking finding never is
+- `CONTEXT.md` records the `merged` status alongside the other five
+
+### Fixed
+
+- `implement-run`/`repair-run`: the baseline pass is created in Recon and awaited in Validate, so a
+  rejection in between had no handler and would take a multi-hour run down on Node's
+  unhandled-rejection default; it now degrades into the same `no-verdict` item a missing baseline
+  produces
+- `implement-run`/`repair-run`: `maxFixRounds` defaults to 3 — arriving `undefined` made every
+  `fixRounds < maxFixRounds` false, silently skipping the CI fix rounds the run exists to perform
+- `implement-run`: a `branch-base` naming a branch no task builds is reported instead of silently
+  demoting the task to a stack root — `.every()` over no producers is vacuously true, so a typo was
+  indistinguishable from a genuine root and lost the stacking order
+- `validate-spec`: check 1 is a `spec-template.md` question, not a `spec-rules.md` rule — the
+  sentence that routes each check to its file sent it to the wrong one
+- fd3 evals: the firecrawl MCP key travels in an `Authorization` header rather than in the URL
+  path, where it would reach connection errors, proxy logs and the exported run JSON
+- fd3 evals: the split assertions require `branch-base` and `decisions`, the two task frontmatter
+  fields they did not cover; a skipped check 9 (`pass (unchanged)`) no longer counts as a pass in
+  the clean-spec assertion; the defective fixture carries the template's fifth rollout column and a
+  risks-accepted table, so neither produces a sixth finding against its own contract
+- `fd3-evals` CI: the path filter covers `scripts/run-evals.sh` and the root `package.json`, and the
+  job no longer asks `setup-node` to cache a pnpm store keyed on a lockfile this repo does not commit
+- fd3 `description` and README: the published marketplace description was literally `TBD`, and the
+  README documented one of two commands, one of five skills, one of two agents and no workflows
 
 ### Changed
 
