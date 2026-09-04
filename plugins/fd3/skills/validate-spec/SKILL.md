@@ -43,8 +43,8 @@ evidence block after you close it.
 
 The shape a spec is measured against is `${CLAUDE_SKILL_DIR}/../../references/spec-template.md`, and
 the invariants it is measured against are in `${CLAUDE_SKILL_DIR}/../../references/spec-rules.md`.
-Read both before step 2 — checks 3, 7, 10 and 11 are section-level questions the template answers, and
-checks 1, 6 and 12 are rules the other file states.
+Read both before step 2 — checks 1, 3, 7, 10 and 11 are section-level questions the template answers,
+and checks 6 and 12 are rules the other file states.
 
 ## Workflow
 
