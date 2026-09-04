@@ -403,6 +403,15 @@ const recordUnit = (repo, b, slugs) => {
   for (const slug of slugs) if (!unit.tasks.includes(slug)) unit.tasks.push(slug)
 }
 
+// A base no task builds leaves nothing to wait for, so the task above starts immediately — right
+// for a genuine root, and indistinguishable from a mistyped branch-base, which would quietly lose
+// the stacking order the landing units rest on. Say so once, before any work starts.
+for (const t of tasks) {
+  if (!t.baseBranch || t.repository === 'none') continue
+  if (tasks.some((x) => x.repository === t.repository && x.branch === t.baseBranch)) continue
+  hil.push({ slug: t.slug, kind: 'graph', reason: `branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds; this task will start as if it were a root. Confirm the base exists, or fix the branch-base.` })
+}
+
 let wave = 0
 while (true) {
   humanOwned = humanOwnedList()
@@ -412,10 +421,12 @@ while (true) {
 
   // A stacked branch's tasks start from its base, so the base must already carry its work — a task
   // that starts from a base that is not there yet writes against files it cannot see.
-  const baseReady = (t) =>
-    tasks
-      .filter((x) => x.repository === t.repository && x.branch === t.baseBranch)
-      .every((x) => status.get(x.slug) === 'done' || merged.has(x.slug))
+  const baseReady = (t) => {
+    if (!t.baseBranch) return true
+    const producers = tasks.filter((x) => x.repository === t.repository && x.branch === t.baseBranch)
+    if (producers.length === 0) return true
+    return producers.every((x) => status.get(x.slug) === 'done' || merged.has(x.slug))
+  }
 
   const ready = tasks.filter(
     (t) =>
