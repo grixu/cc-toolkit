@@ -2,10 +2,13 @@
   "name": "cc-toolkit",
   "version": "0.0.0",
   "private": true,
-  "description": "Claude Code plugin marketplace — root dev tooling (promptfoo eval suites live in plugins/<name>/evals/)",
+  "description": "Claude Code plugin marketplace \u2014 root dev tooling (promptfoo eval suites live in plugins/<name>/evals/)",
   "scripts": {
     "eval": "bash scripts/run-evals.sh",
-    "eval:code-review": "promptfoo eval -c plugins/code-review/evals/promptfooconfig.yaml --no-cache --no-share -o /tmp/eval-code-review.json"
+    "eval:code-review": "promptfoo eval -c plugins/code-review/evals/promptfooconfig.yaml --no-cache --no-share -o /tmp/eval-code-review.json",
+    "eval:tester": "bash plugins/tester/evals/reset-sandbox.sh && promptfoo eval -c plugins/tester/evals/promptfooconfig.yaml --no-cache --no-share -o /tmp/eval-tester.json",
+    "eval:tester:fixture": "bash plugins/tester/evals/reset-sandbox.sh",
+    "eval:tester:replay": "node plugins/tester/evals/replay.js"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "latest",

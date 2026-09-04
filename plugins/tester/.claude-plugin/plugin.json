@@ -1,0 +1,20 @@
+{
+  "name": "tester",
+  "version": "0.1.0",
+  "description": "On-demand manual verification of a running app by an agent. One command discovers the live stack, builds an ephemeral environment brief, derives test suites from a spec's acceptance criteria (or from the git diff when no spec is given), and fans out one subagent per suite across three surfaces — curl for API, agent-browser for UI, and fault-injection (dependency pause/stop or a WireMock proxy) for error handling. Every suite returns only an evidence-backed PASS/FAIL table under a hard assertion contract; the main thread triages genuine failures into impl/test/spec defects. No config, no persisted plan, no staleness tracking — the light counterpart to the mt plugin. User-run only.",
+  "author": {
+    "name": "grixu",
+    "email": "mateusz.gostanski@gmail.com"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "manual-testing",
+    "qa",
+    "verification",
+    "acceptance-criteria",
+    "fault-injection",
+    "browser-testing",
+    "curl",
+    "on-demand"
+  ]
+}

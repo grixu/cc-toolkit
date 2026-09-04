@@ -9,6 +9,19 @@ prompts:
     label: comment-track
   - id: file://prompts/quality.txt
     label: quality-track
+  # Scanner track: the security / performance / spec lenses have no standalone skill (they
+  # exist only inside /start-cr), so these prompts emulate the orchestrator's Scanner
+  # brief — read the rules file, review the file, return findings only.
+  - id: file://prompts/security.txt
+    label: security-track
+  - id: file://prompts/performance.txt
+    label: performance-track
+  - id: file://prompts/spec.txt
+    label: spec-track
+  # Standards track: quality-review with the fixture dir declared as the repository root
+  # for the CODING_STANDARDS pair.
+  - id: file://prompts/standards.txt
+    label: standards-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -25,7 +38,9 @@ providers:
       max_budget_usd: 3
       plugins:
         - type: local
-          path: plugins/code-review # loads the skill under test
+          # Resolved relative to THIS config file, not to working_dir: `plugins/code-review`
+          # silently loads nothing (no skills, no findings vocabulary) under SDK 0.3.252.
+          path: ..
       skills: all
       setting_sources: [] # keep this repo's CLAUDE.md / hooks OUT of the eval
       ask_user_question:
@@ -253,7 +268,7 @@ tests:
     assert:
       # "skill actually ran" proxy: the report uses the skill's own family vocabulary.
       - type: regex
-        value: '`(readability|tests|naming|module|objects|patterns|simplicity)\b'
+        value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
       - type: llm-rubric
         value: >-
           Flags the local `placedIso` in `buildReceipt` — computed from `order.placedAt`
@@ -300,7 +315,7 @@ tests:
       file: plugins/code-review/evals/fixtures/quality-recall.ts
     assert:
       - type: regex
-        value: '`(readability|tests|naming|module|objects|patterns|simplicity)\b'
+        value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
       - type: llm-rubric
         value: >-
           Flags the duplication between `renderInvoiceLine` and `renderCreditNoteLine`
@@ -359,3 +374,316 @@ tests:
           The overall verdict is clean: the report has no high or medium findings. Any
           look-alike the review considered and passed on is named on the "Not flagged"
           line rather than raised as a finding.
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-8 folded-rules-recall (quality-recall-2.ts + quality-recall-2.model.ts)'
+    prompts: [quality-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/quality-recall-2.ts plugins/code-review/evals/fixtures/quality-recall-2.model.ts
+    assert:
+      - type: regex
+        value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
+      - type: llm-rubric
+        value: >-
+          Flags the module-local `fetchInvoice` in `quality-recall-2.ts` — it forwards
+          `(repo, id)` unchanged to `repo.findById(id)` and has one caller (`collect`) —
+          as `module` · `pass-through`, severity **medium**, with a fix that inlines the
+          call at the caller and deletes the wrapper.
+      - type: llm-rubric
+        value: >-
+          Flags the file-local `renderAmount` in `quality-recall-2.ts` as `module` ·
+          `canonical-helper`, severity **high** — it duplicates the exported `formatMoney`
+          in `quality-recall-2.model.ts` (same `(amountMinor / 100).toFixed(2)` + currency
+          expression) — and the fix imports `formatMoney` instead. It is NOT filed as
+          `simplicity` · `over-complex` (that rule is for same-file duplication).
+      - type: llm-rubric
+        value: >-
+          Raises an `objects` · `feature-envy` finding, severity **medium**, on
+          `CollectionsQueue` — on ANY of `totalOf`, `priorityOf`, or `labelFor` (naming
+          one of them is enough): they compute the invoice total / days overdue from
+          `Invoice`'s own fields (`lines`, `dueAt`, `isSettled`) while `Invoice` has
+          behaviour of its own — and the fix moves that computation onto `Invoice`
+          (e.g. `total()`, `daysOverdue(now)`). A report that clears it as a
+          mapper/serializer exception fails this assertion.
+      - type: llm-rubric
+        value: >-
+          Flags `invoice.customer().account().primaryContact().email` in
+          `CollectionsQueue.recipientFor` as `objects` · `message-chain`, severity
+          **medium**, with a fix that asks `Invoice` (or `Customer`) for the answer
+          directly instead of navigating three foreign objects.
+      - type: llm-rubric
+        value: >-
+          All four problems above (`pass-through`, `canonical-helper`, `feature-envy`,
+          `message-chain`) are present in the report. Missing any one of them fails this
+          assertion, regardless of how well the others are described.
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-9 folded-rules-calibration (quality-calibration-2.ts + quality-calibration-2.types.ts)'
+    prompts: [quality-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/quality-calibration-2.ts plugins/code-review/evals/fixtures/quality-calibration-2.types.ts
+    assert:
+      # Deliberately clean fixture — proxy on the skeleton's tally line, as in eval-7.
+      - type: regex
+        value: '[Tt]ally'
+      - type: llm-rubric
+        value: >-
+          Does NOT flag `OrderDtoMapper.toDto` as `feature-envy` — a DTO mapper reads
+          another object's fields because that is its job (the rule's documented
+          exception).
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `new OrderQuery().where(...).where(...).limit(...).build()`
+          chains in `OrdersController.list` / `find` as `message-chain` — a fluent builder
+          / `this`-returning chain is the rule's documented exception.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag `PaymentGateway.chargeOrder` as `pass-through` — it adapts the
+          call (translates `Order` into Stripe's `{ amount, currency }` shape and lowers the
+          currency) at a real boundary, which the rule documents as a facade, not a
+          forwarder.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `import type` pair between `quality-calibration-2.ts` and
+          `quality-calibration-2.types.ts` as `dependency-direction` — erased, type-only
+          imports are the rule's documented exception, even though they form a cycle.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the repeated `(req: Request, res: Response)` signatures of
+          `OrdersController.get`, `list`, `charge` as `data-clump` — a framework-fixed
+          signature is the rule's documented exception.
+      - type: llm-rubric
+        value: >-
+          The overall verdict is clean: the report has no high or medium findings. Any
+          look-alike the review considered and passed on is named on the "Not flagged"
+          line rather than raised as a finding.
+
+  # ============================================================================
+  # Scanner track — security / performance / spec, prompts that emulate the
+  # /start-cr Scanner brief (these lenses have no standalone skill)
+  # ============================================================================
+
+  - description: 'eval-10 security-recall (security-recall.ts)'
+    prompts: [security-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/security-recall.ts
+    assert:
+      # "scanner actually ran" proxy: findings carry the lens's own family tag.
+      - type: regex
+        value: '`security`'
+      - type: llm-rubric
+        value: >-
+          Flags the `sk_live_…` literal used as the `process.env.STRIPE_SECRET` fallback
+          (L7) as `security` · `secret-in-source`, severity **high**. The fix reads the
+          value from the environment or a secret module, and the finding says rotation of
+          the committed value is the user's step — it never claims rotation is done.
+      - type: llm-rubric
+        value: >-
+          Flags the `listOrders` handler as `security` · `injection-sink`, severity
+          **high**, naming BOTH ends by line: where `req.query.status` enters (L12) and
+          the sink where it is interpolated into the `pool.query(...)` SQL string (L13).
+          The fix binds the value through a `$1`/placeholder parameter.
+      - type: llm-rubric
+        value: >-
+          Flags `rejectUnauthorized: false` on the `https.Agent` (L9) as `security` ·
+          `insecure-setting`, severity **high**, naming both the setting line and the
+          request it weakens (the `https.request` to `api.stripe.com` that passes
+          `agent: gatewayAgent`). The fix restores certificate verification.
+      - type: llm-rubric
+        value: >-
+          All three problems above (`secret-in-source`, `injection-sink`,
+          `insecure-setting`) are present. Missing any one of them fails this assertion.
+      - type: llm-rubric
+        value: >-
+          Every severity in the output is exactly `high` or `medium` — never `nit`, never
+          `low`, never `critical`, never a number — and each finding is a single bullet in
+          the `` `security` · rule · severity · L<lines> — … → … `` shape with no fenced
+          code block and no rewritten function body.
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-11 security-calibration (security-calibration.ts)'
+    prompts: [security-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/security-calibration.ts
+    assert:
+      # Clean fixture — the prompt asks for a `Not flagged:` line, so proxy on it.
+      - type: regex
+        value: '[Nn]ot flagged'
+      - type: llm-rubric
+        value: >-
+          Does NOT flag `db.raw('SELECT … WHERE email = ?', [email])` in `findUserByEmail`
+          as `injection-sink` — a parameterized builder with a bound `?` placeholder is the
+          rule's documented exception.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag `spawn('convert', [uploadPath, …])` in `resizeUpload` as
+          `injection-sink` — `spawn` with an argv array and no shell is the rule's
+          documented exception.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `sk_test_…` literal assigned to `stripeTestKey` as
+          `secret-in-source` — an obviously fake `sk_test_` value in a fixture file is
+          the rule's documented exception.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `SENDGRID_API_KEY` environment read (into `sendgridKey`, sent
+          as a bearer header) as `secret-in-source` — an environment read is the rule's
+          documented exception.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `health` handler as `missing-access-check` — a deliberately
+          public health endpoint is the rule's documented exception.
+      - type: llm-rubric
+        value: >-
+          The output raises NO finding in the `` `security` · rule · severity `` shape at
+          all; every look-alike it considered is named on the `Not flagged` line (a
+          `CANDIDATES` entry for the `sk_test_` literal is tolerated, a finding is not).
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-12 performance-recall (performance-recall.ts)'
+    prompts: [performance-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/performance-recall.ts
+    assert:
+      - type: regex
+        value: '`performance`'
+      - type: llm-rubric
+        value: >-
+          Flags the per-order `prisma.customer.findUnique` inside the `for` loop of
+          `pendingOrdersWithCustomers` as `performance` · `n-plus-one`, severity **high**.
+      - type: llm-rubric
+        value: >-
+          That `n-plus-one` finding names all four evidence items: (1) the multiplier —
+          the `orders` list returned by `prisma.order.findMany` (sized by data); (2) the
+          call inside it — `findUnique` per order; (3) the missing bound — one batched
+          read before the loop; (4) the batch API that already exists in the file —
+          `findMany({ where: { id: { in } } })` as used by `customersByIds` (or an
+          `include` on the outer query).
+      - type: llm-rubric
+        value: >-
+          Flags the `prisma.event.findMany` in the `listEvents` route handler as
+          `performance` · `unbounded-fetch`, severity **medium** — no `take`/cursor on a
+          growing table, returned whole from a list endpoint that accepts no page
+          parameter — with a fix that adds `take` plus a cursor/page parameter.
+      - type: llm-rubric
+        value: >-
+          Both problems above (`n-plus-one` and `unbounded-fetch`) are present. Missing
+          either fails this assertion.
+      - type: javascript
+        value: "!/could be slow|may impact performance|might not scale|performance impact/i.test(output)"
+      - type: llm-rubric
+        value: >-
+          No finding carries a latency, a row count, a complexity class, or any other
+          estimate not derived from a line in the file, and the scanner never claims to
+          have run, benchmarked, or profiled the code.
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-13 performance-calibration (performance-calibration.ts)'
+    prompts: [performance-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/performance-calibration.ts
+    assert:
+      - type: regex
+        value: '[Nn]ot flagged'
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `await deliver(...)` loop over `Object.values(Channel)` in
+          `broadcast` as `n-plus-one` — a loop over an enum is bounded by the source, not
+          by data (the rule's documented exception).
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the `prisma.order.findMany({ take, skip, … })` in `listOrders` as
+          `unbounded-fetch` — the read is paginated with `take`/`skip`.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the module-level `readFileSync` of the settings file as
+          `blocking-in-async` — a startup/config load at module top level is the rule's
+          documented exception.
+      - type: llm-rubric
+        value: >-
+          The output raises NO finding in the `` `performance` · rule · severity `` shape;
+          every look-alike it considered is named on the `Not flagged` line.
+      - type: javascript
+        value: "!/could be slow|may impact performance|might not scale|performance impact/i.test(output)"
+
+  # ----------------------------------------------------------------------------
+  - description: 'eval-14 spec-conformance (feature-spec.md vs feature-impl.ts)'
+    prompts: [spec-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/spec/feature-impl.ts
+      spec: plugins/code-review/evals/fixtures/spec/feature-spec.md
+    assert:
+      - type: regex
+        value: '`spec`'
+      - type: llm-rubric
+        value: >-
+          Flags spec requirement 3 — "Orders whose status is `cancelled` are excluded
+          from the export." — as `spec` · `missing-requirement`, severity **high**: nothing
+          in `feature-impl.ts` filters on `status`. The bullet quotes that spec line and
+          sits under a `### plugins/code-review/evals/fixtures/spec/feature-spec.md`
+          header with the spec's own line number (L7), not under the code file.
+      - type: llm-rubric
+        value: >-
+          Flags the sort comparator in `exportOrders` (`b.createdAt - a.createdAt`, newest
+          first) as `spec` · `wrong-implementation`, severity **high**, quoting spec line
+          4 — "Rows are sorted by `created_at`, oldest first." — under the code file's
+          header with the code's line number, and the fix reverses the comparator.
+      - type: llm-rubric
+        value: >-
+          Flags `exportOrdersGzip` as `spec` · `scope-creep`, severity **medium** — no
+          spec line asks for compression — quoting the requirement the extra behaviour
+          attaches to, with a fix that drops it or splits it into its own change.
+      - type: llm-rubric
+        value: >-
+          All three problems above (`missing-requirement`, `wrong-implementation`,
+          `scope-creep`) are present. Missing any one of them fails this assertion.
+      - type: regex
+        value: '\b3 of 5 requirements met\b'
+      - type: llm-rubric
+        value: >-
+          The met requirements (the column set + header row, the ISO-8601 `created_at`,
+          and the empty-input empty-string case) never appear as bullets in the
+          `` `spec` · rule · severity `` finding shape — an enumeration or mapping list
+          that marks them "met" is fine, a finding-shaped bullet is not — and the
+          motivation sentence ("Finance wants a plain CSV…") generates no finding.
+
+  # ============================================================================
+  # Standards track — CODING_STANDARDS.md + .local.md generate `standards` findings
+  # ============================================================================
+
+  - description: 'eval-15 standards-pair (standards/service.ts)'
+    prompts: [standards-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/standards/service.ts
+    assert:
+      - type: regex
+        value: '`standards`'
+      - type: llm-rubric
+        value: >-
+          Flags `activeAccount` (a boolean-returning function without an `is`/`has`/`can`
+          prefix) as `standards`, severity **high**, quoting the MUST rule
+          ("Boolean-returning functions MUST be named with an `is`, `has`, or `can`
+          prefix.") and citing `CODING_STANDARDS.md › Naming`; the fix renames it (e.g.
+          `isActiveAccount`).
+      - type: llm-rubric
+        value: >-
+          Does NOT raise a `standards` finding for the missing explicit return types on
+          the exported functions — `CODING_STANDARDS.local.md` relaxes the SHOULD rule
+          ("Exported functions need not declare an explicit return type"), and `.local`
+          wins per statement.
+      - type: llm-rubric
+        value: >-
+          Flags the `||` default in `creditLimitMinor` (`account.creditLimitMinor ||
+          DEFAULT_CREDIT_LIMIT_MINOR`, which turns a legitimate `0` into the default) as
+          `standards`, severity **nit**, quoting the MAY rule from
+          `CODING_STANDARDS.local.md › Defaults` and proposing `??`.
+      - type: llm-rubric
+        value: >-
+          The vague line "Write clean code." under `CODING_STANDARDS.md › General`
+          generates NO finding of any kind.
+      - type: llm-rubric
+        value: >-
+          Every `standards` bullet in the report has the shape
+          `` `standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (<file> › <section>) → <fix> ``:
+          a kebab-case slug, a verbatim quoted rule, and a file › section citation. No
+          `standards` bullet lacks the quoted rule.

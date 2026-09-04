@@ -46,6 +46,34 @@ pinned to a declaration (an enum member, a constant, a type field) when it
 actually explains the behavior of a method elsewhere. That is not a deletion
 case; it is a relocation case. R12 covers it.
 
+The `security`, `performance`, and `spec` lenses exist only in `/start-cr`; this
+skill reviews comments and nothing else.
+
+## Step 0 — Read the project's own conventions first
+
+Before judging a single comment, run the **mechanical convention read** in
+`${CLAUDE_PLUGIN_ROOT}/references/scope.md`: exact paths, repository root first. Its
+step 0 is the standards pair — `CODING_STANDARDS.md`, then `CODING_STANDARDS.local.md`,
+root only. They LAYER: both apply, and where they disagree `.local` wins per statement.
+A tracked `.local` (`git check-ignore` fails) gets one note in the report's
+skipped-files line. Then the rest of the list: `CLAUDE.md`, `AGENTS.md`,
+`CONTRIBUTING.md`, `.cursor/rules`, the directory chain, `.claude/rules/*.md`.
+
+Those convention files **suppress**: a sanctioned anchor-comment prefix
+(`AGENTS-NOTE:`), a documented docblock style, or a banner convention the project
+chose deliberately is not a finding. The standards pair may also **generate** one
+`standards` finding per broken rule — only when it states an explicit, quotable comment
+rule the file breaks (e.g. "every exported function has a docblock"), never from vague
+prose, and never for a rule the `.local` file relaxes. It renders in this shape:
+
+`` `standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <fix as a clause> ``
+
+Slug: short kebab-case from the rule's wording. Severity from the rule's keyword:
+MUST / MUST NOT / NEVER / ALWAYS → `high`; SHOULD → `medium`; MAY / prefer / consider →
+`nit`; no keyword → `medium`. A `standards` finding sits **beside** the verdicts — it
+is not a KEEP / REMOVE / REWRITE / MOVE / ADD and is not mapped onto one; an unsettled
+fit is a one-line note, not a finding.
+
 ## Step 1 — Resolve scope
 
 Parse the invocation arguments:
@@ -133,7 +161,7 @@ from being noisy. The index here is only a map; the verdicts live in that file.
 - **R8** — No commented-out code (a framed usage example stays).
 - **R9** — No comment that **contradicts** the code — surface these **first**.
 - **R10** — Consistent with the file's own commenting style.
-- **R11** — In **test files** the bar is higher: the default reverses to **REMOVE** when unsure.
+- **R11** — In **test files** the bar is higher: the default reverses to **REMOVE** when unsure. A test file is one matched by the `## File kinds` test globs in `${CLAUDE_PLUGIN_ROOT}/references/scope.md` (directory and filename patterns) — a mechanical match, not a judgment from the file's contents or its name's flavour.
 - **R12** — Rationale belongs where the behavior lives: **MOVE**/**REMOVE** a *why* orphaned on a declaration.
 
 When two rules collide, the most specific finding wins; when genuinely unsure,
@@ -164,9 +192,11 @@ Group findings by file. For each finding give:
 
 List any **R9 (contradicts-the-code)** findings first — they mislead readers and
 are the most urgent to fix. Otherwise order findings within a file by line
-number. End with a short tally
-(`N comments reviewed · X remove · Y rewrite · W move · V add · Z keep-as-is`) and the
-list of skipped files with reasons. If you found nothing, say so plainly.
+number. A `standards` finding (Step 0) is its own bullet under the file, in the
+Step 0 shape, after the verdict bullets; it carries no verdict. End with a short tally
+(`N comments reviewed · X remove · Y rewrite · W move · V add · Z keep-as-is`, plus
+`· S standards` when there are any) and the list of skipped files with reasons. If you
+found nothing, say so plainly.
 
 A filled-in report reads like this:
 
@@ -185,8 +215,10 @@ A filled-in report reads like this:
 
 ## Step 5 — Offer to apply (only on confirmation)
 
-Never edit during the review. After presenting the report, ask whether to apply
-the REMOVE, REWRITE, and MOVE fixes. Apply with `Edit` only the ones the user
+Never edit during the review. Immediately after presenting the report, in the **same
+turn**, ask whether to apply the REMOVE, REWRITE, and MOVE fixes — the tally ends the
+report, not the turn, and a turn that ends on the report leaves the verdicts
+unactionable until the user prods it. Apply with `Edit` only the ones the user
 confirms; leave **ADD** (missing-WHY) suggestions for the author to write, since
 only they know the real reason. Locate each site by its **content** rather than the
 line number you recorded, and apply the already-scrubbed replacement text from the

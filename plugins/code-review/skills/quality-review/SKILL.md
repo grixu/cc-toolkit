@@ -9,9 +9,11 @@ description: >-
   structured. Especially apt for model-generated code that is correct but glued
   together: deep nesting instead of guard clauses, magic literals,
   names after mechanism not intent, queries that mutate, leaked mutable collections,
-  and near-identical functions that should be one. Findings are tagged by family
-  (readability, tests, naming, module, objects, patterns, simplicity) and a specific
-  rule. Reviews the current branch diff by default (auto-detects the base branch, or
+  near-identical functions that should be one, cross-module dependency direction,
+  misplaced feature logic, pass-through wrappers, feature envy, data clumps, message
+  chains, and the repo's own documented coding standards. Findings are tagged by
+  family (readability, tests, naming, module, objects, patterns, simplicity,
+  standards) and a specific rule. Reviews the current branch diff by default (auto-detects the base branch, or
   pass --base), or explicit file/dir paths. Returns per-finding severity and a
   concrete suggested fix, then offers to apply the safe ones.
 allowed-tools: Read, Bash, Grep, Glob, Edit, AskUserQuestion
@@ -22,8 +24,11 @@ allowed-tools: Read, Bash, Grep, Glob, Edit, AskUserQuestion
 You review **code quality and craft**: readability, vertical structure, the
 ordering of functions, naming, object and state design, and needless complexity.
 You do **not** review correctness, security, performance, or test coverage — other
-tools own those. **Naming *is* in scope** here (intent- and role-revealing names,
-command/query separation).
+tools own those. The `security`, `performance`, and `spec` lenses exist only in
+`/start-cr`; this skill does not carry them. **Naming *is* in scope** here (intent-
+and role-revealing names, command/query separation), and so is the module
+boundary: which way an import points, where a feature's logic lands, and whether a
+new helper already exists elsewhere.
 
 The motivating case: code written by a strong model is usually *correct* but
 *glued together*. Six small functions stacked with no blank line between them, an
@@ -34,20 +39,46 @@ who has to read it. Your job is to find that friction and propose the smaller,
 calmer version.
 
 Every finding carries a **family** (the stable top-level label) and a specific
-**rule** under it. The seven families are `readability`, `tests`, `naming`,
-`module`, `objects`, `patterns`, and `simplicity`.
+**rule** under it. The seven craft families are `readability`, `tests`, `naming`,
+`module`, `objects`, `patterns`, and `simplicity`; the eighth, `standards`, carries
+the rules the repository documents for itself (Step 0).
 
 ## Step 0 — Read the project's own conventions first
 
 `${CLAUDE_PLUGIN_ROOT}/references/scope.md` carries the **mechanical convention read**
 (the exact paths to Read, repository root first) and the **language-applicability**
-rules for families with no counterpart in the language under review. Work it before
-judging structure, and note which conventions you picked up.
+rules for families and rules with no counterpart in the language under review. Work it
+before judging structure, and note which conventions you picked up.
 
-What the project documents overrides the structural rules below: if it documents
-barrel exports as its public-API style, or a layered file ordering, or a naming
-convention, that *is* the standard here. A rule you would otherwise raise becomes a
-non-finding when the project has deliberately chosen it.
+**Step 0 of that read is the standards pair:** `CODING_STANDARDS.md`, then
+`CODING_STANDARDS.local.md`, both at the repository root only. They LAYER — both apply,
+and where they disagree `.local` wins per statement (a rule the `.local` file relaxes
+is gone; one it adds is live). A `.local` file that is tracked (`git check-ignore`
+fails) gets one note on the `Conventions` line, since it is meant to stay personal.
+
+These two files do more than suppress: they **generate** `standards` findings. Raise
+one only for an explicit, quotable rule inside this skill's subject (readability,
+structure, naming, object design, complexity) that the changed code breaks — never
+from vague prose ("write clean code"), never from a rule about correctness, security,
+or performance. Cite the file and section, and quote the rule:
+
+`` `standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <fix as a clause> ``
+
+The slug is short kebab-case derived from the rule's wording. Severity comes from the
+rule's own keyword: MUST / MUST NOT / NEVER / ALWAYS → `high`; SHOULD → `medium`; MAY /
+prefer / consider → `nit`; no keyword → `medium`. A fit you cannot settle goes to `Not
+flagged` with the doubt named, as with any other rule. **Tooling skip:** a
+formatting, whitespace, import-order, or quote-style rule is not raised when a
+formatter or linter config exists at the root — a presence check only, using the list
+in `references/scope.md`; the tool owns that rule.
+
+Every other convention file the read names (`CLAUDE.md`, `AGENTS.md`,
+`CONTRIBUTING.md`, `.cursor/rules`, `.claude/rules/*.md`) **suppresses only**. What the
+project documents overrides the structural rules below: if it documents barrel exports
+as its public-API style, or a layered file ordering, or a naming convention, that *is*
+the standard here. A rule you would otherwise raise becomes a non-finding when the
+project has deliberately chosen it. When two project files disagree, `scope.md` gives
+the precedence order; report the conflict on the `Conventions` line.
 
 ## Step 1 — Resolve scope
 
@@ -94,10 +125,12 @@ a skipped dependency manifest that is the substance of the change — is in
 `${CLAUDE_PLUGIN_ROOT}/references/scope.md`, alongside the conventions read from Step 0.
 
 You review this diff yourself, in one head — that is what keeps the cross-file rules
-(`ordering`, `style-mix`, `over-complex`, `barrel`, the `objects`/`patterns` families)
-coherent. When a diff is genuinely too large to hold at once (roughly more than ~20
-in-scope source files), say so and suggest `/start-cr`, which splits the same rules
-across five parallel scanners and carries the protocol for collecting them reliably.
+(`ordering`, `style-mix`, `over-complex`, `barrel`, `dependency-direction`,
+`canonical-helper`, the `objects`/`patterns` families) coherent. When a diff is
+genuinely too large to hold at once (roughly more than ~20 in-scope source files), say
+so and suggest `/start-cr`, which splits the same rules across parallel scanners,
+carries the protocol for collecting them reliably, and adds the security, performance,
+and spec lenses this skill does not run.
 
 ### Read the whole file for context, but score the changed lines
 
@@ -123,12 +156,24 @@ the change introduced, so every finding in it is primary.
 Don't let a pile of pre-existing issues drown the few the change actually
 introduced — that inversion is exactly what makes a review feel like noise.
 
+### One hop across files, no further
+
+The `module` rules that look outside the changed file — `dependency-direction`,
+`misplaced-logic`, `canonical-helper`, `pass-through` — get exactly **one hop**: `Grep`
+the importers of each changed module (its import path) and the imports of each module
+the change newly imports, then open the matched files **at the matched lines only**.
+No transitive crawl, no repository listing, no `find`. A fact that sits beyond that
+hop — a cycle closing two imports away, a helper that might live in a package you did
+not Grep — is `(verify)`, never an assertion. Still write nothing into the repository
+during the read.
+
 ## Step 2 — Judge against the rules, in two passes
 
 Detection and filtering are separate jobs; run them separately, in this order.
 
 **Pass one — detect.** Go through the in-scope code against every rule in the seven
-families and note each site that matches, without gating on how sure you are. A site
+craft families, plus each quotable rule the standards pair states, and note each site
+that matches, without gating on how sure you are. A site
 you never write down cannot be recovered later, and under-reporting is the failure
 mode that costs the most here.
 
@@ -162,16 +207,18 @@ anything:
 | families | rules file |
 |----------|-----------|
 | `readability`, `tests` | `${CLAUDE_PLUGIN_ROOT}/references/rules/readability-tests.md` |
-| `naming`, `module` | `${CLAUDE_PLUGIN_ROOT}/references/rules/naming-module.md` |
-| `objects`, `patterns` | `${CLAUDE_PLUGIN_ROOT}/references/rules/objects-patterns.md` |
+| `naming`, `module` — incl. `dependency-direction`, `misplaced-logic`, `canonical-helper`, `pass-through` | `${CLAUDE_PLUGIN_ROOT}/references/rules/naming-module.md` |
+| `objects`, `patterns` — incl. `feature-envy`, `data-clump`, `message-chain` | `${CLAUDE_PLUGIN_ROOT}/references/rules/objects-patterns.md` |
 | `simplicity` | `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md` |
 
 **Severity comes from `${CLAUDE_PLUGIN_ROOT}/references/severity.md`** — the master
-table of all 22 rules, what `high` / `medium` / `nit` each mean, and the anti-anchoring
-rule. Read it and grade every finding against its own row there. The family, the rule,
-and the severity are all used **verbatim**, so a reader (and a diff between two
-reviews) sees the same `family` · rule every time, never a code number or a paraphrase
-invented this run.
+table of all 42 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
+mapping for `standards` findings, and the anti-anchoring rule. Read it and grade every
+finding against its own row there (a `standards` finding against its keyword). The
+family, the rule, and the severity are all used **verbatim**, so a reader (and a diff
+between two reviews) sees the same `family` · rule every time, never a code number or a
+paraphrase invented this run. The table's `security`, `performance`, and `spec` rows
+belong to `/start-cr` lenses; do not grade against them here.
 
 ## Step 3 — Report (one fixed skeleton, every time)
 
@@ -186,11 +233,11 @@ kind of noise. So render the report with **exactly this template**, in this orde
 **Headline:** <one line — the single best or worst thing about the change>
 
 ### <path/to/file>
-- `family` · rule severity · L<lines> — <what the reader loses> → <the fix, as a clause>
-- `family` · rule severity · L<lines> — <…>
+- `family` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
+- `family` · rule · severity · L<lines> — <…>
 
 ### <path/to/another/file>
-- `family` · rule severity · L<lines> — <…>
+- `family` · rule · severity · L<lines> — <…>
 
 **Not flagged:** <one compact line of look-alikes you deliberately passed on, or omit the line>
 
@@ -209,11 +256,11 @@ A filled-in report reads like this:
 **Headline:** `checkout/total.ts` carries the tier-discount branch in three places that can drift apart independently.
 
 ### src/checkout/total.ts
-- `simplicity` · over-complex high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
-- `readability` · magic-literal medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
+- `simplicity` · over-complex · high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
+- `readability` · magic-literal · medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
 
 ### src/checkout/receipt.ts
-- `naming` · role-name nit · L9 — `receiptArray` names the type instead of the role → `receipts`
+- `naming` · role-name · nit · L9 — `receiptArray` names the type instead of the role → `receipts`
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
@@ -238,12 +285,14 @@ separator between family, rule, and severity is `·`, not `/`.
 
 Rules for filling it in:
 
-- **`family` is one of the seven fixed family labels** (`readability`, `tests`,
-  `naming`, `module`, `objects`, `patterns`, `simplicity`) — **backticked**, the stable
-  top-level vocabulary. **`rule` is its fixed sub-tag**, and `severity` is `high` /
-  `medium` / `nit`, both verbatim from `references/severity.md`. Findings are markdown
-  bullets under a `###` file header (not inside a ``` fence) so every `path:line` stays
-  clickable.
+- **`family` is one of the eight fixed family labels** (`readability`, `tests`,
+  `naming`, `module`, `objects`, `patterns`, `simplicity`, `standards`) —
+  **backticked**, the stable top-level vocabulary. **`rule` is its fixed sub-tag**, and
+  `severity` is `high` / `medium` / `nit`, both verbatim from `references/severity.md`.
+  A `standards` finding is the one exception: its rule is the slug you derived, and it
+  renders in the Step 0 shape — quoted rule, file › section, then the fix. Findings are
+  markdown bullets under a `###` file header (not inside a ``` fence) so every
+  `path:line` stays clickable.
 - **Order** files by their highest-severity finding; within a file, high → medium →
   nit, then by line. **Collapse repeats**: one `family` · rule breaking in several
   spots is a single bullet with the lines listed together (`L20, L34, L51`).
@@ -277,10 +326,10 @@ collapse one carrying a medium-or-higher finding to look clean.
 
 ## Step 4 — Follow up with the user (AskUserQuestion)
 
-Never edit during the review. After the report, **use the `AskUserQuestion`
-tool** to ask how to proceed — a concrete menu gets a faster, cleaner decision than
-an open-ended "want me to apply these?". Offer the choices that actually apply to
-this review, for example:
+Never edit during the review. Immediately after the report, in the **same turn**,
+**use the `AskUserQuestion` tool** to ask how to proceed — a concrete menu gets a
+faster, cleaner decision than an open-ended "want me to apply these?". Offer the
+choices that actually apply to this review, for example:
 
 - **Apply the safe fixes** — local, mechanical, easy to eyeball: `openness` blank
   lines, `explaining-variable` locals, `magic-literal` constants, `role-name`
@@ -292,10 +341,16 @@ this review, for example:
   `style-mix` extract/move/split, `command-query` splits, `full-construction` /
   `leaky-collection` reshaping, the `patterns` refactors (`composition`,
   `polymorphism`, `execute-around`), large `over-complex` unifications,
-  `test-structure` restructuring, and `dead-code` removal of a branch that looks
-  reachable.
+  `test-structure` restructuring, `dead-code` removal of a branch that looks
+  reachable, and every cross-module move: `dependency-direction` re-pointing,
+  `misplaced-logic` relocation, `canonical-helper` replacement, `pass-through`
+  removal, `feature-envy` method moves, `data-clump` value objects, and
+  `message-chain` unwrapping.
 - **Include the boy-scout extras**, or skip them and touch only the changed code.
 - **Report only** — change nothing.
+
+A `standards` finding sits in neither list by name: route it by the risk of its fix —
+a rename or a constant is safe, a move across a boundary is structural.
 
 Make the options match the findings you actually have (don't offer "walk the
 structural ones" if there are none). Then apply with `Edit` only what the user
@@ -314,7 +369,8 @@ report to the findings; the skeleton is a ceiling, not a quota.
 Your deliverable is the Step 3 skeleton, nothing else: a `**Conventions:**` line and a
 `**Headline:**` line first, `###` headers that are **file paths** (never "Findings" or
 "Finding 1"), one markdown bullet per finding in the
-`` `family` · rule severity · L<lines> — loss → fix `` shape, then `Not flagged`, then
+`` `family` · rule · severity · L<lines> — loss → fix `` shape, then `Not flagged`, then
 `Tally`. No fenced code blocks anywhere in the report: every fix is a clause naming a
-symbol or a move.
+symbol or a move. The tally ends the report, and the Step 4 `AskUserQuestion` follows it
+in the same turn — never end the turn on the report.
 </report_shape_reminder>

@@ -24,7 +24,8 @@ three. The orchestrator re-grades centrally against the master table, so your se
 is a first pass.
 
 ## Contents
-- `objects` — full-construction, lazy-init, leaky-collection
+- `objects` — full-construction, lazy-init, leaky-collection, feature-envy, data-clump,
+  message-chain
 - `patterns` — composition, polymorphism, execute-around
 
 Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
@@ -37,6 +38,9 @@ already exists in the code.
 | `objects`     | full-construction   | a half-initialized object, or leaked representation callers couple to | high |
 | `objects`     | lazy-init           | an expensive-and-maybe-unneeded value computed eagerly | medium |
 | `objects`     | leaky-collection    | a getter returning the raw internal mutable collection | high |
+| `objects`     | feature-envy        | a method reading/computing over another object's fields more than its own | medium |
+| `objects`     | data-clump          | the same ≥3 fields/params travelling together in ≥3 places | medium |
+| `objects`     | message-chain       | a caller navigating `a.b().c().d()` across ≥2 foreign object boundaries | medium |
 | `patterns`    | composition         | inheritance that already causes duplication/coupling delegation would remove | medium |
 | `patterns`    | polymorphism        | the same type-discriminant `if`/`switch` repeated in ≥2 places | medium |
 | `patterns`    | execute-around      | a paired setup/teardown left to callers, already duplicated or forgotten | medium |
@@ -81,7 +85,8 @@ constructor burns it even when the value is never read.
   eager is simpler there; values needed on every path anyway; and cases where lazy
   init would introduce a race in concurrent code. This is a *state-initialization*
   pattern, **not** a performance pass — flag only the clear expensive-and-often-unused
-  case, and never turn the review into perf tuning (performance is out of scope).
+  case; anything beyond the eager-expensive value (a hot loop, a slow query, an
+  unbounded read) is a `HANDOFF` to the `performance` lens, not a finding here.
 
 #### `leaky-collection` — never return a raw mutable collection
 
@@ -100,6 +105,53 @@ use to corrupt you.
   object); a deliberate, documented shared buffer for performance; value-type
   collections in languages that copy on assignment. Flag the *aliased internal
   mutable* collection, not every collection return.
+
+#### `feature-envy` — a method belongs with the data it reads
+
+A method that reads and computes over another object's fields more than its own sits
+next to the wrong data: every change to that data lands in two places, and the
+envied object's invariants are enforced from outside.
+
+- **Flag** a method that reads/computes over another object's fields more than its
+  own, where the envied type has behaviour of its own and the method would read
+  naturally as its member.
+- **Suggested fix**: move the method (or its envious part) onto the envied type and
+  call it from here.
+- **Calibration → not a finding**: a mapper/serializer/adapter (reading another
+  object *is* its job); a strategy or visitor by design; reading a plain data record
+  with no behaviour to receive the method; a library/external type. Flag only when
+  the envied type has behaviour of its own and the method would read naturally as
+  its member.
+
+#### `data-clump` — values that always travel together are one value
+
+The same three-plus fields or parameters passed around together (`street, city,
+zip`; `start, end, tz`) are a missing type: each site re-validates them, and adding
+a fourth means touching every signature.
+
+- **Flag** the same ≥3 fields/params travelling together in ≥3 places (rule of
+  three — signatures, call sites, or field groups).
+- **Suggested fix**: name the value object (`Address`, `DateRange`) and pass it,
+  constructed whole at its source.
+- **Calibration → not a finding**: two values co-occurring twice; framework-fixed
+  signatures (`req, res`); a pair already carried by a tuple/type; a clump the
+  language forces positional. Rule of three, and the bundle must be a
+  whole-constructed value object, never a `setX`/`setY` bag (see
+  `full-construction`).
+
+#### `message-chain` — don't navigate other objects' internals
+
+`a.b().c().d()` couples the caller to the shape of every object on the path; a
+change to any of them breaks a caller that only ever wanted `d`.
+
+- **Flag** a caller navigating `a.b().c().d()` across ≥2 foreign object boundaries,
+  so it depends on the *shape of other objects' internals*.
+- **Suggested fix**: add a method on the first object that answers the question
+  (`a.dOf()`), or pass the leaf value in directly.
+- **Calibration → not a finding**: a fluent builder or `this`-returning chain; a
+  collection/stream pipeline (`.map().filter()`); optional chaining through the
+  caller's own DTO/JSON tree; a chain inside the object that owns the structure.
+  Flag when the caller depends on the *shape of other objects' internals*.
 
 ---
 

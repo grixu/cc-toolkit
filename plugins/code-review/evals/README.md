@@ -1,10 +1,12 @@
 # code-review — promptfoo eval suite
 
 Repeatable [promptfoo](https://www.promptfoo.dev/) evals for the `comment-review`
-and `quality-review` skills. Each test runs the **real skill** (loaded as a local
-plugin through the Claude Agent SDK) against a fixture and grades its output —
-comment verdicts (KEEP / REMOVE / REWRITE / MOVE / ADD, rules R1–R12) on the
-comment track, and findings tagged `family` · rule · severity on the quality track.
+and `quality-review` skills and for the three scanner-only lenses (`security`,
+`performance`, `spec`). Each test runs the **real plugin** (loaded as a local plugin
+through the Claude Agent SDK) against a fixture and grades its output — comment
+verdicts (KEEP / REMOVE / REWRITE / MOVE / ADD, rules R1–R12) on the comment track,
+and findings tagged `family` · rule · severity on the quality, scanner, and standards
+tracks.
 
 This is dev tooling — it is **not** shipped as part of the plugin runtime.
 
@@ -12,34 +14,65 @@ This is dev tooling — it is **not** shipped as part of the plugin runtime.
 
 ```
 evals/
-  promptfooconfig.yaml   # provider + tests + assertions (both tracks)
-  prompts/review.txt     # natural-language trigger — comment track
-  prompts/quality.txt    # natural-language trigger — quality track
-  fixtures/              # inputs (2 ported from skill-creator, 4 reconstructed, 3 for quality)
+  promptfooconfig.yaml     # provider + tests + assertions (all tracks)
+  prompts/review.txt       # natural-language trigger — comment track
+  prompts/quality.txt      # natural-language trigger — quality track
+  prompts/security.txt     # scanner brief — security lens
+  prompts/performance.txt  # scanner brief — performance lens
+  prompts/spec.txt         # scanner brief — spec lens ({{spec}} carries the spec path)
+  prompts/standards.txt    # quality trigger with the standards fixture dir as repo root
+  fixtures/                # inputs; fixtures/spec/ and fixtures/standards/ are multi-file
 ```
 
 Node dev deps (`@anthropic-ai/claude-agent-sdk` + `promptfoo`) and the run
 scripts live at the **repo root** (`package.json`, single shared `node_modules`),
 not per-plugin.
 
-Each test binds to one prompt via `prompts: [comment-track]` / `[quality-track]`,
-so the two tracks don't cross-run (promptfoo otherwise matrices every test against
-every prompt).
+Each test binds to one prompt label (`comment-track`, `quality-track`,
+`security-track`, `performance-track`, `spec-track`, `standards-track`), so the
+tracks don't cross-run (promptfoo otherwise matrices every test against every prompt).
 
-| Test | Fixture(s) | Focus |
-|------|-----------|-------|
-| eval-0 | `datadog-integration.tf` | R5 banners + R4 internal-doc refs vs external RFC |
-| eval-1 | `scheduler.ts` | R4 file/doc refs, R5 banners, R1 narration, kept diagram/CVE |
-| eval-2 | `dlq-codes.ts` + `dlq.handler.ts` | R12 misplaced/duplicated rationale (REMOVE vs MOVE) |
-| eval-3 | `payment-validator.ts` | R4 spec-id pointers (REMOVE/REWRITE), token-stripping |
-| eval-4 | `host-allowlist.ts` | R4 spec-ids embedded mid-sentence → REWRITE, keep the WHY |
-| eval-5 | `quality-vocabulary.ts` | severity verbatim from the table, repeats collapsed, headline honesty |
-| eval-6 | `quality-recall.ts` | recall gate — a seeded high + medium + nit across three families must all surface |
-| eval-7 | `quality-calibration.ts` | noise gate — five documented look-alikes must stay non-findings |
+| Test | Track | Fixture(s) | Focus |
+|------|-------|-----------|-------|
+| eval-0 | comment | `datadog-integration.tf` | R5 banners + R4 internal-doc refs vs external RFC |
+| eval-1 | comment | `scheduler.ts` | R4 file/doc refs, R5 banners, R1 narration, kept diagram/CVE |
+| eval-2 | comment | `dlq-codes.ts` + `dlq.handler.ts` | R12 misplaced/duplicated rationale (REMOVE vs MOVE) |
+| eval-3 | comment | `payment-validator.ts` | R4 spec-id pointers (REMOVE/REWRITE), token-stripping |
+| eval-4 | comment | `host-allowlist.ts` | R4 spec-ids embedded mid-sentence → REWRITE, keep the WHY |
+| eval-5 | quality | `quality-vocabulary.ts` | severity verbatim from the table, repeats collapsed, headline honesty |
+| eval-6 | quality | `quality-recall.ts` | recall gate — a seeded high + medium + nit across three families must all surface |
+| eval-7 | quality | `quality-calibration.ts` | noise gate — five documented look-alikes must stay non-findings |
+| eval-8 | quality | `quality-recall-2.ts` + `quality-recall-2.model.ts` | folded rules recall — `pass-through`, `canonical-helper` (cross-file), `feature-envy`, `message-chain` |
+| eval-9 | quality | `quality-calibration-2.ts` + `quality-calibration-2.types.ts` | folded rules noise — DTO mapper, fluent builder, adapting facade, type-only import cycle, `(req, res)` |
+| eval-10 | security | `security-recall.ts` | `secret-in-source`, `injection-sink` (source + sink lines), `insecure-setting`; no `nit` |
+| eval-11 | security | `security-calibration.ts` | `knex.raw('?', [x])`, `spawn` argv, `sk_test_`, env read, health endpoint stay non-findings |
+| eval-12 | performance | `performance-recall.ts` | `n-plus-one` with all four evidence items, `unbounded-fetch`; no "could be slow" |
+| eval-13 | performance | `performance-calibration.ts` | enum loop, `take`/`skip` page, module-level `readFileSync` stay non-findings |
+| eval-14 | spec | `spec/feature-spec.md` + `spec/feature-impl.ts` | one MISSING (under the spec path), one WRONG, one scope-creep, "3 of 5 requirements met" |
+| eval-15 | standards | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, MAY → nit, vague prose ignored |
 
 **eval-6 and eval-7 are the two halves of one gate.** eval-6 fails when the review
 under-reports; eval-7 fails when it compensates by flagging look-alikes. A prompt
-change that moves one number must be checked against the other.
+change that moves one number must be checked against the other. eval-8/eval-9 are the
+same pair for the folded `module`/`objects` rules; eval-10/11 and eval-12/13 for the
+security and performance lenses.
+
+### Scanner track
+
+`security`, `performance`, and `spec` exist only inside `/start-cr` — they have no
+standalone skill to trigger by description, and the Agent SDK rejects a prompt that
+starts with `/`, so `/start-cr` itself cannot be invoked from a promptfoo prompt. The
+three scanner prompts therefore **emulate the orchestrator's Scanner brief** in
+natural language: act as the `<lens>` scanner, read `references/rules/<lens>.md` and
+`references/severity.md` completely, review the file in path mode, return findings
+only in the brief's exact bullet shape, write nothing. What they measure is the rules
+file plus the brief contract; the dispatch/merge mechanics of `start-cr.md` are out of
+reach here. The prompts avoid the `quality-review`/`comment-review` trigger words so
+those skills do not fire on top of the brief.
+
+The standards test rides the quality track (`standards.txt` opens with the
+`quality review` trigger) and tells the skill to treat `fixtures/standards/` as the
+repository root for the `CODING_STANDARDS.md` + `.local.md` pair.
 
 ## Prerequisites
 
@@ -99,6 +132,26 @@ pnpm eval -- --filter-pattern eval-3
   dropped the WHY it was supposed to keep. Both are fixed on the comment track's
   post-pass run.
 
+  **Measured 2026-09-02** (sonnet-4-6 target and grader, SDK 0.3.252, plugin path and
+  named-skill prompt fixed as described below; one run each, assertion-level):
+
+  | test | score | note |
+  |------|-------|------|
+  | eval-6 | 5/5 | gate unchanged |
+  | eval-7 | 7/7 | gate unchanged |
+  | eval-8 | 6/6 | first run 5/6 — all four folded rules surfaced, the miss was rubric wording (it named `priorityOf`, the report put `feature-envy` on `totalOf`); rubric loosened and re-measured at 6/6 |
+  | eval-9 | 7/7 | after removing two self-inflicted highs from the fixture (a grab-bag module → one cohesive controller; a redundant `.limit()`) |
+  | eval-10 | 6/6 | |
+  | eval-11 | 7/7 | |
+  | eval-12 | 7/7 | |
+  | eval-13 | 6/6 | |
+  | eval-14 | 7/7 | after tightening spec line 5 to "called with an empty list" — the scanner read "no orders to export" as post-filter and raised a defensible `partial-requirement` |
+  | eval-15 | 6/6 | |
+
+  Per-test cost on the quality track is now ~$0.40–0.55 (the skill reads six reference
+  files and Greps one hop); the scanner track is ~$0.10–0.19. The comment track
+  (eval-0…4) was not re-measured on this date.
+
 - **eval-5 is flaky; eval-6 and eval-7 are not.** Across five post-pass runs, eval-6
   (recall) scored 5/5 and eval-7 (calibration) 7/7 on **both** models, every time.
   eval-5 ranged **4/8 to 7/8** with no stable model split — opus-5 produced a
@@ -126,14 +179,28 @@ pnpm eval -- --filter-pattern eval-3
 - **Grader.** llm-rubric grades on the subscription via a single-turn agent
   (slow-ish). For a faster/cheaper grader, set `ANTHROPIC_API_KEY` and change
   `defaultTest.options.provider` to `anthropic:messages:claude-opus-4-8`.
-- **No `skill-used` assertion.** Plugin skills load via Agent-Skills *injection*,
-  not a `Skill()` tool call, so `metadata.skillCalls` stays empty. Each test
-  instead asserts (via `regex`) that the report uses the skill's own taxonomy —
-  R1–R12 on the comment track, the backticked family labels on the quality track —
-  since output of that shape requires the skill to have loaded. You can confirm in the
-  trace: the agent reads `references/rules/<lens>.md`. eval-7 is the exception: a
-  deliberately clean fixture may produce no family tag at all, so it proxies on the
-  `Tally` line instead.
+- **Plugin path and skill trigger (SDK 0.3.252 / promptfoo 0.122.2, 2026-09-02).**
+  Two things changed under a fresh `pnpm install` and both silently zeroed the quality
+  track (the model answered from general knowledge — "patterns / duplication",
+  severity "Low" — with no rules file read):
+  - `plugins[].path` resolves relative to **this config file**, not `working_dir`;
+    `plugins/code-review` loaded nothing, `..` loads the plugin. Verified with a
+    one-turn "list your skills" probe.
+  - Plugin skills now surface through the **`Skill` tool** (`metadata.skillCalls` is
+    populated), and the bare `quality review <path>` opener no longer makes the model
+    invoke one. The quality/standards prompts therefore name the skill
+    (`Use the \`code-review:quality-review\` skill …`) and say **report only — no apply
+    menu, no `AskUserQuestion`**; without that line the skill's Step 6 menu fires,
+    `ask_user_question: first_option` picks "Safe fixes", and the final message (the
+    only thing promptfoo grades) becomes "I have no Edit tool" instead of the report.
+    `prompts/review.txt` (comment track) still uses the old opener and was **not**
+    re-measured under this SDK — expect it to need the same treatment.
+- **`skill-used` is still not asserted.** Each test asserts (via `regex`) that the
+  report uses the skill's own taxonomy — R1–R12 on the comment track, the backticked
+  family labels on the quality/scanner tracks — since output of that shape requires
+  the rules to have been read. eval-7/9 (clean quality fixtures) proxy on the `Tally`
+  line, eval-11/13 (clean scanner fixtures) on the `Not flagged` line the brief asks
+  for.
 - `setting_sources: []` keeps this repo's `CLAUDE.md`/hooks out of the run, so
   results reflect the skill, not the surrounding harness.
 

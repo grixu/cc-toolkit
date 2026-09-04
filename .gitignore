@@ -9,6 +9,9 @@ eval-*.json
 output.json
 .promptfoo/
 
-# eval sandboxes (recreated from fixtures/ by reset-sandboxes.sh) and exported results
+# eval sandboxes (recreated from fixtures/ by the suite's reset script) and exported results
 plugins/*/evals/.sandbox/
 plugins/*/evals/.results/
+
+# the target app's own runtime store, written on every boot
+plugins/tester/evals/fixtures/target-app/state.json

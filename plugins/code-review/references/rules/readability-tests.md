@@ -139,7 +139,10 @@ too much.
     `fetchUser()` sitting next to raw byte-shuffling);
   - several distinct tasks are stacked in one body that would read as a short list
     of named steps;
-  - the body is long enough to need internal section comments to navigate.
+  - the body is long enough to need internal section comments to navigate;
+  - a conditional the change adds into a flow whose concern it does not share (a
+    feature check inside a generic loader), so the function now serves two concerns
+    → push the branch into its own helper or policy.
   - **Escalation:** when such a method has grown large **and shares many
     temporaries** across its parts, the fix is a *method object* — turn the
     temporaries into fields, the body into a `compute()`/`call()`, then split that

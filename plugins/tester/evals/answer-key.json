@@ -1,0 +1,206 @@
+{
+  "comment": [
+    "Ground truth for the target-app fixture. This file lives OUTSIDE fixtures/target-app on",
+    "purpose: reset-sandbox.sh copies only the app into .sandbox/, so the agent under test",
+    "never sees the answer key while deriving suites from the code.",
+    "verify-fixture.mjs drives every probe below against the live stack and fails the run when",
+    "the fixture and this key disagree — without that guard, a drifted fixture would quietly",
+    "turn recall into a meaningless number.",
+    "asserts/run.js scores recall per defect id, derived from the entries here, so a defect",
+    "added below is scored without touching the assertion. `keywords` are load-bearing only",
+    "when two defects share an AC: the failing signal must then carry one of them to attribute",
+    "the catch. Keep each list pruned to terms that discriminate the defect from its AC-mates,",
+    "and re-tune both lists whenever a defect gains a mate on its AC.",
+    "Every probe must be non-mutating: this runs before the eval, and a probe that changed the",
+    "store would both move the app out from under the run and break its store-restored invariant.",
+    "KNOWN AMBIGUITY, deliberately unscored: PATCH accepts `{\"status\":\"rejected\"}`, which the",
+    "Domain's two-value lifecycle makes unsupported (422) but which no AC names. Reporting it is",
+    "legitimate and reporting it is optional, so it counts as neither a miss nor a false positive."
+  ],
+  "personas": {
+    "admin": { "email": "admin@example.test", "password": "eval-admin-pw" },
+    "member": { "email": "member@example.test", "password": "eval-member-pw" }
+  },
+  "defects": [
+    {
+      "id": "D1",
+      "surface": "api",
+      "ac": "AC-4",
+      "summary": "GET /api/admin/audit returns 200 for a member; the guard tests role truthiness instead of equality to admin",
+      "probe": { "persona": "member", "method": "GET", "path": "/api/admin/audit" },
+      "specified": 403,
+      "actual": 200,
+      "keywords": ["audit"]
+    },
+    {
+      "id": "D2",
+      "surface": "fault",
+      "ac": "AC-5",
+      "summary": "GET /api/projects fails open when the PDP is unreachable, returning 200 with cross-org projects instead of 503",
+      "probe": { "persona": "member", "method": "GET", "path": "/api/projects", "pdpPaused": true },
+      "specified": 503,
+      "actual": 200,
+      "actualBodyContains": "p-2",
+      "keywords": ["fails open", "fail open", "fail-open", "cross-org"]
+    },
+    {
+      "id": "D3",
+      "surface": "ui",
+      "ac": "AC-7",
+      "summary": "the nav-admin entry renders on /dashboard for a member; the template omits the role check",
+      "probe": { "persona": "member", "method": "GET", "path": "/dashboard", "ui": true },
+      "specifiedAbsent": "data-testid=\"nav-admin\"",
+      "actualPresent": "data-testid=\"nav-admin\"",
+      "keywords": ["nav"]
+    },
+    {
+      "id": "D4",
+      "surface": "api",
+      "ac": "AC-3",
+      "summary": "PATCH /api/memberships/{id} exempts admins from the ownership check, so an admin may patch another user's membership where the spec denies it unconditionally",
+      "probe": {
+        "persona": "admin",
+        "method": "PATCH",
+        "path": "/api/memberships/m-1",
+        "body": { "status": "active" }
+      },
+      "specified": 403,
+      "actual": 409,
+      "keywords": ["membership", "ownership"],
+      "note": [
+        "m-1 belongs to the member and is already active, so the ownership carve-out lets this",
+        "call through to the not-pending check and it answers 409 instead of 403. Getting past",
+        "403 at all is the defect; landing on 409 is what keeps the probe from mutating the store."
+      ]
+    },
+    {
+      "id": "D5",
+      "surface": "fault",
+      "ac": "AC-9",
+      "summary": "GET /api/projects/{id} conflates an explicit PDP 400 (over-long resource id) with an outage, answering 503 authorization_unavailable where the spec pins 403 forbidden; DELETE classifies the same shape correctly",
+      "probe": {
+        "persona": "member",
+        "method": "GET",
+        "path": "/api/projects/p-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "specified": 403,
+      "actual": 503,
+      "keywords": ["conflat", "classif", "503"],
+      "note": [
+        "The PDP is healthy and answers the check with 400 invalid_resource_id — an explicit",
+        "decision — but the route's catch treats every pdpCheck throw as an outage. Catching this",
+        "requires driving both fault shapes (explicit 4xx vs unreachable) on the same route and",
+        "comparing; pdpCheck itself classifies correctly and DELETE consumes that classification,",
+        "so reading one function, or a blanket claim about PDP errors, both stay wrong.",
+        "Non-mutating by construction: an over-long id cannot exist, so nothing is ever written."
+      ]
+    }
+  ],
+  "correct": [
+    {
+      "ac": "AC-1",
+      "note": "admin sees both projects",
+      "probe": { "persona": "admin", "method": "GET", "path": "/api/projects" },
+      "expect": 200,
+      "expectBodyContains": ["p-1", "p-2"]
+    },
+    {
+      "ac": "AC-1",
+      "note": "member sees only the org they hold an active membership in",
+      "probe": { "persona": "member", "method": "GET", "path": "/api/projects" },
+      "expect": 200,
+      "expectBodyContains": ["p-1"],
+      "expectBodyExcludes": ["p-2"]
+    },
+    {
+      "ac": "AC-2",
+      "note": "member cannot delete a project",
+      "probe": { "persona": "member", "method": "DELETE", "path": "/api/projects/p-1" },
+      "expect": 403
+    },
+    {
+      "ac": "AC-3",
+      "note": "a project in an org the member only holds a pending membership in is denied",
+      "probe": { "persona": "member", "method": "GET", "path": "/api/projects/p-2" },
+      "expect": 403
+    },
+    {
+      "ac": "AC-4",
+      "note": "admin may read the audit log",
+      "probe": { "persona": "admin", "method": "GET", "path": "/api/admin/audit" },
+      "expect": 200
+    },
+    {
+      "ac": "AC-5",
+      "note": "single-project read is correctly fail-closed",
+      "probe": { "persona": "member", "method": "GET", "path": "/api/projects/p-1", "pdpPaused": true },
+      "expect": 503
+    },
+    {
+      "ac": "AC-5",
+      "note": "delete is correctly fail-closed",
+      "probe": { "persona": "member", "method": "DELETE", "path": "/api/projects/p-1", "pdpPaused": true },
+      "expect": 503
+    },
+    {
+      "ac": "AC-6",
+      "note": "no session is rejected before any authorization decision",
+      "probe": { "persona": null, "method": "GET", "path": "/api/projects" },
+      "expect": 401
+    },
+    {
+      "ac": "AC-6",
+      "note": "no session is still 401 while the PDP is down",
+      "probe": { "persona": null, "method": "GET", "path": "/api/projects", "pdpPaused": true },
+      "expect": 401
+    },
+    {
+      "ac": "AC-7",
+      "note": "admin does see the admin nav entry",
+      "probe": { "persona": "admin", "method": "GET", "path": "/dashboard", "ui": true },
+      "expectPresent": "data-testid=\"nav-admin\""
+    },
+    {
+      "ac": "AC-8",
+      "note": "a rejected sign-in shows the error marker",
+      "probe": { "badLogin": true },
+      "expectPresent": "data-testid=\"login-error\""
+    },
+    {
+      "ac": "AC-9",
+      "note": "DELETE classifies the explicit PDP 400 as a decision: 403, not 503",
+      "probe": {
+        "persona": "member",
+        "method": "DELETE",
+        "path": "/api/projects/p-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "expect": 403
+    },
+    {
+      "ac": "AC-9",
+      "note": "the same over-long id under a real outage is 503 — the two shapes stay distinguishable on the wire",
+      "probe": {
+        "persona": "member",
+        "method": "GET",
+        "path": "/api/projects/p-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pdpPaused": true
+      },
+      "expect": 503
+    },
+    {
+      "ac": "AC-10",
+      "note": "the default audit window holds the newest 20 events; a-01 sits outside it by design, not by loss",
+      "probe": { "persona": "admin", "method": "GET", "path": "/api/admin/audit" },
+      "expect": 200,
+      "expectBodyContains": ["a-25", "a-06"],
+      "expectBodyExcludes": ["a-01"]
+    },
+    {
+      "ac": "AC-10",
+      "note": "raising limit reaches the full log through the same endpoint",
+      "probe": { "persona": "admin", "method": "GET", "path": "/api/admin/audit?limit=100" },
+      "expect": 200,
+      "expectBodyContains": ["a-01", "a-25"]
+    }
+  ]
+}

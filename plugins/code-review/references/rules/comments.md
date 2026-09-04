@@ -260,6 +260,9 @@ documentation. A comment that narrates what the test does, or how the
 implementation under test behaves, states the same thing twice and rots when
 either side moves. **In test files, the Step 3 "when in doubt, KEEP" default is
 reversed: when in doubt, the comment goes** — the spec reads fine without it.
+A "test file" is one the `test` kind in `references/scope.md` › File kinds matches
+(`*.test.*`, `*.spec.*`, `__tests__/`, `*_test.go`, `test_*.py`, …) — apply that
+list, not a guess from the file's contents.
 
 - **REMOVE** test comments that restate the test's mechanics or the
   implementation's behavior, even when phrased as insight:

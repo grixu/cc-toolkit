@@ -39,15 +39,26 @@ run_suite() {
   "$bin" eval -c "$cfg" --no-cache --no-share -o "$out" "$@"
 }
 
+# A suite whose commands mutate their working dir ships a reset script; without it the suite
+# runs against the previous run's leftovers and can score green on work it never did. Suites
+# name that script either way.
+reset_sandbox() {
+  local dir="$1" script
+  for script in "${dir}/reset-sandboxes.sh" "${dir}/reset-sandbox.sh"; do
+    if [ -x "$script" ]; then
+      bash "$script"
+      return
+    fi
+  done
+}
+
 # Plugin mode: first arg names a plugin with an evals dir.
 if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   plugin="$1"
   shift
   evals_dir="plugins/${plugin}/evals"
 
-  if [ -x "${evals_dir}/reset-sandboxes.sh" ]; then
-    "${evals_dir}/reset-sandboxes.sh"
-  fi
+  reset_sandbox "$evals_dir"
 
   cfg="${evals_dir}/promptfooconfig.yaml"
   filter=()
@@ -78,9 +89,7 @@ status=0
 for cfg in "${configs[@]}"; do
   evals_dir="$(dirname "$cfg")"
   name="$(basename "$(dirname "$evals_dir")")"
-  if [ -x "${evals_dir}/reset-sandboxes.sh" ]; then
-    "${evals_dir}/reset-sandboxes.sh"
-  fi
+  reset_sandbox "$evals_dir"
   if ! run_suite "$name" "$cfg" "/tmp/eval-${name}.json" "$@"; then
     echo "!! ${name} eval reported failures" >&2
     status=1

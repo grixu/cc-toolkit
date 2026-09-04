@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: tester plugin — /tester:run against a live target app with planted defects
+
+# The slash command is routed through a {{message}} var rather than sitting in `prompts:`
+# directly: a prompts entry starting with "/" is parsed by promptfoo as a file path. The Agent
+# SDK dispatches slash commands from the plain query() string, and `disable-model-invocation:
+# true` on commands/run.md does not block explicit slash invocation — it only blocks the model
+# from auto-invoking.
+prompts:
+  - '{{message}}'
+
+providers:
+  - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
+    label: tester
+    config:
+      apiKeyRequired: false # run on the local Claude Code subscription
+      model: claude-opus-5 # pinned to the exact string, NOT the `opus` alias: that alias
+        # resolves to claude-opus-4-8 on this subscription, so a suite meant to validate Opus 5
+        # tuning silently measured the previous model instead. Confirm with
+        # `metadata.modelUsage` in the output JSON after any provider change.
+      permission_mode: bypassPermissions
+      allow_dangerously_skip_permissions: true # required alongside bypassPermissions
+      allow_all_tools: true # the command runs Bash, drives docker, and spawns subagents
+      working_dir: .sandbox/target-app # resolves against THIS config's dir; recreated by
+        # reset-sandbox.sh, so a stale sandbox can never be scored as a fresh run
+      max_budget_usd: 30 # a full run fans out several subagents against a live stack
+      plugins:
+        - type: local
+          path: .. # config dir is plugins/tester/evals, so ".." = the plugin root
+      setting_sources: [] # keep this repo's CLAUDE.md and hooks out of the eval — the
+        # cbm-bash-search-gate hook would otherwise block the agent's own code search
+      ask_user_question:
+        behavior: first_option # /tester:run has three HILs (suite selection, mutation
+          # consent, missing capabilities); prompts/run.txt pre-grounds all three so
+          # whichever option lands first is a sane one
+
+# Every assertion is deterministic JavaScript reading real state — the target app's store, the
+# container states, the ephemeral work dir, and the run's own report. No llm-rubric: that is
+# free, offline, and needs no grader provider. metadata.skillCalls stays empty for plugin
+# commands, so disk and container state are the "it actually ran" signal.
+
+tests:
+  - description: 'RUN: verify a live app against its spec across api, ui and fault surfaces'
+    vars:
+      message: file://prompts/run.txt
+    assert:
+      - type: javascript
+        value: file://asserts/run.js

@@ -131,6 +131,22 @@ Unified code review that fans out five parallel lenses over a change — comment
 
 See [plugin README](plugins/code-review/README.md) for details.
 
+### tester
+
+On-demand manual verification of a running app. One command discovers the live stack, builds an ephemeral environment brief, derives test suites from a spec's acceptance criteria (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, `agent-browser` for UI, and fault-injection for error handling — each returning an evidence-backed PASS/FAIL table.
+
+**Requires:** a running stack in a non-production environment. Optional: [`agent-browser`](https://github.com/vercel-labs/agent-browser) for UI suites, Docker for the WireMock fault mechanism.
+
+| Command | Description |
+|---------|-------------|
+| `/tester:run [<spec-path-or-url> \| free-text scope]` | Verify the running app; empty scope → derive it from the git diff |
+
+```
+/plugin install tester@cc-toolkit
+```
+
+See [plugin README](plugins/tester/README.md) for details.
+
 ## License
 
 MIT
