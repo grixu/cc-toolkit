@@ -406,10 +406,14 @@ const recordUnit = (repo, b, slugs) => {
 // A base no task builds leaves nothing to wait for, so the task above starts immediately — right
 // for a genuine root, and indistinguishable from a mistyped branch-base, which would quietly lose
 // the stacking order the landing units rest on. Say so once, before any work starts.
+//
+// slug stays null and the task is named in the reason: every slug-bearing hil entry renders into
+// the human-owned and reservation lists, which tell the implement, fix and review agents to keep
+// off that task — and this one is still being implemented normally.
 for (const t of tasks) {
   if (!t.baseBranch || t.repository === 'none') continue
   if (tasks.some((x) => x.repository === t.repository && x.branch === t.baseBranch)) continue
-  hil.push({ slug: t.slug, kind: 'graph', reason: `branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds; this task will start as if it were a root. Confirm the base exists, or fix the branch-base.` })
+  hil.push({ slug: null, kind: 'graph', reason: `${t.slug}: branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds, so this task starts as if it were a root. Confirm the base exists, or fix the branch-base.` })
 }
 
 let wave = 0
