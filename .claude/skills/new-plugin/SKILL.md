@@ -65,6 +65,8 @@ Create based on user's answers:
 - `skills/` — for skill definitions
 - `agents/` — for agent definitions
 
+Never create a `CLAUDE.md` inside the plugin directory. If the plugin needs contributor conventions, add `.claude/rules/<name>.md` at the repo root with `paths: ["plugins/<name>/**"]` frontmatter so it loads only when those files are touched.
+
 ## Register in marketplace
 
 Add the new plugin entry to `.claude-plugin/marketplace.json` in the `plugins` array:
