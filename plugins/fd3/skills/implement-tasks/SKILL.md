@@ -153,6 +153,11 @@ Relay it faithfully — a failed CI stays failed in the telling, and any totals 
 report's own `tasks[]` tally, never hand-counted — with one distinction the report already
 draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
 failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
+`graph` items are the other kind that is information rather than work — a task whose `branch-base`
+named a branch nothing builds, which the run then implemented, merged and validated as a stack
+root. Relay each as a diagnostic and say what it costs: the stacking that base implied did not
+happen. What it asks for is a corrected task file before the next split or relaunch, never a
+decision that moves the task, so it is not one of the items step 4 puts to the user below.
 
 Caveats are triaged, not relayed wholesale: one that names a decision the agent took, a risk,
 an as-built deviation or a commit no review saw goes to the user; one that reports compliance
