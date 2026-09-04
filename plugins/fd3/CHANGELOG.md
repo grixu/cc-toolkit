@@ -84,6 +84,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-run`: the stack-base diagnostic carries `slug: null` — every slug-bearing HIL entry
   renders into the human-owned and reservation lists, which tell the implement, fix and review
   agents to keep off a task that is in fact still being implemented
+- `implement-tasks`: step 1 checks that every stack base is reachable — a `branch-base` no task
+  builds and git cannot resolve becomes a step-2 question instead of a post-run diagnostic. Only
+  the skill can tell a typo from a real branch the split rooted on; the workflow sees the task
+  files alone, so it cut the branch from the default ref and reported the lost stacking after the
+  work was built on it
 - `implement-tasks`: a `graph` HIL item is relayed as a diagnostic, not as a parked human step —
   the tasks ran normally, and what it asks for is a corrected task file before the next split; the
   item is raised once per dangling base rather than once per task, since `branch-base` is identical

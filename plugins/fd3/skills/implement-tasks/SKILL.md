@@ -76,6 +76,12 @@ Then make the graph launchable:
   each later one on the previous unit's branch. A derived base is a guess about a decision the
   split made — the report says which bases were read and which derived. The workflow starts
   worktrees and the pull-request chain from these.
+- **Check every stack base is reachable.** A base some task's `branch:` builds is produced by this
+  run. One no task builds has to exist already: `origin` is fetched, so resolve the ref in that
+  repository. A base that resolves is a branch the split rooted on and needs nothing; one that
+  resolves nowhere joins the step-2 batch. Only here can the two be told apart — the workflow sees
+  the task files alone, so it cuts the branch from the repository's default ref and reports the
+  lost stacking after the run, when the work is already built on the wrong foundation.
 - **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that
   exists **and carries a lower ordinal** — the merge planning relies on the file order being
   topological — and every status is one of the six. A broken graph stops the run — recommend
@@ -104,6 +110,9 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
 - per chosen base branch behind `origin/<default>`: merge it up before work starts. On consent
   the skill performs that merge itself, before launch; a merge that conflicts becomes a HIL item
   instead of a silent stale base;
+- per stack base that no task builds and git cannot resolve: correct it in the task files, or
+  launch with those tasks as stack roots. Asked once per base — `branch-base` is identical on
+  every task of a branch — and naming the tasks it carries;
 - confirmation of scope when the directory mixes done and pending work.
 
 Everything else — wave composition, branch names, merge order — the task files already decided;
