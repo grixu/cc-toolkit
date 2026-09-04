@@ -410,10 +410,17 @@ const recordUnit = (repo, b, slugs) => {
 // slug stays null and the task is named in the reason: every slug-bearing hil entry renders into
 // the human-owned and reservation lists, which tell the implement, fix and review agents to keep
 // off that task — and this one is still being implemented normally.
+// One item per dangling base, not per task: branch-base is identical on every task of a branch, so
+// a single typo on a six-task branch would otherwise be reported six times.
+const danglingBases = new Set()
 for (const t of tasks) {
   if (!t.baseBranch || t.repository === 'none') continue
   if (tasks.some((x) => x.repository === t.repository && x.branch === t.baseBranch)) continue
-  hil.push({ slug: null, kind: 'graph', reason: `${t.slug}: branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds, so this task starts as if it were a root. Confirm the base exists, or fix the branch-base.` })
+  const key = `${t.repository}:${t.baseBranch}`
+  if (danglingBases.has(key)) continue
+  danglingBases.add(key)
+  const affected = tasks.filter((x) => x.repository === t.repository && x.baseBranch === t.baseBranch).map((x) => x.slug)
+  hil.push({ slug: null, kind: 'graph', reason: `branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds, so ${affected.join(', ')} start as if they were stack roots. Confirm the base exists, or fix the branch-base.` })
 }
 
 let wave = 0
