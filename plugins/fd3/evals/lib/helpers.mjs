@@ -140,11 +140,15 @@ export function checksTableComplete(output) {
   return true;
 }
 
+// Check 9 is the one check whose evidence lives outside the spec, and validate-spec defines
+// `pass (unchanged)` on that row as "you did not run it" — everywhere else it is a real pass.
+const CHECK_NINE_NOT_RUN = /^\|\s*9\s*\|[^\n|]*\|\s*pass\s*\(unchanged\)/im;
+
 export function checksTableAllPass(output) {
   for (let i = 1; i <= CHECKS_TABLE_ROWS; i += 1) {
     if (!new RegExp('^\\|\\s*' + i + '\\s*\\|[^\\n|]*\\|\\s*pass\\b', 'im').test(output)) return false;
   }
-  return true;
+  return !CHECK_NINE_NOT_RUN.test(output);
 }
 
 export function section(output, heading) {
