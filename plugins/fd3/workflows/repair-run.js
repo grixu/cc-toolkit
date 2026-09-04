@@ -25,7 +25,10 @@ export const meta = {
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
-const { repairs, repos, maxFixRounds } = input
+const { repairs, repos } = input
+// Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
+// the run exists to perform, reporting failures it was built to repair.
+const maxFixRounds = input.maxFixRounds ?? 3
 
 const toolchain = new Map(Object.entries(input.toolchain || {}))
 const baseline = new Map(Object.entries(input.baseline || {}))
