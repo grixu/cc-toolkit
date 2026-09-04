@@ -25,7 +25,9 @@ providers:
       mcp:
         servers:
           - name: firecrawl
-            url: 'https://mcp.firecrawl.dev/{{env.FIRECRAWL_API_KEY}}/v2/mcp'
+            url: 'https://mcp.firecrawl.dev/v2/mcp'
+            headers:
+              Authorization: 'Bearer {{env.FIRECRAWL_API_KEY}}'
           - name: context7
             url: 'https://mcp.context7.com/mcp'
             headers:
