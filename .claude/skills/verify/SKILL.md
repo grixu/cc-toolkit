@@ -11,7 +11,7 @@ For each plugin directory, verify these files exist:
 - `CHANGELOG.md`
 - `README.md`
 
-Report any missing files.
+Report any missing files. Also report a plugin-root `CLAUDE.md` as a failure: it ships with the plugin, is never loaded as context for installed plugins, and `claude plugin validate` warns about it. Per-plugin conventions belong in `.claude/rules/<plugin>.md`.
 
 ## 2. plugin.json validity
 For each plugin's `.claude-plugin/plugin.json`, verify:
@@ -25,6 +25,7 @@ Read `.claude-plugin/marketplace.json` and for each plugin entry:
 - `version` matches the plugin's `plugin.json` version
 - `source` path points to the correct directory (`./plugins/<name>`)
 - `description` is present and non-empty
+- `author` matches the plugin's `plugin.json` author exactly (both `name` and `email`)
 
 Report any plugins in `plugins/` that are missing from marketplace.json, and any marketplace entries pointing to non-existent plugins.
 

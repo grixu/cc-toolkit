@@ -3,8 +3,8 @@
   "description": "End-to-end feature delivery: requirements gathering, editing, status tracking, and implementation orchestration with parallel subagents",
   "version": "1.1.0",
   "author": {
-    "name": "grixu",
-    "email": "mateusz.gostanski@gmail.com"
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
   },
   "repository": "https://github.com/grixu/cc-toolkit",
   "keywords": [

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+
 ## [1.1.0] - 2026-03-17
 
 ### Changed

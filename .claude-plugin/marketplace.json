@@ -1,13 +1,11 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "cc-toolkit",
   "owner": {
-    "name": "Mateusz Gostański (grixu)",
-    "email": "mateusz.gostanski@gmail.com"
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
   },
-  "metadata": {
-    "description": "Claude Code productivity toolkit - plan review with OpenAI Codex, and more"
-  },
+  "description": "Claude Code productivity toolkit - plan review with OpenAI Codex, and more",
   "plugins": [
     {
       "name": "codex-plan-improver",
@@ -15,8 +13,8 @@
       "description": "Intercepts ExitPlanMode to automatically review implementation plans via OpenAI Codex CLI. Includes /codex-review command for manual invocation.",
       "version": "1.1.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -31,8 +29,8 @@
       "description": "End-to-end feature delivery: requirements gathering, editing, status tracking, and implementation orchestration with parallel subagents",
       "version": "1.1.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -48,8 +46,8 @@
       "description": "Easily create hooks to prevent unwanted behaviors by analyzing conversation patterns",
       "version": "0.4.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -65,8 +63,8 @@
       "description": "Analyze conversation for friction signals (corrections, repeated instructions, deviations) and interactively update project documentation (.claude/rules/, CLAUDE.md) with verified learnings. Coordinates with Claude Code's auto memory to avoid duplication.",
       "version": "0.1.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -83,8 +81,8 @@
       "description": "Business name discovery: generates candidates, challenges them with a sub-agent, then checks domain availability via Instant Domain Search MCP.",
       "version": "1.0.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -101,8 +99,8 @@
       "description": "Audio/video transcription pipeline with summary, news extraction, and custom processing. Sources: YouTube URLs (yt-dlp) or local files (any format ffmpeg handles). Backed by ElevenLabs Scribe.",
       "version": "0.2.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -122,8 +120,8 @@
       "description": "Unified code review that fans out parallel scanners over a change — one per active lens, six to eight per run — and merges them into one per-file report. Eight lenses: comment quality, four quality/craft lenses (readability & tests, naming & module, objects & patterns, simplicity & types), an always-on narrow security lens (secrets, injection, access checks, boundary validation, insecure settings), a performance lens for executable source (N+1, unbounded fetch, blocking-in-async, wasted renders), and a spec lens via --spec <path>. Explicit rules in a root CODING_STANDARDS.md (plus a gitignored .local.md overlay) generate standards findings. The standalone comment-review and quality-review skills stay invocable for a single-lens pass. Reviews the current branch diff by default (or explicit paths / --base). Quality findings are tagged family · rule · severity; comment verdicts are R1–R12 · KEEP/REMOVE/REWRITE/MOVE/ADD, shown side by side and applied through a single risk-cut menu. Successor to the comment-review and quality-review plugins.",
       "version": "0.3.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -144,8 +142,8 @@
       "description": "Source-grounded research assistant: an interactive skill gathers a research brief, then launches a bundled Dynamic Workflow that fans out firecrawl retrieval (WebSearch fallback) into cited findings, gates rounds on coverage and contradictions, and renders a self-contained HTML report where every claim traces to a numbered source. The report evolves across follow-up runs.",
       "version": "0.1.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
@@ -162,8 +160,8 @@
       "description": "On-demand manual verification of a running app by an agent: one command discovers the live stack, builds an ephemeral environment brief, derives test suites from a spec's acceptance criteria (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, agent-browser for UI, and fault-injection (dependency pause/stop or a WireMock proxy) for error handling — each returning an evidence-backed PASS/FAIL table under a hard assertion contract. The light counterpart to mt: no config, no persisted plan. User-run only.",
       "version": "0.1.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [

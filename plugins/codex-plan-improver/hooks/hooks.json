@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/plan-review-on-exit.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/plan-review-on-exit.sh",
             "timeout": 10
           }
         ]

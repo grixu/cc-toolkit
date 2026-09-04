@@ -1,6 +1,10 @@
+---
+paths:
+  - "plugins/scribe/**"
+---
 # scribe — plugin conventions
 
-This file documents conventions specific to the `scribe` plugin. The repo-level [`CLAUDE.md`](../../CLAUDE.md) covers monorepo-wide rules; everything here is plugin-local.
+This rule documents conventions specific to the `scribe` plugin and loads only when files under `plugins/scribe/` are touched. The repo-level [`CLAUDE.md`](../../CLAUDE.md) covers monorepo-wide rules; everything here is plugin-local.
 
 ## Skill structure
 

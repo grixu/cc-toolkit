@@ -31,8 +31,8 @@ Create `plugins/<name>/` with:
      "version": "0.1.0",
      "description": "<description>",
      "author": {
-       "name": "grixu",
-       "email": "mateusz.gostanski@gmail.com"
+       "name": "Mateusz Gostański",
+       "email": "mg@grixu.dev"
      },
      "repository": "https://github.com/grixu/cc-toolkit",
      "keywords": [<tags>]
@@ -65,6 +65,8 @@ Create based on user's answers:
 - `skills/` — for skill definitions
 - `agents/` — for agent definitions
 
+Never create a `CLAUDE.md` inside the plugin directory. If the plugin needs contributor conventions, add `.claude/rules/<name>.md` at the repo root with `paths: ["plugins/<name>/**"]` frontmatter so it loads only when those files are touched.
+
 ## Register in marketplace
 
 Add the new plugin entry to `.claude-plugin/marketplace.json` in the `plugins` array:
@@ -75,8 +77,8 @@ Add the new plugin entry to `.claude-plugin/marketplace.json` in the `plugins` a
   "description": "<description>",
   "version": "0.1.0",
   "author": {
-    "name": "Mateusz Gostański (grixu)",
-    "email": "mateusz.gostanski@gmail.com"
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
   },
   "category": "<category>",
   "tags": [<tags>]
