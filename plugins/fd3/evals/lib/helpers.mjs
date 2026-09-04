@@ -140,15 +140,16 @@ export function checksTableComplete(output) {
   return true;
 }
 
-// Check 9 is the one check whose evidence lives outside the spec, and validate-spec defines
-// `pass (unchanged)` on that row as "you did not run it" — everywhere else it is a real pass.
-const CHECK_NINE_NOT_RUN = /^\|\s*9\s*\|[^\n|]*\|\s*pass\s*\(unchanged\)/im;
+// Check 9 is the one check whose evidence lives outside the spec, so it has its own two passing
+// spellings: it ran and holds, or an earlier fail closed. `pass (unchanged)` reports the document
+// rather than the lookup, and a bare `pass` is not a form validation-report.md sanctions at all.
+const CHECK_NINE_PASSED = /^\|\s*9\s*\|[^\n|]*\|\s*pass\s*\((verified|was fail)\b/im;
 
 export function checksTableAllPass(output) {
   for (let i = 1; i <= CHECKS_TABLE_ROWS; i += 1) {
     if (!new RegExp('^\\|\\s*' + i + '\\s*\\|[^\\n|]*\\|\\s*pass\\b', 'im').test(output)) return false;
   }
-  return !CHECK_NINE_NOT_RUN.test(output);
+  return CHECK_NINE_PASSED.test(output);
 }
 
 export function section(output, heading) {

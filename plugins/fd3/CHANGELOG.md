@@ -81,6 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sentence that routes each check to its file sent it to the wrong one
 - fd3 evals: the firecrawl MCP key travels in an `Authorization` header rather than in the URL
   path, where it would reach connection errors, proxy logs and the exported run JSON
+- `implement-run`: the stack-base diagnostic carries `slug: null` — every slug-bearing HIL entry
+  renders into the human-owned and reservation lists, which tell the implement, fix and review
+  agents to keep off a task that is in fact still being implemented
 - `validate-spec`/`validation-report`: check 9 has a pass form of its own, `pass (verified — <what
   you read>)` — the three general `Result` values left a ran-and-holds check 9 with nothing legal to
   write, since `unchanged` on that row reports the document rather than the lookup
