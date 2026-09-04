@@ -85,7 +85,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   renders into the human-owned and reservation lists, which tell the implement, fix and review
   agents to keep off a task that is in fact still being implemented
 - `implement-tasks`: a `graph` HIL item is relayed as a diagnostic, not as a parked human step —
-  the task ran normally, and what it asks for is a corrected task file before the next split
+  the tasks ran normally, and what it asks for is a corrected task file before the next split; the
+  item is raised once per dangling base rather than once per task, since `branch-base` is identical
+  on every task of a branch
 - `validate-spec`/`validation-report`: check 9 has a pass form of its own, `pass (verified — <what
   you read>)` — the three general `Result` values left a ran-and-holds check 9 with nothing legal to
   write, since `unchanged` on that row reports the document rather than the lookup
