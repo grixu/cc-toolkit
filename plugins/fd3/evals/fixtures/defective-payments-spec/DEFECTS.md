@@ -35,4 +35,6 @@ without re-checking this list breaks the eval.
 
 Everything else in the spec is deliberately clean: all other citations resolve, the decision table
 is otherwise consistent, every other element carries a code, the evidence table exists and its
-other rows are true. The five defects above must be the ONLY findings.
+other rows are true. Section 3 carries a **risks accepted** table and section 7's rollout table
+carries `spec-template.md`'s five columns, including `Gate after?` — both are template shape, so
+neither is a sixth finding. The five defects above must be the ONLY findings.

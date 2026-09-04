@@ -28,6 +28,13 @@ outcome is observable.
 | D4 | **Idempotency keys are stored in Redis or Postgres** | Both survive restarts; either ends the double-charge window. |
 | D5 | **Webhook processing is queued** | Delivery happens off the request path through the queue worker (`src/queue/worker.ts:6`), so a slow merchant endpoint cannot slow the charge response. Cost accepted: the merchant learns the outcome asynchronously. |
 
+**Risks accepted**
+
+| Risk | What it costs if it lands | Mitigation |
+|---|---|---|
+| `idempotency_keys` grows without bound — nothing in this spec deletes rows, and section 9 adds no cleanup. | Table size grows with order volume, and index maintenance cost rises with it. | One row per order and the primary key as the only index, so the table grows linearly with orders and carries no secondary index to maintain. This is accepted, not deferred: nothing in this spec deletes rows and section 9 says so. |
+| A provider charge that succeeds and whose key write then fails leaves the card charged with no key stored, so a redelivery charges twice. | One duplicate charge per occurrence, refunded by hand. | The write is retried once and the failure is surfaced as HTTP 503 rather than swallowed, so the window is visible when it opens. Closing it entirely needs reserve-before-charge, which this spec does not do. |
+
 ## 4. Target architecture
 
 ### DB-1 — durable idempotency key store
@@ -104,9 +111,9 @@ CI applies the deploy — no human runs anything by hand.
 
 ## 7. Rollout
 
-| # | Phase | Where | Switches anything? |
-|---|---|---|---|
-| 1 | All four work items land and deploy together | payments-service | yes — the store becomes durable and metrics appear |
+| # | Phase | Where | Switches anything? | Gate after? |
+|---|---|---|---|---|
+| 1 | All four work items land and deploy together | payments-service | yes — the store becomes durable and metrics appear | yes — the final phase, so it closes its landing unit: one branch, one pull request |
 
 Single environment; the deploy on merge is the rollout. No waiting period: the change is exercised
 by the next charge request.
