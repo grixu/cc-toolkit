@@ -33,7 +33,7 @@ outcome is observable.
 | Risk | What it costs if it lands | Mitigation |
 |---|---|---|
 | `idempotency_keys` grows without bound — nothing in this spec deletes rows, and section 9 adds no cleanup. | Table size grows with order volume, and index maintenance cost rises with it. | One row per order and the primary key as the only index, so the table grows linearly with orders and carries no secondary index to maintain. This is accepted, not deferred: nothing in this spec deletes rows and section 9 says so. |
-| A provider charge that succeeds and whose key write then fails leaves the card charged with no key stored, so a redelivery charges twice. | One duplicate charge per occurrence, refunded by hand. | The write is retried once and the failure is surfaced as HTTP 503 rather than swallowed, so the window is visible when it opens. Closing it entirely needs reserve-before-charge, which this spec does not do. |
+| A provider charge that succeeds and whose key write then fails leaves the card charged with no key stored, so a redelivery charges twice. | One duplicate charge per occurrence, refunded by hand. | The write is retried once and the failure is logged and surfaced as HTTP 500 rather than swallowed, so the window is visible when it opens. Closing it entirely needs reserve-before-charge, which this spec does not do. |
 
 ## 4. Target architecture
 
@@ -48,7 +48,7 @@ Replaces the in-memory `Map` in `src/store/idempotency.ts`. Contract:
 - Errors: a store read failure fails the charge request with HTTP 503; a write failure after a
   successful provider charge is retried once, then logged and surfaced as HTTP 500.
 - Auth: the service's existing database credentials; no new principal.
-- Limits: keys expire after 30 days via a `created_at` index and a daily delete job.
+- Limits: none beyond the primary key. Rows accumulate; nothing in this spec deletes them.
 
 ### API-1 — charge response contract
 
