@@ -76,12 +76,15 @@ Then make the graph launchable:
   each later one on the previous unit's branch. A derived base is a guess about a decision the
   split made — the report says which bases were read and which derived. The workflow starts
   worktrees and the pull-request chain from these.
-- **Normalise the root's base.** The split records the first landing unit's `branch-base` as the
-  repository's default branch, so a base naming the ref step 2 confirmed is that repository's root
-  rather than a stack link: it goes to step 3 as `baseBranch: null`. Match by branch name — the
-  split writes `main` where step 2 confirmed `origin/main`. Passed through as a string it is a base
-  no task builds, and every repository's first landing unit would raise a stack-base diagnostic on
-  every run.
+- **Normalise the root's base.** A `branch-base` naming either the repository's default branch or
+  the base step 2 confirms is that repository's root rather than a stack link: it goes to step 3 as
+  `baseBranch: null`, which resolves to the confirmed `defaultRef`. Both refs have to match, and by
+  branch name — the split records the default branch for an ordinary root and writes `main` where
+  the ref is `origin/main`, but records the parked branch where it found the checkout sitting on
+  one; the confirmed half settles once step 2 answers. Left as a string, a default-branch base is
+  worse than noise: the start-point chain takes it directly, so the first landing unit is cut from
+  `main` and the base the user confirmed in step 2 is discarded without a word — and, built by no
+  task, it also raises a stack-base diagnostic per repository on every run.
 - **Check every remaining stack base is reachable.** A base some task's `branch:` builds is produced
   by this run. One no task builds has to exist already: `origin` is fetched, so resolve the ref in
   that repository. A base that resolves is a branch the split rooted on and needs nothing; one that

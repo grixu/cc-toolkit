@@ -88,9 +88,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   builds and git cannot resolve becomes a step-2 question instead of a post-run diagnostic. Only
   the skill can tell a typo from a real branch the split rooted on; the workflow sees the task
   files alone, so it cut the branch from the default ref and reported the lost stacking after the
-  work was built on it. A base naming the repository's confirmed base ref is normalised to
-  `baseBranch: null` — the split records it on every first landing unit, and left as a string it
-  raised a stack-base diagnostic per repository on every run — while a base launched despite
+  work was built on it. A base naming the repository's default branch or the base step 2
+  confirms is normalised to `baseBranch: null` — left as a string, a default-branch base is taken
+  by the start-point chain directly, so the first landing unit is cut from it and a parked base the
+  user confirmed is discarded, besides raising a diagnostic per repository on every run — while a base launched despite
   resolving nowhere is passed through, so the report records what was consented to
 - `implement-tasks`: a `graph` HIL item is relayed as a diagnostic, not as a parked human step —
   the tasks ran normally, and what it asks for is a corrected task file before the next split; the
