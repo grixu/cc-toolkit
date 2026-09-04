@@ -7,6 +7,10 @@ on:
   pull_request:
     paths:
       - 'plugins/fd3/**'
+      # The job runs the shared runner and resolves promptfoo and the agent SDK from the root
+      # manifest, so a change to either breaks these evals without touching the plugin.
+      - 'scripts/run-evals.sh'
+      - 'package.json'
 
 jobs:
   smoke:
