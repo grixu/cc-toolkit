@@ -50,6 +50,16 @@ the rules the repository documents for itself (Step 0).
 rules for families and rules with no counterpart in the language under review. Work it
 before judging structure, and note which conventions you picked up.
 
+**The read is a fixed, bounded list of `Read` calls, never a search.** Read each path
+in `scope.md` once, at the repository root, and move on. A path that comes back "file
+does not exist" is an answer: record its absence and never probe it again in the same
+review, in any spelling. Do not `Glob` or `Grep` for config files (`.eslintrc*`,
+`.prettierrc*`, `eslint.config.*`, `.editorconfig`) — a repo-wide glob returns hundreds
+of vendored hits from `node_modules/`, none of which govern the code under review. If
+you do need a glob, scope it to the repository root (`.editorconfig`, not
+`**/.editorconfig`). The whole of Step 0 should cost a handful of `Read` calls; if it is
+costing more than the review itself, you are searching when you should be reading.
+
 **Step 0 of that read is the standards pair:** `CODING_STANDARDS.md`, then
 `CODING_STANDARDS.local.md`, both at the repository root only. They LAYER — both apply,
 and where they disagree `.local` wins per statement (a rule the `.local` file relaxes
@@ -325,6 +335,19 @@ Match the report to what you found: neither pad a clean one to look thorough, no
 collapse one carrying a medium-or-higher finding to look clean.
 
 ## Step 4 — Follow up with the user (AskUserQuestion)
+
+**First, check what you can actually do.** This step offers to change files, so it is
+only honest when `Edit` (or `Write`) is in the tool set you were given for this turn —
+the frontmatter declares them, but the host may hand you a narrower set. If editing is
+unavailable, do not offer an apply menu and do not call `AskUserQuestion`: close the
+report with one line — "Read-only tools this run; apply these yourself or re-run me
+where `Edit` is available" — and stop. That single line ends the turn.
+
+**Never re-invoke this skill to apply the fixes.** There is no apply mode, no
+`edit` / `apply-edits` / `--apply` argument, and no second phase to enter. Re-reading
+the report you just wrote, re-Reading the files you just reviewed, or calling `Skill`
+on `quality-review` again buys nothing and is the single most expensive mistake
+available here. If the fixes cannot be applied in this turn, they end the turn.
 
 Never edit during the review. Immediately after the report, in the **same turn**,
 **use the `AskUserQuestion` tool** to ask how to proceed — a concrete menu gets a
