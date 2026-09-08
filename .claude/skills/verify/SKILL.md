@@ -57,7 +57,14 @@ sys.exit(1 if fail else 0)
 PY
 ```
 
-Then run `claude plugin validate --strict` and report anything it adds.
+Then validate each manifest and report anything the script did not catch. `claude
+plugin validate` takes a required path, so it has to iterate — a bare invocation at the
+repo root resolves to nothing:
+
+```bash
+claude plugin validate .claude-plugin/marketplace.json --strict
+for d in plugins/*/; do claude plugin validate "$d" --strict || true; done
+```
 
 ## 2. Do not re-check versions
 
@@ -81,6 +88,6 @@ that need a human call:
 
 ## 4. Summary
 
-Print pass/fail per check. If the script exits 0 and `claude plugin validate --strict`
-is clean, say so in one line. Otherwise list exactly what needs to be fixed, most
+Print pass/fail per check. If the script exits 0 and every `claude plugin validate`
+run is clean, say so in one line. Otherwise list exactly what needs to be fixed, most
 blocking first.
