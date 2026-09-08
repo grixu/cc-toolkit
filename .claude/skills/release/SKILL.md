@@ -29,8 +29,8 @@ that confirmation replaces the prompts you just suppressed.
 
 ## Preflight
 
-The first three are `die` conditions inside the script — hitting one after a partial run
-is worse than checking first.
+All four are `die` conditions inside the script; the only non-fatal item in the list is
+`gh` in item 3. Hitting one after a partial run is worse than checking first.
 
 1. `## [Unreleased]` exists in `plugins/<name>/CHANGELOG.md` **and is not empty** — the
    script refuses on either.
@@ -39,10 +39,10 @@ is worse than checking first.
 3. `jq` and `git` are on PATH. `gh` is **optional**: without it the script pushes the
    commit and tag and prints `gh CLI not found — skipping GitHub Release`. Do not block
    a release on `gh`; just say the GitHub Release will be missing.
-4. `git diff --quiet -- plugins/<name> .claude-plugin/marketplace.json` is clean — that
-   narrow pair is all the script checks. It does not look at the rest of the working
-   tree or at which branch you are on, and it commits and pushes whatever it stamps, so
-   confirm the branch yourself.
+4. `git diff --quiet -- plugins/<name> .claude-plugin/marketplace.json` is clean — the
+   script dies on it, and that narrow pair is all it checks. It does not look at the
+   rest of the working tree or at which branch you are on, and it commits and pushes
+   whatever it stamps, so confirm the branch yourself.
 
 ## After
 
