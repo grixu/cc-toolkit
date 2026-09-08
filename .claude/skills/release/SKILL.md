@@ -29,16 +29,20 @@ that confirmation replaces the prompts you just suppressed.
 
 ## Preflight
 
-Check these before running; each one is a `die` inside the script, and hitting it after a
-partial run is worse than checking first.
+The first three are `die` conditions inside the script — hitting one after a partial run
+is worse than checking first.
 
 1. `## [Unreleased]` exists in `plugins/<name>/CHANGELOG.md` **and is not empty** — the
    script refuses on either.
 2. The tag `<plugin>/vX.Y.Z` for the version you are about to create does not exist
    (`git tag --list '<plugin>/*' | tail -5`).
-3. `jq`, `git`, and `gh` are on PATH; `gh auth status` is clean.
-4. The working tree is clean and you are on the branch you mean to release from — the
-   script commits and pushes whatever it stamps.
+3. `jq` and `git` are on PATH. `gh` is **optional**: without it the script pushes the
+   commit and tag and prints `gh CLI not found — skipping GitHub Release`. Do not block
+   a release on `gh`; just say the GitHub Release will be missing.
+4. `git diff --quiet -- plugins/<name> .claude-plugin/marketplace.json` is clean — that
+   narrow pair is all the script checks. It does not look at the rest of the working
+   tree or at which branch you are on, and it commits and pushes whatever it stamps, so
+   confirm the branch yourself.
 
 ## After
 
