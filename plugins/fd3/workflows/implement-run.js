@@ -379,9 +379,9 @@ const mergePrompt = (repo, repoTasks) => {
     `   "Already up to date" is expected on a resumed run — count its task as merged.`,
     `4. For every task now merged in, including one that was already up to date, set`,
     `   \`status: merged\` in the task file listed beside it, changing nothing else in that file.`,
-    `   The task files are the run's state store, they live outside the repository, and they are`,
-    `   never committed — a status left at implemented after the merge is the one thing a later`,
-    `   reader cannot tell from a merge that never happened.`,
+    `   The task files are the run's state store and you never commit them, wherever they live —`,
+    `   a status left at implemented after the merge is the one thing a later reader cannot tell`,
+    `   from a merge that never happened.`,
     ``,
     `Resolve a merge conflict only when the two sides are clearly compatible and the resolution`,
     `is mechanical; commit the resolution and record it under resolved — the task's slug and one`,
@@ -592,17 +592,37 @@ const CR_RESULT = {
   },
 }
 
-const ciPrompt = (unit, mode, markFiles) =>
-  [
+// A branch that is checked out in the repository itself has no worktree of its own, and that
+// checkout is the user's: their uncommitted work, and often the tasks directory, sit in the tree
+// the commands would grade. Validate it in a detached worktree at the branch's commit instead —
+// `git worktree add --detach` is allowed for a branch checked out elsewhere, and what it holds is
+// exactly what the branch holds. Fixes still land in the checkout; the next run refreshes this one.
+const validationTree = (unit) =>
+  unit.worktree === unit.repo ? `${unit.repo}.worktrees/${unit.branch.replace(/\//g, '-')}-validate` : unit.worktree
+
+const ciPrompt = (unit, mode, markFiles) => {
+  const tree = validationTree(unit)
+  return [
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
-    `in the worktree ${unit.worktree}. Run them in the reported order, sequentially — never in`,
+    `in the worktree ${tree}. Run them in the reported order, sequentially — never in`,
     `parallel.`,
     ``,
-    `First \`cd ${unit.worktree}\`, then run \`git branch --show-current\` and return its output`,
-    `as branch. Every command runs from there: each command's cwd in the report is relative to`,
-    `the repository root, so resolve it inside this worktree — never against ${unit.repo}, which`,
-    `is a different checkout on a different branch. If the branch you read is not ${unit.branch},`,
-    `run nothing: return it as branch with passed=false and say so in failures.`,
+    ...(tree === unit.worktree
+      ? []
+      : [
+          `That worktree is this branch's validation checkout, detached at its commit. Create it`,
+          `with \`git worktree add --detach ${tree} ${unit.branch}\` if it is not there; if it is,`,
+          `bring it to the branch's current commit with \`git -C ${tree} checkout --detach`,
+          `${unit.branch}\`. Never \`git clean\` it — installed dependencies live there untracked.`,
+          ``,
+        ]),
+    `\`cd ${tree}\` before anything else, and confirm what you are about to grade: \`git rev-parse`,
+    `HEAD\` there must equal \`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
+    `return branch "${unit.branch}". When they do not, run nothing: return the branch you actually`,
+    `found (or the short HEAD sha when detached) as branch, with passed=false and the mismatch in`,
+    `failures. Every command runs from that worktree: each command's cwd in the report is relative`,
+    `to the repository root, so resolve it there — never against ${unit.repo}, which is a`,
+    `different checkout on a different branch.`,
     ``,
     `Toolchain report for this repository:`,
     ``,
@@ -637,12 +657,14 @@ const ciPrompt = (unit, mode, markFiles) =>
           `\`status: done\` in the frontmatter of these task files, changing nothing else in them,`,
           `and return marked=true:`,
           ...unit.tasks.map((slug) => `- ${tasks.find((t) => t.slug === slug).file}`),
-          `They are this run's state store: they live outside the repository, they are never`,
-          `committed, and the no-fixing rule above is about the code, not about them. On any`,
-          `failure leave them untouched and return marked=false.`,
+          `They are this run's state store, and the no-fixing rule above is about the code, not`,
+          `about them: edit them at the absolute paths listed, commit nothing, and if they happen`,
+          `to sit inside a checkout of this repository, leave that checkout's other files alone.`,
+          `On any failure leave them untouched and return marked=false.`,
         ]
       : []),
   ].join('\n')
+}
 
 const fixPrompt = (unit, problems, source) =>
   [
@@ -720,7 +742,7 @@ const ciFault = (ci, unit) => {
   const ran = (ci.branch || '').trim()
   if (ran && ran !== unit.branch) return `ran in a checkout on ${ran} instead of ${unit.branch}`
   if (!ran) return `could not name the branch it ran on`
-  const stray = strayChanges(ci.dirty, unit.worktree)
+  const stray = strayChanges(ci.dirty, validationTree(unit))
   if (stray.length > 0) {
     const shown = stray.slice(0, 5).join(', ')
     return `left ${stray.length} uncommitted change(s) in the worktree (${shown}${stray.length > 5 ? ', …' : ''}), so its verdict describes a tree no commit holds`

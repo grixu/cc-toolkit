@@ -273,17 +273,35 @@ const CI_RESULT = {
   },
 }
 
-const ciPrompt = (unit, mode, markFiles) =>
-  [
+// A branch checked out in the repository itself has no worktree of its own, and that checkout is
+// the user's: their uncommitted work sits in the tree the commands would grade. Validate it in a
+// detached worktree at the branch's commit — repairs still land in the checkout.
+const validationTree = (unit) =>
+  unit.worktree === unit.repo ? `${unit.repo}.worktrees/${unit.branch.replace(/\//g, '-')}-validate` : unit.worktree
+
+const ciPrompt = (unit, mode, markFiles) => {
+  const tree = validationTree(unit)
+  return [
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
-    `in the worktree ${unit.worktree}. Run them in the reported order, sequentially — never in`,
+    `in the worktree ${tree}. Run them in the reported order, sequentially — never in`,
     `parallel.`,
     ``,
-    `First \`cd ${unit.worktree}\`, then run \`git branch --show-current\` and return its output`,
-    `as branch. Every command runs from there: each command's cwd in the report is relative to`,
-    `the repository root, so resolve it inside this worktree — never against ${unit.repo}, which`,
-    `is a different checkout on a different branch. If the branch you read is not ${unit.branch},`,
-    `run nothing: return it as branch with passed=false and say so in failures.`,
+    ...(tree === unit.worktree
+      ? []
+      : [
+          `That worktree is this branch's validation checkout, detached at its commit. Create it`,
+          `with \`git worktree add --detach ${tree} ${unit.branch}\` if it is not there; if it is,`,
+          `bring it to the branch's current commit with \`git -C ${tree} checkout --detach`,
+          `${unit.branch}\`. Never \`git clean\` it — installed dependencies live there untracked.`,
+          ``,
+        ]),
+    `\`cd ${tree}\` before anything else, and confirm what you are about to grade: \`git rev-parse`,
+    `HEAD\` there must equal \`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
+    `return branch "${unit.branch}". When they do not, run nothing: return the branch you actually`,
+    `found (or the short HEAD sha when detached) as branch, with passed=false and the mismatch in`,
+    `failures. Every command runs from that worktree: each command's cwd in the report is relative`,
+    `to the repository root, so resolve it there — never against ${unit.repo}, which is a`,
+    `different checkout on a different branch.`,
     ``,
     `Toolchain report for this repository:`,
     ``,
@@ -318,12 +336,14 @@ const ciPrompt = (unit, mode, markFiles) =>
           `\`status: done\` in the frontmatter of these task files, changing nothing else in them,`,
           `and return marked=true:`,
           ...unit.taskFiles.map((f) => `- ${f}`),
-          `They are the run's state store: they live outside the repository, they are never`,
-          `committed, and the no-fixing rule above is about the code, not about them. On any`,
-          `failure leave them untouched and return marked=false.`,
+          `They are the run's state store, and the no-fixing rule above is about the code, not`,
+          `about them: edit them at the absolute paths listed, commit nothing, and if they happen`,
+          `to sit inside a checkout of this repository, leave that checkout's other files alone.`,
+          `On any failure leave them untouched and return marked=false.`,
         ]
       : []),
   ].join('\n')
+}
 
 const FIX_RESULT = {
   type: 'object',
@@ -377,11 +397,12 @@ const ciFault = (ci, unit) => {
   // The final gate flips this branch's task files to done itself, so their own dirtiness is
   // expected wherever the tasks directory happens to live; anything else is the runner's edit.
   const own = new Set(unit.taskFiles || [])
+  const tree = validationTree(unit)
   const stray = (ci.dirty || '')
     .split('\n')
     .filter((line) => line.trim())
     .map(porcelainPath)
-    .filter((p) => p && !own.has(`${unit.worktree}/${p}`))
+    .filter((p) => p && !own.has(`${tree}/${p}`))
   if (stray.length > 0) {
     const shown = stray.slice(0, 5).join(', ')
     return `left ${stray.length} uncommitted change(s) in the worktree (${shown}${stray.length > 5 ? ', …' : ''}), so its verdict describes a tree no commit holds`

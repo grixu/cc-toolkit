@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A CI runner that edits its way to green no longer produces a pass: regenerating a derived
   artifact counts as fixing, the runner returns `git status --porcelain`, and a verdict from a
   tree carrying uncommitted changes beyond the task files is discarded as `no-verdict`
+- A target branch that is the repository's own checkout is now validated in a detached worktree
+  at the branch's commit, so the user's uncommitted work and the tasks directory are no longer
+  part of the tree under test; merges and fixes still happen in the checkout
+- The merge and CI prompts no longer claim the task files live outside the repository — they say
+  what actually holds: edit them at their absolute paths, commit nothing, touch nothing else
+- `implement-tasks` says that a pre-launch commit of the spec and tasks directory must carry the
+  repository's regenerated indexes, or say it did not — a stale one fails every branch at once
 
 ## [0.1.0] - 2026-09-04
 

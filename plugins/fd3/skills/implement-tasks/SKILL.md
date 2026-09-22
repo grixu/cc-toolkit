@@ -133,6 +133,12 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
 Everything else — wave composition, branch names, merge order — the task files already decided;
 report it, do not ask.
 
+Committing the spec and the tasks directory before launch is the user's call, and it is a change
+to the repository like any other: whatever that repository derives from the tree you touched —
+a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
+that you did not. A stale generated file fails validation on every branch of the run at once,
+and reads there as the branches' own defect.
+
 ### 3. Launch
 
 Launch the dynamic workflow and let it run in the background:
@@ -158,7 +164,10 @@ repository's `defaultRef` — the ref the user confirmed in step 2, fetched fres
 Worktrees and target branches are cut from that ref (or the task's stack base). When step 2
 established that a target branch is the branch the repository itself is parked on, say so via
 `parkedBranch` — git refuses a second worktree for it, and the workflow must know to use the
-main checkout rather than discover the refusal. On a relaunch, pass `reportPath` — the `<output-file>`
+main checkout rather than discover the refusal. Merges and fixes for that branch then happen in
+the checkout, but its validation does not: the workflow grades it in a detached worktree beside
+the repository, so the verdict describes the branch's commit rather than whatever else the user
+has open in that tree. On a relaunch, pass `reportPath` — the `<output-file>`
 path from the previous run's completion notification. The workflow reads that file's toolchain and
 baseline knowledge with one cheap agent, so the run skips a re-scout and a re-baseline of every
 repository it already knows. Never transcribe that knowledge into the call yourself: it is tens of
