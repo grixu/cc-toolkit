@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `split-to-tasks` accepts a `ready` verdict that carries a declared gap: the blocked claim
+  becomes an operational task naming its owner, instead of stopping the split; an ownerless
+  blocked claim still stops it
+
+### Added
+
+- `split-to-tasks` cuts a protected path — one guarded by `CODEOWNERS`, branch protection, or a
+  required review — into a delivery task on its own branch, so one external approval no longer
+  holds a whole landing unit
+- A `depends-on` edge between two tasks on the same branch must name the file or symbol they
+  share, in the dependent task's `## Note` and in the report; an edge that cannot be named is
+  dropped, because it only serialises the implementation stage
+
 ### Fixed
+
+- The split reads the spec at its absolute path and never lets the spec's own commit location
+  decide a branch base — a spec committed on a feature or docs branch no longer roots the stack
+  there
 
 - CI verdicts now describe the branch they claim to: the toolchain scout reports each command's
   `cwd` relative to the repository root, the CI prompt `cd`s into the worktree and reads

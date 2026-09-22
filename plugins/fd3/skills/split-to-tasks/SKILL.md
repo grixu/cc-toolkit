@@ -26,6 +26,8 @@ that cites nothing — is a reason to stop and report it, never something to fix
   split. Its frontmatter
   says `repository: none` and leaves `branch` empty — these fields are machine-read, so prose in
   them breaks the reader — and its body closes with a `## Note` saying why no pull request exists.
+  A declared gap the spec carries into the split is the second thing this shape holds (see
+  *Precondition*): the missing fact has an owner, and the task is how the split tracks it.
 - **The index card rule** — a task file carries pointers, never copies. The spec stays the single
   source of truth. Contract prose copied into a task is a second source of truth that rots
   silently, because nothing detects that the spec moved on.
@@ -35,11 +37,17 @@ that cites nothing — is a reason to stop and report it, never something to fix
 Splitting propagates the spec's defects into every task. A validation verdict in this
 conversation settles the question. Otherwise the spec must carry all three: read its evidence
 record **from the bottom** — the last verdict line in the file is the current one, position
-decides and not the date — that line records no blocked claims, and its count equals `wc -l` on
-the spec.
+decides and not the date — that line's blocked claims, if it carries any, are declared gaps,
+and its count equals `wc -l` on the spec.
 
-Anything short of that — blocked claims, a count that does not match, a dated block with no
-verdict line, no pass anywhere — is a stop before step 1. A dated heading over verified rows is not
+**A declared gap is work, not a stop.** A `ready` verdict may carry a blocked claim when
+validation recorded it as a declared gap: the fact is unresolved and the spec names who resolves
+it. Such a gap gets an **operational task** of its own, whose `## Note` says what has to come
+back and from whom, and every task the gap blocks from being *written* draws a `depends-on` edge
+onto it (step 4's authorship rule). A blocked claim with no named owner is not a declared gap.
+
+Anything short of that — an ownerless blocked claim, a count that does not match, a dated block
+with no verdict line, no pass anywhere — is a stop before step 1. A dated heading over verified rows is not
 a verdict. Validating is not this skill's work, and no command is named for it: on *validate first*
 the split ends with nothing written. What lifts the stop is the user's answer, never your own — say
 what the record holds, then ask, once, whether to validate first or split as-is. The message that
@@ -83,6 +91,11 @@ Record each repository's absolute root path and write that path into `repository
 not a location: the next stage resolves it by guessing among the user's checkouts, and a feature
 worked on in a second worktree is exactly where the guess goes wrong.
 
+The spec is an input read at its **absolute path**, and where it happens to be committed decides
+nothing. A spec written on a docs branch, on a feature branch, or in a repository the work never
+touches still cuts its branches from each repository's default branch: a base is derived from the
+rollout and the stack, never from `git log` on the spec file.
+
 ### 2. Cut
 
 The raw material is the work items. Every task is a subset of them, and every item lands in
@@ -105,6 +118,13 @@ reason, and the reason decides the edge cases:
    section and becomes its own late task, behind the gate the spec names, carrying `phase: cleanup`
    in its frontmatter — cleanup is not a rollout phase, and a section reference in a machine-read
    field breaks the reader.
+5. **A protected path cuts, and keeps its own branch.** An edit to a path the repository guards —
+   a `CODEOWNERS` entry naming another team, a branch-protection or required-review rule, a
+   release manifest, the CI workflow definitions — waits on an approval the rest of the unit does
+   not. It is a delivery task like any other, with its own element and done criterion, on a branch
+   of its own, so one external approval never holds the whole landing unit. Read the repository's
+   `CODEOWNERS` and protection settings in step 1 to know which paths these are; where the
+   repository declares none, the rule finds nothing and costs nothing.
 
 Within what survives the boundaries, prefer the smallest task that makes one verification row
 pass. Where one repository owns a whole behaviour, that yields a vertical slice — schema, endpoint
@@ -156,7 +176,16 @@ is policy of this skill and never appears in the spec.
 ### 4. Order
 
 Dependencies come from the spec's build order and its phase table. Record each as a `depends-on`
-edge between task slugs: an edge means the other task must land first. Never draw an edge onto
+edge between task slugs: an edge means the other task must land first.
+
+**An edge between two tasks on the same branch has to name what they share.** Same-branch tasks
+land together, so an edge there is a claim that one must be *written* before the other, and only a
+concrete overlap makes that true: a file both touch, a symbol one defines and the other calls, a
+migration one writes and the other reads. Name it in the dependent task's `## Note` and in the
+report's table — the frontmatter field stays a bare slug list, because prose in a machine-read
+field breaks the reader. An edge you cannot name that way is sequencing by intuition: drop it. It
+buys nothing on a shared branch and costs the implementation stage a serialisation, since tasks
+with no edge between them are implemented concurrently. Never draw an edge onto
 an operational task when the spec lets the code land before that gate — an edge there strands
 implementable work behind human hands, and a whole extra run pays for it; a dependency that only
 gates *verification* belongs in the task's Done-when, not in the graph. A gate that blocks
@@ -166,8 +195,9 @@ operational task exists for that gate, that is a coverage failure in step 5, not
 record the gate in prose. Propose each branch's name
 following its repository's visible convention — existing branches show it; the name belongs to the
 group, not the task. One exception joins the step-6 batch: when the checkout already sits on a
-branch carrying the spec's commits, whether the first landing unit reuses that branch or cuts
-fresh by the convention is the user's call — a user mid-feature may have chosen it deliberately.
+branch carrying implementation commits for this spec, whether the first landing unit reuses that
+branch or cuts fresh by the convention is the user's call — a user mid-feature may have chosen it
+deliberately. A branch that carries only the spec file itself is not that case.
 
 When the edge onto an operational task is real, carry it up to the branch: a landing unit that
 mixes a gate-blocked task with implementable ones cannot reach a complete state in one run. Cut
@@ -206,7 +236,7 @@ Before writing anything, check — and say in the report — that:
   workflow's merge planning relies on that;
 - the `branch-base` chain is rooted, acyclic, single-parent and identical on every task of a
   branch. Its one root is the repository's default branch — or, where step 4 found the checkout
-  already sitting on a branch that carries the spec's commits, that branch: the root is then
+  already sitting on a branch that carries implementation commits for this spec, that branch: the root is then
   whatever the step-6 answer settles, so a chain rooted there is a question still pending, never a
   coverage failure. Stopping on it would abort a split the user was never asked about.
 
