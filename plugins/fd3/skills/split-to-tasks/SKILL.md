@@ -28,6 +28,9 @@ that cites nothing — is a reason to stop and report it, never something to fix
   them breaks the reader — and its body closes with a `## Note` saying why no pull request exists.
   A declared gap the spec carries into the split is the second thing this shape holds (see
   *Precondition*): the missing fact has an owner, and the task is how the split tracks it.
+  Both cases need hand-run steps that no repository carries. A phase's own verification rows are
+  not that — the repositories' checks run them — so a phase boundary gets no operational task
+  unless the spec names a gate outside its own verification.
 - **The index card rule** — a task file carries pointers, never copies. The spec stays the single
   source of truth. Contract prose copied into a task is a second source of truth that rots
   silently, because nothing detects that the spec moved on.

@@ -278,12 +278,18 @@ names no owner. A `blocked` claim goes into the report; do not put it to the use
 ends with a claim `open`: a claim you cannot settle before reporting becomes `blocked`, with the reason
 it could not be settled stated in the report.
 
-**`ready` and `blocked`.** The verdict is `ready` only when every claim is `verified` or `deferred` —
+**`ready` and `blocked`.** A `deferred` claim never lowers a verdict: it bounds the phase it gates,
+that phase's row still reads `yes`, and the document is still `ready`. The verdict is `ready` only
+when every claim is `verified` or `deferred` —
 a declared gap with a named owner and a placement is what a downstream stage can act on, because
 `split-to-tasks` turns it into an operational task carrying that owner. An ownerless `blocked` claim
 leaves it nothing to write, so it makes the verdict `not ready`, however small the gap looks. The
 last move before recording a claim `blocked` is therefore step 4: ask the user who owns it and where
 it lands. An owner and a placement make it `deferred`, and the spec records both.
+
+This reaches the user only for a claim **nothing in the spec owns**. A gap the spec already declares
+with an owner and a placement is `deferred` on sight — it is not a finding, it does not go into the
+batch, and a pass that asks about it has turned a settled document into a question.
 
 ### 6. Report
 

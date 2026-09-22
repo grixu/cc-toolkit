@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A gap the spec already declares with an owner and a placement is `deferred` on sight — it never
+  reaches the user as a question, and it never lowers a verdict or a phase row
+- An operational task exists only for hand-run steps no repository carries; a phase's own
+  verification rows are run by the repositories' checks and raise no task
 - A `ready` verdict no longer hides an ownerless gap: `validate-spec` returns `ready` only when
   every claim is `verified` or `deferred`, and asking the user for an owner is the last move
   before a claim is recorded `blocked`
