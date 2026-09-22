@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what actually holds: edit them at their absolute paths, commit nothing, touch nothing else
 - `implement-tasks` says that a pre-launch commit of the spec and tasks directory must carry the
   repository's regenerated indexes, or say it did not — a stale one fails every branch at once
+- `implement-tasks` step 2 offers only review skills that review inline, and expands a fan-out
+  orchestrator the user names (`code-review:start-cr`) into its single-lens skills — inside a
+  workflow agent there is no `Agent` tool, so the orchestrator silently degraded to one pass
 
 ## [0.1.0] - 2026-09-04
 

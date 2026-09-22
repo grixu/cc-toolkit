@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Lens is re-dispatched
 - The unavailable-lens question offers exactly proceed-without-it or abort — reviewing that lens
   inline is not an option on it
+- Step 3 states what to do where the `Agent` tool is absent (inside another agent or a workflow
+  step): say so up front and hand the caller the choice, never discover it halfway and report a
+  single pass as an eight-lens review
 - Scanner search is described tool-neutrally (`Grep`, or `git grep` where sub-agents have no
   `Grep` tool)
 - Step 4 now judges the fix as well as the finding — behaviour preserved, no contradiction with

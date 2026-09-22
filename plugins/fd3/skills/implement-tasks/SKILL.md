@@ -110,9 +110,16 @@ Then make the graph launchable:
 One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`:
 
 - which code-review skills to run during validation — offer only names present in this session's
-  skill listing, never one recalled from memory; the lens is roughly two fifths of the run, and a
-  review bot on the pull request finds different things, not the same ones — `none` is a valid
-  answer but a real trade;
+  skill listing, never one recalled from memory; the lens costs roughly a quarter to two fifths
+  of the run, and a review bot on the pull request finds different things, not the same ones —
+  `none` is a valid answer but a real trade. **Offer only skills that review inline.** A review
+  agent in the workflow has no `Agent` tool, so a skill or command that fans out into scanners of
+  its own — `code-review:start-cr` is the one to watch for — cannot do what its name promises
+  there: it quietly reviews everything itself in one pass, which is the single perspective the
+  fan-out exists to avoid. When the user names one anyway, expand it into the single-lens skills
+  it orchestrates (for `start-cr`: `code-review:quality-review`, `code-review:comment-review`,
+  `code-review:security-review`), pass those as `reviewSkills`, and say that is what you did —
+  each becomes its own review agent, which is the fan-out the workflow can actually run;
 - the spec path, when the `spec:` pointers did not resolve to an existing file in step 1;
 - any unresolved repository paths, `branch-base:` disagreements and stale `in-progress` calls
   from step 1;
