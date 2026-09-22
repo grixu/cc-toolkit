@@ -104,6 +104,15 @@ conflict the `.local` one wins. Work it there, then:
   records a **tracked `.local` file** (`git check-ignore` fails on it) and any
   **conflict between two project files** (resolved by scope.md's precedence order),
   both of which reach the report's `Conventions` line;
+- **one note, byte-identical in every brief, and it may only suppress.** Write it once and paste
+  the same text into all N briefs: a per-Lens note is a per-Lens instruction, and the Scanner
+  reads whatever it finds there as what you want it to look for. So the slot holds nothing but
+  documented conventions, each **quoted verbatim with its file** — never your own threat
+  hypotheses or "where to focus", never an "established facts — do not raise" list, never a
+  paraphrase of a rule (one run's paraphrase said a legacy pattern "is documented as accepted"
+  where the rule said to migrate off it, and buried the very finding the user later asked for).
+  Anything you want checked belongs in the Lens's own rules file, not here. A note that grows
+  past a screen is the wrong shape: cut it to the rules that actually suppress something;
 - name any family or rule the language makes **N/A** in that note, so its owning
   Scanner clears it in one line instead of inventing findings to fit;
 - keep the standards text **out of the note**: it travels in the brief's own
@@ -167,14 +176,28 @@ its findings verbatim inside `<result>` — that is the delivery, and it arrives
    control straight back, so "ask and block on the reply" is not a thing the tool can do.
    Chasing a Scanner that is merely slow makes it regenerate its whole output, which can
    land after you have already merged.
+
+   **Waiting is ending your turn.** Once the pre-reading below is done, say "standing by" and
+   end the turn: each `<task-notification>` wakes you, and a turn you never end is the only way
+   to *not* receive them promptly. Never `sleep`, never poll `ListAgents`, never `stat` a
+   Scanner's transcript, never emit a placeholder tool call to stay alive, and never set up a
+   `Monitor` or an `until` loop over any of these — a run that polled its way through the wait
+   burned 70% of its turns and two thirds of its context on `echo ok`, and the leftover timers
+   then fired into the report and the apply phase. And **never `TaskStop` a Scanner**: elapsed
+   time is not a state you can observe, the "stalled" one was mid-`Read` with 27 tool calls
+   behind it, and killing it cost the review its whole security lens.
 2. **Fail closed on an empty `<result>`, not on silence.** The failure to catch is a
    notification whose `<result>` is missing, empty, or truncated mid-block — that Scanner
-   has **not** reported. Re-dispatch that one Lens as a fresh **unnamed** `Agent` and
+   has **not** reported. A `<result>` that presents itself as an **amendment, a correction, or
+   a partial list** counts as truncated too, whatever it contains: the Scanner's own full
+   findings are somewhere you cannot see, so re-dispatch that Lens rather than merge the
+   fragment. Re-dispatch that one Lens as a fresh **unnamed** `Agent` and
    collect its `<task-notification>` the same way — this holds for every active Lens,
    `security`, `performance` and `spec` included. Never quietly review that lens yourself
    and pass the result off as a full N-lens review. If the re-dispatch also comes back empty,
    **tell the user that lens is unavailable** and ask whether to proceed without it or
-   abort. A single-pass or missing-lens review is a **labelled, user-acknowledged
+   abort — those two are the whole menu, and "I read that lens inline myself" is not on it,
+   however reasonable it looks as the recommended option. A single-pass or missing-lens review is a **labelled, user-acknowledged
    degradation**, never the silent default — that silent fallback is exactly how a single
    perspective's false positive reaches the report unchecked.
 3. **Merge only once all N have delivered a `<result>`.** Merging early loses findings.
@@ -220,12 +243,21 @@ Send each Scanner a brief in this shape, filling every slot:
 Read the rules file **completely first**, then judge only the families that belong to
 that Lens. A Scanner **returns findings/verdicts only**: it does not render a report,
 does not re-grade centrally, and **writes nothing into the tree** — not the files under
-review, and not a scratch or probe file to test a hypothesis against. It is reading the
+review, and not a scratch or probe file to test a hypothesis against.
+
+A Scanner is **one agent, one pass, one output**. It **dispatches no agent of its own** — a
+sub-agent puts a second hop between the finding and the merge, and the Scanner that tried it
+had its own report overwritten by the follow-up, losing a handoff outright. It does not wait in
+the background, poll, or schedule anything; it reads, judges, and returns. Its **final message
+is its whole output**: if something has to change after it has already written its findings,
+it re-sends the complete list, never an "amendment" or a delta — anything the last message
+leaves out never reaches the merge. It is reading the
 user's working copy, so it settles a doubt by reading the type, the signature, or the call
 site, and marks the rest `(verify)`. Read the whole changed file for context, and target
 what the change touched. The `naming & module` Scanner alone adds the **one-hop
-cross-file protocol** on top of that: Grep the importers of each changed module and the
-imports of each module it newly imports, open those files at the matched lines only —
+cross-file protocol** on top of that: search the importers of each changed module and the
+imports of each module it newly imports — with the `Grep` tool, or `git grep` from `Bash` in a
+session where that tool is not handed to sub-agents — open those files at the matched lines only —
 no transitive crawl, no repo listing, no `find`; a fact beyond the hop is `(verify)`;
 it still writes nothing.
 
@@ -264,8 +296,8 @@ it still writes nothing.
    of the **source** (where untrusted data enters) and of the **sink**; a pattern alone
    (`req.body`, a string containing `SELECT`) is never a finding; `L<lines>` lists both
    ends, source first, and the clause says which is which. When either end sits
-   outside the files in view the Scanner reads it — it has `Read` and `Grep` — and marks
-   only what it still cannot confirm `(verify)`. `CANDIDATES` is reserved for a
+   outside the files in view the Scanner reads it — it can `Read` any file and search with
+   `Grep` or `git grep` — and marks only what it still cannot confirm `(verify)`. `CANDIDATES` is reserved for a
    confirmed source→sink pair whose *mitigation* is the doubt; a cleared look-alike is
    one prose line for `Not flagged`. Severity is `high` or `medium`, **never `nit`**.
    It never runs the code, an audit tool, or a network command; `.env`, YAML, JSON and

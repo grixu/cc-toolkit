@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- Step 3 spells out that waiting for the Scanners means ending the turn: no `sleep`, `ListAgents`
+  polling, transcript `stat`s, placeholder calls or `Monitor`/`until` loops, and never `TaskStop`
+  on a Scanner — elapsed time is not a state the Orchestrator can observe
+- The conventions note is one byte-identical, suppress-only text in every brief, with each rule
+  quoted verbatim from its file: no per-Lens threat hypotheses, no "do not raise" lists, no
+  paraphrases
+- A Scanner dispatches no agent of its own, waits in no background, and its final message is its
+  whole output; a `<result>` presented as an amendment or a partial list counts as truncated and
+  the Lens is re-dispatched
+- The unavailable-lens question offers exactly proceed-without-it or abort — reviewing that lens
+  inline is not an option on it
+- Scanner search is described tool-neutrally (`Grep`, or `git grep` where sub-agents have no
+  `Grep` tool)
 
 ## [0.3.0] - 2026-09-02
 
