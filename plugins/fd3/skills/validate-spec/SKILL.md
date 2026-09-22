@@ -62,6 +62,10 @@ broken one — so a check inherits its reasoning, never its result. What you do 
 evidence work behind a claim the status records as `verified`, unless an edit since then touched the
 section it rests on. Spend the pass on what the status leaves open.
 
+The invocation may carry a **focus list** with that status — the findings still open and the sections
+the previous pass edited. It says where to spend the pass, never what to skip: the twelve checks are
+re-derived either way, and an edited section is read as new text, not as a section already cleared.
+
 The spec's evidence record may hold dated blocks that no handed-down status accounts for — passes
 from earlier runs. Their identity is their date; pass numbers count this run's passes only. They are
 available when a claim's history bears on what you are deciding.
@@ -273,6 +277,13 @@ Repeat 3–5 until every claim is `verified`, `deferred`, or `blocked` because n
 names no owner. A `blocked` claim goes into the report; do not put it to the user again. The run never
 ends with a claim `open`: a claim you cannot settle before reporting becomes `blocked`, with the reason
 it could not be settled stated in the report.
+
+**`ready` and `blocked`.** The verdict is `ready` only when every claim is `verified` or `deferred` —
+a declared gap with a named owner and a placement is what a downstream stage can act on, because
+`split-to-tasks` turns it into an operational task carrying that owner. An ownerless `blocked` claim
+leaves it nothing to write, so it makes the verdict `not ready`, however small the gap looks. The
+last move before recording a claim `blocked` is therefore step 4: ask the user who owns it and where
+it lands. An owner and a placement make it `deferred`, and the spec records both.
 
 ### 6. Report
 

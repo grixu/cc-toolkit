@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A `ready` verdict no longer hides an ownerless gap: `validate-spec` returns `ready` only when
+  every claim is `verified` or `deferred`, and asking the user for an owner is the last move
+  before a claim is recorded `blocked`
+- `build-spec` re-invokes validation when the previous pass edited the spec, not only when the
+  verdict was not ready — a `ready` verdict on a document that same pass rewrote judged the
+  version before those edits — and each re-invocation carries a focus list of open findings and
+  edited sections
+- The validation return prints all twelve check rows with their fixed numbering and short names,
+  and the report reference says to re-read it after a compaction
 - The split reads the spec at its absolute path and never lets the spec's own commit location
   decide a branch base — a spec committed on a feature or docs branch no longer roots the stack
   there
