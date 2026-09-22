@@ -67,8 +67,10 @@ keeps its suppress-only role.
 ## Consequences
 
 - "Five" is no longer an invariant anywhere: every count in the command, the
-  skills, the references, and the docs is N, 8, 11, or 42, and a future lens
-  adds a gate to Step 2b rather than a new number to hunt down.
+  skills, the references, and the docs is N, 8, 11, or the master table's row
+  count, and a future lens adds a gate to Step 2b rather than a new number to hunt
+  down. The row count was 42 when this decision was taken; run analysis has since
+  added `security` · `iac-exposure` and `access-widening`, making it 44.
 - The gated lenses have no eval surface except the scanner-track prompts — no
   standalone skill means no skill-level fixture, so their recall and noise gates
   emulate the brief directly.

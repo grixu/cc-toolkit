@@ -25,7 +25,7 @@ first pass.
 
 ## Contents
 - `security` — secret-in-source, injection-sink, missing-access-check,
-  unvalidated-boundary, insecure-setting
+  unvalidated-boundary, insecure-setting, iac-exposure, access-widening
 
 Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 **Calibration** paragraph naming the look-alike that is *not* a violation.
@@ -37,6 +37,8 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 | `security` | missing-access-check | handler reading/mutating a resource with no authn/authz guard, or request-supplied id with no ownership/tenant predicate | high |
 | `security` | unvalidated-boundary | HTTP/CLI/env/queue/third-party payload used in logic or persistence with no parse/validate at entry | medium |
 | `security` | insecure-setting     | a literal disabling a protection (`rejectUnauthorized:false`, `verify=False`, unsafe `yaml.load`, `Math.random` for tokens, CORS `*`+credentials) | high |
+| `security` | iac-exposure         | infrastructure code storing a secret where others can read it, or admitting an identity wider than the one it names | high |
+| `security` | access-widening      | the change relaxes an authorization boundary that existed — a weaker permission, a dropped guard or owner predicate, an allowlist opened up | high |
 
 ### Confirm the sink — the discipline for the whole lens
 
@@ -146,7 +148,10 @@ Authentication says who is calling; authorization says whether *this* caller may
   registration (read it — an `app.use(auth)` above the route clears the whole group); a
   deliberately public endpoint (health, login, signup, a signature-verified webhook); a
   query already scoped to the session's own tenant one layer up; code with no
-  request-facing caller. This rule almost always needs the registration read; when it
+  request-facing caller — **a test that would stay green if the guard regressed is
+  `tests` · test-fidelity, not this rule**: the missing assertion is a test defect, and
+  grading it here turns a medium into a high and puts the whole review under a security
+  headline it has not earned. This rule almost always needs the registration read; when it
   is out of reach, the finding is `(verify)`, never an assertion.
 
 #### `unvalidated-boundary` — parse at the edge, then trust
@@ -195,3 +200,56 @@ checks, safe parsing, unpredictable tokens, origin isolation.
   elsewhere — say so); `Math.random` for a non-security value (jitter, sampling); CORS
   `*` with no credentials on a public read-only API. A gate you cannot read is
   `(verify)`.
+
+#### `iac-exposure` — infrastructure that stores a secret readably, or trusts too widely
+
+Infrastructure code is in scope for this lens (`.tf`/HCL and the declarative surfaces
+`scope.md` classifies as `iac`), and it fails differently from application code: nothing
+is executed, so the harm sits in what a declaration *stores* and *admits*.
+
+- **Flag** when:
+  - a secret ends up somewhere the declaration does not control — a generated key or
+    password materialized as a resource attribute, so it lands in remote state
+    (`tls_private_key`, a service-account or access-key resource, a `local_file` of a
+    key); an output carrying a credential without `sensitive`; a plaintext `default` on
+    a credential variable;
+  - a trust or access grant is wider than the identity it names — a federation or OIDC
+    condition that matches beyond the branch, environment or workflow intended (a `sub`
+    pinned to `refs/heads/main` still matches a workflow that runs on
+    `pull_request_target`); a wildcard principal (`allUsers`, `AWS: "*"`, a project-wide
+    binding where one service account was meant); a bucket, topic or dataset opened to
+    anonymous access; `0.0.0.0/0` reaching a non-public port.
+  Ends: the declaration line and where the value becomes readable, or the identity the
+  grant admits — name it (`the prod state bucket`, `any workflow run of any fork`).
+- **Suggested fix**: name the mechanism the stack already has — reference the secret
+  manager instead of materializing the value, mark the output `sensitive` and keep the
+  key out of state, tighten the condition to the full ref *and* the workflow, name the
+  exact principal, or replace the open CIDR with the peer range.
+- **Calibration → not a finding**: a value read from a secret-manager data source; a
+  resource public by design (an assets bucket behind a CDN, a load balancer's public
+  address); a wildcard inside a scope the provider narrows by another condition you
+  have read; a fixture in a test or sandbox module; a breadth the Step 2 conventions
+  note documents. State cannot be read from the file, so a claim about *who* can read
+  the state bucket is `(verify)` unless the configuration in view says so.
+
+#### `access-widening` — the change relaxes a boundary that was there
+
+The diff is the evidence here: a permission, guard or predicate that stood on the `-`
+side and is weaker or gone on the `+` side hands data to callers who could not reach it
+yesterday, and nothing in the code looks wrong afterwards.
+
+- **Flag** when the change, on an existing path: swaps a required permission, role or
+  scope for a broader one (`admin:contract:read` → an org-wide read); removes or
+  loosens a guard, decorator or middleware; drops an owner or tenant predicate from a
+  query that had one; moves a route out of an authenticated group; widens an allowlist,
+  origin list or audience to a wildcard; lowers a validation that gated who may write.
+  Ends: the removed or weakened line (quote the `-` side) and the resource it now
+  admits.
+- **Suggested fix**: name the boundary that was there and what would restore it, or the
+  narrower predicate that covers the new caller.
+- **Calibration → not a finding**: a widening the `--spec` text or the Step 2 note
+  explicitly asks for (clear it in one prose line naming where it is written); a rename
+  of the same permission; a boundary moved rather than removed — the guard now sits one
+  layer up and you have read it; a new endpoint with no previous boundary, which is
+  `missing-access-check` territory if anything. When the diff does not show the previous
+  boundary, this rule does not apply.

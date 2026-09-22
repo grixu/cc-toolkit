@@ -25,7 +25,7 @@ The single source of truth for one Lens's rule text: `references/rules/<lens>.md
 One of the eleven stable top-level labels in the quality vocabulary: `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `security`, `performance`, `spec`, and `standards`. Ten are fixed by the plugin; `standards` is repo-defined (its rules come from the Standards file).
 
 **Rule**:
-A specific sub-tag under a Family — one of the 42 fixed rules across the ten plugin-defined Families, or a repo-defined `standards` rule whose slug derives from the quoted rule — or one of the comment rules `R1`–`R12`.
+A specific sub-tag under a Family — one of the 44 fixed rules across the ten plugin-defined Families, or a repo-defined `standards` rule whose slug derives from the quoted rule — or one of the comment rules `R1`–`R12`.
 
 **Finding**:
 The quality-side unit of output: `family` · rule · severity · lines → fix.

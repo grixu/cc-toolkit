@@ -226,7 +226,7 @@ anything:
 | `simplicity` | `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md` |
 
 **Severity comes from `${CLAUDE_PLUGIN_ROOT}/references/severity.md`** — the master
-table of all 42 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
+table of all 44 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
 mapping for `standards` findings, and the anti-anchoring rule. Read it and grade every
 finding against its own row there (a `standards` finding against its keyword). The
 family, the rule, and the severity are all used **verbatim**, so a reader (and a diff

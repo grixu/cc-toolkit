@@ -468,7 +468,7 @@ One terse line each. Omit a block when it is empty.
   resolved under its own name.
 - **Re-grade every quality finding's severity yourself** against the master table in
   `${CLAUDE_PLUGIN_ROOT}/references/severity.md` — read it now if you have not. It
-  carries the 42 rows, what each severity means, the anti-anchoring rule, and the
+  carries the 44 rows, what each severity means, the anti-anchoring rule, and the
   **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
   medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
   no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
@@ -606,7 +606,9 @@ Rules for filling it in:
   `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE / ADD, the
   headline names the worst one — it must not call the change "clean",
   "well-structured", or "only cosmetic nits". A confirmed **`security`** finding is the
-  headline over any craft finding, whatever their severities; a `spec` ·
+  headline over any craft finding, whatever their severities — and so is a confirmed
+  **exposure that no rule names**, which leads the report from its own `Not flagged`
+  bullet rather than being demoted for want of a tag; a `spec` ·
   missing-requirement or wrong-implementation forbids the clean headline outright.
   Reserve the clean verdict for a tally that is genuinely nits-only-and-all-KEEP (or
   empty).
@@ -711,12 +713,35 @@ must stay honest when findings don't spread across them:
 - A before/after **preview** diff belongs in an `AskUserQuestion` option, never in the
   report body — Step 5 stays clause-only.
 
+**Put the review on disk before the apply phase starts.** The apply walk is the longest stretch
+of the run and the one most likely to be compacted; when that happens mid-walk, the report and
+the user's answer are gone, and a run that had to reconstruct its approved list by parsing its
+own transcript spent that effort for nothing. Write the rendered report to a file in the session
+scratchpad before the menu, and the user's selection — each approved finding with its file, site
+and exact fix — under it as soon as the answer arrives. Read it back rather than recalling it,
+and say where it is in the wrap-up.
+
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
 without an explicit yes**. Only findings confirmed in Step 4 enter an apply batch.
 
-**`Write` creates a file that does not exist yet, and nothing else.** The one case is
-a new file the user picked from the menu — the missing spec a correctness bucket
-offered, say. Every change to a file already on disk goes through `Edit`, so a
+**`Edit` means the tool, not "an edit".** No `sed -i`, no Python or heredoc rewrite, no `awk`,
+however convenient the shell looks for a repeated change: `Edit` fails loudly when the text it
+expects is not there, and a shell rewrite silently hits every look-alike in the file — one run's
+blanket strip took out the project's own documented comment prefix, which its conventions note
+had just said to leave alone. A formatter runs on the files you edited, never across the package
+or the repository: three runs reflowed snapshots, fixtures and a protected `tsconfig` that way,
+then had to revert them and explain them to the user as "not mine".
+
+**An approved fix that cannot be applied as approved goes back to the user.** A hook blocks it,
+the site turns out ambiguous, the edit needs a companion change nobody approved — say which fix,
+what stopped it, and what you would do instead; never substitute a different edit (one run
+deleted a test where the approved fix was to fold it into another) and mention it in passing
+afterwards. The wrap-up lists every approved fix that was skipped, substituted or extended, with
+its reason, and claims nothing the tree does not carry.
+
+**`Write` creates a file that does not exist yet, and nothing else.** Two cases: a new file
+the user picked from the menu — the missing spec a correctness bucket offered, say — and the
+review's own scratchpad file above, which lives outside the repository. Every change to a file already on disk goes through `Edit`, so a
 targeted fix can never turn into a wholesale rewrite of a file the review only read
 in part. This is the Orchestrator's alone: a Scanner still writes nothing at all.
 

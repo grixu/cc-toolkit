@@ -36,6 +36,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `Reconciliation` line gained a `P primary dropped` term and each of its counts now names
   the rendered block it is checked against (`C` against `Boy-scout`, `D + P` against `Not
   flagged`); `Not flagged` entries stay countable so the check can be verified from the report
+- Apply-phase discipline: edits go through the `Edit` tool (no `sed`/heredoc rewrites), a
+  formatter runs only on the files the review edited, an approved fix that cannot be applied as
+  approved goes back to the user instead of being substituted, and the wrap-up lists every fix
+  skipped, substituted or extended
+- The rendered report and the user's selection are written to the session scratchpad before the
+  apply walk, so a compaction mid-walk no longer costs the approved list
+- A confirmed exposure that no rule names still leads the report from its own `Not flagged`
+  bullet
+
+### Added
+
+- `security` · **`iac-exposure`** (high) — infrastructure code that materializes a secret into
+  state or an unmarked output, or grants trust wider than the identity it names (an OIDC
+  condition matching beyond the intended workflow, a wildcard principal, anonymous access)
+- `security` · **`access-widening`** (high) — a change that relaxes an authorization boundary
+  that existed: a weaker permission, a removed guard, a dropped owner predicate, a widened
+  allowlist
+- `missing-access-check` calibration now routes a test that would stay green if the guard
+  regressed to `tests` · test-fidelity, instead of grading a test gap as a security high
 
 ## [0.3.0] - 2026-09-02
 
