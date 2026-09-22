@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- CI verdicts now describe the branch they claim to: the toolchain scout reports each command's
+  `cwd` relative to the repository root, the CI prompt `cd`s into the worktree and reads
+  `git branch --show-current`, and `implement-run` / `repair-run` discard a verdict whose branch
+  is not the unit's — previously an absolute `cwd` sent every command into the repository's main
+  checkout, so stacked branches were marked done on another branch's code
+- A CI runner that edits its way to green no longer produces a pass: regenerating a derived
+  artifact counts as fixing, the runner returns `git status --porcelain`, and a verdict from a
+  tree carrying uncommitted changes beyond the task files is discarded as `no-verdict`
+
 ## [0.1.0] - 2026-09-04
 
 ### Added

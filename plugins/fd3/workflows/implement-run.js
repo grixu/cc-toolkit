@@ -174,8 +174,10 @@ const baselinePrompt = (repo) =>
     `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${repoDefault(repo)}`,
     `   (git worktree add <path> <ref>) unless it already exists — then reuse it as is.`,
     `2. Run every runnable validation command from the toolchain report below, in the reported`,
-    `   order, sequentially — never in parallel. Skip what the report lists as not runnable here,`,
-    `   recording each skip under skipped with its reason — a skip is never recorded as passed.`,
+    `   order, sequentially — never in parallel. Each command's cwd in the report is relative to`,
+    `   the repository root: resolve it inside that worktree, never against ${repo}. Skip what the`,
+    `   report lists as not runnable here, recording each skip under skipped with its reason — a`,
+    `   skip is never recorded as passed.`,
     `3. Fix nothing, change nothing. Run each command once, as \`<command> 2>&1; echo "exit $?"\``,
     `   — that one run gives both the output and the exit status. Record, per command, whether it`,
     `   exited 0, and for each failure the output lines that matter.`,
@@ -561,10 +563,12 @@ await baselineReady
 
 const CI_RESULT = {
   type: 'object',
-  required: ['passed', 'failures'],
+  required: ['passed', 'failures', 'branch', 'dirty'],
   properties: {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
+    branch: { type: 'string', description: '`git branch --show-current` in the worktree, read before the first command; `detached` when HEAD is detached' },
+    dirty: { type: 'string', description: '`git status --porcelain` in the worktree after the last command, verbatim; an empty string when the tree is clean' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
     skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never reported as passed' },
     marked: { type: 'boolean', description: 'the task files were set to done; asked for on a final gate only' },
@@ -592,7 +596,15 @@ const ciPrompt = (unit, mode, markFiles) =>
   [
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
     `in the worktree ${unit.worktree}. Run them in the reported order, sequentially — never in`,
-    `parallel. Toolchain report for this repository:`,
+    `parallel.`,
+    ``,
+    `First \`cd ${unit.worktree}\`, then run \`git branch --show-current\` and return its output`,
+    `as branch. Every command runs from there: each command's cwd in the report is relative to`,
+    `the repository root, so resolve it inside this worktree — never against ${unit.repo}, which`,
+    `is a different checkout on a different branch. If the branch you read is not ${unit.branch},`,
+    `run nothing: return it as branch with passed=false and say so in failures.`,
+    ``,
+    `Toolchain report for this repository:`,
     ``,
     toolchain.get(unit.repo),
     ``,
@@ -608,9 +620,14 @@ const ciPrompt = (unit, mode, markFiles) =>
     ``,
     `Skip everything the report lists as not runnable here, and skip a command the baseline`,
     `shows failing before it produces a verdict — re-proving a baseline failure is wasted time.`,
-    `Every skip goes under skipped with its reason; a skip is never reported as passed. Do not`,
-    `fix anything. A failure whose location and message match the baseline is pre-existing:`,
-    `return it under preExisting, never under failures, and do not count it against the branch.`,
+    `Every skip goes under skipped with its reason; a skip is never reported as passed. A failure`,
+    `whose location and message match the baseline is pre-existing: return it under preExisting,`,
+    `never under failures, and do not count it against the branch.`,
+    ``,
+    `Do not fix anything. Editing a source file, applying a formatter, and regenerating a derived`,
+    `artifact a command compares against — an index, a schema, a lockfile — are all fixing: report`,
+    `the failure and leave it. A verdict is only worth what the tree it ran on was, so when the`,
+    `last command has run, \`git status --porcelain\` and return its output verbatim as dirty.`,
     `Return passed=true only when every runnable command exits 0 or fails only on baseline`,
     `entries; otherwise return each newly failing command with the output lines that matter.`,
     ...(markFiles
@@ -681,6 +698,43 @@ const reviewPrompt = (unit, skillName) =>
 
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
+// A CI verdict is a statement about one tree at one commit. A runner that stayed in the
+// repository's main checkout graded another branch's code, and one that edited its way to green
+// graded a state no commit holds — both are absence of evidence, never a pass.
+const taskFilePaths = new Set(tasks.map((t) => t.file))
+const porcelainPath = (line) => {
+  const p = line.length > 3 ? line.slice(3) : ''
+  const renamed = p.indexOf(' -> ')
+  return (renamed === -1 ? p : p.slice(renamed + 4)).replace(/^"|"$/g, '')
+}
+// The task files are the run's state store and the CI agent itself flips them to done, so their
+// own dirtiness is expected; anything else in the tree is the runner's edit.
+const strayChanges = (dirty, worktree) =>
+  (dirty || '')
+    .split('\n')
+    .filter((line) => line.trim())
+    .map(porcelainPath)
+    .filter((p) => p && !taskFilePaths.has(`${worktree}/${p}`))
+
+const ciFault = (ci, unit) => {
+  const ran = (ci.branch || '').trim()
+  if (ran && ran !== unit.branch) return `ran in a checkout on ${ran} instead of ${unit.branch}`
+  if (!ran) return `could not name the branch it ran on`
+  const stray = strayChanges(ci.dirty, unit.worktree)
+  if (stray.length > 0) {
+    const shown = stray.slice(0, 5).join(', ')
+    return `left ${stray.length} uncommitted change(s) in the worktree (${shown}${stray.length > 5 ? ', …' : ''}), so its verdict describes a tree no commit holds`
+  }
+  return null
+}
+
+const runCi = async (unit, mode, markFiles, label) => {
+  const ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  if (!ci) return { ci: null, fault: null }
+  const fault = ciFault(ci, unit)
+  return { ci, fault }
+}
+
 const validation = [] // per-branch summary for the final report
 
 const REFRESH_RESULT = {
@@ -728,20 +782,22 @@ for (const unit of units) {
     }
   }
 
-  let ci = await tryTwice(ciPrompt(unit, 'scoped', false), { label: `ci:${tag}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
-  while (ci && !ci.passed && summary.fixRounds < maxFixRounds) {
+  let { ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}`)
+  while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
     const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
-    ci = await tryTwice(ciPrompt(unit, 'scoped', false), { label: `ci:${tag}#${summary.fixRounds + 1}`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+    ;({ ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}#${summary.fixRounds + 1}`))
   }
-  if (!ci) {
+  if (!ci || fault) {
     summary.ci = 'no-verdict'
     hil.push({
       slug: null,
       kind: 'no-verdict',
       stage: 'ci',
-      reason: `${unit.repo} ${unit.branch}: the CI agent returned no result after a retry (transient API failure); the branch has no verdict after ${summary.fixRounds} fix rounds — absence of evidence, not a failure.`,
+      reason: fault
+        ? `${unit.repo} ${unit.branch}: the CI agent ${fault}; its verdict was discarded after ${summary.fixRounds} fix rounds — the branch is unvalidated, not failing.`
+        : `${unit.repo} ${unit.branch}: the CI agent returned no result after a retry (transient API failure); the branch has no verdict after ${summary.fixRounds} fix rounds — absence of evidence, not a failure.`,
     })
     continue
   }
@@ -776,22 +832,24 @@ for (const unit of units) {
   }
 
   // The full command list is the branch's final gate — always, review fixes or not.
-  let finalCi = await tryTwice(ciPrompt(unit, 'full', deadLenses.length === 0), { label: `ci:${tag}:final`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
-  if (finalCi && !finalCi.passed) {
+  let { ci: finalCi, fault: finalFault } = await runCi(unit, 'full', deadLenses.length === 0, `ci:${tag}:final`)
+  if (finalCi && !finalFault && !finalCi.passed) {
     // One fix round here: a final-gate failure is often mechanical — a derived artifact the
     // review fixes invalidated — and only what survives the round deserves a human.
     summary.fixRounds += 1
     const fix = await tryTwice(fixPrompt(unit, finalCi.failures, 'final-gate CI'), { label: `fix-final:${tag}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-final: ${c}`))
-    finalCi = await tryTwice(ciPrompt(unit, 'full', deadLenses.length === 0), { label: `ci:${tag}:final#2`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+    ;({ ci: finalCi, fault: finalFault } = await runCi(unit, 'full', deadLenses.length === 0, `ci:${tag}:final#2`))
   }
-  if (!finalCi) {
+  if (!finalCi || finalFault) {
     summary.ci = 'no-verdict'
     hil.push({
       slug: null,
       kind: 'no-verdict',
       stage: 'ci-final',
-      reason: `${unit.repo} ${unit.branch}: scoped CI passed but the full-gate agent returned no result after a retry; the branch has no final verdict.`,
+      reason: finalFault
+        ? `${unit.repo} ${unit.branch}: scoped CI passed but the full-gate agent ${finalFault}; its verdict was discarded and the branch has no final verdict.`
+        : `${unit.repo} ${unit.branch}: scoped CI passed but the full-gate agent returned no result after a retry; the branch has no final verdict.`,
     })
     continue
   }
