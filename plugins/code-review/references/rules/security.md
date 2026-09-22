@@ -52,7 +52,8 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   builder parameterizing, does this decorator check ownership? Name the pair; a
   candidate with no named pair is a cleared prose line. Cleared look-alikes go to
   `Not flagged`, one prose line naming the pair and the mitigation — never the finding
-  shape.
+  shape. The block is a heading and markdown bullets, never a fenced code block: a fence
+  makes the orchestrator's merge read it as source rather than as findings.
 - **Never run the code; never run `npm audit`, a secret scanner, or any network
   command.** The evidence is the lines in view and what Read/Grep return.
 - **`.env`, yaml, JSON, manifests, and lockfiles are out of this lens** — skipped by

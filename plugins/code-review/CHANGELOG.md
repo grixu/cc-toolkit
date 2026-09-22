@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   change and another (`origin/main`, …) holds commits — a branch pushed to its own remote
   counterpart no longer reads as "nothing to review"; `start-cr`, `comment-review` and
   `quality-review` offer the re-run instead of stopping
+- A `security` scanner's `CANDIDATES` block is a heading with bullets, never a fenced code block
 - Scope: `.mjs`/`.cjs`/`.mts`/`.cts` are reviewed as source, a directory whose name
   contains `e2e` (or ends in `-tests`) classifies as `test`, `.txt` is skipped, and a CI
   workflow file is skipped with a sentence naming its triggers, permissions and secret
