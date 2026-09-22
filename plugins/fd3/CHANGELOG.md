@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `grill-topic` writes what the conversation established before the command into the research
+  directory before round 1, and keeps a question ledger file — round numbers, answers and
+  carry-overs no longer live only in a context that gets compacted
+- The spec template caps every table cell at two sentences and sends longer evidence to
+  `evidence/<section>.md`, with a per-pass overflow file for a validation block that outgrows the
+  appendix
 - `split-to-tasks` cuts a protected path — one guarded by `CODEOWNERS`, branch protection, or a
   required review — into a delivery task on its own branch, so one external approval no longer
   holds a whole landing unit

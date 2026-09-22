@@ -101,6 +101,10 @@ worth more than any prose you could write instead. Two rules:
   `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`. If it stays unsettled, it goes into
   the document as a declared gap with an owner and a placement, never as a bare statement.
 
+Keep every cell of this table — and of every other table in the spec — to two sentences. Evidence
+that needs more room goes to `evidence/<section>.md` beside the spec, cited from the cell; the
+template says so, and a spec whose tables read as prose is one nobody re-reads.
+
 A number you chose while writing — a bake period, a waiting window, a threshold, a version — is a
 claim like any other: it gets an evidence row stating its basis, or it becomes a declared gap. A
 plausible reason attached to a number nobody agreed is still a number nobody agreed.

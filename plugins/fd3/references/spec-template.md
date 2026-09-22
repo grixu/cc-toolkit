@@ -227,3 +227,13 @@ A table. This is the spec's proof of work, and it is what a validation pass spot
 A claim that rests on inference says so — "no documentation states the negative explicitly; treat as
 strong inference, confirmed empirically at stage before prod" is honest and actionable. Softening it
 into a confirmation is the one thing this table exists to prevent.
+
+**A cell is a line, not a paragraph.** Two sentences at most in any cell of any table in this
+document. A verification that needs a transcript, a query plan, a long quote or a list of hits puts
+it in `evidence/<section>.md` beside the spec and cites that file in the cell. Prose that fills a
+cell is unreadable at the width a reviewer scans, and it is what pushes a spec past the size at
+which anyone re-reads it.
+
+Each validation pass appends its own dated block here. A pass whose rows outgrow the appendix writes
+them to `evidence/<date>-pass-<n>.md` and leaves the dated block its verdict line plus one line per
+claim pointing at that file — the record stays complete, and the spec stays a document.

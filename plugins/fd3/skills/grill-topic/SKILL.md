@@ -16,6 +16,8 @@ Establish the facts the topic asserts, before asking anything. A topic document 
 
 This is the highest-value work in the whole session. A round asked against the document gets answers about the document; a round asked against reality gets answers you can build on.
 
+**The conversation before the command counts as input.** Whatever was established before this skill was invoked — a constraint the user stated, an option they already ruled out, a number they gave, a file they pointed at — goes into a file in the session's research directory before round 1, one line each, naming who established it. It is the only input no lookup can re-derive: it does not survive a compaction, and every downstream skill reads files rather than this conversation. Round 1 then treats those lines as facts under test like any other, not as settled ground.
+
 Two things come before the first dispatch. `git fetch` the repository and say if the tree is behind the branch the topic describes — facts cited from a stale clone drift on exactly the files the session will argue from. And read the repository's own prior specs, ADRs and decision records (`docs/specs/`, `requirements/`, wherever they live): a question one of them already settles is not a question, and a lookup dispatched without them re-researches a decision the repository has already made.
 
 For every library, service or tool the topic names, establish three versions: the one the lockfile resolves — never the manifest range — the current release, and the one whose API the discussion will quote. Any difference between them is a round-1 finding: an API argued from the wrong version becomes pseudocode nobody can run. A table when there are more than two, a line each otherwise.
@@ -39,6 +41,8 @@ Every question a user is meant to answer carries its own number — none arrives
 Open every round after the first with one line naming the numbers still unanswered from earlier rounds — `Open from earlier rounds: 18–25` — before any new question. When a round contains sub-lettered questions, close it with the list of labels you expect back (`1, 2, 3a, 3b, 4`): a bare number against a sub-lettered question is one answer short, and you will not know which half it was.
 
 A blocked question keeps its number and stays out of the round's numbered items; name it on the line that opens the round. A number printed inside the round is a number the user will answer.
+
+Keep a **question ledger** file in the session scratchpad, one row per number: the question in a line, the round it went out in, the option chosen or `open`, and `carried-over` where it has been re-asked. Write the row when the question goes out, and update it when the answer arrives — before composing the next round, which is read from the ledger and not from memory. Numbers tracked in your head are the first thing a compaction takes, and what comes back after one is a reassigned number, a question that quietly vanished, or a carried-over question compressed into a summary of itself.
 
 Track which numbered questions came back answered. A question the user skipped is still open: re-put it in the next round under its original number, labelled as carried over, with its options and costs written out in full — a carried-over question compressed to a list of recommendations is not a question, and a user who answers one is ratifying a menu they cannot see. Numbers are never reassigned, so the summary can cite one decision by one name. Silence is not assent, and there is no round count after which it becomes assent.
 
