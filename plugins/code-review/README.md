@@ -28,7 +28,8 @@ From the `grixu/cc-toolkit` marketplace:
 
 `/start-cr` has no lens switch; the change decides which lenses run. The five
 craft lenses and `security` run every time; `performance` runs when the change
-touches executable source; `spec` runs only when you pass `--spec <path>`. The
+touches executable source; `spec` runs when a spec file is named — by `--spec <path>`,
+or by accepting the one the review offers when the diff itself carries a spec. The
 report's `Lenses: L of 8` line names every lens that sat out and why. For a
 partial review, invoke `/comment-review` or `/quality-review` directly; both stay
 independently available and share the same rule text as the command. The three
@@ -86,7 +87,8 @@ says which ran:
   async path, wasted React renders. Every finding names the multiplier, the call
   inside it, the missing bound, and the batch/limit API that exists; "could be
   slow" is not a finding.
-- **spec** — only with `--spec <path>` (a local file). A spec line nothing
+- **spec** — only with a named spec file (`--spec <path>`, or the one the review
+  offers from the diff). A spec line nothing
   implements, one implemented against its wording, one only partly met, and scope
   creep the spec never asked for. Every finding quotes the spec line.
 

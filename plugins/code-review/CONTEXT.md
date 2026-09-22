@@ -15,7 +15,7 @@ One parallel review subagent running exactly one Lens.
 _Avoid_: role, reviewer, worker
 
 **Lens**:
-One of the eight rule clusters: comments (`R1`–`R12`), readability & tests, naming & module, objects & patterns, simplicity & types, security, performance, spec. Three sit beyond the craft five: security (always on), and two gated ones — performance (executable source files in scope), spec (`--spec <path>` given). Comments is a Lens like any other, not a special case; the three added Lenses have no standalone skill.
+One of the eight rule clusters: comments (`R1`–`R12`), readability & tests, naming & module, objects & patterns, simplicity & types, security, performance, spec. Three sit beyond the craft five: security (always on), and two gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user). Comments is a Lens like any other, not a special case; the three added Lenses have no standalone skill.
 _Avoid_: theme, dimension
 
 **Rules file**:
@@ -42,7 +42,7 @@ The root pair `CODING_STANDARDS.md` + `CODING_STANDARDS.local.md`, read together
 _Avoid_: style guide, conventions file (a conventions file — `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.claude/rules`, `.cursor/rules` — only suppresses)
 
 **Active lens set**:
-The N Lenses (6 to 8) that Step 2b of **start-cr** resolves for one run: the five craft Lenses and security always, performance when the source-kind subset of the resolved files (minus `.sh`) is non-empty, spec when `--spec` was given. The report's `Lenses: L of 8` line records it, naming every inactive Lens with its reason.
+The N Lenses (6 to 8) that Step 2b of **start-cr** resolves for one run: the five craft Lenses and security always, performance when the source-kind subset of the resolved files (minus `.sh`) is non-empty, spec when a spec file was named. The report's `Lenses: L of 8` line records it, naming every inactive Lens with its reason.
 _Avoid_: lens selection (the user never picks), enabled lenses
 
 ## Relationships
@@ -60,7 +60,7 @@ _Avoid_: lens selection (the user never picks), enabled lenses
 ## Example dialogue
 
 > **Dev:** "Can I run just the comment **Scanner**?"
-> **Domain expert:** "Invoke the `comment-review` skill directly — **start-cr** always runs its whole **Active lens set**; a **Scanner** is its internal unit of fan-out, not a user-facing switch. The set is decided by the change and the `--spec` flag, never by picking lenses."
+> **Domain expert:** "Invoke the `comment-review` skill directly — **start-cr** always runs its whole **Active lens set**; a **Scanner** is its internal unit of fan-out, not a user-facing switch. The set is decided by the change and by whether a spec file is named, never by picking lenses."
 
 ## Flagged ambiguities
 
