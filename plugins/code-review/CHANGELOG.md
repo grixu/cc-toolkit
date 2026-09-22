@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inline is not an option on it
 - Scanner search is described tool-neutrally (`Grep`, or `git grep` where sub-agents have no
   `Grep` tool)
+- The `Reconciliation` line gained a `P primary dropped` term and each of its counts now names
+  the rendered block it is checked against (`C` against `Boy-scout`, `D + P` against `Not
+  flagged`); `Not flagged` entries stay countable so the check can be verified from the report
 
 ## [0.3.0] - 2026-09-02
 

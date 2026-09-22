@@ -429,12 +429,28 @@ One terse line each. Omit a block when it is empty.
   against each name its home — the report bullet (`path:line`) it became, the converging
   finding it merged into, or the `Not flagged` line that clears it. An entry with no home
   on that list is a bug: route it before you render.
+- **A primary finding is reconciled too.** The channels are not the only thing that goes
+  missing: a Scanner's own `FINDINGS` entry can fall out of the merge between collecting and
+  rendering, and nothing downstream notices. Count what you received per Scanner, and give every
+  primary finding that does not reach a report bullet — deduped into another, demoted, or
+  rejected — its own `Not flagged` entry with the reason. Dedup is the one silent case allowed,
+  and only because the surviving bullet carries it.
 - **Publish that check as one counted line above the report** — `Reconciliation: N
-  handoffs + M candidates → A merged · B own bullet · C boy-scout · D Not flagged` —
-  where `A + B + C + D` equals `N + M`. The arithmetic is what makes the check real: a
+  handoffs + M candidates → A merged · B own bullet · C boy-scout · D Not flagged; P primary
+  dropped` — where `A + B + C + D` equals `N + M`, and `P` counts the primary findings that got
+  no bullet. The arithmetic is what makes the check real: a
   run that states "every handoff routed" without it has asserted rather than reconciled,
   and loses the entry nothing else corroborates. When the sums disagree, an entry is
   unrouted — find it, never adjust a number to close the gap.
+- **Each count names the block it is counted in**, so the line can be checked against the report
+  rather than believed: `merged` is an entry folded into another finding's bullet and visible in
+  its text, `own bullet` one that became its own graded bullet under a file, `boy-scout` one
+  rendered in the `Boy-scout` block, `Not flagged` one rendered as its own entry in `Not
+  flagged`. Runs whose arithmetic was right have still printed `0 boy-scout` over a Boy-scout
+  block holding three routed handoffs, and counted six entries as `merged` into a bullet that
+  was never rendered. Before publishing, count the rendered blocks: `C` equals the Boy-scout
+  entries that came from a channel, and `D + P` equals the entries in `Not flagged`. A count
+  that does not match the block it names is the bug, not the block.
 - **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
   confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
   positive** — drop it and note it under `Not flagged`. An unresolved `(verify)` finding
@@ -462,7 +478,7 @@ comment verdicts **together**. Render with **exactly this template**, in this
 order — keep the structure identical between runs:
 
 ```markdown
-Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged
+Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged; <P> primary dropped
 
 ## Code review — <scope>
 
@@ -488,7 +504,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 A filled-in report reads like this:
 
 <example>
-Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged
+Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped
 
 ## Code review — committed (base → HEAD), 3 files
 
@@ -552,10 +568,11 @@ Rules for filling it in:
   text; for MOVE, name the destination.
 - **Quote comments verbatim.** Every comment verdict carries the verbatim comment
   text and its `path:line`.
-- **`Not flagged`** lists the look-alikes deliberately passed on, plus every candidate
-  and `HANDOFF` the merge cleared — one line when they are all genuine non-findings, a
-  short bullet each when one of them is a *real* problem that merely has no rule to land
-  on. A real problem keeps its own bullet rather than being compressed into a
+- **`Not flagged`** lists the look-alikes deliberately passed on, plus every candidate,
+  `HANDOFF` and dropped primary finding the merge cleared — one line when they are all genuine
+  non-findings, a short bullet each when one of them is a *real* problem that merely has no rule
+  to land on. **Its entries stay countable**: separated by `;` on the one-line form, one bullet
+  each otherwise, because the `Reconciliation` line's last two numbers are checked against them. A real problem keeps its own bullet rather than being compressed into a
   subordinate clause; that compression is how something worth acting on disappears. Drop
   the block if empty.
 - **`Boy-scout`** holds only findings in code the change did not touch; omit the
