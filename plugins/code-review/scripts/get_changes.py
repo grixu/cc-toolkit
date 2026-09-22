@@ -23,7 +23,13 @@ Output (JSON on stdout):
   "files": [
     {"path": "src/foo.ts", "status": "M", "binary": false}
   ],
-  "count": 1
+  "count": 1,
+  "alternate": {                          // only when the run found nothing
+    "ref": "origin/main",                 // and another base would have
+    "base": "def5678",
+    "diff_args": ["def5678..HEAD"],
+    "count": 7
+  }
 }
 
 Status codes follow `git diff --name-status`:
@@ -58,23 +64,50 @@ def _ref_exists(ref: str) -> bool:
     return res.returncode == 0
 
 
-def _resolve_base(explicit: Optional[str]) -> str:
+BASE_CANDIDATES = ["@{upstream}", "origin/main", "origin/master", "main", "master"]
+
+
+def _merge_base(ref: str) -> Optional[str]:
+    if not _ref_exists(ref):
+        return None
+    return _run(["git", "merge-base", "HEAD", ref], check=False).strip() or None
+
+
+def _resolve_base(explicit: Optional[str]) -> tuple[str, str]:
     if explicit:
         if not _ref_exists(explicit):
             raise SystemExit(f"--base ref does not exist: {explicit}")
         merge_base = _run(["git", "merge-base", "HEAD", explicit]).strip()
-        return merge_base or explicit
+        return merge_base or explicit, explicit
 
-    candidates = ["@{upstream}", "origin/main", "origin/master", "main", "master"]
-    for ref in candidates:
-        if _ref_exists(ref):
-            mb = _run(["git", "merge-base", "HEAD", ref], check=False).strip()
-            if mb:
-                return mb
+    for ref in BASE_CANDIDATES:
+        mb = _merge_base(ref)
+        if mb:
+            return mb, ref
     raise SystemExit(
         "could not resolve a base ref — set upstream, push to origin/main, "
         "or pass --base <ref>"
     )
+
+
+def _alternate(scope: str, base: str, used_ref: str) -> Optional[dict]:
+    """A second base worth reporting when the resolved one saw no change.
+
+    A branch whose upstream is its own remote counterpart diffs to nothing the
+    moment it is pushed, which reads as "no changes" while the whole branch is
+    still unreviewed against the trunk.
+    """
+    for ref in BASE_CANDIDATES[1:]:
+        if ref == used_ref:
+            continue
+        mb = _merge_base(ref)
+        if not mb or mb == base:
+            continue
+        ref_args = [mb] if scope == "both" else [f"{mb}..HEAD"]
+        files = _list_files(ref_args)
+        if files:
+            return {"ref": ref, "base": mb, "diff_args": ref_args, "count": len(files)}
+    return None
 
 
 def _is_binary(path: str, ref_args: list[str]) -> bool:
@@ -153,15 +186,16 @@ def main() -> int:
         raise SystemExit("not inside a git repository")
 
     include_untracked = False
+    used_ref = None
     if args.scope == "uncommitted":
         ref_args = ["HEAD"]
         base = None
         include_untracked = True
     elif args.scope == "committed":
-        base = _resolve_base(args.base)
+        base, used_ref = _resolve_base(args.base)
         ref_args = [f"{base}..HEAD"]
     else:  # both
-        base = _resolve_base(args.base)
+        base, used_ref = _resolve_base(args.base)
         ref_args = [base]
         include_untracked = True
 
@@ -171,17 +205,18 @@ def main() -> int:
         for u in _list_untracked():
             if u["path"] not in tracked_paths:
                 files.append(u)
-    json.dump(
-        {
-            "scope": args.scope,
-            "base": base,
-            "diff_args": ref_args,
-            "files": files,
-            "count": len(files),
-        },
-        sys.stdout,
-        indent=2,
-    )
+    payload = {
+        "scope": args.scope,
+        "base": base,
+        "diff_args": ref_args,
+        "files": files,
+        "count": len(files),
+    }
+    if not files and base and not args.base:
+        alternate = _alternate(args.scope, base, used_ref)
+        if alternate:
+            payload["alternate"] = alternate
+    json.dump(payload, sys.stdout, indent=2)
     sys.stdout.write("\n")
     return 0
 

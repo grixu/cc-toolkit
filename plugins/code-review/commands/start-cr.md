@@ -60,7 +60,13 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   (append `--base <branch>` to both when the user passed one.) Read the `count` of
   each:
 
-  - both zero → tell the user there is nothing to review and **stop**;
+  - both zero → before concluding, look for an `alternate` object in the `committed`
+    output: the script adds it when the resolved base saw nothing but another base
+    (usually `origin/main`) holds real commits, which is what a freshly pushed branch
+    tracking its own remote counterpart looks like. When it is there, say which base was
+    used, which one differs and by how many files, and offer to re-run with
+    `--base <alternate.ref>` — do not report "nothing to review" over it. With no
+    `alternate`, tell the user there is nothing to review and **stop**;
   - exactly one non-zero → use that scope automatically;
   - both non-zero → ask with **one** `AskUserQuestion` which to review —
     **Uncommitted** (working tree vs HEAD), **Committed** (HEAD vs base), or
