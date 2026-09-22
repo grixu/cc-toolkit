@@ -39,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   edited sections
 - The validation return prints all twelve check rows with their fixed numbering and short names,
   and the report reference says to re-read it after a compaction
+- A HIL CI failure is diagnosed by running the failing check in the branch's worktree, not by
+  grepping the source for what the message suggests
+- A repair `instructions` line says what to change and never asks the agent to validate — the
+  workflow runs CI itself, and a second pipeline on the machine is exactly what validation cannot
+  tolerate
+- The closing proposal names each branch's worktree path, whatever the user decides about pushing
 - The split reads the spec at its absolute path and never lets the spec's own commit location
   decide a branch base — a spec committed on a feature or docs branch no longer roots the stack
   there

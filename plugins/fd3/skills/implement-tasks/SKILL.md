@@ -212,7 +212,10 @@ the task file's steps as a script to follow; mark `done` only when they confirm)
 conflict needs their call on how to proceed. A CI failure on the list may be diagnosed first —
 read-only, in the branch's worktree — so the question puts analyzed options before the user
 instead of raw output; the diagnosis then travels verbatim in the repair `instructions`, sparing
-the repair agent a re-investigation. The answers split into two lanes:
+the repair agent a re-investigation. Diagnose by **running the failing check** in that worktree and
+reading what it says. Grepping the source for what the report's message suggests names a plausible
+cause, not the cause: the check is the only thing that knows which of them is true, and a repair
+composed from the plausible one costs a full round to disprove. The answers split into two lanes:
 
 - **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
   the same way; statuses make the rerun skip everything finished.
@@ -238,6 +241,10 @@ the repair agent a re-investigation. The answers split into two lanes:
   the path, never the knowledge. Repair agents receive the decision as their sole
   authority and never read the spec. Repair validation is CI only — no code review.
 
+  An `instructions` line says what to change, never asks for validation. "Then run the tests and
+  confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent
+  returns, and an agent that runs it too puts a second pipeline on a machine that tolerates one.
+
 One carve-out from the second lane: a purely mechanical git operation — merging an existing
 task branch into its target, reverting a named commit — may be done by this skill directly when
 the decision deliberately leaves the branch incomplete, because a repair-run would fail its own
@@ -257,8 +264,8 @@ live. A pause that survives only in this conversation is state lost.
 ### 5. Propose, never push
 
 When every repository-bearing task is `done`: one table — repository, branch, its stack base,
-tasks on it, the element codes those tasks carry, proposed pull-request title citing the
-tickets — with the still-open operational tasks listed alongside; they need the branches landed
+its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
+citing the tickets — with the still-open operational tasks listed alongside; they need the branches landed
 first, so they never gate this proposal. Stacked branches make a pull-request chain: each pull
 request's base is its branch's stack base, and after one lands its successor is retargeted onto
 the default branch — but only when the predecessor landed as a merge commit. After a squash
@@ -269,6 +276,8 @@ after explicit consent: push, `gh pr create` per branch (`--base` set to the sta
 description naming the tasks, the spec and the branch's element codes. Offer cleanup — remove
 the `.worktrees` directories and delete the merged `task/<slug>` branches — as its own
 question, never coupled to the push: declining to publish while wanting a clean repository is a
-normal combination. If push consent does not come, leave everything local and say where it
-lives — and when the tasks directory is untracked, say that too: it is the only copy of the
+normal combination. If push consent does not come, leave everything local. The worktree paths are
+in the table whatever the user decides: a branch whose worktree nobody can name is a branch the
+user cannot open, and the run's own directories are not guessable. When the tasks directory is
+untracked, say that too: it is the only copy of the
 run's state store, one `git clean -fd` away from gone.
