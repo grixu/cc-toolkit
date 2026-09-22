@@ -45,6 +45,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A confirmed exposure that no rule names still leads the report from its own `Not flagged`
   bullet
 
+- Scope: `.mjs`/`.cjs`/`.mts`/`.cts` are reviewed as source, a directory whose name
+  contains `e2e` (or ends in `-tests`) classifies as `test`, `.txt` is skipped, and a CI
+  workflow file is skipped with a sentence naming its triggers, permissions and secret
+  handling as `/security-review` territory
+- The "substance of the change" sentence now covers a docs, spec/ADR or release-notes
+  branch, not only a dependency manifest
+- When no `--spec` was passed and the diff carries a spec-shaped file (`specs/`,
+  `docs/adr/`, `tasks/`, `*SPEC*.md`, …), `start-cr` offers to review the change against
+  it instead of silently leaving the `spec` lens off
+
 ### Added
 
 - `security` · **`iac-exposure`** (high) — infrastructure code that materializes a secret into

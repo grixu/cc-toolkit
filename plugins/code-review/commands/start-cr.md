@@ -5,7 +5,8 @@ description: >-
   security, performance, spec) in parallel over a change and merges them into one
   per-file report. Three lenses are gated by the input, never by the user: security
   is always on, performance runs only when executable source files are in scope,
-  spec only with `--spec <path>`. Manual only — never auto-triggered. It resolves
+  spec only when a spec file is named — by `--spec <path>`, or by the user accepting
+  the one the diff itself carries. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
 allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
@@ -23,7 +24,7 @@ and only for what the user picks.
 This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
 user choice: the five craft Lenses and `security` always run, `performance` runs
-when executable source is in scope, `spec` when `--spec` names a file. For a partial
+when executable source is in scope, `spec` when a spec file is named. For a partial
 review the user invokes `/comment-review` or `/quality-review` directly.
 
 Arguments: `$ARGUMENTS`
@@ -82,6 +83,17 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   offer to review uncommitted changes only or to pass `--base <branch>` — **never
   guess silently**.
 
+**When the change carries its own spec, offer the Lens.** If `--spec` was not passed
+and the resolved list contains a specification-shaped file — a path under `specs/`,
+`spec/`, `docs/adr/`, `tasks/`, or a name matching `*SPEC*.md`, `*ADR*.md`, `*.spec.md`,
+`*-plan.md` — say so in one line and offer that path with a single `AskUserQuestion`:
+review the change against it, or continue without the `spec` Lens. Offer the one file
+that best fits (the most recently changed, or the one the other files sit under); more
+than two options is a menu, not an offer. On acceptance, treat it exactly as a passed
+`--spec` — Read it now — and note in the Tally that the spec Lens was activated from the
+diff rather than from the flag. Do not make this offer twice, and never activate the
+Lens without the user saying yes.
+
 **Which files get judged** — the in-scope extensions, the skip list, and the rule
 about a skipped dependency manifest that is the substance of the change — is in
 `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. Read it and apply it to the resolved
@@ -139,13 +151,13 @@ never from a preference:
 - **`performance`** is active iff the `source`-kind subset of the resolved list,
   **minus `.sh` files**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;
-- **`spec`** is active iff `--spec` was given and resolved to a readable local file in
-  Step 1.
+- **`spec`** is active iff a spec resolved to a readable local file in Step 1 — from
+  `--spec`, or from the offer the user accepted when the change carried its own spec.
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
 `performance` gets the source subset it was gated on; every other Lens gets the full
 resolved list. Record every **inactive** Lens with its reason (`performance — no
-executable code`, `spec — no --spec`); the Tally prints them in Step 5. From here on
+executable code`, `spec — no spec named`); the Tally prints them in Step 5. From here on
 **N** means this count: N Scanners dispatched, N `<result>` blocks awaited, N outputs
 merged.
 
@@ -614,7 +626,7 @@ Rules for filling it in:
   empty).
 - **The `Tally` names the lenses.** `Lenses: L of 8` always, with each skipped Lens
   and its Step 2b reason in the parenthesis (`skipped: performance — no executable
-  code; spec — no --spec`); drop the parenthesis when all eight ran. When a spec was
+  code; spec — no spec named`); drop the parenthesis when all eight ran. When a spec was
   given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
   met`; omit that clause otherwise.
 
