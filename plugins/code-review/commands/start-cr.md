@@ -467,6 +467,22 @@ One terse line each. Omit a block when it is empty.
   no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
   the Scanner's guess. A single-lens Scanner is the one most prone to the anchoring that
   table forbids, so its severity is a first pass and yours is the one that ships.
+- **Judge the fix, not only the finding.** A finding can be right and its fix wrong, and Step 6
+  is too late to notice: by then the user has approved it. For every fix that could reach a
+  bucket, check three things against the code you already read:
+  - **Does it keep behaviour?** Moving a guard onto a DTO turns a 400 into a 422; splitting a
+    shared client drops the double-submit guard that shared instance provided; deleting an unused
+    export removes what a later stage of the same spec consumes. A fix that changes what callers
+    observe is not mechanical, whatever its rule says.
+  - **Does it contradict another finding?** One review's headline fix bounded a payload *before*
+    the redaction walk, which would have truncated secrets under the redactor's minimum length —
+    a security hole introduced by a performance fix. Read the fixes as a set, not one at a time.
+  - **Does it create the next finding?** An extraction that takes five positional parameters, a
+    helper that duplicates one two files away — fix the fix before offering it.
+
+  A fix that fails any of the three is re-routed: to the structural walk with the behaviour
+  change named in its option, or to report-only with one line on why. Say which in the report's
+  bullet rather than silently dropping the finding.
 - **Comment verdicts are not re-graded** and are **not** mapped to severities. The
   two vocabularies stay side by side; there is no severity↔verdict mapping
   anywhere in this command.
@@ -632,7 +648,14 @@ menu; never add a fifth. `Report only` is always offered:
   `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,
   `message-chain`); every **`performance`** fix; every **`security`** fix; **plus**
   comment **MOVE**.
-- **Boy-scout extras** — apply the untouched-code findings, or skip them.
+- **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
+  bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
+  a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
+  the structural walk and is applied one at a time with its own yes. Untouched code is where the
+  review understands the least, so a structural edit there is riskier than the same edit inside
+  the diff, not safer: one run bundled a client split into this bucket, silently broke a
+  double-submit guard, dragged an unrelated page into the pull request, and the user discarded
+  the work.
 - **Report only** — change nothing.
 
 **Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
@@ -670,7 +693,14 @@ must stay honest when findings don't spread across them:
   `Not flagged` or spans untouched code, yet the review actually verified — is offer-able
   as its own apply bucket; so is a verified `spec` · wrong-implementation with a one-edit
   fix. The review's most valuable output belongs in the menu, not buried in `Report
-  only` or `Boy-scout extras` because it lacks a rule tag.
+  only` or `Boy-scout extras` because it lacks a rule tag. It is the **only** way a `Not
+  flagged` item enters the menu: it gets its own option, named for the problem, never folded
+  into `Safe fixes` or `Boy-scout extras` where the user approves it without seeing it.
+- **When there are more candidates than slots**, the order is: a confirmed `security` problem
+  first, then a verified correctness problem with no rule, then the canonical buckets by risk,
+  and `Boy-scout extras` last — it is the one whose loss costs the change nothing. A run that
+  gave its last slot to a boy-scout nit while a verified backend gap waited had the priority
+  backwards.
 - A before/after **preview** diff belongs in an `AskUserQuestion` option, never in the
   report body — Step 5 stays clause-only.
 

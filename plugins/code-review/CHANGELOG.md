@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inline is not an option on it
 - Scanner search is described tool-neutrally (`Grep`, or `git grep` where sub-agents have no
   `Grep` tool)
+- Step 4 now judges the fix as well as the finding — behaviour preserved, no contradiction with
+  another fix, no new smell — and re-routes a fix that fails any of the three to the structural
+  walk (with the behaviour change named) or to report-only
+- Boy-scout extras are sorted by risk: a structural or `security` boy-scout fix walks one at a
+  time instead of riding the batch; a `Not flagged` item reaches the menu only as its own named
+  option; and the slot order puts `security`, then verified rule-less correctness problems, ahead
+  of boy-scout extras
 - The `Reconciliation` line gained a `P primary dropped` term and each of its counts now names
   the rendered block it is checked against (`C` against `Boy-scout`, `D + P` against `Not
   flagged`); `Not flagged` entries stay countable so the check can be verified from the report
