@@ -4,7 +4,7 @@ Every finding that reports as `family` · rule · severity carries one **family*
 **rule**, and one **severity**, all three **verbatim** from this table — never a code
 number, never a paraphrase invented this run. Two reviews of the same code name the
 same `family` · rule every time. Eleven families report in that shape: the ten below
-with **42 fixed rows**, plus `standards`, whose rules are the project's own and are
+with **44 fixed rows**, plus `standards`, whose rules are the project's own and are
 graded by the mapping at the end of this file.
 
 Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
@@ -46,6 +46,8 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `security`    | missing-access-check | handler reading/mutating a resource with no authn/authz guard, or request-supplied id with no ownership/tenant predicate | high |
 | `security`    | unvalidated-boundary | HTTP/CLI/env/queue/third-party payload used in logic or persistence with no parse/validate at entry | medium |
 | `security`    | insecure-setting    | a literal disabling a protection (`rejectUnauthorized:false`, `verify=False`, unsafe `yaml.load`, `Math.random` for tokens, CORS `*`+credentials) | high |
+| `security`    | iac-exposure        | infrastructure code storing a secret where others can read it (state, an unmarked output), or a trust/access grant wider than the identity it names | high |
+| `security`    | access-widening     | the change relaxes an authorization boundary that existed — a weaker permission, a removed guard or owner predicate, an allowlist opened up | high |
 | `performance` | n-plus-one          | per-item DB/HTTP/IO call inside a loop over an unbounded collection where a batch form exists | high |
 | `performance` | unbounded-fetch     | a list read with no limit/pagination over data that grows (incl. list endpoints) | medium |
 | `performance` | blocking-in-async   | sync blocking call on a request-serving/event-loop path (N/A outside Node & Python asyncio) | medium |
@@ -66,10 +68,12 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   cycle or inverts the layering (`dependency-direction`), a helper the repo already
   exports (`canonical-helper`), a per-item call that multiplies with the data
   (`n-plus-one`), a spec line left unimplemented or implemented against its wording
-  (`missing-requirement`, `wrong-implementation`), and the four security rules that
+  (`missing-requirement`, `wrong-implementation`), and the six security rules that
   name a confirmed exposure — a literal credential (`secret-in-source`), untrusted data
   reaching a sink (`injection-sink`), an unguarded resource (`missing-access-check`),
-  and a protection switched off (`insecure-setting`). These cost the most to live with.
+  a protection switched off (`insecure-setting`), a secret or over-wide grant declared
+  into infrastructure (`iac-exposure`), and a boundary the change relaxes
+  (`access-widening`). These cost the most to live with.
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
   that claims more than its assertions check, `guard-clause` nesting, an unexplained

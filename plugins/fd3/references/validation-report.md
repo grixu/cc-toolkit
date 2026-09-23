@@ -1,6 +1,8 @@
 # Validation report
 
-The shape `validate-spec` returns its verdict and its status in.
+The shape `validate-spec` returns its verdict and its status in. Read this file before composing a
+return, and read it again after a compaction — a return composed from memory is where the fixed
+rows and the four `Result` forms go missing.
 
 ```markdown
 ## Run
@@ -16,10 +18,25 @@ repositories:
 |---|---|---|
 
 ## Checks
+
+Twelve rows, always all twelve, numbered and ordered as the skill numbers them — a return that
+prints only the checks that moved leaves the caller unable to tell an unrun check from a passing
+one. The short names are fixed too:
+
 | # | Check | Result |
 |---|---|---|
 | 1 | decisions do not contradict | pass (unchanged) |
 | 2 | scope covers every decision | fail — section 10, <the finding> |
+| 3 | every element described and coded | |
+| 4 | dependencies exist, planned or deferred | |
+| 5 | external contracts confirmed | |
+| 6 | referenced documents open | |
+| 7 | element contracts complete | |
+| 8 | build order stated and holds | |
+| 9 | achievable in this project | |
+| 10 | splittable into tasks | |
+| 11 | every element has a check | |
+| 12 | no vague verb, no undecided either/or | |
 
 ## Still open
 - <finding or claim> — <section> — <what would close it> — blocking | non-blocking

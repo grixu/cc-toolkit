@@ -127,7 +127,7 @@ dropping it is cleanup (section 9), not rollback.
 
 - **DB-1** — probe: `psql "$DATABASE_URL" -c "\d idempotency_keys"` lists the four columns. Before
   the change the same command errors with `did not find any relation`.
-- **API-1** — probe: `curl -s -X POST localhost:3000/charges -d @fixtures/charge.json | jq .deliveryStatus`
+- **API-1** — probe: `curl -s -X POST -H "x-api-key: $MERCHANT_API_KEY" localhost:3000/charges -d @fixtures/charge.json | jq .deliveryStatus`
   prints `"queued"`. Before the change it prints `null`.
 - **Delivery retry worker** — triggered: post a charge with the mock merchant endpoint returning
   500; the outcome table gains 5 rows for the event, `delivered = false` on each.

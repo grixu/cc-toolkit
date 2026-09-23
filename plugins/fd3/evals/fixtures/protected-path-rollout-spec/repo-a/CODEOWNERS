@@ -1,0 +1,3 @@
+/services/ledger/      @acme/team-ledger
+/services/checkout/    @acme/team-checkout
+/.github/workflows/    @acme/release-team

@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `split-to-tasks` turns each declared gap — a `deferred` claim with an owner and a placement —
+  into an operational task naming its owner, instead of stopping the split; a `blocked` claim,
+  which nothing owns, still stops it
+- `split-to-tasks` shows the full six-column table in its reply, `elements` included
+- `split-to-tasks` and `implement-tasks` make their first tool call in the same reply as the opening
+  checklist — a reply that only announced the checklist ended a headless run with nothing done
+- `grill-topic` posts a round's unblocked questions while a lookup runs, instead of holding the
+  whole round and ending the turn on "waiting"
+
+### Added
+
+- `grill-topic` writes what the conversation established before the command into the research
+  directory before round 1, and keeps a question ledger file — round numbers, answers and
+  carry-overs no longer live only in a context that gets compacted
+- The spec template caps every table cell at two sentences and sends longer evidence to
+  `evidence/<section>.md`, with a per-pass overflow file for a validation block that outgrows the
+  appendix
+- `split-to-tasks` cuts a protected path — one guarded by `CODEOWNERS`, branch protection, or a
+  required review — into a delivery task on its own branch, so one external approval no longer
+  holds a whole landing unit
+- A `depends-on` edge between two tasks on the same branch must name the file or symbol they
+  share, in the dependent task's `## Note` and in the report; an edge that cannot be named is
+  dropped, because it only serialises the implementation stage
+- Evals — four scenarios covering the defects this round fixed: a split over a spec whose
+  `ready` verdict carries a declared gap, a split over a `CODEOWNERS`-protected path, a
+  validation of an ownerless gap, and a grilling run whose two bookkeeping files must land in
+  `notes/` and `research/`
+
+### Fixed
+
+- A gap the spec already declares with an owner and a placement is `deferred` on sight — it never
+  reaches the user as a question, and it never lowers a verdict or a phase row
+- An operational task exists only for hand-run steps no repository carries; a phase's own
+  verification rows are run by the repositories' checks and raise no task
+- A `ready` verdict no longer hides an ownerless gap: `validate-spec` returns `ready` only when
+  every claim is `verified` or `deferred`, and asking the user for an owner is the last move
+  before a claim is recorded `blocked`
+- `build-spec` re-invokes validation when the previous pass edited the spec, not only when the
+  verdict was not ready — a `ready` verdict on a document that same pass rewrote judged the
+  version before those edits — and each re-invocation carries a focus list of open findings and
+  edited sections
+- The validation return prints all twelve check rows with their fixed numbering and short names,
+  and the report reference says to re-read it after a compaction
+- A pass that hands questions up sends its report with them — the twelve rows, the findings it
+  already holds and a `not ready` verdict, with the handed-up items under *Still open* — instead
+  of promising the table once answers land that may never come
+- `validate-spec` edits only what a finding of that pass names: on a spec whose checks all pass it
+  leaves the file byte-identical apart from the appended evidence block
+- A HIL CI failure is diagnosed by running the failing check in the branch's worktree, not by
+  grepping the source for what the message suggests
+- A repair `instructions` line says what to change and never asks the agent to validate — the
+  workflow runs CI itself, and a second pipeline on the machine is exactly what validation cannot
+  tolerate
+- The closing proposal names each branch's worktree path, whatever the user decides about pushing
+- The split reads the spec at its absolute path and never lets the spec's own commit location
+  decide a branch base — a spec committed on a feature or docs branch no longer roots the stack
+  there
+
+- CI verdicts now describe the branch they claim to: the toolchain scout reports each command's
+  `cwd` relative to the repository root, the CI prompt `cd`s into the worktree and reads
+  `git branch --show-current`, and `implement-run` / `repair-run` discard a verdict whose branch
+  is not the unit's — previously an absolute `cwd` sent every command into the repository's main
+  checkout, so stacked branches were marked done on another branch's code
+- A CI runner that edits its way to green no longer produces a pass: regenerating a derived
+  artifact counts as fixing, the runner returns `git status --porcelain`, and a verdict from a
+  tree carrying uncommitted changes beyond the task files is discarded as `no-verdict`
+- A target branch that is the repository's own checkout is now validated in a detached worktree
+  at the branch's commit, so the user's uncommitted work and the tasks directory are no longer
+  part of the tree under test; merges and fixes still happen in the checkout
+- The merge and CI prompts no longer claim the task files live outside the repository — they say
+  what actually holds: edit them at their absolute paths, commit nothing, touch nothing else
+- `implement-tasks` says that a pre-launch commit of the spec and tasks directory must carry the
+  repository's regenerated indexes, or say it did not — a stale one fails every branch at once
+- `implement-tasks` step 2 offers only review skills that review inline, and expands a fan-out
+  orchestrator the user names (`code-review:start-cr`) into its single-lens skills — inside a
+  workflow agent there is no `Agent` tool, so the orchestrator silently degraded to one pass
+
 ## [0.1.0] - 2026-09-04
 
 ### Added

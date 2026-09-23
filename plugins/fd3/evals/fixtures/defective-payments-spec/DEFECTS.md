@@ -33,6 +33,19 @@ without re-checking this list breaks the eval.
 - `src/store/idempotency.ts` — `new Map` at line 3; functions at lines 5 and 9.
 - `src/webhooks/enqueue.ts` — `enqueueWebhook` at line 8.
 
+## The repository backs every claim the spec does not plant as a defect
+
+A run that finds nothing wrong with the prerequisites, the apply mechanism or the delivery path
+must be right to do so, or the five defects drown in real findings. So the repository carries:
+`DATABASE_URL`, the merchant key and the webhook URL in `deploy/manifest.yaml`, plus its scrape
+annotations for `/metrics`; the orders schema (`migrations/0001_create_orders.sql`,
+`src/orders/repository.ts`) and the `pg` client; `src/server.ts` serving `POST /charges` behind
+`src/http/merchantAuth.ts` (402 on decline) and `GET /metrics`; `src/queue/poller.ts` draining
+the queue into `deliver`; a `post` that really calls the merchant endpoint, so a failing merchant is
+reachable; `fixtures/charge.json` for the API-1 probe; and `.github/workflows/deploy.yml`, which
+migrates and deploys on merge to `main`. Removing any of these turns a clean claim into a sixth
+finding.
+
 Everything else in the spec is deliberately clean: all other citations resolve, the decision table
 is otherwise consistent, every other element carries a code, the evidence table exists and its
 other rows are true. Section 3 carries a **risks accepted** table and section 7's rollout table

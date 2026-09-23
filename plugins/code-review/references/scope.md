@@ -9,29 +9,44 @@ findings.
 
 ## In scope
 
-Source files that carry human-authored code and comments: `.ts .tsx .js .jsx .py .go
-.rs .java .kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus
+Source files that carry human-authored code and comments: `.ts .tsx .mts .cts .js .jsx
+.mjs .cjs .py .go .rs .java .kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus
 **infrastructure-as-code** (`.tf`/HCL and similar declarative surfaces that still carry
-comments and structure worth reviewing).
+comments and structure worth reviewing). The ES-module and CommonJS extensions carry the
+same hand-written code as `.js` — a build script or a config-as-code module under
+`.mjs`/`.cjs` is reviewed, not skipped as tooling.
 
 ## Skip
 
 JSON, lockfiles, generated or minified files (a generator's `.d.ts`, `*_pb.*`, anything
 under `dist/`, `build/`, `node_modules/`), `.md` and docs (in a comment review the prose
-*is* the content), **static config data** (`.yaml`/`.toml`/`.ini` settings, `.env`), and
-license/SPDX headers.
+*is* the content), plain text (`.txt`), **static config data** (`.yaml`/`.toml`/`.ini`
+settings, `.env`), and license/SPDX headers.
 
 Note every skipped file in one line, so coverage stays honest.
 
+**CI workflow definitions are skipped with a security sentence.** A changed
+`.github/workflows/*.yml`, `.gitlab-ci.yml`, or equivalent pipeline file is static config
+by these rules, but it is the one skipped kind that routinely carries a real exposure — a
+`pull_request_target` job checking out and running untrusted code, a secret passed into a
+step that echoes it, a third-party action pinned to a moving tag. Say on the `Skipped`
+line that the pipeline files were not line-graded and that their permissions, triggers and
+secret handling belong to `/security-review`. If the `security` Scanner nonetheless reads
+one and finds a confirmed exposure, that finding stands — `security` · `iac-exposure`
+covers it.
+
 **A skipped file that is the substance of the change gets its own sentence.** A
 dependency manifest (`package.json`, `composer.json`, …) on a dependency-bump or upgrade
-branch is the whole point of that diff. Say so explicitly rather than burying it in the
-skip list: its dependency changes aren't line-graded, and the reader should read that as
-a deliberate scope boundary rather than an oversight. The same sentence carries a second
-boundary: a changed `.env*`, dependency manifest, or lockfile is also **not secret- or
-dependency-scanned** by the `security` lens, which reads source files only. Say that on
-the `Skipped` line and point the reader to `/security-review` for the dependency and
-configuration audit this review does not do.
+branch is the whole point of that diff, and so is the prose on a documentation branch, a
+spec/ADR change, or a release-notes commit — when the skipped files *are* the change,
+name that in a sentence of its own and say what the review therefore covers (often only
+the handful of source files that came along for the ride). Say so explicitly rather than
+burying it in the skip list: the skipped content isn't line-graded, and the reader should
+read that as a deliberate scope boundary rather than an oversight. The same sentence
+carries a second boundary: a changed `.env*`, dependency manifest, or lockfile is also
+**not secret- or dependency-scanned** by the `security` lens, which reads source files
+only. Say that on the `Skipped` line and point the reader to `/security-review` for the
+dependency and configuration audit this review does not do.
 
 ## File kinds
 
@@ -40,7 +55,9 @@ eyeballing the content:
 
 - **`test`** — any file under one of these directories: `__tests__/`, `test/`,
   `tests/`, `spec/`, `e2e/`, `cypress/`, `fixtures/`, `__mocks__/`, `__snapshots__/`,
-  `testdata/`; or whose name matches one of: `*.test.*`, `*.spec.*`, `*_test.go`,
+  `testdata/`; under any directory whose name *contains* `e2e` (`tests-e2e/`,
+  `e2e-tests/`, `apps/web-e2e/`) or ends in `-tests`/`-test`; or whose name matches one
+  of: `*.test.*`, `*.spec.*`, `*_test.go`,
   `test_*.py`, `*_test.py`, `conftest.py`, `*Test.php`, `*Test.java`, `*Test.kt`,
   `*Tests.cs`, `*_spec.rb`, `*.feature`, `*.stories.*`, `setupTests.*`.
 - **`iac`** — `.tf`/HCL and the other declarative infrastructure-as-code surfaces named

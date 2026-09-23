@@ -73,7 +73,9 @@ export function checkCoverage(c, tasks, codes = ELEMENT_CODES) {
   }
 }
 
-export function checkBoundaries(c, tasks) {
+// `precedesDb` names the one element a fixture's build order puts ahead of the migration; without
+// it DB-1 is the root and any edge onto it is one the data does not require.
+export function checkBoundaries(c, tasks, { precedesDb = null } = {}) {
   for (const t of tasks) {
     const els = elementsOf(t);
     const groupsHit = OWNER_GROUPS.filter((g) => els.some((e) => g.includes(e))).length;
@@ -82,8 +84,18 @@ export function checkBoundaries(c, tasks) {
   const migration = tasks.find((t) => elementsOf(t).includes('DB-1'));
   if (c.check(migration !== undefined, 'no task carries DB-1')) {
     c.check(elementsOf(migration).length === 1, 'the DB-1 migration does not have its own task');
-    const deps = migration.fm['depends-on'];
-    c.check(!deps || deps.length === 0, 'the DB-1 migration task has a depends-on edge its data does not require');
+    const deps = migration.fm['depends-on'] || [];
+    if (precedesDb === null) {
+      c.check(deps.length === 0, 'the DB-1 migration task has a depends-on edge its data does not require');
+    } else {
+      const predecessor = tasks.find((t) => elementsOf(t).includes(precedesDb));
+      const allowed = predecessor ? [predecessor.slug, predecessor.fm && predecessor.fm.name] : [];
+      c.check(deps.length === 1, `the DB-1 migration task carries ${deps.length} edges; the build order puts only ${precedesDb} ahead of it`);
+      c.check(
+        deps.every((d) => allowed.includes(String(d))),
+        `the DB-1 migration task depends on ${deps.join(', ')} instead of the ${precedesDb} task`,
+      );
+    }
   }
   const slugs = new Set(tasks.flatMap((t) => [t.slug, t.file.replace(/\.md$/, ''), t.fm && t.fm.name].filter(Boolean)));
   for (const t of tasks) {

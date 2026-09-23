@@ -13,7 +13,9 @@ Exactly six tasks, exercising all four cut boundaries at once:
    (irreversibility cuts, moves to the front).
 2. **API-2** — repo-a / `services/ledger`, phase 1, depends on the DB-1 task.
 3. **API-1** — repo-a / `services/checkout`, phase 1, depends on the API-2 task (build order:
-   DB-1 → API-2 → API-1; monorepo ownership cuts API-1 away from API-2).
+   DB-1 → API-2 → API-1; monorepo ownership cuts API-1 away from API-2). API-1 writes through
+   API-2's `POST /ledger/entries`, and that endpoint must stay in API-2's contract and work
+   item: without it the write path has no builder, and the split stops on a coverage gap.
 4. **UI-1** — repo-b, phase 1, no depends-on (repository cuts).
 5. **CONFIG-1** — repo-a / `services/checkout`, phase 2 (phase cuts CONFIG-1 away from API-1).
 6. **INTEGRATION-1** — repo-b, phase 2 (phase cuts INTEGRATION-1 away from UI-1).

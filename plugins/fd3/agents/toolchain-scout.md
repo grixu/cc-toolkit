@@ -74,7 +74,7 @@ Package manager: <name + version constraint if declared> — <lockfile that prov
 Orchestrator: <name, or "none"> — <config file, or the absence checked>
 
 Validation commands (in order):
-1. <command> — cwd: <path> — <what it validates> — source: <file that defines it, e.g. .github/workflows/ci.yml step "lint">
+1. <command> — cwd: <path relative to the repository root, `.` for the root itself> — <what it validates> — source: <file that defines it, e.g. .github/workflows/ci.yml step "lint">
    scoped form: <the same check restricted to a set of changed paths or packages, with a
    `<paths>` or `<packages>` placeholder — or "not scopeable: <why>">
 2. ...
@@ -85,6 +85,11 @@ Not runnable here:
 Doubts:
 - <what is ambiguous, and what evidence points each way>
 ```
+
+Every `cwd` is **relative to the repository root** — `.`, `backend`, `packages/api`, never the
+absolute path of the checkout you inspected. The caller runs your commands in git worktrees of
+this repository, so an absolute path sends every command into the checkout you happened to read
+and the branch under validation is never exercised.
 
 Order the commands as CI orders them; where CI is silent, install → build → typecheck → lint →
 unit tests. Always include the install command, marked "required in a fresh worktree": the

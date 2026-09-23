@@ -1,10 +1,12 @@
 import * as h from '../helpers.mjs';
 
-export default (output) => {
+const NUMBERED = /^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/m;
+
+export default (output, context) => {
   const c = h.checker();
 
-  const numbered = output.match(/^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/gm) || [];
-  c.check(numbered.length >= 1, 'no numbered round of questions — the grilling half never ran');
+  // Numbering is grill-numbered-questions' concern; here the round only has to have gone out.
+  c.check(NUMBERED.test(output) || h.askedThroughTool(context), 'no round of questions — the grilling half never ran');
 
   // The gate: without a confirmed closing summary the write-spec half must not start.
   const diff = h.diffSandbox('build-spec-gate', 'retry-topic');

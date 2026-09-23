@@ -22,6 +22,7 @@ evals/
   prompts/spec.txt         # scanner brief — spec lens ({{spec}} carries the spec path)
   prompts/standards.txt    # quality trigger with the standards fixture dir as repo root
   fixtures/                # inputs; fixtures/spec/ and fixtures/standards/ are multi-file
+  scope-mix/               # eval-19 input, kept out of fixtures/ so its paths classify by kind
 ```
 
 Node dev deps (`@anthropic-ai/claude-agent-sdk` + `promptfoo`) and the run

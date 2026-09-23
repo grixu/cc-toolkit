@@ -160,3 +160,9 @@ export function section(output, heading) {
   const next = /^##\s+/m.exec(rest);
   return next ? rest.slice(0, next.index) : rest;
 }
+
+// A round that went out through AskUserQuestion is auto-answered under `first_option`, so the
+// final message can hold no numbered question even though the grilling ran.
+export function askedThroughTool(context) {
+  return (context?.providerResponse?.metadata?.toolCalls || []).some((call) => call.name === 'AskUserQuestion');
+}

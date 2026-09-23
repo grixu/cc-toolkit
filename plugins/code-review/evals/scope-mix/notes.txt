@@ -1,0 +1,5 @@
+Release notes draft for the manifest builder change.
+
+- the manifest now skips entries whose expiry is more than a week old
+- slugs are generated from the title rather than taken from the payload
+- the legacy CSV reporter keeps its own copy of the slug rule for now

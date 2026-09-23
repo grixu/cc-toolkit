@@ -33,10 +33,11 @@ to have.
 
 ## Workflow
 
-Post this checklist as your first message in the run, before any tool call — a run that then stops
-on an unresolvable path has cost one message. Post it again in full — marks updated, never
-compressed to a line and never summarised — before every user interaction (the question batch, each
-report round) and at the close:
+Open your first reply with this checklist, before any tool call — a run that then stops on an
+unresolvable path has cost one message — and make the first tool call in that same reply. A reply
+that only announces the checklist, or only posts it, ends the turn with nothing done. Post it again
+in full — marks updated, never compressed to a line and never summarised — before every user
+interaction (the question batch, each report round) and at the close:
 
 ```
 - [ ] 1. Read the graph: parse task frontmatter, resolve repositories, check integrity
@@ -110,9 +111,16 @@ Then make the graph launchable:
 One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`:
 
 - which code-review skills to run during validation — offer only names present in this session's
-  skill listing, never one recalled from memory; the lens is roughly two fifths of the run, and a
-  review bot on the pull request finds different things, not the same ones — `none` is a valid
-  answer but a real trade;
+  skill listing, never one recalled from memory; the lens costs roughly a quarter to two fifths
+  of the run, and a review bot on the pull request finds different things, not the same ones —
+  `none` is a valid answer but a real trade. **Offer only skills that review inline.** A review
+  agent in the workflow has no `Agent` tool, so a skill or command that fans out into scanners of
+  its own — `code-review:start-cr` is the one to watch for — cannot do what its name promises
+  there: it quietly reviews everything itself in one pass, which is the single perspective the
+  fan-out exists to avoid. When the user names one anyway, expand it into the single-lens skills
+  it orchestrates (for `start-cr`: `code-review:quality-review`, `code-review:comment-review`,
+  `code-review:security-review`), pass those as `reviewSkills`, and say that is what you did —
+  each becomes its own review agent, which is the fan-out the workflow can actually run;
 - the spec path, when the `spec:` pointers did not resolve to an existing file in step 1;
 - any unresolved repository paths, `branch-base:` disagreements and stale `in-progress` calls
   from step 1;
@@ -132,6 +140,12 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
 
 Everything else — wave composition, branch names, merge order — the task files already decided;
 report it, do not ask.
+
+Committing the spec and the tasks directory before launch is the user's call, and it is a change
+to the repository like any other: whatever that repository derives from the tree you touched —
+a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
+that you did not. A stale generated file fails validation on every branch of the run at once,
+and reads there as the branches' own defect.
 
 ### 3. Launch
 
@@ -158,7 +172,10 @@ repository's `defaultRef` — the ref the user confirmed in step 2, fetched fres
 Worktrees and target branches are cut from that ref (or the task's stack base). When step 2
 established that a target branch is the branch the repository itself is parked on, say so via
 `parkedBranch` — git refuses a second worktree for it, and the workflow must know to use the
-main checkout rather than discover the refusal. On a relaunch, pass `reportPath` — the `<output-file>`
+main checkout rather than discover the refusal. Merges and fixes for that branch then happen in
+the checkout, but its validation does not: the workflow grades it in a detached worktree beside
+the repository, so the verdict describes the branch's commit rather than whatever else the user
+has open in that tree. On a relaunch, pass `reportPath` — the `<output-file>`
 path from the previous run's completion notification. The workflow reads that file's toolchain and
 baseline knowledge with one cheap agent, so the run skips a re-scout and a re-baseline of every
 repository it already knows. Never transcribe that knowledge into the call yourself: it is tens of
@@ -196,7 +213,10 @@ the task file's steps as a script to follow; mark `done` only when they confirm)
 conflict needs their call on how to proceed. A CI failure on the list may be diagnosed first —
 read-only, in the branch's worktree — so the question puts analyzed options before the user
 instead of raw output; the diagnosis then travels verbatim in the repair `instructions`, sparing
-the repair agent a re-investigation. The answers split into two lanes:
+the repair agent a re-investigation. Diagnose by **running the failing check** in that worktree and
+reading what it says. Grepping the source for what the report's message suggests names a plausible
+cause, not the cause: the check is the only thing that knows which of them is true, and a repair
+composed from the plausible one costs a full round to disprove. The answers split into two lanes:
 
 - **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
   the same way; statuses make the rerun skip everything finished.
@@ -222,6 +242,10 @@ the repair agent a re-investigation. The answers split into two lanes:
   the path, never the knowledge. Repair agents receive the decision as their sole
   authority and never read the spec. Repair validation is CI only — no code review.
 
+  An `instructions` line says what to change, never asks for validation. "Then run the tests and
+  confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent
+  returns, and an agent that runs it too puts a second pipeline on a machine that tolerates one.
+
 One carve-out from the second lane: a purely mechanical git operation — merging an existing
 task branch into its target, reverting a named commit — may be done by this skill directly when
 the decision deliberately leaves the branch incomplete, because a repair-run would fail its own
@@ -241,8 +265,8 @@ live. A pause that survives only in this conversation is state lost.
 ### 5. Propose, never push
 
 When every repository-bearing task is `done`: one table — repository, branch, its stack base,
-tasks on it, the element codes those tasks carry, proposed pull-request title citing the
-tickets — with the still-open operational tasks listed alongside; they need the branches landed
+its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
+citing the tickets — with the still-open operational tasks listed alongside; they need the branches landed
 first, so they never gate this proposal. Stacked branches make a pull-request chain: each pull
 request's base is its branch's stack base, and after one lands its successor is retargeted onto
 the default branch — but only when the predecessor landed as a merge commit. After a squash
@@ -253,6 +277,8 @@ after explicit consent: push, `gh pr create` per branch (`--base` set to the sta
 description naming the tasks, the spec and the branch's element codes. Offer cleanup — remove
 the `.worktrees` directories and delete the merged `task/<slug>` branches — as its own
 question, never coupled to the push: declining to publish while wanting a clean repository is a
-normal combination. If push consent does not come, leave everything local and say where it
-lives — and when the tasks directory is untracked, say that too: it is the only copy of the
+normal combination. If push consent does not come, leave everything local. The worktree paths are
+in the table whatever the user decides: a branch whose worktree nobody can name is a branch the
+user cannot open, and the run's own directories are not guessable. When the tasks directory is
+untracked, say that too: it is the only copy of the
 run's state store, one `git clean -fd` away from gone.

@@ -11,6 +11,11 @@ export async function deliver(event: WebhookEvent): Promise<void> {
   }
 }
 
-async function post(_event: WebhookEvent): Promise<boolean> {
-  return true;
+async function post(event: WebhookEvent): Promise<boolean> {
+  const res = await fetch(process.env.MERCHANT_WEBHOOK_URL ?? "", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(event),
+  });
+  return res.ok;
 }

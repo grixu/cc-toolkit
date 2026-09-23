@@ -10,6 +10,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- Step 3 spells out that waiting for the Scanners means ending the turn: no `sleep`, `ListAgents`
+  polling, transcript `stat`s, placeholder calls or `Monitor`/`until` loops, and never `TaskStop`
+  on a Scanner — elapsed time is not a state the Orchestrator can observe
+- The conventions note is one byte-identical, suppress-only text in every brief, with each rule
+  quoted verbatim from its file: no per-Lens threat hypotheses, no "do not raise" lists, no
+  paraphrases
+- A Scanner dispatches no agent of its own, waits in no background, and its final message is its
+  whole output; a `<result>` presented as an amendment or a partial list counts as truncated and
+  the Lens is re-dispatched
+- The unavailable-lens question offers exactly proceed-without-it or abort — reviewing that lens
+  inline is not an option on it
+- Step 3 states what to do where the `Agent` tool is absent (inside another agent or a workflow
+  step): say so up front and hand the caller the choice, never discover it halfway and report a
+  single pass as an eight-lens review
+- Scanner search is described tool-neutrally (`Grep`, or `git grep` where sub-agents have no
+  `Grep` tool)
+- Step 4 now judges the fix as well as the finding — behaviour preserved, no contradiction with
+  another fix, no new smell — and re-routes a fix that fails any of the three to the structural
+  walk (with the behaviour change named) or to report-only
+- Boy-scout extras are sorted by risk: a structural or `security` boy-scout fix walks one at a
+  time instead of riding the batch; a `Not flagged` item reaches the menu only as its own named
+  option; and the slot order puts `security`, then verified rule-less correctness problems, ahead
+  of boy-scout extras
+- The `Reconciliation` line gained a `P primary dropped` term and each of its counts now names
+  the rendered block it is checked against (`C` against `Boy-scout`, `D + P` against `Not
+  flagged`); `Not flagged` entries stay countable so the check can be verified from the report
+- Apply-phase discipline: edits go through the `Edit` tool (no `sed`/heredoc rewrites), a
+  formatter runs only on the files the review edited, an approved fix that cannot be applied as
+  approved goes back to the user instead of being substituted, and the wrap-up lists every fix
+  skipped, substituted or extended
+- The rendered report and the user's selection are written to the session scratchpad before the
+  apply walk, so a compaction mid-walk no longer costs the approved list
+- A confirmed exposure that no rule names still leads the report from its own `Not flagged`
+  bullet
+
+- `get_changes.py` reports an `alternate` base when the resolved one saw no committed
+  change and another (`origin/main`, …) holds commits — a branch pushed to its own remote
+  counterpart no longer reads as "nothing to review"; `start-cr`, `comment-review` and
+  `quality-review` offer the re-run instead of stopping
+- A `security` scanner's `CANDIDATES` block is a heading with bullets, never a fenced code block
+- Scope: `.mjs`/`.cjs`/`.mts`/`.cts` are reviewed as source, a directory whose name
+  contains `e2e` (or ends in `-tests`) classifies as `test`, `.txt` is skipped, and a CI
+  workflow file is skipped with a sentence naming its triggers, permissions and secret
+  handling as `/security-review` territory
+- The "substance of the change" sentence now covers a docs, spec/ADR or release-notes
+  branch, not only a dependency manifest
+- When no `--spec` was passed and the diff carries a spec-shaped file (`specs/`,
+  `docs/adr/`, `tasks/`, `*SPEC*.md`, …), `start-cr` offers to review the change against
+  it instead of silently leaving the `spec` lens off
+- `comments` · R4 resolves a spec-id-shaped token against the code before stripping it — a
+  token bound to an identifier or a string literal is a code value, not a document pointer,
+  and the verdict line says which of the two it was
+- `Not flagged` is required whenever a look-alike was cleared, and a clean file is the case
+  that needs it most: without the line a reader cannot tell a review that cleared candidates
+  from one that never looked
+
+### Added
+
+- `security` · **`iac-exposure`** (high) — infrastructure code that materializes a secret into
+  state or an unmarked output, or grants trust wider than the identity it names (an OIDC
+  condition matching beyond the intended workflow, a wildcard principal, anonymous access)
+- `security` · **`access-widening`** (high) — a change that relaxes an authorization boundary
+  that existed: a weaker permission, a removed guard, a dropped owner predicate, a widened
+  allowlist
+- `missing-access-check` calibration now routes a test that would stay green if the guard
+  regressed to `tests` · test-fidelity, instead of grading a test gap as a security high
+- Evals — a unified-diff scanner track plus four scenarios covering the defects this round
+  fixed: `iac-exposure` recall, `access-widening` on a diff, a guard whose weak tests must route
+  to `tests` · test-fidelity rather than a security high, and scope classification over a mixed
+  tree (`.mjs`/`.cjs`, an `e2e` directory, `.txt`, a CI workflow)
 
 ## [0.3.0] - 2026-09-02
 

@@ -113,7 +113,13 @@ Parse the invocation arguments:
 
   (append `--base <branch>` to both when the user passed one.) Read the `count` of each:
 
-  - both zero → tell the user there is nothing to review and stop;
+  - both zero → before concluding, look for an `alternate` object in the `committed`
+    output: the script adds it when the resolved base saw nothing but another base
+    (usually `origin/main`) holds real commits, which is what a freshly pushed branch
+    tracking its own remote counterpart looks like. When it is there, say which base was
+    used, which one differs and by how many files, and offer to re-run with
+    `--base <alternate.ref>` — do not report "nothing to review" over it. With no
+    `alternate`, tell the user there is nothing to review and stop;
   - exactly one non-zero → use that scope automatically;
   - both non-zero → ask with `AskUserQuestion` which to review — **Uncommitted**
     (working tree vs HEAD), **Committed** (HEAD vs base), or **Both** (base → working
@@ -226,7 +232,7 @@ anything:
 | `simplicity` | `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md` |
 
 **Severity comes from `${CLAUDE_PLUGIN_ROOT}/references/severity.md`** — the master
-table of all 42 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
+table of all 44 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
 mapping for `standards` findings, and the anti-anchoring rule. Read it and grade every
 finding against its own row there (a `standards` finding against its keyword). The
 family, the rule, and the severity are all used **verbatim**, so a reader (and a diff
@@ -253,7 +259,7 @@ kind of noise. So render the report with **exactly this template**, in this orde
 ### <path/to/another/file>
 - `family` · rule · severity · L<lines> — <…>
 
-**Not flagged:** <one compact line of look-alikes you deliberately passed on, or omit the line>
+**Not flagged:** <one compact line of look-alikes you deliberately passed on — omit the line only when you cleared none>
 
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
@@ -318,6 +324,11 @@ Rules for filling it in:
   the wall-of-text this format exists to kill. The full refactor belongs in Step 4
   (apply time) or when the user asks to see it. If a fix genuinely cannot be named
   without a few tokens of code, inline at most a short expression.
+- **`Not flagged` is not optional when you cleared something.** A clean file is the case
+  that most needs it: with no findings to read, the line is the only evidence that the
+  look-alikes were considered rather than missed, and a reader cannot tell a review that
+  cleared six candidates from one that never looked. Name them in the line, never only in
+  the prose of your own reasoning.
 - **`Not flagged`** is **one line** — a comma-separated list of the look-alikes you
   considered and passed on, not a paragraph per item. The exception is an entry that
   is a *real* problem with no rule to land on: that one keeps its own bullet, since

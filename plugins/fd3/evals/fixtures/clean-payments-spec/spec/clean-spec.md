@@ -122,10 +122,13 @@ and nothing in this spec drops it — section 9 says so, and rollback does not c
 
 ## 8. Verification
 
-- **DB-1** — probe: `psql "$DATABASE_URL" -c "\d idempotency_keys"` lists the four columns. Before
+- **DB-1** — probe, run in the single deployed environment after the phase 1 deploy (section 7)
+  and not on the branch, since this repository has no database and reads no environment variable:
+  `psql "$DATABASE_URL" -c "\d idempotency_keys"` lists the four columns. Before
   the change the same command errors with `did not find any relation`.
-- **OBSERVABILITY-1** — triggered, through `npm test` (`vitest run`, the script `package.json`
-  defines): call `deliver` on two events, then assert `deliveryMetrics()` returns `delivered: 2`.
+- **OBSERVABILITY-1** — triggered, on the branch, through `npm test` (`vitest run`, the script
+  `package.json` defines): call `deliver` on two events, then assert `deliveryMetrics()` returns
+  `delivered: 2`.
   Before the change the export does not exist. The `failed` count is not exercised — nothing here
   can make a delivery fail (section 10).
 

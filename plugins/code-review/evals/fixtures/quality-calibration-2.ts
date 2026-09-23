@@ -11,6 +11,8 @@ export type Order = {
 };
 
 const PAGE_SIZE = 20;
+const WEB_CHANNEL = "channel = 'web'";
+const PAID_STATUS = "status = 'paid'";
 
 export class OrderDtoMapper {
   toDto(order: Order): OrderDto {
@@ -65,7 +67,7 @@ export class OrdersController {
   }
 
   async list(_req: Request, res: Response): Promise<void> {
-    const sql = new OrderQuery().where("channel = 'web'").where("status = 'paid'").limit(PAGE_SIZE).build();
+    const sql = new OrderQuery().where(WEB_CHANNEL).where(PAID_STATUS).limit(PAGE_SIZE).build();
     const orders = await this.repo.query(sql, []);
     res.json(orders.map((order) => this.mapper.toDto(order)));
   }

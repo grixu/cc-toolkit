@@ -14,6 +14,12 @@ need, then end your turn. Do not guess it and do not go looking for it.
 **That spec file is the only file you may edit.** Everything else you read is read-only, no matter
 what you find in it.
 
+**Every edit traces to a finding of this pass.** The dated evidence block is appended to a spec of
+any quality; everything else you write must be the repair of something you recorded as a finding,
+in the section that finding names. A spec whose checks all pass leaves this skill byte-identical
+except for the appended block — rewording a section you merely read, tidying a table, or improving
+prose nobody flagged rewrites a document the user validated on the strength of its own wording.
+
 ## Goal
 
 Decide whether the spec can be implemented, or split into tasks, as written. It can when every
@@ -61,6 +67,10 @@ answered about a document that pass then edited, and its own edits are the likel
 broken one — so a check inherits its reasoning, never its result. What you do not repeat is the
 evidence work behind a claim the status records as `verified`, unless an edit since then touched the
 section it rests on. Spend the pass on what the status leaves open.
+
+The invocation may carry a **focus list** with that status — the findings still open and the sections
+the previous pass edited. It says where to spend the pass, never what to skip: the twelve checks are
+re-derived either way, and an edited section is read as new text, not as a section already cleared.
 
 The spec's evidence record may hold dated blocks that no handed-down status accounts for — passes
 from earlier runs. Their identity is their date; pass numbers count this run's passes only. They are
@@ -257,6 +267,12 @@ repair choices alike — numbered, each with your recommended answer first, then
 answers arrive as a message and you continue from where you stopped, with everything this pass
 established still in front of you.
 
+**The batch carries this pass's report with it, and so does the turn that ends.** Handing up is not
+an alternative to reporting: the twelve check rows, the findings you already hold and a verdict of
+`not ready` go out in the same message, with the handed-up items under *Still open*. A turn that
+ends on "the full table comes once the answers land" leaves the caller with nothing to relay and
+nothing to act on, and the answers may never come.
+
 One batch per pass. Nothing may still be outstanding when you send it: a dispatch that has not
 returned is a dispatch whose answer changes what you would ask, and a second message sent while the
 first is being answered tells the user the first was incomplete. Steps 3–5 may bring you back here,
@@ -273,6 +289,19 @@ Repeat 3–5 until every claim is `verified`, `deferred`, or `blocked` because n
 names no owner. A `blocked` claim goes into the report; do not put it to the user again. The run never
 ends with a claim `open`: a claim you cannot settle before reporting becomes `blocked`, with the reason
 it could not be settled stated in the report.
+
+**`ready` and `blocked`.** A `deferred` claim never lowers a verdict: it bounds the phase it gates,
+that phase's row still reads `yes`, and the document is still `ready`. The verdict is `ready` only
+when every claim is `verified` or `deferred` —
+a declared gap with a named owner and a placement is what a downstream stage can act on, because
+`split-to-tasks` turns it into an operational task carrying that owner. An ownerless `blocked` claim
+leaves it nothing to write, so it makes the verdict `not ready`, however small the gap looks. The
+last move before recording a claim `blocked` is therefore step 4: ask the user who owns it and where
+it lands. An owner and a placement make it `deferred`, and the spec records both.
+
+This reaches the user only for a claim **nothing in the spec owns**. A gap the spec already declares
+with an owner and a placement is `deferred` on sight — it is not a finding, it does not go into the
+batch, and a pass that asks about it has turned a settled document into a question.
 
 ### 6. Report
 

@@ -5,7 +5,8 @@ description: >-
   security, performance, spec) in parallel over a change and merges them into one
   per-file report. Three lenses are gated by the input, never by the user: security
   is always on, performance runs only when executable source files are in scope,
-  spec only with `--spec <path>`. Manual only — never auto-triggered. It resolves
+  spec only when a spec file is named — by `--spec <path>`, or by the user accepting
+  the one the diff itself carries. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
 allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
@@ -23,7 +24,7 @@ and only for what the user picks.
 This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
 user choice: the five craft Lenses and `security` always run, `performance` runs
-when executable source is in scope, `spec` when `--spec` names a file. For a partial
+when executable source is in scope, `spec` when a spec file is named. For a partial
 review the user invokes `/comment-review` or `/quality-review` directly.
 
 Arguments: `$ARGUMENTS`
@@ -59,7 +60,13 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   (append `--base <branch>` to both when the user passed one.) Read the `count` of
   each:
 
-  - both zero → tell the user there is nothing to review and **stop**;
+  - both zero → before concluding, look for an `alternate` object in the `committed`
+    output: the script adds it when the resolved base saw nothing but another base
+    (usually `origin/main`) holds real commits, which is what a freshly pushed branch
+    tracking its own remote counterpart looks like. When it is there, say which base was
+    used, which one differs and by how many files, and offer to re-run with
+    `--base <alternate.ref>` — do not report "nothing to review" over it. With no
+    `alternate`, tell the user there is nothing to review and **stop**;
   - exactly one non-zero → use that scope automatically;
   - both non-zero → ask with **one** `AskUserQuestion` which to review —
     **Uncommitted** (working tree vs HEAD), **Committed** (HEAD vs base), or
@@ -81,6 +88,17 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   here. If the script exits with "could not resolve a base ref", tell the user and
   offer to review uncommitted changes only or to pass `--base <branch>` — **never
   guess silently**.
+
+**When the change carries its own spec, offer the Lens.** If `--spec` was not passed
+and the resolved list contains a specification-shaped file — a path under `specs/`,
+`spec/`, `docs/adr/`, `tasks/`, or a name matching `*SPEC*.md`, `*ADR*.md`, `*.spec.md`,
+`*-plan.md` — say so in one line and offer that path with a single `AskUserQuestion`:
+review the change against it, or continue without the `spec` Lens. Offer the one file
+that best fits (the most recently changed, or the one the other files sit under); more
+than two options is a menu, not an offer. On acceptance, treat it exactly as a passed
+`--spec` — Read it now — and note in the Tally that the spec Lens was activated from the
+diff rather than from the flag. Do not make this offer twice, and never activate the
+Lens without the user saying yes.
 
 **Which files get judged** — the in-scope extensions, the skip list, and the rule
 about a skipped dependency manifest that is the substance of the change — is in
@@ -104,6 +122,15 @@ conflict the `.local` one wins. Work it there, then:
   records a **tracked `.local` file** (`git check-ignore` fails on it) and any
   **conflict between two project files** (resolved by scope.md's precedence order),
   both of which reach the report's `Conventions` line;
+- **one note, byte-identical in every brief, and it may only suppress.** Write it once and paste
+  the same text into all N briefs: a per-Lens note is a per-Lens instruction, and the Scanner
+  reads whatever it finds there as what you want it to look for. So the slot holds nothing but
+  documented conventions, each **quoted verbatim with its file** — never your own threat
+  hypotheses or "where to focus", never an "established facts — do not raise" list, never a
+  paraphrase of a rule (one run's paraphrase said a legacy pattern "is documented as accepted"
+  where the rule said to migrate off it, and buried the very finding the user later asked for).
+  Anything you want checked belongs in the Lens's own rules file, not here. A note that grows
+  past a screen is the wrong shape: cut it to the rules that actually suppress something;
 - name any family or rule the language makes **N/A** in that note, so its owning
   Scanner clears it in one line instead of inventing findings to fit;
 - keep the standards text **out of the note**: it travels in the brief's own
@@ -130,13 +157,13 @@ never from a preference:
 - **`performance`** is active iff the `source`-kind subset of the resolved list,
   **minus `.sh` files**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;
-- **`spec`** is active iff `--spec` was given and resolved to a readable local file in
-  Step 1.
+- **`spec`** is active iff a spec resolved to a readable local file in Step 1 — from
+  `--spec`, or from the offer the user accepted when the change carried its own spec.
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
 `performance` gets the source subset it was gated on; every other Lens gets the full
 resolved list. Record every **inactive** Lens with its reason (`performance — no
-executable code`, `spec — no --spec`); the Tally prints them in Step 5. From here on
+executable code`, `spec — no spec named`); the Tally prints them in Step 5. From here on
 **N** means this count: N Scanners dispatched, N `<result>` blocks awaited, N outputs
 merged.
 
@@ -148,6 +175,13 @@ and a concurrent fan-out **runs in the background**: N agents cannot each block 
 return inline at once, so the harness backgrounds them — this holds **even if you pass
 `run_in_background: false`**, because the flag cannot make a concurrent fan-out
 synchronous. Let them background; that is the working path.
+
+**Without the `Agent` tool there is no review to run.** In some contexts — inside another
+agent, inside a workflow step — it is simply absent, and a single pass by one reader is not this
+command however carefully it reads. Say so in your first sentence, name the lenses that will not
+run, and let the caller decide between an announced single-pass reading and invoking
+`/quality-review`, `/comment-review` and `/security-review` as their own agents. Never discover
+this silently halfway and report the result as a review.
 
 **Never pass `name:` to a Scanner call.** Naming routes the Scanner into the agent-teams
 mailbox, where its findings come back only if you ask for them and it answers — a channel
@@ -167,14 +201,28 @@ its findings verbatim inside `<result>` — that is the delivery, and it arrives
    control straight back, so "ask and block on the reply" is not a thing the tool can do.
    Chasing a Scanner that is merely slow makes it regenerate its whole output, which can
    land after you have already merged.
+
+   **Waiting is ending your turn.** Once the pre-reading below is done, say "standing by" and
+   end the turn: each `<task-notification>` wakes you, and a turn you never end is the only way
+   to *not* receive them promptly. Never `sleep`, never poll `ListAgents`, never `stat` a
+   Scanner's transcript, never emit a placeholder tool call to stay alive, and never set up a
+   `Monitor` or an `until` loop over any of these — a run that polled its way through the wait
+   burned 70% of its turns and two thirds of its context on `echo ok`, and the leftover timers
+   then fired into the report and the apply phase. And **never `TaskStop` a Scanner**: elapsed
+   time is not a state you can observe, the "stalled" one was mid-`Read` with 27 tool calls
+   behind it, and killing it cost the review its whole security lens.
 2. **Fail closed on an empty `<result>`, not on silence.** The failure to catch is a
    notification whose `<result>` is missing, empty, or truncated mid-block — that Scanner
-   has **not** reported. Re-dispatch that one Lens as a fresh **unnamed** `Agent` and
+   has **not** reported. A `<result>` that presents itself as an **amendment, a correction, or
+   a partial list** counts as truncated too, whatever it contains: the Scanner's own full
+   findings are somewhere you cannot see, so re-dispatch that Lens rather than merge the
+   fragment. Re-dispatch that one Lens as a fresh **unnamed** `Agent` and
    collect its `<task-notification>` the same way — this holds for every active Lens,
    `security`, `performance` and `spec` included. Never quietly review that lens yourself
    and pass the result off as a full N-lens review. If the re-dispatch also comes back empty,
    **tell the user that lens is unavailable** and ask whether to proceed without it or
-   abort. A single-pass or missing-lens review is a **labelled, user-acknowledged
+   abort — those two are the whole menu, and "I read that lens inline myself" is not on it,
+   however reasonable it looks as the recommended option. A single-pass or missing-lens review is a **labelled, user-acknowledged
    degradation**, never the silent default — that silent fallback is exactly how a single
    perspective's false positive reaches the report unchecked.
 3. **Merge only once all N have delivered a `<result>`.** Merging early loses findings.
@@ -220,12 +268,21 @@ Send each Scanner a brief in this shape, filling every slot:
 Read the rules file **completely first**, then judge only the families that belong to
 that Lens. A Scanner **returns findings/verdicts only**: it does not render a report,
 does not re-grade centrally, and **writes nothing into the tree** — not the files under
-review, and not a scratch or probe file to test a hypothesis against. It is reading the
+review, and not a scratch or probe file to test a hypothesis against.
+
+A Scanner is **one agent, one pass, one output**. It **dispatches no agent of its own** — a
+sub-agent puts a second hop between the finding and the merge, and the Scanner that tried it
+had its own report overwritten by the follow-up, losing a handoff outright. It does not wait in
+the background, poll, or schedule anything; it reads, judges, and returns. Its **final message
+is its whole output**: if something has to change after it has already written its findings,
+it re-sends the complete list, never an "amendment" or a delta — anything the last message
+leaves out never reaches the merge. It is reading the
 user's working copy, so it settles a doubt by reading the type, the signature, or the call
 site, and marks the rest `(verify)`. Read the whole changed file for context, and target
 what the change touched. The `naming & module` Scanner alone adds the **one-hop
-cross-file protocol** on top of that: Grep the importers of each changed module and the
-imports of each module it newly imports, open those files at the matched lines only —
+cross-file protocol** on top of that: search the importers of each changed module and the
+imports of each module it newly imports — with the `Grep` tool, or `git grep` from `Bash` in a
+session where that tool is not handed to sub-agents — open those files at the matched lines only —
 no transitive crawl, no repo listing, no `find`; a fact beyond the hop is `(verify)`;
 it still writes nothing.
 
@@ -264,8 +321,8 @@ it still writes nothing.
    of the **source** (where untrusted data enters) and of the **sink**; a pattern alone
    (`req.body`, a string containing `SELECT`) is never a finding; `L<lines>` lists both
    ends, source first, and the clause says which is which. When either end sits
-   outside the files in view the Scanner reads it — it has `Read` and `Grep` — and marks
-   only what it still cannot confirm `(verify)`. `CANDIDATES` is reserved for a
+   outside the files in view the Scanner reads it — it can `Read` any file and search with
+   `Grep` or `git grep` — and marks only what it still cannot confirm `(verify)`. `CANDIDATES` is reserved for a
    confirmed source→sink pair whose *mitigation* is the doubt; a cleared look-alike is
    one prose line for `Not flagged`. Severity is `high` or `medium`, **never `nit`**.
    It never runs the code, an audit tool, or a network command; `.env`, YAML, JSON and
@@ -397,12 +454,28 @@ One terse line each. Omit a block when it is empty.
   against each name its home — the report bullet (`path:line`) it became, the converging
   finding it merged into, or the `Not flagged` line that clears it. An entry with no home
   on that list is a bug: route it before you render.
+- **A primary finding is reconciled too.** The channels are not the only thing that goes
+  missing: a Scanner's own `FINDINGS` entry can fall out of the merge between collecting and
+  rendering, and nothing downstream notices. Count what you received per Scanner, and give every
+  primary finding that does not reach a report bullet — deduped into another, demoted, or
+  rejected — its own `Not flagged` entry with the reason. Dedup is the one silent case allowed,
+  and only because the surviving bullet carries it.
 - **Publish that check as one counted line above the report** — `Reconciliation: N
-  handoffs + M candidates → A merged · B own bullet · C boy-scout · D Not flagged` —
-  where `A + B + C + D` equals `N + M`. The arithmetic is what makes the check real: a
+  handoffs + M candidates → A merged · B own bullet · C boy-scout · D Not flagged; P primary
+  dropped` — where `A + B + C + D` equals `N + M`, and `P` counts the primary findings that got
+  no bullet. The arithmetic is what makes the check real: a
   run that states "every handoff routed" without it has asserted rather than reconciled,
   and loses the entry nothing else corroborates. When the sums disagree, an entry is
   unrouted — find it, never adjust a number to close the gap.
+- **Each count names the block it is counted in**, so the line can be checked against the report
+  rather than believed: `merged` is an entry folded into another finding's bullet and visible in
+  its text, `own bullet` one that became its own graded bullet under a file, `boy-scout` one
+  rendered in the `Boy-scout` block, `Not flagged` one rendered as its own entry in `Not
+  flagged`. Runs whose arithmetic was right have still printed `0 boy-scout` over a Boy-scout
+  block holding three routed handoffs, and counted six entries as `merged` into a bullet that
+  was never rendered. Before publishing, count the rendered blocks: `C` equals the Boy-scout
+  entries that came from a channel, and `D + P` equals the entries in `Not flagged`. A count
+  that does not match the block it names is the bug, not the block.
 - **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
   confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
   positive** — drop it and note it under `Not flagged`. An unresolved `(verify)` finding
@@ -413,12 +486,28 @@ One terse line each. Omit a block when it is empty.
   resolved under its own name.
 - **Re-grade every quality finding's severity yourself** against the master table in
   `${CLAUDE_PLUGIN_ROOT}/references/severity.md` — read it now if you have not. It
-  carries the 42 rows, what each severity means, the anti-anchoring rule, and the
+  carries the 44 rows, what each severity means, the anti-anchoring rule, and the
   **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
   medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
   no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
   the Scanner's guess. A single-lens Scanner is the one most prone to the anchoring that
   table forbids, so its severity is a first pass and yours is the one that ships.
+- **Judge the fix, not only the finding.** A finding can be right and its fix wrong, and Step 6
+  is too late to notice: by then the user has approved it. For every fix that could reach a
+  bucket, check three things against the code you already read:
+  - **Does it keep behaviour?** Moving a guard onto a DTO turns a 400 into a 422; splitting a
+    shared client drops the double-submit guard that shared instance provided; deleting an unused
+    export removes what a later stage of the same spec consumes. A fix that changes what callers
+    observe is not mechanical, whatever its rule says.
+  - **Does it contradict another finding?** One review's headline fix bounded a payload *before*
+    the redaction walk, which would have truncated secrets under the redactor's minimum length —
+    a security hole introduced by a performance fix. Read the fixes as a set, not one at a time.
+  - **Does it create the next finding?** An extraction that takes five positional parameters, a
+    helper that duplicates one two files away — fix the fix before offering it.
+
+  A fix that fails any of the three is re-routed: to the structural walk with the behaviour
+  change named in its option, or to report-only with one line on why. Say which in the report's
+  bullet rather than silently dropping the finding.
 - **Comment verdicts are not re-graded** and are **not** mapped to severities. The
   two vocabularies stay side by side; there is no severity↔verdict mapping
   anywhere in this command.
@@ -430,7 +519,7 @@ comment verdicts **together**. Render with **exactly this template**, in this
 order — keep the structure identical between runs:
 
 ```markdown
-Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged
+Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged; <P> primary dropped
 
 ## Code review — <scope>
 
@@ -456,7 +545,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 A filled-in report reads like this:
 
 <example>
-Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged
+Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped
 
 ## Code review — committed (base → HEAD), 3 files
 
@@ -520,10 +609,11 @@ Rules for filling it in:
   text; for MOVE, name the destination.
 - **Quote comments verbatim.** Every comment verdict carries the verbatim comment
   text and its `path:line`.
-- **`Not flagged`** lists the look-alikes deliberately passed on, plus every candidate
-  and `HANDOFF` the merge cleared — one line when they are all genuine non-findings, a
-  short bullet each when one of them is a *real* problem that merely has no rule to land
-  on. A real problem keeps its own bullet rather than being compressed into a
+- **`Not flagged`** lists the look-alikes deliberately passed on, plus every candidate,
+  `HANDOFF` and dropped primary finding the merge cleared — one line when they are all genuine
+  non-findings, a short bullet each when one of them is a *real* problem that merely has no rule
+  to land on. **Its entries stay countable**: separated by `;` on the one-line form, one bullet
+  each otherwise, because the `Reconciliation` line's last two numbers are checked against them. A real problem keeps its own bullet rather than being compressed into a
   subordinate clause; that compression is how something worth acting on disappears. Drop
   the block if empty.
 - **`Boy-scout`** holds only findings in code the change did not touch; omit the
@@ -534,13 +624,15 @@ Rules for filling it in:
   `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE / ADD, the
   headline names the worst one — it must not call the change "clean",
   "well-structured", or "only cosmetic nits". A confirmed **`security`** finding is the
-  headline over any craft finding, whatever their severities; a `spec` ·
+  headline over any craft finding, whatever their severities — and so is a confirmed
+  **exposure that no rule names**, which leads the report from its own `Not flagged`
+  bullet rather than being demoted for want of a tag; a `spec` ·
   missing-requirement or wrong-implementation forbids the clean headline outright.
   Reserve the clean verdict for a tally that is genuinely nits-only-and-all-KEEP (or
   empty).
 - **The `Tally` names the lenses.** `Lenses: L of 8` always, with each skipped Lens
   and its Step 2b reason in the parenthesis (`skipped: performance — no executable
-  code; spec — no --spec`); drop the parenthesis when all eight ran. When a spec was
+  code; spec — no spec named`); drop the parenthesis when all eight ran. When a spec was
   given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
   met`; omit that clause otherwise.
 
@@ -583,7 +675,14 @@ menu; never add a fifth. `Report only` is always offered:
   `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,
   `message-chain`); every **`performance`** fix; every **`security`** fix; **plus**
   comment **MOVE**.
-- **Boy-scout extras** — apply the untouched-code findings, or skip them.
+- **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
+  bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
+  a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
+  the structural walk and is applied one at a time with its own yes. Untouched code is where the
+  review understands the least, so a structural edit there is riskier than the same edit inside
+  the diff, not safer: one run bundled a client split into this bucket, silently broke a
+  double-submit guard, dragged an unrelated page into the pull request, and the user discarded
+  the work.
 - **Report only** — change nothing.
 
 **Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
@@ -621,16 +720,46 @@ must stay honest when findings don't spread across them:
   `Not flagged` or spans untouched code, yet the review actually verified — is offer-able
   as its own apply bucket; so is a verified `spec` · wrong-implementation with a one-edit
   fix. The review's most valuable output belongs in the menu, not buried in `Report
-  only` or `Boy-scout extras` because it lacks a rule tag.
+  only` or `Boy-scout extras` because it lacks a rule tag. It is the **only** way a `Not
+  flagged` item enters the menu: it gets its own option, named for the problem, never folded
+  into `Safe fixes` or `Boy-scout extras` where the user approves it without seeing it.
+- **When there are more candidates than slots**, the order is: a confirmed `security` problem
+  first, then a verified correctness problem with no rule, then the canonical buckets by risk,
+  and `Boy-scout extras` last — it is the one whose loss costs the change nothing. A run that
+  gave its last slot to a boy-scout nit while a verified backend gap waited had the priority
+  backwards.
 - A before/after **preview** diff belongs in an `AskUserQuestion` option, never in the
   report body — Step 5 stays clause-only.
+
+**Put the review on disk before the apply phase starts.** The apply walk is the longest stretch
+of the run and the one most likely to be compacted; when that happens mid-walk, the report and
+the user's answer are gone, and a run that had to reconstruct its approved list by parsing its
+own transcript spent that effort for nothing. Write the rendered report to a file in the session
+scratchpad before the menu, and the user's selection — each approved finding with its file, site
+and exact fix — under it as soon as the answer arrives. Read it back rather than recalling it,
+and say where it is in the wrap-up.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
 without an explicit yes**. Only findings confirmed in Step 4 enter an apply batch.
 
-**`Write` creates a file that does not exist yet, and nothing else.** The one case is
-a new file the user picked from the menu — the missing spec a correctness bucket
-offered, say. Every change to a file already on disk goes through `Edit`, so a
+**`Edit` means the tool, not "an edit".** No `sed -i`, no Python or heredoc rewrite, no `awk`,
+however convenient the shell looks for a repeated change: `Edit` fails loudly when the text it
+expects is not there, and a shell rewrite silently hits every look-alike in the file — one run's
+blanket strip took out the project's own documented comment prefix, which its conventions note
+had just said to leave alone. A formatter runs on the files you edited, never across the package
+or the repository: three runs reflowed snapshots, fixtures and a protected `tsconfig` that way,
+then had to revert them and explain them to the user as "not mine".
+
+**An approved fix that cannot be applied as approved goes back to the user.** A hook blocks it,
+the site turns out ambiguous, the edit needs a companion change nobody approved — say which fix,
+what stopped it, and what you would do instead; never substitute a different edit (one run
+deleted a test where the approved fix was to fold it into another) and mention it in passing
+afterwards. The wrap-up lists every approved fix that was skipped, substituted or extended, with
+its reason, and claims nothing the tree does not carry.
+
+**`Write` creates a file that does not exist yet, and nothing else.** Two cases: a new file
+the user picked from the menu — the missing spec a correctness bucket offered, say — and the
+review's own scratchpad file above, which lives outside the repository. Every change to a file already on disk goes through `Edit`, so a
 targeted fix can never turn into a wholesale rewrite of a file the review only read
 in part. This is the Orchestrator's alone: a Scanner still writes nothing at all.
 

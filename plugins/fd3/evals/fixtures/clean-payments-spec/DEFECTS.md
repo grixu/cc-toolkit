@@ -40,5 +40,9 @@ Load-bearing facts:
 - No prerequisite is marked "met" on something outside the tree. The deploy manifest and
   `DATABASE_URL` do not exist here, so that prerequisite is an assertion with an owner and a
   placement.
+- Each section 8 row says **where** its check runs — DB-1 in the deployed environment after the
+  phase 1 deploy, OBSERVABILITY-1 on the branch. Without that, DB-1's `psql "$DATABASE_URL"` probe
+  reads as a branch-level criterion no branch can pass here, and a validation pass legitimately
+  repairs the row — which breaks the append-only assertion below.
 - The only spec edits the eval accepts are appended evidence rows under a dated sub-heading: the
   assertion checks the fixture content is a prefix of the sandbox content.
