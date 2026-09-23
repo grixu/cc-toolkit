@@ -259,7 +259,7 @@ kind of noise. So render the report with **exactly this template**, in this orde
 ### <path/to/another/file>
 - `family` · rule · severity · L<lines> — <…>
 
-**Not flagged:** <one compact line of look-alikes you deliberately passed on, or omit the line>
+**Not flagged:** <one compact line of look-alikes you deliberately passed on — omit the line only when you cleared none>
 
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
@@ -324,6 +324,11 @@ Rules for filling it in:
   the wall-of-text this format exists to kill. The full refactor belongs in Step 4
   (apply time) or when the user asks to see it. If a fix genuinely cannot be named
   without a few tokens of code, inline at most a short expression.
+- **`Not flagged` is not optional when you cleared something.** A clean file is the case
+  that most needs it: with no findings to read, the line is the only evidence that the
+  look-alikes were considered rather than missed, and a reader cannot tell a review that
+  cleared six candidates from one that never looked. Name them in the line, never only in
+  the prose of your own reasoning.
 - **`Not flagged`** is **one line** — a comma-separated list of the look-alikes you
   considered and passed on, not a paragraph per item. The exception is an entry that
   is a *real* problem with no rule to land on: that one keeps its own bullet, since

@@ -62,6 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `comments` · R4 resolves a spec-id-shaped token against the code before stripping it — a
   token bound to an identifier or a string literal is a code value, not a document pointer,
   and the verdict line says which of the two it was
+- `Not flagged` is required whenever a look-alike was cleared, and a clean file is the case
+  that needs it most: without the line a reader cannot tell a review that cleared candidates
+  from one that never looked
 
 ### Added
 
