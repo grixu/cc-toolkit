@@ -1,10 +1,17 @@
 import * as h from '../helpers.mjs';
 
-export default (output) => {
+const NUMBERED = /^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/m;
+
+export default (output, context) => {
   const c = h.checker();
 
-  const numbered = output.match(/^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/gm) || [];
-  c.check(numbered.length >= 1, 'no numbered round of questions — the grilling half never ran');
+  // A round may go out through AskUserQuestion and get auto-answered, leaving the final message
+  // with no numbered question even though the grilling ran.
+  const asked = (context?.providerResponse?.metadata?.toolCalls || [])
+    .filter((call) => call.name === 'AskUserQuestion')
+    .flatMap((call) => call.input?.questions || [])
+    .some((q) => NUMBERED.test(q.question || ''));
+  c.check(NUMBERED.test(output) || asked, 'no numbered round of questions — the grilling half never ran');
 
   // The gate: without a confirmed closing summary the write-spec half must not start.
   const diff = h.diffSandbox('build-spec-gate', 'retry-topic');
