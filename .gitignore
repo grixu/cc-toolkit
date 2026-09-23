@@ -15,3 +15,7 @@ plugins/*/evals/.results/
 
 # the target app's own runtime store, written on every boot
 plugins/tester/evals/fixtures/target-app/state.json
+
+# Python bytecode
+__pycache__/
+*.pyc
