@@ -80,8 +80,10 @@ Three more sit beyond the craft five — one always on, two gated — and the re
 says which ran:
 
 - **security** — always on. Secrets in source, injection sinks, missing access
-  checks, unvalidated boundaries, and insecure settings in source files. A
-  finding names both the source and the sink; a pattern alone is never a finding.
+  checks, unvalidated boundaries, insecure settings, infrastructure code that
+  exposes a secret or trusts too widely, and a change that relaxes an existing
+  authorization boundary. A finding names both the source and the sink; a pattern
+  alone is never a finding.
 - **performance** — only when the change touches executable source (not tests,
   not infrastructure-as-code, not `.sh`). N+1 calls, unbounded fetches, blocking calls on an
   async path, wasted React renders. Every finding names the multiplier, the call
@@ -125,7 +127,7 @@ Tests, infrastructure-as-code, and `.sh` files are reviewed by the craft lenses 
 
 **This is a craft review plus a narrow security lens, not a security audit.** The
 security lens looks for secrets, injection, access checks, boundary validation,
-and insecure settings in source files; the performance lens raises diff-level
+insecure settings, infrastructure exposure, and widened access in source files; the performance lens raises diff-level
 hypotheses it can point at a line. Neither is a dependency, config, or data-flow
 audit: `.env` files, manifests, and lockfiles are not scanned, and a
 vulnerability outside those shapes will surface only by accident. Do not read a

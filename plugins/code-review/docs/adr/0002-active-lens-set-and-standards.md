@@ -8,12 +8,14 @@ dispatch: the five craft lenses (comments, readability & tests, naming & module,
 objects & patterns, simplicity & types) plus `security` are always active;
 `performance` is active only when the resolved files contain executable source
 (the `source` file kind — not tests, not infrastructure-as-code, not `.sh`);
-`spec` is active only when the user passed `--spec <local path>`. The
-orchestrator dispatches N scanners (6 to 8), waits for N `<result>` blocks,
+`spec` is active only when a spec resolves to a local file — from `--spec <local
+path>`, or from the spec-shaped file in the diff that `start-cr` offers and the
+user accepts. The orchestrator dispatches N scanners (6 to 8), waits for N
+`<result>` blocks,
 applies fail-closed re-dispatch to every active lens, merges once all N have
 delivered, and records `Lenses: L of 8` in the tally with every inactive lens
-and its reason. The user still picks no lens: the change and the `--spec` flag
-decide.
+and its reason. The user still picks no lens: the change, the `--spec` flag,
+and the answer to that offer decide.
 
 Three lenses get their own rules files (`security.md`, `performance.md`,
 `spec.md`), read by `start-cr` only. Ten further rules from the same proposal —
