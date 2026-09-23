@@ -125,6 +125,15 @@ hides coupling: the reader has to leave the code to understand the code.
   ```
   The fragment is the leak: it is fine to keep the real constraint, but the
   `(R2)`, the `F1:`, the `§4.1` must not ride along into the kept comment.
+- **Resolve the token against the code before you strip it, and say how it
+  resolved.** A letter+number reads like a spec-id and can just as easily be a
+  value the code uses — a region (`R2`), a tier, an enum member, a column name.
+  `Grep` the token in the file and its neighbours: bound to an identifier or a
+  string literal, it is a code value and the comment naming it is not an R4
+  finding at all; found nowhere in the code, it points into a document and the
+  strip applies. The verdict line says which of the two it was, in a clause —
+  a strip whose reasoning is "it looks like a spec-id" is the one way this rule
+  deletes a fact the reader needed.
 - **No "provenance" loophole.** A doc/file ref glued onto an otherwise
   self-contained sentence still goes (`// that hard-stop is intentional
   (DD_PLAN.md T4.1)` → `// that hard-stop is intentional`). The test is simple:

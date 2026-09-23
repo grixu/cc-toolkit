@@ -59,6 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When no `--spec` was passed and the diff carries a spec-shaped file (`specs/`,
   `docs/adr/`, `tasks/`, `*SPEC*.md`, …), `start-cr` offers to review the change against
   it instead of silently leaving the `spec` lens off
+- `comments` · R4 resolves a spec-id-shaped token against the code before stripping it — a
+  token bound to an identifier or a string literal is a code value, not a document pointer,
+  and the verdict line says which of the two it was
 
 ### Added
 
