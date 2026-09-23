@@ -40,16 +40,17 @@ that cites nothing — is a reason to stop and report it, never something to fix
 Splitting propagates the spec's defects into every task. A validation verdict in this
 conversation settles the question. Otherwise the spec must carry all three: read its evidence
 record **from the bottom** — the last verdict line in the file is the current one, position
-decides and not the date — that line's blocked claims, if it carries any, are declared gaps,
-and its count equals `wc -l` on the spec.
+decides and not the date — that line reads `ready`, it counts no blocked claim, and its count
+equals `wc -l` on the spec.
 
-**A declared gap is work, not a stop.** A `ready` verdict may carry a blocked claim when
-validation recorded it as a declared gap: the fact is unresolved and the spec names who resolves
-it. Such a gap gets an **operational task** of its own, whose `## Note` says what has to come
-back and from whom, and every task the gap blocks from being *written* draws a `depends-on` edge
-onto it (step 4's authorship rule). A blocked claim with no named owner is not a declared gap.
+**A declared gap is work, not a stop.** Validation records a gap the spec declares with an owner
+and a placement as a `deferred` claim, and a `ready` verdict may carry any number of them: the
+fact is unresolved and the spec names who resolves it. Each such gap gets an **operational task**
+of its own, whose `## Note` says what has to come back and from whom, and every task the gap
+blocks from being *written* draws a `depends-on` edge onto it (step 4's authorship rule). A
+`blocked` claim is a gap nothing owns — it is not a declared gap, and it stops the split.
 
-Anything short of that — an ownerless blocked claim, a count that does not match, a dated block
+Anything short of that — a blocked claim, a count that does not match, a dated block
 with no verdict line, no pass anywhere — is a stop before step 1. A dated heading over verified rows is not
 a verdict. Validating is not this skill's work, and no command is named for it: on *validate first*
 the split ends with nothing written. What lifts the stop is the user's answer, never your own — say

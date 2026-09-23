@@ -1,8 +1,8 @@
 # gap-rollout-spec — fixture contract
 
 This file is fixture documentation only. `reset-sandboxes.sh` excludes it from the sandbox copy.
-`rollout-spec` with one change: its last verdict line carries a blocked claim that the spec itself
-declares as a gap. It serves split-declared-gap.
+`rollout-spec` with one change: its last verdict line carries a deferred claim — a gap the spec
+itself declares with an owner and a placement. It serves split-declared-gap.
 
 ## The declared gap
 
@@ -10,11 +10,12 @@ Section 7 names the unmeasured ledger write ceiling, its owner (**the platform t
 placement (**a gate before phase 2**). Section 12's `### Validation pass — 2026-07-30` block counts
 it, so the verdict line reads:
 
-`Verdict: ready — claims: 1 verified / 0 deferred / 1 blocked — spec 224 lines at this verdict`
+`Verdict: ready — claims: 1 verified / 1 deferred / 0 blocked — spec 224 lines at this verdict`
 
-All three halves are load-bearing. `ready` with a blocked claim is what the precondition must
-accept; the owner and the placement are what make it a declared gap rather than a stop; and `224`
-equals `wc -l` on the spec, so any edit to the file must be followed by rewriting the number.
+All three halves are load-bearing. `ready` with a deferred claim is what the precondition must
+accept and turn into an operational task; the owner and the placement are what make it a declared
+gap rather than a stop; and `224` equals `wc -l` on the spec, so any edit to the file must be
+followed by rewriting the number.
 Removing the owner from section 7 turns this fixture into a stop-before-step-1 case and breaks the
 scenario — that case has its own fixture, `ownerless-gap-payments-spec`, on the validate side.
 

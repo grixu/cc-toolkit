@@ -215,7 +215,7 @@ pull request cites LED-100.
 
 ### Validation pass — 2026-07-30
 
-Verdict: ready — claims: 1 verified / 0 deferred / 1 blocked — spec 224 lines at this verdict
+Verdict: ready — claims: 1 verified / 1 deferred / 0 blocked — spec 224 lines at this verdict
 
 | Claim | How it was verified |
 |---|---|

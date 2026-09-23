@@ -1,8 +1,8 @@
 import * as h from '../helpers.mjs';
 import * as s from './split-shared.mjs';
 
-// The spec's verdict line carries one blocked claim that the spec itself declares as a gap
-// with an owner and a placement. The split proceeds and tracks the gap as an operational task.
+// The spec's verdict line carries one deferred claim — a gap the spec itself declares with an
+// owner and a placement. The split proceeds and tracks the gap as an operational task.
 export default (output) => {
   const c = h.checker();
   const tasks = h.readTasks('split-declared-gap');
@@ -22,7 +22,7 @@ export default (output) => {
     c.check(/phase 2|ceiling|rate[-\s]?limit/i.test(note), `${gap.file}: the ## Note does not say what the gap is or where it lands`);
   }
 
-  // The run did not stop on the blocked claim: the files and the report exist.
+  // The run did not stop on the deferred claim: the files and the report exist.
   const SPLIT_REPORT = 'spec/gap-rollout-spec.split.md';
   const diff = h.diffSandbox('split-declared-gap', 'gap-rollout-spec');
   c.check(diff.added.includes(SPLIT_REPORT), `the split report ${SPLIT_REPORT} was not written beside the spec`);
@@ -31,7 +31,7 @@ export default (output) => {
   c.check(stray.length === 0, `files created outside spec/tasks/: ${stray.join(', ')}`);
 
   const report = h.readSandboxFile('split-declared-gap', SPLIT_REPORT) || '';
-  c.check(/1 blocked/.test(report) || /1 blocked/.test(output), 'neither the report nor the reply quotes the verdict line the split was taken against');
+  c.check(/1 deferred/.test(report) || /1 deferred/.test(output), 'neither the report nor the reply quotes the verdict line the split was taken against');
 
   return c.verdict();
 };

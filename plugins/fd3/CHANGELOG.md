@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `split-to-tasks` accepts a `ready` verdict that carries a declared gap: the blocked claim
-  becomes an operational task naming its owner, instead of stopping the split; an ownerless
-  blocked claim still stops it
+- `split-to-tasks` turns each declared gap — a `deferred` claim with an owner and a placement —
+  into an operational task naming its owner, instead of stopping the split; a `blocked` claim,
+  which nothing owns, still stops it
 
 ### Added
 
