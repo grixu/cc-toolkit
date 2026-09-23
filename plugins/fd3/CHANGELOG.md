@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   into an operational task naming its owner, instead of stopping the split; a `blocked` claim,
   which nothing owns, still stops it
 - `split-to-tasks` shows the full six-column table in its reply, `elements` included
-- `split-to-tasks` makes its first tool call in the same reply as the opening checklist — a reply
-  that only announced the checklist ended a headless run with nothing done
+- `split-to-tasks` and `implement-tasks` make their first tool call in the same reply as the opening
+  checklist — a reply that only announced the checklist ended a headless run with nothing done
 - `grill-topic` posts a round's unblocked questions while a lookup runs, instead of holding the
   whole round and ending the turn on "waiting"
 
