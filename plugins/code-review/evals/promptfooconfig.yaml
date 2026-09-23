@@ -782,7 +782,9 @@ tests:
   - description: 'eval-19 scope-classification (scope-mix/)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/scope-mix
+      # Outside fixtures/: scope.md makes everything under a fixtures/ directory `test` kind,
+      # which would hide the source-vs-test classification this eval checks.
+      file: plugins/code-review/evals/scope-mix
     assert:
       - type: llm-rubric
         value: >-
