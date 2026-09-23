@@ -66,7 +66,7 @@ def test_committed_reports_alternate_base_when_upstream_sees_nothing(origin_repo
     assert [f["path"] for f in files] == ["feature.ts"]
 
 
-def test_no_alternate_when_the_resolved_base_already_sees_the_change(origin_repo: Path):
+def test_alternate_appears_until_the_resolved_base_sees_the_change(origin_repo: Path):
     git(origin_repo, "commit", "--allow-empty", "-m", "unpushed")
 
     out = run_script(origin_repo, "--scope", "committed")
