@@ -1,0 +1,59 @@
+diff --git a/src/api/contracts.router.ts b/src/api/contracts.router.ts
+index 8a1c4f2..b77e910 100644
+--- a/src/api/contracts.router.ts
++++ b/src/api/contracts.router.ts
+@@ -1,24 +1,23 @@
+ import { Router } from 'express'
+ import { requireAuth } from '../auth/middleware'
+ import { requireScope } from '../auth/scopes'
+ import { ContractStore } from '../store/contracts'
+
+ export const contracts = Router()
+ const store = new ContractStore()
+
+-contracts.get('/contracts/:id', requireAuth, requireScope('contract:read:own'), async (req, res) => {
+-  const contract = await store.byId(req.params.id, { ownerId: req.user.id })
++contracts.get('/contracts/:id', requireAuth, requireScope('org:read'), async (req, res) => {
++  const contract = await store.byId(req.params.id)
+   if (!contract) return res.status(404).end()
+   res.json(contract)
+ })
+
+-contracts.get('/contracts/:id/export', requireAuth, async (req, res) => {
++contracts.get('/contracts/:id/export', async (req, res) => {
+   const rows = await store.exportRows(req.params.id)
+   res.type('text/csv').send(toCsv(rows))
+ })
+
+-contracts.post('/contracts/:id/sign', requireAuth, requireScope('contract:sign'), async (req, res) => {
++contracts.post('/contracts/:id/sign', requireAuth, requireScope('contract:sign'), requireOwner, async (req, res) => {
+   const signed = await store.sign(req.params.id, req.user.id)
+   res.status(201).json(signed)
+ })
+diff --git a/src/store/webhooks.ts b/src/store/webhooks.ts
+index 3c0e1aa..5f2b881 100644
+--- a/src/store/webhooks.ts
++++ b/src/store/webhooks.ts
+@@ -3,11 +3,11 @@ import { db } from '../db'
+ export class WebhookStore {
+   async listForTenant(tenantId: string, status: string) {
+     const rows = await db.query(
+-      'SELECT id, url, status FROM webhooks WHERE tenant_id = $1 AND status = $2',
+-      [tenantId, status],
++      `SELECT id, url, status FROM webhooks WHERE status = '${status}'`,
++      [],
+     )
+     return rows
+   }
+ }
+diff --git a/config/cors.ts b/config/cors.ts
+index 11a9b02..2d4e775 100644
+--- a/config/cors.ts
++++ b/config/cors.ts
+@@ -1,8 +1,8 @@
+ export const corsOptions = {
+-  origin: ['https://app.acme.com', 'https://admin.acme.com', 'https://staging.acme.com'],
++  origin: ['https://app.acme.com', 'https://admin.acme.com'],
+   credentials: true,
+   maxAge: 600,
+ }

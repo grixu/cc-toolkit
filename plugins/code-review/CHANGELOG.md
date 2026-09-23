@@ -76,6 +76,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   allowlist
 - `missing-access-check` calibration now routes a test that would stay green if the guard
   regressed to `tests` · test-fidelity, instead of grading a test gap as a security high
+- Evals — a unified-diff scanner track plus four scenarios covering the defects this round
+  fixed: `iac-exposure` recall, `access-widening` on a diff, a guard whose weak tests must route
+  to `tests` · test-fidelity rather than a security high, and scope classification over a mixed
+  tree (`.mjs`/`.cjs`, an `e2e` directory, `.txt`, a CI workflow)
 
 ## [0.3.0] - 2026-09-02
 

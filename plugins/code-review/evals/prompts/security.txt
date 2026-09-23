@@ -14,4 +14,5 @@ as its own markdown bullet in exactly this shape:
 and which is the sink; a pattern alone is never a finding. After the findings add one
 `Not flagged:` prose line naming each look-alike you cleared and the mitigation that
 clears it, and a `CANDIDATES` block only for a confirmed pair whose mitigation is in
-doubt.
+doubt. A real problem that belongs to another lens's family goes in a `HANDOFF` block at
+the end, naming that family and rule — never graded as a `security` finding to keep it.

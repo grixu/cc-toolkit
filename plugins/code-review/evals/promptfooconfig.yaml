@@ -16,6 +16,8 @@ prompts:
     label: security-track
   - id: file://prompts/performance.txt
     label: performance-track
+  - id: file://prompts/security-diff.txt
+    label: security-diff-track
   - id: file://prompts/spec.txt
     label: spec-track
   # Standards track: quality-review with the fixture dir declared as the repository root
@@ -687,3 +689,117 @@ tests:
           `` `standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (<file> › <section>) → <fix> ``:
           a kebab-case slug, a verbatim quoted rule, and a file › section citation. No
           `standards` bullet lacks the quoted rule.
+
+  # ============================================================================
+  # Regression guards — the rules and the scope boundaries added from run analysis
+  # ============================================================================
+
+  - description: 'eval-16 iac-exposure-recall (iac-exposure.tf)'
+    prompts: [security-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/iac-exposure.tf
+    assert:
+      - type: regex
+        value: 'iac-exposure'
+      - type: llm-rubric
+        value: >-
+          Flags the generated `tls_private_key.deploy` — written to remote state and to
+          `local_file.deploy_key` on disk — as `security` · iac-exposure · high.
+      - type: llm-rubric
+        value: >-
+          Flags BOTH credential leaks in the declaration: the plaintext `default` on the
+          `db_admin_password` variable and the `database_admin_password` output that
+          carries it without `sensitive`.
+      - type: llm-rubric
+        value: >-
+          Flags the `allUsers` invoker binding on the `internal_admin` Cloud Run service
+          and the `0.0.0.0/0` source range reaching port 5432 as over-wide grants
+          (`iac-exposure`, high).
+      - type: llm-rubric
+        value: >-
+          Flags the GitHub OIDC provider whose `attribute_condition` pins only
+          `attribute.repository` — any workflow or ref of that repository satisfies it.
+      - type: llm-rubric
+        value: >-
+          Does NOT flag as findings, and names on the `Not flagged` line: the `allUsers`
+          objectViewer binding on the marketing-assets bucket (public by design), the
+          `0.0.0.0/0` range on port 443 (a public port), the Stripe key read from the
+          secret-manager data source, and the `cluster_endpoint` output (not a
+          credential).
+      - type: llm-rubric
+        value: >-
+          Every finding is tagged `security` with a rule from the master table and
+          severity `high` or `medium` — no craft family (readability, naming, module,
+          objects, patterns, simplicity) appears at all.
+
+  - description: 'eval-17 access-widening-diff (access-widening.diff)'
+    prompts: [security-diff-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/access-widening.diff
+    assert:
+      - type: regex
+        value: 'access-widening'
+      - type: llm-rubric
+        value: >-
+          Flags the `/contracts/:id` route as `security` · access-widening · high: the
+          required scope went from `contract:read:own` to `org:read` AND the
+          `{ ownerId: req.user.id }` predicate was dropped from the store call.
+      - type: llm-rubric
+        value: >-
+          Flags the `/contracts/:id/export` route, which lost `requireAuth` entirely.
+      - type: llm-rubric
+        value: >-
+          Flags the webhook query losing its `tenant_id` predicate as `access-widening`
+          (an `injection-sink` finding for the interpolated `status` alongside it is
+          correct, not a substitute for it).
+      - type: llm-rubric
+        value: >-
+          Does NOT flag the two hunks that tighten: `requireOwner` added to the sign
+          route, and the CORS origin list losing `https://staging.acme.com`. Both are
+          named on the `Not flagged` line.
+
+  - description: 'eval-18 guard-test-fidelity-routing (tenant-guard.ts + tenant-guard.test.ts)'
+    prompts: [security-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/tenant-guard.ts plugins/code-review/evals/fixtures/tenant-guard.test.ts
+    assert:
+      - type: llm-rubric
+        value: >-
+          Raises NO `missing-access-check` finding against `tenant-guard.ts`: the
+          middleware compares the session tenant with the route tenant, and both queries
+          carry a `tenant_id` predicate bound as a parameter.
+      - type: llm-rubric
+        value: >-
+          Identifies that both tests claim a boundary their assertions never exercise
+          (each passes the SAME tenant and asserts only that the happy path ran), and
+          routes it to the `tests` family as test-fidelity — in a HANDOFF block or named
+          as belonging to the tests lens — rather than grading it as a `security` finding
+          of any severity.
+      - type: llm-rubric
+        value: >-
+          No finding in the output carries the `security` family with severity `high`.
+
+  - description: 'eval-19 scope-classification (scope-mix/)'
+    prompts: [quality-track]
+    vars:
+      file: plugins/code-review/evals/fixtures/scope-mix
+    assert:
+      - type: llm-rubric
+        value: >-
+          `build.mjs` and `legacy-report.cjs` were reviewed as source files — the report
+          judges their content (findings against them, or an explicit clean verdict naming
+          them). Neither is listed as skipped or dismissed as tooling.
+      - type: llm-rubric
+        value: >-
+          `tests-e2e/checkout.spec.ts` is treated as a test file — it is reviewed, and any
+          finding against it comes from the `tests` family (for example the interleaved
+          act/assert steps as test-structure), never dismissed for sitting outside a
+          directory named `test`.
+      - type: llm-rubric
+        value: >-
+          The `Skipped` line names `.github/workflows/ci.yml` and says its triggers,
+          permissions and secret handling are not line-graded here, pointing the reader at
+          `/security-review`. `notes.txt` is listed as skipped too.
+      - type: regex
+        value: '[Ss]kipped'
+
