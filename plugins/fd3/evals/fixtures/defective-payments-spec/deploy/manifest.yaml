@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payments-service
+  template:
+    metadata:
+      labels:
+        app: payments-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "3000"
+    spec:
+      containers:
+        - name: payments-service
+          image: registry.internal/payments-service:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: payments-db, key: url }
+            - name: MERCHANT_API_KEY
+              valueFrom:
+                secretKeyRef: { name: payments-merchant, key: api-key }
+            - name: MERCHANT_WEBHOOK_URL
+              valueFrom:
+                configMapKeyRef: { name: payments-config, key: merchant-webhook-url }
