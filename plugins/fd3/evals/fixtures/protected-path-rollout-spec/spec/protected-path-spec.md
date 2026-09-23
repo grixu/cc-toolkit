@@ -47,15 +47,15 @@ New migration `repo-a/services/ledger/migrations/0001_create_ledger_entries.sql`
 - Migrations are applied by CI in filename order and are irreversible once applied to the shared
   staging database, so this element must land on `main` before any code that writes to it.
 
-### API-2 — ledger entries endpoint (ledger service)
+### API-2 — ledger entries endpoints (ledger service)
 
-`GET /ledger/entries?orderId=` replaces the stub at `repo-a/services/ledger/src/api/entries.ts:7`.
+`GET /ledger/entries?orderId=` replaces the stub at `repo-a/services/ledger/src/api/entries.ts:7`, and `POST /ledger/entries` is added beside it.
 
-- Request: `orderId` query parameter, required, non-empty string.
-- Response: JSON array of `{ orderId: string, amountMinor: number, direction: "debit" | "credit", createdAt: string }`.
-- Errors: 400 on a missing or empty `orderId`; 200 with `[]` when no entries exist.
+- Request: `GET` takes an `orderId` query parameter, required, non-empty string; `POST` takes a JSON body `{ orderId: string, amountMinor: number, direction: "debit" | "credit" }`.
+- Response: `GET` returns a JSON array of `{ orderId: string, amountMinor: number, direction: "debit" | "credit", createdAt: string }`; `POST` returns 201 with the stored entry.
+- Errors: 400 on a missing or empty `orderId` (both methods) or a negative `amountMinor`; `GET` returns 200 with `[]` when no entries exist.
 - Auth: the existing internal service token middleware; the dashboard's token is already accepted.
-- Limits: response capped at 500 entries, newest first.
+- Limits: `GET` responses capped at 500 entries, newest first; `POST` writes exactly one row.
 
 ### CI-1 — migration step in the deploy workflow
 
@@ -71,8 +71,8 @@ hand.
 ### API-1 — settlement write from checkout
 
 `postCharge` (`repo-a/services/checkout/src/api/charge.ts:6`) gains a settlement write: when
-`flags.asyncSettlement` is true, an accepted charge writes one `credit` entry via the ledger
-service's internal write endpoint.
+`flags.asyncSettlement` is true, an accepted charge writes one `credit` entry through API-2's
+`POST /ledger/entries`.
 
 - Fields: `orderId`, `amountMinor` from the charge body; `direction` fixed to `credit`.
 - Errors: a ledger write failure fails the charge with HTTP 502 (flag on); flag off, no write
@@ -135,7 +135,7 @@ request.
 1. **DB-1** — new: migration `0001_create_ledger_entries.sql` in
    `repo-a/services/ledger/migrations/`.
 2. **API-2** — changed: replace the stub in `repo-a/services/ledger/src/api/entries.ts:7-10` with
-   the real query and the 400 guard.
+   the real query and the 400 guard, and add the `POST` handler beside it.
 
 ### repo-a — `.github/workflows/` (release-team)
 
@@ -185,7 +185,7 @@ the migration stays behind, unused (expand-only; removal is out of scope, LED-10
 - **DB-1** — probe: `psql "$LEDGER_DATABASE_URL" -c "\d ledger_entries"` lists the five columns
   and the `(order_id, created_at)` index. Before the change: `did not find any relation`.
 - **API-2** — probe: `curl -s "ledger.internal/ledger/entries?orderId=o_1"` returns `[]` with 200;
-  omitting `orderId` returns 400. Before the change both return the stub's empty 200.
+  omitting `orderId` returns 400; a valid `POST` returns 201. Before the change both `GET`s return the stub's empty 200 and the `POST` 404s.
 - **CI-1** — probe: `rg "migrate" repo-a/.github/workflows/deploy.yml` shows the migration step
   above the deploy step. Before the change the file has no migration step.
 - **API-1** — triggered: with the flag on in a test environment, post a charge; one `credit` row
