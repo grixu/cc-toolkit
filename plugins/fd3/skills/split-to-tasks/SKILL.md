@@ -292,6 +292,6 @@ a task-file glob trips over it. It carries one table (slug, repository, branch, 
 depends-on, elements), the branch creation order and stack chain per repository, where the
 files went, the coverage statement from step 5, every work item split across tasks with its
 seam, any size-check warning, the verdict line this split was taken against quoted verbatim,
-and anything the user still owes an answer. In the conversation give the path and the table,
-not the file. Anything in the report that binds one task's work also goes into that task's
+and anything the user still owes an answer. In the conversation give the path and the same
+table — all six columns, `elements` included — not the file. Anything in the report that binds one task's work also goes into that task's
 `## Note`, in the imperative — the conversation ends before implementation starts.
