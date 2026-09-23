@@ -20,6 +20,8 @@ export default (output) => {
     );
   }
 
+  // Placement only: the prompt is the bare command, so nothing was established before it and
+  // writing no prior-conversation record is correct here.
   const prior = diff.added.filter((f) => /prior-conversation\.md$/.test(f));
   c.check(
     prior.every((f) => /(^|\/)research\/prior-conversation\.md$/.test(f)),
