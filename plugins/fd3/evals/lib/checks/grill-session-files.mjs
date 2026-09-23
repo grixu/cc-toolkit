@@ -3,11 +3,11 @@ import * as h from '../helpers.mjs';
 // The grilling half keeps two bookkeeping files, and both have a pinned home: the question
 // ledger under notes/, the prior-conversation record under research/. Loose in the working
 // tree they land in the user's repository and outlive the session.
-export default (output) => {
+export default (output, context) => {
   const c = h.checker();
 
-  const numbered = output.match(/^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/gm) || [];
-  c.check(numbered.length >= 1, 'no numbered round of questions — the grilling half never ran');
+  const numbered = /^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/m.test(output);
+  c.check(numbered || h.askedThroughTool(context), 'no round of questions — the grilling half never ran');
 
   const diff = h.diffSandbox('grill-session-files', 'retry-topic');
 

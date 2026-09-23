@@ -5,12 +5,8 @@ const NUMBERED = /^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/m;
 export default (output, context) => {
   const c = h.checker();
 
-  // A round may go out through AskUserQuestion and get auto-answered, leaving the final message
-  // with no numbered question even though the grilling ran. Numbering is grill-numbered-questions'
-  // concern; here the call itself is the evidence.
-  const asked = (context?.providerResponse?.metadata?.toolCalls || [])
-    .some((call) => call.name === 'AskUserQuestion');
-  c.check(NUMBERED.test(output) || asked, 'no numbered round of questions — the grilling half never ran');
+  // Numbering is grill-numbered-questions' concern; here the round only has to have gone out.
+  c.check(NUMBERED.test(output) || h.askedThroughTool(context), 'no round of questions — the grilling half never ran');
 
   // The gate: without a confirmed closing summary the write-spec half must not start.
   const diff = h.diffSandbox('build-spec-gate', 'retry-topic');
