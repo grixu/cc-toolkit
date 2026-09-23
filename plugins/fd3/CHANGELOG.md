@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   edited sections
 - The validation return prints all twelve check rows with their fixed numbering and short names,
   and the report reference says to re-read it after a compaction
+- A pass that hands questions up sends its report with them — the twelve rows, the findings it
+  already holds and a `not ready` verdict, with the handed-up items under *Still open* — instead
+  of promising the table once answers land that may never come
+- `validate-spec` edits only what a finding of that pass names: on a spec whose checks all pass it
+  leaves the file byte-identical apart from the appended evidence block
 - A HIL CI failure is diagnosed by running the failing check in the branch's worktree, not by
   grepping the source for what the message suggests
 - A repair `instructions` line says what to change and never asks the agent to validate — the

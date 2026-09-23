@@ -14,6 +14,12 @@ need, then end your turn. Do not guess it and do not go looking for it.
 **That spec file is the only file you may edit.** Everything else you read is read-only, no matter
 what you find in it.
 
+**Every edit traces to a finding of this pass.** The dated evidence block is appended to a spec of
+any quality; everything else you write must be the repair of something you recorded as a finding,
+in the section that finding names. A spec whose checks all pass leaves this skill byte-identical
+except for the appended block — rewording a section you merely read, tidying a table, or improving
+prose nobody flagged rewrites a document the user validated on the strength of its own wording.
+
 ## Goal
 
 Decide whether the spec can be implemented, or split into tasks, as written. It can when every
@@ -260,6 +266,12 @@ choice — make the correction. A non-blocking finding never is: it goes in the 
 repair choices alike — numbered, each with your recommended answer first, then end your turn. The
 answers arrive as a message and you continue from where you stopped, with everything this pass
 established still in front of you.
+
+**The batch carries this pass's report with it, and so does the turn that ends.** Handing up is not
+an alternative to reporting: the twelve check rows, the findings you already hold and a verdict of
+`not ready` go out in the same message, with the handed-up items under *Still open*. A turn that
+ends on "the full table comes once the answers land" leaves the caller with nothing to relay and
+nothing to act on, and the answers may never come.
 
 One batch per pass. Nothing may still be outstanding when you send it: a dispatch that has not
 returned is a dispatch whose answer changes what you would ask, and a second message sent while the
