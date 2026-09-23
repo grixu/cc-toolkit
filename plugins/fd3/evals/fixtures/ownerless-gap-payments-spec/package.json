@@ -1,0 +1,8 @@
+{
+  "name": "payments-service",
+  "version": "1.4.2",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  }
+}

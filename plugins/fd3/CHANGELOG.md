@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `depends-on` edge between two tasks on the same branch must name the file or symbol they
   share, in the dependent task's `## Note` and in the report; an edge that cannot be named is
   dropped, because it only serialises the implementation stage
+- Evals — four scenarios covering the defects this round fixed: a split over a spec whose
+  `ready` verdict carries a declared gap, a split over a `CODEOWNERS`-protected path, a
+  validation of an ownerless gap, and a grilling run whose two bookkeeping files must land in
+  `notes/` and `research/`
 
 ### Fixed
 

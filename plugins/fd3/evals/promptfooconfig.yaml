@@ -65,6 +65,13 @@ tests:
       - type: javascript
         value: file://lib/checks/validate-phased-verdict.mjs
 
+  - description: validate-ownerless-gap
+    vars: { query: file://prompts/validate-ownerless-gap.txt }
+    options: { working_dir: .sandbox/validate-ownerless-gap, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/validate-ownerless-gap.mjs
+
   # ---- split-to-tasks (Priority 1; same budget override) ----
   - description: split-baseline
     vars: { query: file://prompts/split-baseline.txt }
@@ -101,6 +108,20 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/split-english-artifacts.mjs
+
+  - description: split-declared-gap
+    vars: { query: file://prompts/split-declared-gap.txt }
+    options: { working_dir: .sandbox/split-declared-gap, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/split-declared-gap.mjs
+
+  - description: split-protected-path
+    vars: { query: file://prompts/split-protected-path.txt }
+    options: { working_dir: .sandbox/split-protected-path, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/split-protected-path.mjs
 
   # ---- write-spec (Priority 2) ----
   - description: write-missing-input-stop
@@ -158,6 +179,13 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/grill-numbered-questions.mjs
+
+  - description: grill-session-files
+    vars: { query: file://prompts/grill-session-files.txt }
+    options: { working_dir: .sandbox/grill-session-files, max_budget_usd: 8.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/grill-session-files.mjs
 
   # ---- build-spec command (gate smoke) ----
   # 5.0 like the P1 group: first_option auto-answers whole grilling rounds, so this run
