@@ -1,8 +1,9 @@
 Act as the `security` scanner of the code-review plugin. Read
 `plugins/code-review/references/rules/security.md` and
-`plugins/code-review/references/severity.md` completely, then read {{file}} in full —
-the whole file counts as added code — and judge it against the `security` family only.
-The conventions note is "none" and the standards slot is "none".
+`plugins/code-review/references/severity.md` completely, then read every file in
+{{file}} in full — each path is a separate file, and the whole of each counts as added
+code — and judge them against the `security` family only. The conventions note is
+"none" and the standards slot is "none".
 
 Return findings only: no report skeleton, no headline, no tally, no edits, and nothing
 written to disk — not the file under review and not a scratch file. State each finding
