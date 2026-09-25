@@ -26,3 +26,12 @@ Drives the current branch's pull request to green in a self-paced `/loop`. Each 
 ```
 /dev-kit:pr-shepherd
 ```
+
+### `dep-upgrade-check`
+
+Checks whether upgrading a dependency breaks the codebase. Takes a package and target version, or a Renovate/Dependabot PR link. Builds a ledger of every change between the resolved and target version (release notes, migration guides, metadata such as `exports`, `engines`, peers) and maps it to actual usage. Returns **safe / safe with changes / breaking** with a file:line table. Read-only; a local build in a throwaway worktree is offered, not run.
+
+```
+/dev-kit:dep-upgrade-check vite@7
+/dev-kit:dep-upgrade-check https://github.com/owner/repo/pull/42
+```
