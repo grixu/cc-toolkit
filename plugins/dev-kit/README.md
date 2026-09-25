@@ -35,3 +35,12 @@ Checks whether upgrading a dependency breaks the codebase. Takes a package and t
 /dev-kit:dep-upgrade-check vite@7
 /dev-kit:dep-upgrade-check https://github.com/owner/repo/pull/42
 ```
+
+### `pr-open`
+
+Pushes the current branch and opens a pull request. Finds the repository's PR template (root, `docs/`, `.github/`, `PULL_REQUEST_TEMPLATE/`, or the owner's `.github` repo), keeps its structure, and fills it in plain, bulleted Smart Brevity style backed by the diff and commits. Ticks checkboxes only on evidence. With an existing PR, offers to refresh its description.
+
+```
+/dev-kit:pr-open
+/dev-kit:pr-open draft develop
+```
