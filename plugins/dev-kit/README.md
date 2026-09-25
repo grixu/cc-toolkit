@@ -27,6 +27,8 @@ Drives the current branch's pull request to green in a self-paced `/loop`. Each 
 /dev-kit:pr-shepherd
 ```
 
+`pr-shepherd` and `ci-fix` pre-approve the `git` and `gh` commands they run, so an unattended loop does not stop on those prompts. The commands that reproduce a failure or verify a fix (tests, lint, build) differ per repository and cannot be pre-approved by the plugin: allow them in the project's `.claude/settings.json` (for example `"Bash(pnpm test *)"`), or the loop pauses at the first such prompt.
+
 ### `dep-upgrade-check`
 
 Checks whether upgrading a dependency breaks the codebase. Takes a package and target version, or a Renovate/Dependabot PR link. Builds a ledger of every change between the resolved and target version (release notes, migration guides, metadata such as `exports`, `engines`, peers) and maps it to actual usage. Returns **safe / safe with changes / breaking** with a file:line table. Read-only; a local build in a throwaway worktree is offered, not run.

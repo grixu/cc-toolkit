@@ -2,6 +2,7 @@
 name: pr-shepherd
 description: Shepherd the current branch's pull request in a self-paced loop until CI is green and every review thread is resolved, fixing failures and review comments with commits and pushes, and answering the unjustified ones in-thread. Use when the user asks to babysit, watch or drive a PR to green, or to keep fixing CI and review comments until the PR is clean.
 argument-hint: "[iteration]"
+allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only) Bash(git log *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
 disallowed-tools: AskUserQuestion
 ---
 
