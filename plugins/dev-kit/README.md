@@ -18,3 +18,11 @@ Paste a failed run, job, PR or commit-checks URL (or nothing, for the current br
 ```
 /dev-kit:ci-fix https://github.com/owner/repo/actions/runs/123456
 ```
+
+### `pr-shepherd`
+
+Drives the current branch's pull request to green in a self-paced `/loop`. Each iteration: red CI goes to `ci-fix` (push authorized), justified review comments are fixed, committed, pushed and resolved, unjustified ones get an in-thread reply mentioning the author. Stops when every check is green and no review thread is open, or hands over to you when it needs a human (conflicts, dirty tree, repeated failures, quiet reviewers).
+
+```
+/dev-kit:pr-shepherd
+```
