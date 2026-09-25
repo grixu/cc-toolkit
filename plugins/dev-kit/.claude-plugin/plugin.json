@@ -1,7 +1,7 @@
 {
   "name": "dev-kit",
   "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template.",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
