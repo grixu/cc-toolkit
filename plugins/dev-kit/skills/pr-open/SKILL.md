@@ -76,7 +76,7 @@ Keep the template's structure intact: every heading, in its order, and every che
 
 1. `git push -u origin HEAD`. On rejection, report the error and stop; resolving a diverged branch is the user's call.
 2. Write the body to a file outside the repository: `mktemp -t pr-body.XXXXXX`.
-3. `gh pr create --base <base> --head <branch> --title "<title>" --body-file <file>`, adding `--draft` only when the request asks for a draft.
+3. `gh pr create --base <base> --head <branch> --title "<title>" --body-file <file> --assignee @me`, adding `--draft` only when the request asks for a draft.
 4. Delete the temporary file.
 
 Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), and each section left `N/A` or checkbox left unticked for the author to complete.
