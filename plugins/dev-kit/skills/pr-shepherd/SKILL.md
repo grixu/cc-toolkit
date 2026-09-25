@@ -94,7 +94,7 @@ A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report 
 
 Otherwise stop when one of these holds:
 
-- CI is green and the only unresolved threads are awaiting a human whose newest reply of ours is older than 24 hours: the reviewers went quiet.
+- CI is green and every unresolved thread is either *handed over* (two rebuttals already posted, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
 - A stop named in steps 1 to 3 fired.
 - This is iteration 48 of the loop.
 
