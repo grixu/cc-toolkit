@@ -2,6 +2,7 @@
 name: ci-fix
 description: Fix a failed CI pipeline at its root cause, verify locally, and commit. Use when the user pastes a GitHub Actions run, job, PR or commit-checks URL, says CI, a pipeline or a build is red, or another skill hands over a failing check.
 argument-hint: "[run/job/PR/commit URL | run ID | PR number] [push-authorized]"
+allowed-tools: Read Edit Write Grep Glob Bash(gh run view *) Bash(gh run list *) Bash(gh run rerun *) Bash(gh pr checks *) Bash(gh pr checkout *) Bash(gh api repos/*) Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git switch *) Bash(git log *) Bash(git diff *) Bash(git show *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *)
 ---
 
 Target: **$ARGUMENTS**
