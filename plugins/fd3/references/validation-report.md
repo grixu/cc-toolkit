@@ -62,7 +62,7 @@ A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`
 open findings do not block. It is the only thing by which the caller can tell that an iteration
 moved, so a check whose answer changed says so where it changed. Each cell is one line.
 
-Check 9 takes a fourth form and needs it: its evidence lives outside the spec, so `unchanged` there
+Check 9 takes a fifth form and needs it: its evidence lives outside the spec, so `unchanged` there
 reports the document, not the lookup. A check 9 that ran and holds reads `pass (verified — <what you
 read>)`; `pass (unchanged)` on that row says the lookup never happened.
 
