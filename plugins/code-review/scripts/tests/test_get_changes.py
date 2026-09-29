@@ -85,3 +85,16 @@ def test_explicit_base_never_gets_an_alternate(origin_repo: Path):
 
     assert out["count"] == 0
     assert "alternate" not in out
+
+
+def test_dash_c_reviews_another_checkout(origin_repo: Path, tmp_path: Path):
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+
+    res = subprocess.run(
+        [sys.executable, str(SCRIPT), "-C", str(origin_repo), "--scope", "committed",
+         "--base", "origin/main"],
+        cwd=elsewhere, capture_output=True, text=True, check=True,
+    )
+
+    assert [f["path"] for f in json.loads(res.stdout)["files"]] == ["feature.ts"]

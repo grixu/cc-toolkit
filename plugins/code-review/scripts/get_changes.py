@@ -2,7 +2,7 @@
 """Enumerate changed files for a review scope.
 
 Usage:
-    get_changes.py --scope {uncommitted|committed|both} [--base REF]
+    get_changes.py --scope {uncommitted|committed|both} [--base REF] [-C PATH]
 
 Scopes:
     uncommitted   working tree + index vs HEAD          (git diff HEAD)
@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from typing import Optional
@@ -179,7 +180,10 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--scope", required=True, choices=["uncommitted", "committed", "both"])
     p.add_argument("--base", default=None, help="explicit base ref (default: auto-detect)")
+    p.add_argument("-C", dest="repo", default=None, help="run as if started in PATH, like git -C")
     args = p.parse_args()
+    if args.repo:
+        os.chdir(args.repo)
 
     inside = _run(["git", "rev-parse", "--is-inside-work-tree"], check=False).strip()
     if inside != "true":
