@@ -52,10 +52,18 @@ blocks from being *written* draws a `depends-on` edge onto it (step 4's authorsh
 
 Anything short of that — a blocked claim, a count that does not match, a dated block
 with no verdict line, no pass anywhere — is a stop before step 1. A dated heading over verified rows is not
-a verdict. Validating is not this skill's work, and no command is named for it: on *validate first*
-the split ends with nothing written. What lifts the stop is the user's answer, never your own — say
-what the record holds, then ask, once, whether to validate first or split as-is. The message that
-ends the run says what the record held and which way the user answered.
+a verdict. Validating is not this skill's work: on *validate first* the split ends with nothing
+written and names the route — `/fd3:build-spec <spec path>`, which takes a finished spec straight to
+validation. What lifts the stop is the user's answer, never your own — say what the record holds,
+then ask, once, whether to validate first or split as-is, following
+`${CLAUDE_SKILL_DIR}/../../references/question-batching.md` with *validate first* as the
+recommendation. The message that ends the run says what the record held and which way the user
+answered.
+
+**Never write a verdict.** An evidence block, a verdict line or a validation status in the spec is
+written by `fd3:validate-spec` alone — not by this skill, and not when the user asks it to, because a
+verdict nothing validated is exactly what the precondition above would then trust. A spec that needs
+repairing goes through the route above, and the split stops.
 
 ## Workflow
 
