@@ -1,11 +1,11 @@
 export const meta = {
   name: 'repair-run',
-  description: 'Apply human HIL decisions to existing task branches, then re-validate each branch — no code review',
+  description: 'Apply human HIL decisions to existing task branches, then re-validate each branch and review what the repair changed',
   whenToUse: 'Launched by the fd3:implement-tasks skill after the user has decided the HIL items of an implement-run report; not meant to be invoked bare.',
   phases: [
     { title: 'Recon', detail: 'only for repositories whose toolchain or baseline knowledge did not arrive in args' },
     { title: 'Repair', detail: 'one agent per branch, the HIL decision applied verbatim' },
-    { title: 'Validate', detail: 'scoped CI with fix rounds, then the full gate, one branch at a time' },
+    { title: 'Validate', detail: 'scoped CI with fix rounds, a review of the repair delta, then the full gate, one branch at a time' },
   ],
 }
 
@@ -22,10 +22,14 @@ export const meta = {
 //                repositories missing from both are re-scouted
 //   baseline     (optional) { [repository path]: { commands: [...] } } — likewise
 //   maxFixRounds CI fix attempts per branch before giving up
+//   review       true to review each repaired branch's delta with the code-review plugin's headless
+//                lenses; its findings go to the human, never to a fixer
+//   specPath     (optional) absolute path of the spec, for the review's spec lens
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
-const { repairs, repos } = input
+const { repairs, repos, specPath } = input
+const review = input.review === true
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
 // the run exists to perform, reporting failures it was built to repair.
 const maxFixRounds = input.maxFixRounds ?? 3
@@ -212,6 +216,7 @@ const REPAIR_RESULT = {
     outcome: { enum: ['repaired', 'blocked'] },
     summary: { type: 'string' },
     reason: { type: 'string', description: 'why the decision could not be applied; only when outcome is blocked' },
+    fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
     caveats: { type: 'array', items: { type: 'string' }, description: 'side effects of applying the decision literally that the human should see — a degraded type, a narrower behavior than the decision may have intended' },
   },
 }
@@ -227,6 +232,7 @@ const repairPrompt = (r) =>
     `your own reading of the design. Do not read the spec; do not re-derive the design; apply`,
     `the decision exactly as stated.`,
     ``,
+    `Before your first edit, run \`git rev-parse HEAD\` in the worktree and return it as fromSha.`,
     `Work only inside the worktree. Do not run linters, test suites or builds — validation runs`,
     `after you. Make one commit per decision quoted above, each with a conventional-commit message`,
     `describing that decision's change — a reviewer reverts or questions one decision, never a bundle.`,
@@ -253,7 +259,7 @@ repairs.forEach((r, i) => {
   const result = repairResults[i]
   if (result && result.caveats) caveats.push(...result.caveats.map((c) => `${r.branch} repair: ${c}`))
   if (result && result.outcome === 'repaired') {
-    units.push(r)
+    units.push({ ...r, fromSha: result.fromSha || null })
   } else {
     hil.push({
       slug: null,
@@ -291,6 +297,19 @@ const CI_RESULT = {
 const validationTree = (unit) =>
   unit.worktree === unit.repo ? `${unit.repo}.worktrees/${unit.branch.replace(/\//g, '-')}-validate` : unit.worktree
 
+const treeSetup = (unit) => {
+  const tree = validationTree(unit)
+  return tree === unit.worktree
+    ? []
+    : [
+        `That worktree is this branch's validation checkout, detached at its commit. Create it`,
+        `with \`git worktree add --detach ${tree} ${unit.branch}\` if it is not there; if it is,`,
+        `bring it to the branch's current commit with \`git -C ${tree} checkout --detach`,
+        `${unit.branch}\`. Never \`git clean\` it — installed dependencies live there untracked.`,
+        ``,
+      ]
+}
+
 const ciPrompt = (unit, mode, markFiles) => {
   const tree = validationTree(unit)
   return [
@@ -302,15 +321,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     `\`grep\`: the pipe's status replaces the command's, and a failing suite then reads as whatever`,
     `its output happens to show.`,
     ``,
-    ...(tree === unit.worktree
-      ? []
-      : [
-          `That worktree is this branch's validation checkout, detached at its commit. Create it`,
-          `with \`git worktree add --detach ${tree} ${unit.branch}\` if it is not there; if it is,`,
-          `bring it to the branch's current commit with \`git -C ${tree} checkout --detach`,
-          `${unit.branch}\`. Never \`git clean\` it — installed dependencies live there untracked.`,
-          ``,
-        ]),
+    ...treeSetup(unit),
     `\`cd ${tree}\` before anything else, and confirm what you are about to grade: \`git rev-parse`,
     `HEAD\` there must equal \`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
     `return branch "${unit.branch}". When they do not, run nothing: return the branch you actually`,
@@ -400,6 +411,136 @@ const fixPrompt = (unit, problems) =>
     `a decision recorded in the spec.`,
   ].join('\n')
 
+const PREP_RESULT = {
+  type: 'object',
+  required: ['status', 'invoked'],
+  properties: {
+    invoked: { type: 'boolean', description: 'the code-review:cr-prepare skill was invoked through the Skill tool' },
+    status: { enum: ['ready', 'empty', 'error'] },
+    files: { type: 'number', description: 'judged files' },
+    active: { type: 'array', items: { type: 'string' }, description: 'active lenses, by name' },
+    inactive: { type: 'array', items: { type: 'string' }, description: 'inactive lenses, each with its reason' },
+    alternate: { type: 'string', description: 'the alternate base and its file count; only when status is empty and the skill named one' },
+    reason: { type: 'string', description: 'only when status is error' },
+  },
+}
+
+const SCAN_RESULT = {
+  type: 'object',
+  required: ['status', 'invoked', 'filesJudged', 'filesTotal'],
+  properties: {
+    invoked: { type: 'boolean', description: 'the code-review:cr-scan skill was invoked through the Skill tool' },
+    status: { enum: ['scanned', 'inactive', 'error'] },
+    filesJudged: { type: 'number' },
+    filesTotal: { type: 'number' },
+  },
+}
+
+const CR_MERGE_RESULT = {
+  type: 'object',
+  required: ['status', 'invoked', 'findings'],
+  properties: {
+    invoked: { type: 'boolean', description: 'the code-review:cr-merge skill was invoked through the Skill tool' },
+    status: { enum: ['merged', 'incomplete', 'error'] },
+    report: { type: 'string', description: 'absolute path of report.md' },
+    missing: { type: 'array', items: { type: 'string' }, description: 'lenses that did not report; only when status is incomplete' },
+    findings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['severity', 'family', 'rule', 'location', 'risk', 'fix'],
+        properties: {
+          severity: { type: 'string', description: 'high | medium | nit; `comment` for a comment verdict' },
+          family: { type: 'string' },
+          rule: { type: 'string', description: 'the rule, or for a comment verdict R<n> and its verdict' },
+          location: { type: 'string', description: '<path>:L<lines>' },
+          risk: { enum: ['safe', 'structural', 'report-only'] },
+          fix: { type: 'string' },
+          reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
+        },
+      },
+    },
+  },
+}
+
+// The lens skills read a context directory, never this prompt, so the run's own facts — which tree,
+// which base, what is deliberately unfinished — reach them only through the wrapper agents.
+const reviewDir = (unit, pass) => `${unit.repo}.worktrees/.review/${unit.branch.replace(/\//g, '-')}-${pass}`
+
+const prepPrompt = (unit, base, dir) => {
+  const tree = validationTree(unit)
+  return [
+    `Prepare a code review of the branch ${unit.branch} (repository ${unit.repo}) in the checkout`,
+    `${tree}, measured from ${base}.`,
+    ``,
+    ...treeSetup(unit),
+    `\`git -C ${tree} rev-parse HEAD\` must equal \`git -C ${unit.repo} rev-parse ${unit.branch}\`;`,
+    `when it does not, invoke nothing and return status "error" with the mismatch as reason.`,
+    ``,
+    `Remove ${dir} if it exists — lens files left there by an earlier run would be read as this`,
+    `run's. Then invoke the \`code-review:cr-prepare\` skill through the Skill tool with:`,
+    `\`--base ${base} --out ${dir} -C ${tree}${specPath ? ` --spec ${specPath}` : ''}\``,
+    ``,
+    `Return what its closing block says: status, judged file count, active and inactive lenses,`,
+    `the alternate on empty, the reason on error — and invoked=true. When the Skill tool is not`,
+    `available to you, return invoked=false and status "error"; never do the skill's work by hand.`,
+  ].join('\n')
+}
+
+const scanPrompt = (lens, dir) =>
+  [
+    `Invoke the \`code-review:cr-scan\` skill through the Skill tool with`,
+    `\`--lens ${lens} --context ${dir}\`, and return what its closing block says — status, files`,
+    `judged of the total — with invoked=true. When the Skill tool is not available to you, return`,
+    `invoked=false, status "error" and zero counts; never judge the change by hand.`,
+  ].join('\n')
+
+const crMergePrompt = (dir) =>
+  [
+    `Invoke the \`code-review:cr-merge\` skill through the Skill tool with \`--context ${dir}\`,`,
+    `and return what its closing block says: status, the report path, the lenses that did not`,
+    `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
+    `risk class and the fix. A comment verdict's severity is \`comment\`. Return invoked=true; when`,
+    `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
+  ].join('\n')
+
+// A review that did not run is absence of evidence: an empty change, a lens that judged nothing or a
+// skill the agent never invoked all come back as a reason, never as an empty findings list.
+const runReview = async (unit, base, pass, tag) => {
+  const dir = reviewDir(unit, pass)
+  const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT })
+  if (!prep || !prep.invoked || prep.status === 'error') {
+    return { dir, dead: `cr-prepare ${prep ? `failed: ${prep.reason || 'the skill was not invoked'}` : 'returned no result after a retry'}` }
+  }
+  if (prep.status === 'empty') {
+    return { dir, empty: true, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
+  }
+  const lenses = prep.active || []
+  const scans = await parallel(
+    lenses.map((lens) => () =>
+      tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+    ),
+  )
+  const deadLenses = lenses.filter((_, i) => {
+    const r = scans[i]
+    return !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
+  })
+  if (deadLenses.length > 0) return { dir, dead: `lens ${deadLenses.join(', ')} did not report` }
+  const merged = await tryTwice(crMergePrompt(dir), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
+  if (!merged || !merged.invoked || merged.status !== 'merged') {
+    const why = !merged
+      ? 'returned no result after a retry'
+      : merged.status === 'incomplete'
+        ? `found lens ${(merged.missing || []).join(', ')} missing`
+        : 'failed'
+    return { dir, dead: `cr-merge ${why}` }
+  }
+  return { dir, report: merged.report, files: prep.files || 0, lenses: lenses.length, findings: merged.findings }
+}
+
+const serious = (f) => f.severity === 'high' || f.severity === 'medium'
+const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
+
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
 // A CI verdict is a statement about one tree at one commit. A runner that stayed in the
@@ -478,8 +619,32 @@ for (const unit of units) {
     continue
   }
 
+  // A repair is new code written to a human's one-line decision; CI proves it builds, never that it
+  // did only what was decided — the review reads the repair's own commits, and a human reads that.
+  let reviewDead = null
+  let reviewHeld = false
+  if (review) {
+    if (!unit.fromSha) {
+      reviewDead = 'the repair agent did not report its starting commit, so the repair delta is unknown'
+    } else {
+      const delta = await runReview(unit, unit.fromSha, 'repair', tag)
+      summary.review = { context: delta.dir, report: delta.report || null }
+      if (delta.dead && !delta.empty) {
+        reviewDead = `the review of the repair did not run: ${delta.dead}`
+      } else if (!delta.empty) {
+        const open = delta.findings.filter(serious)
+        summary.review.findings = delta.findings.map(findingLine)
+        for (const f of open) {
+          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — the task files keep their status until a repair settles it` })
+        }
+        reviewHeld = open.length > 0
+      }
+    }
+  }
+
   // The full command list is the branch's final gate — repairs go out only fully validated.
-  const { ci: finalCi, fault: finalFault } = await runCi(unit, 'full', !!(unit.taskFiles && unit.taskFiles.length > 0), `ci:${tag}:final`)
+  const markFiles = !!(unit.taskFiles && unit.taskFiles.length > 0) && !reviewDead && !reviewHeld
+  const { ci: finalCi, fault: finalFault } = await runCi(unit, 'full', markFiles, `ci:${tag}:final`)
   if (!finalCi || finalFault) {
     summary.ci = 'no-verdict'
     hil.push({
@@ -506,7 +671,16 @@ for (const unit of units) {
 
   // The final gate marks the files itself: it is already in this unit holding the verdict, where
   // a separate agent per branch spent its whole budget booting to edit one frontmatter line.
-  if (unit.taskFiles && unit.taskFiles.length > 0 && !finalCi.marked) {
+  if (reviewDead) {
+    hil.push({
+      slug: null,
+      kind: 'no-verdict',
+      stage: 'review',
+      reason: `${unit.repo} ${unit.branch}: CI passed, but ${reviewDead}; the task files keep their status until a relaunch reviews it.`,
+    })
+    continue
+  }
+  if (markFiles && !finalCi.marked) {
     // The files are the state store; in-memory state must never outrun them.
     hil.push({
       slug: null,
