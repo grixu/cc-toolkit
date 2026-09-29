@@ -23,7 +23,14 @@ evals/
   prompts/standards.txt    # quality trigger with the standards fixture dir as repo root
   fixtures/                # inputs; fixtures/spec/ and fixtures/standards/ are multi-file
   scope-mix/               # eval-19 input, kept out of fixtures/ so its paths classify by kind
+  prompts/headless.txt     # cr-prepare → cr-scan × N → cr-merge, in that order — headless track
+  checks/                  # deterministic asserts that read files on disk (headless track)
+  reset-sandbox.sh         # rebuilds .sandbox/headless, the git checkout eval-20 reviews
 ```
+
+The headless skills review committed changes only, so eval-20 runs against a git
+checkout rather than a fixture path; `scripts/run-evals.sh code-review` rebuilds it
+before every run.
 
 Node dev deps (`@anthropic-ai/claude-agent-sdk` + `promptfoo`) and the run
 scripts live at the **repo root** (`package.json`, single shared `node_modules`),

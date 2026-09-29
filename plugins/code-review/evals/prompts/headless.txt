@@ -1,0 +1,10 @@
+Review the last commit of the git checkout {{checkout}} with the code-review plugin's headless
+skills, exactly in this order, through the Skill tool:
+
+1. `code-review:cr-prepare` with `--base HEAD~1 --out {{context}} -C {{checkout}}`.
+2. `code-review:cr-scan` with `--lens <lens> --context {{context}}`, once for every lens its
+   closing block lists as active.
+3. `code-review:cr-merge` with `--context {{context}}`.
+
+Then reply with the three skills' closing blocks, verbatim, in that order — the cr-scan blocks
+one after another — and nothing else.

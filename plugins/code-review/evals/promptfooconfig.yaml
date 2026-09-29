@@ -24,6 +24,10 @@ prompts:
   # for the CODING_STANDARDS pair.
   - id: file://prompts/standards.txt
     label: standards-track
+  # Headless track: the three model-only skills a workflow drives, run in sequence against a
+  # committed change in a git sandbox that reset-sandbox.sh rebuilds.
+  - id: file://prompts/headless.txt
+    label: headless-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -805,3 +809,14 @@ tests:
       - type: regex
         value: '[Ss]kipped'
 
+  - description: 'eval-20 headless-pipeline (cr-prepare → cr-scan × N → cr-merge)'
+    prompts: [headless-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/headless
+      context: plugins/code-review/evals/.sandbox/headless-ctx
+    # Eight lenses in one agent's context: the default cap would abort mid-run. The skills write
+    # their context files; without Write and Bash the agent narrates a review it never ran.
+    options: { max_budget_usd: 12, allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/headless-pipeline.mjs
