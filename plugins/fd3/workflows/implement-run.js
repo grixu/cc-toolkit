@@ -645,6 +645,7 @@ const CR_MERGE_RESULT = {
           risk: { enum: ['safe', 'structural', 'report-only'] },
           fix: { type: 'string' },
           reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
+          boyScout: { type: 'boolean', description: 'the finding line carries the `boy-scout` token: it is about code the change did not touch' },
         },
       },
     },
@@ -806,7 +807,8 @@ const crMergePrompt = (dir) =>
     `Invoke the \`code-review:cr-merge\` skill through the Skill tool with \`--context ${dir}\`,`,
     `and return what its closing block says: status, the report path, the lenses that did not`,
     `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
-    `risk class and the fix. A comment verdict's severity is \`comment\`. Return invoked=true; when`,
+    `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
+    `\`boy-scout\` token sets boyScout=true. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
     ...(reservations
       ? [
@@ -853,14 +855,15 @@ const runReview = async (unit, base, pass, tag) => {
   return { dir, report: merged.report, files: prep.files || 0, lenses: lenses.length, findings: merged.findings }
 }
 
-// Security fixes change behaviour at a boundary and spec findings are work, not edits — both wait
-// for a human; nits and the remaining comment verdicts are reported, never applied unasked.
+// Security fixes change behaviour at a boundary, spec findings are work, not edits, and a boy-scout
+// fix edits code the task never touched — all three wait for a human; nits and the remaining
+// comment verdicts are reported, never applied unasked.
 const serious = (f) => f.severity === 'high' || f.severity === 'medium'
 const sortFindings = (findings) => {
   const live = findings.filter((f) => !f.reserved)
   const applied = live.filter(
     (f) =>
-      (serious(f) && f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec') ||
+      (serious(f) && f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout) ||
       (f.severity === 'comment' && f.risk === 'safe'),
   )
   const forHuman = live.filter((f) => !applied.includes(f) && serious(f))

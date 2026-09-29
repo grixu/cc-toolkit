@@ -457,6 +457,7 @@ const CR_MERGE_RESULT = {
           risk: { enum: ['safe', 'structural', 'report-only'] },
           fix: { type: 'string' },
           reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
+          boyScout: { type: 'boolean', description: 'the finding line carries the `boy-scout` token: it is about code the change did not touch' },
         },
       },
     },
@@ -500,7 +501,8 @@ const crMergePrompt = (dir) =>
     `Invoke the \`code-review:cr-merge\` skill through the Skill tool with \`--context ${dir}\`,`,
     `and return what its closing block says: status, the report path, the lenses that did not`,
     `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
-    `risk class and the fix. A comment verdict's severity is \`comment\`. Return invoked=true; when`,
+    `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
+    `\`boy-scout\` token sets boyScout=true. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
   ].join('\n')
 
