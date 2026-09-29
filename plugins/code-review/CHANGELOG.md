@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Headless skills for workflow callers — `cr-prepare` (scope, conventions, standards and the
+  active lens set, written to a context directory), `cr-scan` (one lens) and `cr-merge` (one
+  report, every finding returned with its fix-risk class). Model-only, they ask nothing and edit
+  nothing in the checkout, and an empty change or a missing lens returns a status, never a clean
+  review
+- `get_changes.py -C <checkout>` reviews another checkout without changing directory
+- Eval-20 runs the headless pipeline against a git sandbox
+
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
