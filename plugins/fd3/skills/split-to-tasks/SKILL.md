@@ -226,7 +226,9 @@ following its repository's visible convention — existing branches show it; the
 group, not the task. One exception joins the step-6 batch: when the checkout already sits on a
 branch carrying implementation commits for this spec, whether the first landing unit reuses that
 branch or cuts fresh by the convention is the user's call — a user mid-feature may have chosen it
-deliberately. A branch that carries only the spec file itself is not that case.
+deliberately. A branch that carries only the spec file itself is not that case — unless the spec
+names that branch as where its work lands, which makes reuse the spec's own answer: then the
+question joins the batch with reuse as the recommendation.
 
 When the edge onto an operational task is real, carry it up to the branch: a landing unit that
 mixes a gate-blocked task with implementable ones cannot reach a complete state in one run. Cut
