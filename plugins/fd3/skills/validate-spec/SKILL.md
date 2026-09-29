@@ -14,6 +14,12 @@ need, then end your turn. Do not guess it and do not go looking for it.
 **That spec file is the only file you may edit.** Everything else you read is read-only, no matter
 what you find in it.
 
+A probe — a command you run to settle a claim — runs in a detached worktree under your scratchpad
+(`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout. It never
+installs, links or rebuilds dependencies, anywhere: a package manager repoints shared links and
+leaves the user's tree broken. A claim that needs more than that to settle stays unverified, and the
+report says what the probe would have needed.
+
 **Every edit traces to a finding of this pass.** The dated evidence block is appended to a spec of
 any quality; everything else you write must be the repair of something you recorded as a finding,
 in the section that finding names. A spec whose checks all pass leaves this skill byte-identical
