@@ -100,6 +100,14 @@ current branch is behind it. The base you write into `branch-base:` is the ref t
 stage cuts worktrees from; a base derived from a week-old local ref is a worktree that starts from
 the wrong commit, and nothing downstream re-derives it.
 
+The last evidence block records the commit each repository was validated at, on its `Checked at:`
+line; a block older than that line is measured from the commit that last changed the spec file. Where `origin/<default>`
+has moved past it, the spec may describe code that is no longer there: intersect `git diff --name-only
+<validated commit>..origin/<default>` with the paths the spec cites. No hit, and the split goes on. A
+hit is a stop before anything is written — name the paths the new commits changed and the route
+`/fd3:build-spec <spec path>`; rebasing a branch or correcting the spec to follow is that route's
+work, never this skill's.
+
 Record each repository's absolute root path and write that path into `repository:`. A remote slug is
 not a location: the next stage resolves it by guessing among the user's checkouts, and a feature
 worked on in a second worktree is exactly where the guess goes wrong.
