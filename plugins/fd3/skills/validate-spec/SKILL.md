@@ -174,7 +174,9 @@ record. Spot-check its rows and append to it under a dated sub-heading, so the s
 stays distinguishable from this run's. When the spec has none, add one at the end. Once the verdict
 is known, open the dated block with one line — `Verdict: <the report's verdict> — claims: N verified /
 N deferred / N blocked — spec N lines at this verdict` — so a later reader can tell a clean pass from
-a qualified one without hunting for the session that produced it. Fill the line count in last: write
+a qualified one without hunting for the session that produced it. The line under it names the
+commit each repository was checked against in step 0 — `Checked at: <remote name> @ <short sha>, …`
+— which is how the split tells whether the code has moved on since. Fill the line count in last: write
 the dated block through to its final line, then `wc -l`, then put that number in the verdict line —
 replacing it changes no line count, so the number counts itself. A file at
 `<spec-dir>/evidence/<section>.md` is for overflow only: a probe transcript or a command output too long to
