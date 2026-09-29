@@ -94,6 +94,62 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   two vocabularies stay side by side; there is no severity↔verdict mapping
   anywhere in a review.
 
+## Fix risk
+
+Every finding the merge keeps carries one risk class for its fix, and whoever applies fixes cuts by
+it — `/start-cr`'s apply menu offers the classes as its buckets, and a headless caller reads the
+class from the `cr-merge` return. The buckets below map to the classes: **Safe fixes** → `safe`,
+**Walk the structural ones** → `structural`, **Report only** and every `spec` finding →
+`report-only`; a boy-scout finding takes the class its fix would have inside the diff, raised to
+`structural` where the text below says so. A fix that failed any of the three checks under *Judge
+the fix* is `report-only` too, with its one-line reason.
+
+- **Safe fixes** — mechanical, easy to eyeball: quality `openness`,
+  `explaining-variable`, `magic-literal`, `role-name`, `guard-clause`,
+  verified-redundant `needless-cast`, trivial `over-complex`, and `dead-code` that is an
+  unread binding or an always-true/false guard; **plus** comment
+  **REMOVE** and **REWRITE**, and a comment **ADD** whose rationale the review
+  actually confirmed — locate the code site by content and insert the comment
+  above it. An `ADD` whose WHY you could only guess is **report-only**: hand the
+  author the suggested text, since only they know the real reason.
+- **Walk the structural ones (one at a time)** — riskier, they move or remove code:
+  `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
+  `full-construction` / `leaky-collection` reshaping, the `patterns` refactors
+  (`composition`, `polymorphism`, `execute-around`), large `over-complex`
+  unifications, `test-structure` restructuring, and `dead-code` removal of a branch that
+  looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
+  `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,
+  `message-chain`); every **`performance`** fix; every **`security`** fix; **plus**
+  comment **MOVE**.
+- **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
+  bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
+  a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
+  the structural walk and is applied one at a time with its own yes. Untouched code is where the
+  review understands the least, so a structural edit there is riskier than the same edit inside
+  the diff, not safer: one run bundled a client split into this bucket, silently broke a
+  double-submit guard, dragged an unrelated page into the pull request, and the user discarded
+  the work.
+- **Report only** — change nothing.
+
+**Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
+edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
+moves or restructures code, or removes a branch that looks reachable → structural. A
+`standards` finding is an unlisted rule and routes the same way.
+
+**Security is never a Safe fix.** However small the edit looks — a bound parameter, a
+removed literal — it changes behaviour at a boundary, so a `security` finding always
+walks structurally, one at a time. When a canonical bucket is empty, `security` may take
+the freed slot as its own option, **Security fixes (walk one at a time)**, so the user
+can pick it apart from the craft restructuring. A `secret-in-source` fix removes the
+literal from the file and nothing more: the wrap-up states that **rotating the exposed
+secret is the user's step** — the review cannot do it and must not imply it did.
+
+**`spec` findings are report-only.** A missing or partial requirement is work to do,
+not an edit to apply, and never enters a bucket. The one exception is a
+`wrong-implementation` the review **verified** in the merge whose fix is a **single edit**:
+that one is offer-able through the apply menu's escape hatch for a confirmed
+correctness problem; headless, it classes as `structural`.
+
 ## Report — one per-file skeleton, two vocabularies side by side
 
 

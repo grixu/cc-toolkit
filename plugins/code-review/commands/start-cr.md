@@ -227,51 +227,12 @@ origin**. Only offer a category when you actually have findings that fall into i
 accepts at most four options** — the four canonical risk buckets below are the whole
 menu; never add a fifth. `Report only` is always offered:
 
-- **Safe fixes** — mechanical, easy to eyeball: quality `openness`,
-  `explaining-variable`, `magic-literal`, `role-name`, `guard-clause`,
-  verified-redundant `needless-cast`, trivial `over-complex`, and `dead-code` that is an
-  unread binding or an always-true/false guard; **plus** comment
-  **REMOVE** and **REWRITE**, and a comment **ADD** whose rationale the review
-  actually confirmed — locate the code site by content and insert the comment
-  above it. An `ADD` whose WHY you could only guess is **report-only**: hand the
-  author the suggested text, since only they know the real reason.
-- **Walk the structural ones (one at a time)** — riskier, they move or remove code:
-  `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
-  `full-construction` / `leaky-collection` reshaping, the `patterns` refactors
-  (`composition`, `polymorphism`, `execute-around`), large `over-complex`
-  unifications, `test-structure` restructuring, and `dead-code` removal of a branch that
-  looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
-  `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,
-  `message-chain`); every **`performance`** fix; every **`security`** fix; **plus**
-  comment **MOVE**.
-- **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
-  bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
-  a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
-  the structural walk and is applied one at a time with its own yes. Untouched code is where the
-  review understands the least, so a structural edit there is riskier than the same edit inside
-  the diff, not safer: one run bundled a client split into this bucket, silently broke a
-  double-submit guard, dragged an unrelated page into the pull request, and the user discarded
-  the work.
-- **Report only** — change nothing.
-
-**Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
-edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
-moves or restructures code, or removes a branch that looks reachable → structural. A
-`standards` finding is an unlisted rule and routes the same way.
-
-**Security is never a Safe fix.** However small the edit looks — a bound parameter, a
-removed literal — it changes behaviour at a boundary, so a `security` finding always
-walks structurally, one at a time. When a canonical bucket is empty, `security` may take
-the freed slot as its own option, **Security fixes (walk one at a time)**, so the user
-can pick it apart from the craft restructuring. A `secret-in-source` fix removes the
-literal from the file and nothing more: the wrap-up states that **rotating the exposed
-secret is the user's step** — the review cannot do it and must not imply it did.
-
-**`spec` findings are report-only.** A missing or partial requirement is work to do,
-not an edit to apply, and never enters a bucket. The one exception is a
-`wrong-implementation` the review **verified** in Step 4 whose fix is a **single edit**:
-that one is offer-able through the escape hatch below for a confirmed correctness
-problem.
+- **Safe fixes**, **Walk the structural ones (one at a time)**, **Boy-scout extras** and
+  **Report only** — what each holds, how an unlisted or `standards` rule routes, why `security`
+  is never safe and `spec` is report-only are the **Fix risk** section of
+  `${CLAUDE_PLUGIN_ROOT}/references/merge-contract.md`; read it before composing the menu. When a
+  canonical bucket is empty, `security` may take the freed slot as its own option, **Security
+  fixes (walk one at a time)**, so the user can pick it apart from the craft restructuring.
 
 **Degenerate and edge menus.** The four buckets are a ceiling, not a quota, and the menu
 must stay honest when findings don't spread across them:
