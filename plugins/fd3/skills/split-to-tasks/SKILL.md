@@ -315,8 +315,9 @@ over the written files — coverage is the one check a fan-out cannot perform on
 of five files or fewer is faster written here.
 
 Write the report to `<spec-basename>.split.md` beside the spec — never inside `tasks/`, where
-a task-file glob trips over it. It carries one table (slug, repository, branch, phase,
-depends-on, elements), the branch creation order and stack chain per repository, where the
+a task-file glob trips over it — after that re-run, since its coverage statement is the re-run's
+result. It carries one table (slug, repository, branch, phase, depends-on as the bare slugs the
+frontmatter holds, elements), the branch creation order and stack chain per repository, where the
 files went, the coverage statement from step 5, every work item split across tasks with its
 seam, any size-check warning, the verdict line this split was taken against quoted verbatim,
 and anything the user still owes an answer. In the conversation give the path and the same
