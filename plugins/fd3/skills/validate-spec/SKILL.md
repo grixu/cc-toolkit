@@ -126,7 +126,8 @@ report**, whether it passed or not.
 A row is `pass` only when its prose names no unresolved finding. Where a finding genuinely does not
 block — the Terms say when — it is still a finding: give it its own row in the findings list and say
 why it does not block. Calling it non-blocking inside a passing row hides it from the verdict, and
-from whoever splits this into tasks.
+from whoever splits this into tasks. The row itself reads `non-blocking — <finding>`: never `fail`
+over a `ready` verdict, and never `pass (unchanged)` while that finding stays open.
 
 1. Design decisions do not contradict one another within the authoritative set. Where the spec declares
    precedence over another document, that declaration settles the disagreement; what to look for instead is
