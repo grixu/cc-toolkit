@@ -596,6 +596,7 @@ const FIX_RESULT = {
     summary: { type: 'string' },
     fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
     caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
+    skipped: { type: 'array', items: { type: 'string' }, description: 'every listed problem left unfixed, copied verbatim from the list' },
   },
 }
 
@@ -768,6 +769,9 @@ const fixPrompt = (unit, problems, source) =>
     `a decision recorded in the spec.`,
     `A caveat says something the parent could not otherwise know. Following this prompt is not a`,
     `caveat.`,
+    ...(source === 'code-review'
+      ? [`Under skipped, also copy verbatim every listed problem you left unfixed, whatever the reason.`]
+      : []),
   ].join('\n')
 
 // The lens skills read a context directory, never this prompt, so the run's own facts — which tree,
@@ -1004,6 +1008,16 @@ for (const unit of units) {
       if (sorted.applied.length > 0) {
         const fix = await tryTwice(fixPrompt(unit, sorted.applied.map(findingLine), 'code-review'), { label: `fix-cr:${tag}`, phase: 'Validate', schema: FIX_RESULT })
         if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-cr: ${c}`))
+        // A finding the fixer declined is still open, and the delta review cannot see it: it only
+        // reads what the fixer changed.
+        const declined = (fix && fix.skipped) || []
+        const unfixed = sorted.applied.filter((f) => declined.includes(findingLine(f)))
+        sorted.forHuman.push(...unfixed)
+        const unmatched = declined.filter((line) => !unfixed.some((f) => findingLine(f) === line))
+        for (const line of unmatched) {
+          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${line} — the fixer left it unfixed; the branch keeps status merged until a repair settles it` })
+        }
+        if (unmatched.length > 0) reviewHeld = true
         // The fixes are new code nobody has reviewed; one delta pass, whose findings go to a human.
         if (!fix || !fix.fromSha) {
           reviewDead = `the review fixes have no verdict: the fix agent ${fix ? 'did not report its starting commit' : 'returned no result after a retry'}`
@@ -1023,7 +1037,7 @@ for (const unit of units) {
       for (const f of sorted.forHuman) {
         hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — the branch keeps status merged until a repair settles it` })
       }
-      reviewHeld = sorted.forHuman.length > 0
+      reviewHeld = reviewHeld || sorted.forHuman.length > 0
     }
   }
 
