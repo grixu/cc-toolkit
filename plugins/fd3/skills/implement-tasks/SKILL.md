@@ -73,14 +73,14 @@ Then make the graph launchable:
   the step-2 batch. Only when the field is absent (tasks split before it existed), derive it:
   order the repository's distinct `branch:` values by their tasks' rollout phase (the numeric
   prefix of `phase:`; `cleanup` sorts after every numbered phase), the first stacking on the
-  repository's base ref (`baseBranch: null` — resolved to the `defaultRef` confirmed in step 2),
+  repository's base ref (`baseBranch: null` — resolved to the `startRef` confirmed in step 2),
   each later one on the previous unit's branch. A derived base is a guess about a decision the
   split made — the report says which bases were read and which derived. The workflow starts
   worktrees and the pull-request chain from these.
 - **Normalise the root's base.** A `branch-base` no task in that repository builds and naming
   either the repository's default branch or the branch its checkout is parked on is that
   repository's root rather than a stack link: it goes to step 3 as `baseBranch: null`, which
-  resolves to whichever of the two step 2 settles as `defaultRef`. Both are step-1 facts, and each
+  resolves to whichever of the two step 2 settles as `startRef`. Both are step-1 facts, and each
   is matched by branch name — the split roots on the default branch for an ordinary run and
   writes `main` where the ref is `origin/main`, but roots on the parked branch where it found the
   checkout carrying the spec's commits, and which of the two this run wants is step 2's to answer.
@@ -157,7 +157,8 @@ Workflow({
   args: {
     specPath: "<absolute path to the spec file, resolved in step 1>",
     tasks: [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }, ...],
-    repos: { "<repository path>": { defaultRef: "<the step-1/2 base, e.g. origin/main>",
+    repos: { "<repository path>": { startRef: "<the step-1/2 base, e.g. origin/main or the parked branch>",
+             diffBase: "origin/<default>",
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
     reviewSkills: [<the step-2 answer>],
     maxFixRounds: 3,
@@ -168,8 +169,11 @@ Workflow({
 
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
-repository's `defaultRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
-Worktrees and target branches are cut from that ref (or the task's stack base). When step 2
+repository's `startRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
+`diffBase` is always `origin/<default>`: it is what a root branch's diff, its scoped CI and its
+review are measured against. On a run that builds on the parked branch, `startRef` names that
+branch, and measuring against it would give every review an empty diff.
+Worktrees and target branches are cut from `startRef` (or the task's stack base). When step 2
 established that a target branch is the branch the repository itself is parked on, say so via
 `parkedBranch` — git refuses a second worktree for it, and the workflow must know to use the
 main checkout rather than discover the refusal. Merges and fixes for that branch then happen in
@@ -236,7 +240,7 @@ composed from the plausible one costs a full round to disprove. The answers spli
   })
   ```
 
-  `base` is the branch's stack base (or the repo's `defaultRef`). `reportPath` is the previous
+  `base` is the branch's stack base (or the repo's `diffBase`). `reportPath` is the previous
   report's output file; the workflow reads its toolchain and baseline knowledge itself, which is
   what spares a full re-scout plus a full baseline pipeline on every repository in the run. Pass
   the path, never the knowledge. Repair agents receive the decision as their sole

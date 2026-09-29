@@ -16,11 +16,13 @@ export const meta = {
 //                 the branch this task's target branch stacks on, or null for the repository's
 //                 base ref; status is one of todo | implemented | merged | blocked | done (stale
 //                 in-progress is reset by the skill before launch)
-//   repos         { [repository path]: { defaultRef, parkedBranch } } — defaultRef is the ref new
-//                 branches are cut from (e.g. "origin/main"); the skill fetches before launch, so
-//                 origin/* is fresh. parkedBranch (optional) names the target branch checked out
-//                 in the main repository itself — git refuses a second worktree for it, so the
-//                 main checkout serves as that branch's worktree
+//   repos         { [repository path]: { startRef, diffBase, parkedBranch } } — startRef is the ref
+//                 new branches are cut from (e.g. "origin/main", or the branch the user parked the
+//                 checkout on); diffBase is what a root branch's diff is measured against, always
+//                 origin/<default>; the skill fetches before launch, so origin/* is fresh.
+//                 parkedBranch (optional) names the target branch checked out in the main
+//                 repository itself — git refuses a second worktree for it, so the main checkout
+//                 serves as that branch's worktree
 //   reviewSkills  code-review skill names to run during validation, may be empty
 //   maxFixRounds  CI fix attempts per branch before giving up
 //   reportPath    (optional) absolute path of a previous run's report file; one cheap agent reads
@@ -56,7 +58,11 @@ const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-
 // target branches, and without the branch a fix loop and a fan-out look identical in the run view.
 const unitTag = (unit) => `${unit.repo.split('/').pop()}:${unit.branch.replace(/\//g, '-')}`
 const lensTag = (skill) => skill.replace(/:/g, '/') // a review skill's own name carries a colon
-const repoDefault = (repo) => (repos && repos[repo] && repos[repo].defaultRef) || "the repository's default branch"
+// Where work starts and what it is measured against part ways when the run builds on a branch the
+// user parked the checkout on: worktrees start from that branch, and a diff against it is empty.
+const refOf = (repo, key) => (repos && repos[repo] && repos[repo][key]) || "the repository's default branch"
+const startRef = (repo) => refOf(repo, 'startRef')
+const diffBase = (repo) => refOf(repo, 'diffBase')
 const byRepo = (list) => {
   const groups = new Map()
   for (const t of list) {
@@ -176,7 +182,7 @@ const baselinePrompt = (repo) =>
   [
     `Establish the validation baseline of the repository ${repo} on its clean base.`,
     ``,
-    `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${repoDefault(repo)}`,
+    `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${startRef(repo)}`,
     `   (git worktree add --detach <path> <ref>) unless it already exists — then reuse it as is.`,
     `   Detached, because the ref may be a branch already checked out elsewhere, which git refuses`,
     `   a second worktree for.`,
@@ -222,7 +228,7 @@ const baselineText = (repo) => {
       ? `- ${c.command}: passed`
       : `- ${c.command}: FAILED on the clean base:\n` + (c.failures || []).map((f) => `    ${f}`).join('\n'),
   )
-  return `Baseline on the clean base (${repoDefault(repo)}):\n${lines.join('\n')}`
+  return `Baseline on the clean base (${startRef(repo)}):\n${lines.join('\n')}`
 }
 
 // ---- Implement: waves of parallel tasks gated by depends-on, each wave merged before the next
@@ -289,7 +295,7 @@ const implementPrompt = (task) => {
     `3. In the repository ${task.repository}, create that worktree on a new branch ${taskBranch(task)}`,
     `   (git worktree add <path> -b <branch> <start-point>). The start-point is the first of these`,
     `   refs that exists — an early wave can run before the later ones are created:`,
-    `   ${[task.branch, task.baseBranch, repoDefault(task.repository)].filter(Boolean).join(', then ')}.`,
+    `   ${[task.branch, task.baseBranch, startRef(task.repository)].filter(Boolean).join(', then ')}.`,
     `   Everything this task depends on is already merged into whichever you start from. If the`,
     `   worktree already exists from an interrupted attempt, continue in it instead of recreating`,
     `   anything.`,
@@ -366,7 +372,7 @@ const mergePrompt = (repo, repoTasks) => {
   const plan = [...targets.entries()]
     .map(
       ([branch, g]) =>
-        `- target ${branch} (stacks on ${g.base || repoDefault(repo)}, worktree ${branch === parked(repo) ? `${repo} — the main checkout` : worktreePath(repo, branch)}):\n` +
+        `- target ${branch} (stacks on ${g.base || startRef(repo)}, worktree ${branch === parked(repo) ? `${repo} — the main checkout` : worktreePath(repo, branch)}):\n` +
         g.tasks.map((t) => `    - ${taskBranch(t)} (task ${t.slug}, file ${t.file})`).join('\n'),
     )
     .join('\n')
@@ -406,7 +412,7 @@ const recordUnit = (repo, b, slugs) => {
   let unit = units.find((u) => u.repo === repo && u.branch === b.branch)
   if (!unit) {
     const sample = tasks.find((t) => t.repository === repo && t.branch === b.branch)
-    unit = { repo, branch: b.branch, worktree: b.worktree, base: (sample && sample.baseBranch) || repoDefault(repo), tasks: [] }
+    unit = { repo, branch: b.branch, worktree: b.worktree, base: (sample && sample.baseBranch) || diffBase(repo), tasks: [] }
     units.push(unit)
   }
   for (const slug of slugs) if (!unit.tasks.includes(slug)) unit.tasks.push(slug)

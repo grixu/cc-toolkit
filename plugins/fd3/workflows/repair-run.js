@@ -12,10 +12,10 @@ export const meta = {
 // args, provided by the fd3:implement-tasks skill (the script has no filesystem access):
 //   repairs      [{ repo, branch, worktree, base, instructions, taskFiles }]
 //                repo and worktree are absolute paths; base is the ref the branch's diff is
-//                measured against (its stack base, or the repo's defaultRef); instructions carry
+//                measured against (its stack base, or the repo's diffBase); instructions carry
 //                the user's HIL decisions verbatim; taskFiles are the task files to flip to done
 //                when the branch passes, may be empty
-//   repos        { [repository path]: { defaultRef } }
+//   repos        { [repository path]: { startRef, diffBase } } — as implement-run takes them
 //   reportPath   (optional) absolute path of the previous run's report file; one cheap agent reads
 //                its toolchain and baseline knowledge, sparing a re-scout and a re-baseline
 //   toolchain    (optional) { [repository path]: <scout report> } — an alternative to reportPath;
@@ -38,7 +38,11 @@ const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-
 // Every label names the unit, never just the repository: one repository carries many branches, and
 // without the branch a fix loop and a fan-out look identical in the run view.
 const unitTag = (unit) => `${unit.repo.split('/').pop()}:${unit.branch.replace(/\//g, '-')}`
-const repoDefault = (repo) => (repos && repos[repo] && repos[repo].defaultRef) || "the repository's default branch"
+// Where work starts and what it is measured against part ways when the run builds on a branch the
+// user parked the checkout on: worktrees start from that branch, and a diff against it is empty.
+const refOf = (repo, key) => (repos && repos[repo] && repos[repo][key]) || "the repository's default branch"
+const startRef = (repo) => refOf(repo, 'startRef')
+const diffBase = (repo) => refOf(repo, 'diffBase')
 // The harness relays the user's request to every agent, and a cheap model reads it as its own task
 // and re-runs the skill that launched this workflow.
 const STEP_GUARD =
@@ -149,7 +153,7 @@ const baselinePrompt = (repo) =>
   [
     `Establish the validation baseline of the repository ${repo} on its clean base.`,
     ``,
-    `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${repoDefault(repo)}`,
+    `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${startRef(repo)}`,
     `   (git worktree add --detach <path> <ref>) unless it already exists — then reuse it as is.`,
     `   Detached, because the ref may be a branch already checked out elsewhere, which git refuses`,
     `   a second worktree for.`,
@@ -194,7 +198,7 @@ const baselineText = (repo) => {
       ? `- ${c.command}: passed`
       : `- ${c.command}: FAILED on the clean base:\n` + (c.failures || []).map((f) => `    ${f}`).join('\n'),
   )
-  return `Baseline on the clean base (${repoDefault(repo)}):\n${lines.join('\n')}`
+  return `Baseline on the clean base (${startRef(repo)}):\n${lines.join('\n')}`
 }
 
 // ---- Repair: the decision is the authority; agents apply it, they do not re-design
@@ -323,7 +327,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     ``,
     mode === 'scoped'
       ? `Scope the run to this branch's changes: list them with` +
-        `\n\`git diff --name-only ${unit.base || repoDefault(unit.repo)}...HEAD\` — that ref is the` +
+        `\n\`git diff --name-only ${unit.base || diffBase(unit.repo)}...HEAD\` — that ref is the` +
         `\nbase, never diff the branch against itself — and use each command's scoped form from` +
         `\nthe report on those paths, quoting every path you pass to a shell (unquoted brackets` +
         `\nand globs break zsh); run a command in full only when the report marks it not scopeable.`
