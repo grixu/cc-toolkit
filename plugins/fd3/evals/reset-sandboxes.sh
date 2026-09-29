@@ -31,6 +31,7 @@ MAPPINGS=(
   "grill-numbered-questions:retry-topic:."
   "grill-session-files:retry-topic:."
   "build-spec-gate:retry-topic:."
+  "build-spec-reentry:rollout-spec:repo-a repo-b"
   "e2e-chain:grilling-summary:."
   "researcher-output-contract:-:"
   "researcher-multiple-questions:-:"

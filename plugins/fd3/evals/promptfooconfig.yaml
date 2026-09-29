@@ -203,3 +203,10 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/build-spec-gate.mjs
+
+  - description: build-spec-reentry
+    vars: { query: file://prompts/build-spec-reentry.txt }
+    options: { working_dir: .sandbox/build-spec-reentry, max_budget_usd: 8.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/build-spec-reentry.mjs
