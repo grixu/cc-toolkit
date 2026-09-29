@@ -6,8 +6,8 @@ export const EVALS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url
 
 // The one central place that skips `.git/`: the reset script initialises repos inside
 // sandboxes that the pristine fixtures do not have, so a naive recursive diff always fires.
-// DEFECTS.md is fixture documentation and is excluded from the sandbox copy.
-const SKIP = new Set(['.git', 'DEFECTS.md']);
+// DEFECTS.md is fixture documentation and SETUP.sh fixture tooling; neither reaches the sandbox.
+const SKIP = new Set(['.git', 'DEFECTS.md', 'SETUP.sh']);
 
 export function sandboxDir(scenario) {
   return path.join(EVALS_DIR, '.sandbox', scenario);
