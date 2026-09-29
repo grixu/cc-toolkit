@@ -612,7 +612,11 @@ const ciPrompt = (unit, mode, markFiles) => {
   return [
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
     `in the worktree ${tree}. Run them in the reported order, sequentially — never in`,
-    `parallel.`,
+    `parallel. Run each one as \`<command> > ${tree}.ci.log 2>&1; echo "exit $?"\` — the log sits`,
+    `beside the worktree, never inside it — read pass or fail from that exit line alone, and read`,
+    `the log only for the lines a failure needs. Never pipe a command into \`tail\`, \`head\` or`,
+    `\`grep\`: the pipe's status replaces the command's, and a failing suite then reads as whatever`,
+    `its output happens to show.`,
     ``,
     ...(tree === unit.worktree
       ? []
