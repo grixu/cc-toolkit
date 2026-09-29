@@ -206,7 +206,15 @@ migration one writes and the other reads. Name it in the dependent task's `## No
 report's table — the frontmatter field stays a bare slug list, because prose in a machine-read
 field breaks the reader. An edge you cannot name that way is sequencing by intuition: drop it. It
 buys nothing on a shared branch and costs the implementation stage a serialisation, since tasks
-with no edge between them are implemented concurrently. Never draw an edge onto
+with no edge between them are implemented concurrently.
+
+**A commit sequence the spec binds is an edge too.** Where the spec orders the commits inside one
+branch — one commit per module in a stated order, a gate that every commit from some point on must
+pass — tasks that follow that order land in it only if the graph says so: concurrent tasks merge in
+whatever order they finish, and a per-commit gate is then never checked in sequence. Give each such
+task a `depends-on` edge onto its predecessor in the spec's order, and let its `## Note` quote the
+spec's ordering sentence in place of a shared file or symbol; the drop rule above does not apply to
+these edges. Never draw an edge onto
 an operational task when the spec lets the code land before that gate — an edge there strands
 implementable work behind human hands, and a whole extra run pays for it; a dependency that only
 gates *verification* belongs in the task's Done-when, not in the graph. A gate that blocks
