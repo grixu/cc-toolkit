@@ -54,7 +54,7 @@ nothing in the checkout, no probe or scratch file anywhere. You dispatch no agen
 changes after you have written it, rewrite the whole file — the merge reads that file, never this
 conversation.
 
-End with this block and nothing after it:
+End this skill with this block and nothing after it. The block closes this skill, not the turn: when the prompt that invoked it names further steps, carry them out after it.
 
 ```
 status: scanned | inactive | error

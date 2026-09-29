@@ -86,7 +86,7 @@ the script returned, so the caller can read what you saw.
 
 ## 4. Return
 
-End with this block and nothing after it:
+End this skill with this block and nothing after it. The block closes this skill, not the turn: when the prompt that invoked it names further steps, carry them out after it.
 
 ```
 status: ready | empty | error

@@ -43,7 +43,7 @@ tool. That and nothing else is what you write.
 
 ## 3. Return
 
-End with this block and nothing after it — one line per finding the report keeps, boy-scout
+End this skill with this block and nothing after it. The block closes this skill, not the turn: when the prompt that invoked it names further steps, carry them out after it. One line per finding the report keeps, boy-scout
 included, in the report's order:
 
 ```
