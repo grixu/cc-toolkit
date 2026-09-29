@@ -133,9 +133,10 @@ synchronous. Let them background; that is the working path.
 **Without the `Agent` tool there is no review to run.** In some contexts — inside another
 agent, inside a workflow step — it is simply absent, and a single pass by one reader is not this
 command however carefully it reads. Say so in your first sentence, name the lenses that will not
-run, and let the caller decide between an announced single-pass reading and invoking
-`/quality-review`, `/comment-review` and `/security-review` as their own agents. Never discover
-this silently halfway and report the result as a review.
+run, and let the caller decide between an announced single-pass reading and the headless route:
+`code-review:cr-prepare` once, `code-review:cr-scan` once per active lens as its own agent, then
+`code-review:cr-merge` — the same eight lenses, one agent each, with no questions asked. Never
+discover this silently halfway and report the result as a review.
 
 **Never pass `name:` to a Scanner call.** Naming routes the Scanner into the agent-teams
 mailbox, where its findings come back only if you ask for them and it answers — a channel
