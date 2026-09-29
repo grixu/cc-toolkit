@@ -860,7 +860,7 @@ const sortFindings = (findings) => {
   const live = findings.filter((f) => !f.reserved)
   const applied = live.filter(
     (f) =>
-      (serious(f) && f.risk !== 'report-only' && f.family !== 'security') ||
+      (serious(f) && f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec') ||
       (f.severity === 'comment' && f.risk === 'safe'),
   )
   const forHuman = live.filter((f) => !applied.includes(f) && serious(f))
