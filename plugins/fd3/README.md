@@ -52,7 +52,8 @@ conversation; the workflows own everything between launch and report.
 Code review is optional and needs the [`code-review`](../code-review) plugin from this marketplace:
 the workflows drive its headless `cr-prepare`, `cr-scan` and `cr-merge` skills — all eight lenses,
 one agent each. Mechanical and structural findings are fixed and the fixes reviewed again;
-`spec` findings, `security` fixes and anything report-only go to the user. A branch whose review
+`spec` findings, `security` fixes, boy-scout findings on untouched code, anything report-only and
+anything the fixer left unfixed go to the user. A branch whose review
 did not run, or left findings for the user, stays `merged` rather than `done`.
 
 ## Usage

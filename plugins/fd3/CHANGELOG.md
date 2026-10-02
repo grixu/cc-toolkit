@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-tasks` reviews each branch with the `code-review` plugin's headless skills —
   `cr-prepare`, one `cr-scan` agent per active lens, `cr-merge` — after its scoped CI passes;
   `safe` and `structural` findings are fixed and the fixes reviewed again, while `spec` findings,
-  `security` fixes and report-only findings go to the user as `review` items. `repair-run`
+  `security` fixes, boy-scout findings, report-only findings and any finding the fixer left
+  unfixed go to the user as `review` items. `repair-run`
   reviews each repair's own commits the same way, and a repair reopens a `done` branch
 - `/fd3:build-spec <spec path>` re-enters at validation for a finished spec — no grilling — and
   validates every edit made after the final verdict, including a move or a header rewrite

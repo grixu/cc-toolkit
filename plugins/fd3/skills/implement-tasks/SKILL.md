@@ -207,7 +207,8 @@ asks for is a corrected task file before the next split or relaunch, never a dec
 those tasks, so neither is one of the items step 4 puts to the user below.
 
 A `review` item is a finding the workflow would not fix unasked — a `spec` finding, a `security`
-fix, a report-only one, or anything the delta review found in the fixes it did apply. Its branch
+fix, a boy-scout finding on code the branch never touched, a report-only one, a finding the fixer
+left unfixed, or anything the delta review found in the fixes it did apply. Its branch
 passed CI and stays `merged` until the item is settled: a finding the user wants fixed goes to a
 repair; one the user dismisses needs no work. When every `review` item of a branch is dismissed,
 set that branch's tasks to `done` yourself — CI already passed on the commit they sit on. Give
