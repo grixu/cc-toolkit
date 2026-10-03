@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The frontmatter parser now unescapes `\\` and `\"` in double-quoted values, as YAML does. `examples/coding-standards.rule.md` (`":\\s*any\\b|<any>"`) never matched `: any` because the regex kept both backslashes. Other sequences such as `\s` stay as written, so existing `"rm\s+-rf"` patterns keep working.
 - The "Hookify: Blocked operation by rule" notice now names the rules that blocked the call. It named the last rule evaluated, which could be an unrelated warn rule.
 - `stop` and `prompt` rules no longer run on tool calls. For tools other than Bash, Edit, Write and MultiEdit the tool hooks load every rule, so an enabled stop rule on `transcript` denied `Read`, `Grep` and similar calls, and a prompt rule matched the `prompt` input of `Agent` or `WebFetch`.
+- The `writing-rules` skill names the prompt field `prompt`, the field Claude Code sends; `user_prompt` stays as an alias.
 
 ## [0.4.0] - 2026-04-27
 
