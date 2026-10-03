@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The "Hookify: Blocked operation by rule" notice now names the rules that blocked the call. It named the last rule evaluated, which could be an unrelated warn rule.
 - `stop` and `prompt` rules no longer run on tool calls. For tools other than Bash, Edit, Write and MultiEdit the tool hooks load every rule, so an enabled stop rule on `transcript` denied `Read`, `Grep` and similar calls, and a prompt rule matched the `prompt` input of `Agent` or `WebFetch`.
 - The `writing-rules` skill names the prompt field `prompt`, the field Claude Code sends; `user_prompt` stays as an alias.
+- The diff-review skill registers as `/hookify:review-changes`, matching its directory and the docs. Its frontmatter name made the command `/hookify:reviewing-hookify-compliance`.
 
 ## [0.4.0] - 2026-04-27
 

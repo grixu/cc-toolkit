@@ -1,5 +1,5 @@
 ---
-name: reviewing-hookify-compliance
+name: review-changes
 description: Use this skill when the user asks to "review changes against hookify rules", "check hookify compliance", "audit my diff for hookify violations", "run hookify code review", "review the PR for hookify rules", or "scan my changes for the hookify ruleset". Performs a hookify-rules-aware code review of committed and/or uncommitted changes by partitioning files into rule-scoped groups and dispatching parallel subagents, then aggregates a per-rule violation report and offers to save it or enter Plan Mode for fixes.
 version: 0.1.0
 ---
