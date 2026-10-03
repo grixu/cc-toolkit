@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `prompt` rules now match the submitted prompt. The engine read `user_prompt`, but Claude Code sends the text as `prompt`; a simple `pattern:` and a `field: prompt` or `field: user_prompt` condition all read it now.
 - `file` rules with a simple `pattern:` (or a `new_text` condition) now see the content of `Write` calls. Before, `new_text` read only Edit's `new_string`, so new files were never checked.
 - The "require tests before stopping" example (README and `examples/require-tests-stop.local.md`) blocked every stop: `not_contains` compares literal text, so `npm test|pytest|cargo test` never matched. It now uses a negative-lookahead `regex_match` that looks for a Bash call running one of those commands.
+- The frontmatter parser now unescapes `\\` and `\"` in double-quoted values, as YAML does. `examples/coding-standards.rule.md` (`":\\s*any\\b|<any>"`) never matched `: any` because the regex kept both backslashes. Other sequences such as `\s` stay as written, so existing `"rm\s+-rf"` patterns keep working.
 
 ## [0.4.0] - 2026-04-27
 
