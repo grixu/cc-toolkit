@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
 
+### Fixed
+
+- The `research` skill's prerequisites no longer say Dynamic Workflows are enabled per session on Pro; they are turned on once from `/config`.
+
 ## [0.1.0] - 2026-06-22
 
 ### Added
