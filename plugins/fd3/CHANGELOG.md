@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- README rewritten for first-time readers: requirements (dynamic workflows, `gh`, MCP servers,
+  `code-review` 0.4.0 or later), the three commands, build-spec's re-validation mode, the files fd3
+  writes, the internal skills and workflows marked as internal, and a glossary
+
 ### Fixed
 
 - `plugin.json` author reads `Mateusz Gostański <mg@grixu.dev>`, matching the other plugins
