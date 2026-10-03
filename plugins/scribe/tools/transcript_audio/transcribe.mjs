@@ -12,6 +12,8 @@ const SUPPORTED_FORMATS = {
   ".aac": "audio/aac",
   ".ogg": "audio/ogg",
   ".flac": "audio/flac",
+  ".m4a": "audio/x-m4a",
+  ".opus": "audio/opus",
 };
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1 GB
@@ -143,10 +145,10 @@ const elevenlabs = new ElevenLabsClient({ apiKey });
 
 console.error("Transcribing...");
 const fileBuffer = readFileSync(filePath);
-const audioBlob = new Blob([fileBuffer], { type: mimeType });
 
+// A bare Blob uploads as "blob" with no extension; name it so the API sees the real format.
 const result = await elevenlabs.speechToText.convert({
-  file: audioBlob,
+  file: { data: fileBuffer, filename: basename(filePath), contentType: mimeType },
   modelId: "scribe_v2",
   languageCode: null,
   tagAudioEvents: true,

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Local `m4a`, `opus`, `wav`, `flac`, `ogg` and `aac` files are uploaded under their own extension and MIME type instead of being renamed to `.mp3` and sent as `audio/mpeg`; `transcribe.mjs` now accepts `.m4a` and `.opus`.
 - `claude plugin validate` warning about `CLAUDE.md` at the plugin root: contributor conventions moved to the repo's `.claude/rules/scribe.md`; nothing shipped to users changes.
 
 ## [0.2.0] - 2026-04-27

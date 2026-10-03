@@ -67,13 +67,14 @@ EXT="${SRC##*.}"
 EXT="$(echo "$EXT" | tr '[:upper:]' '[:lower:]')"
 ```
 
-If `EXT` ∈ `{mp3, m4a, wav, ogg, flac, opus, aac}` — passthrough. Set `AUDIO_SRC="$SRC"`.
+If `EXT` ∈ `{mp3, m4a, wav, ogg, flac, opus, aac}` — passthrough. Set `AUDIO_SRC="$SRC"` and `AUDIO_EXT="$EXT"`.
 
 Otherwise — extract audio with ffmpeg:
 
 ```bash
 STEM="$(basename "$SRC")"
 STEM="${STEM%.*}"
+AUDIO_EXT="mp3"
 AUDIO_SRC="$WORKDIR/$STEM.mp3"
 ffmpeg -nostdin -loglevel error -i "$SRC" -vn -acodec libmp3lame -q:a 4 -y "$AUDIO_SRC"
 ```
@@ -94,8 +95,10 @@ If `SAFE` comes back empty (pathological input), fall back to a sanitized versio
 
 #### 2d. Stage the audio under the safe name
 
+Keep the audio's real extension: `transcribe.mjs` picks the upload's MIME type from it, so a passthrough `.m4a` renamed to `.mp3` would be sent as `audio/mpeg`.
+
 ```bash
-SAFE_PATH="$WORKDIR/$SAFE.mp3"
+SAFE_PATH="$WORKDIR/$SAFE.$AUDIO_EXT"
 if [[ "$AUDIO_SRC" != "$SAFE_PATH" ]]; then
   if [[ "$AUDIO_SRC" == "$SRC" ]]; then
     cp "$SRC" "$SAFE_PATH"      # passthrough — never move the original
