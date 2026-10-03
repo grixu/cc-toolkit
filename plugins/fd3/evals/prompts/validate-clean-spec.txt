@@ -1,3 +1,7 @@
 Invoke the fd3:validate-spec skill on this spec: spec/clean-spec.md
 
+Pass the skill this with the path: nobody can answer questions during this run, so it must not hand
+any up or wait for answers. Every fact only the user holds and every repair choice goes into the
+report as blocked, naming the question it would have asked, and the skill returns its full report.
+
 When it returns, print its report verbatim and unedited as your entire reply — no summary, no reordering, no commentary of your own.

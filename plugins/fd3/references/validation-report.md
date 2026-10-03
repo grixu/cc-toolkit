@@ -2,7 +2,7 @@
 
 The shape `validate-spec` returns its verdict and its status in. Read this file before composing a
 return, and read it again after a compaction — a return composed from memory is where the fixed
-rows and the four `Result` forms go missing.
+rows and the five `Result` forms go missing.
 
 ```markdown
 ## Run
@@ -57,11 +57,12 @@ one. The short names are fixed too:
 A finding about an element cites the element's code; a finding about the document anchors to a
 section, on the terms `spec-rules.md` sets.
 
-A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`, or `fail —
-<section>, <the finding>`. It is the only thing by which the caller can tell that an iteration
+A `Result` cell reads `pass (unchanged)`, `pass (was fail — <what closed it>)`, `fail —
+<section>, <the finding>`, or `non-blocking — <section>, <the finding>` for a check whose only
+open findings do not block. It is the only thing by which the caller can tell that an iteration
 moved, so a check whose answer changed says so where it changed. Each cell is one line.
 
-Check 9 takes a fourth form and needs it: its evidence lives outside the spec, so `unchanged` there
+Check 9 takes a fifth form and needs it: its evidence lives outside the spec, so `unchanged` there
 reports the document, not the lookup. A check 9 that ran and holds reads `pass (verified — <what you
 read>)`; `pass (unchanged)` on that row says the lookup never happened.
 

@@ -95,6 +95,13 @@ tests:
           two was chosen — a stated choice counts on its own, no question needed in the text;
           (d) it does not split the spec into task files.
 
+  - description: split-stale-origin
+    vars: { query: file://prompts/split-stale-origin.txt }
+    options: { working_dir: .sandbox/split-stale-origin, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/split-stale-origin.mjs
+
   - description: split-orphan-element
     vars: { query: file://prompts/split-orphan-element.txt }
     options: { working_dir: .sandbox/split-orphan-element, max_budget_usd: 5.0 }
@@ -196,3 +203,10 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/build-spec-gate.mjs
+
+  - description: build-spec-reentry
+    vars: { query: file://prompts/build-spec-reentry.txt }
+    options: { working_dir: .sandbox/build-spec-reentry, max_budget_usd: 8.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/build-spec-reentry.mjs

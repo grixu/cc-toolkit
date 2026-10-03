@@ -52,10 +52,18 @@ blocks from being *written* draws a `depends-on` edge onto it (step 4's authorsh
 
 Anything short of that — a blocked claim, a count that does not match, a dated block
 with no verdict line, no pass anywhere — is a stop before step 1. A dated heading over verified rows is not
-a verdict. Validating is not this skill's work, and no command is named for it: on *validate first*
-the split ends with nothing written. What lifts the stop is the user's answer, never your own — say
-what the record holds, then ask, once, whether to validate first or split as-is. The message that
-ends the run says what the record held and which way the user answered.
+a verdict. Validating is not this skill's work: on *validate first* the split ends with nothing
+written and names the route — `/fd3:build-spec <spec path>`, which takes a finished spec straight to
+validation. What lifts the stop is the user's answer, never your own — say what the record holds,
+then ask, once, whether to validate first or split as-is, following
+`${CLAUDE_SKILL_DIR}/../../references/question-batching.md` with *validate first* as the
+recommendation. The message that ends the run says what the record held and which way the user
+answered.
+
+**Never write a verdict.** An evidence block, a verdict line or a validation status in the spec is
+written by `fd3:validate-spec` alone — not by this skill, and not when the user asks it to, because a
+verdict nothing validated is exactly what the precondition above would then trust. A spec that needs
+repairing goes through the route above, and the split stops.
 
 ## Workflow
 
@@ -91,6 +99,14 @@ what you fetched: the default branch, its `origin/<default>` commit, and whether
 current branch is behind it. The base you write into `branch-base:` is the ref the implementation
 stage cuts worktrees from; a base derived from a week-old local ref is a worktree that starts from
 the wrong commit, and nothing downstream re-derives it.
+
+The last evidence block records the commit each repository was validated at, on its `Checked at:`
+line; a block older than that line is measured from the commit that last changed the spec file. Where `origin/<default>`
+has moved past it, the spec may describe code that is no longer there: intersect `git diff --name-only
+<validated commit>..origin/<default>` with the paths the spec cites. No hit, and the split goes on. A
+hit is a stop before anything is written — name the paths the new commits changed and the route
+`/fd3:build-spec <spec path>`; rebasing a branch or correcting the spec to follow is that route's
+work, never this skill's.
 
 Record each repository's absolute root path and write that path into `repository:`. A remote slug is
 not a location: the next stage resolves it by guessing among the user's checkouts, and a feature
@@ -190,7 +206,15 @@ migration one writes and the other reads. Name it in the dependent task's `## No
 report's table — the frontmatter field stays a bare slug list, because prose in a machine-read
 field breaks the reader. An edge you cannot name that way is sequencing by intuition: drop it. It
 buys nothing on a shared branch and costs the implementation stage a serialisation, since tasks
-with no edge between them are implemented concurrently. Never draw an edge onto
+with no edge between them are implemented concurrently.
+
+**A commit sequence the spec binds is an edge too.** Where the spec orders the commits inside one
+branch — one commit per module in a stated order, a gate that every commit from some point on must
+pass — tasks that follow that order land in it only if the graph says so: concurrent tasks merge in
+whatever order they finish, and a per-commit gate is then never checked in sequence. Give each such
+task a `depends-on` edge onto its predecessor in the spec's order, and let its `## Note` quote the
+spec's ordering sentence in place of a shared file or symbol; the drop rule above does not apply to
+these edges. Never draw an edge onto
 an operational task when the spec lets the code land before that gate — an edge there strands
 implementable work behind human hands, and a whole extra run pays for it; a dependency that only
 gates *verification* belongs in the task's Done-when, not in the graph. A gate that blocks
@@ -202,7 +226,9 @@ following its repository's visible convention — existing branches show it; the
 group, not the task. One exception joins the step-6 batch: when the checkout already sits on a
 branch carrying implementation commits for this spec, whether the first landing unit reuses that
 branch or cuts fresh by the convention is the user's call — a user mid-feature may have chosen it
-deliberately. A branch that carries only the spec file itself is not that case.
+deliberately. A branch that carries only the spec file itself is not that case — unless the spec
+names that branch as where its work lands, which makes reuse the spec's own answer: then the
+question joins the batch with reuse as the recommendation.
 
 When the edge onto an operational task is real, carry it up to the branch: a landing unit that
 mixes a gate-blocked task with implementable ones cannot reach a complete state in one run. Cut
@@ -289,8 +315,9 @@ over the written files — coverage is the one check a fan-out cannot perform on
 of five files or fewer is faster written here.
 
 Write the report to `<spec-basename>.split.md` beside the spec — never inside `tasks/`, where
-a task-file glob trips over it. It carries one table (slug, repository, branch, phase,
-depends-on, elements), the branch creation order and stack chain per repository, where the
+a task-file glob trips over it — after that re-run, since its coverage statement is the re-run's
+result. It carries one table (slug, repository, branch, phase, depends-on as the bare slugs the
+frontmatter holds, elements), the branch creation order and stack chain per repository, where the
 files went, the coverage statement from step 5, every work item split across tasks with its
 seam, any size-check warning, the verdict line this split was taken against quoted verbatim,
 and anything the user still owes an answer. In the conversation give the path and the same

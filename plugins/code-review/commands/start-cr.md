@@ -110,62 +110,16 @@ list. Then classify every surviving file by that file's `## File kinds` section 
 
 ## Step 2 — Read project conventions and standards (once)
 
-`${CLAUDE_PLUGIN_ROOT}/references/scope.md` also carries the **mechanical convention
-read** (the exact paths, root first) and the **language-applicability** rules for
-families or rules that have no counterpart in the language under review. That read
-now opens with the **standards pair** at the repository root — `CODING_STANDARDS.md`,
-then `CODING_STANDARDS.local.md` — which LAYER: both apply, and where two statements
-conflict the `.local` one wins. Work it there, then:
-
-- capture what you learned in one short **conventions note**, and **pass it to every
-  Scanner** so a documented convention never surfaces as a finding; the note also
-  records a **tracked `.local` file** (`git check-ignore` fails on it) and any
-  **conflict between two project files** (resolved by scope.md's precedence order),
-  both of which reach the report's `Conventions` line;
-- **one note, byte-identical in every brief, and it may only suppress.** Write it once and paste
-  the same text into all N briefs: a per-Lens note is a per-Lens instruction, and the Scanner
-  reads whatever it finds there as what you want it to look for. So the slot holds nothing but
-  documented conventions, each **quoted verbatim with its file** — never your own threat
-  hypotheses or "where to focus", never an "established facts — do not raise" list, never a
-  paraphrase of a rule (one run's paraphrase said a legacy pattern "is documented as accepted"
-  where the rule said to migrate off it, and buried the very finding the user later asked for).
-  Anything you want checked belongs in the Lens's own rules file, not here. A note that grows
-  past a screen is the wrong shape: cut it to the rules that actually suppress something;
-- name any family or rule the language makes **N/A** in that note, so its owning
-  Scanner clears it in one line instead of inventing findings to fit;
-- keep the standards text **out of the note**: it travels in the brief's own
-  `<standards>` slot because, unlike everything else the read picks up, it
-  **generates** findings. A Scanner raises `` `standards` · <slug> · <sev> `` only for
-  an explicit, quotable rule inside its own Lens's subject, citing the file and
-  section; vague prose ("write clean code") never generates; unsettled fit goes to
-  `CANDIDATES`; a rule the `.local` file relaxes is suppressed; and a
-  formatting/whitespace/import-order/quote rule is skipped when a formatter or linter
-  config exists at the root (scope.md lists the presence check). When the pair is long,
-  **pre-slice it per Lens** so each Scanner receives only the rules in its subject; a
-  short pair goes to every Scanner whole. The rest of the conventions — `CLAUDE.md`,
-  `AGENTS.md`, `CONTRIBUTING.md`, `.cursor/rules`, `.claude/rules` — stay
-  **suppress-only**: they remove findings, never create them.
+Settle the conventions note and the standards slot by the first half of
+`${CLAUDE_PLUGIN_ROOT}/references/review-setup.md` — read it now; the mechanical read it works
+from is in `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. One note, written once, byte-identical in
+every brief.
 
 ## Step 2b — Resolve the active lens set
 
-Not every Lens runs on every change. Decide the set here, once, from the input —
-never from a preference:
-
-- the five craft Lenses (`comments`, `readability & tests`, `naming & module`,
-  `objects & patterns`, `simplicity & types`) and **`security`** are **always
-  active** — six on any change, however small;
-- **`performance`** is active iff the `source`-kind subset of the resolved list,
-  **minus `.sh` files**, is non-empty — a tests-only, IaC-only, or shell-only change
-  skips it;
-- **`spec`** is active iff a spec resolved to a readable local file in Step 1 — from
-  `--spec`, or from the offer the user accepted when the change carried its own spec.
-
-Record **N**, the number of active Lenses, and for each one its own `<files>`:
-`performance` gets the source subset it was gated on; every other Lens gets the full
-resolved list. Record every **inactive** Lens with its reason (`performance — no
-executable code`, `spec — no spec named`); the Tally prints them in Step 5. From here on
-**N** means this count: N Scanners dispatched, N `<result>` blocks awaited, N outputs
-merged.
+Decide the set once, from the input and never from a preference, by the second half of
+`${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`. Record **N**, each active Lens's own
+`<files>`, and every inactive Lens with its reason.
 
 ## Step 3 — Dispatch N Scanners in parallel
 
@@ -179,9 +133,10 @@ synchronous. Let them background; that is the working path.
 **Without the `Agent` tool there is no review to run.** In some contexts — inside another
 agent, inside a workflow step — it is simply absent, and a single pass by one reader is not this
 command however carefully it reads. Say so in your first sentence, name the lenses that will not
-run, and let the caller decide between an announced single-pass reading and invoking
-`/quality-review`, `/comment-review` and `/security-review` as their own agents. Never discover
-this silently halfway and report the result as a review.
+run, and let the caller decide between an announced single-pass reading and the headless route:
+`code-review:cr-prepare` once, `code-review:cr-scan` once per active lens as its own agent, then
+`code-review:cr-merge` — the same eight lenses, one agent each, with no questions asked. Never
+discover this silently halfway and report the result as a review.
 
 **Never pass `name:` to a Scanner call.** Naming routes the Scanner into the agent-teams
 mailbox, where its findings come back only if you ask for them and it answers — a channel
@@ -238,417 +193,32 @@ problem with no rule to land on, never compressed into the one-line list.
 
 ### The Scanner brief
 
-Send each Scanner a brief in this shape, filling every slot:
-
-```
-<scanner_brief>
-  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec</lens>
-  <rules_file>${CLAUDE_PLUGIN_ROOT}/references/rules/<lens>.md</rules_file>
-  <files><!-- this Lens's list from Step 2b: the source subset for `performance`, the full resolved list for every other Lens --></files>
-  <diff_args><!-- from Step 1 --></diff_args>
-  <how_to_view>
-    tracked → `git diff <diff_args> -- <path>`
-    untracked → read the file directly; every line is added
-  </how_to_view>
-  <conventions><!-- the Step 2 note, including any N/A families or rules --></conventions>
-  <standards><!-- the CODING_STANDARDS pair's text, or this Lens's slice of it; "none" when the root has neither file --></standards>
-  <spec><!-- `spec` Lens only: the --spec path and its full text; omit the slot for every other Lens --></spec>
-  <scope_split>
-    primary = the problem is in code this change added or modified, or structure
-    the change introduced or made worse.
-    boy-scout = a problem in untouched code noticed only while reading for context —
-    optional, kept strictly separate, never mixed into the primary findings.
-    A fully added file (status `A`) has no boy-scout findings: the whole file is code
-    the change introduced, so every finding in it is primary.
-  </scope_split>
-  <output_contract><!-- the contract for this Lens, below --></output_contract>
-</scanner_brief>
-```
-
-Read the rules file **completely first**, then judge only the families that belong to
-that Lens. A Scanner **returns findings/verdicts only**: it does not render a report,
-does not re-grade centrally, and **writes nothing into the tree** — not the files under
-review, and not a scratch or probe file to test a hypothesis against.
-
-A Scanner is **one agent, one pass, one output**. It **dispatches no agent of its own** — a
-sub-agent puts a second hop between the finding and the merge, and the Scanner that tried it
-had its own report overwritten by the follow-up, losing a handoff outright. It does not wait in
-the background, poll, or schedule anything; it reads, judges, and returns. Its **final message
-is its whole output**: if something has to change after it has already written its findings,
-it re-sends the complete list, never an "amendment" or a delta — anything the last message
-leaves out never reaches the merge. It is reading the
-user's working copy, so it settles a doubt by reading the type, the signature, or the call
-site, and marks the rest `(verify)`. Read the whole changed file for context, and target
-what the change touched. The `naming & module` Scanner alone adds the **one-hop
-cross-file protocol** on top of that: search the importers of each changed module and the
-imports of each module it newly imports — with the `Grep` tool, or `git grep` from `Bash` in a
-session where that tool is not handed to sub-agents — open those files at the matched lines only —
-no transitive crawl, no repo listing, no `find`; a fact beyond the hop is `(verify)`;
-it still writes nothing.
-
-### The eight Lenses
-
-1. **comments** → `${CLAUDE_PLUGIN_ROOT}/references/rules/comments.md`
-   Returns per-comment **VERDICTS**, one per comment:
-   `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD · `path:line` · "verbatim comment" — one-line reason → concrete suggested fix ``.
-   Run the deletion test on every comment first. Surface **R9
-   (contradicts-the-code) findings first**. The **test-file bar is higher (R11)**:
-   default to REMOVE when unsure in tests. **`ADD` is the one verdict with no
-   existing comment to quote** — an R2 *missing WHY* at genuinely non-obvious code
-   (a magic constant, a workaround, a specific timeout/retry/batch size, a silent
-   catch); it drops the verbatim-comment slot for a site description:
-   `` `comments` · R2 · ADD · `path:line` — <what is non-obvious> → <the exact comment to add> ``.
-   Raise `ADD` only where you can state the reason concretely — never a guess
-   dressed as a WHY. Every suggested fix obeys the comment rules itself: no spec-id
-   fragments (`(R2)`, `F1:`, `§4.1`), no new file/doc cross-references (R4), no
-   banners (R5). For MOVE, name the destination and give the exact text to place
-   there, plus "delete from the declaration".
-
-2. **readability & tests** → `${CLAUDE_PLUGIN_ROOT}/references/rules/readability-tests.md`
-   Judges the `readability` and `tests` families.
-
-3. **naming & module** → `${CLAUDE_PLUGIN_ROOT}/references/rules/naming-module.md`
-   Judges the `naming` and `module` families.
-
-4. **objects & patterns** → `${CLAUDE_PLUGIN_ROOT}/references/rules/objects-patterns.md`
-   Judges the `objects` and `patterns` families.
-
-5. **simplicity & types** → `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md`
-   Judges the `simplicity` family.
-
-6. **security** → `${CLAUDE_PLUGIN_ROOT}/references/rules/security.md`
-   Judges the `security` family; always active. A finding names **both** `path:line`
-   of the **source** (where untrusted data enters) and of the **sink**; a pattern alone
-   (`req.body`, a string containing `SELECT`) is never a finding; `L<lines>` lists both
-   ends, source first, and the clause says which is which. When either end sits
-   outside the files in view the Scanner reads it — it can `Read` any file and search with
-   `Grep` or `git grep` — and marks only what it still cannot confirm `(verify)`. `CANDIDATES` is reserved for a
-   confirmed source→sink pair whose *mitigation* is the doubt; a cleared look-alike is
-   one prose line for `Not flagged`. Severity is `high` or `medium`, **never `nit`**.
-   It never runs the code, an audit tool, or a network command; `.env`, YAML, JSON and
-   manifests stay skipped, and the report's Skipped line sends those to
-   `/security-review`.
-
-7. **performance** → `${CLAUDE_PLUGIN_ROOT}/references/rules/performance.md`
-   Judges the `performance` family; active only over the `source` subset from Step 2b.
-   A finding names **four things** — the multiplier (the loop's collection or the
-   endpoint, and where its size comes from), the call inside it, the bound that is
-   missing, and the batch/limit API that exists — or it is a `CANDIDATE`. "Could be
-   slow", "may impact performance", and any estimate not derived from a line in the
-   diff are forbidden; it never runs or profiles code.
-
-8. **spec** → `${CLAUDE_PLUGIN_ROOT}/references/rules/spec.md`
-   Judges the `spec` family; active only with `--spec`. It enumerates the requirements
-   in the `<spec>` slot and maps each to the diff. **Every finding quotes the spec line
-   verbatim.** A `wrong-implementation`, `partial-requirement`, or `scope-creep` sits
-   under the code file it points at; a `missing-requirement` has no code site, so it
-   sits under a `### <spec path>` header with the **spec's own `L<lines>`**. The
-   requirements met come back as **one prose count line**, never as findings.
-   `scope_split` is **N/A** for this Lens — a spec finding is neither primary nor
-   boy-scout, so it returns one list. Runtime claims are `(verify)`; a PARTIAL-vs-WRONG
-   doubt is a candidate; a craft problem noticed on the way is a `HANDOFF`.
-
-For the finding-shaped Lenses (2–8) the Scanner returns **FINDINGS**, split into primary
-and boy-scout (the `spec` Lens excepted), each in this exact shape:
-
-```
-`family` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
-```
-
-A **`standards` finding** — any Lens may raise one, from the `<standards>` slot only —
-puts the quoted rule and its source where the loss goes:
-
-```
-`standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <the fix, as a clause>
-```
-
-with a short kebab-case slug from the rule's wording and the severity from the keyword
-mapping in `references/severity.md`.
-
-**Severity is exactly one of `high`, `medium`, or `nit`** — never `low`, never a
-number, never a paraphrase. A Scanner whose own rules file happens to list only one
-of the three still uses the full vocabulary. Tell each Scanner that **severity is a
-first pass** — you re-grade every quality finding centrally in Step 4, so it grades
-honestly against its rules without agonizing over the boundary.
-
-**The FINDINGS section holds findings only.** Anything a Scanner checked and cleared
-belongs in one prose line, never in the finding shape — a "none found" or "is **not**
-a finding" bullet with a dash where the severity goes reads as a finding to everything
-downstream.
-
-**A duplication finding sweeps the whole file.** "Target what the change touched" holds
-for most rules, but duplication is the exception: when you flag repeated code (an
-`over-complex` duplication, a copy-pasted predicate), scan the **rest of the file** for
-every other copy of the same pattern and list all the call sites in the one finding —
-including copies in code the change didn't touch. A finding that names two of three
-copies makes the extraction fix leave a straggler behind. The one **cross-file**
-exception is `module` · canonical-helper: a new helper duplicating an exported helper
-elsewhere in the repo is found by the one-hop Grep, bounded to the helper's name and its
-distinctive expression — never a repo-wide sweep, and inconclusive means `(verify)`.
-
-### Three side-channels, three distinct meanings
-
-Report what you find and let the merge filter it. Each Scanner judges against its
-rules, then against each rule's own calibration paragraph — the look-alike that is
-*not* a violation. Calibration clearing a site makes it a non-finding. Anything left
-unsettled travels in one of three channels, and these are **not** interchangeable:
-
-| channel | means |
-|---------|-------|
-| `(verify)` | the **fact** is unconfirmable here — runtime behaviour, or a file outside the review scope |
-| `HANDOFF` | confirmed, but **another Lens's family** owns it |
-| `CANDIDATES` | confirmed and mine, but the **rule fit or its calibration** is a judgment call |
-
-- **`(verify)` marker** — a Scanner that doubts a finding **resolves it itself first**:
-  it has `Read`, so it opens the type, the signature, or the call site and confirms or
-  drops it (a `needless-cast` is the common case — check what the value's type actually
-  is before claiming the cast is redundant). It appends `(verify)` only when confirming
-  would take something it does not have. You resolve those in Step 4.
-- **`CANDIDATES` block** — a site that survives the deletion of doubt about the *facts*
-  but that the Scanner cannot settle against the rule's calibration. It belongs here
-  rather than in the bin: you decide it with the whole review in view, and a candidate
-  you reject costs one line in `Not flagged`, while one the Scanner never reported costs
-  the finding outright.
-
-  ```
-  ## CANDIDATES (rule fit or calibration uncertain — orchestrator decides)
-  - `family` · rule · `path:line` — <what I saw> → <which calibration I could not settle>
-  ```
-
-- **`HANDOFF` block** — a real problem that belongs to another Lens's family, in a
-  separate block at the end of the output, never mixed into the Scanner's own findings
-  and never buried in prose:
-
-  ```
-  ## HANDOFF (out-of-my-family — noticed but not mine to grade)
-  - `<suggested-family>` · <rule if known> · `path:line` — <what the reader loses> → <why it isn't my family>
-  ```
-
-One terse line each. Omit a block when it is empty.
+The brief each Scanner receives, the eight Lenses and their output contracts, and the three
+side-channels are in `${CLAUDE_PLUGIN_ROOT}/references/scanner-contract.md` — read it completely
+before the dispatch and fill every slot of the brief it defines. Its paths are relative to
+`${CLAUDE_PLUGIN_ROOT}/references/`: a brief carries the absolute
+`${CLAUDE_PLUGIN_ROOT}/references/rules/<lens>.md` in its `<rules_file>` slot.
 
 ## Step 4 — Merge and re-grade
 
-- **Collect** all N Scanners' outputs — every active lens's `<result>` actually in hand
-  per Step 3, not merely a notification that fired; a lens you could not collect is a
-  labelled degradation you already surfaced to the user, never a silent gap in the merge.
-- **Dedup overlaps**: when two findings point at the same code — including across
-  different lenses, and across **all eleven families**, craft and `security` /
-  `performance` / `spec` / `standards` alike — keep the **most-specific** one and drop
-  the rest. When the overlap
-  spans two severities (a `high` symptom folding into a lower-severity root cause, or the
-  reverse), the surviving bullet keeps the **highest** severity of the overlap — deduping
-  must never quietly demote a `high` under a `medium`.
-- **Count the lenses that converged.** Independent Scanners landing on the same code
-  is the strongest signal this review produces — they read the file separately and had
-  no way to coordinate. Treat a finding several lenses reached (directly or via
-  `HANDOFF`) as **confirmed**: it leads its file, and it is a candidate for the
-  headline. Convergence raises confidence and ordering, **never severity** — that stays
-  verbatim from the table.
-- **Route every `HANDOFF` and every `CANDIDATES` entry to a visible home.** Assign a
-  `HANDOFF` its correct family and rule; decide a candidate against its rule's
-  calibration. Either way it lands in exactly one of two places: a graded bullet in the
-  per-file report (on its own, or merged into a converging finding), or a `Not flagged`
-  line with its one-line reason. **The entry no primary finding corroborates is the one
-  that slips, so reconcile by an itemized check, not by assertion.** Before rendering,
-  write the check out: enumerate every `HANDOFF` and every candidate you received, and
-  against each name its home — the report bullet (`path:line`) it became, the converging
-  finding it merged into, or the `Not flagged` line that clears it. An entry with no home
-  on that list is a bug: route it before you render.
-- **A primary finding is reconciled too.** The channels are not the only thing that goes
-  missing: a Scanner's own `FINDINGS` entry can fall out of the merge between collecting and
-  rendering, and nothing downstream notices. Count what you received per Scanner, and give every
-  primary finding that does not reach a report bullet — deduped into another, demoted, or
-  rejected — its own `Not flagged` entry with the reason. Dedup is the one silent case allowed,
-  and only because the surviving bullet carries it.
-- **Publish that check as one counted line above the report** — `Reconciliation: N
-  handoffs + M candidates → A merged · B own bullet · C boy-scout · D Not flagged; P primary
-  dropped` — where `A + B + C + D` equals `N + M`, and `P` counts the primary findings that got
-  no bullet. The arithmetic is what makes the check real: a
-  run that states "every handoff routed" without it has asserted rather than reconciled,
-  and loses the entry nothing else corroborates. When the sums disagree, an entry is
-  unrouted — find it, never adjust a number to close the gap.
-- **Each count names the block it is counted in**, so the line can be checked against the report
-  rather than believed: `merged` is an entry folded into another finding's bullet and visible in
-  its text, `own bullet` one that became its own graded bullet under a file, `boy-scout` one
-  rendered in the `Boy-scout` block, `Not flagged` one rendered as its own entry in `Not
-  flagged`. Runs whose arithmetic was right have still printed `0 boy-scout` over a Boy-scout
-  block holding three routed handoffs, and counted six entries as `merged` into a bullet that
-  was never rendered. Before publishing, count the rendered blocks: `C` equals the Boy-scout
-  entries that came from a channel, and `D + P` equals the entries in `Not flagged`. A count
-  that does not match the block it names is the bug, not the block.
-- **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
-  confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
-  positive** — drop it and note it under `Not flagged`. An unresolved `(verify)` finding
-  never reaches an apply batch. Most runs will have none — the Scanners resolve their own
-  doubts. When no Scanner emitted one, say nothing about `(verify)` anywhere: do not
-  claim to have resolved an empty list, and do not relabel some other mechanism as a
-  `(verify)` — a routed `HANDOFF`, a decided candidate, or a refuted scanner doubt is
-  resolved under its own name.
-- **Re-grade every quality finding's severity yourself** against the master table in
-  `${CLAUDE_PLUGIN_ROOT}/references/severity.md` — read it now if you have not. It
-  carries the 44 rows, what each severity means, the anti-anchoring rule, and the
-  **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
-  medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
-  no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
-  the Scanner's guess. A single-lens Scanner is the one most prone to the anchoring that
-  table forbids, so its severity is a first pass and yours is the one that ships.
-- **Judge the fix, not only the finding.** A finding can be right and its fix wrong, and Step 6
-  is too late to notice: by then the user has approved it. For every fix that could reach a
-  bucket, check three things against the code you already read:
-  - **Does it keep behaviour?** Moving a guard onto a DTO turns a 400 into a 422; splitting a
-    shared client drops the double-submit guard that shared instance provided; deleting an unused
-    export removes what a later stage of the same spec consumes. A fix that changes what callers
-    observe is not mechanical, whatever its rule says.
-  - **Does it contradict another finding?** One review's headline fix bounded a payload *before*
-    the redaction walk, which would have truncated secrets under the redactor's minimum length —
-    a security hole introduced by a performance fix. Read the fixes as a set, not one at a time.
-  - **Does it create the next finding?** An extraction that takes five positional parameters, a
-    helper that duplicates one two files away — fix the fix before offering it.
-
-  A fix that fails any of the three is re-routed: to the structural walk with the behaviour
-  change named in its option, or to report-only with one line on why. Say which in the report's
-  bullet rather than silently dropping the finding.
-- **Comment verdicts are not re-graded** and are **not** mapped to severities. The
-  two vocabularies stay side by side; there is no severity↔verdict mapping
-  anywhere in this command.
+Merge the N outputs by the **Merge and re-grade** half of
+`${CLAUDE_PLUGIN_ROOT}/references/merge-contract.md` — read it now if you have not. Every rule
+there binds this step: dedup, convergence, routing every `HANDOFF` and candidate, the published
+`Reconciliation` line, `(verify)` resolution, re-grading against the severity table, and judging
+each fix before it can reach Step 6.
 
 ## Step 5 — Report (one per-file skeleton, two vocabularies side by side)
 
-Group by **file**, not by Scanner. Under each file, list quality findings and
-comment verdicts **together**. Render with **exactly this template**, in this
-order — keep the structure identical between runs:
-
-```markdown
-Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged; <P> primary dropped
-
-## Code review — <scope>
-
-**Conventions:** <one line on what Step 2 picked up, or "none that change the verdict">
-**Headline:** <one line — the single best or worst thing about the change>
-
-### <path/to/file>
-- `family` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
-- `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD · L<line> — <reason> → <fix>
-
-### <path/to/another/file>
-- `family` · rule · severity · L<lines> — <…>
-
-**Not flagged:** <look-alikes deliberately passed on — one compact line, or a bullet
-each when one is a real problem with no rule to land on; omit when empty>
-
-**Boy-scout (untouched code, optional):**
-- `family` · rule · <path>:L<lines> — <one line>
-
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 8 (skipped: <lens> — <reason>). Spec: R of T requirements met. Skipped: <files + reason>.
-```
-
-A filled-in report reads like this:
-
-<example>
-Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped
-
-## Code review — committed (base → HEAD), 3 files
-
-**Conventions:** repo `CLAUDE.md` documents barrel exports as the public-API style, so `module` · barrel is not flagged here.
-**Headline:** `checkout/total.ts` concatenates the request's coupon code into a raw SQL string at L72.
-
-### src/checkout/total.ts
-- `security` · injection-sink · high · L70, L72 — `couponCode` read from `req.query` at L70 reaches the raw `WHERE` string at L72 by concatenation → bind it as a query parameter
-- `simplicity` · over-complex · high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
-- `readability` · magic-literal · medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
-- `comments` · R1 · REMOVE · L17 — "// multiply by the rate" restates the line beneath it → delete these lines
-
-### src/checkout/receipt.ts
-- `naming` · role-name · nit · L9 — `receiptArray` names the type instead of the role → `receipts`
-- `comments` · R2 · ADD · L44 — the 250 ms retry gap is a gateway constraint no reader can infer → "// 250 ms — the gateway rejects retries closer than its own debounce window"
-
-### docs/checkout-spec.md
-- `spec` · missing-requirement · high · L14 — "A receipt lists the discount applied per line item" has no implementation in the diff → add the per-line discount to `Receipt`
-
-**Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
-
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 8 of 8. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
-</example>
-
-**The skeleton is the whole report.** It has no other sections: no `### Findings`
-header, no numbered or bolded finding entries, no `---` rules between findings, no
-per-finding code block, no closing summary. The `###` headers are **file paths** — one
-per reviewed file, plus the **spec's own path** when `--spec` was given and a
-`missing-requirement` needs a home — and each finding is a single markdown bullet
-beneath its file. Do
-not paste the code under review, the rewritten body, or a before/after block: a finding
-that seems to need a code block is one whose fix is not yet stated as a clause, so state
-it as a clause. Every report opens with `Conventions` and `Headline`, and closes with
-`Tally`. The `Reconciliation` line is the only thing that precedes `## Code review` — it
-belongs to Step 4's check rather than to the report, which is why it carries counts and
-not prose.
-
-Rules for filling it in:
-
-- **Two vocabularies, side by side.** Quality findings use `` `family` · rule ·
-  severity ``, with the family **backticked** — one of the eleven fixed labels
-  `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`,
-  `security`, `performance`, `spec`, `standards` — and rule and severity verbatim from
-  `references/severity.md` (a `standards` rule is its slug, graded by the keyword
-  mapping). Comment verdicts use `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD ``.
-  **No severity↔verdict mapping** — keep them distinct.
-- **Findings are markdown bullets** under a `###` file header (not inside a ```
-  fence) so every `path:line` stays clickable. A `spec` · missing-requirement bullet
-  sits under `### <spec path>` with the spec's own lines; every other spec finding sits
-  under the code file it points at.
-- **Order files** by their highest-severity quality finding; a REMOVE/REWRITE/MOVE/ADD
-  comment weighs like a medium for ordering. Within a file: a `security` high first,
-  then any **R9 (contradicts-the-code)** comment verdict, then high → medium → nit,
-  then by line.
-- **Collapse repeats**: one `family` · rule breaking in several spots is a single
-  bullet with the lines listed together (`L20, L34, L51`).
-- **The fix is a clause, not code.** "extract
-  `transitionOrReportConflict(...)` and early-return at each site", "drop the `as
-  User` cast", "name `SECONDS_PER_DAY`". Keep a rewritten body or a before/after
-  block out of the report. For a comment REWRITE the fix is the exact replacement
-  text; for MOVE, name the destination.
-- **Quote comments verbatim.** Every comment verdict carries the verbatim comment
-  text and its `path:line`.
-- **`Not flagged`** lists the look-alikes deliberately passed on, plus every candidate,
-  `HANDOFF` and dropped primary finding the merge cleared — one line when they are all genuine
-  non-findings, a short bullet each when one of them is a *real* problem that merely has no rule
-  to land on. **Its entries stay countable**: separated by `;` on the one-line form, one bullet
-  each otherwise, because the `Reconciliation` line's last two numbers are checked against them. A real problem keeps its own bullet rather than being compressed into a
-  subordinate clause; that compression is how something worth acting on disappears. Drop
-  the block if empty.
-- **`Boy-scout`** holds only findings in code the change did not touch; omit the
-  whole block when there are none.
-- **Resolved findings only.** The body lists confirmed findings; a refuted one goes in
-  `Not flagged` as a Scanner false positive.
-- **The headline may not contradict the combined tally.** If there is any quality
-  `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE / ADD, the
-  headline names the worst one — it must not call the change "clean",
-  "well-structured", or "only cosmetic nits". A confirmed **`security`** finding is the
-  headline over any craft finding, whatever their severities — and so is a confirmed
-  **exposure that no rule names**, which leads the report from its own `Not flagged`
-  bullet rather than being demoted for want of a tag; a `spec` ·
-  missing-requirement or wrong-implementation forbids the clean headline outright.
-  Reserve the clean verdict for a tally that is genuinely nits-only-and-all-KEEP (or
-  empty).
-- **The `Tally` names the lenses.** `Lenses: L of 8` always, with each skipped Lens
-  and its Step 2b reason in the parenthesis (`skipped: performance — no executable
-  code; spec — no spec named`); drop the parenthesis when all eight ran. When a spec was
-  given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
-  met`; omit that clause otherwise.
-
-Collapse the whole report to the title line plus a one-sentence verdict and the
-tally **only when the change reads cleanly** — the quality tally is empty or
-nits-only and every comment is KEEP, and no `spec` · missing-requirement or
-wrong-implementation stands. Match the report to what you found: neither pad
-a clean one to look thorough, nor collapse one carrying a medium-or-higher finding, a
-spec gap, or a REMOVE/REWRITE/MOVE/ADD to look clean.
+Render the review with **exactly** the skeleton in the **Report** half of
+`${CLAUDE_PLUGIN_ROOT}/references/merge-contract.md`, and by every rule for filling it in that
+follows the skeleton there — same structure between runs, nothing added.
 
 **`Tally` ends the report text, not the turn.** Go straight into Step 6's
 `AskUserQuestion` — same turn, no pause, nothing between it and the tally. A turn that
 ends on the report leaves the run stalled with the findings unactionable until the user
 prods it, and the report then costs a second render to get back on screen. The closure
-cues above (`closes with Tally`, `the skeleton is the whole report`) bound the report's
-*shape*; they do not license ending the turn.
+cues in the skeleton's rules (`closes with Tally`, `the skeleton is the whole report`) bound
+the report's *shape*; they do not license ending the turn.
 
 ## Step 6 — Apply menu (single AskUserQuestion, multiSelect; never edit during review)
 
@@ -658,51 +228,12 @@ origin**. Only offer a category when you actually have findings that fall into i
 accepts at most four options** — the four canonical risk buckets below are the whole
 menu; never add a fifth. `Report only` is always offered:
 
-- **Safe fixes** — mechanical, easy to eyeball: quality `openness`,
-  `explaining-variable`, `magic-literal`, `role-name`, `guard-clause`,
-  verified-redundant `needless-cast`, trivial `over-complex`, and `dead-code` that is an
-  unread binding or an always-true/false guard; **plus** comment
-  **REMOVE** and **REWRITE**, and a comment **ADD** whose rationale the review
-  actually confirmed — locate the code site by content and insert the comment
-  above it. An `ADD` whose WHY you could only guess is **report-only**: hand the
-  author the suggested text, since only they know the real reason.
-- **Walk the structural ones (one at a time)** — riskier, they move or remove code:
-  `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
-  `full-construction` / `leaky-collection` reshaping, the `patterns` refactors
-  (`composition`, `polymorphism`, `execute-around`), large `over-complex`
-  unifications, `test-structure` restructuring, and `dead-code` removal of a branch that
-  looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
-  `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,
-  `message-chain`); every **`performance`** fix; every **`security`** fix; **plus**
-  comment **MOVE**.
-- **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
-  bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
-  a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
-  the structural walk and is applied one at a time with its own yes. Untouched code is where the
-  review understands the least, so a structural edit there is riskier than the same edit inside
-  the diff, not safer: one run bundled a client split into this bucket, silently broke a
-  double-submit guard, dragged an unrelated page into the pull request, and the user discarded
-  the work.
-- **Report only** — change nothing.
-
-**Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
-edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
-moves or restructures code, or removes a branch that looks reachable → structural. A
-`standards` finding is an unlisted rule and routes the same way.
-
-**Security is never a Safe fix.** However small the edit looks — a bound parameter, a
-removed literal — it changes behaviour at a boundary, so a `security` finding always
-walks structurally, one at a time. When a canonical bucket is empty, `security` may take
-the freed slot as its own option, **Security fixes (walk one at a time)**, so the user
-can pick it apart from the craft restructuring. A `secret-in-source` fix removes the
-literal from the file and nothing more: the wrap-up states that **rotating the exposed
-secret is the user's step** — the review cannot do it and must not imply it did.
-
-**`spec` findings are report-only.** A missing or partial requirement is work to do,
-not an edit to apply, and never enters a bucket. The one exception is a
-`wrong-implementation` the review **verified** in Step 4 whose fix is a **single edit**:
-that one is offer-able through the escape hatch below for a confirmed correctness
-problem.
+- **Safe fixes**, **Walk the structural ones (one at a time)**, **Boy-scout extras** and
+  **Report only** — what each holds, how an unlisted or `standards` rule routes, why `security`
+  is never safe and `spec` is report-only are the **Fix risk** section of
+  `${CLAUDE_PLUGIN_ROOT}/references/merge-contract.md`; read it before composing the menu. When a
+  canonical bucket is empty, `security` may take the freed slot as its own option, **Security
+  fixes (walk one at a time)**, so the user can pick it apart from the craft restructuring.
 
 **Degenerate and edge menus.** The four buckets are a ceiling, not a quota, and the menu
 must stay honest when findings don't spread across them:

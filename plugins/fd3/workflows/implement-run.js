@@ -5,7 +5,7 @@ export const meta = {
   phases: [
     { title: 'Recon', detail: 'toolchain detection and a baseline run per repository' },
     { title: 'Implement', detail: 'parallel waves gated by the depends-on graph, each wave merged into its target branch' },
-    { title: 'Validate', detail: 'CI then code review, one branch at a time' },
+    { title: 'Validate', detail: 'CI, then a code-review pass and a delta review of its fixes, one branch at a time' },
   ],
 }
 
@@ -16,12 +16,15 @@ export const meta = {
 //                 the branch this task's target branch stacks on, or null for the repository's
 //                 base ref; status is one of todo | implemented | merged | blocked | done (stale
 //                 in-progress is reset by the skill before launch)
-//   repos         { [repository path]: { defaultRef, parkedBranch } } — defaultRef is the ref new
-//                 branches are cut from (e.g. "origin/main"); the skill fetches before launch, so
-//                 origin/* is fresh. parkedBranch (optional) names the target branch checked out
-//                 in the main repository itself — git refuses a second worktree for it, so the
-//                 main checkout serves as that branch's worktree
-//   reviewSkills  code-review skill names to run during validation, may be empty
+//   repos         { [repository path]: { startRef, diffBase, parkedBranch } } — startRef is the ref
+//                 new branches are cut from (e.g. "origin/main", or the branch the user parked the
+//                 checkout on); diffBase is what a root branch's diff is measured against, always
+//                 origin/<default>; the skill fetches before launch, so origin/* is fresh.
+//                 parkedBranch (optional) names the target branch checked out in the main
+//                 repository itself — git refuses a second worktree for it, so the main checkout
+//                 serves as that branch's worktree
+//   review        true to run the code-review plugin's headless lenses on every branch after its
+//                 scoped CI passes; false skips review
 //   maxFixRounds  CI fix attempts per branch before giving up
 //   reportPath    (optional) absolute path of a previous run's report file; one cheap agent reads
 //                 its toolchain and baseline knowledge, so a relaunch skips the re-scout and the
@@ -33,7 +36,8 @@ export const meta = {
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
-const { specPath, tasks, repos, reviewSkills } = input
+const { specPath, tasks, repos } = input
+const review = input.review === true
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
 // the run exists to perform, reporting failures it was built to repair.
 const maxFixRounds = input.maxFixRounds ?? 3
@@ -55,8 +59,11 @@ const worktreePath = (repo, name) => `${repo}.worktrees/${name.replace(/\//g, '-
 // Every validation label names the unit, never just the repository: one repository carries many
 // target branches, and without the branch a fix loop and a fan-out look identical in the run view.
 const unitTag = (unit) => `${unit.repo.split('/').pop()}:${unit.branch.replace(/\//g, '-')}`
-const lensTag = (skill) => skill.replace(/:/g, '/') // a review skill's own name carries a colon
-const repoDefault = (repo) => (repos && repos[repo] && repos[repo].defaultRef) || "the repository's default branch"
+// Where work starts and what it is measured against part ways when the run builds on a branch the
+// user parked the checkout on: worktrees start from that branch, and a diff against it is empty.
+const refOf = (repo, key) => (repos && repos[repo] && repos[repo][key]) || "the repository's default branch"
+const startRef = (repo) => refOf(repo, 'startRef')
+const diffBase = (repo) => refOf(repo, 'diffBase')
 const byRepo = (list) => {
   const groups = new Map()
   for (const t of list) {
@@ -65,10 +72,15 @@ const byRepo = (list) => {
   }
   return groups
 }
+// The harness relays the user's request to every agent, and a cheap model reads it as its own task
+// and re-runs the skill that launched this workflow.
+const STEP_GUARD =
+  'Do only the step this prompt describes. Invoke no skill or slash command it does not name, ' +
+  'whatever the relayed user request says: that request belongs to the session that launched this workflow.\n\n'
 // One retry rides out transient API failures (529s, brief limit blips). A second null is a real
 // no-verdict — absence of evidence that must never be reported as a validation verdict.
 const tryTwice = async (prompt, opts) =>
-  (await agent(prompt, opts)) ?? agent(prompt, { ...opts, label: `${opts.label}:retry` })
+  (await agent(STEP_GUARD + prompt, opts)) ?? agent(STEP_GUARD + prompt, { ...opts, label: `${opts.label}:retry` })
 
 // ---- Recon: detect each repository's validation toolchain, then baseline it on the clean base
 //      (both kept in memory for this run and returned in the report for a later repair-run)
@@ -171,8 +183,10 @@ const baselinePrompt = (repo) =>
   [
     `Establish the validation baseline of the repository ${repo} on its clean base.`,
     ``,
-    `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${repoDefault(repo)}`,
-    `   (git worktree add <path> <ref>) unless it already exists — then reuse it as is.`,
+    `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${startRef(repo)}`,
+    `   (git worktree add --detach <path> <ref>) unless it already exists — then reuse it as is.`,
+    `   Detached, because the ref may be a branch already checked out elsewhere, which git refuses`,
+    `   a second worktree for.`,
     `2. Run every runnable validation command from the toolchain report below, in the reported`,
     `   order, sequentially — never in parallel. Each command's cwd in the report is relative to`,
     `   the repository root: resolve it inside that worktree, never against ${repo}. Skip what the`,
@@ -215,7 +229,7 @@ const baselineText = (repo) => {
       ? `- ${c.command}: passed`
       : `- ${c.command}: FAILED on the clean base:\n` + (c.failures || []).map((f) => `    ${f}`).join('\n'),
   )
-  return `Baseline on the clean base (${repoDefault(repo)}):\n${lines.join('\n')}`
+  return `Baseline on the clean base (${startRef(repo)}):\n${lines.join('\n')}`
 }
 
 // ---- Implement: waves of parallel tasks gated by depends-on, each wave merged before the next
@@ -282,7 +296,7 @@ const implementPrompt = (task) => {
     `3. In the repository ${task.repository}, create that worktree on a new branch ${taskBranch(task)}`,
     `   (git worktree add <path> -b <branch> <start-point>). The start-point is the first of these`,
     `   refs that exists — an early wave can run before the later ones are created:`,
-    `   ${[task.branch, task.baseBranch, repoDefault(task.repository)].filter(Boolean).join(', then ')}.`,
+    `   ${[task.branch, task.baseBranch, startRef(task.repository)].filter(Boolean).join(', then ')}.`,
     `   Everything this task depends on is already merged into whichever you start from. If the`,
     `   worktree already exists from an interrupted attempt, continue in it instead of recreating`,
     `   anything.`,
@@ -359,7 +373,7 @@ const mergePrompt = (repo, repoTasks) => {
   const plan = [...targets.entries()]
     .map(
       ([branch, g]) =>
-        `- target ${branch} (stacks on ${g.base || repoDefault(repo)}, worktree ${branch === parked(repo) ? `${repo} — the main checkout` : worktreePath(repo, branch)}):\n` +
+        `- target ${branch} (stacks on ${g.base || startRef(repo)}, worktree ${branch === parked(repo) ? `${repo} — the main checkout` : worktreePath(repo, branch)}):\n` +
         g.tasks.map((t) => `    - ${taskBranch(t)} (task ${t.slug}, file ${t.file})`).join('\n'),
     )
     .join('\n')
@@ -399,7 +413,7 @@ const recordUnit = (repo, b, slugs) => {
   let unit = units.find((u) => u.repo === repo && u.branch === b.branch)
   if (!unit) {
     const sample = tasks.find((t) => t.repository === repo && t.branch === b.branch)
-    unit = { repo, branch: b.branch, worktree: b.worktree, base: (sample && sample.baseBranch) || repoDefault(repo), tasks: [] }
+    unit = { repo, branch: b.branch, worktree: b.worktree, base: (sample && sample.baseBranch) || diffBase(repo), tasks: [] }
     units.push(unit)
   }
   for (const slug of slugs) if (!unit.tasks.includes(slug)) unit.tasks.push(slug)
@@ -580,15 +594,62 @@ const FIX_RESULT = {
   required: ['summary'],
   properties: {
     summary: { type: 'string' },
+    fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
     caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
+    skipped: { type: 'array', items: { type: 'string' }, description: 'every listed problem left unfixed, copied verbatim from the list' },
   },
 }
 
-const CR_RESULT = {
+const PREP_RESULT = {
   type: 'object',
-  required: ['findings'],
+  required: ['status', 'invoked'],
   properties: {
-    findings: { type: 'array', items: { type: 'string' }, description: 'one entry per finding worth fixing: file, problem, why' },
+    invoked: { type: 'boolean', description: 'the code-review:cr-prepare skill was invoked through the Skill tool' },
+    status: { enum: ['ready', 'empty', 'error'] },
+    files: { type: 'number', description: 'judged files' },
+    active: { type: 'array', items: { type: 'string' }, description: 'active lenses, by name' },
+    inactive: { type: 'array', items: { type: 'string' }, description: 'inactive lenses, each with its reason' },
+    alternate: { type: 'string', description: 'the alternate base and its file count; only when status is empty and the skill named one' },
+    reason: { type: 'string', description: 'only when status is error' },
+  },
+}
+
+const SCAN_RESULT = {
+  type: 'object',
+  required: ['status', 'invoked', 'filesJudged', 'filesTotal'],
+  properties: {
+    invoked: { type: 'boolean', description: 'the code-review:cr-scan skill was invoked through the Skill tool' },
+    status: { enum: ['scanned', 'inactive', 'error'] },
+    filesJudged: { type: 'number' },
+    filesTotal: { type: 'number' },
+  },
+}
+
+const CR_MERGE_RESULT = {
+  type: 'object',
+  required: ['status', 'invoked', 'findings'],
+  properties: {
+    invoked: { type: 'boolean', description: 'the code-review:cr-merge skill was invoked through the Skill tool' },
+    status: { enum: ['merged', 'incomplete', 'error'] },
+    report: { type: 'string', description: 'absolute path of report.md' },
+    missing: { type: 'array', items: { type: 'string' }, description: 'lenses that did not report; only when status is incomplete' },
+    findings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['severity', 'family', 'rule', 'location', 'risk', 'fix'],
+        properties: {
+          severity: { type: 'string', description: 'high | medium | nit; `comment` for a comment verdict' },
+          family: { type: 'string' },
+          rule: { type: 'string', description: 'the rule, or for a comment verdict R<n> and its verdict' },
+          location: { type: 'string', description: '<path>:L<lines>' },
+          risk: { enum: ['safe', 'structural', 'report-only'] },
+          fix: { type: 'string' },
+          reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
+          boyScout: { type: 'boolean', description: 'the finding line carries the `boy-scout` token: it is about code the change did not touch' },
+        },
+      },
+    },
   },
 }
 
@@ -600,22 +661,31 @@ const CR_RESULT = {
 const validationTree = (unit) =>
   unit.worktree === unit.repo ? `${unit.repo}.worktrees/${unit.branch.replace(/\//g, '-')}-validate` : unit.worktree
 
+const treeSetup = (unit) => {
+  const tree = validationTree(unit)
+  return tree === unit.worktree
+    ? []
+    : [
+        `That worktree is this branch's validation checkout, detached at its commit. Create it`,
+        `with \`git worktree add --detach ${tree} ${unit.branch}\` if it is not there; if it is,`,
+        `bring it to the branch's current commit with \`git -C ${tree} checkout --detach`,
+        `${unit.branch}\`. Never \`git clean\` it — installed dependencies live there untracked.`,
+        ``,
+      ]
+}
+
 const ciPrompt = (unit, mode, markFiles) => {
   const tree = validationTree(unit)
   return [
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
     `in the worktree ${tree}. Run them in the reported order, sequentially — never in`,
-    `parallel.`,
+    `parallel. Run each one as \`<command> > ${tree}.ci.log 2>&1; echo "exit $?"\` — the log sits`,
+    `beside the worktree, never inside it — read pass or fail from that exit line alone, and read`,
+    `the log only for the lines a failure needs. Never pipe a command into \`tail\`, \`head\` or`,
+    `\`grep\`: the pipe's status replaces the command's, and a failing suite then reads as whatever`,
+    `its output happens to show.`,
     ``,
-    ...(tree === unit.worktree
-      ? []
-      : [
-          `That worktree is this branch's validation checkout, detached at its commit. Create it`,
-          `with \`git worktree add --detach ${tree} ${unit.branch}\` if it is not there; if it is,`,
-          `bring it to the branch's current commit with \`git -C ${tree} checkout --detach`,
-          `${unit.branch}\`. Never \`git clean\` it — installed dependencies live there untracked.`,
-          ``,
-        ]),
+    ...treeSetup(unit),
     `\`cd ${tree}\` before anything else, and confirm what you are about to grade: \`git rev-parse`,
     `HEAD\` there must equal \`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
     `return branch "${unit.branch}". When they do not, run nothing: return the branch you actually`,
@@ -680,43 +750,131 @@ const fixPrompt = (unit, problems, source) =>
     `take or approve — anything that touches production, anything irreversible, any secret or`,
     `credential, generating a migration, and whatever this repository's own rules reserve — is a`,
     `blocker, not a fix: skip it and record it under caveats. Never guess your way past it.`,
+    `A failure the fix can only clear by changing behaviour — an exception carved out of a rule,`,
+    `a narrowed decision, an error that stops meaning what it meant — is a design call, not a fix:`,
+    `skip it and record under caveats what the choice is.`,
     ``,
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
     ``,
     toolchain.get(unit.repo),
     ``,
+    `Before your first edit, run \`git rev-parse HEAD\` in the worktree and return it as fromSha.`,
     `Commit the fixes with a conventional-commit message. To verify a fix you may re-run the`,
-    `exact commands that failed — never the full validation suite; it is rerun after you.`,
+    `exact commands that failed, scoped to the files they failed on — never a whole suite; the`,
+    `full validation runs after you.`,
     ``,
     `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
     `reason, any judgment call that went beyond the listed problems, and any change that touches`,
     `a decision recorded in the spec.`,
     `A caveat says something the parent could not otherwise know. Following this prompt is not a`,
     `caveat.`,
+    ...(source === 'code-review'
+      ? [`Under skipped, also copy verbatim every listed problem you left unfixed, whatever the reason.`]
+      : []),
   ].join('\n')
 
-const reviewPrompt = (unit, skillName) =>
-  [
-    `In the worktree ${unit.worktree} (repository ${unit.repo}), review the branch ${unit.branch}:`,
-    `invoke the \`${skillName}\` skill via the Skill tool on the diff between this branch and`,
-    `${unit.base}. Report, do not fix.`,
+// The lens skills read a context directory, never this prompt, so the run's own facts — which tree,
+// which base, what is deliberately unfinished — reach them only through the wrapper agents.
+const reviewDir = (unit, pass) => `${unit.repo}.worktrees/.review/${unit.branch.replace(/\//g, '-')}-${pass}`
+
+const prepPrompt = (unit, base, dir) => {
+  const tree = validationTree(unit)
+  return [
+    `Prepare a code review of the branch ${unit.branch} (repository ${unit.repo}) in the checkout`,
+    `${tree}, measured from ${base}.`,
     ``,
-    `\`git diff ${unit.base}...HEAD\` is the whole territory: the files it touches and the direct`,
-    `call sites of what they change. The rest of the repository, the architecture and the`,
-    `validation suite are out of scope. The narrowing is of territory, not of severity.`,
+    ...treeSetup(unit),
+    `\`git -C ${tree} rev-parse HEAD\` must equal \`git -C ${unit.repo} rev-parse ${unit.branch}\`;`,
+    `when it does not, invoke nothing and return status "error" with the mismatch as reason.`,
     ``,
-    baselineText(unit.repo),
+    `Remove ${dir} if it exists — lens files left there by an earlier run would be read as this`,
+    `run's. Then invoke the \`code-review:cr-prepare\` skill through the Skill tool with:`,
+    `\`--base ${base} --out ${dir} -C ${tree} --spec ${specPath}\``,
     ``,
-    ...(reservations ? [reservations, ``] : []),
-    `Report only findings this branch's diff introduces. An issue that exists identically on the`,
-    `clean base — including everything in the baseline above — is pre-existing: leave it out. So`,
-    `is the open work listed above and its direct consequences: a gap a blocked or human-owned`,
-    `task deliberately leaves is not a finding.`,
-    ``,
-    `Return only the findings worth fixing, one entry each: file, the problem, and why it matters.`,
-    `An empty findings array is a valid result.`,
+    `Return what its closing block says: status, judged file count, active and inactive lenses,`,
+    `the alternate on empty, the reason on error — and invoked=true. When the Skill tool is not`,
+    `available to you, return invoked=false and status "error"; never do the skill's work by hand.`,
   ].join('\n')
+}
+
+const scanPrompt = (lens, dir) =>
+  [
+    `Invoke the \`code-review:cr-scan\` skill through the Skill tool with`,
+    `\`--lens ${lens} --context ${dir}\`, and return what its closing block says — status, files`,
+    `judged of the total — with invoked=true. When the Skill tool is not available to you, return`,
+    `invoked=false, status "error" and zero counts; never judge the change by hand.`,
+  ].join('\n')
+
+const crMergePrompt = (dir) =>
+  [
+    `Invoke the \`code-review:cr-merge\` skill through the Skill tool with \`--context ${dir}\`,`,
+    `and return what its closing block says: status, the report path, the lenses that did not`,
+    `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
+    `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
+    `\`boy-scout\` token sets boyScout=true. Return invoked=true; when`,
+    `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
+    ...(reservations
+      ? [
+          ``,
+          reservations,
+          ``,
+          `Set reserved=true on a finding that is this open work or its direct consequence — a gap a`,
+          `blocked or human-owned task deliberately leaves. Change nothing else the skill returned.`,
+        ]
+      : []),
+  ].join('\n')
+
+// A review that did not run is absence of evidence: an empty change, a lens that judged nothing or a
+// skill the agent never invoked all come back as a reason, never as an empty findings list.
+const runReview = async (unit, base, pass, tag) => {
+  const dir = reviewDir(unit, pass)
+  const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT })
+  if (!prep || !prep.invoked || prep.status === 'error') {
+    return { dir, dead: `cr-prepare ${prep ? `failed: ${prep.reason || 'the skill was not invoked'}` : 'returned no result after a retry'}` }
+  }
+  if (prep.status === 'empty') {
+    return { dir, empty: true, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
+  }
+  const lenses = prep.active || []
+  const scans = await parallel(
+    lenses.map((lens) => () =>
+      tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+    ),
+  )
+  const deadLenses = lenses.filter((_, i) => {
+    const r = scans[i]
+    return !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
+  })
+  if (deadLenses.length > 0) return { dir, dead: `lens ${deadLenses.join(', ')} did not report` }
+  const merged = await tryTwice(crMergePrompt(dir), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
+  if (!merged || !merged.invoked || merged.status !== 'merged') {
+    const why = !merged
+      ? 'returned no result after a retry'
+      : merged.status === 'incomplete'
+        ? `found lens ${(merged.missing || []).join(', ')} missing`
+        : 'failed'
+    return { dir, dead: `cr-merge ${why}` }
+  }
+  return { dir, report: merged.report, files: prep.files || 0, lenses: lenses.length, findings: merged.findings }
+}
+
+// Security fixes change behaviour at a boundary, spec findings are work, not edits, and a boy-scout
+// fix edits code the task never touched — all three wait for a human; nits and the remaining
+// comment verdicts are reported, never applied unasked.
+const serious = (f) => f.severity === 'high' || f.severity === 'medium'
+const sortFindings = (findings) => {
+  const live = findings.filter((f) => !f.reserved)
+  const applied = live.filter(
+    (f) =>
+      (serious(f) && f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout) ||
+      (f.severity === 'comment' && f.risk === 'safe'),
+  )
+  const forHuman = live.filter((f) => !applied.includes(f) && serious(f))
+  const reported = live.filter((f) => !applied.includes(f) && !forHuman.includes(f))
+  return { applied, forHuman, reported, reserved: findings.length - live.length }
+}
+const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
 
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
@@ -835,33 +993,63 @@ for (const unit of units) {
   }
   summary.ci = 'passed'
 
-  // Review skills are read-only lenses; they can run in parallel — unlike CI they hog no cores.
-  let deadLenses = []
-  if (reviewSkills.length > 0) {
-    const reviews = await parallel(
-      reviewSkills.map((skillName) => () =>
-        tryTwice(reviewPrompt(unit, skillName), { label: `cr:${tag}:${lensTag(skillName)}`, phase: 'Validate', schema: CR_RESULT }),
-      ),
-    )
-    deadLenses = reviewSkills.filter((_, i) => !reviews[i])
-    const findings = reviews.filter(Boolean).flatMap((r) => r.findings)
-    summary.reviewFindings = findings.length
-    summary.findings = findings
-    if (findings.length > 0) {
-      const fix = await tryTwice(fixPrompt(unit, findings, 'code-review'), { label: `fix-cr:${tag}`, phase: 'Validate', schema: FIX_RESULT })
-      if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-cr: ${c}`))
+  let reviewDead = null // why the review has no verdict for this branch
+  let reviewHeld = false // findings wait for a human
+  if (review) {
+    const first = await runReview(unit, unit.base, 'review', tag)
+    summary.review = { context: first.dir, report: first.report || null }
+    if (first.dead) {
+      reviewDead = `the review did not run: ${first.dead}`
+    } else {
+      const sorted = sortFindings(first.findings)
+      summary.reviewFindings = first.findings.length
+      summary.findings = [...sorted.applied, ...sorted.forHuman, ...sorted.reported].map(findingLine)
+      Object.assign(summary.review, { applied: sorted.applied.length, forHuman: sorted.forHuman.length, reported: sorted.reported.length, reserved: sorted.reserved })
+      if (sorted.applied.length > 0) {
+        const fix = await tryTwice(fixPrompt(unit, sorted.applied.map(findingLine), 'code-review'), { label: `fix-cr:${tag}`, phase: 'Validate', schema: FIX_RESULT })
+        if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-cr: ${c}`))
+        // A finding the fixer declined is still open, and the delta review cannot see it: it only
+        // reads what the fixer changed.
+        const declined = (fix && fix.skipped) || []
+        const unfixed = sorted.applied.filter((f) => declined.includes(findingLine(f)))
+        sorted.forHuman.push(...unfixed)
+        const unmatched = declined.filter((line) => !unfixed.some((f) => findingLine(f) === line))
+        for (const line of unmatched) {
+          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${line} — the fixer left it unfixed; the branch keeps status merged until a repair settles it` })
+        }
+        if (unmatched.length > 0) reviewHeld = true
+        // The fixes are new code nobody has reviewed; one delta pass, whose findings go to a human.
+        if (!fix || !fix.fromSha) {
+          reviewDead = `the review fixes have no verdict: the fix agent ${fix ? 'did not report its starting commit' : 'returned no result after a retry'}`
+        } else {
+          const delta = await runReview(unit, fix.fromSha, 'delta', tag)
+          summary.review.delta = { context: delta.dir, report: delta.report || null }
+          if (delta.dead && !delta.empty) {
+            reviewDead = `the delta review of the fixes did not run: ${delta.dead}`
+          } else if (!delta.empty) {
+            const d = sortFindings(delta.findings)
+            const open = [...d.applied, ...d.forHuman]
+            summary.review.delta.findings = open.length
+            sorted.forHuman.push(...open)
+          }
+        }
+      }
+      for (const f of sorted.forHuman) {
+        hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — the branch keeps status merged until a repair settles it` })
+      }
+      reviewHeld = reviewHeld || sorted.forHuman.length > 0
     }
   }
 
   // The full command list is the branch's final gate — always, review fixes or not.
-  let { ci: finalCi, fault: finalFault } = await runCi(unit, 'full', deadLenses.length === 0, `ci:${tag}:final`)
+  let { ci: finalCi, fault: finalFault } = await runCi(unit, 'full', !reviewDead && !reviewHeld, `ci:${tag}:final`)
   if (finalCi && !finalFault && !finalCi.passed) {
     // One fix round here: a final-gate failure is often mechanical — a derived artifact the
     // review fixes invalidated — and only what survives the round deserves a human.
     summary.fixRounds += 1
     const fix = await tryTwice(fixPrompt(unit, finalCi.failures, 'final-gate CI'), { label: `fix-final:${tag}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-final: ${c}`))
-    ;({ ci: finalCi, fault: finalFault } = await runCi(unit, 'full', deadLenses.length === 0, `ci:${tag}:final#2`))
+    ;({ ci: finalCi, fault: finalFault } = await runCi(unit, 'full', !reviewDead && !reviewHeld, `ci:${tag}:final#2`))
   }
   if (!finalCi || finalFault) {
     summary.ci = 'no-verdict'
@@ -886,16 +1074,17 @@ for (const unit of units) {
     continue
   }
 
-  // A dead lens is not an empty findings list: the branch stays merged until reviewed.
-  if (deadLenses.length > 0) {
+  // An unreviewed branch, or one with findings a human must settle, is not done: it stays merged.
+  if (reviewDead) {
     hil.push({
       slug: null,
       kind: 'no-verdict',
       stage: 'review',
-      reason: `${unit.repo} ${unit.branch}: review lens ${deadLenses.join(', ')} returned no result after a retry; CI passed, but the branch keeps status merged until the lens has run.`,
+      reason: `${unit.repo} ${unit.branch}: CI passed, but ${reviewDead}; the branch keeps status merged until a relaunch reviews it.`,
     })
     continue
   }
+  if (reviewHeld) continue
 
   // The final gate marks the files itself: it is already in this unit holding the verdict, where
   // a separate agent per branch spent its whole budget booting to edit one frontmatter line.

@@ -14,6 +14,12 @@ need, then end your turn. Do not guess it and do not go looking for it.
 **That spec file is the only file you may edit.** Everything else you read is read-only, no matter
 what you find in it.
 
+A probe — a command you run to settle a claim — runs in a detached worktree under your scratchpad
+(`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout. It never
+installs, links or rebuilds dependencies, anywhere: a package manager repoints shared links and
+leaves the user's tree broken. A claim that needs more than that to settle stays unverified, and the
+report says what the probe would have needed.
+
 **Every edit traces to a finding of this pass.** The dated evidence block is appended to a spec of
 any quality; everything else you write must be the repair of something you recorded as a finding,
 in the section that finding names. A spec whose checks all pass leaves this skill byte-identical
@@ -120,7 +126,8 @@ report**, whether it passed or not.
 A row is `pass` only when its prose names no unresolved finding. Where a finding genuinely does not
 block — the Terms say when — it is still a finding: give it its own row in the findings list and say
 why it does not block. Calling it non-blocking inside a passing row hides it from the verdict, and
-from whoever splits this into tasks.
+from whoever splits this into tasks. The row itself reads `non-blocking — <finding>`: never `fail`
+over a `ready` verdict, and never `pass (unchanged)` while that finding stays open.
 
 1. Design decisions do not contradict one another within the authoritative set. Where the spec declares
    precedence over another document, that declaration settles the disagreement; what to look for instead is
@@ -167,7 +174,9 @@ record. Spot-check its rows and append to it under a dated sub-heading, so the s
 stays distinguishable from this run's. When the spec has none, add one at the end. Once the verdict
 is known, open the dated block with one line — `Verdict: <the report's verdict> — claims: N verified /
 N deferred / N blocked — spec N lines at this verdict` — so a later reader can tell a clean pass from
-a qualified one without hunting for the session that produced it. Fill the line count in last: write
+a qualified one without hunting for the session that produced it. The line under it names the
+commit each repository was checked against in step 0 — `Checked at: <remote name> @ <short sha>, …`
+— which is how the split tells whether the code has moved on since. Fill the line count in last: write
 the dated block through to its final line, then `wc -l`, then put that number in the verdict line —
 replacing it changes no line count, so the number counts itself. A file at
 `<spec-dir>/evidence/<section>.md` is for overflow only: a probe transcript or a command output too long to

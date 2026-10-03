@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `implement-tasks` reviews each branch with the `code-review` plugin's headless skills —
+  `cr-prepare`, one `cr-scan` agent per active lens, `cr-merge` — after its scoped CI passes;
+  `safe` and `structural` findings are fixed and the fixes reviewed again, while `spec` findings,
+  `security` fixes, boy-scout findings, report-only findings and any finding the fixer left
+  unfixed go to the user as `review` items. `repair-run`
+  reviews each repair's own commits the same way, and a repair reopens a `done` branch
+- `/fd3:build-spec <spec path>` re-enters at validation for a finished spec — no grilling — and
+  validates every edit made after the final verdict, including a move or a header rewrite
+- The validation verdict line is followed by `Checked at:` with each repository's commit, and
+  `split-to-tasks` stops when `origin/<default>` has since changed a file the spec cites
+- `split-to-tasks` turns a commit sequence the spec binds inside a branch into `depends-on` edges
+- Evals — `split-stale-origin` and `build-spec-reentry`, with a fixture `SETUP.sh` hook in the
+  sandbox reset for scenarios that need a remote
 - `grill-topic` writes what the conversation established before the command into the research
   directory before round 1, and keeps a question ledger file — round numbers, answers and
   carry-overs no longer live only in a context that gets compacted
@@ -39,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `split-to-tasks` never writes a verdict line or an evidence block, even when asked, and routes
+  an unvalidated or stale spec to `/fd3:build-spec` — a hand-written pass is not a validation
 - A gap the spec already declares with an owner and a placement is `deferred` on sight — it never
   reaches the user as a question, and it never lowers a verdict or a phase row
 - An operational task exists only for hand-run steps no repository carries; a phase's own
@@ -82,9 +97,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what actually holds: edit them at their absolute paths, commit nothing, touch nothing else
 - `implement-tasks` says that a pre-launch commit of the spec and tasks directory must carry the
   repository's regenerated indexes, or say it did not — a stale one fails every branch at once
-- `implement-tasks` step 2 offers only review skills that review inline, and expands a fan-out
-  orchestrator the user names (`code-review:start-cr`) into its single-lens skills — inside a
-  workflow agent there is no `Agent` tool, so the orchestrator silently degraded to one pass
+- The in-workflow review no longer passes an empty diff as clean: a root branch is measured
+  against `origin/<default>` (`diffBase`) rather than the parked branch it was cut from
+  (`startRef`), and a review with an empty change, a lens that judged nothing or a skill that was
+  never invoked is `no-verdict` — the branch stays `merged`
+- Every workflow agent prompt opens with a step guard, so an agent never re-runs the skill the
+  relayed user request names
+- The baseline worktree is cut detached, so a parked base branch no longer refuses it
+- CI runners read each command's own exit status from a log beside the worktree — a pipe into
+  `tail` no longer turns a failing suite into a pass
+- A CI failure a fix can only clear by changing behaviour goes to the human as a caveat, not into
+  the fixer's commit
+- `repair-run` commits each human decision separately
+- `validate-spec` probes run in a detached scratch worktree and never install, link or modify
+  dependencies in the user's checkout
+- A check whose only findings are non-blocking reads so in its row, and a regrade between passes
+  is recorded
+- `build-spec` places the spec in the repository's own layout, never the scratchpad, and relays
+  `write-spec`'s questions through `AskUserQuestion` with numbered sub-parts
+- `grill-topic` re-checks every answered question whose cost quoted a size when a later answer
+  widens the scope
+- `split-to-tasks` asks to reuse the branch the spec itself names even when it carries only the
+  spec, writes its report after the coverage re-run, and never abbreviates `depends-on`
 
 ## [0.1.0] - 2026-09-04
 

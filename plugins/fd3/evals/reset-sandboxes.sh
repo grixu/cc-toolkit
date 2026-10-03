@@ -4,7 +4,9 @@
 #
 # sandbox:fixture:git-roots — git-roots is a space-separated list of directories
 # (relative to the sandbox) that get a fresh git repo; "." is the sandbox root,
-# empty means no repo, "-" as fixture means an empty sandbox.
+# empty means no repo, "-" as fixture means an empty sandbox. A fixture's SETUP.sh, when present,
+# runs inside the sandbox after the repos exist, with ORIGINS naming a directory outside every
+# sandbox for the remotes it creates — a remote inside the sandbox would show up in its diff.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -20,6 +22,7 @@ MAPPINGS=(
   "split-unvalidated-precondition:unvalidated-rollout-spec:repo-a repo-b"
   "split-orphan-element:orphan-rollout-spec:repo-a repo-b"
   "split-english-artifacts:rollout-spec:repo-a repo-b"
+  "split-stale-origin:stale-origin-rollout-spec:repo-a repo-b"
   "write-missing-input-stop:empty-project:"
   "write-template-conformance:grilling-summary:."
   "write-no-invented-decisions:no-rollout-order:."
@@ -28,6 +31,7 @@ MAPPINGS=(
   "grill-numbered-questions:retry-topic:."
   "grill-session-files:retry-topic:."
   "build-spec-gate:retry-topic:."
+  "build-spec-reentry:rollout-spec:repo-a repo-b"
   "e2e-chain:grilling-summary:."
   "researcher-output-contract:-:"
   "researcher-multiple-questions:-:"
@@ -47,7 +51,7 @@ for entry in "${MAPPINGS[@]}"; do
   mkdir -p "$dest"
   if [ "$fixture" != "-" ]; then
     # DEFECTS.md is fixture documentation, never part of the scenario's fake project.
-    rsync -a --exclude 'DEFECTS.md' "fixtures/${fixture}/" "$dest/"
+    rsync -a --exclude 'DEFECTS.md' --exclude 'SETUP.sh' "fixtures/${fixture}/" "$dest/"
   fi
 
   if [ -n "$git_roots" ]; then
@@ -59,6 +63,12 @@ for entry in "${MAPPINGS[@]}"; do
         -c user.name='fd3-evals' -c user.email='fd3-evals@localhost' \
         commit -q -m 'fixture baseline' --no-gpg-sign
     done
+  fi
+
+  if [ -f "fixtures/${fixture}/SETUP.sh" ]; then
+    origins="$(pwd)/.sandbox/.origins/${sandbox}"
+    mkdir -p "$origins"
+    (cd "$dest" && ORIGINS="$origins" bash "../../fixtures/${fixture}/SETUP.sh")
   fi
 done
 

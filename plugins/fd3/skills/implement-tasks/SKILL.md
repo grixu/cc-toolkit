@@ -73,14 +73,14 @@ Then make the graph launchable:
   the step-2 batch. Only when the field is absent (tasks split before it existed), derive it:
   order the repository's distinct `branch:` values by their tasks' rollout phase (the numeric
   prefix of `phase:`; `cleanup` sorts after every numbered phase), the first stacking on the
-  repository's base ref (`baseBranch: null` — resolved to the `defaultRef` confirmed in step 2),
+  repository's base ref (`baseBranch: null` — resolved to the `startRef` confirmed in step 2),
   each later one on the previous unit's branch. A derived base is a guess about a decision the
   split made — the report says which bases were read and which derived. The workflow starts
   worktrees and the pull-request chain from these.
 - **Normalise the root's base.** A `branch-base` no task in that repository builds and naming
   either the repository's default branch or the branch its checkout is parked on is that
   repository's root rather than a stack link: it goes to step 3 as `baseBranch: null`, which
-  resolves to whichever of the two step 2 settles as `defaultRef`. Both are step-1 facts, and each
+  resolves to whichever of the two step 2 settles as `startRef`. Both are step-1 facts, and each
   is matched by branch name — the split roots on the default branch for an ordinary run and
   writes `main` where the ref is `origin/main`, but roots on the parked branch where it found the
   checkout carrying the spec's commits, and which of the two this run wants is step 2's to answer.
@@ -110,17 +110,15 @@ Then make the graph launchable:
 
 One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`:
 
-- which code-review skills to run during validation — offer only names present in this session's
-  skill listing, never one recalled from memory; the lens costs roughly a quarter to two fifths
-  of the run, and a review bot on the pull request finds different things, not the same ones —
-  `none` is a valid answer but a real trade. **Offer only skills that review inline.** A review
-  agent in the workflow has no `Agent` tool, so a skill or command that fans out into scanners of
-  its own — `code-review:start-cr` is the one to watch for — cannot do what its name promises
-  there: it quietly reviews everything itself in one pass, which is the single perspective the
-  fan-out exists to avoid. When the user names one anyway, expand it into the single-lens skills
-  it orchestrates (for `start-cr`: `code-review:quality-review`, `code-review:comment-review`,
-  `code-review:security-review`), pass those as `reviewSkills`, and say that is what you did —
-  each becomes its own review agent, which is the fan-out the workflow can actually run;
+- whether to review each branch. Review is the `code-review` plugin's headless lenses — all
+  eight, one agent each, after the branch's scoped CI passes — then a delta review of whatever
+  the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
+  bot on the pull request finds different things, not the same ones: `no` is a valid answer but a
+  real trade. Recommend it when `code-review:cr-scan` is in this session's skill listing; when it
+  is not, ask anyway and say the plugin must be installed — a listing can be withheld or cut
+  short, and a review whose skill is missing comes back as no verdict, never as a clean pass. Take
+  no other skill in its place: a skill that asks questions or fans out into agents of its own
+  cannot run inside a workflow agent;
 - the spec path, when the `spec:` pointers did not resolve to an existing file in step 1;
 - any unresolved repository paths, `branch-base:` disagreements and stale `in-progress` calls
   from step 1;
@@ -157,9 +155,10 @@ Workflow({
   args: {
     specPath: "<absolute path to the spec file, resolved in step 1>",
     tasks: [{ slug, file, name, repository, branch, baseBranch, phase, dependsOn, status }, ...],
-    repos: { "<repository path>": { defaultRef: "<the step-1/2 base, e.g. origin/main>",
+    repos: { "<repository path>": { startRef: "<the step-1/2 base, e.g. origin/main or the parked branch>",
+             diffBase: "origin/<default>",
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
-    reviewSkills: [<the step-2 answer>],
+    review: <true or false — the step-2 answer>,
     maxFixRounds: 3,
     reportPath: <on a relaunch: the previous report's `<output-file>` path — omit on a first launch>
   }
@@ -168,8 +167,11 @@ Workflow({
 
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
-repository's `defaultRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
-Worktrees and target branches are cut from that ref (or the task's stack base). When step 2
+repository's `startRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
+`diffBase` is always `origin/<default>`: it is what a root branch's diff, its scoped CI and its
+review are measured against. On a run that builds on the parked branch, `startRef` names that
+branch, and measuring against it would give every review an empty diff.
+Worktrees and target branches are cut from `startRef` (or the task's stack base). When step 2
 established that a target branch is the branch the repository itself is parked on, say so via
 `parkedBranch` — git refuses a second worktree for it, and the workflow must know to use the
 main checkout rather than discover the refusal. Merges and fixes for that branch then happen in
@@ -188,7 +190,8 @@ dispatch implementation agents yourself.
 
 The completion notification truncates the result — read the full report from the notification's
 `<output-file>` path before relaying anything. The workflow returns per-task statuses,
-per-branch validation outcomes (with each branch's review findings), agent `caveats`, the HIL
+per-branch validation outcomes (with each branch's review findings and the path of its review
+`report.md`), agent `caveats`, the HIL
 list, the tasks left unreachable behind blockers, and its `toolchain` and `baseline` knowledge.
 Relay it faithfully — a failed CI stays failed in the telling, and any totals you state are the
 report's own `tasks[]` tally, never hand-counted — with one distinction the report already
@@ -202,6 +205,14 @@ resolved nowhere is one you launched as stack roots on the step-2 answer, and th
 that base implied did not happen. Relay each as a diagnostic saying which it was. What the second
 asks for is a corrected task file before the next split or relaunch, never a decision that moves
 those tasks, so neither is one of the items step 4 puts to the user below.
+
+A `review` item is a finding the workflow would not fix unasked — a `spec` finding, a `security`
+fix, a boy-scout finding on code the branch never touched, a report-only one, a finding the fixer
+left unfixed, or anything the delta review found in the fixes it did apply. Its branch
+passed CI and stays `merged` until the item is settled: a finding the user wants fixed goes to a
+repair; one the user dismisses needs no work. When every `review` item of a branch is dismissed,
+set that branch's tasks to `done` yourself — CI already passed on the commit they sit on. Give
+the `report.md` path with the findings: the one-line form in the HIL list drops the evidence.
 
 Caveats are triaged, not relayed wholesale: one that names a decision the agent took, a risk,
 an as-built deviation or a commit no review saw goes to the user; one that reports compliance
@@ -230,17 +241,25 @@ composed from the plausible one costs a full round to disprove. The answers spli
       repairs: [{ repo, branch, worktree, base, instructions: [<the user's decisions for this
                  branch, quoted verbatim>], taskFiles: [<task files to flip to done on pass>] }, ...],
       repos: <as at launch>,
+      specPath: <as at launch>,
+      review: <as at launch>,
       reportPath: <the previous report's `<output-file>` path>,
       maxFixRounds: 3
     }
   })
   ```
 
-  `base` is the branch's stack base (or the repo's `defaultRef`). `reportPath` is the previous
+  `base` is the branch's stack base (or the repo's `diffBase`). `reportPath` is the previous
   report's output file; the workflow reads its toolchain and baseline knowledge itself, which is
   what spares a full re-scout plus a full baseline pipeline on every repository in the run. Pass
   the path, never the knowledge. Repair agents receive the decision as their sole
-  authority and never read the spec. Repair validation is CI only — no code review.
+  authority and never read the spec.
+
+  A repair reopens its branch. Before launch, set every `done` task on a repaired branch back to
+  `merged` and list it in that branch's `taskFiles` — the tasks were marked done on a tree the
+  repair is about to change, and only the repair's own final gate may mark them again. With
+  review on, the workflow reviews the repair's own commits after its CI passes; those findings
+  come back as `review` items for the user, never to a fixer.
 
   An `instructions` line says what to change, never asks for validation. "Then run the tests and
   confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent

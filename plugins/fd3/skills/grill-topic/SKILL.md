@@ -89,6 +89,8 @@ If a late fact contradicts a question you already asked, re-ask that numbered qu
 
 When an answer collides with a cost you yourself wrote, say so in the acknowledgement before recording it, and name the fact that would settle the collision. Writing the answer down and carrying the contradiction into the summary makes you the author of a conflict the user never saw.
 
+An answer that widens the scope collides with costs you wrote earlier, too. When one does, re-read every answered question whose recommendation quoted a size — files, lines, pull requests, hours — against the new scope; one whose number no longer holds is voided and re-asked, the same way a returning fact voids a question.
+
 ## Closing
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed.

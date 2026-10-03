@@ -46,8 +46,15 @@ Both are dispatched by the skills, never by the user.
 
 `implement-tasks` drives two dynamic-workflow scripts: `implement-run.js` (waves, merges, then CI
 and code review per target branch) and `repair-run.js` (applies human decisions to existing
-branches and re-validates with CI only). The skill owns the conversation; the workflows own
-everything between launch and report.
+branches, re-validates them with CI and reviews what the repair changed). The skill owns the
+conversation; the workflows own everything between launch and report.
+
+Code review is optional and needs the [`code-review`](../code-review) plugin from this marketplace:
+the workflows drive its headless `cr-prepare`, `cr-scan` and `cr-merge` skills — all eight lenses,
+one agent each. Mechanical and structural findings are fixed and the fixes reviewed again;
+`spec` findings, `security` fixes, boy-scout findings on untouched code, anything report-only and
+anything the fixer left unfixed go to the user. A branch whose review
+did not run, or left findings for the user, stays `merged` rather than `done`.
 
 ## Usage
 

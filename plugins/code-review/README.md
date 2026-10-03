@@ -35,6 +35,22 @@ partial review, invoke `/comment-review` or `/quality-review` directly; both sta
 independently available and share the same rule text as the command. The three
 added lenses have no standalone skill.
 
+### Headless skills for workflows
+
+A workflow agent cannot answer questions or dispatch agents of its own, so `/start-cr`
+cannot run there. Three model-only skills (hidden from the `/` menu) split the same
+pipeline into steps a caller orchestrates, all eight lenses included:
+
+| Skill | Arguments | Writes |
+|---|---|---|
+| `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path>]` | `scope.json`, `conventions.md`, `standards.md` |
+| `code-review:cr-scan` | `--lens <lens> --context <dir>` | `<lens>.md` — run one per active lens, each as its own agent |
+| `code-review:cr-merge` | `--context <dir>` | `report.md`, and returns every finding with its fix-risk class |
+
+None of them edits the checkout or asks anything. An empty change, a lens that did not
+report or a missing lens file comes back as a status, never as a clean review.
+`fd3`'s implementation workflows are the first caller.
+
 The report groups by **file**, with the two vocabularies side by side — comment
 verdicts (`R1`–`R12` · KEEP/REMOVE/REWRITE/MOVE/ADD) and quality findings
 (`` `family` · rule · severity `` across eleven families: `readability`, `tests`,

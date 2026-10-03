@@ -51,7 +51,8 @@ implementation flow: `implemented` means the code exists on the task's own branc
 that branch has reached the target branch, which is now waiting on validation — batched per target
 branch (build, lint, tests, then code review — once, never per task, so parallel tasks never race
 the same tooling); `blocked` means only a human can move it; `done` comes only after that batch
-passes its final gate. Which of the two a file records is a report of what happened, never the
+passes its final gate with nothing left for a human — a review that did not run, or a finding
+waiting on the user, keeps the branch `merged`. Which of the two a file records is a report of what happened, never the
 authority on it: whether a branch reached its target is git's knowledge, and an interrupted run
 re-derives it. `done` is skipped on resume; `implemented` and `merged` both re-enter the merge
 round, where an already-merged branch no-ops.
