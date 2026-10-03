@@ -1,26 +1,19 @@
 # codex-plan-improver
 
-A Claude Code plugin that automatically reviews your implementation plans using OpenAI Codex CLI before you exit plan mode.
+A plan written by one model has that model's blind spots. This plugin gets a second opinion on a
+Claude Code plan from OpenAI Codex before any code is written: Claude sends the plan to Codex,
+revises it from Codex's feedback, and repeats until Codex approves or five rounds pass.
 
-## How it works
+## Requirements
 
-1. You enter plan mode and build an implementation plan
-2. When you try to exit plan mode, the hook intercepts and blocks
-3. The `/codex-review` command is triggered automatically
-4. Claude sends your plan to Codex for review
-5. If Codex says "REVISE", Claude fixes the plan and re-submits (up to 5 rounds)
-6. Once Codex approves, you exit plan mode with an improved plan
-
-## Prerequisites
-
-- [OpenAI Codex CLI](https://github.com/openai/codex) installed and configured
+- [OpenAI Codex CLI](https://github.com/openai/codex), installed and signed in (`codex login`, or
+  an API key in the environment):
   ```bash
   npm install -g @openai/codex
+  codex login
   ```
-- `jq` installed (used by the hook script)
-  ```bash
-  brew install jq  # macOS
-  ```
+- `jq` and `uuidgen` on `PATH`. macOS ships `uuidgen`; install `jq` with `brew install jq`.
+- A writable `/tmp`. The plan, each review and a per-session flag file are written there.
 
 ## Installation
 
@@ -29,44 +22,63 @@ A Claude Code plugin that automatically reviews your implementation plans using 
 /plugin install codex-plan-improver@cc-toolkit
 ```
 
-**Note:** Restart Claude Code after installation for hooks to take effect.
+If the install summary says a reload is needed, run `/reload-plugins` so the hook takes effect.
 
 ## Usage
 
-### Automatic (recommended)
+### Review when leaving plan mode
 
-Just use plan mode normally. The hook intercepts `ExitPlanMode` and triggers the review automatically.
+Work in plan mode as usual. When Claude calls `ExitPlanMode`, a hook denies that call and tells
+Claude to run `/codex-plan-improver:codex-review`. After the review, Claude calls `ExitPlanMode`
+again, the hook lets it through, and you see the revised plan.
 
-### Manual
+The hook asks for the review but cannot force it. It alternates per session: it denies an exit,
+lets the next one through, then denies the one after that. So a plan you reject and Claude revises
+is reviewed again on its next exit. If Claude skips the review and calls `ExitPlanMode` a second
+time, that exit goes through unreviewed.
+
+### Manual review
+
+Run it at any point when a plan exists in the conversation:
 
 ```
 /codex-plan-improver:codex-review
 ```
 
-Or if no other plugin has a `codex-review` command:
+If there is no plan in the conversation, Claude asks what you want reviewed.
+
+### Choosing the model
+
+The default model is `gpt-6.1-sol`. The command passes it to `codex exec -m`, so the `model` setting
+in `~/.codex/config.toml` does not apply. To use a different model, pass its name as the argument:
 
 ```
-/codex-review
+/codex-plan-improver:codex-review gpt-6-astra
 ```
 
-### Model override
+Any model name your Codex CLI accepts for `codex exec -m` works.
 
-Pass a model name as an argument:
+## What you get
 
-```
-/codex-review gpt-6-astra
-```
+For each round, Claude shows:
 
-Default model: `gpt-6.1-sol`
+- Codex Review — Round N: Codex's feedback on correctness, risks, missing steps, simpler
+  alternatives and security, ending in `VERDICT: APPROVED` or `VERDICT: REVISE`.
+- Revisions (Round N): what Claude changed in the plan, one bullet per issue.
+
+Later rounds resume the same Codex session, so Codex keeps the context of earlier rounds. The
+review ends with a final status: approved after N rounds, or "max rounds (5) reached" with the
+remaining concerns listed. Claude skips any Codex suggestion that contradicts a requirement you
+stated, and tells you it did so.
+
+Codex runs in a read-only sandbox: it can read your repository but cannot change files.
 
 ## Configuration
 
-The default Codex model can be configured in `~/.codex/config.toml`. The plugin always uses read-only sandbox mode.
-
-### Environment variables
-
-| Variable | Default | Description |
+| Variable | Default | Effect |
 |---|---|---|
-| `CC_TOOLKIT_CODEX_PLAN_REVIEW` | _(unset — review enabled)_ | Set to `0` or `false` to skip automatic Codex review on plan exit |
+| `CC_TOOLKIT_CODEX_PLAN_REVIEW` | unset (review on) | Any value other than `1` or `true` turns the plan-exit hook off. The manual command still works. |
 
-When the variable is **unset** or set to `1`/`true`, the hook intercepts `ExitPlanMode` and triggers Codex review as usual. Any other value (e.g. `0`, `false`, `no`) disables the hook entirely.
+```bash
+export CC_TOOLKIT_CODEX_PLAN_REVIEW=0   # disable the plan-exit review
+```

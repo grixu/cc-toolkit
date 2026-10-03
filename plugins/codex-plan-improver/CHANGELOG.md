@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: namespaced command, full requirements, how the plan-exit hook alternates, what each review round shows, and the model argument as the only way to change the model (`~/.codex/config.toml` does not apply).
 
 ### Fixed
 
