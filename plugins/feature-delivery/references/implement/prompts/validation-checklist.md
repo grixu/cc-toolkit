@@ -1,7 +1,7 @@
 # Validation Checklist Prompt
 
 Launch 3 subagents IN PARALLEL:
-- Subagent A: subagent_type "code-analyzer" — code quality review
+- Subagent A: subagent_type "general-purpose" — code quality review
 - Subagent B: subagent_type "Explore" — acceptance criteria completeness check
 - Subagent C: subagent_type "general-purpose" — cross-integration check
 

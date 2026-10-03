@@ -250,7 +250,7 @@ Announce: "Phase 5 complete. [X]/[Y] tasks completed, [Z] failed. Starting valid
 - Does the spec touch auth/security? → Weight Subagent A toward security checks (OWASP top 10)
 
 Launch 3 subagents IN PARALLEL:
-- **Subagent A** (code-analyzer): Code quality review — patterns, security, conventions
+- **Subagent A** (general-purpose): Code quality review — patterns, security, conventions
 - **Subagent B** (Explore): Acceptance criteria completeness — check each AC from spec §6
 - **Subagent C** (general-purpose): Cross-integration check — data flow, API contracts, error handling
 

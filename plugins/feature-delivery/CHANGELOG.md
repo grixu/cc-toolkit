@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
 
+### Fixed
+
+- `/implement` validation runs the code-quality review on the built-in `general-purpose` agent instead of `code-analyzer`, an agent type that neither Claude Code nor this plugin provides.
+
 ## [1.1.0] - 2026-03-17
 
 ### Changed
