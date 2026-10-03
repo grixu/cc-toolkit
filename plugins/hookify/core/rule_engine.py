@@ -76,7 +76,8 @@ class RuleEngine:
                         "permissionDecision": "deny",
                         "permissionDecisionReason": combined_message
                     },
-                    "systemMessage": "Hookify: Blocked operation by rule: " + rule.name + "\n"
+                    "systemMessage": "Hookify: Blocked operation by rule: "
+                                     + ", ".join(r.name for r in blocking_rules) + "\n"
                 }
             else:
                 # For other events, just show message
