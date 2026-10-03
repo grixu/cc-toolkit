@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- README rewritten for first-time readers: purpose and the difference from the bundled `/code-review`,
+  requirements, namespaced `/code-review:` invocations, a sample report, the apply menu, scope and
+  limits, and the `cr-*` skills marked as internal
+
 ## [0.4.0] - 2026-10-03
 
 ### Added
