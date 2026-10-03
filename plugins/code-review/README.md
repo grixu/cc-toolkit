@@ -130,7 +130,8 @@ Right after the report, one menu asks what to apply:
 - Report only: change nothing.
 
 The menu offers only the options that have findings, plus Report only. Security fixes are never in the safe batch.
-Spec findings describe work to do, so they are report-only. After the edits, the project's build
+Spec findings describe work to do, so they are report-only, with one exception: a verified
+`wrong-implementation` that one edit fixes can be offered as a fix. After the edits, the project's build
 and tests run once, and the wrap-up lists any approved fix that was skipped or could not be applied
 as approved. When a fix removes a secret from the source, rotating that secret is still your job.
 
