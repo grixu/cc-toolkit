@@ -24,6 +24,9 @@ fi
 touch "$FLAG_FILE"
 
 jq -n '{
-  "decision": "block",
-  "reason": "You are exiting plan mode. Before presenting the plan to the user, run the /codex-plan-improver:codex-review command to have Codex review and improve the plan. The plan is already in your conversation context. After the review is complete, call ExitPlanMode again with the revised plan."
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "You are exiting plan mode. Before presenting the plan to the user, run the /codex-plan-improver:codex-review command to have Codex review and improve the plan. The plan is already in your conversation context. After the review is complete, call ExitPlanMode again with the revised plan."
+  }
 }'
