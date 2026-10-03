@@ -50,7 +50,7 @@ Version: v[X] ([Y] edits)
 [If in requirements gathering:]
 Progress: Phase [N]/6 — [phase name]
 Next: [what needs to happen]
-→ Continue with: /start (resumes automatically)
+→ Interrupted runs do not resume; start over with /feature-delivery:start
 
 [If in implementation:]
 Tasks: [completed]/[total] | Failed: [count]

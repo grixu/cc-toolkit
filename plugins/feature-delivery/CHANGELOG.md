@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `/implement` validation runs the code-quality review on the built-in `general-purpose` agent instead of `code-analyzer`, an agent type that neither Claude Code nor this plugin provides.
+- `/current` no longer tells you `/start` resumes an interrupted requirement; it starts a new one.
 
 ## [1.1.0] - 2026-03-17
 
