@@ -66,6 +66,8 @@ class Rule:
                 field = 'command'
             elif event == 'file':
                 field = 'new_text'
+            elif event == 'prompt':
+                field = 'prompt'
             else:
                 field = 'content'
 
