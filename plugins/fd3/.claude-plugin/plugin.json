@@ -3,8 +3,8 @@
   "version": "0.2.0",
   "description": "Spec-driven delivery pipeline: grill a topic into ratified decisions, write and validate a spec against it, split the spec into dependency-ordered tasks, then implement them in isolated worktrees with batched validation.",
   "author": {
-    "name": "grixu",
-    "email": "mateusz.gostanski@gmail.com"
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
   },
   "repository": "https://github.com/grixu/cc-toolkit",
   "keywords": [
