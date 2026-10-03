@@ -113,8 +113,9 @@ The local cache follows file content: a moved or renamed file is still a cache h
 
 ## Cost and limits
 
-- ElevenLabs bills per transcription; the skills estimate about $0.30 per hour of audio.
-- `local` asks before it transcribes more than 5 files. `yt-transcribe` asks before 5 or more videos.
+- ElevenLabs bills per transcription, about $0.30 per hour of audio (the estimate `local-transcribe` uses).
+- `local` asks before it transcribes more than 5 files. `yt-transcribe` asks before 5 or more videos;
+  `/scribe:yt` has no batch-size check of its own.
 - Items are transcribed one at a time to stay under ElevenLabs rate limits. Processing runs in parallel.
 - The bundled script rejects files over 1 GB. The skills warn above 750 MB and, for local files, above 3 hours.
 
