@@ -136,12 +136,12 @@ The agent is defined at `${CLAUDE_PLUGIN_ROOT}/agents/name-challenger.md`. Instr
 
 This phase is **low freedom** — follow the probe-then-fallback pattern exactly. Do not improvise alternatives to the probe step.
 
-**Probe:** Attempt one `search_domains` call for the first name in survivors, with `tlds: [".com"]`.
+**Probe:** Attempt one `search_domains` call for the first name in survivors, with `name` set to the lowercase name and `tlds: ["com"]` (extensions take no leading dot).
 
 **If the probe succeeds (MCP healthy):**
 
-For each name in survivors, call `check_domain_availability` for `.com`, `.io`, `.co`, and `.app`.
-- If `.com` is taken for a name, also call `generate_domain_variations` to surface creative alternatives
+For each name in survivors, check `.com`, `.io`, `.co`, and `.app` with `check_domain_availability`, which takes full domain names (`domains: ["veltora.com", "veltora.io", ...]`, at most 50 per call).
+- If `.com` is taken for a name, also call `generate_domain_variations` (with `name`) to surface `.com` alternatives built from common prefixes and suffixes
 - Process up to 5 names concurrently
 
 **If the probe fails (tool not found, HTTP error, or timeout):**
@@ -177,7 +177,7 @@ Then use `AskUserQuestion` to offer three options:
 3. **Done** — end the session
 
 **If option 1 (Explore):**
-Ask which name. Call `generate_domain_variations` for that name across multiple TLDs and suffix patterns. Present the variations with availability status. If `generate_domain_variations` is unavailable, list common TLD alternatives manually (.ai, .co, .app, .io, .dev, -hq.com, get[name].com).
+Ask which name. Call `generate_domain_variations` for that name to get `.com` prefix and suffix variations, and `search_domains` for that name to check it across other extensions. Present the variations with availability status. If `generate_domain_variations` is unavailable, list common TLD alternatives manually (.ai, .co, .app, .io, .dev, -hq.com, get[name].com).
 
 **If option 2 (Another round):**
 Summarize the rejection reasons from the challenger output. Identify the most common failure dimension (e.g., "5 names failed distinctiveness, 3 failed context fit"). Adjust generation accordingly — if distinctiveness was the top failure, reduce metaphorical/evocative names and increase coined. Return to Phase 1.
