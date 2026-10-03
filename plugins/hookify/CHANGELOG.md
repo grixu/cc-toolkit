@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `prompt` rules now match the submitted prompt. The engine read `user_prompt`, but Claude Code sends the text as `prompt`; a simple `pattern:` and a `field: prompt` or `field: user_prompt` condition all read it now.
+- `file` rules with a simple `pattern:` (or a `new_text` condition) now see the content of `Write` calls. Before, `new_text` read only Edit's `new_string`, so new files were never checked.
 
 ## [0.4.0] - 2026-04-27
 
