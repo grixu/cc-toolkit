@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: a deprecation notice pointing to fd3, namespaced commands with examples, what each command does, and where the files are stored.
+
+### Deprecated
+
+- feature-delivery is deprecated in favour of the fd3 plugin.
 
 ### Fixed
 
