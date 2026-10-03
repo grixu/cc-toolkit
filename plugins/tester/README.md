@@ -1,68 +1,111 @@
-# tester — on-demand manual verification
+# tester
 
-`tester` is the **light** counterpart to `mt` (a heavier, plan-persisting sibling not published
-in this marketplace). Where `mt` maintains a persistent, spec-projected, staleness-tracked test
-corpus, `tester` does one thing: **verify a running app right now**, against a spec or against
-whatever you just changed — then forget.
+Unit tests pass, but nobody has checked that the change works in the running app. tester does
+that check: give it a spec, a feature area, or nothing (it then uses your git diff), and it works
+out what to test, runs the checks through the API, the browser and simulated dependency failures,
+and reports what passed and failed with a recorded command behind every verdict.
 
-One command, one ephemeral **brief**, no config and no persisted plan. It is the packaged
-form of the ad-hoc flow that already works in practice: point an agent at a running stack
-and a spec, let it discover the environment, derive checks from the acceptance criteria, and
-fan out subagents that return evidence-backed PASS/FAIL tables.
-
-```
-/tester:run architecture/fd/<slug>/spec.md      # derive checks from a spec's ACs
-/tester:run "the org-role assignment endpoints"  # derive checks from a named area
-/tester:run                                       # derive scope from the git diff
-```
-
-## How it works
-
-1. **Resolve scope** — a spec path/URL, free-text, or (empty) the `git diff`.
-2. **Discover the live stack → build `$WORK/BRIEF.md`** — ports, real routes, personas +
-   sessions, DB access, and the fault surface, all discovered **fresh** (this is what rots in
-   stored config). The brief is the single shared contract every subagent reads.
-3. **Derive suites** from the ACs (or the diff) — positives per observable behavior,
-   negatives only for enumerated error paths; out-of-scope behavior is flagged as a gap, not
-   invented.
-4. **Confirm scope + mutation consent** (one HIL prompt; default: no real mutations).
-5. **Fan out — one subagent per suite** across three surfaces, each returning **only** a
-   PASS/FAIL table:
-   | Surface | Executor | Tool |
-   |---|---|---|
-   | API + DB | `tester:api` | curl (+ read-only DB SELECTs) |
-   | UI | `tester:ui` | the `agent-browser` CLI |
-   | Error handling | `tester:fault` | dependency pause/stop **or** a WireMock proxy |
-6. **Fault suite runs solo and last**, then the stack is independently confirmed healthy.
-7. **Triage** every genuine failure into an **impl**, **test**, or **spec** defect.
-
-The contract throughout: the model stays **in the execution loop, out of the verdict loop** —
-every check is a concrete command whose recorded output decides pass/fail. A pass without
-command proof does not exist.
+It keeps no configuration and saves no test plan. Each run discovers the environment from scratch
+and leaves only a report.
 
 ## Requirements
 
-- A **running** stack in a non-production environment (`tester` refuses production-looking
-  base-URLs).
-- [`agent-browser`](https://github.com/vercel-labs/agent-browser) for UI suites (absent → UI
-  checks are skipped with a reason).
-- Docker for the WireMock-proxy fault mechanism (the pause/stop mechanism needs only the
-  dependency's container).
+- A local or staging stack. tester stops if a base URL looks like production. If the stack is
+  down, tester can start it after you agree.
+- `curl` and `git`.
+- [agent-browser](https://github.com/vercel-labs/agent-browser), for UI checks and for logging
+  test users in. Without it, UI checks are skipped with the reason stated.
+- Docker, for fault checks that pause a dependency's container or put a WireMock proxy in front
+  of it.
+- Optional: a database client (for example `psql`) or a database MCP tool, for checks that read
+  database rows. These queries are read-only.
 
-## When to use `tester` vs `mt`
+## Installation
 
-- **`tester`** — "I changed something, verify it against the running app now." Ephemeral, no
-  artifacts, driven by the diff or a spec pointer.
-- **`mt`** — "maintain a re-runnable test suite that tracks spec drift over many iterations."
-  Persisted plan, hashed `deps`, staleness, DoR gates.
+```
+/plugin marketplace add grixu/cc-toolkit
+/plugin install tester@cc-toolkit
+```
 
-They share no code and can be installed independently; only `tester` ships here today.
+## Usage
 
-## Design
+You start tester yourself; Claude does not run it on its own.
 
-- `commands/run.md` — the single orchestrating command (`disable-model-invocation`, user-run
-  only).
-- `agents/` — `api`, `ui`, `fault`: per-suite executors under the hard assertion contract.
-- `references/` — `BRIEF_TEMPLATE.md` (the environment-brief skeleton) and
-  `FAULT_INJECTION.md` (pause/stop vs WireMock proxy, with the traps and the always-restore
-  invariant).
+```
+/tester:run docs/specs/team-invites.md          # check a spec's acceptance criteria
+/tester:run "the org-role assignment endpoints"  # check a named area of the app
+/tester:run                                      # check what changed since the main branch
+```
+
+## What a run does
+
+1. Scope. It reads the spec's acceptance criteria, the code behind a named area, or the
+   `git diff` against the merge base with the main branch.
+2. Discovery. It finds the live ports, the real routes, the test users and their roles, database
+   access, and the dependencies it can make fail. It records a snapshot of the current state and
+   writes everything into a brief that every check reads.
+3. Checks. It turns each expected behavior into concrete checks: API (curl), UI (browser) and
+   error handling (fault injection).
+4. One round of questions before anything runs:
+   - which suites to run;
+   - whether checks may make real changes through the app (`all`, `selected` or `none`; the
+     default is `none`, which runs only reads and attempts that are expected to be denied);
+   - which environment changes are allowed, such as starting services, seeding rows or applying
+     a migration;
+   - anything you could supply to unlock a check that would otherwise be blocked, such as a
+     credential, a CLI on `PATH`, or a disposable email address for sign-up flows.
+5. Execution. API and UI suites run in parallel, one subagent per suite. The fault suite runs
+   alone and last. Afterwards tester confirms the stack is healthy.
+6. Report.
+
+## What you get
+
+A report in the conversation:
+
+- a result table per suite, with each check marked `PASS`, `FAIL`, `BLOCKED`, `ERROR` or `SKIP`;
+- every `FAIL` tied to its acceptance criterion, with expected and actual output, and classified
+  as an implementation defect, a test defect or a spec defect;
+- unrelated anomalies noticed along the way, marked as not investigated;
+- behaviors it could not check, each with the reason;
+- the teardown ledger: every change made to your environment, how it was reverted, and anything
+  left in place on purpose;
+- one suggested next step.
+
+The brief, session cookies, ledger and screenshots live in a temporary directory
+(`$TMPDIR/tester.XXXXXX`) whose path the report gives. Nothing is written to your repository.
+
+## Safety rules
+
+- It refuses production-looking base URLs.
+- It makes real changes through the app only on the surface you approved.
+- It logs every environment change, reverts it, and checks the result against the starting
+  snapshot.
+- It deletes data it created in your stores by the exact recorded name, never by pattern.
+- It reports problems and does not fix your code. The one exception: with your approval, it adds
+  an injection point so a dependency can be made to fail.
+
+## Fault injection
+
+tester can make a dependency fail in three ways, in this order of preference:
+
+1. Pause or stop the dependency's container, to test "the dependency is down".
+2. Point the app's base-URL setting for the dependency at a temporary WireMock proxy that returns
+   a chosen 5xx, a timeout or a malformed response.
+3. With your approval, when the app has no base-URL setting for that dependency, add a small,
+   reversible injection point in the source.
+
+The dependency is always restored and the proxy removed, even when a check errors.
+
+## Internals
+
+`/tester:run` uses these parts; you do not invoke them directly.
+
+- Agents `tester:api` and `tester:ui` run on `sonnet` to save cost. `tester:fault` uses your
+  session model, because it is the one agent that disrupts the shared stack.
+- `references/BRIEF_TEMPLATE.md` is the skeleton of the brief.
+- `references/FAULT_INJECTION.md` describes the three fault mechanisms and their traps.
+- `evals/` is the maintainer's promptfoo test suite, run against a fixture app with planted
+  defects. It is developer tooling, needs Docker, and is described in `evals/README.md`.
+
+tester is the lightweight counterpart to `mt`, an unpublished plugin that maintains a persistent,
+re-runnable test suite.
