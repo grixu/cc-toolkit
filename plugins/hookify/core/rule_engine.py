@@ -24,6 +24,9 @@ def compile_regex(pattern: str) -> re.Pattern:
     return re.compile(pattern, re.IGNORECASE)
 
 
+EVENT_HOOKS = {'prompt': 'UserPromptSubmit', 'stop': 'Stop'}
+
+
 class RuleEngine:
     """Evaluates rules against hook input data."""
 
@@ -108,6 +111,12 @@ class RuleEngine:
         # Extract tool information
         tool_name = input_data.get('tool_name', '')
         tool_input = input_data.get('tool_input', {})
+
+        # Tool hooks load every rule for tools other than Bash/Edit/Write/MultiEdit,
+        # so without this a stop rule would deny a Read and a prompt rule would match an Agent prompt
+        required_hook = EVENT_HOOKS.get(rule.event)
+        if required_hook and input_data.get('hook_event_name') != required_hook:
+            return False
 
         # Check tool matcher if specified
         if rule.tool_matcher:
