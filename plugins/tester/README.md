@@ -6,7 +6,7 @@ out what to test, runs the checks through the API, the browser and simulated dep
 and reports what passed and failed with a recorded command behind every verdict.
 
 It keeps no configuration and saves no test plan. Each run discovers the environment from scratch
-and leaves only a report.
+and leaves a report. It changes your source only with your approval (see Fault injection).
 
 ## Requirements
 
@@ -72,7 +72,8 @@ A report in the conversation:
 - one suggested next step.
 
 The brief, session cookies, ledger and screenshots live in a temporary directory
-(`$TMPDIR/tester.XXXXXX`) whose path the report gives. Nothing is written to your repository.
+(`$TMPDIR/tester.XXXXXX`) whose path the report gives. Your repository changes only when you approve an injection point, or
+keep a change in place on purpose, and the ledger lists either.
 
 ## Safety rules
 
