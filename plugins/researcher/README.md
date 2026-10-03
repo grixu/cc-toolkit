@@ -1,128 +1,120 @@
 # researcher
 
-A Claude Code plugin that answers a research question with a **source-grounded, cited HTML report**.
+researcher answers a research question with an HTML report in which every claim cites a numbered web source. It searches several angles in parallel, checks the findings for gaps and contradictions, and lets you extend the same report with follow-up questions.
 
-An interactive front-end skill gathers a brief (depth, recency, source mix, audience), then launches a bundled
-**Dynamic Workflow** that fans out **firecrawl** retrieval subagents into **findings** — each carrying a verbatim
-**evidence span** — gates rounds on coverage and contradictions, synthesizes a single cited answer where every claim
-traces to a numbered source, and renders it as an HTML report. Follow-up questions **extend the same report** rather
-than spawning a new file each time.
+## Install
 
-## ⚠ Requirements
-
-This plugin depends on capabilities that are **not on by default** — read this before installing.
-
-- **Dynamic Workflows** — Claude Code **v2.1.154+**, on a **paid plan**. They are **off by default on Pro** (enable
-  per-session) and available on Max. The whole retrieval pipeline runs inside a workflow so its large, verbose
-  intermediate output stays out of your main session. If the `Workflow` tool isn't available, the skill stops and
-  asks you to enable it — it will not silently degrade.
-- **firecrawl MCP** — install the firecrawl MCP server and set `FIRECRAWL_API_KEY`. Because background workflow
-  subagents auto-deny permission prompts, the firecrawl tools must be **allow-listed**. Add to your settings:
-
-  ```json
-  {
-    "permissions": {
-      "allow": [
-        "mcp__firecrawl__firecrawl_search",
-        "mcp__firecrawl__firecrawl_scrape"
-      ]
-    }
-  }
-  ```
-
-  (WebSearch is used as an automatic fallback when firecrawl errors or a site is unsupported.)
-- **`mmdc`** *(optional — for diagrams)* — the Mermaid CLI, used to compile diagrams to SVG at compose time. Install
-  globally with `pnpm add -g @mermaid-js/mermaid-cli`. The skill detects it **once, up front** (`command -v mmdc`) and
-  tells the workflow whether diagrams are available — it assumes a **global** `mmdc` and never downloads a renderer
-  mid-run. If `mmdc` is missing, the report renders **without diagrams** (reconstructing that data as tables/charts)
-  rather than failing or fetching anything.
-- **Charts need no install** — a version-pinned **Chart.js** ships with the plugin and is copied into each report's
-  `assets/` (no CDN, fully offline).
-- **Styling is built-in** — a shipped `report.css` is copied alongside (system fonts, light/dark via CSS, no theming
-  setup, offline). No configuration required.
-
-## Installation
-
-From the `grixu/cc-toolkit` marketplace:
+researcher is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then install the plugin:
 
 ```
 /plugin marketplace add grixu/cc-toolkit
-/plugin install researcher
+/plugin install researcher@cc-toolkit
 ```
 
+## Requirements
+
+- Dynamic workflows. Claude Code offers them on all paid plans, with Anthropic API access, and on Amazon Bedrock, Google Cloud's Agent Platform and Microsoft Foundry. On Pro, turn them on from the Dynamic workflows row in `/config`. Without the `Workflow` tool, the skill stops and tells you to enable it.
+- The firecrawl MCP server. When firecrawl fails or cannot read a site, the research agents fall back to WebSearch.
+- Optional: the Mermaid CLI for diagrams, `pnpm add -g @mermaid-js/mermaid-cli`. Without a global `mmdc`, the report shows that data as tables or charts instead.
+
+Charts (Chart.js 4.5.0) and styling ship with the plugin, so reports work offline and load nothing from a CDN.
+
+### Permissions
+
+The research runs as a background workflow of many agents. Those agents follow your permission rules, and an agent that hits a permission prompt pauses the run until you answer it. Allow the search tools before you start:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__firecrawl__firecrawl_search",
+      "mcp__firecrawl__firecrawl_scrape",
+      "WebSearch"
+    ]
+  }
+}
+```
+
+These rules assume your firecrawl server is named `firecrawl`; change the `mcp__firecrawl__` prefix if yours has another name.
+
+The agents also run shell commands (`mkdir`, `rm`, `cp`, `sed`, `date`, `curl` for source images, and `mmdc`) and write files under `./research/`. If your permission mode asks before these, allow them too. Claude Code also asks you to approve the workflow launch itself; how often depends on your permission mode.
+
 ## Usage
+
+The skill runs only when you type the command. A plain "research X" request does not start it.
 
 ```
 /researcher:research "How does HTTP/3 differ from HTTP/2 in practice?"
 /researcher:research "Porównaj bazy wektorowe pod kątem produkcyjnym"
 ```
 
-The skill infers as much of the brief as it can from your question and asks — in a **single** prompt — only about
-the dimensions it can't confidently infer:
+The skill infers the brief from your question and asks one combined question only about what it cannot infer:
 
-- **Depth** — Quick (1 round) · Standard (2 rounds) · Deep (3 rounds + an adversarial Verifier pass)
-- **Recency** — Recent (~2 years) · Any · Latest (fast-moving)
-- **Sources** — Broad · Authoritative (primary + reputable) · Technical-academic (docs/standards/papers)
-- **Audience** — Lay · Informed · Practitioner · Expert (calibrates the writing only)
+| Setting | Options | Effect |
+|---|---|---|
+| Depth | Quick, Standard (default), Deep | Up to 1, 2 or 3 research rounds; the first round runs 3, 5 or 6 parallel searches. Deep adds a pass that tries to refute findings. |
+| Recency | Recent (about 2 years), Any (default), Latest | Which sources it favors |
+| Sources | Broad (default), Authoritative, Technical-academic | Which source types it accepts |
+| Audience | Lay, Informed (default), Practitioner, Expert | How the report is written; nothing else |
 
-The **report language follows your question** (an explicit "…in English" / "…po polsku" in the question overrides it).
+A further round runs only when the previous one left gaps, and the run stops early when a round adds no findings.
 
-When the run finishes, the skill prints a short manifest (title, sections, source/round counts) and the path to the
-report, and offers to open it. It then shows ready-to-use **follow-up questions**: pick any (or add your own) and the
-report is deepened in place.
+The report is written in the language of your question. To override it, say so in the question ("...in English", "...po polsku").
 
-## The report
+A run takes several minutes and uses many tokens. Those tokens stay inside the workflow, not in your session. Quick costs the least; Deep is the most thorough.
 
-Each report is a folder (default `./research/<slug>/`):
+## What you get
+
+When the run finishes, the skill prints the report title, its sections, and the source and round counts. It then prints the path and offers to open the report.
+
+The report lives in a folder under your current directory:
 
 ```
 research/<slug>/
-├── output.html          # the live report — open this
-├── state.json           # machine-readable HEAD (schema, brief, sources, counts) — the follow-up registry
-├── findings/            # sharded findings (NNN.json, ≤20 each) — append-only; the Synthesizer reads them directly on follow-ups
-├── answer.md            # the synthesized answer, as markdown
-├── assets/              # shipped report.css + pinned chart.umd.js (+ any downloaded source images)
-├── diagrams/            # compiled diagram SVGs beside their .mmd sources
-└── snapshots/           # the prior output.html, snapshotted before each overwrite
+  output.html     the report; open this
+  answer.md       the same answer as Markdown
+  state.json      the brief and the source list; used to extend the report
+  findings/       the extracted findings with verbatim quotes, as JSON files
+  assets/         report.css, Chart.js when the report has charts, downloaded source images
+  diagrams/       Mermaid sources and compiled SVGs
+  snapshots/      earlier versions, as output.<UTC timestamp>.html
 ```
 
-State is written sharded — a small `state.json` HEAD plus bounded `findings/` shards — so a large/deep report
-persists reliably (an agent never has to emit the whole corpus in one step). Follow-up runs are append-only: the
-Synthesizer reads the prior findings shards directly, and this run's new findings are written as new shards rather
-than rewriting the prior ones.
+The report is one page:
 
-- **One linear, cited document.** Inline `[n]` citations link to a numbered **Sources** list (with trust tiers and
-  access dates); nothing is hidden behind toggles. Light + dark via `prefers-color-scheme`, system fonts, prints cleanly.
-- **Visuals only where they earn their place.** Quantitative data → Chart.js charts (with a `<noscript>` data table);
-  flows/relationships → Mermaid diagrams compiled to SVG; comparisons → HTML tables. Reconstructed from the findings;
-  a source image is downloaded only when it's genuinely irreplaceable (and always attributed).
-- **Agent-readable.** The HTML body stays semantically clean — heavy artifacts live in the sidecar folders — so the
-  report is just as usable when an agent reads it as documentation.
-- **It evolves.** Follow-up runs re-synthesize the whole answer holistically — the Synthesizer reads the prior
-  findings shards directly and rebuilds from all findings (never reusing the prior prose) — and snapshot the prior
-  version first. New findings are appended as new shards and source ids are append-only, so existing citations never break.
+- Inline `[n]` citations link to a numbered source list. Each source shows a trust tier (primary, secondary, community) and an access date.
+- Unresolved contradictions and open questions get their own boxes.
+- Charts, diagrams and tables appear only where they help.
+- It supports light and dark mode and prints cleanly.
+
+A citation means "the source says this", not "this is true". Each finding carries a verbatim quote from its source, and Deep adds an adversarial check on top.
+
+## Continue a report
+
+- Same session: after a run, the skill offers up to four follow-up questions. Pick any or write your own, and it researches them and rewrites the same report. The previous version moves to `snapshots/`, and existing citation numbers stay valid.
+- New session: run the command with a related question. When a report on the same topic exists, the skill asks whether to extend it or start fresh. To extend a different report, ask for it, and the skill lists the reports under `./research/`.
+
+## Troubleshooting
+
+| Error | Meaning | What to do |
+|---|---|---|
+| `no-findings` | No search returned usable results | Check that firecrawl works and is allowed; broaden the question |
+| `schema-mismatch` | An incompatible version of the plugin made the existing report | Start a fresh report |
+| `persist-failed` | Saving the findings failed; the HTML report was not changed | Run the command again |
+| `compose-failed` | The findings are saved but the HTML was not rendered | Run the command again |
+| `synthesis-failed` | No answer was produced | Run the command again |
+| `no-goal` | No question reached the workflow | Run the command with a question |
+
+Some sites, such as reddit.com, cannot be scraped. The agents fall back to search snippets, and the skill lists skipped sources as warnings.
 
 ## How it works
 
-```
-brief → [ Dynamic Workflow ] → output.html
-            plan distinct sub-queries
-            ↓  (assessor-gated rounds)
-            parallel firecrawl retrievers → findings (verbatim evidence spans)
-            → Conflict-scout → (deep: Verifier) → Assessor (the single gate)
-            ↓  on green light
-            Synthesizer (once) → Editor (audience) → Composer (HTML)
-```
+The skill launches the bundled workflow `workflows/research.js`, which runs these steps:
 
-The Assessor decides whether to run another round (bounded by a per-depth round cap, not a token budget). On a deep
-brief, a Verifier adversarially challenges material findings. The Synthesizer composes an audience-neutral cited draft;
-the Editor cuts it for concision and the chosen audience and marks earn-their-place visuals; the Composer renders the
-HTML and returns only the path + manifest.
+1. Plan distinct search angles.
+2. Run retrieval rounds: parallel searches extract findings with quotes, a contradiction check runs, and an assessor decides whether another round is needed.
+3. Write one cited answer.
+4. Edit it for the chosen audience.
+5. Save the state, then render the HTML.
 
-## Notes
-
-- Research is token-heavy by nature (many retrievers, several reasoning stages). Those tokens stay **inside the
-  workflow**, not in your main session. Quick/standard/deep trade thoroughness for cost.
-- The guarantee is **"the source says this," not "this is true"** — fidelity is enforced structurally via verbatim
-  evidence spans; deep briefs add adversarial verification on top.
-- `reddit.com` and some walled sites aren't scrapeable; the retriever falls back to search snippets or alternatives.
+Contributors: `CONTEXT.md` defines the terms, and `docs/adr/` records the design decisions.
