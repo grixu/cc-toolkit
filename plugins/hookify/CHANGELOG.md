@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `references/rule-syntax.md`: every frontmatter key, field, operator, event outcome and parser limit.
+
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: install from the `cc-toolkit` marketplace, a quick start, one rule format with event and field tables, rule locations, namespaced `/hookify:*` commands, what this fork adds, and known limits. Corrects the Python requirement to 3.9 or later.
 
 ### Fixed
 
