@@ -230,8 +230,8 @@ event: stop
 action: block
 conditions:
   - field: transcript
-    operator: not_contains
-    pattern: npm test|pytest|cargo test
+    operator: regex_match
+    pattern: ^(?![\s\S]*"command":\s*"[^"]*(npm test|pytest|cargo test))
 ---
 
 **Tests not detected in transcript!**
@@ -239,7 +239,7 @@ conditions:
 Before stopping, please run tests to verify your changes work correctly.
 ```
 
-**This blocks Claude from stopping** if no test commands appear in the session transcript. Enable only when you want strict enforcement.
+**This blocks Claude from stopping** until the session transcript records a Bash call that runs `npm test`, `pytest` or `cargo test`. The pattern is a negative lookahead because `not_contains` compares literal text and cannot express "none of these". Enable only when you want strict enforcement.
 
 ## Advanced Usage
 
