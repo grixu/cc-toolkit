@@ -152,8 +152,8 @@ background.
   there are not blamed on your branch. Each branch then runs the checks scoped to its changes, gets
   up to three fix rounds, and finishes with one full run.
 - Review (optional). After the checks pass, the `code-review` plugin reviews the branch with one
-  agent per active lens, six to eight. High and medium findings rated safe or structural are fixed
-  automatically, and the fixes are reviewed again. Security and spec findings, findings in code the
+  agent per active lens, six to eight. High and medium findings rated safe or structural, and
+  `comment` findings rated safe, are fixed automatically, and the fixes are reviewed again. Security and spec findings, findings in code the
   branch did not touch, findings rated report-only, and anything the fixer left unfixed come to
   you. `nit` findings, the lowest severity, are reported and never applied.
 
