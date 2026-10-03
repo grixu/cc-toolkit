@@ -214,7 +214,7 @@ Match user prompt content (advanced):
 ---
 event: prompt
 conditions:
-  - field: user_prompt
+  - field: prompt
     operator: contains
     pattern: deploy to production
 ---
@@ -394,7 +394,7 @@ Warning message
 **Field options:**
 - Bash: `command`
 - File: `file_path`, `new_text`, `old_text`, `content`
-- Prompt: `user_prompt`
+- Prompt: `prompt` (`user_prompt` still works as an alias)
 
 **Operators:**
 - `regex_match`, `contains`, `equals`, `not_contains`, `starts_with`, `ends_with`

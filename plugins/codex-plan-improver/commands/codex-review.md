@@ -42,7 +42,7 @@ Run Codex CLI in non-interactive mode to review the plan:
 
 ```bash
 codex exec \
-  -m gpt-5.3-codex \
+  -m gpt-6.1-sol \
   -s read-only \
   -o /tmp/codex-review-${REVIEW_ID}.md \
   "Review the implementation plan in /tmp/claude-plan-${REVIEW_ID}.md. Focus on:
@@ -61,7 +61,7 @@ If changes are needed, end with exactly: VERDICT: REVISE"
 
 **Notes:**
 
-- Use `-m gpt-5.3-codex` as the default model (configured in `~/.codex/config.toml`). If the user specifies a different model via `$ARGUMENTS` (e.g., `/codex-review o4-mini`), use that instead.
+- Use `-m gpt-6.1-sol` as the default model; it overrides the `model` set in `~/.codex/config.toml`. If the user specifies a different model via `$ARGUMENTS` (e.g., `/codex-review gpt-6-astra`), use that instead.
 - Use `-s read-only` so Codex can read the codebase for context but cannot modify anything.
 - Use `-o` to capture the output to a file for reliable reading.
 
@@ -71,7 +71,7 @@ If changes are needed, end with exactly: VERDICT: REVISE"
 2. Present Codex's review to the user:
 
 ```
-## Codex Review — Round N (model: gpt-5.3-codex)
+## Codex Review — Round N (model: gpt-6.1-sol)
 
 [Codex's feedback here]
 ```
@@ -122,7 +122,7 @@ Then go back to **Step 4** (Read Review & Check Verdict).
 Once approved (or max rounds reached):
 
 ```
-## Codex Review — Final (model: gpt-5.3-codex)
+## Codex Review — Final (model: gpt-6.1-sol)
 
 **Status:** Approved after N round(s)
 
@@ -135,7 +135,7 @@ Once approved (or max rounds reached):
 If max rounds were reached without approval:
 
 ```
-## Codex Review — Final (model: gpt-5.3-codex)
+## Codex Review — Final (model: gpt-6.1-sol)
 
 **Status:** Max rounds (5) reached — not fully approved
 
@@ -167,7 +167,7 @@ Max 5 rounds. Each round preserves Codex's conversation context via session resu
 ## Rules
 
 - Claude **actively revises the plan** based on Codex feedback between rounds — this is NOT just passing messages, Claude should make real improvements
-- Default model is `gpt-5.3-codex`. Accept model override from the user's arguments (e.g., `/codex-review o4-mini`)
+- Default model is `gpt-6.1-sol`. Accept model override from the user's arguments (e.g., `/codex-review gpt-6-astra`)
 - Always use read-only sandbox mode — Codex should never write files
 - Max 5 review rounds to prevent infinite loops
 - Show the user each round's feedback and revisions so they can follow along

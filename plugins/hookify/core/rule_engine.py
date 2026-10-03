@@ -24,6 +24,9 @@ def compile_regex(pattern: str) -> re.Pattern:
     return re.compile(pattern, re.IGNORECASE)
 
 
+EVENT_HOOKS = {'prompt': 'UserPromptSubmit', 'stop': 'Stop'}
+
+
 class RuleEngine:
     """Evaluates rules against hook input data."""
 
@@ -76,7 +79,8 @@ class RuleEngine:
                         "permissionDecision": "deny",
                         "permissionDecisionReason": combined_message
                     },
-                    "systemMessage": "Hookify: Blocked operation by rule: " + rule.name + "\n"
+                    "systemMessage": "Hookify: Blocked operation by rule: "
+                                     + ", ".join(r.name for r in blocking_rules) + "\n"
                 }
             else:
                 # For other events, just show message
@@ -107,6 +111,12 @@ class RuleEngine:
         # Extract tool information
         tool_name = input_data.get('tool_name', '')
         tool_input = input_data.get('tool_input', {})
+
+        # Tool hooks load every rule for tools other than Bash/Edit/Write/MultiEdit,
+        # so without this a stop rule would deny a Read and a prompt rule would match an Agent prompt
+        required_hook = EVENT_HOOKS.get(rule.event)
+        if required_hook and input_data.get('hook_event_name') != required_hook:
+            return False
 
         # Check tool matcher if specified
         if rule.tool_matcher:
@@ -224,9 +234,9 @@ class RuleEngine:
                     except UnicodeDecodeError as e:
                         print(f"Warning: Encoding error in transcript {transcript_path}: {e}", file=sys.stderr)
                         return ''
-            elif field == 'user_prompt':
-                # For UserPromptSubmit events
-                return input_data.get('user_prompt', '')
+            elif field in ('prompt', 'user_prompt'):
+                # Claude Code sends UserPromptSubmit text as `prompt`; `user_prompt` stays as an alias for existing rules
+                return input_data.get('prompt')
 
         # Handle special cases by tool type
         if tool_name == 'Bash':
@@ -238,6 +248,9 @@ class RuleEngine:
                 # Write uses 'content', Edit has 'new_string'
                 return tool_input.get('content') or tool_input.get('new_string', '')
             elif field == 'new_text' or field == 'new_string':
+                # Write has no new_string; its whole content is the new text
+                if tool_name == 'Write':
+                    return tool_input.get('content', '')
                 return tool_input.get('new_string', '')
             elif field == 'old_text' or field == 'old_string':
                 return tool_input.get('old_string', '')

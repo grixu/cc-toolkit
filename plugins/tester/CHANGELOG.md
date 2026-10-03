@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: it opens with the problem instead of the `mt` comparison, completes the requirements, and documents the question round, the report, the safety rules, all three fault mechanisms, and which parts are internal.
 
 ### Fixed
 

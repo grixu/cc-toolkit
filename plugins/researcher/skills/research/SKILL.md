@@ -21,8 +21,8 @@ returns only a compact manifest + path — the verbose HTML never enters this co
 
 ## 0. Prerequisites (check once, fail clearly)
 
-This skill needs **Dynamic Workflows** enabled (Claude Code v2.1.154+, paid plan; on Pro they must be enabled
-per-session) and the **firecrawl MCP** installed with `mcp__firecrawl__firecrawl_search` / `firecrawl_scrape`
+This skill needs **Dynamic Workflows** enabled (paid plan; on Pro, turn them on once from the Dynamic workflows row
+in `/config`, and the setting persists across sessions) and the **firecrawl MCP** installed with `mcp__firecrawl__firecrawl_search` / `firecrawl_scrape`
 allow-listed. If the `Workflow` tool is unavailable, tell the user to enable Dynamic Workflows and stop — do not
 attempt an inline `Agent` fan-out (that defeats the whole design; see the plugin README).
 

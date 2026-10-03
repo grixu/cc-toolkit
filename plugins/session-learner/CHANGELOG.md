@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: the namespaced `/session-learner:learn` invocation, when to run it, all four review choices with a sample finding, and corrected output targets (auto memory is never written; only `.rule.md` hookify rules are shared).
 
 ## [0.1.0] - 2026-03-23
 

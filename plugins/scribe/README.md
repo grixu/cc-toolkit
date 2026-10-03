@@ -1,139 +1,136 @@
 # scribe
 
-Transcription + analysis pipeline for Claude Code. Point it at YouTube URLs **or** local audio/video files, pick a processing mode, and get a Markdown report with summaries, domain news, action items, or any custom extraction — grounded in real transcripts.
+scribe turns YouTube videos and local recordings into text, then into the summary, news digest or notes you ask for. It saves each transcript and reuses it on later runs, so you pay for transcription once per video or file.
 
-Powered by ElevenLabs Scribe for transcription, `yt-dlp` for YouTube downloads, and `ffmpeg` for local-file audio extraction.
+Transcription uses ElevenLabs Scribe, a paid API. `yt-dlp` downloads YouTube audio, and `ffmpeg` extracts audio from video files.
 
-## Skills
+Language: scribe talks to you and asks its questions in Polish. Summaries and notes follow the language of your request, and fall back to Polish when it is unclear. Transcripts keep the spoken language.
 
-| Skill | Source | Trigger |
-|---|---|---|
-| `yt` | YouTube URLs | URL + analysis intent ("podsumuj te filmy", "co nowego w AI", "summarize these videos") |
-| `local` | Local audio/video files | path with audio/video extension + intent ("transkrybuj te nagrania", "podsumuj meeting", "extract action items") |
-| `yt-transcribe` | sub-skill | YouTube → raw transcription only, no processing |
-| `local-transcribe` | sub-skill | Local file → raw transcription only, no processing |
-| `transcript-process` | sub-skill | Run on an existing transcript (any source) |
+## Install
 
-The orchestrators (`yt`, `local`) handle end-to-end. Sub-skills are usable standalone if you only want one stage of the pipeline.
-
-## How it works
+scribe is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then install the plugin:
 
 ```
-1. Extract inputs — URLs (yt) or paths/globs/folders (local)
-2. Cache check — transcripts/index.json (URL key) or local-index.json (SHA-256 key)
-3. For fresh items: background agent runs yt-dlp+ffmpeg+Scribe (yt) or ffmpeg+Scribe (local)
-4. While transcription runs, ask you:
-     - Mode: summary / news / custom prompt
-     - Focus, narrowing, or the prompt itself
-5. Archive new transcripts under transcripts/YYYY-MM-DD/, update the index
-6. Spawn one processing subagent per item (parallel)
-7. Write per-source report: yt-analysis-*.md or local-analysis-*.md
+/plugin marketplace add grixu/cc-toolkit
+/plugin install scribe@cc-toolkit
 ```
-
-Processing modes:
-
-- **summary** — proportional digest (5–20% of transcript length), optional focus
-- **news** — domain-specific novelty extraction, optional narrowing
-- **custom** — your own prompt applied to each transcript
-
-The `local` orchestrator's news mode uses neutral domain options (`Bez kategorii / Branża/produkt / Tematyczny`) instead of the YT-tech-biased ones (`AI/ML / Frontend / Backend`).
-
-## Local file inputs
-
-`local` accepts three input types:
-
-| Type | Example |
-|---|---|
-| Explicit path | `~/Recordings/meeting.mp4` |
-| Glob | `~/Recordings/*.m4a` or `~/projects/**/audio/*.mp3` |
-| Folder | `~/Recordings/` (flat, depth=1; use `**` glob for recursive) |
-
-Supported extensions:
-
-- **Audio** (passthrough, no conversion): `mp3 m4a wav ogg flac opus aac`
-- **Video** (ffmpeg → mp3): `mp4 mov mkv webm avi m4v wmv ts flv 3gp amr wma`
-
-When more than 5 files are in scope, `local` confirms before transcribing — ElevenLabs is not free.
-
-## Mixed input
-
-Drop a YouTube URL **and** a local path in the same message. The matched orchestrator finishes its full pipeline first (transcribe + process + write report), then sequentially spawns the other orchestrator for the leftover items. You'll get two separate analysis reports — one per source.
 
 ## Requirements
 
-| Tool | Install | Required for |
+| Tool | Install | Needed for |
 |---|---|---|
-| **Node.js ≥ 20** | [nodejs.org](https://nodejs.org) | Both flows (bundled transcription script) |
-| **`ELEVENLABS_API_KEY`** | [ElevenLabs API keys](https://elevenlabs.io/app/settings/api-keys) | Both flows (transcription credential) |
-| **ffmpeg** | `brew install ffmpeg` | Both flows (audio extraction) |
-| **yt-dlp** | `brew install yt-dlp` | YouTube only |
-| `shasum` | macOS coreutils (preinstalled) | Local files (SHA-256 cache key) |
+| Node.js 20 or later | [nodejs.org](https://nodejs.org) | Both sources; runs the bundled transcription script |
+| `ELEVENLABS_API_KEY` | [ElevenLabs API keys](https://elevenlabs.io/app/settings/api-keys) | Both sources |
+| ffmpeg, which includes ffprobe | `brew install ffmpeg` | Both sources |
+| yt-dlp | `brew install yt-dlp` | YouTube |
+| `shasum` | preinstalled on macOS | Local files; computes the cache key |
 
-Set the API key in your shell profile (`~/.zshrc` / `~/.bashrc`):
+Set the API key in your shell profile (`~/.zshrc` or `~/.bashrc`):
 
 ```bash
 export ELEVENLABS_API_KEY="sk_..."
 ```
 
-No `pnpm install` needed — the plugin ships a prebuilt transcription bundle in `scripts/transcript_audio/`.
+The transcription script ships prebuilt, so there is nothing to install with a package manager.
 
-## Installation
+## Quick start
 
 ```
-/plugin install scribe@cc-toolkit
+/scribe:yt Podsumuj ten film https://www.youtube.com/watch?v=abc123
+/scribe:local Wyciągnij action items z ~/Recordings/standup.m4a
+/scribe:local Transcribe everything in ~/Recordings/
 ```
 
-## Migration from yt
+You can also paste links or paths with a request in plain words ("summarize these videos", "podsumuj nagranie"), and Claude picks the matching skill.
 
-This plugin was previously called `yt` (YouTube-only). It has been renamed to `scribe` and now covers transcription pipelines from any source.
+A run goes like this:
 
-If you had `/plugin install yt@cc-toolkit`:
+1. It checks the cache. When some items already have transcripts, it asks whether to reuse them.
+2. It transcribes the new items in the background, one at a time.
+3. Meanwhile it asks how to process them: a summary with an optional focus, news from a field you choose, or your own prompt.
+4. It processes every transcript in parallel, writes one report, and prints the results in chat.
 
-1. **Uninstall** the old plugin: `/plugin uninstall yt`
-2. **Install** the new one: `/plugin install scribe@cc-toolkit`
+## Skills
 
-Your existing artifacts are preserved:
+Start with one of these two:
 
-- `transcripts/YYYY-MM-DD/*.md` — kept, still reused as cache
-- `transcripts/index.json` — kept, still the YouTube cache (schema unchanged)
-- `yt-analysis-*.md` reports — kept, still produced by the `yt` skill
+| Skill | Use it for | Example |
+|---|---|---|
+| `yt` | One or more YouTube videos, end to end | `/scribe:yt co nowego w AI w tych odcinkach <url> <url>` |
+| `local` | Audio or video files on disk, end to end | `/scribe:local podsumuj ~/Recordings/*.mp4` |
 
-The `yt-process` skill was renamed to `transcript-process` (it was always source-agnostic). If you had any custom code referencing `${CLAUDE_PLUGIN_ROOT}/skills/yt-process/`, update the path. There is no backwards-compatible alias.
+The single-stage skills run one step only:
+
+| Skill | Does | Leaves |
+|---|---|---|
+| `yt-transcribe` | Downloads and transcribes YouTube audio | Markdown transcripts in a `/tmp/yt-audio-*` directory |
+| `local-transcribe` | Transcribes local files | Markdown transcripts in a `/tmp/scribe-local-*` directory |
+| `transcript-process` | Runs a summary, news extraction or your prompt on an existing transcript | The result in chat |
+
+Only `yt` and `local` save transcripts to `transcripts/` and reuse them on later runs.
+
+## Inputs
+
+`yt` accepts `watch?v=`, `youtu.be/` and `shorts/` links.
+
+- For a link that also names a playlist, it fetches only that video.
+- For a playlist link, it stops and asks which videos you want.
+- It skips live streams with a warning.
+
+`local` accepts:
+
+| Input | Example |
+|---|---|
+| A file | `~/Recordings/meeting.mp4` |
+| A glob | `~/Recordings/*.m4a`, `~/projects/**/audio/*.mp3` |
+| A folder | `~/Recordings/`, direct children only; use `**` to go deeper |
+
+Folders and globs pick up these extensions:
+
+- Audio, sent to ElevenLabs as is: `mp3 m4a wav ogg flac opus aac`
+- Video, converted to mp3 with ffmpeg first: `mp4 mov mkv webm avi m4v wmv ts flv 3gp amr wma`
+
+A file you name explicitly goes to ffmpeg even when its extension is not on these lists. scribe never moves or changes your source files.
+
+When one message holds both YouTube links and local paths, scribe handles them in two runs, one after the other, and writes two reports.
 
 ## Output
 
-Per run the plugin writes:
+Everything goes into the directory you run Claude Code in:
 
-- `transcripts/YYYY-MM-DD/<Safe_Title>.md` — raw transcript (cached for future runs)
-- `yt-analysis-YYYY-MM-DD-HHMMSS.md` (yt orchestrator) **or** `local-analysis-YYYY-MM-DD-HHMMSS.md` (local orchestrator) — combined report with TOC, per-item sections, transcript index, errors appendix
-
-Caches:
-
-- `transcripts/index.json` — YouTube items, keyed by URL
-- `transcripts/local-index.json` — local files, keyed by SHA-256 of source content
-
-The archive directory `transcripts/YYYY-MM-DD/` is shared across both orchestrators; collisions are handled by suffixing `_2`, `_3`, etc.
-
-## Gotchas
-
-- **Playlist URLs are blocked by default** in `yt-transcribe` — pass individual video URLs.
-- **Age-restricted / private YouTube** — `yt-dlp` may need `--cookies-from-browser chrome`. The skill surfaces the error and suggests the fix.
-- **Polish diacritics in filenames** — transliterated (`zarządzać` → `zarzadzac`) for shell safety; transcript content preserves diacritics.
-- **Sequential transcription** — ElevenLabs is called one item at a time to stay under rate limits. Multi-item batches parallelize *processing*, not transcription.
-- **Local file cache key is content hash** — modifying a file (re-encode, edit) invalidates cache; moving or renaming it does not.
-- **Folder expansion is flat by default** — use an explicit `**` glob for recursive discovery.
-- **Confirmation at >5 files** — the `local` skill asks before kicking off large batches; ElevenLabs charges per call.
-
-## Development
-
-The transcription script lives in `tools/transcript_audio/` and is bundled with [tsdown](https://tsdown.dev/) (rolldown) into `scripts/transcript_audio/`. To rebuild:
-
-```bash
-./plugins/scribe/scripts/build-bundles.sh
+```
+transcripts/
+  index.json                         YouTube cache, keyed by URL
+  local-index.json                   local-file cache, keyed by SHA-256 of the file content
+  2026-10-02/Safe_Title.md           raw transcripts, with ASCII file names
+yt-analysis-2026-10-02-101500.md     one report per yt run
+local-analysis-2026-10-02-101500.md  one report per local run
 ```
 
-Commit the regenerated bundles before cutting a release. See `CHANGELOG.md` for the release log.
+Each report has a table of contents, one section per video or file, links to the transcripts it used, and a list of failures. Transcripts label speakers `Mówca 0`, `Mówca 1` when more than one person speaks, and mark sounds such as `[laughter]`.
+
+The local cache follows file content: a moved or renamed file is still a cache hit, and an edited or re-encoded file is transcribed again.
+
+## Cost and limits
+
+- ElevenLabs bills per transcription, about $0.30 per hour of audio (the estimate `local-transcribe` uses).
+- `local` asks before it transcribes more than 5 files. `yt-transcribe` asks before 5 or more videos;
+  `/scribe:yt` has no batch-size check of its own.
+- Items are transcribed one at a time to stay under ElevenLabs rate limits. Processing runs in parallel.
+- The bundled script rejects files over 1 GB. The skills warn above 750 MB and, for local files, above 3 hours.
+
+## Troubleshooting
+
+- Age-restricted, private or members-only video: `yt-dlp` needs your logged-in browser session. The skill suggests `--cookies-from-browser chrome`, or your browser.
+- Geo-blocked video: reported as an error; the skill has no workaround.
+- `ffmpeg` missing: `local` stops and tells you to install it.
+
+## Upgrading from `yt`
+
+This plugin used to be called `yt`. Run `/plugin uninstall yt`, then install `scribe` as above. Existing `transcripts/` folders and `index.json` keep working as the cache. The `yt-process` skill is now `transcript-process`, with no alias.
+
+Contributors: the transcription script's source lives in `tools/transcript_audio/`; rebuild the bundle with `scripts/build-bundles.sh`.
 
 ## License
 
-MIT — part of [cc-toolkit](https://github.com/grixu/cc-toolkit).
+MIT, part of [cc-toolkit](https://github.com/grixu/cc-toolkit).

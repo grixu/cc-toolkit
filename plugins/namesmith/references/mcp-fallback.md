@@ -9,7 +9,7 @@ Instructions for the namesmith skill when domain availability checking fails or 
 Before running domain checks, probe MCP health with a single lightweight call:
 
 ```
-search_domains(query: "[first-survivor-name]", tlds: [".com"])
+search_domains(name: "[first-survivor-name]", tlds: ["com"])
 ```
 
 - **Success** → MCP is healthy; proceed with full domain checks
@@ -66,7 +66,7 @@ Construct the URL as: `https://instantdomainsearch.com/?q=[name-lowercase-no-spa
 There is a known Claude Code bug affecting streamable-HTTP MCP transport. If users report consistent failures with the bundled `instant-domain-search` MCP, they can add it manually to their global MCP settings as a fallback:
 
 ```
-URL: https://instantdomainsearch.com/mcp/streamable-http
+URL: https://mcp.instantdomainsearch.com/mcp
 Transport: streamable-http
 ```
 

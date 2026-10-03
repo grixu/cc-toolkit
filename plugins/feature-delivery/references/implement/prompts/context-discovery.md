@@ -27,8 +27,7 @@ TASK:
    - Shell scripts → scripts agent
    - Docker/Docker Compose → docker-configuration agent
    - GitHub Actions/GitLab CI → cicd agent
-   - code-analyzer: always available for code quality review
-   - general-purpose: always available as fallback
+   - general-purpose: always available, as a fallback and for code quality review
    - If tech stack doesn't match any specialized agent → use general-purpose
 4. Discover available skills:
    - Check `.claude/skills/` or `.claude/commands/` directories for project-specific skills

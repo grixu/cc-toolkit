@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: install steps and requirements, the namespaced `/namesmith:namesmith` invocation, a sample result table with the follow-up choices, how names are filtered, and what to do when the domain check fails.
+
+### Fixed
+
+- The bundled Instant Domain Search MCP points at `https://mcp.instantdomainsearch.com/mcp`; the old `https://instantdomainsearch.com/mcp/streamable-http` URL now answers with a 308 redirect. The skill's tool calls match the server's current arguments: `name` instead of `query`, extensions without a leading dot, full domain names for `check_domain_availability`, and `.com`-only results from `generate_domain_variations`.
 
 ### Removed
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- README rewritten for first-time users: requirements, per-skill examples, outputs and stop rules, and a per-skill table of pre-approved commands that corrects the earlier claim that `ci-fix` and `pr-shepherd` pre-approve every `git` and `gh` command they run
+
 ## [0.1.0] - 2026-09-25
 
 ### Added

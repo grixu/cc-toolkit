@@ -10,9 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: the Polish interface, the marketplace install step, quick-start examples, what the single-stage skills leave behind, where output lands, and cost and size limits. It also corrects the playlist note (the skill asks, it does not block) and adds the live-stream skip.
 
 ### Fixed
 
+- Local `m4a`, `opus`, `wav`, `flac`, `ogg` and `aac` files are uploaded under their own extension and MIME type instead of being renamed to `.mp3` and sent as `audio/mpeg`; `transcribe.mjs` now accepts `.m4a` and `.opus`.
+- The `yt` skill no longer refers to a nonexistent `yt-reanalyze` skill as a reader of `transcripts/index.json`.
 - `claude plugin validate` warning about `CLAUDE.md` at the plugin root: contributor conventions moved to the repo's `.claude/rules/scribe.md`; nothing shipped to users changes.
 
 ## [0.2.0] - 2026-04-27

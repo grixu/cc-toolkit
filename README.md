@@ -1,152 +1,139 @@
 # cc-toolkit
 
-A Claude Code plugin marketplace with productivity tools.
+Plugins for [Claude Code](https://code.claude.com/docs), Anthropic's coding agent for the terminal and IDE.
 
-## Installation
+A plugin adds commands, skills, helper agents, or hooks to Claude Code. This repository is a plugin
+marketplace: a catalog you add to Claude Code once, then install only the plugins you want from it.
+Each plugin solves one problem, such as reviewing a change, turning an idea into a spec and then into
+code, fixing a failed CI run, or transcribing a video, and works on its own.
 
-Add the marketplace:
+## Install
+
+Claude Code must already be installed. In a Claude Code session, add the marketplace once:
 
 ```
 /plugin marketplace add grixu/cc-toolkit
 ```
 
-Then install individual plugins:
-
-```
-/plugin install <plugin-name>@cc-toolkit
-```
-
-## Available Plugins
-
-### codex-plan-improver
-
-Automatic plan review via OpenAI Codex CLI. Intercepts `ExitPlanMode` and sends plans through iterative Codex review (up to 5 rounds) before presenting to the user.
-
-**Requires:** [OpenAI Codex CLI](https://github.com/openai/codex), `jq`
-
-```
-/plugin install codex-plan-improver@cc-toolkit
-```
-
-See [plugin README](plugins/codex-plan-improver/README.md) for details.
-
-### feature-delivery
-
-End-to-end feature delivery workflow — from requirements gathering through implementation orchestration with parallel subagents.
-
-| Command | Description |
-|---------|-------------|
-| `/start [description]` | Begin requirements gathering (6-phase process) |
-| `/current [id\|--all]` | Requirements dashboard — status, progress, actions |
-| `/edit [id]` | Edit spec with full re-analysis and versioning |
-| `/implement [id]` | Implementation orchestrator with parallel agents and quality gates |
-
-```
-/plugin install feature-delivery@cc-toolkit
-```
-
-See [plugin README](plugins/feature-delivery/README.md) for details.
-
-### hookify
-
-Create custom hooks to prevent unwanted behaviors using simple markdown rule files with regex pattern matching. No coding required — just describe the behavior to block or warn about.
-
-| Command | Description |
-|---------|-------------|
-| `/hookify [instruction]` | Create a rule from instructions or analyze conversation for issues |
-| `/hookify:list` | List all configured rules |
-| `/hookify:configure` | Enable/disable rules interactively |
-
-```
-/plugin install hookify@cc-toolkit
-```
-
-See [plugin README](plugins/hookify/README.md) for details.
-
-### namesmith
-
-Business name discovery — generates candidates across 6 naming archetypes, filters them with a challenger sub-agent (5-dimension scoring), then checks domain availability via bundled Instant Domain Search MCP.
-
-| Trigger | Description |
-|---------|-------------|
-| "help me name my business" | Start a guided naming session |
-| "business name ideas for..." | Generate, score, and check domains |
-| `/namesmith [description]` | Direct invocation with business description |
-
-```
-/plugin install namesmith@cc-toolkit
-```
-
-See [plugin README](plugins/namesmith/README.md) for details.
-
-### scribe
-
-Transcription + analysis pipeline. Two source flavors: YouTube URLs (downloads audio with `yt-dlp`) or local audio/video files (extracts audio with `ffmpeg`). Transcribes via ElevenLabs Scribe v2, then summarizes, extracts domain news, or runs a custom prompt. Caches transcripts locally so re-asking about the same item skips the ElevenLabs call.
-
-Previously named `yt` — see the plugin's CHANGELOG for migration notes.
-
-| Trigger | Description |
-|---------|-------------|
-| YouTube URL + "podsumuj" / "summarize" | Full YT pipeline — transcribe + summarize |
-| YouTube URL + "co nowego" / "what's new" | Domain news extraction from videos |
-| Local path/glob/folder + "transkrybuj" / "transcribe" | Full local pipeline — transcribe + process |
-| Local path + "podsumuj nagranie" / "extract action items" | Local file analysis with chosen mode |
-
-**Requires:** Node.js ≥ 20, `ffmpeg`, `ELEVENLABS_API_KEY` env var. `yt-dlp` only for YouTube; `shasum` (preinstalled on macOS) for local.
-
-```
-/plugin install scribe@cc-toolkit
-```
-
-See [plugin README](plugins/scribe/README.md) for details.
-
-### session-learner
-
-Analyze a conversation for friction signals (corrections, repeated instructions, deviations) and interactively update project documentation with verified learnings.
-
-| Trigger | Description |
-|---------|-------------|
-| "learn from this session" | Analyze conversation and propose doc updates |
-| "what did you learn today" | Review friction signals from current session |
-
-```
-/plugin install session-learner@cc-toolkit
-```
-
-See [plugin README](plugins/session-learner/README.md) for details.
-
-### code-review
-
-Unified code review that fans out five parallel lenses over a change — comments + readability&tests + naming&module + objects&patterns + simplicity&types — and merges them into one per-file report. The bundled `/start-cr` command runs all five; the standalone `comment-review` and `quality-review` skills stay invocable for a single-lens pass.
-
-| Command | Description |
-|---------|-------------|
-| `/start-cr [paths] [--base <branch>]` | Run all five review lenses and merge into one combined report |
+Then install a plugin by name:
 
 ```
 /plugin install code-review@cc-toolkit
 ```
 
-**Migration:** `comment-review` and `quality-review` were superseded by `code-review` and are **no longer published** in this marketplace. If you still have either installed, uninstall it — with both an old plugin **and** `code-review` installed you will see two same-named skills (namespaced `code-review:comment-review` vs `comment-review:comment-review`).
+This opens the plugin's details. Review what it adds, then choose a scope:
 
-See [plugin README](plugins/code-review/README.md) for details.
+- User: you get it in every project on this machine.
+- Project: it is enabled for everyone working in this repository (written to `.claude/settings.json`).
+- Local: you get it in this repository only.
 
-### tester
+To check that it worked, type `/` and look for entries that start with the plugin name, such as
+`/code-review:start-cr`. Run `/plugin` with no arguments to browse every plugin in the marketplace.
 
-On-demand manual verification of a running app. One command discovers the live stack, builds an ephemeral environment brief, derives test suites from a spec's acceptance criteria (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, `agent-browser` for UI, and fault-injection for error handling — each returning an evidence-backed PASS/FAIL table.
-
-**Requires:** a running stack in a non-production environment. Optional: [`agent-browser`](https://github.com/vercel-labs/agent-browser) for UI suites, Docker for the WireMock fault mechanism.
-
-| Command | Description |
-|---------|-------------|
-| `/tester:run [<spec-path-or-url> \| free-text scope]` | Verify the running app; empty scope → derive it from the git diff |
+From your shell, without opening a session:
 
 ```
-/plugin install tester@cc-toolkit
+claude plugin marketplace add grixu/cc-toolkit
+claude plugin install code-review@cc-toolkit
 ```
 
-See [plugin README](plugins/tester/README.md) for details.
+The shell install uses user scope; pass `--scope project` or `--scope local` to change it. Plugins
+installed this way load the next time you start Claude Code, or after `/reload-plugins` in an open
+session.
+
+### Updates
+
+Auto-update is off by default for third-party marketplaces like this one. To update, run `/plugin`,
+open the Marketplaces tab, select `cc-toolkit`, and choose Update marketplace. On the same tab you can
+turn on auto-update. To update one plugin from your shell, run `claude plugin update <plugin>@cc-toolkit`.
+
+## Plugins
+
+Every plugin is invoked as `/<plugin>:<name>`. Many also start on their own when your request matches,
+for example when you paste a failed CI link. Each plugin's README covers usage and options.
+
+### Plan and build features
+
+| Plugin | What it does | Start with |
+|---|---|---|
+| [fd3](plugins/fd3/README.md) | Turns a rough idea into working code in stages. Claude questions you until the design decisions are settled, writes them up as a spec, checks the spec against your code, splits it into tasks, then implements the tasks in parallel in separate git worktrees and validates the result. Nothing is pushed without your approval. | `/fd3:build-spec <topic>` |
+| [codex-plan-improver](plugins/codex-plan-improver/README.md) | Gets a second opinion on Claude's plans. When you leave plan mode, it sends the plan to OpenAI Codex and revises it until Codex approves, for up to 5 rounds. | Runs on leaving plan mode, or `/codex-plan-improver:codex-review` |
+
+### Review and test code
+
+| Plugin | What it does | Start with |
+|---|---|---|
+| [code-review](plugins/code-review/README.md) | Reviews your branch's changes from several angles at once (comments, readability and tests, naming, structure, simplicity, security, performance, and conformance to a spec) and merges the results into one report per file. Changes nothing until you pick which fixes to apply. | `/code-review:start-cr` |
+| [tester](plugins/tester/README.md) | Checks that a running app behaves as intended. It finds the local stack, derives checks from a spec or from your git diff, and runs them against the API, the UI in a browser, and failure cases such as a stopped dependency. Returns a pass/fail table with evidence for each check. | `/tester:run [spec or scope]` |
+| [hookify](plugins/hookify/README.md) | Stops Claude from repeating a mistake. Describe the behavior, such as "warn me before `rm -rf`", and it writes a rule that blocks or warns when it happens again. | `/hookify:hookify <behavior>` |
+
+### Everyday git and CI chores
+
+| Plugin | What it does | Start with |
+|---|---|---|
+| [dev-kit](plugins/dev-kit/README.md) | Four small skills: fix a failed CI run at its root cause; keep fixing a pull request until CI is green and review comments are resolved; check whether a dependency upgrade breaks your code; open a pull request filled in from the repository's template. | `/dev-kit:ci-fix <run URL>`, `/dev-kit:pr-shepherd`, `/dev-kit:dep-upgrade-check <package>@<version>`, `/dev-kit:pr-open` |
+
+### Research, media, and naming
+
+| Plugin | What it does | Start with |
+|---|---|---|
+| [researcher](plugins/researcher/README.md) | Answers a research question with an HTML report in which every claim links to a numbered source. Follow-up questions extend the same report. | `/researcher:research "<question>"` |
+| [scribe](plugins/scribe/README.md) | Transcribes YouTube videos or local audio and video files, then summarizes them, pulls out news on a topic, or applies your own prompt. Transcripts are cached, so asking again about the same item does not transcribe it again. | Paste a YouTube link or file path and ask for a summary |
+| [namesmith](plugins/namesmith/README.md) | Suggests names for a business or product, scores each one, and checks which domains are free. | `/namesmith:namesmith <description>` |
+
+### Improve Claude Code itself
+
+| Plugin | What it does | Start with |
+|---|---|---|
+| [session-learner](plugins/session-learner/README.md) | At the end of a session, finds where you had to correct or repeat yourself and proposes updates to `CLAUDE.md` or `.claude/rules/`, so the next session starts with that knowledge. You approve each change. | `/session-learner:learn` |
+
+### Deprecated
+
+- [feature-delivery](plugins/feature-delivery/README.md) is deprecated; use fd3 instead. The two share
+  no file formats, so finish a project in the plugin you started it with.
+
+## Requirements
+
+Most plugins need only Claude Code. These need more:
+
+| Plugin | Needs |
+|---|---|
+| codex-plan-improver | [OpenAI Codex CLI](https://github.com/openai/codex), `jq` |
+| code-review | Python 3, git |
+| hookify | Python 3 |
+| fd3 | git; [dynamic workflows](https://code.claude.com/docs/en/workflows) for `/fd3:implement`; code-review 0.4.0 or later for its optional review step |
+| researcher | [Dynamic workflows](https://code.claude.com/docs/en/workflows); the [firecrawl](https://www.firecrawl.dev) MCP server with `FIRECRAWL_API_KEY`; optional `mmdc` for diagrams |
+| scribe | Node.js 20 or later, `ffmpeg`, `ELEVENLABS_API_KEY`; `yt-dlp` for YouTube |
+| tester | A running, non-production app; optional [`agent-browser`](https://github.com/vercel-labs/agent-browser) for UI checks; Docker for one failure-injection mode |
+| dev-kit | git, the GitHub CLI (`gh`) |
+| namesmith | Nothing to install; domain checks use a remote MCP server bundled with the plugin |
+
+Dynamic workflows are available on paid plans and with Anthropic API access. On Pro, turn them on
+in the Dynamic workflows row of `/config`.
+
+## Renamed and removed plugins
+
+- `yt` was renamed to `scribe`. See the [scribe changelog](plugins/scribe/CHANGELOG.md).
+- `comment-review` and `quality-review` were replaced by `code-review` and are no longer published.
+  Uninstall them if you still have them, or you will see duplicate skill names.
+
+## Contributing
+
+Each plugin lives in `plugins/<name>/` with `.claude-plugin/plugin.json`, a `README.md`, and a
+`CHANGELOG.md` (Keep a Changelog, with an `[Unreleased]` section). `.claude-plugin/marketplace.json`
+lists every plugin.
+
+- Commits use conventional commits with the plugin as scope: `feat(hookify): ...`, `fix(fd3): ...`.
+- Release with `./scripts/release.sh <plugin> <patch|minor|major>`. It bumps both manifests, stamps the
+  changelog, commits, and tags the release. It needs `jq` and `git`; `gh` is optional.
+- Eval suites (promptfoo) run with `pnpm install && pnpm eval`, or `scripts/run-evals.sh <plugin>` for
+  one plugin.
+- `hookify` is forked from `anthropics/claude-plugins-official`. Upstream changes arrive on the
+  `hookify-upstream` branch via `scripts/sync-hookify.sh`.
+
+To try a local change without installing it, start Claude Code with `claude --plugin-dir ./plugins/<name>`.
+Run `claude plugin validate .` after editing `marketplace.json`.
 
 ## License
 
-MIT
+[MIT](LICENSE)

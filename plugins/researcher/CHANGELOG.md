@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
+- README rewritten for first-time users: the marketplace-qualified install command, correct Dynamic Workflows availability, a permissions section that matches how workflow agents handle prompts, typed-only invocation, continuing a report in a new session, and the workflow's error codes.
+
+### Fixed
+
+- The `research` skill's prerequisites no longer say Dynamic Workflows are enabled per session on Pro; they are turned on once from `/config`.
 
 ## [0.1.0] - 2026-06-22
 

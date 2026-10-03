@@ -1,165 +1,227 @@
 # code-review
 
-The successor to the `comment-review` and `quality-review` plugins. One
-orchestrator fans out **parallel scanners** — one per active lens, six to eight
-per run — over a change, each judging a fixed rule subset, then merges every
-finding into a **single per-file report**. Comment quality, quality/craft, and a
-narrow security pass live in one run instead of separate ones.
+code-review is a Claude Code plugin that reviews a code change with up to eight focused reviewers
+running in parallel, then merges what they find into one report grouped by file. After the report,
+a short menu asks which fixes to apply. Nothing is edited until you choose.
 
-## Installation
+## Why not just ask Claude to review?
 
-From the `grixu/cc-toolkit` marketplace:
+A single "review this" prompt reads the change once, from one angle, and decides on the fly what
+counts as a problem. This plugin instead:
+
+- runs one reviewer per lens in parallel, each with its own written rule set (44 named rules plus
+  12 comment rules), so every finding names its rule and runs are comparable;
+- merges the findings centrally: duplicates collapse, and severities follow one fixed table;
+- reads your project's conventions first, so a documented house style is not reported as a
+  problem, and turns explicit rules in `CODING_STANDARDS.md` into findings;
+- ends with an apply menu sorted by risk, and edits only what you select.
+
+It reviews how code reads and is structured, plus narrow security, performance and spec checks.
+It does not hunt for general correctness bugs. Claude Code's bundled `/code-review` skill, which
+shares this plugin's name, looks for bugs; the two complement each other.
+
+## Install
 
 ```
 /plugin marketplace add grixu/cc-toolkit
-/plugin install code-review
+/plugin install code-review@cc-toolkit
 ```
 
-## Usage
+## Requirements
+
+- `git`. The change under review is read from git.
+- `python3`. A bundled script finds the changed files and the base branch.
+- The `Agent` tool in your session. `/code-review:start-cr` runs its reviewers as sub-agents. Where
+  that tool is missing, such as inside another agent or a workflow step, it says so first instead
+  of passing off a single read as a full review.
+
+## Quick start
+
+Plugin commands carry the plugin's name as a prefix:
 
 ```
-/start-cr                          # full review of the current branch diff
-/start-cr src/auth.ts              # full review of specific files
-/start-cr --base develop           # diff against a different base branch
-/start-cr --spec docs/feature.md   # also judge the change against a local spec
-/comment-review                    # comment-quality lens only
-/quality-review                    # quality/craft lenses only
+/code-review:start-cr                          # review the current branch's changes
+/code-review:start-cr src/auth.ts src/billing/ # review these files or directories in full
+/code-review:start-cr --base develop           # measure the change against develop
+/code-review:start-cr --spec docs/feature.md   # also check the change against a local spec
 ```
 
-`/start-cr` has no lens switch; the change decides which lenses run. The five
-craft lenses and `security` run every time; `performance` runs when the change
-touches executable source; `spec` runs when a spec file is named — by `--spec <path>`,
-or by accepting the one the review offers when the diff itself carries a spec. The
-report's `Lenses: L of 8` line names every lens that sat out and why. For a
-partial review, invoke `/comment-review` or `/quality-review` directly; both stay
-independently available and share the same rule text as the command. The three
-added lenses have no standalone skill.
+With no paths, it reviews your branch's changes. It finds the base branch in this order: the
+upstream branch, `origin/main`, `origin/master`, `main`, `master`, unless you pass `--base`. It sees
+committed, uncommitted and untracked files. When you have both committed and uncommitted changes, it
+asks whether to review the uncommitted ones, the committed ones, or both. When it finds nothing but
+another base would show commits, as with a branch pushed to its own remote counterpart, it offers to
+run again against that base.
 
-### Headless skills for workflows
+## The lenses
 
-A workflow agent cannot answer questions or dispatch agents of its own, so `/start-cr`
-cannot run there. Three model-only skills (hidden from the `/` menu) split the same
-pipeline into steps a caller orchestrates, all eight lenses included:
+You do not pick lenses; the change decides. Six run every time, two depend on the input, and the
+report's tally lists any lens that did not run and why.
+
+| Lens | Runs | Looks for |
+|---|---|---|
+| comments | always | Comments that narrate the code, cite tickets or other files, contradict the code, or are missing where a decision needs explaining. |
+| readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that do not check what their name claims. |
+| naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has, wrappers that only forward a call. |
+| objects & patterns | always | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
+| simplicity & types | always | Code that collapses into something smaller, needless casts, dead code. |
+| security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, exposed infrastructure, widened access. |
+| performance | the change includes executable source (not tests, infrastructure code or `.sh`) | N+1 calls, unbounded fetches, blocking calls on async paths, wasted React renders. |
+| spec | you name a spec with `--spec`, or accept the one the change carries | Spec lines nothing implements, implemented wrongly or only partly, and behaviour the spec never asked for. |
+
+A security finding names where untrusted data enters and where it lands; a performance finding
+names the loop, the call inside it, and the batch or limit API that exists. A pattern alone is not
+a finding.
+
+When the change itself contains a spec-shaped file (under `specs/`, `spec/`, `docs/adr/` or
+`tasks/`, or named `*SPEC*.md`, `*ADR*.md`, `*.spec.md` or `*-plan.md`) and you passed no `--spec`,
+the review offers to check the change against it. `--spec` takes a local file only. For a URL or a
+ticket id, the review asks for a local path; it never fetches one.
+
+## What you get
+
+A report grouped by file. Code findings read `` `family` · rule · severity ``, where severity is
+`high`, `medium` or `nit`. Comment findings read `` `comments` · R1–R12 · verdict ``, where the
+verdict is one of:
+
+- KEEP: the comment stays.
+- REMOVE: delete it.
+- REWRITE: replace it; the report gives the exact text.
+- MOVE: move it to where the behaviour it explains lives.
+- ADD: a missing comment that explains a decision.
+
+An example report:
+
+```markdown
+## Code review — committed (base → HEAD), 3 files
+
+**Conventions:** repo `CLAUDE.md` documents barrel exports as the public-API style, so `module` · barrel is not flagged here.
+**Headline:** `checkout/total.ts` concatenates the request's coupon code into a raw SQL string at L72.
+
+### src/checkout/total.ts
+- `security` · injection-sink · high · L70, L72 — `couponCode` read from `req.query` at L70 reaches the raw `WHERE` string at L72 by concatenation → bind it as a query parameter
+- `simplicity` · over-complex · high · L18, L34, L51 — three copies of the tier-discount branch drift independently → collapse into `discountFor(tier)` and call it at each site
+- `readability` · magic-literal · medium · L22 — `0.1` carries the gold-tier rate with nothing naming it → name `GOLD_DISCOUNT_RATE`
+- `comments` · R1 · REMOVE · L17 — "// multiply by the rate" restates the line beneath it → delete these lines
+
+### src/checkout/receipt.ts
+- `naming` · role-name · nit · L9 — `receiptArray` names the type instead of the role → `receipts`
+- `comments` · R2 · ADD · L44 — the 250 ms retry gap is a gateway constraint no reader can infer → "// 250 ms — the gateway rejects retries closer than its own debounce window"
+
+### docs/checkout-spec.md
+- `spec` · missing-requirement · high · L14 — "A receipt lists the discount applied per line item" has no implementation in the diff → add the per-line discount to `Receipt`
+
+**Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
+
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 8 of 8. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+```
+
+A report may also carry a `Boy-scout` block, with optional fixes in code the change did not touch,
+and a `Reconciliation` line above it that counts how the reviewers' notes to each other were
+resolved. A clean change gets a one-line verdict and the tally.
+
+Right after the report, one menu asks what to apply:
+
+- Safe fixes: mechanical edits such as blank lines, named constants, renames, guard clauses, and
+  comment removals and rewrites.
+- Walk the structural ones: one at a time, each with its own yes. Extractions, moves, splits, and
+  every security and performance fix.
+- Boy-scout extras: fixes outside the change.
+- Report only: change nothing.
+
+The menu offers only the options that have findings, plus Report only. Security fixes are never in the safe batch.
+Spec findings describe work to do, so they are report-only, with one exception: a verified
+`wrong-implementation` that one edit fixes can be offered as a fix. After the edits, the project's build
+and tests run once, and the wrap-up lists any approved fix that was skipped or could not be applied
+as approved. When a fix removes a secret from the source, rotating that secret is still your job.
+
+Before applying anything, the review saves the report and your selection to the session's scratch
+directory, so a long apply walk survives a context compaction.
+
+## Single-lens reviews
+
+Two skills run a lighter review with a single reviewer and no parallel fan-out:
+
+```
+/code-review:comment-review     # comments only
+/code-review:quality-review     # code craft only: no comments, security, performance or spec
+```
+
+Claude can also start them on its own when you ask for a comment review or a quality review in
+plain words. Both take the same paths and `--base` option as `/code-review:start-cr` and use the
+same rule files.
+
+## Customize with your project's rules
+
+The review reads your conventions before it judges anything. Two kinds of files matter.
+
+Files that create findings: `CODING_STANDARDS.md` at the repository root (committed) and
+`CODING_STANDARDS.local.md` beside it (personal; add it to `.gitignore`). Both apply; where they
+disagree, the `.local` file wins for that statement. Only the pair at the root counts. An explicit
+rule such as "Domain services MUST NOT import from `infra/`" becomes a `standards` finding that
+quotes it. Severity follows the rule's keyword:
+
+| Keyword | Severity |
+|---|---|
+| MUST, MUST NOT, NEVER, ALWAYS | high |
+| SHOULD, or no keyword | medium |
+| MAY, prefer, consider | nit |
+
+Vague prose such as "write clean code" creates nothing. Rules about formatting, whitespace, import
+order and quotes are skipped when a formatter or linter config sits at the repository root
+(`.prettierrc*`, `biome.json`, `eslint.config.*`, `.eslintrc*`, `.editorconfig`, `ruff.toml` or a
+`[tool.ruff]` table in `pyproject.toml`, `.golangci.yml`, `rustfmt.toml`, `phpcs.xml`,
+`.php-cs-fixer*`), because the tool enforces them.
+
+Files that only silence findings: `CLAUDE.md` and `AGENTS.md` (at the root and in every directory
+down to the reviewed file), `CONTRIBUTING.md`, `.cursor/rules`, and `.claude/rules/*.md`. When one
+of them documents a style, the review stops flagging it. When two project files disagree, the more
+specific one wins, and the report names the conflict on its `Conventions` line.
+
+## What it reviews and what it skips
+
+Reviewed: source files with the extensions `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .rs .java
+.kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus Terraform and other infrastructure-as-code.
+Tests and infrastructure code get every lens except performance.
+
+Skipped, and listed on the report's `Skipped` line: JSON, lockfiles, generated or minified files,
+Markdown and other docs, `.txt`, static config (`.yaml`, `.toml`, `.ini`, `.env`), license
+headers, and CI workflow files.
+
+Limits:
+
+- It is not a security audit. The security lens reads source files for the problems listed above.
+  It does not scan dependencies, `.env` files, lockfiles or CI pipelines; run Claude Code's
+  `/security-review` for those.
+- It is not a correctness review. Use the bundled `/code-review` for bugs.
+- The rules are written for imperative and object-oriented code, mostly JavaScript and TypeScript.
+  A rule with no counterpart in a language is cleared, not forced: wasted-render applies only to
+  `.tsx` and `.jsx`, blocking-in-async only to Node and Python asyncio, and Terraform skips the
+  module, object, test and cast rules.
+
+## Internal parts
+
+Three skills split `/code-review:start-cr` into steps for automated workflows, which cannot answer
+questions or start sub-agents of their own. They are internal: hidden from the `/` menu, called by
+the `fd3` plugin's implementation workflows, and not meant for you to run.
 
 | Skill | Arguments | Writes |
 |---|---|---|
 | `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path>]` | `scope.json`, `conventions.md`, `standards.md` |
-| `code-review:cr-scan` | `--lens <lens> --context <dir>` | `<lens>.md` — run one per active lens, each as its own agent |
-| `code-review:cr-merge` | `--context <dir>` | `report.md`, and returns every finding with its fix-risk class |
+| `code-review:cr-scan` | `--lens <lens> --context <dir>`, one agent per active lens | `<lens>.md` |
+| `code-review:cr-merge` | `--context <dir>` | `report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only` |
 
-None of them edits the checkout or asks anything. An empty change, a lens that did not
-report or a missing lens file comes back as a status, never as a clean review.
-`fd3`'s implementation workflows are the first caller.
+They review committed changes only, never edit the checkout, and never ask anything. An empty
+change or a lens that did not report comes back as a status (`empty`, `incomplete`), never as a
+clean review.
 
-The report groups by **file**, with the two vocabularies side by side — comment
-verdicts (`R1`–`R12` · KEEP/REMOVE/REWRITE/MOVE/ADD) and quality findings
-(`` `family` · rule · severity `` across eleven families: `readability`, `tests`,
-`naming`, `module`, `objects`, `patterns`, `simplicity`, `security`,
-`performance`, `spec`, and the repo-defined `standards`) — no mapping between
-them. `/start-cr` never edits during the review; it ends with a single risk-cut
-apply menu.
+## Upgrading from comment-review or quality-review
 
-## The lenses
+This plugin replaces the separate `comment-review` and `quality-review` plugins, which the
+marketplace no longer lists. Uninstall them, or you will see two copies of each skill.
 
-Eight lenses, each a scanner with its own rules file. Five craft lenses run on
-every change:
+## Development
 
-- **comments** (`R1`–`R12`) — no code-narration, decisions-only, no
-  banners/dividers, no change-history, no cross-file/spec-id references, no
-  commented-out code, no comment that contradicts the code, rationale pinned where
-  the behavior lives.
-- **readability & tests** — openness (blank-line separation), guard-clause,
-  explaining-variable, magic-literal, composed-method (including a conditional
-  bolted onto a flow whose concern it does not share), stepdown ordering,
-  arrange/act/assert test structure, and test-fidelity (a test must check the
-  boundary its name claims).
-- **naming & module** — intent-revealing names (a `data`/`handle`/`process` that
-  reveals nothing counts), role- (not type-) names, command/query separation, no
-  ad-hoc OOP/functional style-mix, no pointless barrel re-exports, dependency
-  direction (no import that closes a cycle or points from a shared module into a
-  feature), no feature logic misplaced in a shared module, no helper duplicating
-  one the repo already exports, and no pass-through wrapper that forwards
-  unchanged — the one rule that absorbs middle-man and needless indirection. This
-  lens reads one hop across files (the importers and imports of each changed
-  module) and no further.
-- **objects & patterns** — full construction, lazy-init, no leaky internal
-  collections, no feature envy (a method living on the wrong object), no data
-  clumps (the same values travelling together), no message chains through other
-  objects' internals, composition over inheritance, polymorphism over repeated
-  type-switches, execute-around for paired actions. Patterns are flagged **only
-  under real friction**, never because one could apply.
-- **simplicity & types** — over-complex code that collapses (the priority),
-  needless casts the type already guarantees, and dead code that can never run,
-  is never used, or is speculative generality nothing calls.
-
-Three more sit beyond the craft five — one always on, two gated — and the report
-says which ran:
-
-- **security** — always on. Secrets in source, injection sinks, missing access
-  checks, unvalidated boundaries, insecure settings, infrastructure code that
-  exposes a secret or trusts too widely, and a change that relaxes an existing
-  authorization boundary. A finding names both the source and the sink; a pattern
-  alone is never a finding.
-- **performance** — only when the change touches executable source (not tests,
-  not infrastructure-as-code, not `.sh`). N+1 calls, unbounded fetches, blocking calls on an
-  async path, wasted React renders. Every finding names the multiplier, the call
-  inside it, the missing bound, and the batch/limit API that exists; "could be
-  slow" is not a finding.
-- **spec** — only with a named spec file (`--spec <path>`, or the one the review
-  offers from the diff). A spec line nothing
-  implements, one implemented against its wording, one only partly met, and scope
-  creep the spec never asked for. Every finding quotes the spec line.
-
-## Coding standards
-
-Two files at the repository root turn the project's own rules into findings:
-
-- `CODING_STANDARDS.md` — the shared standard, committed.
-- `CODING_STANDARDS.local.md` — a personal overlay; **gitignore it**.
-
-Both apply (LAYER): the `.local` file adds to the shared one and wins per
-statement where the two disagree, so it can relax or tighten a single rule
-without copying the whole file. Only the root pair counts — the files are not
-looked for in subdirectories.
-
-An explicit, quotable rule ("Domain services MUST NOT import from `infra/`")
-becomes a `standards` finding that quotes the rule and cites the file and
-section. Severity follows the rule's keyword: MUST / MUST NOT / NEVER / ALWAYS →
-high, SHOULD → medium, MAY / prefer / consider → nit, no keyword → medium. Vague
-prose ("write clean code") generates nothing. Formatting, whitespace,
-import-order, and quote rules are skipped when a formatter or linter config
-exists at the root — the tool enforces those, not the review.
-
-The other convention files — `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`,
-`.claude/rules/*.md`, `.cursor/rules` — still only **suppress**: a documented convention turns a
-would-be finding into a non-finding, but never produces one.
-
-## Scope
-
-Reviews source files that carry human-authored comments / code. Skips JSON,
-lockfiles, generated/minified files, Markdown/docs, config, and license headers.
-Tests, infrastructure-as-code, and `.sh` files are reviewed by the craft lenses but not by
-`performance`.
-
-**This is a craft review plus a narrow security lens, not a security audit.** The
-security lens looks for secrets, injection, access checks, boundary validation,
-insecure settings, infrastructure exposure, and widened access in source files; the performance lens raises diff-level
-hypotheses it can point at a line. Neither is a dependency, config, or data-flow
-audit: `.env` files, manifests, and lockfiles are not scanned, and a
-vulnerability outside those shapes will surface only by accident. Do not read a
-clean `/start-cr` report as "this change is safe" — run `/security-review` for
-the rest.
-
-With no path arguments it reviews the current branch diff. The base is detected
-defensively (`@{upstream}` → `origin/main` → `origin/master` → `main` → `master`,
-or `--base <branch>`), and both **committed** and **uncommitted** changes are
-considered — when both exist, it asks which scope to review.
-
-## Migration
-
-`code-review` supersedes `comment-review` and `quality-review`, which are no
-longer published in the `grixu/cc-toolkit` marketplace. If you still have either
-installed, **uninstall it** to avoid duplicate skills: a user with both
-generations installed sees two `comment-review` and two `quality-review` skills —
-the new namespaced `code-review:comment-review` alongside the old
-`comment-review:comment-review`.
+- `evals/`: a promptfoo eval suite, used for development. See `evals/README.md`.
+- `CONTEXT.md`: the plugin's glossary.
+- `docs/adr/`: the design decisions behind the lens split and the active lens set.
