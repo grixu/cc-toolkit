@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `plugin.json` author reads `Mateusz Gostański <mg@grixu.dev>`, matching the other plugins
+- `implement-tasks` describes review as one agent per active lens, six to eight, not all eight —
+  `cr-prepare` leaves `performance` and `spec` inactive when the change gives them nothing to judge
 
 ## [0.2.0] - 2026-10-03
 

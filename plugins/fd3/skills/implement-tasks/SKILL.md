@@ -110,9 +110,9 @@ Then make the graph launchable:
 
 One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`:
 
-- whether to review each branch. Review is the `code-review` plugin's headless lenses — all
-  eight, one agent each, after the branch's scoped CI passes — then a delta review of whatever
-  the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
+- whether to review each branch. Review is the `code-review` plugin's headless lenses — one
+  agent per lens `cr-prepare` makes active, six to eight, after the branch's scoped CI passes —
+  then a delta review of whatever the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
   bot on the pull request finds different things, not the same ones: `no` is a valid answer but a
   real trade. Recommend it when `code-review:cr-scan` is in this session's skill listing; when it
   is not, ask anyway and say the plugin must be installed — a listing can be withheld or cut
