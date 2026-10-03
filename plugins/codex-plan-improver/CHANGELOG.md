@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The default Codex model is now `gpt-6.1-sol`; `gpt-5.3-codex` is deprecated.
+
 - The plan-exit hook now blocks `ExitPlanMode` through `hookSpecificOutput.permissionDecision: "deny"` instead of the top-level `decision: "block"`, which Claude Code deprecated for `PreToolUse`.
 
 ## [1.1.0] - 2026-03-12

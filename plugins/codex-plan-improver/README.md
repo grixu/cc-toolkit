@@ -54,10 +54,10 @@ Or if no other plugin has a `codex-review` command:
 Pass a model name as an argument:
 
 ```
-/codex-review o4-mini
+/codex-review gpt-6-astra
 ```
 
-Default model: `gpt-5.3-codex`
+Default model: `gpt-6.1-sol`
 
 ## Configuration
 
