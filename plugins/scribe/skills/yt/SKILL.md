@@ -33,7 +33,7 @@ Orchestrate the full pipeline: check the transcript index for cache hits, transc
 
 - Deduplication key is `url` — one entry per URL.
 - Never write an entry if the transcript file doesn't actually exist on disk.
-- `yt-reanalyze` reads this file to offer past videos to the user — treat it as shared state.
+- Only this skill reads and writes this file. The `local` orchestrator keeps its own `transcripts/local-index.json`; never merge the two.
 
 ## Step 1 — Extract URLs
 
