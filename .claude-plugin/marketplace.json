@@ -5,7 +5,7 @@
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
   },
-  "description": "Claude Code productivity toolkit - plan review with OpenAI Codex, and more",
+  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, plan review with OpenAI Codex, research reports, transcription, naming, and hook rules",
   "plugins": [
     {
       "name": "codex-plan-improver",
@@ -26,7 +26,7 @@
     {
       "name": "feature-delivery",
       "source": "./plugins/feature-delivery",
-      "description": "End-to-end feature delivery: requirements gathering, editing, status tracking, and implementation orchestration with parallel subagents",
+      "description": "Deprecated — use fd3. End-to-end feature delivery: requirements gathering, editing, status tracking, and implementation orchestration with parallel subagents",
       "version": "1.1.0",
       "author": {
         "name": "Mateusz Gostański",
@@ -179,8 +179,8 @@
       "description": "Spec-driven delivery pipeline: grill a topic into ratified decisions, write and validate a spec against it, split the spec into dependency-ordered tasks, then implement them in isolated worktrees with batched validation.",
       "version": "0.2.0",
       "author": {
-        "name": "Mateusz Gostański (grixu)",
-        "email": "mateusz.gostanski@gmail.com"
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
       },
       "category": "productivity",
       "tags": [
