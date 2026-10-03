@@ -94,6 +94,7 @@ Everything is stored outside your repository:
     metadata.json
 ```
 
-`<project>` is the name of the directory you run Claude Code from, lower-cased. Two projects with
-the same directory name share a folder. Specs are not in your repository, so teammates do not see
+`<project>` is the name of the directory you run Claude Code from, lower-cased, with every
+character outside `a-z0-9-` replaced by `-` (`My_App.v2` becomes `my-app-v2`). Two projects whose
+directory names map to the same slug share a folder. Specs are not in your repository, so teammates do not see
 them and git does not track them.
