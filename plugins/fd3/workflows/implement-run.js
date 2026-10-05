@@ -24,7 +24,8 @@ export const meta = {
 //                 repository itself — git refuses a second worktree for it, so the main checkout
 //                 serves as that branch's worktree
 //   review        true to run the code-review plugin's headless lenses on every branch after its
-//                 scoped CI passes; false skips review
+//                 scoped CI passes and fix what they find; "gated" to review the same way but hold
+//                 security, boy-scout, unfixed and fix-review findings for a human; false skips review
 //   maxFixRounds  CI fix attempts per branch before giving up
 //   reportPath    (optional) absolute path of a previous run's report file; one cheap agent reads
 //                 its toolchain and baseline knowledge, so a relaunch skips the re-scout and the
@@ -37,7 +38,8 @@ export const meta = {
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
 const { specPath, tasks, repos } = input
-const review = input.review === true
+const review = input.review === true || input.review === 'gated'
+const gated = input.review === 'gated'
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
 // the run exists to perform, reporting failures it was built to repair.
 const maxFixRounds = input.maxFixRounds ?? 3
@@ -865,22 +867,28 @@ const runReview = async (unit, base, pass, tag) => {
   return { dir, report: merged.report, files: prep.files || 0, lenses: lenses.length, findings: merged.findings }
 }
 
-// Security fixes change behaviour at a boundary, spec findings are work, not edits, and a boy-scout
-// fix edits code the task never touched — all three wait for a human; nits and the remaining
-// comment verdicts are reported, never applied unasked.
+// A spec finding is work the spec never asked for, and a report-only one has no fix to apply — both
+// go to a human in either mode. Unattended runs fix the rest: holding every security fix and
+// boy-scout finding for a yes stopped each branch on a human. Gated keeps that hold for a user who
+// wants to walk security fixes one at a time; a boy-scout fix that is not mechanically safe is
+// reported either way, since it edits code the task never touched. Nits and the remaining comment
+// verdicts are reported, never applied unasked.
 const serious = (f) => f.severity === 'high' || f.severity === 'medium'
+const fixable = (f) =>
+  gated
+    ? f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout
+    : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe')
 const sortFindings = (findings) => {
   const live = findings.filter((f) => !f.reserved)
-  const applied = live.filter(
-    (f) =>
-      (serious(f) && f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout) ||
-      (f.severity === 'comment' && f.risk === 'safe'),
-  )
+  const applied = live.filter((f) => (serious(f) && fixable(f)) || (f.severity === 'comment' && f.risk === 'safe'))
   const forHuman = live.filter((f) => !applied.includes(f) && serious(f))
   const reported = live.filter((f) => !applied.includes(f) && !forHuman.includes(f))
   return { applied, forHuman, reported, reserved: findings.length - live.length }
 }
 const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
+const heldNote = gated
+  ? 'the branch keeps status merged until a repair settles it'
+  : 'left for the end-of-run decision; the branch is not held on it'
 
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
@@ -1059,7 +1067,7 @@ for (const unit of units) {
   summary.ci = 'passed'
 
   let reviewDead = null // why the review has no verdict for this branch
-  let reviewHeld = false // findings wait for a human
+  let reviewHeld = false // findings wait for a human; only a gated review holds a branch on them
   if (review) {
     const first = await runReview(unit, unit.base, 'review', tag)
     summary.review = { context: first.dir, report: first.report || null }
@@ -1080,10 +1088,11 @@ for (const unit of units) {
         sorted.forHuman.push(...unfixed)
         const unmatched = declined.filter((line) => !unfixed.some((f) => findingLine(f) === line))
         for (const line of unmatched) {
-          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${line} — the fixer left it unfixed; the branch keeps status merged until a repair settles it` })
+          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${line} — the fixer left it unfixed; ${heldNote}` })
         }
-        if (unmatched.length > 0) reviewHeld = true
-        // The fixes are new code nobody has reviewed; one delta pass, whose findings go to a human.
+        if (gated && unmatched.length > 0) reviewHeld = true
+        // The fixes are new code nobody has reviewed; one delta pass, whose findings go to a human —
+        // a second fixer round would need a third review, and the loop has to end somewhere.
         if (!fix || !fix.fromSha) {
           reviewDead = `the review fixes have no verdict: the fix agent ${fix ? 'did not report its starting commit' : 'returned no result after a retry'}`
         } else {
@@ -1100,9 +1109,9 @@ for (const unit of units) {
         }
       }
       for (const f of sorted.forHuman) {
-        hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — the branch keeps status merged until a repair settles it` })
+        hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${heldNote}` })
       }
-      reviewHeld = reviewHeld || sorted.forHuman.length > 0
+      reviewHeld = reviewHeld || (gated && sorted.forHuman.length > 0)
     }
   }
 
@@ -1139,7 +1148,7 @@ for (const unit of units) {
     continue
   }
 
-  // An unreviewed branch, or one with findings a human must settle, is not done: it stays merged.
+  // An unreviewed branch, or one a gated review holds on findings, is not done: it stays merged.
   if (reviewDead) {
     hil.push({
       slug: null,

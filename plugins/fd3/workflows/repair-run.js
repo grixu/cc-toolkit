@@ -22,14 +22,16 @@ export const meta = {
 //                repositories missing from both are re-scouted
 //   baseline     (optional) { [repository path]: { commands: [...] } } — likewise
 //   maxFixRounds CI fix attempts per branch before giving up
-//   review       true to review each repaired branch's delta with the code-review plugin's headless
-//                lenses; its findings go to the human, never to a fixer
+//   review       true or "gated" to review each repaired branch's delta with the code-review plugin's
+//                headless lenses; its findings go to the human, never to a fixer, and only a gated
+//                review keeps the task files from being marked done until the human settles them
 //   specPath     (optional) absolute path of the spec, for the review's spec lens
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
 const { repairs, repos, specPath } = input
-const review = input.review === true
+const review = input.review === true || input.review === 'gated'
+const gated = input.review === 'gated'
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
 // the run exists to perform, reporting failures it was built to repair.
 const maxFixRounds = input.maxFixRounds ?? 3
@@ -756,9 +758,13 @@ for (const unit of units) {
         const open = delta.findings.filter(serious)
         summary.review.findings = delta.findings.map(findingLine)
         for (const f of open) {
-          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — the task files keep their status until a repair settles it` })
+          hil.push({
+            slug: null,
+            kind: 'review',
+            reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${gated ? 'the task files keep their status until a repair settles it' : 'left for the end-of-run decision; the branch is not held on it'}`,
+          })
         }
-        reviewHeld = open.length > 0
+        reviewHeld = gated && open.length > 0
       }
     }
   }

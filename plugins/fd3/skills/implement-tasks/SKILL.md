@@ -114,7 +114,11 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   agent per lens `cr-prepare` makes active, six to eight, after the branch's scoped CI passes —
   then a delta review of whatever the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
   bot on the pull request finds different things, not the same ones: `no` is a valid answer but a
-  real trade. Recommend it when `code-review:cr-scan` is in this session's skill listing; when it
+  real trade. Offer three answers: `yes` — the fixer applies every fixable finding, security and
+  mechanically safe boy-scout fixes included, and what it cannot fix waits in the end-of-run
+  report without holding the branch; `gated` — security fixes, boy-scout findings, findings the
+  fixer left unfixed and anything the delta review finds hold their branch at `merged` until the
+  user settles them, for a user who wants to walk each one; `no`. Recommend `yes` when `code-review:cr-scan` is in this session's skill listing; when it
   is not, ask anyway and say the plugin must be installed — a listing can be withheld or cut
   short, and a review whose skill is missing comes back as no verdict, never as a clean pass. Take
   no other skill in its place: a skill that asks questions or fans out into agents of its own
@@ -158,7 +162,7 @@ Workflow({
     repos: { "<repository path>": { startRef: "<the step-1/2 base, e.g. origin/main or the parked branch>",
              diffBase: "origin/<default>",
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
-    review: <true or false — the step-2 answer>,
+    review: <true, "gated" or false — the step-2 answer>,
     maxFixRounds: 3,
     reportPath: <on a relaunch: the previous report's `<output-file>` path — omit on a first launch>
   }
@@ -206,13 +210,16 @@ that base implied did not happen. Relay each as a diagnostic saying which it was
 asks for is a corrected task file before the next split or relaunch, never a decision that moves
 those tasks, so neither is one of the items step 4 puts to the user below.
 
-A `review` item is a finding the workflow would not fix unasked — a `spec` finding, a `security`
-fix, a boy-scout finding on code the branch never touched, a report-only one, a finding the fixer
-left unfixed, or anything the delta review found in the fixes it did apply. Its branch
-passed CI and stays `merged` until the item is settled: a finding the user wants fixed goes to a
-repair; one the user dismisses needs no work. When every `review` item of a branch is dismissed,
-set that branch's tasks to `done` yourself — CI already passed on the commit they sit on. Give
-the `report.md` path with the findings: the one-line form in the HIL list drops the evidence.
+A `review` item is a finding the workflow would not fix unasked — a `spec` finding, a report-only
+one, a boy-scout finding whose fix is not mechanically safe, a finding the fixer left unfixed, or
+anything the delta review found in the fixes it did apply; under `gated`, also every `security`
+fix and every boy-scout finding. Without `gated` the item holds nothing: its branch is `done`, and
+the item waits in the end-of-run decision list (step 5), never as a question of its own. Under
+`gated` the branch passed CI and stays `merged` until the item is settled: a finding the user wants
+fixed goes to a repair; one the user dismisses needs no work, and when every `review` item of a
+branch is dismissed, set that branch's tasks to `done` yourself — CI already passed on the commit
+they sit on. Give the `report.md` path with the findings: the one-line form in the HIL list drops
+the evidence.
 
 Caveats are triaged, not relayed wholesale: one that names a decision the agent took, a risk,
 an as-built deviation or a commit no review saw goes to the user; one that reports compliance
@@ -259,7 +266,8 @@ composed from the plausible one costs a full round to disprove. The answers spli
   `merged` and list it in that branch's `taskFiles` — the tasks were marked done on a tree the
   repair is about to change, and only the repair's own final gate may mark them again. With
   review on, the workflow reviews the repair's own commits after its CI passes; those findings
-  come back as `review` items for the user, never to a fixer.
+  come back as `review` items for the user, never to a fixer, and hold the branch only under
+  `gated`.
 
   An `instructions` line says what to change, never asks for validation. "Then run the tests and
   confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent
