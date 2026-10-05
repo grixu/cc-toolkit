@@ -335,7 +335,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     ``,
     `Toolchain report for this repository:`,
     ``,
-    toolchain.get(unit.repo),
+    toolchainFor(unit),
     ``,
     baselineText(unit.repo),
     ``,
@@ -404,7 +404,7 @@ const fixPrompt = (unit, problems) =>
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
     ``,
-    toolchain.get(unit.repo),
+    toolchainFor(unit),
     ``,
     `Commit the fixes with a conventional-commit message. To verify a fix you may re-run the`,
     `exact commands that failed, scoped to the files they failed on — never a whole suite; the`,
@@ -594,6 +594,54 @@ const runCi = async (unit, mode, markFiles, label) => {
   return { ci, fault }
 }
 
+const TOOLCHAIN_TOUCH_RESULT = {
+  type: 'object',
+  required: ['touched'],
+  properties: {
+    touched: { type: 'boolean' },
+    files: { type: 'array', items: { type: 'string' }, description: 'the changed paths that define how the repository is validated' },
+  },
+}
+
+// A toolchain scouted on the base cannot see the checks a branch brings in: a repository this run
+// bootstraps is scouted with install and build alone, and its branches then pass without the lint,
+// typecheck and test steps they added. A repaired branch is measured from the default branch, so a
+// stack whose root brought those checks in is re-scouted on the tree under repair.
+const unitToolchain = new Map()
+const unitKey = (repo, branch) => `${repo}\n${branch}`
+const toolchainFor = (unit) => {
+  for (let u = unit, seen = 0; u && seen < 32; seen += 1) {
+    const own = unitToolchain.get(unitKey(u.repo, u.branch))
+    if (own) return own
+    u = units.find((x) => x !== u && x.repo === u.repo && x.branch === u.base)
+  }
+  return toolchain.get(unit.repo)
+}
+
+const rescoutIfTouched = async (unit, tag) => {
+  const tree = validationTree(unit)
+  const touch = await tryTwice(
+    [
+      ...treeSetup(unit),
+      `List what the branch ${unit.branch} changed: \`git -C ${tree} diff --name-only ${diffBase(unit.repo)}...HEAD\`.`,
+      `Return touched=true when any listed path defines how the repository is validated — a CI`,
+      `configuration (\`.github/workflows/*\`, \`.gitlab-ci.yml\` and the like), a package manifest or`,
+      `lockfile, a workspace or build-orchestrator config, a lint, format, typecheck or test config,`,
+      `a Makefile or task runner file — and list those paths under files. Change nothing.`,
+    ].join('\n'),
+    { label: `toolchain-touch:${tag}`, phase: 'Validate', schema: TOOLCHAIN_TOUCH_RESULT, model: 'haiku', effort: 'low' },
+  )
+  if (!touch || !touch.touched) return
+  const report = await tryTwice(
+    `Repository to analyse: ${tree}\n` +
+      `This is a worktree of ${unit.repo} on the branch ${unit.branch}, which changed ${(touch.files || []).join(', ')}.\n` +
+      `Detect how this tree is validated and return your full report.`,
+    { agentType: 'fd3:toolchain-scout', label: `scout:${tag}`, phase: 'Validate' },
+  )
+  if (report) unitToolchain.set(unitKey(unit.repo, unit.branch), report)
+  else caveats.push(`${unit.branch}: the branch changed ${(touch.files || []).join(', ')}, but its re-scout returned no result; it was validated with the base's toolchain report.`)
+}
+
 const validation = [] // per-branch summary for the final report
 
 for (const unit of units) {
@@ -606,6 +654,7 @@ for (const unit of units) {
     continue
   }
 
+  await rescoutIfTouched(unit, tag)
   let { ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}`)
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
