@@ -45,7 +45,9 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Declared gap** — something the spec could not settle, stated as such with an **owner** (who
   resolves it; the spec's own team by default) and a **placement** (the gate it blocks, the ticket
   number, or the verification substitute). A declared gap passes validation; an undeclared one is a
-  finding.
+  finding. Only a fact or an outside action can be a gap: a choice the spec's own team could make
+  today, parked for the split or the implementation, is an undecided either/or — the stage it is
+  parked on can only stop and ask it.
 - **Precedence declaration** — the header statement of what this spec supersedes and who wins on
   disagreement, followed by the enumerated reversals.
 - **Silent reversal** — a decision a superseded document made, changed here, and not marked as
