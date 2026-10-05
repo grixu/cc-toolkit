@@ -284,8 +284,8 @@ const CI_RESULT = {
   properties: {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
-    branch: { type: 'string', description: '`git branch --show-current` in the worktree, read before the first command; `detached` when HEAD is detached' },
-    dirty: { type: 'string', description: '`git status --porcelain` in the worktree after the last command, verbatim; an empty string when the tree is clean' },
+    branch: { type: 'string', description: '`git -C <worktree> branch --show-current`, read before the first command; `detached` when HEAD is detached' },
+    dirty: { type: 'string', description: '`git -C <worktree> status --porcelain` after the last command, verbatim; an empty string when the tree is clean' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
     marked: { type: 'boolean', description: 'the task files were set to done; asked for on a final gate only' },
   },
@@ -322,8 +322,11 @@ const ciPrompt = (unit, mode, markFiles) => {
     `its output happens to show.`,
     ``,
     ...treeSetup(unit),
-    `\`cd ${tree}\` before anything else, and confirm what you are about to grade: \`git rev-parse`,
-    `HEAD\` there must equal \`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
+    `\`cd ${tree}\` before anything else, and name the tree in every git command you run —`,
+    `\`git -C ${tree} …\` — because the shell's working directory can reset between commands, and`,
+    `a git command that silently runs in another checkout describes that checkout instead. Confirm`,
+    `what you are about to grade: \`git -C ${tree} rev-parse HEAD\` must equal`,
+    `\`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
     `return branch "${unit.branch}". When they do not, run nothing: return the branch you actually`,
     `found (or the short HEAD sha when detached) as branch, with passed=false and the mismatch in`,
     `failures. Every command runs from that worktree: each command's cwd in the report is relative`,
@@ -353,15 +356,16 @@ const ciPrompt = (unit, mode, markFiles) => {
     `Do not fix anything. Editing a source file, applying a formatter, and regenerating a derived`,
     `artifact a command compares against — an index, a schema, a lockfile — are all fixing: report`,
     `the failure and leave it. A verdict is only worth what the tree it ran on was, so when the`,
-    `last command has run, \`git status --porcelain\` and return its output verbatim as dirty.`,
+    `last command has run, run \`git -C ${tree} status --porcelain\` and return its output`,
+    `verbatim as dirty.`,
     `Return passed=true only when every runnable command exits 0 or fails only on baseline`,
     `entries; otherwise return each newly failing command with the output lines that matter.`,
     ...(markFiles
       ? [
           ``,
-          `One thing beyond the commands. When — and only when — you return passed=true, set`,
-          `\`status: done\` in the frontmatter of these task files, changing nothing else in them,`,
-          `and return marked=true:`,
+          `One thing beyond the commands. When — and only when — you return passed=true and dirty`,
+          `lists nothing but these task files, set \`status: done\` in their frontmatter, changing`,
+          `nothing else in them, and return marked=true:`,
           ...unit.taskFiles.map((f) => `- ${f}`),
           `They are the run's state store, and the no-fixing rule above is about the code, not`,
           `about them: edit them at the absolute paths listed, commit nothing, and if they happen`,
@@ -573,10 +577,21 @@ const ciFault = (ci, unit) => {
   return null
 }
 
+// The runner marks the files before the workflow judges its verdict, so a discarded verdict must
+// take its marks back — a task reading done on a tree nobody validated is a lie in the state store.
+const unmark = (files, label) =>
+  tryTwice(
+    `Set \`status: merged\` in the frontmatter of these task files, changing nothing else, and commit nothing:\n` +
+      files.map((f) => `- ${f}`).join('\n'),
+    { label: `unmark:${label}`, phase: 'Validate', model: 'haiku', effort: 'low' },
+  )
+
 const runCi = async (unit, mode, markFiles, label) => {
   const ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   if (!ci) return { ci: null, fault: null }
-  return { ci, fault: ciFault(ci, unit) }
+  const fault = ciFault(ci, unit)
+  if (fault && ci.marked) await unmark(unit.taskFiles || [], label)
+  return { ci, fault }
 }
 
 const validation = [] // per-branch summary for the final report
