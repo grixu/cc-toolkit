@@ -38,9 +38,13 @@ layout, do not go looking for it. The answer comes back as a message and you con
 
 Confirm `spec-path`'s directory exists before writing. Once the spec is there, move the
 closing-notes file beside it as `<spec-basename>.notes.md` — it outlives the session, and a
-validation pass can read the decisions' provenance from it. Move the research directory the same
-way, as `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the spec cite to
-the new location — evidence a later pass cannot open is evidence lost.
+validation pass can read the decisions' provenance from it. Move the research reports the same
+way, into `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the spec cite
+to the new location — evidence a later pass cannot open is evidence lost. What moves is the
+evidence: the reports, and any data file the spec or a report cites. Raw dumps and scratch scripts
+nothing cites stay in the scratchpad — they land in the repository with the spec and become a
+commit decision nobody asked for — and so does a file that holds an error response instead of the
+page it was fetching, which proves nothing.
 
 ## 2. What goes in
 
@@ -78,11 +82,11 @@ session maps into it:
   evidence for each gate is technical, gathered like any other fact. Then estimate each
   landing unit's aggregate diff from the work items it places; where one plausibly exceeds
   **80 changed files or 2000 changed lines**, generated files excluded, the subdivision is
-  the user's call. `SendMessage` to `main` with the proposed seams — phase boundaries,
-  dependency clusters — as numbered options with your recommendation first, then end your
-  turn. Write neither the table nor the threshold before the answer arrives; you continue
-  from where you stopped. A user-requested split becomes a gate in the table like any
-  other; the threshold itself never appears in the spec.
+  the user's call — but not a reason to stop writing. Write the table with the landing units
+  the gates give, and carry the proposed seams — phase boundaries, dependency clusters — as
+  a numbered question in your report, recommendation first, with the estimate that crossed
+  the threshold. Answered, a requested split becomes a gate in the table like any other; the
+  threshold itself never appears in the spec.
 
 ## 3. The evidence appendix
 
@@ -152,3 +156,9 @@ row is defined or deleted.
 Report where it went, how long it is, the counts from section 6, and how many citations you resolved
 yourself against how many you did not — "the rest resolve" is a claim you did not check. Then say
 plainly what is not yet settled in it: the declared gaps, and anything you were unable to verify.
+
+Close with every question the writing raised, in one numbered batch, recommendation first: a
+subdivision the threshold asks for, and each decision you took while writing that the closing
+notes do not cover — a default, a value, a seam — with the `Dn` row it landed in. Those rows are
+written as `assistant-taken`; the batch is where the user ratifies or overturns them, at one known
+point. A decision left "worth confirming before the split" is a question the split stops on.
