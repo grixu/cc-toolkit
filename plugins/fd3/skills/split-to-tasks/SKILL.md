@@ -114,8 +114,9 @@ worked on in a second worktree is exactly where the guess goes wrong.
 
 The spec is an input read at its **absolute path**, and where it happens to be committed decides
 nothing. A spec written on a docs branch, on a feature branch, or in a repository the work never
-touches still cuts its branches from each repository's default branch: a base is derived from the
-rollout and the stack, never from `git log` on the spec file.
+touches still cuts its branches from each repository's default branch, or from a prerequisite
+branch the spec itself names: a base is derived from the rollout and the stack, never from
+`git log` on the spec file.
 
 ### 2. Cut
 
@@ -174,18 +175,27 @@ yours to relax:
   something would queue up behind it. Where the phase deploys nothing and a revert restores the
   change, the task cut suffices; the report states which reading applied.
 
-Branches of consecutive landing units in one repository **stack**: the first starts from the
-repository's default branch, each later one from the previous unit's branch. Record each branch's
-base in its tasks' `branch-base:` frontmatter field — the same value on every task of the branch,
-and the field implementation reads; a base recorded only in the report is a base lost with the
-conversation.
+Branches in one repository **stack** only on a real ordering: a file both units touch, a symbol
+or module one defines and the other uses or pins, or an environment order the spec states. Each
+branch starts from the latest earlier branch whose work it builds on that way — not merely the
+previous landing unit — and a branch that builds on none starts from the repository's default
+branch. The order the gates impose on landing is a merge order, stated in the report's chain; it is
+not a base. Stacking on the previous unit by habit cuts a branch from a base that lacks the files it
+needs whenever the unit in between touched something else, and it chains the branch to whatever
+that unit waits on. Record each branch's base in its tasks' `branch-base:` frontmatter field — the
+same value on every task of the branch, and the field implementation reads; a base recorded only in
+the report is a base lost with the conversation.
 
-Where a landing constraint has produced one branch per task, only a real ordering stacks: a shared
-file, a module its consumers pin, or an environment order the spec states. Tasks applying the same
-change to disjoint targets are siblings — each off the default branch, no edge between them —
+The same test holds where a landing constraint has produced one branch per task: tasks applying the
+same change to disjoint targets are siblings — each off the default branch, no edge between them —
 however tempting a tidy sequence looks. A stack link is a serialisation the implementation stage
 pays for per branch: one validation wave each, regardless of diff size, so a chain of N one-file
 branches costs N full validation ladders.
+
+A branch the spec names as a prerequisite that has not landed — an open pull request its work
+builds on — is a base like any other: stack the branch that needs it on that branch, record in the
+report how far it is behind `origin/<default>`, and say in the dependent tasks' `## Note` that the
+pull request is retargeted once that one merges. It is a fact the spec settled, not a question.
 
 Then the size check: estimate each branch's aggregate diff from its tasks' citations. Past **80
 changed files or 2000 changed lines**, generated files excluded, a reviewer stops reading and
@@ -223,7 +233,8 @@ exception: it is a real edge, drawn onto the operational task that performs the 
 operational task exists for that gate, that is a coverage failure in step 5, not a licence to
 record the gate in prose. Propose each branch's name
 following its repository's visible convention — existing branches show it; the name belongs to the
-group, not the task. One exception joins the step-6 batch: when the checkout already sits on a
+group, not the task. A repository with no branches yet takes the convention of another repository
+the spec touches, and the report says whose it borrowed. One exception joins the step-6 batch: when the checkout already sits on a
 branch carrying implementation commits for this spec, whether the first landing unit reuses that
 branch or cuts fresh by the convention is the user's call — a user mid-feature may have chosen it
 deliberately. A branch that carries only the spec file itself is not that case — unless the spec
@@ -266,7 +277,8 @@ Before writing anything, check — and say in the report — that:
   points at a lower ordinal — the reading order really is topological, and the implementation
   workflow's merge planning relies on that;
 - the `branch-base` chain is rooted, acyclic, single-parent and identical on every task of a
-  branch. Its one root is the repository's default branch — or, where step 4 found the checkout
+  branch. Its one root is the repository's default branch — or a prerequisite branch the spec names
+  as not yet landed (step 3) — or, where step 4 found the checkout
   already sitting on a branch that carries implementation commits for this spec, that branch: the root is then
   whatever the step-6 answer settles, so a chain rooted there is a question still pending, never a
   coverage failure. Stopping on it would abort a split the user was never asked about.
@@ -283,9 +295,17 @@ already holds task files at all — say whether they point at this spec (a re-sp
 write beside them) or at another one. Files from an earlier split of this same spec are the case
 that looks safe and is not: implementation writes its statuses, worktree paths and notes into them,
 and overwriting unasked destroys the only copy of that.
-A missing branch convention is the user's; grouping the gates decided and a size breach is a
-report with a recommendation, never a question — everything the rules above already settled,
-report rather than ask.
+A branch convention no repository the spec touches shows is the user's; grouping the gates decided
+and a size breach is a report with a recommendation, never a question — everything the rules above
+already settled, report rather than ask. Three more things are never questions:
+
+- A question whose every option leaves the task files the same — an unborn default branch, a
+  setup step the implementation stage owns. It goes into the report under what is still owed.
+- A choice an older spec left for the split ("decided at task split") whose answer follows from the
+  spec's own evidence. Decide it, and record the decision with its evidence in the report and in the
+  `## Note` of every task it binds. Only a choice the evidence leaves open joins the batch.
+- Anything a rule in this skill decides. When an answer conflicts with such a rule, or with another
+  answer, that conflict is the question — ask it as a follow-up rather than resolving it yourself.
 
 ### 7. Write and report
 
