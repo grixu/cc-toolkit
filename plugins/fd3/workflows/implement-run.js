@@ -268,7 +268,9 @@ const operationalFiles = tasks.filter((t) => t.repository === 'none' && status.g
 if (operationalFiles.length > 0) {
   await tryTwice(
     `Set \`status: blocked\` in the frontmatter of these task files, changing nothing else:\n` +
-      operationalFiles.map((f) => `- ${f}`).join('\n'),
+      operationalFiles.map((f) => `- ${f}`).join('\n') +
+      `\n\nCommit nothing, stage nothing: the files sit in the user's checkout, and what goes into` +
+      ` its history is the user's call.`,
     { label: 'mark-blocked', phase: 'Implement', model: 'haiku', effort: 'low' },
   )
 }
