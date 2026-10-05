@@ -221,20 +221,33 @@ branch is dismissed, set that branch's tasks to `done` yourself — CI already p
 they sit on. Give the `report.md` path with the findings: the one-line form in the HIL list drops
 the evidence.
 
-Caveats are triaged, not relayed wholesale: one that names a decision the agent took, a risk,
-an as-built deviation or a commit no review saw goes to the user; one that reports compliance
-with its own prompt, or restates what the task file already records, does not. Write the full
-list to `caveats.txt` in the session scratchpad and give its path.
+Caveats are triaged, not relayed wholesale, and triage is not a question. One that names a
+decision the agent took inside its task, a risk, an as-built deviation or a commit no review saw
+is kept as built and listed under *Decisions taken for you* in the end-of-run report (step 5),
+each with how to revert it — a cap the agent chose, a guard it added, a fallback it picked. Doc
+drift the run's own changes caused — a README, an index or a reference a branch made stale — goes
+to a repair without asking. Only a caveat that contradicts a spec decision or names an
+irreversible operation becomes a question. One that reports compliance with its own prompt, or
+restates what the task file already records, is dropped. Write the full list to `caveats.txt` in
+the session scratchpad and give its path.
 
-For each HIL item, put the decision to the user: an operational task is theirs to execute (offer
-the task file's steps as a script to follow; mark `done` only when they confirm); a blocker or
-conflict needs their call on how to proceed. A CI failure on the list may be diagnosed first —
-read-only, in the branch's worktree — so the question puts analyzed options before the user
-instead of raw output; the diagnosis then travels verbatim in the repair `instructions`, sparing
-the repair agent a re-investigation. Diagnose by **running the failing check** in that worktree and
-reading what it says. Grepping the source for what the report's message suggests names a plausible
-cause, not the cause: the check is the only thing that knows which of them is true, and a repair
-composed from the plausible one costs a full round to disprove. The answers split into two lanes:
+Put to the user only what needs a human: an operational task is theirs to execute (offer the task
+file's steps as a script to follow; mark `done` only when they confirm), and a blocker or a
+judgment conflict needs their call on how to proceed. Every such decision of one report goes in one
+batch — never one question per turn. A `ci` item is not a question: diagnose it — read-only, in
+the branch's worktree — and send it to `repair-run` with the diagnosis verbatim in the
+`instructions`, sparing the repair agent a re-investigation. It becomes a question only when the
+diagnosis shows the fix must change behaviour, the case the fixer already refused. Diagnose by
+**running the failing check** in that worktree and reading what it says. Grepping the source for
+what the report's message suggests names a plausible cause, not the cause: the check is the only
+thing that knows which of them is true, and a repair composed from the plausible one costs a full
+round to disprove.
+
+What the loop does next is never a question. Relaunching after a decision, rerunning a check that
+died on a transient failure, launching the repair a decision implies, updating the handoff file —
+do it and say what you did. When the user reports a human step done, check it where it can be
+checked — the task file's verification, the live state — and carry on. The answers split into two
+lanes:
 
 - **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
   the same way; statuses make the rerun skip everything finished.
