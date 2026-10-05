@@ -4,7 +4,7 @@ export const meta = {
   whenToUse: 'Launched by the fd3:implement-tasks skill after the user has decided the HIL items of an implement-run report; not meant to be invoked bare.',
   phases: [
     { title: 'Recon', detail: 'only for repositories whose toolchain or baseline knowledge did not arrive in args' },
-    { title: 'Repair', detail: 'one agent per branch, the HIL decision applied verbatim' },
+    { title: 'Repair', detail: 'one agent per branch, the HIL decision applied verbatim; a stacked branch after its base' },
     { title: 'Validate', detail: 'scoped CI with fix rounds, a review of the repair delta, then the full gate, one branch at a time' },
   ],
 }
@@ -236,6 +236,8 @@ const repairPrompt = (r) =>
     `Work only inside the worktree. Do not run linters, test suites or builds — validation runs`,
     `after you. Make one commit per decision quoted above, each with a conventional-commit message`,
     `describing that decision's change — a reviewer reverts or questions one decision, never a bundle.`,
+    `Merge no other branch into this one unless a decision above says to: the workflow brings a`,
+    `stacked branch up to its repaired base itself, after that base's repair has landed.`,
     ``,
     `Return outcome "repaired" with a two-sentence summary of what changed, or outcome "blocked"`,
     `with the reason when the decision cannot be applied as stated. Never guess past an ambiguity.`,
@@ -243,19 +245,37 @@ const repairPrompt = (r) =>
     `should see — a degraded type, a narrower behavior than the decision may have intended.`,
   ].join('\n')
 
-// Repair agents edit code and run no pipelines, so they can run in parallel across branches.
-const repairResults = await parallel(
-  repairs.map((r) => () =>
-    tryTwice(repairPrompt(r), {
-      label: `repair:${unitTag(r)}`,
-      phase: 'Repair',
-      schema: REPAIR_RESULT,
-    }),
-  ),
-)
+// Repair agents edit code and run no pipelines, so they run in parallel across branches — except a
+// branch stacked on another branch under repair, which waits for it: started together, it builds on
+// a base whose own repair has not landed, and the stack is validated on a state no branch holds.
+const stackedOnPending = (i, pending) =>
+  repairs.some((b, j) => j !== i && pending.has(j) && b.repo === repairs[i].repo && b.branch === repairs[i].base)
+const repairResults = new Array(repairs.length)
+const repairOrder = []
+const pending = new Set(repairs.map((_, i) => i))
+while (pending.size > 0) {
+  const ready = [...pending].filter((i) => !stackedOnPending(i, pending))
+  // A cycle of bases cannot be ordered; run it as given rather than never.
+  const batch = ready.length > 0 ? ready : [...pending]
+  const results = await parallel(
+    batch.map((i) => () =>
+      tryTwice(repairPrompt(repairs[i]), {
+        label: `repair:${unitTag(repairs[i])}`,
+        phase: 'Repair',
+        schema: REPAIR_RESULT,
+      }),
+    ),
+  )
+  batch.forEach((i, k) => {
+    repairResults[i] = results[k]
+    repairOrder.push(i)
+    pending.delete(i)
+  })
+}
 
 const units = []
-repairs.forEach((r, i) => {
+repairOrder.forEach((i) => {
+  const r = repairs[i]
   const result = repairResults[i]
   if (result && result.caveats) caveats.push(...result.caveats.map((c) => `${r.branch} repair: ${c}`))
   if (result && result.outcome === 'repaired') {
@@ -642,6 +662,15 @@ const rescoutIfTouched = async (unit, tag) => {
   else caveats.push(`${unit.branch}: the branch changed ${(touch.files || []).join(', ')}, but its re-scout returned no result; it was validated with the base's toolchain report.`)
 }
 
+const REFRESH_RESULT = {
+  type: 'object',
+  required: ['refreshed'],
+  properties: {
+    refreshed: { type: 'boolean' },
+    conflict: { type: 'string', description: 'what needs a judgment call; only when refreshed is false' },
+  },
+}
+
 const validation = [] // per-branch summary for the final report
 
 for (const unit of units) {
@@ -652,6 +681,32 @@ for (const unit of units) {
   if (!toolchain.get(unit.repo)) {
     summary.ci = 'no-verdict' // the scout's death is already on the HIL list, once per repository
     continue
+  }
+
+  // A branch stacked on a repaired branch predates that repair; validating it without the repair
+  // grades a stack that will never exist.
+  if (units.some((u) => u !== unit && u.repo === unit.repo && u.branch === unit.base)) {
+    const refresh = await tryTwice(
+      [
+        `In the worktree ${unit.worktree} (repository ${unit.repo}), merge ${unit.base} into`,
+        `${unit.branch}, so the branch is validated against its repaired base. Resolve a conflict`,
+        `only when the resolution is mechanical; commit it. When a conflict needs a judgment`,
+        `call, abort (git merge --abort) and return refreshed=false with the conflict described.`,
+      ].join('\n'),
+      { label: `refresh:${tag}`, phase: 'Validate', schema: REFRESH_RESULT },
+    )
+    if (!refresh || !refresh.refreshed) {
+      summary.ci = refresh ? 'skipped' : 'no-verdict'
+      hil.push({
+        slug: null,
+        kind: refresh ? 'merge-conflict' : 'no-verdict',
+        stage: 'base-refresh',
+        reason: refresh
+          ? `${unit.repo} ${unit.branch}: merging the repaired base ${unit.base} needs a judgment call: ${refresh.conflict}; the branch was not validated.`
+          : `${unit.repo} ${unit.branch}: the base-refresh agent returned no result after a retry; the branch was not validated.`,
+      })
+      continue
+    }
   }
 
   await rescoutIfTouched(unit, tag)
