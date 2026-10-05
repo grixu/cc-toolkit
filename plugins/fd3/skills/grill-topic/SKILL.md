@@ -32,15 +32,19 @@ A round stays open until the user answers it. A lookup that returns while a roun
 
 Each round the user answers reshapes the tree — settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a *later* round, not this one.
 
-Number every question, and give each one **named options with a marked recommendation**: two or three alternatives that are actually live, each with the cost of choosing it, and one marked as your recommendation. The recommendation is the point — an even-handed menu makes the user do the comparison you were meant to do. Where one decision has parts that cannot be settled separately, sub-letter them (`4a`, `4b`, `4c`) rather than splitting them across rounds or collapsing them into one question.
+Number every question, and give each one **named options with a marked recommendation**: two or three alternatives that are actually live, each with the cost of choosing it, and one marked as your recommendation. The recommendation is the point — an even-handed menu makes the user do the comparison you were meant to do. Where one decision has parts that cannot be settled separately, sub-number them (`4.1`, `4.2`, `4.3`) rather than splitting them across rounds or collapsing them into one question. Letters belong to options, and every option carries one — `a)`, `b)`, sub-questions included — so an answer like `4.2 b` has exactly one reading.
 
 Before a question goes out, check the facts you already hold against **every** option — for one they eliminate, and for an option they should have added. An option the question itself dismisses, or a fact you hold that makes a fourth option obviously better than the three you listed, means the question shipped missing a fact you had — and the user's answer to it was never a real choice.
 
 Every question a user is meant to answer carries its own number — none arrives buried in the tail of another.
 
-Open every round after the first with one line naming the numbers still unanswered from earlier rounds — `Open from earlier rounds: 18–25` — before any new question. When a round contains sub-lettered questions, close it with the list of labels you expect back (`1, 2, 3a, 3b, 4`): a bare number against a sub-lettered question is one answer short, and you will not know which half it was.
+Open every round after the first with one line naming the numbers still unanswered from earlier rounds — `Open from earlier rounds: 18–25` — before any new question. Close every round with the labels you expect back, in the order the round asks them — `Answer as: 5, 6, 7.1, 7.2` — so the user answers by label rather than by position.
 
-A blocked question keeps its number and stays out of the round's numbered items; name it on the line that opens the round. A number printed inside the round is a number the user will answer.
+A question blocked by a lookup takes its number when it goes out, never before: a number held back for it leaves a hole in the round, and a user who answers by position then answers the wrong question. Name what is blocked by topic on the line that opens the round. A number printed inside the round is a number the user will answer.
+
+When answers come back by position rather than by label and only one mapping fits the round, take it and state the reading in the acknowledgement; ask only when two readings differ — a confirmation turn over an answer you can read costs the user a round trip for nothing.
+
+A message that says a round is open holds that round's questions in full. Round 1 goes out in the same message as the topic's findings — never announced ahead of them, and never present only in your notes: a round the user cannot see is a turn spent waiting on an answer nobody can give.
 
 Keep a **question ledger** — `notes/question-ledger.md` in the session scratchpad, beside where the closing notes land — with one row per number: the question in a line, the round it went out in, the option chosen or `open`, and `carried-over` where it has been re-asked. Write the row when the question goes out, and update it when the answer arrives — before composing the next round, which is read from the ledger and not from memory. Numbers tracked in your head are the first thing a compaction takes, and what comes back after one is a reassigned number, a question that quietly vanished, or a carried-over question compressed into a summary of itself.
 
