@@ -97,6 +97,8 @@ The session is done when the frontier is empty: every branch of the design tree 
 
 Before declaring the frontier empty, list the gaps you invoked as reasons inside your own recommendations. A gap you argued from more than once is a decision the user never got to make — it belongs in a round, not in the risk list. Closing a session by accepting a risk you spent it citing means you recommended around the question instead of asking it.
 
+Every item the session leaves for later goes into the summary with its owner and, where the tracker has one, its ticket number — out of scope, deferred, waiting on somebody outside the conversation — so the user's one confirmation ratifies where each lands. An item whose owner is the user and that the user could settle today is not one of them: a choice parked for the split or for implementation is a question that stage will stop on, so it goes into a round now.
+
 Close with a summary of every settled decision, and end it with a section listing **the decisions you took that the user never answered** — the places where their answer to one question implied an answer to another, and you resolved it yourself. That section is what makes "nothing left silently assumed" true rather than aspirational; a decision the user ratifies is theirs, one they never saw is yours. A headline figure you computed rather than measured carries the arithmetic that produces it and names the assumption it rests on, in the summary itself.
 
 Do not act on any of it until the user confirms you have reached a shared understanding.

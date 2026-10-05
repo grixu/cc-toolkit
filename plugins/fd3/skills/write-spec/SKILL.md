@@ -118,7 +118,9 @@ pass to find.
 
 Anything the session could not settle goes into the document as a **declared gap**, on the terms
 `spec-rules.md` sets. A gap left as confident prose is the failure this whole section exists to
-prevent.
+prevent. A choice the session left open is not a gap: it goes to `main` as a question, never into
+the document as "decided at task split" or "confirm before implementation" — that placement only
+moves the question to a stage that has to stop for it.
 
 ## 5. Length and tone
 
