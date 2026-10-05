@@ -143,6 +143,11 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
 Everything else — wave composition, branch names, merge order — the task files already decided;
 report it, do not ask.
 
+Record the answers in `implement-answers.md` next to the tasks directory, never inside it where it
+would read as a task file — the start ref per repository, the review choice, the commit choice. A later
+invocation over the same directory reads that file first and asks only what it does not settle or
+what has changed since: a new repository, a base that moved, a stale `in-progress`.
+
 Committing the spec and the tasks directory before launch is the user's call, and it is a change
 to the repository like any other: whatever that repository derives from the tree you touched —
 a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
@@ -297,27 +302,35 @@ branches against the standing HIL decisions before relaying success — an agent
 reserved human step is the first thing to report, not a footnote. Repeat until every task is
 `done` or the user stops.
 
-When the run parks on human work — HIL items that need days, not minutes — offer to write an
+When the run parks on human work — HIL items that need days, not minutes — write an
 ordered handoff file (`HIL_ACTIONS.md` next to the tasks directory): the human steps in order,
 each pointing at its task file and what it unblocks, plus where the branches and worktrees
 live. A pause that survives only in this conversation is state lost.
 
 ### 5. Propose, never push
 
-When every repository-bearing task is `done`: one table — repository, branch, its stack base,
+When every repository-bearing task is `done`, close with one end-of-run report and one question
+batch — everything the run deferred lands here, so nothing earlier had to stop for it. The report
+holds, in this order: one table — repository, branch, its stack base,
 its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
-citing the tickets — with the still-open operational tasks listed alongside; they need the branches landed
-first, so they never gate this proposal. Stacked branches make a pull-request chain: each pull
+citing the tickets; the still-open operational tasks — they need the branches landed first, so
+they never gate this proposal; *Decisions taken for you*, each with how to revert it; and the
+`review` items left open, numbered, each with its `report.md` path. Stacked branches make a pull-request chain: each pull
 request's base is its branch's stack base, and after one lands its successor is retargeted onto
 the default branch — but only when the predecessor landed as a merge commit. After a squash
 merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget
 shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
-Say that in the proposal. Then propose pushing the branches and opening the pull requests. Only
+Say that in the proposal. The batch then asks two things: whether to push the branches and open
+the pull requests, and which open `review` items, by number, go to a repair before that — none is
+the default, and a decision taken for the user that they want reverted is named the same way. Only
 after explicit consent: push, `gh pr create` per branch (`--base` set to the stack base) with a
-description naming the tasks, the spec and the branch's element codes. Offer cleanup — remove
-the `.worktrees` directories and delete the merged `task/<slug>` branches — as its own
-question, never coupled to the push: declining to publish while wanting a clean repository is a
-normal combination. If push consent does not come, leave everything local. The worktree paths are
+description naming the tasks, the spec and the branch's element codes. When the repository's own
+rules reserve pushing to a human — its `AGENTS.md`, `CLAUDE.md` or contributing guide says so —
+the push is not a question: print the exact `git push` and `gh pr create` commands instead.
+Cleanup is not a question either: leave the `.worktrees` directories and the merged
+`task/<slug>` branches, and print the commands that remove them — declining to publish while
+wanting a clean repository is a normal combination, and the commands serve both. If push consent
+does not come, leave everything local. The worktree paths are
 in the table whatever the user decides: a branch whose worktree nobody can name is a branch the
 user cannot open, and the run's own directories are not guessable. When the tasks directory is
 untracked, say that too: it is the only copy of the
