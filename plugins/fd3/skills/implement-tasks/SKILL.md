@@ -303,17 +303,21 @@ Never run two workflows at once — validation tolerates exactly one build/lint/
 the machine. Repairs first, then the implement relaunch. When a relaunch completes, check its
 branches against the standing HIL decisions before relaying success — an agent that undid a
 reserved human step is the first thing to report, not a footnote. Repeat until every task is
-`done` or the user stops.
+`done` or the user stops; a stop still closes with step 5, because the deferred decisions and
+open `review` items exist nowhere else.
 
 When the run parks on human work — HIL items that need days, not minutes — write an
 ordered handoff file (`HIL_ACTIONS.md` next to the tasks directory): the human steps in order,
 each pointing at its task file and what it unblocks, plus where the branches and worktrees
-live. A pause that survives only in this conversation is state lost.
+live, followed by *Decisions taken for you* and the open `review` items as step 5 lists them. A
+pause that survives only in this conversation is state lost.
 
 ### 5. Propose, never push
 
-When every repository-bearing task is `done`, close with one end-of-run report and one question
-batch — everything the run deferred lands here, so nothing earlier had to stop for it. The report
+When every repository-bearing task is `done`, or the loop ends short of that, close with one
+end-of-run report and one question batch — everything the run deferred lands here, so nothing
+earlier had to stop for it. A loop that ended short proposes only the branches whose tasks are all
+`done` and asks nothing about the rest; their state is in the report. The report
 holds, in this order: one table — repository, branch, its stack base,
 its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
 citing the tickets; the still-open operational tasks — they need the branches landed first, so
