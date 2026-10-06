@@ -179,8 +179,10 @@ Branches in one repository **stack** only on a real ordering: a file both units 
 or module one defines and the other uses or pins, or an environment order the spec states. Each
 branch starts from the latest earlier branch whose work it builds on that way — not merely the
 previous landing unit — and a branch that builds on none starts from the repository's default
-branch. The order the gates impose on landing is a merge order, stated in the report's chain; it is
-not a base. Stacking on the previous unit by habit cuts a branch from a base that lacks the files it
+branch. A branch that builds on two earlier branches neither of which builds on the other has no
+single base holding both: stack the later of the two on the earlier, so one chain carries both,
+then base the branch on the later one, and name that extra stacking in the report. The order the
+gates impose on landing is a merge order, stated in the report's chain; it is not a base. Stacking on the previous unit by habit cuts a branch from a base that lacks the files it
 needs whenever the unit in between touched something else, and it chains the branch to whatever
 that unit waits on. Record each branch's base in its tasks' `branch-base:` frontmatter field — the
 same value on every task of the branch, and the field implementation reads; a base recorded only in
