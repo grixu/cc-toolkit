@@ -196,6 +196,18 @@ const baselineReady = (async () => {
   hil.push({ slug: null, kind: 'no-verdict', stage: 'baseline', reason: `the baseline pass threw before Validate (${err && err.message ? err.message : err}); failures cannot be told apart from pre-existing ones this run.` })
 })
 
+// The baseline was measured with the base report's commands; a command only this branch's own
+// report names has none, and its pre-existing failures would otherwise be blamed on the branch.
+const ownToolchainNote = (unit) =>
+  toolchainFor(unit) === toolchain.get(unit.repo)
+    ? []
+    : [
+        ``,
+        `This branch's toolchain report was detected on the branch itself, so a command it names that`,
+        `the baseline above lacks has no baseline. When such a command fails, run it once in the clean`,
+        `base worktree ${worktreePath(unit.repo, 'baseline')}: a failure that occurs there too is pre-existing.`,
+      ]
+
 const baselineText = (repo) => {
   const b = baseline.get(repo)
   if (!b) return 'No baseline is available for this repository — treat every failure as introduced by the branch.'
@@ -415,6 +427,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     toolchainFor(unit),
     ``,
     baselineText(unit.repo),
+    ...ownToolchainNote(unit),
     ``,
     mode === 'scoped'
       ? `Scope the run to this branch's changes: list them with` +
@@ -702,9 +715,10 @@ const rescoutIfTouched = async (unit, tag) => {
       ...treeSetup(unit),
       `List what the branch ${unit.branch} changed: \`git -C ${tree} diff --name-only ${diffBase(unit.repo)}...HEAD\`.`,
       `Return touched=true when any listed path defines how the repository is validated — a CI`,
-      `configuration (\`.github/workflows/*\`, \`.gitlab-ci.yml\` and the like), a package manifest or`,
-      `lockfile, a workspace or build-orchestrator config, a lint, format, typecheck or test config,`,
-      `a Makefile or task runner file — and list those paths under files. Change nothing.`,
+      `configuration (\`.github/workflows/*\`, \`.gitlab-ci.yml\` and the like), a package manifest whose`,
+      `scripts changed, a workspace or build-orchestrator config, a lint, format, typecheck or test`,
+      `config, a Makefile or task runner file — and list those paths under files. A lockfile, or a`,
+      `manifest whose only change is its dependencies, does not count: it changes no check. Change nothing.`,
     ].join('\n'),
     { label: `toolchain-touch:${tag}`, phase: 'Validate', schema: TOOLCHAIN_TOUCH_RESULT, model: 'haiku', effort: 'low' },
   )
