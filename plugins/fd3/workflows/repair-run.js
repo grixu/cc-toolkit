@@ -247,12 +247,48 @@ const repairPrompt = (r) =>
     `should see — a degraded type, a narrower behavior than the decision may have intended.`,
   ].join('\n')
 
+const REFRESH_RESULT = {
+  type: 'object',
+  required: ['refreshed'],
+  properties: {
+    refreshed: { type: 'boolean' },
+    conflict: { type: 'string', description: 'what needs a judgment call; only when refreshed is false' },
+    reviewBase: { type: 'string', description: 'the synthetic review base commit; only when one was asked for and built' },
+  },
+}
+
+// A repair-delta review measured from the pre-merge commit would re-read every commit the merge
+// brought in, so the review base is that commit with the same base merged in, built off any worktree.
+const refreshBase = (unit, label, phaseName, reviewFrom) =>
+  tryTwice(
+    [
+      `In the worktree ${unit.worktree} (repository ${unit.repo}), merge ${unit.base} into`,
+      `${unit.branch}, so the branch builds on its repaired base. Resolve a conflict only when the`,
+      `resolution is mechanical; commit it. When a conflict needs a judgment call, abort`,
+      `(git merge --abort) and return refreshed=false with the conflict described. Return`,
+      `refreshed=true when the merge landed or the branch already contained ${unit.base}.`,
+      ...(reviewFrom
+        ? [
+            ``,
+            `Then build the review base: run \`git -C ${unit.worktree} merge-tree --write-tree ${reviewFrom} ${unit.base}\`.`,
+            `When it exits 0, run \`git -C ${unit.worktree} commit-tree <tree> -p ${reviewFrom} -p ${unit.base} -m "fd3 review base"\``,
+            `with the tree id it printed, and return the commit it prints as reviewBase. When it exits`,
+            `non-zero, return no reviewBase. Neither command touches the worktree or any branch.`,
+          ]
+        : []),
+    ].join('\n'),
+    { label, phase: phaseName, schema: REFRESH_RESULT },
+  )
+
 // Repair agents edit code and run no pipelines, so they run in parallel across branches — except a
-// branch stacked on another branch under repair, which waits for it: started together, it builds on
-// a base whose own repair has not landed, and the stack is validated on a state no branch holds.
+// branch stacked on another branch under repair, which waits for it and merges the repaired base
+// before its own agent starts: otherwise it repairs code its base's repair has already changed.
 const stackedOnPending = (i, pending) =>
   repairs.some((b, j) => j !== i && pending.has(j) && b.repo === repairs[i].repo && b.branch === repairs[i].base)
+const repairedBase = (i) =>
+  repairs.some((b, j) => j !== i && b.repo === repairs[i].repo && b.branch === repairs[i].base && repairResults[j] && repairResults[j].outcome === 'repaired')
 const repairResults = new Array(repairs.length)
+const preRefused = new Map() // index → the HIL item that kept its repair from starting
 const repairOrder = []
 const pending = new Set(repairs.map((_, i) => i))
 while (pending.size > 0) {
@@ -260,13 +296,28 @@ while (pending.size > 0) {
   // A cycle of bases cannot be ordered; run it as given rather than never.
   const batch = ready.length > 0 ? ready : [...pending]
   const results = await parallel(
-    batch.map((i) => () =>
-      tryTwice(repairPrompt(repairs[i]), {
-        label: `repair:${unitTag(repairs[i])}`,
+    batch.map((i) => async () => {
+      const r = repairs[i]
+      if (repairedBase(i)) {
+        const refresh = await refreshBase(r, `refresh:${unitTag(r)}:pre-repair`, 'Repair', null)
+        if (!refresh || !refresh.refreshed) {
+          preRefused.set(i, {
+            slug: null,
+            kind: refresh ? 'merge-conflict' : 'no-verdict',
+            stage: 'base-refresh',
+            reason: refresh
+              ? `${r.repo} ${r.branch}: merging the repaired base ${r.base} needs a judgment call: ${refresh.conflict}; the repair was not applied.`
+              : `${r.repo} ${r.branch}: the base-refresh agent returned no result after a retry; the repair was not applied.`,
+          })
+          return null
+        }
+      }
+      return tryTwice(repairPrompt(r), {
+        label: `repair:${unitTag(r)}`,
         phase: 'Repair',
         schema: REPAIR_RESULT,
-      }),
-    ),
+      })
+    }),
   )
   batch.forEach((i, k) => {
     repairResults[i] = results[k]
@@ -279,6 +330,10 @@ const units = []
 repairOrder.forEach((i) => {
   const r = repairs[i]
   const result = repairResults[i]
+  if (preRefused.has(i)) {
+    hil.push(preRefused.get(i))
+    return
+  }
   if (result && result.caveats) caveats.push(...result.caveats.map((c) => `${r.branch} repair: ${c}`))
   if (result && result.outcome === 'repaired') {
     units.push({ ...r, fromSha: result.fromSha || null })
@@ -664,15 +719,6 @@ const rescoutIfTouched = async (unit, tag) => {
   else caveats.push(`${unit.branch}: the branch changed ${(touch.files || []).join(', ')}, but its re-scout returned no result; it was validated with the base's toolchain report.`)
 }
 
-const REFRESH_RESULT = {
-  type: 'object',
-  required: ['refreshed'],
-  properties: {
-    refreshed: { type: 'boolean' },
-    conflict: { type: 'string', description: 'what needs a judgment call; only when refreshed is false' },
-  },
-}
-
 const validation = [] // per-branch summary for the final report
 
 for (const unit of units) {
@@ -685,18 +731,15 @@ for (const unit of units) {
     continue
   }
 
-  // A branch stacked on a repaired branch predates that repair; validating it without the repair
-  // grades a stack that will never exist.
+  // The base's own CI fixes land after this branch's repair; validating without them grades a stack
+  // that will never exist.
+  let reviewFrom = unit.fromSha
   if (units.some((u) => u !== unit && u.repo === unit.repo && u.branch === unit.base)) {
-    const refresh = await tryTwice(
-      [
-        `In the worktree ${unit.worktree} (repository ${unit.repo}), merge ${unit.base} into`,
-        `${unit.branch}, so the branch is validated against its repaired base. Resolve a conflict`,
-        `only when the resolution is mechanical; commit it. When a conflict needs a judgment`,
-        `call, abort (git merge --abort) and return refreshed=false with the conflict described.`,
-      ].join('\n'),
-      { label: `refresh:${tag}`, phase: 'Validate', schema: REFRESH_RESULT },
-    )
+    const refresh = await refreshBase(unit, `refresh:${tag}`, 'Validate', review ? unit.fromSha : null)
+    if (refresh && refresh.refreshed && refresh.reviewBase) reviewFrom = refresh.reviewBase
+    else if (refresh && refresh.refreshed && review && unit.fromSha) {
+      caveats.push(`${unit.branch}: the review base could not be rebuilt with ${unit.base}'s CI fixes, so the repair-delta review also reads them.`)
+    }
     if (!refresh || !refresh.refreshed) {
       summary.ci = refresh ? 'skipped' : 'no-verdict'
       hil.push({
@@ -750,7 +793,7 @@ for (const unit of units) {
     if (!unit.fromSha) {
       reviewDead = 'the repair agent did not report its starting commit, so the repair delta is unknown'
     } else {
-      const delta = await runReview(unit, unit.fromSha, 'repair', tag)
+      const delta = await runReview(unit, reviewFrom, 'repair', tag)
       summary.review = { context: delta.dir, report: delta.report || null }
       if (delta.dead && !delta.empty) {
         reviewDead = `the review of the repair did not run: ${delta.dead}`
