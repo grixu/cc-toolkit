@@ -11,6 +11,14 @@ every section.
   test — specific enough to act on. "Each gets its own ticket" with no number, or "the pending
   pull request" with nothing that identifies it, places nothing. A spec that documents its own
   gaps is the well-written one.
+- **A deferred choice is not a gap.** A gap is a fact nobody can establish yet, or an action that
+  happens outside the spec: a lawyer's sign-off, a vendor's answer, a probe that needs a deployed
+  environment, a credential somebody has to create. A choice the spec's own team could make today
+  — a design option, a value, a scope cut, a permission to touch a protected file — is an
+  undecided either/or wherever it is placed: "decided at task split", "confirm at implementation"
+  or "the team decides later" hands a question to a stage that can only stop and ask it. Where the
+  choice genuinely turns on a fact that arrives later, the spec records the rule that decides it
+  from that fact, and the fact is the gap.
 - **No vague verb carries a claim.** "Handles", "supports", "properly", "as needed", "where
   appropriate" — each hides the decision a reader needs.
 - **No undecided either/or.** "Redis or Postgres", "sync or async" with no decision recorded is a

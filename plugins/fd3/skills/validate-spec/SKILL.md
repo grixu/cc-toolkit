@@ -41,6 +41,8 @@ load-bearing claim is verified or deferred to a named owner, and no check in ste
 - A claim is `verified`, `deferred`, `open` or `blocked`:
   - `verified` — the evidence holds.
   - `deferred` — the spec declares the gap and names both an owner and a placement. This passes.
+    A choice the spec hands to a later stage is not a gap (`spec-rules.md`), and never `deferred`
+    however well it is owned and placed.
   - `blocked` — nothing settles it and the spec names no owner and no placement.
   - `open` — not yet settled during this run.
 
@@ -257,7 +259,9 @@ Then, per claim:
   row, set the claim `verified`. Edit only what the fact forces: do not rewrite, reformat or extend the
   spec, and do not touch a section no finding points at.
 - **The spec declares the gap with an owner and a placement** — record it `deferred` with both, and move
-  on. Do not put it to the user.
+  on. Do not put it to the user. A deferred choice is the exception: collect it for step 4 as a fact
+  only the user holds, with the answer the spec's own evidence points to as your recommendation —
+  left in place, it reaches the split or the implementation run as a question that stops them.
 - **A fact only the user holds** — collect a question for step 4 and leave the claim `open`.
 - **Anything else** — it is a finding. Record it with its blocking status and move on. A finding is
   never a question: the user is asked for facts, not for defects.
@@ -308,8 +312,8 @@ leaves it nothing to write, so it makes the verdict `not ready`, however small t
 last move before recording a claim `blocked` is therefore step 4: ask the user who owns it and where
 it lands. An owner and a placement make it `deferred`, and the spec records both.
 
-This reaches the user only for a claim **nothing in the spec owns**. A gap the spec already declares
-with an owner and a placement is `deferred` on sight — it is not a finding, it does not go into the
+This reaches the user only for a claim **nothing in the spec owns**, and for a deferred choice. A gap
+the spec already declares with an owner and a placement is `deferred` on sight — it is not a finding, it does not go into the
 batch, and a pass that asks about it has turned a settled document into a question.
 
 ### 6. Report

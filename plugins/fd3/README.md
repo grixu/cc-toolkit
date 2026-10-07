@@ -130,9 +130,10 @@ cites, the split stops and names the same route. It never edits the spec.
 It then cuts the work into tasks. A task never spans two repositories, two rollout phases, or two
 owning teams in a monorepo. Tasks group onto branches: by default one branch per repository per
 landing unit, and one pull request per branch. A path that needs an outside approval, such as one
-`CODEOWNERS` assigns to another team, gets its own branch. A later landing unit's branch stacks on
-the earlier one. The split asks its few judgment calls in one batch, for example whether to replace
-an existing `tasks/` directory, then writes the task files and a report.
+`CODEOWNERS` assigns to another team, gets its own branch. A branch stacks on an earlier branch only
+when it builds on that branch's work; otherwise it starts from the default branch. The split asks
+its few judgment calls in one batch, for example whether to replace an existing `tasks/` directory,
+then writes the task files and a report.
 
 A task file holds frontmatter (repository, branch, its base branch, phase, dependencies, status)
 and pointers into the spec by element code and section. It does not copy spec content.
@@ -141,32 +142,42 @@ and pointers into the spec by element code and section. It does not copy spec co
 
 Claude reads the task files, fetches every repository, and asks one batch of questions: whether to
 run code review, which base branch to start from when your checkout sits on a feature branch, and
-anything the task files leave unresolved. Then it starts the `implement-run` workflow in the
-background.
+anything the task files leave unresolved. The answers are saved in `implement-answers.md`, so a
+later run over the same tasks does not ask them again. Then it starts the `implement-run` workflow
+in the background.
 
 - Waves. Every task whose dependencies are finished runs at once, each by its own agent in its own
   worktree on a `task/<slug>` branch. At the end of a wave the task branches are merged into their
   target branch.
 - Checks, one branch at a time. A sub-agent works out how the repository is checked (build,
   typecheck, lint, test), and the full set runs once on the untouched base so that failures already
-  there are not blamed on your branch. Each branch then runs the checks scoped to its changes, gets
-  up to three fix rounds, and finishes with one full run.
+  there are not blamed on your branch. A branch that changes how the repository is checked (a
+  manifest, a CI workflow, a lint or test config) is examined again on its own tree. Each branch then
+  runs the checks scoped to its changes, gets up to three fix rounds, and finishes with one full run.
 - Review (optional). After the checks pass, the `code-review` plugin reviews the branch with one
-  agent per active lens, six to eight. High and medium findings rated safe or structural, and
-  `comment` findings rated safe, are fixed automatically, and the fixes are reviewed again. Security and spec findings, findings in code the
-  branch did not touch, findings rated report-only, and anything the fixer left unfixed come to
-  you. `nit` findings, the lowest severity, are reported and never applied.
+  agent per active lens, six to eight. High and medium findings rated safe or structural, security
+  included, findings in code the branch did not touch when their fix is rated safe, and `comment`
+  findings rated safe are fixed automatically, and the fixes are reviewed again. Spec findings,
+  findings rated report-only, and anything the fixer left unfixed wait for you in the final report;
+  they do not stop the branch. Answer `gated` instead of `yes` to have security fixes and findings
+  in untouched code held for you, with the branch kept at `merged` until you settle them. `nit`
+  findings, the lowest severity, are reported and never applied.
 
 When the run ends you get its report: task statuses, check and review results per branch, notes the
 agents flagged, and the list of human-in-the-loop (HIL) items, meaning everything only a person can
 settle: a manual step against a live system, a blocker an agent would not guess past, a merge
-conflict, a check that would not pass. You decide each item. Claude then either restarts
-`implement-run` for tasks your decision unblocked, or starts `repair-run` to apply your decision to
-an existing branch. This repeats until every task is `done` or you stop.
+conflict. You decide those in one batch. A check that would not pass is diagnosed and sent to
+`repair-run` without asking, unless the fix would change behaviour. Decisions an agent took inside
+its task are kept and listed for the end. Claude then restarts `implement-run` for tasks your
+decision unblocked, or starts `repair-run` to apply your decision to an existing branch, without
+asking whether to. This repeats until every task is `done` or you stop.
 
-Finally Claude proposes the pull requests: one per branch, with its base branch, worktree path,
-tasks and title. It pushes and runs `gh pr create` only after you agree. Removing the worktrees is a
-separate question.
+Finally Claude gives one report and asks one batch: the pull requests (one per branch, with its
+base branch, worktree path, tasks and title), the decisions taken for you with how to revert each,
+and the open review findings. You say whether to push and which findings, if any, to repair first.
+It pushes and runs `gh pr create` only after you agree; when the repository's own rules reserve
+pushing to a person, it prints the commands instead. It leaves the worktrees in place and prints
+the commands that remove them.
 
 ## Files fd3 writes
 
@@ -180,7 +191,8 @@ separate question.
 | `<spec>.split.md` | split-to-tasks | The task table, the branch order per repository, and the coverage check. |
 | `<repo>.worktrees/<name>/` | implement | The worktrees, created beside the repository, not inside it. |
 | `<repo>.worktrees/.review/` | implement | The code-review working files and a `report.md` per branch and pass. |
-| `HIL_ACTIONS.md` | implement, when you accept the offer | The human steps in order, next to the tasks directory, for a run that waits days on people. |
+| `HIL_ACTIONS.md` | implement | The human steps in order, next to the tasks directory, for a run that waits days on people. |
+| `implement-answers.md` | implement | The answers to implement's first question batch, next to the tasks directory. |
 
 Until the spec is written, the interview keeps its working files (`notes/question-ledger.md`,
 `research/`) in the session's scratch directory.
@@ -194,7 +206,8 @@ Branches: one `task/<slug>` per task, plus the target branches named in the task
   is reported.
 - Run two workflows at once. Only one `implement-run` or `repair-run` runs at a time, so only one
   build, lint and test pipeline runs on the machine.
-- Mark a branch `done` when its review did not run or left findings for you. It stays `merged`.
+- Mark a branch `done` when its review did not run, or when a `gated` review left findings for you.
+  It stays `merged`.
 
 ## Internal parts
 

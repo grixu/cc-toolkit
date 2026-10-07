@@ -114,7 +114,11 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   agent per lens `cr-prepare` makes active, six to eight, after the branch's scoped CI passes —
   then a delta review of whatever the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
   bot on the pull request finds different things, not the same ones: `no` is a valid answer but a
-  real trade. Recommend it when `code-review:cr-scan` is in this session's skill listing; when it
+  real trade. Offer three answers: `yes` — the fixer applies every fixable finding, security and
+  mechanically safe boy-scout fixes included, and what it cannot fix waits in the end-of-run
+  report without holding the branch; `gated` — security fixes, boy-scout findings, findings the
+  fixer left unfixed and anything the delta review finds hold their branch at `merged` until the
+  user settles them, for a user who wants to walk each one; `no`. Recommend `yes` when `code-review:cr-scan` is in this session's skill listing; when it
   is not, ask anyway and say the plugin must be installed — a listing can be withheld or cut
   short, and a review whose skill is missing comes back as no verdict, never as a clean pass. Take
   no other skill in its place: a skill that asks questions or fans out into agents of its own
@@ -139,11 +143,19 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
 Everything else — wave composition, branch names, merge order — the task files already decided;
 report it, do not ask.
 
+Record the answers in `implement-answers.md` next to the tasks directory, never inside it where it
+would read as a task file — the start ref per repository, the review choice, the commit choice. A later
+invocation over the same directory reads that file first and asks only what it does not settle or
+what has changed since: a new repository, a base that moved, a stale `in-progress`.
+
 Committing the spec and the tasks directory before launch is the user's call, and it is a change
 to the repository like any other: whatever that repository derives from the tree you touched —
 a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
 that you did not. A stale generated file fails validation on every branch of the run at once,
-and reads there as the branches' own defect.
+and reads there as the branches' own defect. The same holds for links: before asking, list what
+the spec links to beside it — its notes file, its research directory — and recommend committing
+those with it; an option that would leave a committed spec linking an uncommitted file says so,
+because a docs build that checks links then fails on every branch for the whole run.
 
 ### 3. Launch
 
@@ -158,7 +170,7 @@ Workflow({
     repos: { "<repository path>": { startRef: "<the step-1/2 base, e.g. origin/main or the parked branch>",
              diffBase: "origin/<default>",
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
-    review: <true or false — the step-2 answer>,
+    review: <true, "gated" or false — the step-2 answer>,
     maxFixRounds: 3,
     reportPath: <on a relaunch: the previous report's `<output-file>` path — omit on a first launch>
   }
@@ -206,28 +218,44 @@ that base implied did not happen. Relay each as a diagnostic saying which it was
 asks for is a corrected task file before the next split or relaunch, never a decision that moves
 those tasks, so neither is one of the items step 4 puts to the user below.
 
-A `review` item is a finding the workflow would not fix unasked — a `spec` finding, a `security`
-fix, a boy-scout finding on code the branch never touched, a report-only one, a finding the fixer
-left unfixed, or anything the delta review found in the fixes it did apply. Its branch
-passed CI and stays `merged` until the item is settled: a finding the user wants fixed goes to a
-repair; one the user dismisses needs no work. When every `review` item of a branch is dismissed,
-set that branch's tasks to `done` yourself — CI already passed on the commit they sit on. Give
-the `report.md` path with the findings: the one-line form in the HIL list drops the evidence.
+A `review` item is a finding the workflow would not fix unasked — a `spec` finding, a report-only
+one, a boy-scout finding whose fix is not mechanically safe, a finding the fixer left unfixed, or
+anything the delta review found in the fixes it did apply; under `gated`, also every `security`
+fix and every boy-scout finding. Without `gated` the item holds nothing: its branch is `done`, and
+the item waits in the end-of-run decision list (step 5), never as a question of its own. Under
+`gated` the branch passed CI and stays `merged` until the item is settled: a finding the user wants
+fixed goes to a repair; one the user dismisses needs no work, and when every `review` item of a
+branch is dismissed, set that branch's tasks to `done` yourself — CI already passed on the commit
+they sit on. Give the `report.md` path with the findings: the one-line form in the HIL list drops
+the evidence.
 
-Caveats are triaged, not relayed wholesale: one that names a decision the agent took, a risk,
-an as-built deviation or a commit no review saw goes to the user; one that reports compliance
-with its own prompt, or restates what the task file already records, does not. Write the full
-list to `caveats.txt` in the session scratchpad and give its path.
+Caveats are triaged, not relayed wholesale, and triage is not a question. One that names a
+decision the agent took inside its task, a risk, an as-built deviation or a commit no review saw
+is kept as built and listed under *Decisions taken for you* in the end-of-run report (step 5),
+each with how to revert it — a cap the agent chose, a guard it added, a fallback it picked. Doc
+drift the run's own changes caused — a README, an index or a reference a branch made stale — goes
+to a repair without asking. Only a caveat that contradicts a spec decision or names an
+irreversible operation becomes a question. One that reports compliance with its own prompt, or
+restates what the task file already records, is dropped. Write the full list to `caveats.txt` in
+the session scratchpad and give its path.
 
-For each HIL item, put the decision to the user: an operational task is theirs to execute (offer
-the task file's steps as a script to follow; mark `done` only when they confirm); a blocker or
-conflict needs their call on how to proceed. A CI failure on the list may be diagnosed first —
-read-only, in the branch's worktree — so the question puts analyzed options before the user
-instead of raw output; the diagnosis then travels verbatim in the repair `instructions`, sparing
-the repair agent a re-investigation. Diagnose by **running the failing check** in that worktree and
-reading what it says. Grepping the source for what the report's message suggests names a plausible
-cause, not the cause: the check is the only thing that knows which of them is true, and a repair
-composed from the plausible one costs a full round to disprove. The answers split into two lanes:
+Put to the user only what needs a human: an operational task is theirs to execute (offer the task
+file's steps as a script to follow; mark `done` only when they confirm), and a blocker or a
+judgment conflict needs their call on how to proceed. Every such decision of one report goes in one
+batch — never one question per turn. A `ci` item is not a question: diagnose it — read-only, in
+the branch's worktree — and send it to `repair-run` with the diagnosis verbatim in the
+`instructions`, sparing the repair agent a re-investigation. It becomes a question only when the
+diagnosis shows the fix must change behaviour, the case the fixer already refused. Diagnose by
+**running the failing check** in that worktree and reading what it says. Grepping the source for
+what the report's message suggests names a plausible cause, not the cause: the check is the only
+thing that knows which of them is true, and a repair composed from the plausible one costs a full
+round to disprove.
+
+What the loop does next is never a question. Relaunching after a decision, rerunning a check that
+died on a transient failure, launching the repair a decision implies, updating the handoff file —
+do it and say what you did. When the user reports a human step done, check it where it can be
+checked — the task file's verification, the live state — and carry on. The answers split into two
+lanes:
 
 - **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
   the same way; statuses make the rerun skip everything finished.
@@ -259,7 +287,8 @@ composed from the plausible one costs a full round to disprove. The answers spli
   `merged` and list it in that branch's `taskFiles` — the tasks were marked done on a tree the
   repair is about to change, and only the repair's own final gate may mark them again. With
   review on, the workflow reviews the repair's own commits after its CI passes; those findings
-  come back as `review` items for the user, never to a fixer.
+  come back as `review` items for the user, never to a fixer, and hold the branch only under
+  `gated`.
 
   An `instructions` line says what to change, never asks for validation. "Then run the tests and
   confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent
@@ -274,29 +303,41 @@ Never run two workflows at once — validation tolerates exactly one build/lint/
 the machine. Repairs first, then the implement relaunch. When a relaunch completes, check its
 branches against the standing HIL decisions before relaying success — an agent that undid a
 reserved human step is the first thing to report, not a footnote. Repeat until every task is
-`done` or the user stops.
+`done` or the user stops; a stop still closes with step 5, because the deferred decisions and
+open `review` items exist nowhere else.
 
-When the run parks on human work — HIL items that need days, not minutes — offer to write an
+When the run parks on human work — HIL items that need days, not minutes — write an
 ordered handoff file (`HIL_ACTIONS.md` next to the tasks directory): the human steps in order,
 each pointing at its task file and what it unblocks, plus where the branches and worktrees
-live. A pause that survives only in this conversation is state lost.
+live, followed by *Decisions taken for you* and the open `review` items as step 5 lists them. A
+pause that survives only in this conversation is state lost.
 
 ### 5. Propose, never push
 
-When every repository-bearing task is `done`: one table — repository, branch, its stack base,
+When every repository-bearing task is `done`, or the loop ends short of that, close with one
+end-of-run report and one question batch — everything the run deferred lands here, so nothing
+earlier had to stop for it. A loop that ended short proposes only the branches whose tasks are all
+`done` and asks nothing about the rest; their state is in the report. The report
+holds, in this order: one table — repository, branch, its stack base,
 its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
-citing the tickets — with the still-open operational tasks listed alongside; they need the branches landed
-first, so they never gate this proposal. Stacked branches make a pull-request chain: each pull
+citing the tickets; the still-open operational tasks — they need the branches landed first, so
+they never gate this proposal; *Decisions taken for you*, each with how to revert it; and the
+`review` items left open, numbered, each with its `report.md` path. Stacked branches make a pull-request chain: each pull
 request's base is its branch's stack base, and after one lands its successor is retargeted onto
 the default branch — but only when the predecessor landed as a merge commit. After a squash
 merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget
 shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
-Say that in the proposal. Then propose pushing the branches and opening the pull requests. Only
+Say that in the proposal. The batch then asks two things: whether to push the branches and open
+the pull requests, and which open `review` items, by number, go to a repair before that — none is
+the default, and a decision taken for the user that they want reverted is named the same way. Only
 after explicit consent: push, `gh pr create` per branch (`--base` set to the stack base) with a
-description naming the tasks, the spec and the branch's element codes. Offer cleanup — remove
-the `.worktrees` directories and delete the merged `task/<slug>` branches — as its own
-question, never coupled to the push: declining to publish while wanting a clean repository is a
-normal combination. If push consent does not come, leave everything local. The worktree paths are
+description naming the tasks, the spec and the branch's element codes. When the repository's own
+rules reserve pushing to a human — its `AGENTS.md`, `CLAUDE.md` or contributing guide says so —
+the push is not a question: print the exact `git push` and `gh pr create` commands instead.
+Cleanup is not a question either: leave the `.worktrees` directories and the merged
+`task/<slug>` branches, and print the commands that remove them — declining to publish while
+wanting a clean repository is a normal combination, and the commands serve both. If push consent
+does not come, leave everything local. The worktree paths are
 in the table whatever the user decides: a branch whose worktree nobody can name is a branch the
 user cannot open, and the run's own directories are not guessable. When the tasks directory is
 untracked, say that too: it is the only copy of the

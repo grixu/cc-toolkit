@@ -10,7 +10,7 @@ export default (output) => {
   if (firstNumbered !== -1) {
     // Heuristic from the plan: every ? in the round body belongs to a numbered item —
     // so no question may appear before the first numbered item (a buried lead), and
-    // sub-parts arrive as 4a/4b rather than as un-numbered trailing questions.
+    // sub-parts arrive as 4.1/4.2 rather than as un-numbered trailing questions.
     const preamble = lines.slice(0, firstNumbered).join('\n');
     c.check(!/\?/.test(preamble), 'a question appears before the first numbered item (buried, un-numbered question)');
   }

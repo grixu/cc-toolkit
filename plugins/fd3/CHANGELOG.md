@@ -9,12 +9,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `implement-run` review fixes security findings and boy-scout findings whose fix is rated safe
+  instead of holding them for a human; spec, report-only, unfixed and fix-review findings are
+  reported without holding the branch at `merged`. `review: "gated"` keeps the earlier hold, in
+  `implement-run` and `repair-run` alike
+- `implement-tasks` keeps an agent's in-task judgment calls as built and lists them under
+  *Decisions taken for you*, repairs a CI failure without asking unless the fix changes behaviour,
+  sends doc drift its own changes caused straight to a repair, batches a report's decisions, writes
+  `HIL_ACTIONS.md` unasked, and never asks whether to relaunch, rerun or continue
+- `implement-tasks` closes with one report and one question batch: pull requests, decisions taken
+  for the user, open review findings. It prints the push commands where the repository reserves
+  pushing to a person, and prints the cleanup commands instead of asking
+- `implement-tasks` saves its first batch of answers in `implement-answers.md` next to the tasks
+  directory, and a later run asks only what that file leaves unsettled
+- `implement-tasks` recommends committing the files a spec links to along with the spec
+- A choice the spec's own team could make today is no longer a declared gap: `spec-rules`,
+  `validate-spec`, `write-spec` and `grill-topic` settle it during build-spec instead of parking it
+  for the split or the implementation
+- `write-spec` writes the whole document when a landing unit crosses the size threshold, and closes
+  its report with one batch: the proposed subdivision and the decisions it took while writing.
+  Research dumps and scripts nothing cites stay in the scratchpad
+- `build-spec` resumes a validation pass that handed up questions instead of starting a fresh one,
+  and sends its own doubts to the running skill instead of asking them itself
+- `split-to-tasks` stacks a branch only on the branch it builds on, stacks on a prerequisite pull
+  request the spec names without asking, borrows the branch convention of another repository the
+  spec touches, and stops asking questions whose answer changes no task file or follows from the
+  spec's evidence
+- `grill-topic` numbers sub-questions `4.1`, `4.2` and letters every option, closes each round
+  with the labels it expects back, numbers a blocked question only when it goes out, reads
+  positional answers when only one mapping fits, and never announces a round it has not posted
 - README rewritten for first-time readers: requirements (dynamic workflows, `gh`, MCP servers,
   `code-review` 0.4.0 or later), the three commands, build-spec's re-validation mode, the files fd3
   writes, the internal skills and workflows marked as internal, and a glossary
 
 ### Fixed
 
+- `implement-run`'s mark-blocked agent no longer commits the task files it edits
+- The CI runners in `implement-run` and `repair-run` read the branch and the tree state with
+  `git -C <worktree>`, so a shell that reset to the main checkout no longer discards a passing
+  verdict; a discarded verdict takes back the `done` marks it left
+- `implement-run` and `repair-run` re-scout the toolchain on a branch that changes what defines
+  validation, so a repository bootstrapped by the run is no longer checked with install and build
+  alone
+- `repair-run` repairs a branch stacked on another repaired branch after its base, and merges the
+  repaired base in before validating it
 - `plugin.json` author reads `Mateusz Gostański <mg@grixu.dev>`, matching the other plugins
 - `implement-tasks` describes review as one agent per active lens, six to eight, not all eight —
   `cr-prepare` leaves `performance` and `spec` inactive when the change gives them nothing to judge
