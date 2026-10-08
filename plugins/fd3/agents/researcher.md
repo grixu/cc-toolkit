@@ -1,8 +1,8 @@
 ---
 name: researcher
 description: >-
-  Research a single question against external sources — documentation, specs, changelogs, prior art — and
-  return the findings. Internal sub-agent dispatched by the fd3 skills when a frontier question needs a
+  Research one or more questions against external sources — documentation, specs, changelogs, prior art —
+  and return the findings. Internal sub-agent dispatched by the fd3 skills when a question needs a
   fact the codebase cannot answer; not intended for direct user invocation.
   <example>
   Context: grill-topic hit a frontier question about a library's retry semantics
