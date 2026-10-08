@@ -103,7 +103,7 @@ input question — and what you return is the condensed form: each input questio
 Answer:`, one line per follow-up finding, the `Unanswered:` and `Tooling:` sections in full, and
 the file's path with one line naming what else the file holds — the probe transcripts, tables and
 version pins that did not fit a line. The file is the record; the return is the routing slip.
-When no directory is named, return the full structure as before.
+When no directory is named, return the full structure.
 
 Follow the below specification:
 
