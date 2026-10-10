@@ -1,15 +1,9 @@
 ---
 name: researcher
 description: >-
-  Research a single question against external sources — documentation, specs, changelogs, prior art — and
-  return the findings. Internal sub-agent dispatched by the fd3 skills when a frontier question needs a
+  Research one or more questions against external sources — documentation, specs, changelogs, prior art —
+  and return the findings. Internal sub-agent dispatched by the fd3 skills when a question needs a
   fact the codebase cannot answer; not intended for direct user invocation.
-  <example>
-  Context: grill-topic hit a frontier question about a library's retry semantics
-  user: [grill-topic passes the question + which library and version is in play]
-  assistant: "Checking the library's documented retry/backoff behaviour and returning what it guarantees."
-  <commentary>The researcher is dispatched by an fd3 skill, never picked by the user directly.</commentary>
-  </example>
 model: inherit
 tools: Read, Write, Glob, Grep, Bash, mcp__firecrawl__firecrawl_search, mcp__firecrawl__firecrawl_scrape, mcp__context7__resolve-library-id, mcp__context7__query-docs
 ---
@@ -109,7 +103,7 @@ input question — and what you return is the condensed form: each input questio
 Answer:`, one line per follow-up finding, the `Unanswered:` and `Tooling:` sections in full, and
 the file's path with one line naming what else the file holds — the probe transcripts, tables and
 version pins that did not fit a line. The file is the record; the return is the routing slip.
-When no directory is named, return the full structure as before.
+When no directory is named, return the full structure.
 
 Follow the below specification:
 

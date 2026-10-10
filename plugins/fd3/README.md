@@ -273,8 +273,8 @@ An interview question looks like this:
   (the branch passed its final checks with nothing left for you).
 - Lens: one focus of the code review, such as security, performance or spec conformance. Each
   active lens is one review agent.
-- Boy-scout finding: a review finding about code the branch did not change. fd3 never fixes these
-  automatically.
+- Boy-scout finding: a review finding about code the branch did not change. fd3 fixes one
+  automatically only when its fix is rated safe, and never under `gated`.
 
 ## Relationship to `feature-delivery`
 

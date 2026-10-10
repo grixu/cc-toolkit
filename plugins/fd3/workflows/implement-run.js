@@ -893,7 +893,9 @@ const fixable = (f) =>
     : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe')
 const sortFindings = (findings) => {
   const live = findings.filter((f) => !f.reserved)
-  const applied = live.filter((f) => (serious(f) && fixable(f)) || (f.severity === 'comment' && f.risk === 'safe'))
+  const applied = live.filter(
+    (f) => (serious(f) && fixable(f)) || (f.severity === 'comment' && f.risk === 'safe' && !(gated && f.boyScout)),
+  )
   const forHuman = live.filter((f) => !applied.includes(f) && serious(f))
   const reported = live.filter((f) => !applied.includes(f) && !forHuman.includes(f))
   return { applied, forHuman, reported, reserved: findings.length - live.length }

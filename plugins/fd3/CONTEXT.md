@@ -7,8 +7,8 @@ the skills and the template, and when they and this file disagree, the skills an
 
 - **Spec** — the deliverable: a document precise enough to implement, or split into tasks, without a
   second conversation. Written by `write-spec`, measured by `validate-spec`. Validation is a step
-  the orchestrator dispatches, never a user entry point: no command invokes it, and its absence is
-  not a gap.
+  the orchestrator dispatches, never a user entry point: only `/fd3:build-spec` invokes it, and the
+  absence of a standalone command is not a gap.
 - **Template** (`references/spec-template.md`) — the twelve sections a spec is written against and
   measured against. Both skills point at it, so a section added here changes what `validate-spec`
   expects *and* what `write-spec` writes.
@@ -66,8 +66,9 @@ the skills and the template, and when they and this file disagree, the skills an
 
 ## Facts and evidence
 
-- **Fact routes** — where lookups go: the codebase via `Explore`, documentation and prior art via
-  `fd3:researcher`, the live system via `general-purpose` running the CLI the answer needs. Live
+- **Fact routes** — where lookups go: the codebase via `Explore` (`general-purpose` for a sweep whose
+  report runs long), documentation and prior art via `fd3:researcher`, the live system via
+  `general-purpose` running the CLI the answer needs. Live
   state is authoritative over both code and documentation, and it is the only place drift shows.
 - **Evidence record** — the spec's `Claim | How it was verified` table (template section 12). The
   spec's proof of work; a claim that rests on inference must say so.
@@ -98,7 +99,8 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Size policy** — above 80 changed files or 2000 changed lines, generated files excluded, the
   split **warns and does not subdivide**: the grouping follows the spec's rollout table, and a
   branch structure the spec does not describe is a second source of truth about the rollout. The
-  threshold is policy of `split-to-tasks`, user-overridable; it never appears in the spec.
+  threshold is skill policy: `write-spec` puts a landing unit that plausibly exceeds it to the user
+  as a subdivision question, `split-to-tasks` only warns; it never appears in the spec.
 - **Where a split's knowledge lands** — the implementation orchestrator reads task frontmatter
   only, so anything it must act on is a field; the implementation agent reads the whole task
   file, so anything that changes what *this* task's agent does is that task's `## Note`; the

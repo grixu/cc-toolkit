@@ -5,12 +5,6 @@ description: >-
   orchestration, and which checks cannot run on this machine — and return an ordered, runnable
   command list with evidence. Internal sub-agent dispatched by the fd3 implementation flow before
   validation; not intended for direct user invocation.
-  <example>
-  Context: the implement-run workflow needs to validate a repository after a wave of task implementations
-  user: [the workflow passes a repository path and, for a monorepo, the subtree the tasks touched]
-  assistant: "Reading the CI configs and package manifests to derive the exact command sequence that validates this repository."
-  <commentary>The scout is dispatched per repository by the fd3 implementation flow, never picked by the user directly.</commentary>
-  </example>
 model: inherit
 tools: Read, Glob, Grep, Bash
 ---

@@ -56,6 +56,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `plugin.json` author reads `Mateusz Gostański <mg@grixu.dev>`, matching the other plugins
 - `implement-tasks` describes review as one agent per active lens, six to eight, not all eight —
   `cr-prepare` leaves `performance` and `spec` inactive when the change gives them nothing to judge
+- `repair-run`'s CI result schema declares the `skipped` field its prompt asks the runner to fill
+- `build-spec` relays validate-spec's questions through `AskUserQuestion`, numbered, as it already
+  did for write-spec's
+- The `researcher` description says it takes one or more questions; the `researcher` and
+  `toolchain-scout` descriptions drop their dispatch examples, the scout's describing a subtree
+  hand-off no caller makes
+- `CONTEXT.md` and the README glossary match the current skills: build-spec invokes validate-spec,
+  long codebase sweeps go to `general-purpose`, write-spec asks about oversized landing units, and
+  a safe boy-scout fix is applied automatically outside `gated`
 
 ## [0.2.0] - 2026-10-03
 
