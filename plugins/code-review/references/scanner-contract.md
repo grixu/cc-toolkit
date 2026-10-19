@@ -185,6 +185,13 @@ exception is `module` · canonical-helper: a new helper duplicating an exported 
 elsewhere in the repo is found by the one-hop Grep, bounded to the helper's name and its
 distinctive expression — never a repo-wide sweep, and inconclusive means `(verify)`.
 
+**A fix round is judged as it stands, never undone.** When the change under review is a
+review's own fix round — the caller says so, or the commits name the findings they fix — the
+edits that round made are what the previous review asked for. Judge them like any code, but
+never raise a finding whose fix reverses one (renaming back, inlining what was just
+extracted, restoring a removed comment): two rounds that disagree only flip the code back and
+forth. A fix that is itself wrong is a finding on what it broke, not on the edit's direction.
+
 ## Three side-channels, three distinct meanings
 
 Report what you find and let the merge filter it. Each Scanner judges against its

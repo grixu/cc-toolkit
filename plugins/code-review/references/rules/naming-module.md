@@ -92,7 +92,7 @@ from context, so a type suffix/prefix adds noise instead of meaning.
   `name` — and let the type be inferred.
 - **Calibration → not a finding**: a suffix that genuinely disambiguates two roles
   of one concept (`userId` vs `user`, `rawInput` vs `input`, `startDate`/`endDate`),
-  or a naming convention the project mandates (Step 0). The target is redundant-type
+  or a naming convention the `<conventions>` note records. The target is redundant-type
   noise, not every suffix.
 
 #### `command-query` — separate queries from commands
@@ -171,7 +171,7 @@ and just means every reader follows one more hop to find the real file.
 - **Calibration → not a finding**: a genuine package entry point (the file
   `package.json`'s `main`/`exports`/`types` points at), a barrel that deliberately
   narrows a large internal surface to a small external one, or a barrel the
-  project's conventions mandate (Step 0). The test is whether the indirection
+  `<conventions>` note records. The test is whether the indirection
   *does* something.
 
 #### `dependency-direction` — imports point one way
@@ -185,13 +185,13 @@ tested, or moved alone.
   - closes a cycle — the imported module already (one hop) imports the changed
     module;
   - points from a shared/lower module into a feature/higher module, per the layering
-    the project's conventions (Step 2) or its existing imports establish.
+    the `<conventions>` note or the repo's existing imports establish.
 - **Suggested fix**: name the inversion — move the needed piece down into the shared
   module, pass it in as a parameter/callback, or extract an interface the higher
   module implements.
 - **Calibration → not a finding**: `import type` and other erased imports; a cycle
-  that pre-exists and the change did not add; layering the project's conventions
-  (Step 2) define differently, or a repo showing no layering discipline at all —
+  that pre-exists and the change did not add; layering the `<conventions>` note
+  defines differently, or a repo showing no layering discipline at all —
   never invent layers from directory names alone; framework-mandated back-references
   (ORM relations, DI registration). A hop beyond the one you Grepped is `(verify)`,
   never an assertion.
@@ -218,10 +218,14 @@ drifts: two `slugify`s, two date formatters, two retry loops that disagree next
 quarter.
 
 - **Flag** a helper the change adds that duplicates an exported helper elsewhere in
-  the repo — Grep the helper's name and its distinctive expression, open the matches,
-  and confirm the contract is the same.
+  the repo, or inline code the change adds that re-implements one (a hand-rolled slug,
+  a second date format, a copied retry loop) — Grep the helper's name and its
+  distinctive expression, open the matches, and confirm the contract is the same.
 - **Suggested fix**: delete the new helper and import the existing one (name it and
-  its path).
+  its path). Compare what each one *rejects* first: when the existing helper accepts
+  input the new one refuses (a looser pattern, no length cap, no null check), the swap
+  loosens validation at this call site — name the difference and keep the stricter
+  check in the fix, or send the site to `CANDIDATES`.
 - **Calibration → not a finding**: a local variant with a genuinely different
   contract (rounding, locale, error behaviour) that says so; a test-only fake;
   same-file duplication, which is `over-complex` — most-specific wins. A Grep that
