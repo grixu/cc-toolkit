@@ -21,6 +21,9 @@ Load-bearing facts:
   and a deferral without an owner and a placement is a finding.
 - DB-1's `Limits:` bullet promises no deletion, so section 9's "nothing is deleted" holds. Any
   edit reintroducing expiry or a delete job re-plants that contradiction.
+- Neither `charge` nor `deliver` has a caller in the tree, so section 7 says the migration is the only
+  live change and the counts start once PAY-262 wires them; "exercised by the next charge request"
+  would contradict sections 4 and 10.
 - OBSERVABILITY-1 is a counter only. The source tree has no queue-consumer loop — `deliver`
   (`src/queue/worker.ts:5`) has no caller — so a `webhook_delivery_queue_depth` gauge would have
   no emission point and this spec creates none.
@@ -44,5 +47,7 @@ Load-bearing facts:
   phase 1 deploy, OBSERVABILITY-1 on the branch. Without that, DB-1's `psql "$DATABASE_URL"` probe
   reads as a branch-level criterion no branch can pass here, and a validation pass legitimately
   repairs the row — which breaks the append-only assertion below.
-- The only spec edits the eval accepts are appended evidence rows under a dated sub-heading: the
-  assertion checks the fixture content is a prefix of the sandbox content.
+- The only spec edits the eval accepts are appended evidence rows under a dated sub-heading and the
+  header's `- Status:` line, which the pass rewrites to its verdict: the assertion drops that line
+  from both files, checks the fixture content is a prefix of the sandbox content, and requires the
+  new status to read `ready`.

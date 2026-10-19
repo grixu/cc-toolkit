@@ -50,27 +50,37 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   have both. Still unconfirmable → `(verify)` naming the end you could not reach.
 - **`CANDIDATES` is for a confirmed pair whose mitigation is the doubt** — is this
   builder parameterizing, does this decorator check ownership? Name the pair; a
-  candidate with no named pair is a cleared prose line. Cleared look-alikes go to
+  candidate with no named pair is a cleared prose line. **Clear only a mitigation you
+  read.** One you assume — the gateway probably checks it, the caller is probably
+  internal, the flag is probably off in production — keeps the pair a `CANDIDATE`: a
+  headless review asks nobody afterwards, so the doubt you cleared on a guess is the
+  finding nobody sees. Cleared look-alikes go to
   `Not flagged`, one prose line naming the pair and the mitigation — never the finding
   shape. The block is a heading and markdown bullets, never a fenced code block: a fence
   makes the orchestrator's merge read it as source rather than as findings.
 - **Never run the code; never run `npm audit`, a secret scanner, or any network
   command.** The evidence is the lines in view and what Read/Grep return.
-- **`.env`, yaml, JSON, manifests, and lockfiles are out of this lens** — skipped by
-  scope, not secret- or dependency-scanned here. When such a file is the substance of
+- **`policy` files are this lens's alone** — access policies, RBAC, `CODEOWNERS` and CI
+  workflows, as `scope.md` classifies them. Judge them for `access-widening` (a permission,
+  role binding, owner or `permissions:` scope broader than before) and `iac-exposure` (a
+  wildcard principal, a `pull_request_target` job running untrusted code, a secret echoed
+  by a step).
+- **`.env`, other yaml and JSON, manifests, and lockfiles are out of this lens** — skipped
+  by scope, not secret- or dependency-scanned here. When such a file is the substance of
   the change, say so in one prose line so the report's Skipped line reads "not
   secret/dependency-scanned — run /security-review".
 
 #### How to state a finding
 
 ```
-`security` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
+`security` · rule · severity · `path:L<lines>` — <what the reader loses> → <the fix, as a clause>
 ```
 
-`L<lines>` lists both ends, source first; the clause says which is which:
+`L<lines>` lists both ends, source first, and `path` is the source's file; the clause says
+which is which, naming the sink's file when it differs:
 
-- `` `security` · injection-sink · high · L12, L41 — `req.query.sort` enters at L12 and is interpolated into the `ORDER BY` string at L41, so the caller writes the SQL → allowlist `sort` against the column names and pass it through `orderBy()` ``
-- `` `security` · secret-in-source · high · L7 — the `sk_live_…` literal assigned to `STRIPE_SECRET` ships with the file → read it from `process.env.STRIPE_SECRET`; the committed value needs rotation, which is the user's step ``
+- `` `security` · injection-sink · high · `src/api/orders.ts:L12, L41` — `req.query.sort` enters at L12 and is interpolated into the `ORDER BY` string at L41, so the caller writes the SQL → allowlist `sort` against the column names and pass it through `orderBy()` ``
+- `` `security` · secret-in-source · high · `src/billing/stripe.ts:L7` — the `sk_live_…` literal assigned to `STRIPE_SECRET` ships with the file → read it from `process.env.STRIPE_SECRET`; the committed value needs rotation, which is the user's step ``
 
 A suggested fix **never claims rotation is done** — moving a literal does not un-leak
 it, git remembers the value. Rotation is the user's step; the wrap-up hands it over.
@@ -197,7 +207,7 @@ checks, safe parsing, unpredictable tokens, origin isolation.
   allowlist, `bcrypt`/`argon2`.
 - **Calibration → not a finding**: the setting gated behind an explicit dev/test
   environment check you have read (`if (process.env.NODE_ENV === 'test')`); a
-  convention the Step 2 note documents (an internal mesh that pins certificates
+  convention the `<conventions>` note documents (an internal mesh that pins certificates
   elsewhere — say so); `Math.random` for a non-security value (jitter, sampling); CORS
   `*` with no credentials on a public read-only API. A gate you cannot read is
   `(verify)`.
@@ -229,7 +239,7 @@ is executed, so the harm sits in what a declaration *stores* and *admits*.
 - **Calibration → not a finding**: a value read from a secret-manager data source; a
   resource public by design (an assets bucket behind a CDN, a load balancer's public
   address); a wildcard inside a scope the provider narrows by another condition you
-  have read; a fixture in a test or sandbox module; a breadth the Step 2 conventions
+  have read; a fixture in a test or sandbox module; a breadth the `<conventions>`
   note documents. State cannot be read from the file, so a claim about *who* can read
   the state bucket is `(verify)` unless the configuration in view says so.
 
@@ -248,8 +258,8 @@ yesterday, and nothing in the code looks wrong afterwards.
   admits.
 - **Suggested fix**: name the boundary that was there and what would restore it, or the
   narrower predicate that covers the new caller.
-- **Calibration → not a finding**: a widening the `--spec` text or the Step 2 note
-  explicitly asks for (clear it in one prose line naming where it is written); a rename
+- **Calibration → not a finding**: a widening the `--spec` text or the `<conventions>`
+  note explicitly asks for (clear it in one prose line naming where it is written); a rename
   of the same permission; a boundary moved rather than removed — the guard now sits one
   layer up and you have read it; a new endpoint with no previous boundary, which is
   `missing-access-check` territory if anything. When the diff does not show the previous

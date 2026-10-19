@@ -32,7 +32,10 @@ in test files, where R11 reverses this to default-REMOVE.**
 author* thought the comment mattered — they are not themselves a why, and they do
 not exempt the comment from any rule. Strip the prefix and judge what remains on
 its merits: if the remainder restates the code (R1) or points at an internal doc
-(R4), it goes despite the label.
+(R4), it goes despite the label. The one exception is a prefix the `<conventions>` note
+quotes as the project's own (an `AGENTS-NOTE:` its `CLAUDE.md` asks agents to leave): a
+project file outranks this rules file, so a comment in that sanctioned shape is the
+convention working, not a finding — judge only whether what it says is still true (R9).
 
 ## R1 — No narrating *what* the code does
 The code is there to be read. A comment that restates what the code below *is* or
@@ -272,6 +275,10 @@ reversed: when in doubt, the comment goes** — the spec reads fine without it.
 A "test file" is one the `test` kind in `references/scope.md` › File kinds matches
 (`*.test.*`, `*.spec.*`, `__tests__/`, `*_test.go`, `test_*.py`, …) — apply that
 list, not a guess from the file's contents.
+
+The higher bar settles *doubt*; it never outranks the project. A test comment in a
+shape the `<conventions>` note sanctions — a scenario header the project requires, an
+anchor prefix it documents — stays, whatever R11 would say of it alone.
 
 - **REMOVE** test comments that restate the test's mechanics or the
   implementation's behavior, even when phrased as insight:

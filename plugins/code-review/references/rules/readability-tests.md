@@ -124,7 +124,13 @@ appears. Give it a name defined once.
 - **Calibration → not a finding**: literals that are self-evidently themselves —
   `0`/`1`/`-1` as identity/index/step, `2` in a halving, an empty string/array
   default, an obvious base case; or a one-off literal whose meaning the surrounding
-  name already makes plain. Don't name `i + 1`.
+  name already makes plain. Don't name `i + 1`. In a test, a literal that *is* the
+  case under test — the input a fixture feeds, the value an assertion expects — is the
+  test's own data, not a magic number. A default declared once beside the key that
+  names it (`timeoutMs: 30_000` in a config object) is already named. The same literal
+  repeated across several files is duplication, which the merge files under
+  `over-complex` or `canonical-helper`: flag it here at one site and say where it
+  recurs, never as one bullet per file.
 
 #### `composed-method` — one function, one level of abstraction
 
@@ -175,7 +181,9 @@ descends one level of abstraction at a time instead of scrolling up and down.
 - **Calibration → not a finding**: hoisting-dependent or convention-bound orders
   (a language/linter that wants exports first, alphabetized members, React
   hooks-then-handlers conventions); type/constant declarations that legitimately
-  sit at the top; and any ordering the project documents (Step 0). Don't relocate
+  sit at the top; and any ordering the `<conventions>` note documents. **N/A** for
+  declarative IaC (HCL/Terraform): its blocks have no call flow to step down, so clear
+  the rule in one line. Don't relocate
   something across a meaningful boundary just to satisfy the rule — judgment over
   mechanism.
 

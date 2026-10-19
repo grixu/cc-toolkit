@@ -157,7 +157,7 @@ change to any of them breaks a caller that only ever wanted `d`.
 
 ### `patterns` family
 
-*Reach for these under friction, not upfront (Step 2 note). Flag only when the
+*Reach for these under friction, not upfront. Flag only when the
 friction already exists — never because a pattern could apply.*
 
 #### `composition` — delegate, don't inherit
@@ -192,8 +192,11 @@ object, not an edit to N conditionals.
   interface; each absorbs its branch.
 - **Calibration → not a finding**: a single, localized switch that lives in exactly
   one place — a factory/dispatcher is the *right* home for one switch; conditionals
-  over values that aren't a type discriminant; small, stable enums unlikely to grow.
-  One switch is fine — flag the *duplicated* discriminant.
+  over values that aren't a type discriminant; small, stable enums unlikely to grow;
+  a status or lifecycle enum where each behaviour switches on it once (the label, the
+  allowed transitions, the badge colour) — each switch answers a different question,
+  so there is nothing duplicated to absorb. One switch is fine — flag the *duplicated*
+  discriminant: the same cases deciding the same kind of thing in ≥2 places.
 
 #### `execute-around` — bracket paired actions behind one function
 

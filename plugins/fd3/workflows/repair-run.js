@@ -26,10 +26,14 @@ export const meta = {
 //                headless lenses; its findings go to the human, never to a fixer, and only a gated
 //                review keeps the task files from being marked done until the human settles them
 //   specPath     (optional) absolute path of the spec, for the review's spec lens
+//   decisions    (optional) [string] — the user's standing decisions on this task graph from earlier
+//                report rounds, verbatim; with each repair's own instructions they mark review findings
+//                that would undo them as reserved
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
 const { repairs, repos, specPath } = input
+const decisions = input.decisions || []
 const review = input.review === true || input.review === 'gated'
 const gated = input.review === 'gated'
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
@@ -50,10 +54,18 @@ const refOf = (repo, key) => (repos && repos[repo] && repos[repo][key]) || "the 
 const startRef = (repo) => refOf(repo, 'startRef')
 const diffBase = (repo) => refOf(repo, 'diffBase')
 // The harness relays the user's request to every agent, and a cheap model reads it as its own task
-// and re-runs the skill that launched this workflow.
+// and re-runs the skill that launched this workflow. A skill the task file names for its step is
+// the task's own, and forbidding it left that step undone.
 const STEP_GUARD =
-  'Do only the step this prompt describes. Invoke no skill or slash command it does not name, ' +
-  'whatever the relayed user request says: that request belongs to the session that launched this workflow.\n\n'
+  'Do only the step this prompt describes. Invoke no skill or slash command unless this prompt names it ' +
+  'or the task file it points you to directs this step to use it, whatever the relayed user request says: ' +
+  'that request belongs to the session that launched this workflow.\n\n'
+// The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
+// takes their uncommitted and untracked work with it.
+const checkoutRule = (repo) =>
+  `${repo} is the user's own checkout: never run \`git clean\`, \`git reset --hard\`, \`git stash\`, ` +
+  `\`git checkout -- .\` or \`git restore .\` in it, and stage only the files you changed, by name — ` +
+  `every other modified or untracked file there is the user's.`
 // One retry rides out transient API failures (529s, brief limit blips). A second null is a real
 // no-verdict — absence of evidence that must never be reported as a validation verdict.
 const tryTwice = async (prompt, opts) =>
@@ -78,12 +90,15 @@ const BASELINE_COMMANDS = {
   },
 }
 
+const BASELINE_DIRTY = { type: 'array', items: { type: 'string' }, description: 'paths `git status --porcelain` lists after the last command, relative to the worktree root' }
+
 const BASELINE_RESULT = {
   type: 'object',
   required: ['commands'],
   properties: {
     commands: BASELINE_COMMANDS,
     skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never recorded as passed' },
+    dirty: BASELINE_DIRTY,
   },
 }
 
@@ -107,7 +122,7 @@ const HANDOVER_RESULT = {
       items: {
         type: 'object',
         required: ['repository', 'commands'],
-        properties: { repository: { type: 'string' }, commands: BASELINE_COMMANDS },
+        properties: { repository: { type: 'string' }, commands: BASELINE_COMMANDS, dirty: BASELINE_DIRTY },
       },
     },
   },
@@ -123,7 +138,7 @@ if (input.reportPath && repositories.some((repo) => !toolchain.get(repo))) {
       ...repositories.map((repo) => `- ${repo}`),
       ``,
       `Return each repository's toolchain report verbatim — the whole string, unedited — and its`,
-      `baseline command list. Omit a repository the report does not carry. Never summarise, reformat`,
+      `baseline command list with its dirty paths. Omit a repository the report does not carry. Never summarise, reformat`,
       `or reconstruct a toolchain report: the baseline is matched against it by command string, so a`,
       `command list that differs from the one the baseline measured is worse than no baseline.`,
     ].join('\n'),
@@ -131,7 +146,7 @@ if (input.reportPath && repositories.some((repo) => !toolchain.get(repo))) {
   )
   if (handover) {
     for (const t of handover.toolchain || []) if (!toolchain.get(t.repository)) toolchain.set(t.repository, t.report)
-    for (const b of handover.baseline || []) if (!baseline.get(b.repository)) baseline.set(b.repository, { commands: b.commands })
+    for (const b of handover.baseline || []) if (!baseline.get(b.repository)) baseline.set(b.repository, { commands: b.commands, dirty: b.dirty || [] })
   }
 }
 
@@ -168,9 +183,14 @@ const baselinePrompt = (repo) =>
     `   the repository root: resolve it inside that worktree, never against ${repo}. Skip what the`,
     `   report lists as not runnable here, recording each skip under skipped with its reason — a`,
     `   skip is never recorded as passed.`,
-    `3. Fix nothing, change nothing. Run each command once, as \`<command> 2>&1; echo "exit $?"\``,
-    `   — that one run gives both the output and the exit status. Record, per command, whether it`,
-    `   exited 0, and for each failure the output lines that matter.`,
+    `3. Fix nothing, change nothing. Run each command once, as`,
+    `   \`<command> > ${worktreePath(repo, 'baseline')}.log 2>&1; echo "exit $?"\` — the log sits beside`,
+    `   the worktree, never inside it. Read pass or fail from that exit line alone, and the log only`,
+    `   for the lines a failure needs; never pipe a command into \`tail\`, \`head\` or \`grep\`, whose`,
+    `   status then replaces the command's. Record, per command, whether it exited 0, and for each`,
+    `   failure the output lines that matter.`,
+    `4. When the last command has run, run \`git status --porcelain\` in that worktree and return every`,
+    `   path it lists under dirty: what the commands themselves write into a clean tree.`,
     ``,
     toolchain.get(repo),
   ].join('\n')
@@ -253,6 +273,7 @@ const repairPrompt = (r) =>
     `Merge no other branch into this one unless a decision above says to: the workflow brings a`,
     `stacked branch up to its repaired base itself, after that base's repair has landed.`,
     ``,
+    ...(r.worktree === r.repo ? [checkoutRule(r.repo), ``] : []),
     `Return outcome "repaired" with a two-sentence summary of what changed, or outcome "blocked"`,
     `with the reason when the decision cannot be applied as stated. Never guess past an ambiguity.`,
     `Under caveats, return every side effect of applying the decision literally that the human`,
@@ -279,6 +300,7 @@ const refreshBase = (unit, label, phaseName, reviewFrom) =>
       `resolution is mechanical; commit it. When a conflict needs a judgment call, abort`,
       `(git merge --abort) and return refreshed=false with the conflict described. Return`,
       `refreshed=true when the merge landed or the branch already contained ${unit.base}.`,
+      ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo)] : []),
       ...(reviewFrom
         ? [
             ``,
@@ -373,7 +395,7 @@ const CI_RESULT = {
   properties: {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
-    branch: { type: 'string', description: '`git -C <worktree> branch --show-current`, read before the first command; `detached` when HEAD is detached' },
+    branch: { type: 'string', description: 'the branch name the prompt says to return when HEAD matches it; otherwise the branch actually checked out, or the short HEAD sha when detached' },
     dirty: { type: 'string', description: '`git -C <worktree> status --porcelain` after the last command, verbatim; an empty string when the tree is clean' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
     skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never reported as passed' },
@@ -467,22 +489,37 @@ const ciPrompt = (unit, mode, markFiles) => {
   ].join('\n')
 }
 
+// A finding that asks to undo a human decision would reach the human again as a question they
+// already answered; the repair's own instructions are decisions too.
+const reservationsFor = (unit) => {
+  const all = [...decisions, ...(unit.instructions || [])]
+  return all.length > 0
+    ? `Decisions a human made on this task graph — never undo one, and never fix toward the alternative it rejected:\n${all.map((d) => `- ${d}`).join('\n')}`
+    : ''
+}
+
 const FIX_RESULT = {
   type: 'object',
   required: ['summary'],
   properties: {
     summary: { type: 'string' },
+    fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
+    toSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree after the last commit; equal to fromSha when nothing was committed' },
     caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
   },
 }
 
-const fixPrompt = (unit, problems) =>
+const fixPrompt = (unit, problems, preExisting = []) =>
   [
     `Fix CI problems on branch ${unit.branch} in the worktree ${unit.worktree}`,
     `(repository ${unit.repo}). Problems:`,
     ``,
     ...problems.map((p) => `- ${p}`),
     ``,
+    ...(preExisting.length > 0
+      ? [`Already failing on the clean base — never this branch's to fix, even where a listed problem points at it:`, ...preExisting.map((p) => `- ${p}`), ``]
+      : []),
+    ...(reservationsFor(unit) ? [reservationsFor(unit), ``] : []),
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
     `that pre-date this branch. A listed problem that cannot be fixed without an action a human`,
     `must take or approve — anything that touches production, anything irreversible, any secret`,
@@ -491,15 +528,23 @@ const fixPrompt = (unit, problems) =>
     `A failure the fix can only clear by changing behaviour — an exception carved out of a rule,`,
     `a narrowed decision, an error that stops meaning what it meant — is a design call, not a fix:`,
     `skip it and record under caveats what the choice is.`,
+    `A listed failure in a file this branch did not change (\`git diff --name-only ${unit.base || diffBase(unit.repo)}...HEAD\`)`,
+    `that no change of the branch explains is not this branch's either: skip it and record it under`,
+    `caveats as out of scope — a fix there edits code the branch was never about.`,
     ``,
+    ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo), ``] : []),
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
     ``,
     toolchainFor(unit),
     ``,
-    `Commit the fixes with a conventional-commit message. To verify a fix you may re-run the`,
-    `exact commands that failed, scoped to the files they failed on — never a whole suite; the`,
-    `full validation runs after you.`,
+    `Before your first edit, run \`git rev-parse HEAD\` in the worktree and return it as fromSha.`,
+    `After your last commit, run it again and return that as toSha — equal to fromSha when you`,
+    `committed nothing.`,
+    `Commit the fixes with a conventional-commit message, staging the files you changed by name —`,
+    `never \`git add -A\`: the tree also holds what the validation commands wrote. To verify a fix`,
+    `you may re-run the exact commands that failed, scoped to the files they failed on — never a`,
+    `whole suite; the full validation runs after you.`,
     ``,
     `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
     `reason, any judgment call that went beyond the listed problems, and any change that touches`,
@@ -591,7 +636,7 @@ const scanPrompt = (lens, dir) =>
     `invoked=false, status "error" and zero counts; never judge the change by hand.`,
   ].join('\n')
 
-const crMergePrompt = (dir) =>
+const crMergePrompt = (dir, unit) =>
   [
     `Invoke the \`code-review:cr-merge\` skill through the Skill tool with \`--context ${dir}\`,`,
     `and return what its closing block says: status, the report path, the lenses that did not`,
@@ -599,6 +644,9 @@ const crMergePrompt = (dir) =>
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
     `\`boy-scout\` token sets boyScout=true. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
+    ...(reservationsFor(unit)
+      ? [``, reservationsFor(unit), ``, `Set reserved=true on a finding that asks to undo a listed decision. Change nothing else the skill returned.`]
+      : []),
   ].join('\n')
 
 // A review that did not run is absence of evidence: an empty change, a lens that judged nothing or a
@@ -613,6 +661,11 @@ const runReview = async (unit, base, pass, tag) => {
     return { dir, empty: true, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
   }
   const lenses = prep.active || []
+  // A prepare that judged nothing leaves the lenses nothing to read, and their empty reports would
+  // merge into a clean review of a change nobody looked at.
+  if (!(prep.files > 0) || lenses.length === 0) {
+    return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
+  }
   const scans = await parallel(
     lenses.map((lens) => () =>
       tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
@@ -623,7 +676,7 @@ const runReview = async (unit, base, pass, tag) => {
     return !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
   })
   if (deadLenses.length > 0) return { dir, dead: `lens ${deadLenses.join(', ')} did not report` }
-  const merged = await tryTwice(crMergePrompt(dir), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
+  const merged = await tryTwice(crMergePrompt(dir, unit), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {
     const why = !merged
       ? 'returned no result after a retry'
@@ -648,19 +701,30 @@ const porcelainPath = (line) => {
   const renamed = p.indexOf(' -> ')
   return (renamed === -1 ? p : p.slice(renamed + 4)).replace(/^"|"$/g, '')
 }
+// The final gate flips this branch's task files to done itself, so their own dirtiness is expected
+// wherever the tasks directory happens to live. So is whatever the commands write into a clean tree
+// — the baseline recorded it — and voiding a verdict over a cache file voided every verdict in such
+// a repository. A new untracked file cannot turn a tracked check green on its own; a tracked edit can.
+const strayChanges = (dirty, unit) => {
+  const own = new Set(unit.taskFiles || [])
+  const tree = validationTree(unit)
+  const toolDirt = new Set((baseline.get(unit.repo) && baseline.get(unit.repo).dirty) || [])
+  const tracked = []
+  const untracked = []
+  for (const line of (dirty || '').split('\n')) {
+    if (!line.trim()) continue
+    const p = porcelainPath(line)
+    if (!p || own.has(`${tree}/${p}`) || toolDirt.has(p)) continue
+    ;(line.startsWith('??') ? untracked : tracked).push(p)
+  }
+  return { tracked, untracked }
+}
+
 const ciFault = (ci, unit) => {
   const ran = (ci.branch || '').trim()
   if (ran && ran !== unit.branch) return `ran in a checkout on ${ran} instead of ${unit.branch}`
   if (!ran) return `could not name the branch it ran on`
-  // The final gate flips this branch's task files to done itself, so their own dirtiness is
-  // expected wherever the tasks directory happens to live; anything else is the runner's edit.
-  const own = new Set(unit.taskFiles || [])
-  const tree = validationTree(unit)
-  const stray = (ci.dirty || '')
-    .split('\n')
-    .filter((line) => line.trim())
-    .map(porcelainPath)
-    .filter((p) => p && !own.has(`${tree}/${p}`))
+  const stray = strayChanges(ci.dirty, unit).tracked
   if (stray.length > 0) {
     const shown = stray.slice(0, 5).join(', ')
     return `left ${stray.length} uncommitted change(s) in the worktree (${shown}${stray.length > 5 ? ', …' : ''}), so its verdict describes a tree no commit holds`
@@ -681,6 +745,10 @@ const runCi = async (unit, mode, markFiles, label) => {
   const ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   if (!ci) return { ci: null, fault: null }
   const fault = ciFault(ci, unit)
+  const untracked = strayChanges(ci.dirty, unit).untracked
+  if (!fault && untracked.length > 0) {
+    caveats.push(`${unit.branch} ${label}: the run left new untracked files (${untracked.slice(0, 5).join(', ')}${untracked.length > 5 ? ', …' : ''}); the verdict stands, but a snapshot or fixture written there was never checked`)
+  }
   if (fault && ci.marked) await unmark(unit.taskFiles || [], label)
   return { ci, fault }
 }
@@ -773,8 +841,14 @@ for (const unit of units) {
   let { ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}`)
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    const fix = await tryTwice(fixPrompt(unit, ci.failures), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
+    const fix = await tryTwice(fixPrompt(unit, ci.failures, ci.preExisting || []), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
+    // A round that committed nothing left the tree CI just graded: another round re-runs the same
+    // pipeline on it and spends the budget on failures no fixer here will touch.
+    if (fix && fix.fromSha && fix.fromSha === fix.toSha) {
+      caveats.push(`${unit.branch} fix-ci round ${summary.fixRounds} committed nothing; the remaining failures go to a human`)
+      break
+    }
     ;({ ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}#${summary.fixRounds + 1}`))
   }
   if (!ci || fault) {
@@ -790,6 +864,7 @@ for (const unit of units) {
     continue
   }
   summary.preExisting = (ci.preExisting || []).length
+  summary.skipped = ci.skipped || []
   if (!ci.passed) {
     summary.ci = 'failed'
     hil.push({
@@ -813,7 +888,7 @@ for (const unit of units) {
       if (delta.dead && !delta.empty) {
         reviewDead = `the review of the repair did not run: ${delta.dead}`
       } else if (!delta.empty) {
-        const open = delta.findings.filter(serious)
+        const open = delta.findings.filter((f) => serious(f) && !f.reserved)
         summary.review.findings = delta.findings.map(findingLine)
         for (const f of open) {
           hil.push({
@@ -843,6 +918,7 @@ for (const unit of units) {
     continue
   }
   summary.preExisting = (finalCi.preExisting || []).length
+  summary.skipped = finalCi.skipped || []
   if (!finalCi.passed) {
     summary.ci = 'failed-final'
     hil.push({

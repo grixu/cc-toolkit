@@ -15,9 +15,9 @@ Send each Scanner a brief in this shape, filling every slot:
 
 ```
 <scanner_brief>
-  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec</lens>
+  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness</lens>
   <rules_file>rules/<lens>.md</rules_file>
-  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for every other Lens --></files>
+  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security`, the resolved list minus `policy` files for every other Lens --></files>
   <diff_args><!-- from the scope resolution --></diff_args>
   <how_to_view>
     tracked → `git diff <diff_args> -- <path>`
@@ -25,7 +25,7 @@ Send each Scanner a brief in this shape, filling every slot:
   </how_to_view>
   <conventions><!-- the conventions note, including any N/A families or rules --></conventions>
   <standards><!-- the CODING_STANDARDS pair's text, or this Lens's slice of it; "none" when the root has neither file --></standards>
-  <spec><!-- `spec` Lens only: the --spec path and its full text; omit the slot for every other Lens --></spec>
+  <spec><!-- `spec` and `correctness` Lenses only: the --spec path and its full text; omit the slot for every other Lens, and for these two when no spec is active --></spec>
   <scope_split>
     primary = the problem is in code this change added or modified, or structure
     the change introduced or made worse.
@@ -40,8 +40,14 @@ Send each Scanner a brief in this shape, filling every slot:
 
 Read the rules file **completely first**, then judge only the families that belong to
 that Lens. A Scanner **returns findings/verdicts only**: it does not render a report,
-does not re-grade centrally, and **writes nothing into the tree** — not the files under
-review, and not a scratch or probe file to test a hypothesis against.
+does not re-grade centrally, and **writes nothing** — not the files under review, and no
+scratch or probe file to test a hypothesis against, inside the checkout or anywhere else. The
+one file `cr-scan` writes is its output, the headless form of this return.
+
+Every Scanner's output opens with one header line, `Lens: <lens> · files judged: <N> of <M>`,
+where `M` is the length of its `<files>` and a file counts as judged once its change was read. A
+Scanner that judged none of its files says so there; the merge never reads a findings-free
+output without that line as a clean lens.
 
 A Scanner is **one agent, one pass, one output**. It **dispatches no agent of its own** — a
 sub-agent puts a second hop between the finding and the merge, and the Scanner that tried it
@@ -59,11 +65,14 @@ session where that tool is not handed to sub-agents — open those files at the 
 no transitive crawl, no repo listing, no `find`; a fact beyond the hop is `(verify)`;
 it still writes nothing.
 
-## The eight Lenses
+## The nine Lenses
 
 1. **comments** → `rules/comments.md`
-   Returns per-comment **VERDICTS**, one per comment:
-   `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD · `path:line` · "verbatim comment" — one-line reason → concrete suggested fix ``.
+   Returns per-comment **VERDICTS**, one bullet per comment it acts on:
+   `` `comments` · R# · REMOVE/REWRITE/MOVE/ADD · `path:line` · "verbatim comment" — one-line reason → concrete suggested fix ``.
+   Every comment it judged and kept is counted, not listed: one line, `KEEP: <W> comments
+   across <F> files`, after the verdicts. A KEEP that needs a reason — a comment a reader
+   would expect to see flagged — is the one exception, and goes to `Not flagged` in prose.
    Run the deletion test on every comment first. Surface **R9
    (contradicts-the-code) findings first**. The **test-file bar is higher (R11)**:
    default to REMOVE when unsure in tests. **`ADD` is the one verdict with no
@@ -72,9 +81,12 @@ it still writes nothing.
    catch); it drops the verbatim-comment slot for a site description:
    `` `comments` · R2 · ADD · `path:line` — <what is non-obvious> → <the exact comment to add> ``.
    Raise `ADD` only where you can state the reason concretely — never a guess
-   dressed as a WHY. Every suggested fix obeys the comment rules itself: no spec-id
+   dressed as a WHY. Every suggested fix obeys **all** the comment rules itself, judged
+   by the same deletion test as the comment it replaces: it restates nothing the code
+   says (R1), stays one load-bearing sentence (R3), matches what the code actually does
+   (R9 — reread the line before writing the replacement), and carries no spec-id
    fragments (`(R2)`, `F1:`, `§4.1`), no new file/doc cross-references (R4), no
-   banners (R5). For MOVE, name the destination and give the exact text to place
+   banners (R5). A replacement you would flag yourself is not a fix. For MOVE, name the destination and give the exact text to place
    there, plus "delete from the declaration".
 
 2. **readability & tests** → `rules/readability-tests.md`
@@ -98,9 +110,10 @@ it still writes nothing.
    `Grep` or `git grep` — and marks only what it still cannot confirm `(verify)`. `CANDIDATES` is reserved for a
    confirmed source→sink pair whose *mitigation* is the doubt; a cleared look-alike is
    one prose line for `Not flagged`. Severity is `high` or `medium`, **never `nit`**.
-   It never runs the code, an audit tool, or a network command; `.env`, YAML, JSON and
-   manifests stay skipped, and the report's Skipped line sends those to
-   `/security-review`.
+   It never runs the code, an audit tool, or a network command. It alone judges the
+   `policy` files — access policies, RBAC, `CODEOWNERS`, CI workflows — for widening and
+   exposure; `.env`, other YAML and JSON, and manifests stay skipped, and the report's
+   Skipped line sends those to `/security-review`.
 
 7. **performance** → `rules/performance.md`
    Judges the `performance` family; active only over the `source` subset the lens set gated it on.
@@ -115,32 +128,46 @@ it still writes nothing.
    in the `<spec>` slot and maps each to the diff. **Every finding quotes the spec line
    verbatim.** A `wrong-implementation`, `partial-requirement`, or `scope-creep` sits
    under the code file it points at; a `missing-requirement` has no code site, so it
-   sits under a `### <spec path>` header with the **spec's own `L<lines>`**. The
+   carries the **spec's own path and `L<lines>`**. The
    requirements met come back as **one prose count line**, never as findings.
    `scope_split` is **N/A** for this Lens — a spec finding is neither primary nor
    boy-scout, so it returns one list. Runtime claims are `(verify)`; a PARTIAL-vs-WRONG
    doubt is a candidate; a craft problem noticed on the way is a `HANDOFF`.
 
-For the finding-shaped Lenses (2–8) the Scanner returns **FINDINGS**, split into primary
+9. **correctness** → `rules/correctness.md`
+   Judges the `correctness` family; always active. It asks whether the changed code does
+   what it evidently means to do, and a finding names **the input or state that takes the
+   wrong path and the wrong result it gets** — "might not handle edge cases" is never a
+   finding. Intent comes from the code's names, callers, tests and types; where the `<spec>`
+   slot is filled and the behaviour departs from a spec line, that is a `spec` ·
+   wrong-implementation `HANDOFF`. Severity is `high` or `medium`, **never `nit`**. It never
+   runs the code; a fact that needs a run is `(verify)`.
+
+For the finding-shaped Lenses (2–9) the Scanner returns **FINDINGS**, split into primary
 and boy-scout (the `spec` Lens excepted), each in this exact shape:
 
 ```
-`family` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
+`family` · rule · severity · `path:L<lines>` — <what the reader loses> → <the fix, as a clause>
 ```
+
+Every finding names its own file: the merge regroups findings by file, and a bare `L<lines>`
+under a Scanner's own heading loses its file the moment it is moved. `path` is relative to the
+checkout, exactly as `<files>` lists it.
 
 A **`standards` finding** — any Lens may raise one, from the `<standards>` slot only —
 puts the quoted rule and its source where the loss goes:
 
 ```
-`standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <the fix, as a clause>
+`standards` · <slug> · <sev> · `path:L<lines>` — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <the fix, as a clause>
 ```
 
 with a short kebab-case slug from the rule's wording and the severity from the keyword
 mapping in `references/severity.md`.
 
 **Severity is exactly one of `high`, `medium`, or `nit`** — never `low`, never a
-number, never a paraphrase. A Scanner whose own rules file happens to list only one
-of the three still uses the full vocabulary. Tell each Scanner that **severity is a
+number, never a paraphrase — and it is the one `severity.md` gives the rule's row. The
+vocabulary is shared; the grade is not free: a `security`, `spec` or `correctness`
+finding is never `nit`, and a doubt about its grade goes to `CANDIDATES`, never to a softer severity. Tell each Scanner that **severity is a
 first pass** — you re-grade every quality finding centrally in the merge, so it grades
 honestly against its rules without agonizing over the boundary.
 
@@ -158,6 +185,13 @@ copies makes the extraction fix leave a straggler behind. The one **cross-file**
 exception is `module` · canonical-helper: a new helper duplicating an exported helper
 elsewhere in the repo is found by the one-hop Grep, bounded to the helper's name and its
 distinctive expression — never a repo-wide sweep, and inconclusive means `(verify)`.
+
+**A fix round is judged as it stands, never undone.** When the change under review is a
+review's own fix round — the caller says so, or the commits name the findings they fix — the
+edits that round made are what the previous review asked for. Judge them like any code, but
+never raise a finding whose fix reverses one (renaming back, inlining what was just
+extracted, restoring a removed comment): two rounds that disagree only flip the code back and
+forth. A fix that is itself wrong is a finding on what it broke, not on the edit's direction.
 
 ## Three side-channels, three distinct meanings
 
@@ -194,7 +228,13 @@ unsettled travels in one of three channels, and these are **not** interchangeabl
 
   ```
   ## HANDOFF (out-of-my-family — noticed but not mine to grade)
-  - `<suggested-family>` · <rule if known> · `path:line` — <what the reader loses> → <why it isn't my family>
+  - `<family>` · <rule> · `path:line` — <what the reader loses> → <why it isn't my family>
   ```
+
+  The family is one of the fixed labels in `severity.md` and the rule one of that family's
+  rows, or `comments` with its `R#` — never a label made up for the occasion (`types`,
+  `logic`, `error-handling`). A wrong condition, an unhandled case or a swallowed error is
+  `correctness`. A problem you are sure of that fits no row is still not a new family: send it
+  with the nearest family and say in the clause which row it misses, and the merge decides it.
 
 One terse line each. Omit a block when it is empty.

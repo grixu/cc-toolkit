@@ -11,19 +11,22 @@ The invocation carries the spec's path, and on a later pass the status the previ
 A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming what you
 need, then end your turn. Do not guess it and do not go looking for it.
 
-**That spec file is the only file you may edit.** Everything else you read is read-only, no matter
-what you find in it.
+**That spec file, and the overflow files step 3 puts under `<spec-dir>/evidence/`, are the only
+files you may write.** Everything else you read is read-only, no matter what you find in it.
 
 A probe — a command you run to settle a claim — runs in a detached worktree under your scratchpad
 (`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout. It never
-installs, links or rebuilds dependencies, anywhere: a package manager repoints shared links and
+installs, links or rebuilds dependencies, anywhere. A repository's own script — a `package.json`
+script, a Makefile target, anything under `scripts/` — is a probe like any other and runs only there: a package manager repoints shared links and
 leaves the user's tree broken. A claim that needs more than that to settle stays unverified, and the
 report says what the probe would have needed.
 
 **Every edit traces to a finding of this pass.** The dated evidence block is appended to a spec of
 any quality; everything else you write must be the repair of something you recorded as a finding,
-in the section that finding names. A spec whose checks all pass leaves this skill byte-identical
-except for the appended block — rewording a section you merely read, tidying a table, or improving
+in the section that finding names. The dated block itself — its verdict line and `Checked at:` line
+included — is the record of the pass, not a spec edit: it never appears under **Spec edits applied**,
+and on its own it never calls for another pass. A spec whose checks all pass leaves this skill byte-identical
+except for the appended block and the header's status field — rewording a section you merely read, tidying a table, or improving
 prose nobody flagged rewrites a document the user validated on the strength of its own wording.
 
 ## Goal
@@ -67,7 +70,10 @@ that pass; it does not start a new one — the status you return carries the pas
 invocation gave it, and counts the rounds inside it separately.
 
 **A previous pass.** Where the invocation carries the status an earlier pass of this skill returned
-for this same spec, read it before step 1: it says which of the twelve checks passed and on what,
+for this same spec, read it before step 1. It arrives as the text that pass returned; a pointer in
+its place — a transcript or JSONL path, "see the previous pass" — is not a status, and transcripts are
+not yours to read: take the last dated block of the spec's own evidence record instead. The status says which
+of the twelve checks passed and on what,
 what it left open, and which claims it recorded `verified` or `deferred`.
 
 Re-derive all twelve checks against the file you now hold. A check the previous pass answered was
@@ -178,7 +184,9 @@ is known, open the dated block with one line — `Verdict: <the report's verdict
 N deferred / N blocked — spec N lines at this verdict` — so a later reader can tell a clean pass from
 a qualified one without hunting for the session that produced it. The line under it names the
 commit each repository was checked against in step 0 — `Checked at: <remote name> @ <short sha>, …`
-— which is how the split tells whether the code has moved on since. Fill the line count in last: write
+— which is how the split tells whether the code has moved on since. The header's status field is part
+of that record: set it to the same verdict and the pass's date, the one header edit a pass makes with no
+finding behind it, so the header never contradicts the block below. Fill the line count in last: write
 the dated block through to its final line, then `wc -l`, then put that number in the verdict line —
 replacing it changes no line count, so the number counts itself. A file at
 `<spec-dir>/evidence/<section>.md` is for overflow only: a probe transcript or a command output too long to
@@ -271,7 +279,9 @@ defect and what the candidate repairs are, and choosing between them would chang
 or reverse a ratified decision — then the choice is the user's, and repairing it yourself decides
 scope on their behalf. Collect it for step 4 as a repair choice: the defect, the repairs you would
 pick between, and what each costs. A finding that admits one obvious correction is not a repair
-choice — make the correction. A non-blocking finding never is: it goes in the report.
+choice — make the correction. A non-blocking finding never is: it goes in the report. Accepting a risk
+the spec does not already accept — a failure mode left in place, an exposure tolerated — is always a
+repair choice, never a claim you record `verified` because the risk looks small.
 
 ### 4. Hand up what only the user can settle
 
@@ -320,10 +330,12 @@ batch, and a pass that asks about it has turned a settled document into a questi
 
 End the pass by returning the verdict and this pass's status — nothing is written to a file. The
 shape the return takes is in `${CLAUDE_SKILL_DIR}/../../references/validation-report.md`; read that
-file before composing anything. A section is dropped only when it is genuinely empty, on that file's
+file before composing anything. The verdict is one of its words — `ready` or `not ready` — and a
+`Result` cell one of its forms; a hybrid such as `ready with caveats` is a verdict the split cannot
+read, and what qualifies it belongs in the findings. A section is dropped only when it is genuinely empty, on that file's
 terms — a pass that edited the spec returns a non-empty **Spec edits applied** section, and it
 enumerates every edit the pass made.
 
-The verdict covers the file as it stands when you write it. A spec edit made after the verdict line
+The verdict covers the file as it stands when you write it. A body edit made after the verdict line
 re-opens the pass: append the edit to the dated block, restate the verdict line beneath it with a
 fresh count, and say in the return what changed since.

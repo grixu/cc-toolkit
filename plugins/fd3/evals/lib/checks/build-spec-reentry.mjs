@@ -21,6 +21,14 @@ export default () => {
     `no validation pass appended a verdict line (found ${spec ? verdictLines(spec) : 0}, the fixture holds ${before})`,
   );
 
+  // Three passes, plus at most one for edits after the verdict: a pass that counts its own
+  // appended block as an edit re-invokes the next forever.
+  if (spec !== null) {
+    const fixtureHeadings = new Set(h.headings(h.readFixtureFile('rollout-spec', SPEC)));
+    const passes = h.headings(spec).filter((x) => /20\d\d/.test(x) && !fixtureHeadings.has(x)).length;
+    c.check(passes <= 4, `${passes} dated validation blocks appended; the loop allows three passes and one post-verdict pass`);
+  }
+
   const newSpecs = diff.added.filter((f) => f.endsWith('.md') && !/(^|\/)(notes|research|evidence)\//.test(f));
   c.check(newSpecs.length === 0, `a second spec was written instead of re-validating the given one: ${newSpecs.join(', ')}`);
 

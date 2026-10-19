@@ -1,0 +1,12 @@
+Act as the orchestrator of the code-review plugin's `start-cr` command. Read
+`plugins/code-review/commands/start-cr.md` completely and carry out its **Step 1 only**, for
+the invocation `--pr 7`, in the git checkout {{checkout}} — that directory is the repository
+the command was invoked in, and the plugin root is `plugins/code-review`. In this environment
+the `gh` CLI is the executable `{{gh}}`: call it by that path wherever the command says `gh`.
+
+Stop after Step 1: dispatch no Scanner and edit no file. Reply with exactly these lines:
+
+PR: <number> — <title> (<head> → <base>)
+checkout reviewed: <absolute path>
+base: <ref passed to the script>
+files: <comma-separated paths the script returned>

@@ -12,7 +12,7 @@ export default (output) => {
   c.check(tasks.length === 7, `expected 7 task files (the six elements plus CI-1), found ${tasks.length}`);
   s.checkTaskStructure(c, tasks);
   s.checkCoverage(c, tasks, CODES);
-  s.checkBoundaries(c, tasks, { precedesDb: 'CI-1' });
+  s.checkBoundaries(c, tasks, { precedesDb: 'CI-1', report: `${h.readSandboxFile('split-protected-path', 'spec/protected-path-spec.split.md') || ''}\n${output}` });
   s.checkIndexCardRule(c, tasks);
 
   const ci = tasks.find((t) => s.elementsOf(t).includes('CI-1'));
@@ -23,6 +23,14 @@ export default (output) => {
 
     const sharing = tasks.filter((t) => t !== ci && t.fm && t.fm.branch && t.fm.branch === ci.fm.branch);
     c.check(sharing.length === 0, `${ci.file}: the protected-path task shares its branch with ${sharing.map((t) => t.file).join(', ')}`);
+  }
+
+  // release-team's approval gates the pull request, not the writing: a note asking the implementer
+  // to confirm first stops the unattended implement run on that task.
+  const PENDING_ASK = /\b(confirm|get (an? )?approv\w*|wait for (an? )?approv\w*|ask (the user|release-team))\b[^.\n]*\bbefore (editing|writing|starting|implementing|touching|changing)\b/i;
+  for (const t of tasks) {
+    const note = (t.body.split(/^## Note\s*$/m)[1] || '').split(/^## /m)[0];
+    c.check(!PENDING_ASK.test(note), `${t.file}: its ## Note asks for a confirmation before the work starts`);
   }
 
   const SPLIT_REPORT = 'spec/protected-path-spec.split.md';

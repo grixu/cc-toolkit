@@ -9,7 +9,8 @@ The spec to split: **$ARGUMENTS**
 If no path was given, ask which spec to split. If the path does not resolve, say so and stop.
 
 The spec is read-only here. A defect you find in it — an element no work item builds, a work item
-that cites nothing — is a reason to stop and report it, never something to fix in passing.
+that cites nothing — is a reason to stop and report it, never something to fix in passing, and not
+when the user offers to let you: an edit after the last verdict is one no pass has checked.
 
 ## Terms
 
@@ -94,6 +95,11 @@ into the repository when finding it takes searching. When a fact needs a dispatc
 direct command, read `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md` first — it holds the
 routes and the dispatch rules. Most splits need none. Never ask the user what you can read.
 
+List the paths each repository protects, for step 2's fifth rule: its `CODEOWNERS`, its default
+branch's protection rules where `gh` can read them, and any list of files its `CLAUDE.md` or
+`AGENTS.md` says need the user's consent before an edit. Note which of them the spec's work items
+touch.
+
 Before naming a branch or recording a base, `git fetch` every repository the spec touches and record
 what you fetched: the default branch, its `origin/<default>` commit, and whether the checkout's
 current branch is behind it. The base you write into `branch-base:` is the ref the implementation
@@ -144,9 +150,14 @@ reason, and the reason decides the edge cases:
    a `CODEOWNERS` entry naming another team, a branch-protection or required-review rule, a
    release manifest, the CI workflow definitions — waits on an approval the rest of the unit does
    not. It is a delivery task like any other, with its own element and done criterion, on a branch
-   of its own, so one external approval never holds the whole landing unit. Read the repository's
-   `CODEOWNERS` and protection settings in step 1 to know which paths these are; where the
-   repository declares none, the rule finds nothing and costs nothing.
+   of its own, so one external approval never holds the whole landing unit. Step 1 lists which
+   paths these are; where the repository declares none, the rule finds nothing and costs nothing.
+   The approval it waits on is the pull request's review, never a precondition for writing the
+   code: no task `## Note` asks the implementer to confirm before editing, because implementation
+   runs unattended and a pending confirmation there stops it mid-run. Where the repository's own
+   instructions require the user's consent before a path is edited at all, that consent joins the
+   step-6 batch; a path the user declines is a stop for the work items that need it, reported,
+   never a task left waiting on an answer.
 
 Within what survives the boundaries, prefer the smallest task that makes one verification row
 pass. Where one repository owns a whole behaviour, that yields a vertical slice — schema, endpoint
@@ -156,6 +167,8 @@ phase-ordered cuts. Never force a slice across a boundary the rules above drew.
 A task that changes the type or shape of a shared identity or contract — a primary-key type, a
 wire format, a schema field — owns the ripple: propagation to every consumer, fixtures, seed
 data and test seeders included, either inside the task or explicitly handed to a named task.
+Another task that edits a file the ripple reaches draws a `depends-on` edge onto the owner, so the
+consumer is written against the new shape rather than racing it.
 A ripple nobody owns surfaces as a wall of type errors in whichever branch validates first, and
 gets fixed there twice.
 
@@ -208,8 +221,12 @@ is policy of this skill and never appears in the spec.
 
 ### 4. Order
 
-Dependencies come from the spec's build order and its phase table. Record each as a `depends-on`
-edge between task slugs: an edge means the other task must land first.
+Dependencies come from the spec's build order: an edge means a task cannot be written or verified
+without the other's work — a file, symbol or migration it builds on. Record each as a `depends-on`
+edge between task slugs: the other task must land first. The phase table orders *landing*, which
+step 3 records as the merge order; a later phase alone is not an edge, and an edge drawn from it
+across branches strands a whole branch behind work it never uses. A docs or changeset task that
+describes another task's change does depend on it: the change it describes is what they share.
 
 **An edge between two tasks on the same branch has to name what they share.** Same-branch tasks
 land together, so an edge there is a claim that one must be *written* before the other, and only a

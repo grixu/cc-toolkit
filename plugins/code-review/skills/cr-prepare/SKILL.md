@@ -40,8 +40,14 @@ A `count` of zero is never a clean review. With an `alternate` in the output, re
 alone. The caller decides what an empty change means — you do not call it "nothing to review".
 
 Apply `${CLAUDE_PLUGIN_ROOT}/references/scope.md` to the list: which files are judged, which are
-skipped and why, and each judged file's kind (`source`, `test`, `iac`) from its `## File kinds`
+skipped and why, and each judged file's kind (`source`, `test`, `iac`, `policy`) from its `## File kinds`
 section.
+
+A change whose every file is skipped has nothing to judge either: return `status: empty` with
+`files: 0 judged` and each skip reason in `skipped`, never `ready`. Lenses that "pass" over zero
+files read downstream as a clean review of a change nobody looked at. For the same reason an
+active lens never carries an empty `files` list — a lens with nothing of its kind to read is
+inactive, with that reason.
 
 `--spec` counts only when it names a readable local file. Anything else — a URL, a ticket id, a
 path that does not open — leaves the `spec` Lens inactive with that reason; never substitute a file
@@ -52,8 +58,8 @@ you think was meant.
 Settle the conventions note, the standards slot and the active lens set by
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`, working the mechanical read `scope.md`
 describes inside the checkout. A lens is named by its rules file's basename: `comments`,
-`readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `security`,
-`performance`, `spec`.
+`readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`,
+`security`, `performance`, `spec`.
 
 ## 3. Write the context directory
 
@@ -80,8 +86,8 @@ Write each file with the `Write` tool:
 ```
 
 `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
-`files` is its own list — the `source` subset for `performance`, the whole judged list for every
-other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
+`files` is its own list — the `source` subset for `performance`, the whole judged list for
+`security`, and the judged list minus its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
 the script returned, so the caller can read what you saw.
 
 ## 4. Return
@@ -97,4 +103,5 @@ active: <lens, lens, …>
 inactive: <lens — reason; …>
 ```
 
-On `empty`, add `alternate: <ref> — <count> files`; on `error`, `reason: <what stopped you>`.
+On `empty`, add `alternate: <ref> — <count> files` when the script returned one, or
+`reason: every file skipped` when the count was above zero; on `error`, `reason: <what stopped you>`.

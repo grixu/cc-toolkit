@@ -108,10 +108,10 @@ any order; item 3 lands with or before whichever of them needs it.
 
 | # | Phase | Where | Switches anything? | Gate after? |
 |---|---|---|---|---|
-| 1 | Both work items land and deploy together | payments-service | yes — the store becomes durable and the counts start | yes — the final phase, so it closes its landing unit: one branch, one pull request |
+| 1 | Both work items land and deploy together | payments-service | yes — the migration creates the durable store; the counts start once PAY-262 wires their callers | yes — the final phase, so it closes its landing unit: one branch, one pull request |
 
-Single environment; the deploy on merge is the rollout. No waiting period: the change is exercised
-by the next charge request.
+Single environment; the deploy on merge is the rollout. No waiting period: the migration is the only
+live change, since `charge` and `deliver` have no callers until PAY-262 lands.
 
 Hard dependency: **the payments team's confirmation that Postgres is reachable and the deploy
 manifest carries `DATABASE_URL`** (section 4 prerequisites). The gate is a confirmation before the

@@ -25,7 +25,8 @@ is a first pass.
 
 | family | rule | what it catches | severity |
 |--------|------|-----------------|----------|
-| `simplicity`  | over-complex        | code that collapses into something smaller (duplication → one parameter) | high |
+| `simplicity`  | over-complex        | duplication that collapses into one shape (near-identical functions → one parameter, a copy-pasted block → one extraction) | high |
+| `simplicity`  | verbose             | a single piece of code longer or more nested than its idea needs (an `if/else` chain that is a lookup, a loop that is a `map`) | nit |
 | `simplicity`  | needless-cast       | a type cast the value's type already guarantees | high |
 | `simplicity`  | dead-code           | code that can never run or whose result is never used (an unreachable branch, an unread binding) | high |
 
@@ -42,10 +43,10 @@ They write five lines where two read better. Hunt for the smaller version.
   - two (or more) functions are near-identical and differ only by a value or a
     single branch — they collapse into one function that takes that difference as
     an **argument**;
-  - a block is copy-pasted with small edits — extract the shared shape;
-  - code is simply longer or more nested than the idea needs (a chain of
-    `if/else` that is a lookup table, a manual loop that is a `map`/`filter`, an
-    intermediate variable used once with no clarifying value).
+  - a block is copy-pasted with small edits — extract the shared shape.
+
+  Code that is merely longer than it needs to be, with nothing duplicated, is
+  `verbose`, not this rule.
 - **Suggested fix**: name the unified version precisely — the merged function and
   the parameter that absorbs the difference ("collapse into
   `renderLine(invoice, label)` and pass the label at each site"), or the shorter
@@ -59,6 +60,19 @@ They write five lines where two read better. Hunt for the smaller version.
   or when the two are *conceptually distinct and likely to diverge* — premature
   DRY that couples unrelated things is its own defect. The goal is the simplest
   code that still reads clearly, not the fewest functions at any cost.
+
+#### `verbose` — one piece of code longer than its idea
+
+- **Flag** when a single site, with nothing duplicated, says in many lines what a
+  shorter form says plainly: a chain of `if/else` that is a lookup table, a manual
+  loop that is a `map`/`filter`/`find`, an intermediate variable used once with no
+  clarifying value, nesting an early return would remove.
+- **Suggested fix**: name the shorter form ("a `STATUS_LABEL` lookup", "`items.filter(isActive)`").
+- **Calibration → not a finding**: a longer form that a step-by-step debugger, a
+  performance constraint or the project's conventions ask for; a once-used variable
+  whose name explains an opaque expression (that is the `explaining-variable` the
+  readability lens asks for). Severity stays `nit`: it costs a reader seconds, not a
+  drifting copy — never raise it to `high` because there are several.
 
 #### `needless-cast` — unnecessary type casts
 
@@ -106,7 +120,9 @@ end of a live bug.
 - **Calibration → not a finding**: an intentionally exhaustive `default:`/`else` kept as
   a defensive assertion; a public API, route handler, exported hook, or test helper
   whose caller is out of the reviewed scope; a parameter required by an interface or
-  signature it must match. Speculative generality is never flagged on an abstraction a
+  signature it must match; an export, field or branch that a spec or task file in the
+  same change names as consumed by a later step — the caller simply does not exist yet,
+  and deleting it removes what the next stage builds on. Speculative generality is never flagged on an abstraction a
   `patterns` rule would itself ask for under friction, nor on a public API/extension
   point whose consumer is out of scope — the exported-consumer clearance above holds.
   Reachability you cannot settle from the change alone is a **(verify)**, not an
