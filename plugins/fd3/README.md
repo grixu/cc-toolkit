@@ -155,11 +155,13 @@ in the background.
   manifest, a CI workflow, a lint or test config) is examined again on its own tree. Each branch then
   runs the checks scoped to its changes, gets up to three fix rounds, and finishes with one full run.
 - Review (optional). After the checks pass, the `code-review` plugin reviews the branch with one
-  agent per active lens, six to eight. High and medium findings rated safe or structural, security
-  included, findings in code the branch did not touch when their fix is rated safe, and `comment`
-  findings rated safe are fixed automatically, and the fixes are reviewed again. Spec findings,
-  findings rated report-only, and anything the fixer left unfixed wait for you in the final report;
-  they do not stop the branch. Answer `gated` instead of `yes` to have security fixes and findings
+  agent per active lens, seven to nine. High and medium findings rated safe or structural, security
+  included (each security fix in its own commit), findings in code the branch did not touch when
+  their fix is rated safe, and `comment` findings rated safe are fixed automatically, and the fixes
+  are reviewed again. Spec findings, security fixes that change who may reach what, fixes that would
+  change behaviour the spec states, findings rated report-only, and anything the fixer left unfixed
+  wait for you in the final report; they do not stop the branch. Decisions you took on an earlier
+  report are passed to every reviewer and fixer, so a finding that would undo one is set aside. Answer `gated` instead of `yes` to have security fixes and findings
   in untouched code held for you, with the branch kept at `merged` until you settle them. `nit`
   findings, the lowest severity, are reported and never applied.
 
@@ -176,8 +178,9 @@ Finally Claude gives one report and asks one batch: the pull requests (one per b
 base branch, worktree path, tasks and title), the decisions taken for you with how to revert each,
 and the open review findings. You say whether to push and which findings, if any, to repair first.
 It pushes and runs `gh pr create` only after you agree; when the repository's own rules reserve
-pushing to a person, it prints the commands instead. It leaves the worktrees in place and prints
-the commands that remove them.
+pushing to a person, it prints the commands instead. The same batch asks whether to remove the
+worktrees and merged task branches now (recommended) or print the commands; a task branch with
+commits its target lacks is never removed.
 
 ## Files fd3 writes
 
@@ -192,7 +195,7 @@ the commands that remove them.
 | `<repo>.worktrees/<name>/` | implement | The worktrees, created beside the repository, not inside it. |
 | `<repo>.worktrees/.review/` | implement | The code-review working files and a `report.md` per branch and pass. |
 | `HIL_ACTIONS.md` | implement | The human steps in order, next to the tasks directory, for a run that waits days on people. |
-| `implement-answers.md` | implement | The answers to implement's first question batch, next to the tasks directory. |
+| `implement-answers.md` | implement | The answers to implement's first question batch and the decisions later report rounds settled, next to the tasks directory. |
 
 Until the spec is written, the interview keeps its working files (`notes/question-ledger.md`,
 `research/`) in the session's scratch directory.
