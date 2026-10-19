@@ -49,7 +49,7 @@ included, in the report's order:
 ```
 status: merged | incomplete | error
 report: <context>/report.md
-lenses: <L> of 8 (skipped: <lens — reason; …>)
+lenses: <L> of 9 (skipped: <lens — reason; …>)
 findings:
 - <severity> · <family> · <rule> · <path>:L<lines> · <safe | structural | report-only> — <the fix, as a clause>
 - comments · R<n> · <VERDICT> · <path>:L<line> · <safe | structural | report-only> — <the fix>

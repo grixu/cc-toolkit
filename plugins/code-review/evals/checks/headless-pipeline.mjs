@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'security', 'performance', 'spec'];
+const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'correctness', 'security', 'performance', 'spec'];
 const FINDING = /^- (high|medium|nit) · [\w-]+ · [\w-]+ · \S+:L\d+(?:-\d+)? · (safe|structural|report-only)\b.* — /m;
 
 export default (output, context) => {
@@ -24,7 +24,7 @@ export default (output, context) => {
     const scope = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
     const active = scope.lenses.active.map((l) => l.lens);
     const named = [...active, ...scope.lenses.inactive.map((l) => l.lens)].sort();
-    check(JSON.stringify(named) === JSON.stringify([...LENSES].sort()), `scope.json does not account for all eight lenses once: ${named.join(', ')}`);
+    check(JSON.stringify(named) === JSON.stringify([...LENSES].sort()), `scope.json does not account for all nine lenses once: ${named.join(', ')}`);
     check(!active.includes('spec'), 'the spec lens is active with no spec named');
     check(scope.files.map((f) => f.path).sort().join() === 'src/quality-recall.ts,src/security-recall.ts', `judged files are not the committed change: ${scope.files.map((f) => f.path).join(', ')}`);
     for (const lens of active) {

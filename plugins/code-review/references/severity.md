@@ -3,8 +3,8 @@
 Every finding that reports as `family` · rule · severity carries one **family**, one
 **rule**, and one **severity**, all three **verbatim** from this table — never a code
 number, never a paraphrase invented this run. Two reviews of the same code name the
-same `family` · rule every time. Eleven families report in that shape: the ten below
-with **44 fixed rows**, plus `standards`, whose rules are the project's own and are
+same `family` · rule every time. Twelve families report in that shape: the eleven below
+with **50 fixed rows**, plus `standards`, whose rules are the project's own and are
 graded by the mapping at the end of this file.
 
 Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
@@ -52,6 +52,12 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `performance` | unbounded-fetch     | a list read with no limit/pagination over data that grows (incl. list endpoints) | medium |
 | `performance` | blocking-in-async   | sync blocking call on a request-serving/event-loop path (N/A outside Node & Python asyncio) | medium |
 | `performance` | wasted-render       | React: fresh object/array/arrow passed to a memoised child or hook dependency (N/A outside `.tsx/.jsx`) | medium |
+| `correctness` | wrong-condition     | a comparison, boolean or null check that selects the wrong branch for an input the code must handle | high |
+| `correctness` | unhandled-case      | a value the input can take — an enum member, an empty/absent value, an error result — that no branch handles, so it falls into a wrong default | high |
+| `correctness` | off-by-one          | a bound, index, slice or loop limit one step off, dropping or repeating the first or last element | high |
+| `correctness` | swallowed-error     | an error caught, ignored or turned into a success value, so the caller proceeds on a failure it never sees | medium |
+| `correctness` | state-race          | shared state read and written across an `await`, callback or concurrent caller with no ordering | high |
+| `correctness` | contract-mismatch   | a call that breaks what the callee declares — argument order or unit, a nullable return used as present, a promise not awaited | high |
 | `spec`        | missing-requirement | a spec line nothing in the diff implements | high |
 | `spec`        | wrong-implementation | a requirement implemented, but the implementation contradicts the spec line | high |
 | `spec`        | partial-requirement | a requirement only partly implemented | medium |
@@ -68,7 +74,9 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   cycle or inverts the layering (`dependency-direction`), a helper the repo already
   exports (`canonical-helper`), a per-item call that multiplies with the data
   (`n-plus-one`), a spec line left unimplemented or implemented against its wording
-  (`missing-requirement`, `wrong-implementation`), and the six security rules that
+  (`missing-requirement`, `wrong-implementation`), code that takes the wrong path for an
+  input it must handle (`wrong-condition`, `unhandled-case`, `off-by-one`, `state-race`,
+  `contract-mismatch`), and the six security rules that
   name a confirmed exposure — a literal credential (`secret-in-source`), untrusted data
   reaching a sink (`injection-sink`), an unguarded resource (`missing-access-check`),
   a protection switched off (`insecure-setting`), a secret or over-wide grant declared
@@ -85,14 +93,15 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   `execute-around`) once their friction is real, a boundary value used before it is
   validated (`unvalidated-boundary`), a read that grows with the data
   (`unbounded-fetch`), a blocking call on a serving path (`blocking-in-async`), a
-  re-render the memoisation was meant to prevent (`wasted-render`), and a requirement
+  re-render the memoisation was meant to prevent (`wasted-render`), a failure the caller
+  never sees (`swallowed-error`), and a requirement
   half-met or exceeded (`partial-requirement`, `scope-creep`).
 - **nit** — local `openness` / spacing, an inline `explaining-variable`, a
   type-in-the-name `role-name`. Real, but cheap; cluster them so the report does not
   drown in nits.
 
-A `security` or `spec` finding is never `nit`: those families grade `high` or `medium`
-only, and a doubt about one goes to CANDIDATES or `Not flagged`, never to a softer
+A `security`, `correctness` or `spec` finding is never `nit`: those families grade `high`
+or `medium` only, and a doubt about one goes to CANDIDATES or `Not flagged`, never to a softer
 severity.
 
 ## Anti-anchoring

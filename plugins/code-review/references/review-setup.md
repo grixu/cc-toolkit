@@ -48,8 +48,8 @@ Not every Lens runs on every change. Decide the set here, once, from the input �
 never from a preference:
 
 - the five craft Lenses (`comments`, `readability & tests`, `naming & module`,
-  `objects & patterns`, `simplicity & types`) and **`security`** are **always
-  active** — six on any change, however small;
+  `objects & patterns`, `simplicity & types`), **`correctness`** and **`security`** are
+  **always active** — seven on any change, however small;
 - **`performance`** is active iff the `source`-kind subset of the resolved list,
   **minus `.sh` files**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;

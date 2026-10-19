@@ -15,7 +15,7 @@ Send each Scanner a brief in this shape, filling every slot:
 
 ```
 <scanner_brief>
-  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec</lens>
+  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness</lens>
   <rules_file>rules/<lens>.md</rules_file>
   <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for every other Lens --></files>
   <diff_args><!-- from the scope resolution --></diff_args>
@@ -25,7 +25,7 @@ Send each Scanner a brief in this shape, filling every slot:
   </how_to_view>
   <conventions><!-- the conventions note, including any N/A families or rules --></conventions>
   <standards><!-- the CODING_STANDARDS pair's text, or this Lens's slice of it; "none" when the root has neither file --></standards>
-  <spec><!-- `spec` Lens only: the --spec path and its full text; omit the slot for every other Lens --></spec>
+  <spec><!-- `spec` and `correctness` Lenses only: the --spec path and its full text; omit the slot for every other Lens, and for these two when no spec is active --></spec>
   <scope_split>
     primary = the problem is in code this change added or modified, or structure
     the change introduced or made worse.
@@ -65,7 +65,7 @@ session where that tool is not handed to sub-agents — open those files at the 
 no transitive crawl, no repo listing, no `find`; a fact beyond the hop is `(verify)`;
 it still writes nothing.
 
-## The eight Lenses
+## The nine Lenses
 
 1. **comments** → `rules/comments.md`
    Returns per-comment **VERDICTS**, one bullet per comment it acts on:
@@ -133,7 +133,16 @@ it still writes nothing.
    boy-scout, so it returns one list. Runtime claims are `(verify)`; a PARTIAL-vs-WRONG
    doubt is a candidate; a craft problem noticed on the way is a `HANDOFF`.
 
-For the finding-shaped Lenses (2–8) the Scanner returns **FINDINGS**, split into primary
+9. **correctness** → `rules/correctness.md`
+   Judges the `correctness` family; always active. It asks whether the changed code does
+   what it evidently means to do, and a finding names **the input or state that takes the
+   wrong path and the wrong result it gets** — "might not handle edge cases" is never a
+   finding. Intent comes from the code's names, callers, tests and types; where the `<spec>`
+   slot is filled and the behaviour departs from a spec line, that is a `spec` ·
+   wrong-implementation `HANDOFF`. Severity is `high` or `medium`, **never `nit`**. It never
+   runs the code; a fact that needs a run is `(verify)`.
+
+For the finding-shaped Lenses (2–9) the Scanner returns **FINDINGS**, split into primary
 and boy-scout (the `spec` Lens excepted), each in this exact shape:
 
 ```
@@ -156,8 +165,8 @@ mapping in `references/severity.md`.
 
 **Severity is exactly one of `high`, `medium`, or `nit`** — never `low`, never a
 number, never a paraphrase — and it is the one `severity.md` gives the rule's row. The
-vocabulary is shared; the grade is not free: a `security` or `spec` finding is never
-`nit`, and a doubt about its grade goes to `CANDIDATES`, never to a softer severity. Tell each Scanner that **severity is a
+vocabulary is shared; the grade is not free: a `security`, `spec` or `correctness`
+finding is never `nit`, and a doubt about its grade goes to `CANDIDATES`, never to a softer severity. Tell each Scanner that **severity is a
 first pass** — you re-grade every quality finding centrally in the merge, so it grades
 honestly against its rules without agonizing over the boundary.
 
@@ -216,7 +225,8 @@ unsettled travels in one of three channels, and these are **not** interchangeabl
 
   The family is one of the fixed labels in `severity.md` and the rule one of that family's
   rows, or `comments` with its `R#` — never a label made up for the occasion (`types`,
-  `logic`, `error-handling`). A problem you are sure of that fits no row is still not a new family: send it
+  `logic`, `error-handling`). A wrong condition, an unhandled case or a swallowed error is
+  `correctness`. A problem you are sure of that fits no row is still not a new family: send it
   with the nearest family and say in the clause which row it misses, and the merge decides it.
 
 One terse line each. Omit a block when it is empty.

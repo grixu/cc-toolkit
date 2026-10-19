@@ -814,7 +814,7 @@ tests:
     vars:
       checkout: plugins/code-review/evals/.sandbox/headless
       context: plugins/code-review/evals/.sandbox/headless-ctx
-    # Eight lenses in one agent's context: the default cap would abort mid-run. The skills write
+    # Nine lenses in one agent's context: the default cap would abort mid-run. The skills write
     # their context files; without Write and Bash the agent narrates a review it never ran.
     options: { max_budget_usd: 12, allow_all_tools: true }
     assert:

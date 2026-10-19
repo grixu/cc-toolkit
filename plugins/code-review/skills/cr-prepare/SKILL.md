@@ -58,8 +58,8 @@ you think was meant.
 Settle the conventions note, the standards slot and the active lens set by
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`, working the mechanical read `scope.md`
 describes inside the checkout. A lens is named by its rules file's basename: `comments`,
-`readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `security`,
-`performance`, `spec`.
+`readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`,
+`security`, `performance`, `spec`.
 
 ## 3. Write the context directory
 

@@ -1,10 +1,10 @@
 ---
 description: >-
-  Explicit-invocation orchestrator that runs the eight review lenses (comments,
+  Explicit-invocation orchestrator that runs the nine review lenses (comments,
   readability & tests, naming & module, objects & patterns, simplicity & types,
-  security, performance, spec) in parallel over a change and merges them into one
-  per-file report. Three lenses are gated by the input, never by the user: security
-  is always on, performance runs only when executable source files are in scope,
+  correctness, security, performance, spec) in parallel over a change and merges them
+  into one per-file report. Lenses are gated by the input, never by the user:
+  correctness and security are always on, performance runs only when executable source files are in scope,
   spec only when a spec file is named — by `--spec <path>`, or by the user accepting
   the one the diff itself carries. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
@@ -13,7 +13,7 @@ allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
 argument-hint: "[paths...] [--base <branch>] [--spec <path>]"
 ---
 
-# start-cr — one review, up to eight parallel lenses
+# start-cr — one review, up to nine parallel lenses
 
 You are the **Orchestrator**. You resolve scope **once**, resolve the **active lens
 set** once, dispatch **one Scanner per active Lens** in parallel, merge their
@@ -23,7 +23,7 @@ and only for what the user picks.
 
 This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
-user choice: the five craft Lenses and `security` always run, `performance` runs
+user choice: the five craft Lenses, `correctness` and `security` always run, `performance` runs
 when executable source is in scope, `spec` when a spec file is named. For a partial
 review the user invokes `/code-review:comment-review` or `/code-review:quality-review` directly.
 
@@ -135,7 +135,7 @@ agent, inside a workflow step — it is simply absent, and a single pass by one 
 command however carefully it reads. Say so in your first sentence, name the lenses that will not
 run, and let the caller decide between an announced single-pass reading and the headless route:
 `code-review:cr-prepare` once, `code-review:cr-scan` once per active lens as its own agent, then
-`code-review:cr-merge` — the same eight lenses, one agent each, with no questions asked. Never
+`code-review:cr-merge` — the same nine lenses, one agent each, with no questions asked. Never
 discover this silently halfway and report the result as a review.
 
 **Never pass `name:` to a Scanner call.** Naming routes the Scanner into the agent-teams
@@ -193,7 +193,7 @@ problem with no rule to land on, never compressed into the one-line list.
 
 ### The Scanner brief
 
-The brief each Scanner receives, the eight Lenses and their output contracts, and the three
+The brief each Scanner receives, the nine Lenses and their output contracts, and the three
 side-channels are in `${CLAUDE_PLUGIN_ROOT}/references/scanner-contract.md` — read it completely
 before the dispatch and fill every slot of the brief it defines. Its paths are relative to
 `${CLAUDE_PLUGIN_ROOT}/references/`: a brief carries the absolute

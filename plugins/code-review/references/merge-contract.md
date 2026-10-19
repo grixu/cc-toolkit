@@ -16,8 +16,8 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   An output whose header reads `files judged: 0 of <M>` with `M` above zero has not reviewed
   anything: it is a lens that did not deliver, however clean its findings list looks.
 - **Dedup overlaps**: when two findings point at the same code — including across
-  different lenses, and across **all eleven families**, craft and `security` /
-  `performance` / `spec` / `standards` alike — keep the **most-specific** one and drop
+  different lenses, and across **all twelve families**, craft and `correctness` /
+  `security` / `performance` / `spec` / `standards` alike — keep the **most-specific** one and drop
   the rest. When the overlap
   spans two severities (a `high` symptom folding into a lower-severity root cause, or the
   reverse), the surviving bullet keeps the **highest** severity of the overlap — deduping
@@ -78,7 +78,7 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   resolved under its own name.
 - **Re-grade every quality finding's severity yourself** against the master table in
   `severity.md` — read it now if you have not. It
-  carries the 44 rows, what each severity means, the anti-anchoring rule, and the
+  carries the 50 rows, what each severity means, the anti-anchoring rule, and the
   **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
   medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
   no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
@@ -132,8 +132,9 @@ the fix* is `report-only` too, with its one-line reason.
   unifications, `test-structure` restructuring, and `dead-code` removal of a branch that
   looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
   `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,
-  `message-chain`); every **`performance`** fix; every **`security`** fix; **plus**
-  comment **MOVE**.
+  `message-chain`); every **`performance`** fix; every **`security`** fix; every
+  **`correctness`** fix, which changes behaviour by design and names the input it corrects;
+  **plus** comment **MOVE**.
 - **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
   bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
   a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
@@ -156,6 +157,10 @@ the freed slot as its own option, **Security fixes (walk one at a time)**, so th
 can pick it apart from the craft restructuring. A `secret-in-source` fix removes the
 literal from the file and nothing more: the wrap-up states that **rotating the exposed
 secret is the user's step** — the review cannot do it and must not imply it did.
+
+**A `correctness` fix that changes what a spec line or an existing test asks for is
+report-only.** The finding stands, but which behaviour is right is the author's call, not an
+edit to apply: say in the bullet which spec line or test it collides with.
 
 **`spec` findings are report-only.** A missing or partial requirement is work to do,
 not an edit to apply, and never enters a bucket. The one exception is a
@@ -191,7 +196,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
 
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 8 (skipped: <lens> — <reason>). Spec: R of T requirements met. Skipped: <files + reason>.
+**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 9 (skipped: <lens> — <reason>). Spec: R of T requirements met. Skipped: <files + reason>.
 ```
 
 A filled-in report reads like this:
@@ -219,7 +224,7 @@ Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 8 of 8. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 9 of 9. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 </example>
 
 **The skeleton is the whole report.** It has no other sections: no `### Findings`
@@ -238,9 +243,9 @@ not prose.
 Rules for filling it in:
 
 - **Two vocabularies, side by side.** Quality findings use `` `family` · rule ·
-  severity ``, with the family **backticked** — one of the eleven fixed labels
+  severity ``, with the family **backticked** — one of the twelve fixed labels
   `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`,
-  `security`, `performance`, `spec`, `standards` — and rule and severity verbatim from
+  `correctness`, `security`, `performance`, `spec`, `standards` — and rule and severity verbatim from
   `references/severity.md` (a `standards` rule is its slug, graded by the keyword
   mapping). Comment verdicts use `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD ``.
   **No severity↔verdict mapping** — keep them distinct.
@@ -282,9 +287,9 @@ Rules for filling it in:
   missing-requirement or wrong-implementation forbids the clean headline outright.
   Reserve the clean verdict for a tally that is genuinely nits-only-and-all-KEEP (or
   empty).
-- **The `Tally` names the lenses.** `Lenses: L of 8` always, with each skipped Lens
+- **The `Tally` names the lenses.** `Lenses: L of 9` always, with each skipped Lens
   and its lens-set reason in the parenthesis (`skipped: performance — no executable
-  code; spec — no spec named`); drop the parenthesis when all eight ran. When a spec was
+  code; spec — no spec named`); drop the parenthesis when all nine ran. When a spec was
   given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
   met`; omit that clause otherwise.
 
