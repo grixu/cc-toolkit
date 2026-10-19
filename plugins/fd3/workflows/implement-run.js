@@ -679,6 +679,7 @@ const CR_MERGE_RESULT = {
           fix: { type: 'string' },
           reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
           boyScout: { type: 'boolean', description: 'the finding line carries the `boy-scout` token: it is about code the change did not touch' },
+          access: { type: 'boolean', description: 'a security finding whose fix changes who may reach what — a permission, a role, a policy, the scope of an auth check' },
         },
       },
     },
@@ -817,7 +818,14 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
     `A caveat says something the parent could not otherwise know. Following this prompt is not a`,
     `caveat.`,
     ...(source === 'code-review'
-      ? [`Under skipped, also copy verbatim every listed problem you left unfixed, whatever the reason.`]
+      ? [
+          `Under skipped, also copy verbatim every listed problem you left unfixed, whatever the reason.`,
+          ``,
+          `Make every edit with the Edit tool — never \`sed -i\`, a Python or heredoc rewrite, or any`,
+          `script that rewrites a file: a scripted rewrite changes lines no finding named, and the delta`,
+          `review then reads them as new code. Commit each \`security\` finding's fix on its own, naming`,
+          `its rule in the message, so one can be reverted without the rest; the other fixes share a commit.`,
+        ]
       : []),
   ].join('\n')
 
@@ -859,7 +867,8 @@ const crMergePrompt = (dir) =>
     `and return what its closing block says: status, the report path, the lenses that did not`,
     `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
-    `\`boy-scout\` token sets boyScout=true. Return invoked=true; when`,
+    `\`boy-scout\` token sets boyScout=true, and a security finding whose fix changes who may reach`,
+    `what — a permission, a role, a policy, an auth check's scope — sets access=true. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
     ...(reservations
       ? [
@@ -910,13 +919,14 @@ const runReview = async (unit, base, pass, tag) => {
 // go to a human in either mode. Unattended runs fix the rest: holding every security fix and
 // boy-scout finding for a yes stopped each branch on a human. Gated keeps that hold for a user who
 // wants to walk security fixes one at a time; a boy-scout fix that is not mechanically safe is
-// reported either way, since it edits code the task never touched. Nits and the remaining comment
+// reported either way, since it edits code the task never touched. A security fix that changes who
+// may reach what is a policy call, so it waits for a human in both modes. Nits and the remaining comment
 // verdicts are reported, never applied unasked.
 const serious = (f) => f.severity === 'high' || f.severity === 'medium'
 const fixable = (f) =>
   gated
     ? f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout
-    : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe')
+    : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe') && !f.access
 const sortFindings = (findings) => {
   const live = findings.filter((f) => !f.reserved)
   const applied = live.filter(
