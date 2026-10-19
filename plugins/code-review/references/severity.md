@@ -4,7 +4,7 @@ Every finding that reports as `family` · rule · severity carries one **family*
 **rule**, and one **severity**, all three **verbatim** from this table — never a code
 number, never a paraphrase invented this run. Two reviews of the same code name the
 same `family` · rule every time. Twelve families report in that shape: the eleven below
-with **51 fixed rows**, plus `standards`, whose rules are the project's own and are
+with **52 fixed rows**, plus `standards`, whose rules are the project's own and are
 graded by the mapping at the end of this file.
 
 Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
@@ -53,6 +53,7 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `performance` | unbounded-fetch     | a list read with no limit/pagination over data that grows (incl. list endpoints) | medium |
 | `performance` | blocking-in-async   | sync blocking call on a request-serving/event-loop path (N/A outside Node & Python asyncio) | medium |
 | `performance` | wasted-render       | React: fresh object/array/arrow passed to a memoised child or hook dependency (N/A outside `.tsx/.jsx`) | medium |
+| `performance` | missing-index       | a query the change adds filters, joins or sorts a growing table on a column no index covers | medium |
 | `correctness` | wrong-condition     | a comparison, boolean or null check that selects the wrong branch for an input the code must handle | high |
 | `correctness` | unhandled-case      | a value the input can take — an enum member, an empty/absent value, an error result — that no branch handles, so it falls into a wrong default | high |
 | `correctness` | off-by-one          | a bound, index, slice or loop limit one step off, dropping or repeating the first or last element | high |
@@ -93,7 +94,8 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   internals (`message-chain`), the pattern rules (`composition`, `polymorphism`,
   `execute-around`) once their friction is real, a boundary value used before it is
   validated (`unvalidated-boundary`), a read that grows with the data
-  (`unbounded-fetch`), a blocking call on a serving path (`blocking-in-async`), a
+  (`unbounded-fetch`), a blocking call on a serving path (`blocking-in-async`), a new
+  query on an unindexed column (`missing-index`), a
   re-render the memoisation was meant to prevent (`wasted-render`), a failure the caller
   never sees (`swallowed-error`), and a requirement
   half-met or exceeded (`partial-requirement`, `scope-creep`).

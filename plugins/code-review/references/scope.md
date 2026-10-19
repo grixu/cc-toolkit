@@ -62,7 +62,8 @@ eyeballing the content:
 
 - **`test`** — any file under one of these directories: `__tests__/`, `test/`,
   `tests/`, `spec/`, `e2e/`, `cypress/`, `fixtures/`, `__mocks__/`, `__snapshots__/`,
-  `testdata/`; under any directory whose name *contains* `e2e` (`tests-e2e/`,
+  `testdata/`, and the test-support directories `test-utils/`, `test-helpers/`,
+  `testutils/`, `testing/`; under any directory whose name *contains* `e2e` (`tests-e2e/`,
   `e2e-tests/`, `apps/web-e2e/`) or ends in `-tests`/`-test`; or whose name matches one
   of: `*.test.*`, `*.spec.*`, `*_test.go`,
   `test_*.py`, `*_test.py`, `conftest.py`, `*Test.php`, `*Test.java`, `*Test.kt`,
@@ -76,8 +77,8 @@ Three consumers depend on this list:
 
 - **`policy` files go to the `security` lens only** — every other lens's `<files>` leaves
   them out, so a change that touches nothing but policy runs `security` alone;
-
-- the **`performance` lens** receives only the `source` files, minus `.sh` — and is not
+- the **`performance` lens** receives only the `source` files, minus `.sh` files and
+  `*.config.*` modules (build and tool configuration runs once, never per request) — and is not
   dispatched at all when that subset is empty (a tests-only or IaC-only change has no
   performance lens, and the report's Tally names it as skipped);
 - the **comments lens's higher test-file bar** (R11 in `rules/comments.md`) applies to

@@ -25,7 +25,8 @@ three. The orchestrator re-grades centrally against the master table, so your se
 is a first pass.
 
 ## Contents
-- `performance` — n-plus-one, unbounded-fetch, blocking-in-async, wasted-render
+- `performance` — n-plus-one, unbounded-fetch, blocking-in-async, wasted-render,
+  missing-index
 
 Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 **Calibration** paragraph naming the look-alike that is *not* a violation. This is the
@@ -45,10 +46,12 @@ estimate — a count, a latency, a complexity class — not derived from a line 
 diff. The scanner never runs, benchmarks, or profiles code; it reads. A claim that
 needs a measurement to stand is `(verify)`, not a finding.
 
-**Files and languages.** This lens receives only `source`-kind files, `.sh` excluded;
-tests and IaC are never in its `<files>`. Applicability is per rule: `n-plus-one` and
+**Files and languages.** This lens receives only `source`-kind files, `.sh` and
+`*.config.*` excluded; tests, test-support helpers and IaC are never in its `<files>`. A
+file in your list that only builds fixtures or configures a tool is still not a serving
+path — clear it in one line rather than grade its loops. Applicability is per rule: `n-plus-one` and
 `unbounded-fetch` apply in every language; `blocking-in-async` applies only to Node and
-Python asyncio; `wasted-render` applies only to `.tsx`/`.jsx`. The Step 2 conventions
+Python asyncio; `wasted-render` applies only to `.tsx`/`.jsx`. The `<conventions>`
 note names an N/A rule the same way it names an N/A family — clear it in one line,
 never invent a counterpart.
 
@@ -68,6 +71,7 @@ clause and leave the walk to the apply phase — none of these is a safe edit.
 | `performance` | unbounded-fetch     | a list read with no limit/pagination over data that grows (incl. list endpoints) | medium |
 | `performance` | blocking-in-async   | sync blocking call on a request-serving/event-loop path (N/A outside Node & Python asyncio) | medium |
 | `performance` | wasted-render       | React: fresh object/array/arrow passed to a memoised child or hook dependency (N/A outside `.tsx/.jsx`) | medium |
+| `performance` | missing-index       | a query the change adds filters, joins or sorts a growing table on a column no index covers | medium |
 
 ### `performance` family
 
@@ -167,3 +171,22 @@ on every commit — the memo is paid for and does nothing.
   pre-emptively is not the fix — flag only where the memo already exists and is
   defeated. **N/A** outside `.tsx`/`.jsx`: Vue, Svelte, and Solid are separate
   reactivity models with no equivalent — clear the rule in one line.
+
+#### `missing-index` — a new query on a column no index covers
+
+A filter, join or sort on an unindexed column scans the whole table, and the table
+grows with use; the query is correct and fast on the day it lands.
+
+- **Flag** when the change adds a query that filters, joins or orders a table that
+  grows with use (`where: { externalId }`, `JOIN … ON events.session_id`,
+  `ORDER BY created_at`) and the schema in the repo — a migration, a Prisma/ORM model,
+  a `CREATE INDEX` — declares no index whose leading column covers it. The four things
+  here are the query, the table and where it grows, the column, and the schema file you
+  read that shows no index.
+- **Suggested fix**: name the index to add and where — a migration with `CREATE INDEX`
+  on the column, or `@@index([column])` on the model.
+- **Calibration → not a finding**: the column is a primary key, a unique column, or
+  the leading column of a composite index; lookup and config tables that do not grow;
+  a schema you cannot find in the repo (an external database, a managed service) —
+  `(verify)` naming what you looked for; a query the same change's migration already
+  indexes.

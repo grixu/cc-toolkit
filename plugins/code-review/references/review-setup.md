@@ -53,7 +53,7 @@ never from a preference:
   `<files>` comes out empty is inactive with that reason: a change of `policy` files only
   runs `security` alone;
 - **`performance`** is active iff the `source`-kind subset of the resolved list,
-  **minus `.sh` files**, is non-empty — a tests-only, IaC-only, or shell-only change
+  **minus `.sh` files and `*.config.*` modules**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;
 - **`spec`** is active iff a spec resolved to a readable local file during the scope resolution — from
   `--spec`, or from the offer the user accepted when the change carried its own spec.

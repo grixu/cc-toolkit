@@ -78,7 +78,7 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   resolved under its own name.
 - **Re-grade every quality finding's severity yourself** against the master table in
   `severity.md` — read it now if you have not. It
-  carries the 51 rows, what each severity means, the anti-anchoring rule, and the
+  carries the 52 rows, what each severity means, the anti-anchoring rule, and the
   **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
   medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
   no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
