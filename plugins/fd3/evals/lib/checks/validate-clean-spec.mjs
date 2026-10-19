@@ -18,7 +18,7 @@ export default (output) => {
   if (c.check(spec !== null, 'spec/clean-spec.md missing from sandbox')) {
     // The pass rewrites the header's status field to its verdict; every other byte is append-only.
     const STATUS = /^- Status:.*$/m;
-    c.check(/\bready\b(?! for)/i.test((spec.match(STATUS) || [''])[0]), 'the header status does not carry the verdict');
+    c.check(/(?<!not )\bready\b(?! for)/i.test((spec.match(STATUS) || [''])[0]), 'the header status does not carry the verdict');
     const fixtureTrimmed = fixture.replace(STATUS, '').replace(/\s+$/, '');
     c.check(spec.replace(STATUS, '').replace(/\s+$/, '').startsWith(fixtureTrimmed), 'spec edits are not append-only (fixture content is no longer a prefix)');
     const fixtureHeadings = new Set(h.headings(fixture));
