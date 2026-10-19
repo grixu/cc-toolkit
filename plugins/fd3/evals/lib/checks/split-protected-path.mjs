@@ -25,6 +25,14 @@ export default (output) => {
     c.check(sharing.length === 0, `${ci.file}: the protected-path task shares its branch with ${sharing.map((t) => t.file).join(', ')}`);
   }
 
+  // release-team's approval gates the pull request, not the writing: a note asking the implementer
+  // to confirm first stops the unattended implement run on that task.
+  const PENDING_ASK = /\b(confirm|get (an? )?approv\w*|wait for (an? )?approv\w*|ask (the user|release-team))\b[^.\n]*\bbefore (editing|writing|starting|implementing|touching|changing)\b/i;
+  for (const t of tasks) {
+    const note = (t.body.split(/^## Note\s*$/m)[1] || '').split(/^## /m)[0];
+    c.check(!PENDING_ASK.test(note), `${t.file}: its ## Note asks for a confirmation before the work starts`);
+  }
+
   const SPLIT_REPORT = 'spec/protected-path-spec.split.md';
   const diff = h.diffSandbox('split-protected-path', 'protected-path-rollout-spec');
   c.check(diff.added.includes(SPLIT_REPORT), `the split report ${SPLIT_REPORT} was not written beside the spec`);
