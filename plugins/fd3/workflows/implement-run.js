@@ -605,7 +605,7 @@ const CI_RESULT = {
   properties: {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
-    branch: { type: 'string', description: '`git -C <worktree> branch --show-current`, read before the first command; `detached` when HEAD is detached' },
+    branch: { type: 'string', description: 'the branch name the prompt says to return when HEAD matches it; otherwise the branch actually checked out, or the short HEAD sha when detached' },
     dirty: { type: 'string', description: '`git -C <worktree> status --porcelain` after the last command, verbatim; an empty string when the tree is clean' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
     skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never reported as passed' },
