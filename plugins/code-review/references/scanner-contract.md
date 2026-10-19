@@ -110,9 +110,10 @@ it still writes nothing.
    `Grep` or `git grep` — and marks only what it still cannot confirm `(verify)`. `CANDIDATES` is reserved for a
    confirmed source→sink pair whose *mitigation* is the doubt; a cleared look-alike is
    one prose line for `Not flagged`. Severity is `high` or `medium`, **never `nit`**.
-   It never runs the code, an audit tool, or a network command; `.env`, YAML, JSON and
-   manifests stay skipped, and the report's Skipped line sends those to
-   `/security-review`.
+   It never runs the code, an audit tool, or a network command. It alone judges the
+   `policy` files — access policies, RBAC, `CODEOWNERS`, CI workflows — for widening and
+   exposure; `.env`, other YAML and JSON, and manifests stay skipped, and the report's
+   Skipped line sends those to `/security-review`.
 
 7. **performance** → `rules/performance.md`
    Judges the `performance` family; active only over the `source` subset the lens set gated it on.

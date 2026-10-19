@@ -40,7 +40,7 @@ A `count` of zero is never a clean review. With an `alternate` in the output, re
 alone. The caller decides what an empty change means — you do not call it "nothing to review".
 
 Apply `${CLAUDE_PLUGIN_ROOT}/references/scope.md` to the list: which files are judged, which are
-skipped and why, and each judged file's kind (`source`, `test`, `iac`) from its `## File kinds`
+skipped and why, and each judged file's kind (`source`, `test`, `iac`, `policy`) from its `## File kinds`
 section.
 
 A change whose every file is skipped has nothing to judge either: return `status: empty` with
@@ -86,8 +86,8 @@ Write each file with the `Write` tool:
 ```
 
 `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
-`files` is its own list — the `source` subset for `performance`, the whole judged list for every
-other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
+`files` is its own list — the `source` subset for `performance`, the whole judged list for
+`security`, and the judged list minus its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
 the script returned, so the caller can read what you saw.
 
 ## 4. Return

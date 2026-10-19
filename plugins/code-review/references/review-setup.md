@@ -49,7 +49,9 @@ never from a preference:
 
 - the five craft Lenses (`comments`, `readability & tests`, `naming & module`,
   `objects & patterns`, `simplicity & types`), **`correctness`** and **`security`** are
-  **always active** — seven on any change, however small;
+  **always active** — seven on any change, however small — except that a Lens whose own
+  `<files>` comes out empty is inactive with that reason: a change of `policy` files only
+  runs `security` alone;
 - **`performance`** is active iff the `source`-kind subset of the resolved list,
   **minus `.sh` files**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;
@@ -57,7 +59,7 @@ never from a preference:
   `--spec`, or from the offer the user accepted when the change carried its own spec.
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
-`performance` gets the source subset it was gated on; every other Lens gets the full
-resolved list. Record every **inactive** Lens with its reason (`performance — no
+`performance` gets the source subset it was gated on; `security` gets the full resolved
+list; every other Lens gets the resolved list minus its `policy` files. Record every **inactive** Lens with its reason (`performance — no
 executable code`, `spec — no spec named`); the Tally prints them. From here on
 **N** means this count: N Scanners run, N outputs awaited, N outputs merged.

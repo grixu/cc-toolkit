@@ -16,6 +16,14 @@ comments and structure worth reviewing). The ES-module and CommonJS extensions c
 same hand-written code as `.js` — a build script or a config-as-code module under
 `.mjs`/`.cjs` is reviewed, not skipped as tooling.
 
+**Access policy and pipeline files** are in scope for the `security` lens alone: they are
+config by shape, but a line in one decides who may do what, and a widening there is the
+change's whole effect. The set, by path: `*.rego`, `*.cedar`, `CODEOWNERS`, CI workflow
+definitions (`.github/workflows/*.yml`, `.gitlab-ci.yml`, and their equivalents), and
+YAML/JSON under a `policies/`, `policy/`, `rbac/` or `iam/` directory or named
+`*policy*.json`/`*policy*.yaml`; plus any YAML whose own `apiVersion`/`kind` line makes it a
+Cerbos policy (`api.cerbos.dev`) or a Kubernetes `Role`, `ClusterRole` or `*RoleBinding`.
+
 ## Skip
 
 JSON, lockfiles, generated or minified files (a generator's `.d.ts`, `*_pb.*`, anything
@@ -25,15 +33,14 @@ settings, `.env`), and license/SPDX headers.
 
 Note every skipped file in one line, so coverage stays honest.
 
-**CI workflow definitions are skipped with a security sentence.** A changed
-`.github/workflows/*.yml`, `.gitlab-ci.yml`, or equivalent pipeline file is static config
-by these rules, but it is the one skipped kind that routinely carries a real exposure — a
-`pull_request_target` job checking out and running untrusted code, a secret passed into a
-step that echoes it, a third-party action pinned to a moving tag. Say on the `Skipped`
-line that the pipeline files were not line-graded and that their permissions, triggers and
-secret handling belong to `/security-review`. If the `security` Scanner nonetheless reads
-one and finds a confirmed exposure, that finding stands — `security` · `iac-exposure`
-covers it.
+**CI workflow definitions are not skipped — they are `policy` files.** A changed
+`.github/workflows/*.yml` or `.gitlab-ci.yml` routinely carries a real exposure — a
+`pull_request_target` job checking out and running untrusted code, a widened
+`permissions:` block, a secret passed into a step that echoes it — so the `security` lens
+judges it like any policy file, and the other lenses never see it. The dependency and
+action-pinning audit stays with `/security-review`, so when a pipeline file changed the
+`Skipped` line still names it — graded by `security` alone — and points the reader to
+`/security-review` for that audit, in those words.
 
 **A skipped file that is the substance of the change gets its own sentence.** A
 dependency manifest (`package.json`, `composer.json`, …) on a dependency-bump or upgrade
@@ -62,9 +69,13 @@ eyeballing the content:
   `*Tests.cs`, `*_spec.rb`, `*.feature`, `*.stories.*`, `setupTests.*`.
 - **`iac`** — `.tf`/HCL and the other declarative infrastructure-as-code surfaces named
   under *In scope*.
+- **`policy`** — the access policy and pipeline files named under *In scope*.
 - **`source`** — everything else in scope.
 
-Two consumers depend on this list:
+Three consumers depend on this list:
+
+- **`policy` files go to the `security` lens only** — every other lens's `<files>` leaves
+  them out, so a change that touches nothing but policy runs `security` alone;
 
 - the **`performance` lens** receives only the `source` files, minus `.sh` — and is not
   dispatched at all when that subset is empty (a tests-only or IaC-only change has no
