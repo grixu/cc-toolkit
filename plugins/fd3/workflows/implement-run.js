@@ -907,6 +907,11 @@ const runReview = async (unit, base, pass, tag) => {
     return { dir, empty: true, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
   }
   const lenses = prep.active || []
+  // A prepare that judged nothing leaves the lenses nothing to read, and their empty reports would
+  // merge into a clean review of a change nobody looked at.
+  if (!(prep.files > 0) || lenses.length === 0) {
+    return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
+  }
   const scans = await parallel(
     lenses.map((lens) => () =>
       tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
