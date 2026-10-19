@@ -54,7 +54,7 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   `--pr` takes no paths and no `--base` (the PR defines both); `--spec` still works.
 
   ```bash
-  gh pr view <number> --json number,url,state,baseRefName,headRefName,headRefOid,isCrossRepository,maintainerCanModify
+  gh pr view <number> --json number,title,url,state,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,maintainerCanModify
   git fetch origin <baseRefName>
   git fetch origin pull/<number>/head
   ```
@@ -409,9 +409,13 @@ review findings". A hook that rejects a commit is reported with its output, neve
 with `--no-verify`.
 
 **With `--pr`, also offer the push.** After the commits, one more `AskUserQuestion`: push
-them to the PR's branch (`git push origin HEAD:<headRefName>`) or keep them local. Offer it
-only when `isCrossRepository` is false or `maintainerCanModify` is true — otherwise say the
-branch is not writable from here and leave the commits in the worktree. Either way, name the
+them to the PR's branch or keep them local. A same-repository PR pushes with
+`git push origin HEAD:<headRefName>`. A cross-repository PR with `maintainerCanModify` pushes to
+the head repository by URL —
+`git push https://github.com/<headRepositoryOwner.login>/<headRepository.name>.git HEAD:<headRefName>`
+— never to `origin`, which is the base repository: a push there would create or advance the base
+repository's own branch of that name. A cross-repository PR without `maintainerCanModify` gets no
+offer: say the branch is not writable from here and leave the commits in the worktree. Either way, name the
 worktree's path and how to remove it (`git worktree remove <path>`) when the review made one.
 
 <review_tone>
