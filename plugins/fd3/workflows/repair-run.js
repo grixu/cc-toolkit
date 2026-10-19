@@ -78,12 +78,15 @@ const BASELINE_COMMANDS = {
   },
 }
 
+const BASELINE_DIRTY = { type: 'array', items: { type: 'string' }, description: 'paths `git status --porcelain` lists after the last command, relative to the worktree root' }
+
 const BASELINE_RESULT = {
   type: 'object',
   required: ['commands'],
   properties: {
     commands: BASELINE_COMMANDS,
     skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never recorded as passed' },
+    dirty: BASELINE_DIRTY,
   },
 }
 
@@ -107,7 +110,7 @@ const HANDOVER_RESULT = {
       items: {
         type: 'object',
         required: ['repository', 'commands'],
-        properties: { repository: { type: 'string' }, commands: BASELINE_COMMANDS },
+        properties: { repository: { type: 'string' }, commands: BASELINE_COMMANDS, dirty: BASELINE_DIRTY },
       },
     },
   },
@@ -123,7 +126,7 @@ if (input.reportPath && repositories.some((repo) => !toolchain.get(repo))) {
       ...repositories.map((repo) => `- ${repo}`),
       ``,
       `Return each repository's toolchain report verbatim — the whole string, unedited — and its`,
-      `baseline command list. Omit a repository the report does not carry. Never summarise, reformat`,
+      `baseline command list with its dirty paths. Omit a repository the report does not carry. Never summarise, reformat`,
       `or reconstruct a toolchain report: the baseline is matched against it by command string, so a`,
       `command list that differs from the one the baseline measured is worse than no baseline.`,
     ].join('\n'),
@@ -131,7 +134,7 @@ if (input.reportPath && repositories.some((repo) => !toolchain.get(repo))) {
   )
   if (handover) {
     for (const t of handover.toolchain || []) if (!toolchain.get(t.repository)) toolchain.set(t.repository, t.report)
-    for (const b of handover.baseline || []) if (!baseline.get(b.repository)) baseline.set(b.repository, { commands: b.commands })
+    for (const b of handover.baseline || []) if (!baseline.get(b.repository)) baseline.set(b.repository, { commands: b.commands, dirty: b.dirty || [] })
   }
 }
 
@@ -168,9 +171,14 @@ const baselinePrompt = (repo) =>
     `   the repository root: resolve it inside that worktree, never against ${repo}. Skip what the`,
     `   report lists as not runnable here, recording each skip under skipped with its reason — a`,
     `   skip is never recorded as passed.`,
-    `3. Fix nothing, change nothing. Run each command once, as \`<command> 2>&1; echo "exit $?"\``,
-    `   — that one run gives both the output and the exit status. Record, per command, whether it`,
-    `   exited 0, and for each failure the output lines that matter.`,
+    `3. Fix nothing, change nothing. Run each command once, as`,
+    `   \`<command> > ${worktreePath(repo, 'baseline')}.log 2>&1; echo "exit $?"\` — the log sits beside`,
+    `   the worktree, never inside it. Read pass or fail from that exit line alone, and the log only`,
+    `   for the lines a failure needs; never pipe a command into \`tail\`, \`head\` or \`grep\`, whose`,
+    `   status then replaces the command's. Record, per command, whether it exited 0, and for each`,
+    `   failure the output lines that matter.`,
+    `4. When the last command has run, run \`git status --porcelain\` in that worktree and return every`,
+    `   path it lists under dirty: what the commands themselves write into a clean tree.`,
     ``,
     toolchain.get(repo),
   ].join('\n')
@@ -497,9 +505,10 @@ const fixPrompt = (unit, problems) =>
     ``,
     toolchainFor(unit),
     ``,
-    `Commit the fixes with a conventional-commit message. To verify a fix you may re-run the`,
-    `exact commands that failed, scoped to the files they failed on — never a whole suite; the`,
-    `full validation runs after you.`,
+    `Commit the fixes with a conventional-commit message, staging the files you changed by name —`,
+    `never \`git add -A\`: the tree also holds what the validation commands wrote. To verify a fix`,
+    `you may re-run the exact commands that failed, scoped to the files they failed on — never a`,
+    `whole suite; the full validation runs after you.`,
     ``,
     `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
     `reason, any judgment call that went beyond the listed problems, and any change that touches`,
@@ -648,19 +657,30 @@ const porcelainPath = (line) => {
   const renamed = p.indexOf(' -> ')
   return (renamed === -1 ? p : p.slice(renamed + 4)).replace(/^"|"$/g, '')
 }
+// The final gate flips this branch's task files to done itself, so their own dirtiness is expected
+// wherever the tasks directory happens to live. So is whatever the commands write into a clean tree
+// — the baseline recorded it — and voiding a verdict over a cache file voided every verdict in such
+// a repository. A new untracked file cannot turn a tracked check green on its own; a tracked edit can.
+const strayChanges = (dirty, unit) => {
+  const own = new Set(unit.taskFiles || [])
+  const tree = validationTree(unit)
+  const toolDirt = new Set((baseline.get(unit.repo) && baseline.get(unit.repo).dirty) || [])
+  const tracked = []
+  const untracked = []
+  for (const line of (dirty || '').split('\n')) {
+    if (!line.trim()) continue
+    const p = porcelainPath(line)
+    if (!p || own.has(`${tree}/${p}`) || toolDirt.has(p)) continue
+    ;(line.startsWith('??') ? untracked : tracked).push(p)
+  }
+  return { tracked, untracked }
+}
+
 const ciFault = (ci, unit) => {
   const ran = (ci.branch || '').trim()
   if (ran && ran !== unit.branch) return `ran in a checkout on ${ran} instead of ${unit.branch}`
   if (!ran) return `could not name the branch it ran on`
-  // The final gate flips this branch's task files to done itself, so their own dirtiness is
-  // expected wherever the tasks directory happens to live; anything else is the runner's edit.
-  const own = new Set(unit.taskFiles || [])
-  const tree = validationTree(unit)
-  const stray = (ci.dirty || '')
-    .split('\n')
-    .filter((line) => line.trim())
-    .map(porcelainPath)
-    .filter((p) => p && !own.has(`${tree}/${p}`))
+  const stray = strayChanges(ci.dirty, unit).tracked
   if (stray.length > 0) {
     const shown = stray.slice(0, 5).join(', ')
     return `left ${stray.length} uncommitted change(s) in the worktree (${shown}${stray.length > 5 ? ', …' : ''}), so its verdict describes a tree no commit holds`
@@ -681,6 +701,10 @@ const runCi = async (unit, mode, markFiles, label) => {
   const ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   if (!ci) return { ci: null, fault: null }
   const fault = ciFault(ci, unit)
+  const untracked = strayChanges(ci.dirty, unit).untracked
+  if (!fault && untracked.length > 0) {
+    caveats.push(`${unit.branch} ${label}: the run left new untracked files (${untracked.slice(0, 5).join(', ')}${untracked.length > 5 ? ', …' : ''}); the verdict stands, but a snapshot or fixture written there was never checked`)
+  }
   if (fault && ci.marked) await unmark(unit.taskFiles || [], label)
   return { ci, fault }
 }
