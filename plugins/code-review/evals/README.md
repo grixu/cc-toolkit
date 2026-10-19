@@ -24,8 +24,11 @@ evals/
   fixtures/                # inputs; fixtures/spec/ and fixtures/standards/ are multi-file
   scope-mix/               # eval-19 input, kept out of fixtures/ so its paths classify by kind
   prompts/headless.txt     # cr-prepare → cr-scan × N → cr-merge, in that order — headless track
-  checks/                  # deterministic asserts that read files on disk (headless track)
-  reset-sandbox.sh         # rebuilds .sandbox/headless, the git checkout eval-20 reviews
+  prompts/headless-prepare.txt # cr-prepare alone — eval-22
+  prompts/correctness.txt  # scanner brief — correctness lens
+  prompts/pr-scope.txt     # start-cr Step 1 for --pr, with a gh stand-in — eval-23
+  checks/                  # deterministic asserts that read files on disk (headless, pr, HANDOFF families)
+  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22 and 23 run in, and the gh stand-in
 ```
 
 The headless skills review committed changes only, so eval-20 runs against a git
@@ -58,6 +61,9 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-13 | performance | `performance-calibration.ts` | enum loop, `take`/`skip` page, module-level `readFileSync` stay non-findings |
 | eval-14 | spec | `spec/feature-spec.md` + `spec/feature-impl.ts` | one MISSING (under the spec path), one WRONG, one scope-creep, "3 of 5 requirements met" |
 | eval-15 | standards | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, MAY → nit, vague prose ignored |
+| eval-21 | correctness | `correctness/order-sync.ts` (`DEFECTS.md` beside it) | `off-by-one` + `swallowed-error`, exhaustive `never` default and best-effort catch left alone, HANDOFF families from the fixed table |
+| eval-22 | headless | `.sandbox/headless-skipped` | a docs-only commit makes `cr-prepare` return `empty` with 0 judged files and no active lens |
+| eval-23 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 7` reviews the PR head in a detached worktree against `origin/main`; the user's checkout stays on `main`, untouched |
 
 **eval-6 and eval-7 are the two halves of one gate.** eval-6 fails when the review
 under-reports; eval-7 fails when it compensates by flagging look-alikes. A prompt

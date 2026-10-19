@@ -1,0 +1,5 @@
+Prepare a review of the last commit of the git checkout {{checkout}} with the code-review
+plugin's headless skill `code-review:cr-prepare`, through the Skill tool, with
+`--base HEAD~1 --out {{context}} -C {{checkout}}`.
+
+Run only that skill. Then reply with its closing block, verbatim, and nothing else.

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { strayHandoffFamilies } from './handoff-families.mjs';
 
 const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'correctness', 'security', 'performance', 'spec'];
 const FINDING = /^- (high|medium|nit) · [\w-]+ · [\w-]+ · \S+:L\d+(?:-\d+)? · (safe|structural|report-only)\b.* — /m;
@@ -29,7 +30,11 @@ export default (output, context) => {
     check(scope.files.map((f) => f.path).sort().join() === 'src/quality-recall.ts,src/security-recall.ts', `judged files are not the committed change: ${scope.files.map((f) => f.path).join(', ')}`);
     for (const lens of active) {
       const p = path.join(ctx, `${lens}.md`);
-      check(fs.existsSync(p) && /^Lens: /m.test(fs.readFileSync(p, 'utf8')), `cr-scan left no ${lens}.md with its Lens header`);
+      if (!check(fs.existsSync(p), `cr-scan left no ${lens}.md`)) continue;
+      const text = fs.readFileSync(p, 'utf8');
+      check(/^Lens: .* · files judged: [1-9]\d* of \d+/m.test(text), `${lens}.md has no Lens header with a non-zero files-judged count`);
+      const stray = strayHandoffFamilies(text);
+      check(stray.length === 0, `${lens}.md hands off to families outside severity.md: ${stray.join(', ')}`);
     }
   }
 

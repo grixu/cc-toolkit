@@ -28,6 +28,14 @@ prompts:
   # committed change in a git sandbox that reset-sandbox.sh rebuilds.
   - id: file://prompts/headless.txt
     label: headless-track
+  - id: file://prompts/headless-prepare.txt
+    label: headless-prepare-track
+  # The correctness lens, briefed like the other scanner-only lenses.
+  - id: file://prompts/correctness.txt
+    label: correctness-track
+  # start-cr's Step 1 for --pr, against a sandbox origin and a gh stand-in.
+  - id: file://prompts/pr-scope.txt
+    label: pr-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -803,9 +811,10 @@ tests:
           directory named `test`.
       - type: llm-rubric
         value: >-
-          The `Skipped` line names `.github/workflows/ci.yml` and says its triggers,
-          permissions and secret handling are not line-graded here, pointing the reader at
-          `/security-review`. `notes.txt` is listed as skipped too.
+          `.github/workflows/ci.yml` is not graded by the quality lenses: the report says it
+          is left to the security lens (a policy file) or lists it as skipped, and points
+          the reader at `/security-review` for the pipeline audit. No readability, naming
+          or other craft finding is raised against it. `notes.txt` is listed as skipped.
       - type: regex
         value: '[Ss]kipped'
 
@@ -820,3 +829,53 @@ tests:
     assert:
       - type: javascript
         value: file://checks/headless-pipeline.mjs
+
+  - description: 'eval-21 correctness-recall (correctness/order-sync.ts)'
+    prompts: [correctness-track]
+    vars:
+      # correctness/DEFECTS.md lists the planted defects and look-alikes; the lens never sees it.
+      file: plugins/code-review/evals/fixtures/correctness/order-sync.ts
+    assert:
+      - type: regex
+        value: '`correctness`'
+      - type: llm-rubric
+        value: >-
+          Flags `fetchAllOrders` as `correctness` · `off-by-one`, severity **high**: the loop
+          runs while `page < totalPages - 1`, so the last page is never fetched. The fix
+          loops while `page < totalPages`.
+      - type: llm-rubric
+        value: >-
+          Flags `syncOrder` as `correctness` · `swallowed-error`, severity **medium** (or
+          high): a failed `ledger.post` is caught and logged, and the function still returns
+          `{ ok: true }`, so the caller treats the failure as a success.
+      - type: llm-rubric
+        value: >-
+          Does NOT raise a finding against `labelFor`'s `default:` arm (an exhaustive
+          `never` assertion) or against `recordSync`'s catch (best-effort telemetry whose
+          comment says so); either may appear on the `Not flagged` line.
+      - type: llm-rubric
+        value: >-
+          Every severity is exactly `high` or `medium` — never `nit`, `low` or a number —
+          and every finding is one bullet naming its own file as `path:L<lines>`.
+      - type: javascript
+        value: file://checks/handoff-families.mjs
+
+  - description: 'eval-22 prepare-all-skipped (cr-prepare on a docs-only commit)'
+    prompts: [headless-prepare-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/headless-skipped
+      context: plugins/code-review/evals/.sandbox/headless-skipped-ctx
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/prepare-all-skipped.mjs
+
+  - description: 'eval-23 pr-scope (start-cr Step 1 with --pr)'
+    prompts: [pr-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/pr
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-scope.mjs
