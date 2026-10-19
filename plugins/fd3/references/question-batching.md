@@ -10,6 +10,9 @@ question.
   calls than four means consecutive batches of four, most consequential first, sent back to back —
   overflow never gets demoted to a note in the report.
 - **Number the questions** across batches, so the answers and the report can cite them.
+- **Cost every option.** Each option's description says what choosing it costs; an option that
+  opens decisions of its own names them, since a follow-up that arrives only after the pick was
+  never part of the comparison.
 - **Recommend in every question.** The recommended option goes first and its description begins
   with `Recommended — `. Options with balanced descriptions and no recommendation make the user do
   the comparison you were meant to do.
