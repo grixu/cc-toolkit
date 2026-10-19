@@ -480,17 +480,22 @@ const FIX_RESULT = {
   required: ['summary'],
   properties: {
     summary: { type: 'string' },
+    fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
+    toSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree after the last commit; equal to fromSha when nothing was committed' },
     caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
   },
 }
 
-const fixPrompt = (unit, problems) =>
+const fixPrompt = (unit, problems, preExisting = []) =>
   [
     `Fix CI problems on branch ${unit.branch} in the worktree ${unit.worktree}`,
     `(repository ${unit.repo}). Problems:`,
     ``,
     ...problems.map((p) => `- ${p}`),
     ``,
+    ...(preExisting.length > 0
+      ? [`Already failing on the clean base — never this branch's to fix, even where a listed problem points at it:`, ...preExisting.map((p) => `- ${p}`), ``]
+      : []),
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
     `that pre-date this branch. A listed problem that cannot be fixed without an action a human`,
     `must take or approve — anything that touches production, anything irreversible, any secret`,
@@ -499,12 +504,18 @@ const fixPrompt = (unit, problems) =>
     `A failure the fix can only clear by changing behaviour — an exception carved out of a rule,`,
     `a narrowed decision, an error that stops meaning what it meant — is a design call, not a fix:`,
     `skip it and record under caveats what the choice is.`,
+    `A listed failure in a file this branch did not change (\`git diff --name-only ${unit.base || diffBase(unit.repo)}...HEAD\`)`,
+    `that no change of the branch explains is not this branch's either: skip it and record it under`,
+    `caveats as out of scope — a fix there edits code the branch was never about.`,
     ``,
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
     ``,
     toolchainFor(unit),
     ``,
+    `Before your first edit, run \`git rev-parse HEAD\` in the worktree and return it as fromSha.`,
+    `After your last commit, run it again and return that as toSha — equal to fromSha when you`,
+    `committed nothing.`,
     `Commit the fixes with a conventional-commit message, staging the files you changed by name —`,
     `never \`git add -A\`: the tree also holds what the validation commands wrote. To verify a fix`,
     `you may re-run the exact commands that failed, scoped to the files they failed on — never a`,
@@ -797,8 +808,14 @@ for (const unit of units) {
   let { ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}`)
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    const fix = await tryTwice(fixPrompt(unit, ci.failures), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
+    const fix = await tryTwice(fixPrompt(unit, ci.failures, ci.preExisting || []), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
+    // A round that committed nothing left the tree CI just graded: another round re-runs the same
+    // pipeline on it and spends the budget on failures no fixer here will touch.
+    if (fix && fix.fromSha && fix.fromSha === fix.toSha) {
+      caveats.push(`${unit.branch} fix-ci round ${summary.fixRounds} committed nothing; the remaining failures go to a human`)
+      break
+    }
     ;({ ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}#${summary.fixRounds + 1}`))
   }
   if (!ci || fault) {

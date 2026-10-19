@@ -619,6 +619,7 @@ const FIX_RESULT = {
   properties: {
     summary: { type: 'string' },
     fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
+    toSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree after the last commit; equal to fromSha when nothing was committed' },
     caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
     skipped: { type: 'array', items: { type: 'string' }, description: 'every listed problem left unfixed, copied verbatim from the list' },
   },
@@ -765,7 +766,7 @@ const ciPrompt = (unit, mode, markFiles) => {
   ].join('\n')
 }
 
-const fixPrompt = (unit, problems, source) =>
+const fixPrompt = (unit, problems, source, preExisting = []) =>
   [
     `Fix ${source} problems on branch ${unit.branch} in the worktree ${unit.worktree}`,
     `(repository ${unit.repo}). Problems:`,
@@ -773,6 +774,9 @@ const fixPrompt = (unit, problems, source) =>
     ...problems.map((p) => `- ${p}`),
     ``,
     ...(reservations ? [reservations, ``] : []),
+    ...(preExisting.length > 0
+      ? [`Already failing on the clean base — never this branch's to fix, even where a listed problem points at it:`, ...preExisting.map((p) => `- ${p}`), ``]
+      : []),
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
     `that pre-date this branch. The open work above is deliberate: never do it and never fill`,
     `the gaps it leaves. A listed problem that cannot be fixed without an action a human must`,
@@ -782,6 +786,9 @@ const fixPrompt = (unit, problems, source) =>
     `A failure the fix can only clear by changing behaviour — an exception carved out of a rule,`,
     `a narrowed decision, an error that stops meaning what it meant — is a design call, not a fix:`,
     `skip it and record under caveats what the choice is.`,
+    `A listed failure in a file this branch did not change (\`git diff --name-only ${unit.base}...HEAD\`)`,
+    `that no change of the branch explains is not this branch's either: skip it and record it under`,
+    `caveats as out of scope — a fix there edits code the branch was never about.`,
     ``,
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
@@ -789,6 +796,8 @@ const fixPrompt = (unit, problems, source) =>
     toolchainFor(unit),
     ``,
     `Before your first edit, run \`git rev-parse HEAD\` in the worktree and return it as fromSha.`,
+    `After your last commit, run it again and return that as toSha — equal to fromSha when you`,
+    `committed nothing.`,
     `Commit the fixes with a conventional-commit message, staging the files you changed by name —`,
     `never \`git add -A\`: the tree also holds what the validation commands wrote. To verify a fix`,
     `you may re-run the exact commands that failed, scoped to the files they failed on — never a`,
@@ -1075,8 +1084,14 @@ for (const unit of units) {
   let { ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}`)
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
-    const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI'), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
+    const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI', ci.preExisting || []), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
+    // A round that committed nothing left the tree CI just graded: another round re-runs the same
+    // pipeline on it and spends the budget on failures no fixer here will touch.
+    if (fix && fix.fromSha && fix.fromSha === fix.toSha) {
+      caveats.push(`${unit.branch} fix-ci round ${summary.fixRounds} committed nothing; the remaining failures go to a human`)
+      break
+    }
     ;({ ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}#${summary.fixRounds + 1}`))
   }
   if (!ci || fault) {
@@ -1158,7 +1173,7 @@ for (const unit of units) {
     // One fix round here: a final-gate failure is often mechanical — a derived artifact the
     // review fixes invalidated — and only what survives the round deserves a human.
     summary.fixRounds += 1
-    const fix = await tryTwice(fixPrompt(unit, finalCi.failures, 'final-gate CI'), { label: `fix-final:${tag}`, phase: 'Validate', schema: FIX_RESULT })
+    const fix = await tryTwice(fixPrompt(unit, finalCi.failures, 'final-gate CI', finalCi.preExisting || []), { label: `fix-final:${tag}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-final: ${c}`))
     ;({ ci: finalCi, fault: finalFault } = await runCi(unit, 'full', !reviewDead && !reviewHeld, `ci:${tag}:final#2`))
   }
