@@ -22,7 +22,9 @@ report says what the probe would have needed.
 
 **Every edit traces to a finding of this pass.** The dated evidence block is appended to a spec of
 any quality; everything else you write must be the repair of something you recorded as a finding,
-in the section that finding names. A spec whose checks all pass leaves this skill byte-identical
+in the section that finding names. The dated block itself — its verdict line and `Checked at:` line
+included — is the record of the pass, not a spec edit: it never appears under **Spec edits applied**,
+and on its own it never calls for another pass. A spec whose checks all pass leaves this skill byte-identical
 except for the appended block — rewording a section you merely read, tidying a table, or improving
 prose nobody flagged rewrites a document the user validated on the strength of its own wording.
 
@@ -324,6 +326,6 @@ file before composing anything. A section is dropped only when it is genuinely e
 terms — a pass that edited the spec returns a non-empty **Spec edits applied** section, and it
 enumerates every edit the pass made.
 
-The verdict covers the file as it stands when you write it. A spec edit made after the verdict line
+The verdict covers the file as it stands when you write it. A body edit made after the verdict line
 re-opens the pass: append the edit to the dated block, restate the verdict line beneath it with a
 fresh count, and say in the return what changed since.
