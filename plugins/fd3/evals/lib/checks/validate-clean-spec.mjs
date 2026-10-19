@@ -16,8 +16,11 @@ export default (output) => {
   c.check(blocking === null || !/^\s*[-*|]/m.test(blocking), 'a Blocking findings section with content is present');
 
   if (c.check(spec !== null, 'spec/clean-spec.md missing from sandbox')) {
-    const fixtureTrimmed = fixture.replace(/\s+$/, '');
-    c.check(spec.replace(/\s+$/, '').startsWith(fixtureTrimmed), 'spec edits are not append-only (fixture content is no longer a prefix)');
+    // The pass rewrites the header's status field to its verdict; every other byte is append-only.
+    const STATUS = /^- Status:.*$/m;
+    c.check(/\bready\b(?! for)/i.test((spec.match(STATUS) || [''])[0]), 'the header status does not carry the verdict');
+    const fixtureTrimmed = fixture.replace(STATUS, '').replace(/\s+$/, '');
+    c.check(spec.replace(STATUS, '').replace(/\s+$/, '').startsWith(fixtureTrimmed), 'spec edits are not append-only (fixture content is no longer a prefix)');
     const fixtureHeadings = new Set(h.headings(fixture));
     const newHeadings = h.headings(spec).filter((x) => !fixtureHeadings.has(x));
     c.check(newHeadings.some((x) => /20\d\d/.test(x)), 'no dated evidence sub-heading appended to the spec');

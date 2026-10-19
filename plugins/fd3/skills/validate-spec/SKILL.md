@@ -25,7 +25,7 @@ any quality; everything else you write must be the repair of something you recor
 in the section that finding names. The dated block itself — its verdict line and `Checked at:` line
 included — is the record of the pass, not a spec edit: it never appears under **Spec edits applied**,
 and on its own it never calls for another pass. A spec whose checks all pass leaves this skill byte-identical
-except for the appended block — rewording a section you merely read, tidying a table, or improving
+except for the appended block and the header's status field — rewording a section you merely read, tidying a table, or improving
 prose nobody flagged rewrites a document the user validated on the strength of its own wording.
 
 ## Goal
@@ -183,7 +183,9 @@ is known, open the dated block with one line — `Verdict: <the report's verdict
 N deferred / N blocked — spec N lines at this verdict` — so a later reader can tell a clean pass from
 a qualified one without hunting for the session that produced it. The line under it names the
 commit each repository was checked against in step 0 — `Checked at: <remote name> @ <short sha>, …`
-— which is how the split tells whether the code has moved on since. Fill the line count in last: write
+— which is how the split tells whether the code has moved on since. The header's status field is part
+of that record: set it to the same verdict and the pass's date, the one header edit a pass makes with no
+finding behind it, so the header never contradicts the block below. Fill the line count in last: write
 the dated block through to its final line, then `wc -l`, then put that number in the verdict line —
 replacing it changes no line count, so the number counts itself. A file at
 `<spec-dir>/evidence/<section>.md` is for overflow only: a probe transcript or a command output too long to
@@ -325,7 +327,9 @@ batch, and a pass that asks about it has turned a settled document into a questi
 
 End the pass by returning the verdict and this pass's status — nothing is written to a file. The
 shape the return takes is in `${CLAUDE_SKILL_DIR}/../../references/validation-report.md`; read that
-file before composing anything. A section is dropped only when it is genuinely empty, on that file's
+file before composing anything. The verdict is one of its words — `ready` or `not ready` — and a
+`Result` cell one of its forms; a hybrid such as `ready with caveats` is a verdict the split cannot
+read, and what qualifies it belongs in the findings. A section is dropped only when it is genuinely empty, on that file's
 terms — a pass that edited the spec returns a non-empty **Spec edits applied** section, and it
 enumerates every edit the pass made.
 
