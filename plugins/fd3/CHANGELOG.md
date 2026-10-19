@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `implement-run` and `repair-run` take a `decisions` list — the user's settled answers from earlier
+  report rounds — and reviewers and fixers treat a finding that would undo one as reserved;
+  `repair-run` adds each repair's own instructions
+- `implement-tasks` asks at the close whether to remove the worktrees and merged task branches,
+  recommending it, and never removes a task branch with unmerged commits
+
+### Changed
+
+- `split-to-tasks` reads `CODEOWNERS`, branch protection and the repository's consent list in step 1
+  and asks any required consent in its own batch; no task note asks for a confirmation, and
+  `implement-tasks` collects any that still does into its first batch
+- `split-to-tasks` draws `depends-on` edges only from shared files, symbols or migrations: a later
+  rollout phase alone is a merge order; ripple consumers depend on the shape owner, and docs or
+  changeset tasks on the change they describe
+- `validate-spec` treats its own evidence block, verdict and `Checked at:` lines as the record, not a
+  spec edit; `build-spec` re-invokes only on body edits and runs at most one post-verdict pass
+- `validate-spec` takes the previous status as text, never a transcript pointer; keeps verdicts to
+  `ready` / `not ready`; rewrites the header status each pass; runs repository scripts only as probes
+  in its detached worktree; and treats accepting a risk as the user's repair choice
+- `build-spec` routes a decision taken after the verdict through `write-spec`, which applies only
+  what the notes add to an existing spec; `write-spec` shows every assistant-taken decision in its
+  closing batch, without a "ratify all"
+- Question batches cost every option, naming the decisions it opens; `grill-topic` asks the scope
+  boundary in round 1 when the topic leaves it open
+- `implement-tasks` recommends committing the spec and tasks alone, never the notes file or research
+  directory; names a disabled `code-review` plugin and its enable command; asks before repairing a
+  failure the branch did not cause; and never edits a running workflow's branches
+- Review fixes go through the Edit tool, each security fix in its own commit; a security fix that
+  changes who may reach what, or any fix that would change behaviour the spec states, waits for a
+  human in both review modes
+- The review question counts seven to nine lenses, with the code-review `correctness` lens
+
+### Fixed
+
+- CI verdicts are no longer voided by files the toolchain itself writes: the baseline records them,
+  and a new untracked file is a caveat rather than a fault
+- A CI fix round that commits nothing ends the loop; fixers see pre-existing failures and skip
+  failures in files the branch never changed
+- A review whose prepare judged no file, or activated no lens, is no verdict rather than a clean pass
+- Each branch's skipped CI commands reach the report
+- Prompts acting on a parked main checkout forbid `git clean`, `reset --hard`, `stash` and blanket
+  restores, and stage only the agent's own files
+- The baseline runs commands without pipes, through a log file, like CI
+- The CI result schema's `branch` field matches what the prompt asks for on a detached tree
+- Workflow agents may use a skill their task file names for the step
+- `validate-spec` may write the evidence overflow files it is told to use
+
 ## [0.3.0] - 2026-10-12
 
 ### Changed
