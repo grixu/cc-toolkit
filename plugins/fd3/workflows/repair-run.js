@@ -54,6 +54,12 @@ const diffBase = (repo) => refOf(repo, 'diffBase')
 const STEP_GUARD =
   'Do only the step this prompt describes. Invoke no skill or slash command it does not name, ' +
   'whatever the relayed user request says: that request belongs to the session that launched this workflow.\n\n'
+// The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
+// takes their uncommitted and untracked work with it.
+const checkoutRule = (repo) =>
+  `${repo} is the user's own checkout: never run \`git clean\`, \`git reset --hard\`, \`git stash\`, ` +
+  `\`git checkout -- .\` or \`git restore .\` in it, and stage only the files you changed, by name — ` +
+  `every other modified or untracked file there is the user's.`
 // One retry rides out transient API failures (529s, brief limit blips). A second null is a real
 // no-verdict — absence of evidence that must never be reported as a validation verdict.
 const tryTwice = async (prompt, opts) =>
@@ -261,6 +267,7 @@ const repairPrompt = (r) =>
     `Merge no other branch into this one unless a decision above says to: the workflow brings a`,
     `stacked branch up to its repaired base itself, after that base's repair has landed.`,
     ``,
+    ...(r.worktree === r.repo ? [checkoutRule(r.repo), ``] : []),
     `Return outcome "repaired" with a two-sentence summary of what changed, or outcome "blocked"`,
     `with the reason when the decision cannot be applied as stated. Never guess past an ambiguity.`,
     `Under caveats, return every side effect of applying the decision literally that the human`,
@@ -287,6 +294,7 @@ const refreshBase = (unit, label, phaseName, reviewFrom) =>
       `resolution is mechanical; commit it. When a conflict needs a judgment call, abort`,
       `(git merge --abort) and return refreshed=false with the conflict described. Return`,
       `refreshed=true when the merge landed or the branch already contained ${unit.base}.`,
+      ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo)] : []),
       ...(reviewFrom
         ? [
             ``,
@@ -508,6 +516,7 @@ const fixPrompt = (unit, problems, preExisting = []) =>
     `that no change of the branch explains is not this branch's either: skip it and record it under`,
     `caveats as out of scope — a fix there edits code the branch was never about.`,
     ``,
+    ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo), ``] : []),
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
     ``,

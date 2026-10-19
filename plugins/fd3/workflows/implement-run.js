@@ -79,6 +79,12 @@ const byRepo = (list) => {
 const STEP_GUARD =
   'Do only the step this prompt describes. Invoke no skill or slash command it does not name, ' +
   'whatever the relayed user request says: that request belongs to the session that launched this workflow.\n\n'
+// The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
+// takes their uncommitted and untracked work with it.
+const checkoutRule = (repo) =>
+  `${repo} is the user's own checkout: never run \`git clean\`, \`git reset --hard\`, \`git stash\`, ` +
+  `\`git checkout -- .\` or \`git restore .\` in it, and stage only the files you changed, by name — ` +
+  `every other modified or untracked file there is the user's.`
 // One retry rides out transient API failures (529s, brief limit blips). A second null is a real
 // no-verdict — absence of evidence that must never be reported as a validation verdict.
 const tryTwice = async (prompt, opts) =>
@@ -427,6 +433,7 @@ const mergePrompt = (repo, repoTasks) => {
     `When a conflict needs a judgment call, abort that merge (git merge --abort), record the task`,
     `under conflicts, and continue with the rest.`,
     ``,
+    ...(parked(repo) ? [checkoutRule(repo), ``] : []),
     `Return every target branch you touched with its worktree path, the slugs of the tasks now`,
     `merged in, the conflicts, and the resolved list (empty arrays when clean).`,
   ].join('\n')
@@ -790,6 +797,7 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
     `that no change of the branch explains is not this branch's either: skip it and record it under`,
     `caveats as out of scope — a fix there edits code the branch was never about.`,
     ``,
+    ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo), ``] : []),
     `Toolchain report for this repository — when a fix changes something a listed command`,
     `derives an artifact from, regenerate that artifact the way the report says:`,
     ``,
@@ -1063,6 +1071,7 @@ for (const unit of units) {
         `${unit.branch}, so the branch is validated against its current base. Resolve a conflict`,
         `only when the resolution is mechanical; commit it. When a conflict needs a judgment`,
         `call, abort (git merge --abort) and return refreshed=false with the conflict described.`,
+        ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo)] : []),
       ].join('\n'),
       { label: `refresh:${tag}`, phase: 'Validate', schema: REFRESH_RESULT },
     )
