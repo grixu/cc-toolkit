@@ -9,7 +9,8 @@ The spec to split: **$ARGUMENTS**
 If no path was given, ask which spec to split. If the path does not resolve, say so and stop.
 
 The spec is read-only here. A defect you find in it — an element no work item builds, a work item
-that cites nothing — is a reason to stop and report it, never something to fix in passing.
+that cites nothing — is a reason to stop and report it, never something to fix in passing, and not
+when the user offers to let you: an edit after the last verdict is one no pass has checked.
 
 ## Terms
 
