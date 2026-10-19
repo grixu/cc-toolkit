@@ -64,10 +64,11 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 #### How to state a finding
 
 ```
-`security` · rule · severity · L<lines> — <what the reader loses> → <the fix, as a clause>
+`security` · rule · severity · `path:L<lines>` — <what the reader loses> → <the fix, as a clause>
 ```
 
-`L<lines>` lists both ends, source first; the clause says which is which:
+`L<lines>` lists both ends, source first, and `path` is the source's file; the clause says
+which is which, naming the sink's file when it differs:
 
 - `` `security` · injection-sink · high · L12, L41 — `req.query.sort` enters at L12 and is interpolated into the `ORDER BY` string at L41, so the caller writes the SQL → allowlist `sort` against the column names and pass it through `orderBy()` ``
 - `` `security` · secret-in-source · high · L7 — the `sk_live_…` literal assigned to `STRIPE_SECRET` ships with the file → read it from `process.env.STRIPE_SECRET`; the committed value needs rotation, which is the user's step ``

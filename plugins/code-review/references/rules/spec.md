@@ -63,9 +63,9 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   "untouched code" is not a category here. Return no boy-scout block.
 - **Every finding quotes the spec line verbatim** — the quoted text is the evidence,
   and the merge dedups on it. Placement: a `missing-requirement` has no code site, so
-  it sits under a `### <spec path>` header (the path exactly as given to `--spec`) with
-  the spec's own `L<lines>`; the other three sit under the code file they point at,
-  with the code's `L<lines>`. The report skeleton is unchanged — every `###` header is
+  its `path:L<lines>` is the spec's own (the path exactly as given to `--spec`), and the
+  report files it under a `### <spec path>` header; the other three carry the code
+  file they point at and the code's `L<lines>`. The report skeleton is unchanged — every `###` header is
   still a file path.
 - **Requirements met are one prose line, never findings.** Close your output with
   `N of M requirements met` (M counts the enumerated requirements the spec did not
@@ -81,7 +81,7 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 #### How to state a finding
 
 ```
-`spec` · rule · severity · L<lines> — "<quoted spec line>" <what is missing/wrong> → <what would close it>
+`spec` · rule · severity · `path:L<lines>` — "<quoted spec line>" <what is missing/wrong> → <what would close it>
 ```
 
 One example per rule, in the report's own placement:

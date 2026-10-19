@@ -13,6 +13,8 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
 - **Collect** all N Scanners' outputs — every active lens's `<result>` actually in hand
   as the dispatcher collected it, not merely a notification that fired; a lens you could not collect is a
   labelled degradation you already surfaced to the user, never a silent gap in the merge.
+  An output whose header reads `files judged: 0 of <M>` with `M` above zero has not reviewed
+  anything: it is a lens that did not deliver, however clean its findings list looks.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses, and across **all eleven families**, craft and `security` /
   `performance` / `spec` / `standards` alike — keep the **most-specific** one and drop
@@ -20,6 +22,12 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   spans two severities (a `high` symptom folding into a lower-severity root cause, or the
   reverse), the surviving bullet keeps the **highest** severity of the overlap — deduping
   must never quietly demote a `high` under a `medium`.
+- **Duplication has one owner per reach.** Code repeated inside one file is `simplicity` ·
+  over-complex; a new helper repeating one exported elsewhere is `module` · canonical-helper;
+  `readability` · magic-literal is only the unnamed literal itself. When two lenses report the
+  same repetition under different rules, keep the owner's bullet and fold the other into it —
+  a magic-literal bullet listing the same value in five files is a duplication finding filed
+  under the wrong rule.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
@@ -28,7 +36,9 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   verbatim from the table.
 - **Route every `HANDOFF` and every `CANDIDATES` entry to a visible home.** Assign a
   `HANDOFF` its correct family and rule; decide a candidate against its rule's
-  calibration. Either way it lands in exactly one of two places: a graded bullet in the
+  calibration. A `HANDOFF` whose family is not one of the fixed labels in `severity.md` is
+  re-filed under the family and row that actually fit it, or cleared in `Not flagged` when none
+  does — never rendered under the invented label. Either way it lands in exactly one of two places: a graded bullet in the
   per-file report (on its own, or merged into a converging finding), or a `Not flagged`
   line with its one-line reason. **The entry no primary finding corroborates is the one
   that slips, so reconcile by an itemized check, not by assertion.** Before rendering,
@@ -85,7 +95,10 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
     the redaction walk, which would have truncated secrets under the redactor's minimum length —
     a security hole introduced by a performance fix. Read the fixes as a set, not one at a time.
   - **Does it create the next finding?** An extraction that takes five positional parameters, a
-    helper that duplicates one two files away — fix the fix before offering it.
+    helper that duplicates one two files away — fix the fix before offering it. A comment
+    REWRITE, ADD or MOVE is held to every comment rule, R9 first: reread the line the new text
+    sits on, and a replacement that misstates it, restates it, or cites a spec id is rewritten
+    here, not shipped.
 
   A fix that fails any of the three is re-routed: to the structural walk with the behaviour
   change named in its option, or to report-only with one line on why. Say which in the report's
