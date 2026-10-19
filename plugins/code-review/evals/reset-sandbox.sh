@@ -28,7 +28,7 @@ git -C "$skipped" init -q -b main
 printf '# orders service\n' > "$skipped/README.md"
 git -C "$skipped" add -A
 commit "$skipped" 'base'
-printf '# orders service\n\nRun `pnpm dev` to start it.\n' > "$skipped/README.md"
+printf '# orders service\n\nRun %s to start it.\n' "\`pnpm dev\`" > "$skipped/README.md"
 printf 'Release notes for 1.2.\n' > "$skipped/docs/notes.txt"
 printf '{ "name": "orders", "version": "1.2.0" }\n' > "$skipped/package.json"
 git -C "$skipped" add -A
