@@ -26,6 +26,8 @@ export const meta = {
 //   review        true to run the code-review plugin's headless lenses on every branch after its
 //                 scoped CI passes and fix what they find; "gated" to review the same way but hold
 //                 security, boy-scout, unfixed and fix-review findings for a human; false skips review
+//   decisions     (optional) [string] — the user's standing decisions on this task graph from earlier
+//                 report rounds, verbatim; review and fix agents treat a finding against one as reserved
 //   maxFixRounds  CI fix attempts per branch before giving up
 //   reportPath    (optional) absolute path of a previous run's report file; one cheap agent reads
 //                 its toolchain and baseline knowledge, so a relaunch skips the re-scout and the
@@ -595,10 +597,19 @@ const reservationLines = hil
       return `- ${slug}${t ? ` (${t.name})` : ''}: not implemented yet — waits behind a blocked dependency or an unfinished base`
     }),
   )
-const reservations =
+// A finding that asks to undo a human decision would reach the human again as a question they
+// already answered, or worse, reach a fixer.
+const decisions = input.decisions || []
+const reservations = [
   reservationLines.length > 0
     ? `Open work on this task graph — deliberately unfinished, human-owned or blocked:\n${reservationLines.join('\n')}`
-    : ''
+    : '',
+  decisions.length > 0
+    ? `Decisions a human made on this task graph — never undo one, and never fix toward the alternative it rejected:\n${decisions.map((d) => `- ${d}`).join('\n')}`
+    : '',
+]
+  .filter(Boolean)
+  .join('\n\n')
 
 // ---- Validate: one branch at a time, so at most one build/lint/test pipeline runs at once
 
@@ -876,7 +887,8 @@ const crMergePrompt = (dir) =>
           reservations,
           ``,
           `Set reserved=true on a finding that is this open work or its direct consequence — a gap a`,
-          `blocked or human-owned task deliberately leaves. Change nothing else the skill returned.`,
+          `blocked or human-owned task deliberately leaves — or that asks to undo a listed decision.`,
+          `Change nothing else the skill returned.`,
         ]
       : []),
   ].join('\n')

@@ -153,7 +153,8 @@ Everything else — wave composition, branch names, merge order — the task fil
 report it, do not ask.
 
 Record the answers in `implement-answers.md` next to the tasks directory, never inside it where it
-would read as a task file — the start ref per repository, the review choice, the commit choice. A later
+would read as a task file — the start ref per repository, the review choice, the commit choice, and
+each decision a later report round settles. A later
 invocation over the same directory reads that file first and asks only what it does not settle or
 what has changed since: a new repository, a base that moved, a stale `in-progress`.
 
@@ -181,12 +182,17 @@ Workflow({
              diffBase: "origin/<default>",
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
     review: <true, "gated" or false — the step-2 answer>,
+    decisions: [<on a relaunch: every decision earlier report rounds settled, verbatim>],
     maxFixRounds: 3,
     reportPath: <on a relaunch: the previous report's `<output-file>` path — omit on a first launch>
   }
 })
 ```
 
+`decisions` carries every decision the user took on an earlier report of this graph — HIL answers
+and repair instructions, verbatim, as `implement-answers.md` records them; a first launch omits it.
+Review and fix agents read them as settled, so a finding that would undo one reaches neither a fixer
+nor the user again.
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
 repository's `startRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
@@ -286,6 +292,7 @@ lanes:
       repos: <as at launch>,
       specPath: <as at launch>,
       review: <as at launch>,
+      decisions: <as at the latest launch>,
       reportPath: <the previous report's `<output-file>` path>,
       maxFixRounds: 3
     }

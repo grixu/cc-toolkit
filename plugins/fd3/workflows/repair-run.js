@@ -26,10 +26,14 @@ export const meta = {
 //                headless lenses; its findings go to the human, never to a fixer, and only a gated
 //                review keeps the task files from being marked done until the human settles them
 //   specPath     (optional) absolute path of the spec, for the review's spec lens
+//   decisions    (optional) [string] — the user's standing decisions on this task graph from earlier
+//                report rounds, verbatim; with each repair's own instructions they mark review findings
+//                that would undo them as reserved
 
 // args can arrive JSON-encoded depending on the caller; normalize before destructuring
 const input = typeof args === 'string' ? JSON.parse(args) : args
 const { repairs, repos, specPath } = input
+const decisions = input.decisions || []
 const review = input.review === true || input.review === 'gated'
 const gated = input.review === 'gated'
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
@@ -483,6 +487,15 @@ const ciPrompt = (unit, mode, markFiles) => {
   ].join('\n')
 }
 
+// A finding that asks to undo a human decision would reach the human again as a question they
+// already answered; the repair's own instructions are decisions too.
+const reservationsFor = (unit) => {
+  const all = [...decisions, ...(unit.instructions || [])]
+  return all.length > 0
+    ? `Decisions a human made on this task graph — never undo one, and never fix toward the alternative it rejected:\n${all.map((d) => `- ${d}`).join('\n')}`
+    : ''
+}
+
 const FIX_RESULT = {
   type: 'object',
   required: ['summary'],
@@ -504,6 +517,7 @@ const fixPrompt = (unit, problems, preExisting = []) =>
     ...(preExisting.length > 0
       ? [`Already failing on the clean base — never this branch's to fix, even where a listed problem points at it:`, ...preExisting.map((p) => `- ${p}`), ``]
       : []),
+    ...(reservationsFor(unit) ? [reservationsFor(unit), ``] : []),
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
     `that pre-date this branch. A listed problem that cannot be fixed without an action a human`,
     `must take or approve — anything that touches production, anything irreversible, any secret`,
@@ -620,7 +634,7 @@ const scanPrompt = (lens, dir) =>
     `invoked=false, status "error" and zero counts; never judge the change by hand.`,
   ].join('\n')
 
-const crMergePrompt = (dir) =>
+const crMergePrompt = (dir, unit) =>
   [
     `Invoke the \`code-review:cr-merge\` skill through the Skill tool with \`--context ${dir}\`,`,
     `and return what its closing block says: status, the report path, the lenses that did not`,
@@ -628,6 +642,9 @@ const crMergePrompt = (dir) =>
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
     `\`boy-scout\` token sets boyScout=true. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
+    ...(reservationsFor(unit)
+      ? [``, reservationsFor(unit), ``, `Set reserved=true on a finding that asks to undo a listed decision. Change nothing else the skill returned.`]
+      : []),
   ].join('\n')
 
 // A review that did not run is absence of evidence: an empty change, a lens that judged nothing or a
@@ -652,7 +669,7 @@ const runReview = async (unit, base, pass, tag) => {
     return !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
   })
   if (deadLenses.length > 0) return { dir, dead: `lens ${deadLenses.join(', ')} did not report` }
-  const merged = await tryTwice(crMergePrompt(dir), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
+  const merged = await tryTwice(crMergePrompt(dir, unit), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {
     const why = !merged
       ? 'returned no result after a retry'
@@ -864,7 +881,7 @@ for (const unit of units) {
       if (delta.dead && !delta.empty) {
         reviewDead = `the review of the repair did not run: ${delta.dead}`
       } else if (!delta.empty) {
-        const open = delta.findings.filter(serious)
+        const open = delta.findings.filter((f) => serious(f) && !f.reserved)
         summary.review.findings = delta.findings.map(findingLine)
         for (const f of open) {
           hil.push({
