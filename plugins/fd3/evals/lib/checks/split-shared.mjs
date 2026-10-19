@@ -105,11 +105,11 @@ export function checkBoundaries(c, tasks, { precedesDb = null, report = '' } = {
     if (isPhase2) {
       c.check(/2/.test(String(t.fm.phase)), `${t.file}: phase-2 element in a task whose phase is ${t.fm.phase}`);
       // A later phase orders landing, not writing: an edge, a stack onto a phase-1 branch or a recorded merge order all hold it back.
-      const phase1Branches = tasks.filter((o) => !/2/.test(String(o.fm && o.fm.phase))).map((o) => o.fm && o.fm.branch);
-      const stacked = phase1Branches.includes(t.fm['branch-base']);
+      const phase1Branches = tasks.filter((o) => !/2/.test(String(o.fm && o.fm.phase))).map((o) => o.fm && o.fm.branch).filter(Boolean);
+      const stacked = Boolean(t.fm['branch-base']) && phase1Branches.includes(t.fm['branch-base']);
       const MERGE_HOLD = /merge order|(do not|never|must not) merge|merges? (only )?after/i;
       // The skill states the merge order in the split report's chain; a task note may repeat it.
-      const reportHold = (report || '').split('\n').some((line) => line.includes(t.fm.branch) && MERGE_HOLD.test(line));
+      const reportHold = (report || '').split('\n').some((line) => Boolean(t.fm.branch) && line.includes(t.fm.branch) && MERGE_HOLD.test(line));
       const mergeOrder = MERGE_HOLD.test(t.body || '') || reportHold;
       c.check(
         (Array.isArray(deps) && deps.length > 0) || stacked || mergeOrder,
