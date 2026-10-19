@@ -161,10 +161,11 @@ Committing the spec and the tasks directory before launch is the user's call, an
 to the repository like any other: whatever that repository derives from the tree you touched —
 a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
 that you did not. A stale generated file fails validation on every branch of the run at once,
-and reads there as the branches' own defect. The same holds for links: before asking, list what
-the spec links to beside it — its notes file, its research directory — and recommend committing
-those with it; an option that would leave a committed spec linking an uncommitted file says so,
-because a docs build that checks links then fails on every branch for the whole run.
+and reads there as the branches' own defect. The recommendation is the spec and the tasks
+directory alone. The spec's notes file and research directory are working files — megabytes of
+transcripts and scraped pages — and never part of the recommendation; when the spec links them,
+the option that leaves them out says so, because a docs build that checks links then fails on
+every branch for the whole run, and the user picks.
 
 ### 3. Launch
 
