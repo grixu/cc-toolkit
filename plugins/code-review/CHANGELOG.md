@@ -7,8 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A `correctness` lens, always active: wrong conditions, unhandled cases, off-by-one bounds,
+  swallowed errors, races on shared state and broken call contracts, never graded `nit`. Its fixes
+  walk structurally, and one that collides with a spec line or an existing test is report-only
+- `/start-cr --pr <number>` reviews a GitHub pull request's head against its base, in a detached
+  worktree when the checkout is elsewhere, without switching the user's checkout
+- `/start-cr` closes with one commit question — by family with each security fix alone, one
+  commit, or none — and with `--pr` offers to push to the PR branch
+- A `policy` file kind — access policies, RBAC manifests, `CODEOWNERS` and CI workflows — judged by
+  the security lens alone for access widening and exposure
+- `simplicity` · `verbose` (nit) for a single site longer than its idea, and `performance` ·
+  `missing-index` for a new query on an unindexed column
+- Evals 21–23: correctness recall with a HANDOFF-family check, `cr-prepare` on an all-skipped
+  commit, and `--pr` scope resolution against a sandbox origin and a `gh` stand-in
+
 ### Changed
 
+- Scanner findings carry their own `path:L<lines>`; every Scanner opens with a
+  `files judged: N of M` header; KEEP verdicts are counted, not listed; a HANDOFF names one of the
+  fixed families; suggested comment fixes obey every comment rule; `/start-cr` copies the contract
+  into each brief instead of paraphrasing it
+- The merge treats a lens that judged zero files as undelivered, re-files an invented HANDOFF
+  family, gives duplication one owner per reach, re-checks comment fixes against R9, and
+  `/start-cr` checks every grade against the severity table before it renders
+- `simplicity` · `over-complex` now covers duplication only
+- Lens calibration from run audits: R11 and the note-prefix preamble yield to a sanctioned
+  convention; `magic-literal` clears test data and named config defaults; `ordering` is N/A for
+  HCL; `canonical-helper` catches inline re-implementations and never loosens validation; a status
+  enum switched once per behaviour is not `polymorphism`; `dead-code` leaves symbols the change's
+  spec says a later step uses; security clears a candidate only on a mitigation it read; the spec
+  lens leaves requirements another branch owns and departures already approved; a fix round's
+  edits are never reversed
+- The performance subset leaves out test-support helpers and `*.config.*` modules
+- The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
+  the diff carries none; each structural fix gets its own yes; the approved list is ticked off
+  before the wrap-up
 - README rewritten for first-time readers: purpose and the difference from the bundled `/code-review`,
   requirements, namespaced `/code-review:` invocations, a sample report, the apply menu, scope and
   limits, and the `cr-*` skills marked as internal
@@ -16,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `/start-cr` points to the single-lens skills by their namespaced names, `/code-review:comment-review` and `/code-review:quality-review`.
+- `cr-prepare` returns `empty`, not `ready`, when every changed file is skipped, and never hands an
+  active lens an empty file list
 
 ## [0.4.0] - 2026-10-03
 

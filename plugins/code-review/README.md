@@ -1,6 +1,6 @@
 # code-review
 
-code-review is a Claude Code plugin that reviews a code change with up to eight focused reviewers
+code-review is a Claude Code plugin that reviews a code change with up to nine focused reviewers
 running in parallel, then merges what they find into one report grouped by file. After the report,
 a short menu asks which fixes to apply. Nothing is edited until you choose.
 
@@ -9,16 +9,17 @@ a short menu asks which fixes to apply. Nothing is edited until you choose.
 A single "review this" prompt reads the change once, from one angle, and decides on the fly what
 counts as a problem. This plugin instead:
 
-- runs one reviewer per lens in parallel, each with its own written rule set (44 named rules plus
+- runs one reviewer per lens in parallel, each with its own written rule set (52 named rules plus
   12 comment rules), so every finding names its rule and runs are comparable;
 - merges the findings centrally: duplicates collapse, and severities follow one fixed table;
 - reads your project's conventions first, so a documented house style is not reported as a
   problem, and turns explicit rules in `CODING_STANDARDS.md` into findings;
 - ends with an apply menu sorted by risk, and edits only what you select.
 
-It reviews how code reads and is structured, plus narrow security, performance and spec checks.
-It does not hunt for general correctness bugs. Claude Code's bundled `/code-review` skill, which
-shares this plugin's name, looks for bugs; the two complement each other.
+It reviews how code reads and is structured, whether it does what it evidently means to do, plus
+narrow security, performance and spec checks. Claude Code's bundled `/code-review` skill shares
+this plugin's name; it is a single bug-hunting pass, where this plugin grades every finding
+against a fixed rule.
 
 ## Install
 
@@ -44,6 +45,7 @@ Plugin commands carry the plugin's name as a prefix:
 /code-review:start-cr src/auth.ts src/billing/ # review these files or directories in full
 /code-review:start-cr --base develop           # measure the change against develop
 /code-review:start-cr --spec docs/feature.md   # also check the change against a local spec
+/code-review:start-cr --pr 42                   # review GitHub pull request #42 against its base
 ```
 
 With no paths, it reviews your branch's changes. It finds the base branch in this order: the
@@ -53,9 +55,13 @@ asks whether to review the uncommitted ones, the committed ones, or both. When i
 another base would show commits, as with a branch pushed to its own remote counterpart, it offers to
 run again against that base.
 
+With `--pr <number>` it reviews a GitHub pull request's head against the PR's base, using `gh`.
+When your checkout is not at the PR's head, it reviews and applies fixes in a detached worktree
+next to the repository, and your checkout is never switched.
+
 ## The lenses
 
-You do not pick lenses; the change decides. Six run every time, two depend on the input, and the
+You do not pick lenses; the change decides. Seven run every time, two depend on the input, and the
 report's tally lists any lens that did not run and why.
 
 | Lens | Runs | Looks for |
@@ -64,18 +70,21 @@ report's tally lists any lens that did not run and why.
 | readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that do not check what their name claims. |
 | naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has, wrappers that only forward a call. |
 | objects & patterns | always | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
-| simplicity & types | always | Code that collapses into something smaller, needless casts, dead code. |
-| security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, exposed infrastructure, widened access. |
-| performance | the change includes executable source (not tests, infrastructure code or `.sh`) | N+1 calls, unbounded fetches, blocking calls on async paths, wasted React renders. |
+| simplicity & types | always | Duplication that collapses into one shape, code longer than its idea, needless casts, dead code. |
+| correctness | always | Conditions that pick the wrong branch, cases nothing handles, off-by-one bounds, swallowed errors, races on shared state, calls that break their callee's contract. |
+| security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, exposed infrastructure, widened access, including in access policies, RBAC, `CODEOWNERS` and CI workflows. |
+| performance | the change includes executable source (not tests, test helpers, `*.config.*`, infrastructure code or `.sh`) | N+1 calls, unbounded fetches, blocking calls on async paths, wasted React renders, queries on unindexed columns. |
 | spec | you name a spec with `--spec`, or accept the one the change carries | Spec lines nothing implements, implemented wrongly or only partly, and behaviour the spec never asked for. |
 
 A security finding names where untrusted data enters and where it lands; a performance finding
-names the loop, the call inside it, and the batch or limit API that exists. A pattern alone is not
-a finding.
+names the loop, the call inside it, and the batch or limit API that exists; a correctness finding
+names the input that takes the wrong path and what happens to it. A pattern alone is not a finding.
 
-When the change itself contains a spec-shaped file (under `specs/`, `spec/`, `docs/adr/` or
-`tasks/`, or named `*SPEC*.md`, `*ADR*.md`, `*.spec.md` or `*-plan.md`) and you passed no `--spec`,
-the review offers to check the change against it. `--spec` takes a local file only. For a URL or a
+When the change itself contains a spec-shaped Markdown file (under `specs/`, `spec/`, `docs/adr/`
+or `tasks/`, or named `*SPEC*.md`, `*ADR*.md`, `*.spec.md` or `*-plan.md`) and you passed no
+`--spec`, the review offers to check the change against it, preferring a spec over an ADR. When the
+change carries none, it looks for a `SPEC.md` already in the repository that matches the branch's
+name. `--spec` takes a local file only. For a URL or a
 ticket id, the review asks for a local path; it never fetches one.
 
 ## What you get
@@ -113,7 +122,7 @@ An example report:
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 8 of 8. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 9 of 9. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 ```
 
 A report may also carry a `Boy-scout` block, with optional fixes in code the change did not touch,
@@ -125,7 +134,7 @@ Right after the report, one menu asks what to apply:
 - Safe fixes: mechanical edits such as blank lines, named constants, renames, guard clauses, and
   comment removals and rewrites.
 - Walk the structural ones: one at a time, each with its own yes. Extractions, moves, splits, and
-  every security and performance fix.
+  every correctness, security and performance fix.
 - Boy-scout extras: fixes outside the change.
 - Report only: change nothing.
 
@@ -134,6 +143,10 @@ Spec findings describe work to do, so they are report-only, with one exception: 
 `wrong-implementation` that one edit fixes can be offered as a fix. After the edits, the project's build
 and tests run once, and the wrap-up lists any approved fix that was skipped or could not be applied
 as approved. When a fix removes a secret from the source, rotating that secret is still your job.
+
+Last, one question offers to commit what landed: one commit per finding family (each security fix
+in a commit of its own), one commit for everything, or nothing. With `--pr` it then offers to push
+the commits to the pull request's branch, when that branch is writable from here.
 
 Before applying anything, the review saves the report and your selection to the session's scratch
 directory, so a long apply walk survives a context compaction.
@@ -182,18 +195,21 @@ specific one wins, and the report names the conflict on its `Conventions` line.
 
 Reviewed: source files with the extensions `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .rs .java
 .kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus Terraform and other infrastructure-as-code.
-Tests and infrastructure code get every lens except performance.
+Tests and infrastructure code get every lens except performance. Access policies (`*.rego`,
+`*.cedar`, Cerbos and Kubernetes RBAC manifests, IAM policy files), `CODEOWNERS` and CI workflow
+files are reviewed by the security lens only.
 
 Skipped, and listed on the report's `Skipped` line: JSON, lockfiles, generated or minified files,
-Markdown and other docs, `.txt`, static config (`.yaml`, `.toml`, `.ini`, `.env`), license
-headers, and CI workflow files.
+Markdown and other docs, `.txt`, other static config (`.yaml`, `.toml`, `.ini`, `.env`), and
+license headers.
 
 Limits:
 
-- It is not a security audit. The security lens reads source files for the problems listed above.
-  It does not scan dependencies, `.env` files, lockfiles or CI pipelines; run Claude Code's
-  `/security-review` for those.
-- It is not a correctness review. Use the bundled `/code-review` for bugs.
+- It is not a security audit. The security lens reads source, policy and CI workflow files for
+  the problems listed above. It does not scan dependencies, `.env` files, lockfiles or action
+  pinning; run Claude Code's `/security-review` for those.
+- The correctness lens reads; it never runs the code. A claim that needs a run to settle comes
+  back marked `(verify)`.
 - The rules are written for imperative and object-oriented code, mostly JavaScript and TypeScript.
   A rule with no counterpart in a language is cleared, not forced: wasted-render applies only to
   `.tsx` and `.jsx`, blocking-in-async only to Node and Python asyncio, and Terraform skips the
