@@ -1107,6 +1107,7 @@ for (const unit of units) {
     continue
   }
   summary.preExisting = (ci.preExisting || []).length
+  summary.skipped = ci.skipped || []
   if (!ci.passed) {
     summary.ci = 'failed'
     hil.push({
@@ -1190,6 +1191,7 @@ for (const unit of units) {
     continue
   }
   summary.preExisting = (finalCi.preExisting || []).length
+  summary.skipped = finalCi.skipped || []
   if (!finalCi.passed) {
     summary.ci = 'failed-final'
     hil.push({

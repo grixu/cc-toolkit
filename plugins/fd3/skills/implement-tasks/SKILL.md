@@ -219,6 +219,7 @@ Relay it faithfully — a failed CI stays failed in the telling, and any totals 
 report's own `tasks[]` tally, never hand-counted — with one distinction the report already
 draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
 failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
+Relay each branch's `skipped` commands with its outcome: a check that never ran is not a pass.
 `graph` items are the other kind that is information rather than work — one per `branch-base` that
 named a branch no task builds, naming the tasks it carries. The workflow sees the task files alone,
 so step 1's resolution says what each one means: a base that resolved is the pre-existing branch the
