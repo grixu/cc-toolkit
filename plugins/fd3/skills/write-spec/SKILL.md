@@ -36,6 +36,11 @@ layout, do not go looking for it. The answer comes back as a message and you con
 
 ## 1. Where it goes
 
+A `spec-path` that already holds a spec with an evidence record is an update, not a new document:
+apply only the decisions the notes file holds that the spec's decision table does not, each in the
+sections it binds, and touch nothing else — the rest of the document stands on its last verdict.
+Report the edits by section; validation reads exactly those.
+
 Confirm `spec-path`'s directory exists before writing. Once the spec is there, move the
 closing-notes file beside it as `<spec-basename>.notes.md` — it outlives the session, and a
 validation pass can read the decisions' provenance from it. Move the research reports the same
