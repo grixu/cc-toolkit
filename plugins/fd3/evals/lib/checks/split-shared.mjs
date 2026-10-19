@@ -109,7 +109,8 @@ export function checkBoundaries(c, tasks, { precedesDb = null, report = '' } = {
       const stacked = Boolean(t.fm['branch-base']) && phase1Branches.includes(t.fm['branch-base']);
       const MERGE_HOLD = /merge order|(do not|never|must not) merge|merges? (only )?after/i;
       // The skill states the merge order in the split report's chain; a task note may repeat it.
-      const reportHold = (report || '').split('\n').some((line) => Boolean(t.fm.branch) && line.includes(t.fm.branch) && MERGE_HOLD.test(line));
+      const namesThisBranch = (line) => (Boolean(t.fm.branch) && line.includes(t.fm.branch)) || /phase[ -]?2 branch/i.test(line);
+      const reportHold = (report || '').split('\n').some((line) => namesThisBranch(line) && MERGE_HOLD.test(line));
       const mergeOrder = MERGE_HOLD.test(t.body || '') || reportHold;
       c.check(
         (Array.isArray(deps) && deps.length > 0) || stacked || mergeOrder,
