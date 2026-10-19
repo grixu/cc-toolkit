@@ -839,6 +839,8 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
           `script that rewrites a file: a scripted rewrite changes lines no finding named, and the delta`,
           `review then reads them as new code. Commit each \`security\` finding's fix on its own, naming`,
           `its rule in the message, so one can be reverted without the rest; the other fixes share a commit.`,
+          `Every commit message names the findings it fixes, by rule and location: that is how the delta`,
+          `review knows the change is a fix round, which it judges as it stands rather than undoing.`,
         ]
       : []),
   ].join('\n')
