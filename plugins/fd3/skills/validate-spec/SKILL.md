@@ -16,7 +16,8 @@ files you may write.** Everything else you read is read-only, no matter what you
 
 A probe — a command you run to settle a claim — runs in a detached worktree under your scratchpad
 (`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout. It never
-installs, links or rebuilds dependencies, anywhere: a package manager repoints shared links and
+installs, links or rebuilds dependencies, anywhere. A repository's own script — a `package.json`
+script, a Makefile target, anything under `scripts/` — is a probe like any other and runs only there: a package manager repoints shared links and
 leaves the user's tree broken. A claim that needs more than that to settle stays unverified, and the
 report says what the probe would have needed.
 
@@ -278,7 +279,9 @@ defect and what the candidate repairs are, and choosing between them would chang
 or reverse a ratified decision — then the choice is the user's, and repairing it yourself decides
 scope on their behalf. Collect it for step 4 as a repair choice: the defect, the repairs you would
 pick between, and what each costs. A finding that admits one obvious correction is not a repair
-choice — make the correction. A non-blocking finding never is: it goes in the report.
+choice — make the correction. A non-blocking finding never is: it goes in the report. Accepting a risk
+the spec does not already accept — a failure mode left in place, an exposure tolerated — is always a
+repair choice, never a claim you record `verified` because the risk looks small.
 
 ### 4. Hand up what only the user can settle
 
