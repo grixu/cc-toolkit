@@ -77,10 +77,12 @@ const byRepo = (list) => {
   return groups
 }
 // The harness relays the user's request to every agent, and a cheap model reads it as its own task
-// and re-runs the skill that launched this workflow.
+// and re-runs the skill that launched this workflow. A skill the task file names for its step is
+// the task's own, and forbidding it left that step undone.
 const STEP_GUARD =
-  'Do only the step this prompt describes. Invoke no skill or slash command it does not name, ' +
-  'whatever the relayed user request says: that request belongs to the session that launched this workflow.\n\n'
+  'Do only the step this prompt describes. Invoke no skill or slash command unless this prompt names it ' +
+  'or the task file it points you to directs this step to use it, whatever the relayed user request says: ' +
+  'that request belongs to the session that launched this workflow.\n\n'
 // The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
 // takes their uncommitted and untracked work with it.
 const checkoutRule = (repo) =>
