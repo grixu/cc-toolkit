@@ -259,7 +259,10 @@ diagnosis shows the fix must change behaviour, the case the fixer already refuse
 **running the failing check** in that worktree and reading what it says. Grepping the source for
 what the report's message suggests names a plausible cause, not the cause: the check is the only
 thing that knows which of them is true, and a repair composed from the plausible one costs a full
-round to disprove.
+round to disprove. A failure the branch did not cause — the baseline already failed that check, or
+it sits in files no task on the branch touched — is no repair's to fix: a repair-run grades the
+same check and fails it again. It is a question (fix it as its own decision, or accept it as a known
+failure), asked before any repair launches on that branch.
 
 What the loop does next is never a question. Relaunching after a decision, rerunning a check that
 died on a transient failure, launching the repair a decision implies, updating the handoff file —
