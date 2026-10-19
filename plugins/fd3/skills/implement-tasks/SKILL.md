@@ -99,6 +99,11 @@ Then make the graph launchable:
   exists **and carries a lower ordinal** — the merge planning relies on the file order being
   topological — and every status is one of the six. A broken graph stops the run — recommend
   re-running `fd3:split-to-tasks` rather than patching by hand.
+- **Find the confirmations a task asks for.** A task whose `## Note` asks for a human's
+  confirmation or approval before its work starts — a protected path, a consent the repository's
+  instructions require — would stop its agent mid-run, since the workflow never waits for a human.
+  Read each task's `## Note` for that alone; every such ask joins the step-2 batch, naming the
+  task. An approval the pull request's review gives is not one: it gates landing, not writing.
 - **Classify what a resumed run inherits**: `done` is skipped; `implemented` and `merged` both
   re-enter the first merge round — whether a branch already reached the target is git's knowledge,
   and an already-merged branch no-ops there, which is what re-records the unit validation runs on,
@@ -138,6 +143,8 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   unchanged rather than nulling it, so the workflow raises its stack-base item and the run's own
   report carries what was consented to; nulled, those tasks would read as genuine roots and
   nothing would record the anomaly;
+- each confirmation a task's `## Note` asks for, from step 1. An answer that withholds it takes
+  the task out of this launch as `blocked`, an item in the report rather than a stopped run;
 - confirmation of scope when the directory mixes done and pending work.
 
 Everything else — wave composition, branch names, merge order — the task files already decided;
