@@ -124,8 +124,10 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   report without holding the branch; `gated` — security fixes, boy-scout findings, findings the
   fixer left unfixed and anything the delta review finds hold their branch at `merged` until the
   user settles them, for a user who wants to walk each one; `no`. Recommend `yes` when `code-review:cr-scan` is in this session's skill listing; when it
-  is not, ask anyway and say the plugin must be installed — a listing can be withheld or cut
-  short, and a review whose skill is missing comes back as no verdict, never as a clean pass. Take
+  is not, run `claude plugin list` before asking: a plugin installed but disabled is named as
+  such, with `claude plugin enable code-review` as the step that makes `yes` real, and one not
+  installed is named as missing. Ask either way — a listing can be withheld or cut short, and a
+  review whose skill is missing comes back as no verdict, never as a clean pass. Take
   no other skill in its place: a skill that asks questions or fans out into agents of its own
   cannot run inside a workflow agent;
 - the spec path, when the `spec:` pointers did not resolve to an existing file in step 1;
