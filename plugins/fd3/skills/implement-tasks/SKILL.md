@@ -350,10 +350,12 @@ after explicit consent: push, `gh pr create` per branch (`--base` set to the sta
 description naming the tasks, the spec and the branch's element codes. When the repository's own
 rules reserve pushing to a human — its `AGENTS.md`, `CLAUDE.md` or contributing guide says so —
 the push is not a question: print the exact `git push` and `gh pr create` commands instead.
-Cleanup is not a question either: leave the `.worktrees` directories and the merged
-`task/<slug>` branches, and print the commands that remove them — declining to publish while
-wanting a clean repository is a normal combination, and the commands serve both. If push consent
-does not come, leave everything local. The worktree paths are
+The batch also asks about cleanup, recommending it: remove the `.worktrees` directories and
+the merged `task/<slug>` branches now, or keep them and print the commands that remove them. A
+`task/<slug>` branch with commits its target branch does not contain is never removed, whatever
+the answer — it is unmerged work, and the report names it. Declining to publish while wanting a
+clean repository is a normal combination. If push consent does not come, leave every target
+branch local. The worktree paths are
 in the table whatever the user decides: a branch whose worktree nobody can name is a branch the
 user cannot open, and the run's own directories are not guessable. When the tasks directory is
 untracked, say that too: it is the only copy of the
