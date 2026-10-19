@@ -1,7 +1,8 @@
 # Spec conformance — rules for the spec lens
 
 Full rule text for the `spec` scanner (part of the `code-review` plugin), active only
-when the user passed `--spec <path>`. Read this whole file before judging. When two
+when the review resolved a spec — named with `--spec <path>`, or the spec file the change
+carries and the user accepted. Read this whole file before judging. When two
 rules touch the same requirement, the most-specific finding wins.
 
 Report what you find; the filter runs after. Judge each requirement against the rules,
@@ -39,7 +40,7 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 ### Enumerate, then map — the discipline for the whole lens
 
 - **Input.** The spec text arrives in the `<spec>` slot of your brief — the local file
-  the user named with `--spec`, verbatim. Like every lens you also receive `<files>`,
+  the review resolved, verbatim, whether it came from `--spec` or from the change itself. Like every lens you also receive `<files>`,
   `<diff_args>` and `<how_to_view>`, and you read the diff and the changed files the
   same way the other scanners do. You never go looking for a spec yourself and never
   treat another document as "the spec": an empty `<spec>` slot is one line saying so,
@@ -111,7 +112,10 @@ never listed is one you cannot notice missing.
   it, after a Grep of the repo also finds nothing that already does.
 - **Suggested fix**: name the function or file the behaviour belongs in, as a clause.
 - **Calibration → not a finding**: a requirement the spec marks out of scope, deferred,
-  or optional; one satisfied by code the diff did not need to touch (Grep before
+  or optional; one the spec assigns to a different branch, task, phase or pull request
+  than this change (a rollout table, a task split, "lands with the API change") —
+  enumerate it as owned elsewhere, and when you cannot tell which part this change owns,
+  it is a `CANDIDATE` naming both readings; one satisfied by code the diff did not need to touch (Grep before
   flagging); non-behavioural prose — motivation, background, a description of the
   current state. A requirement whose only evidence is runtime (a scheduled job that
   "runs nightly") is `(verify)`, not an assertion.
@@ -156,5 +160,8 @@ intent, and it widens what the spec's author must now own.
 - **Suggested fix**: drop it, or split it into its own change with its own spec line.
 - **Calibration → not a finding**: a refactor the requirement needs in order to land;
   tests, logging, or error handling around the requirement; a convention the project
-  documents (the `<conventions>` note). Craft problems in the added code are
+  documents (the `<conventions>` note); a departure the user already approved where the
+  review can read it — a decision recorded in the spec, a spec amendment in the same
+  change, or the caller's brief — cleared in one line naming where the approval is
+  written, and never raised again. Craft problems in the added code are
   `HANDOFF`, never a reason to raise this rule.
