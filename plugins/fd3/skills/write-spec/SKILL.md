@@ -166,4 +166,6 @@ Close with every question the writing raised, in one numbered batch, recommendat
 subdivision the threshold asks for, and each decision you took while writing that the closing
 notes do not cover — a default, a value, a seam — with the `Dn` row it landed in. Those rows are
 written as `assistant-taken`; the batch is where the user ratifies or overturns them, at one known
-point. A decision left "worth confirming before the split" is a question the split stops on.
+point. Each row is its own question, quoting the decision it records — never a single "ratify all"
+over rows the user cannot see; more rows than one batch carries go out as consecutive batches, in `Dn`
+order. A decision left "worth confirming before the split" is a question the split stops on.
