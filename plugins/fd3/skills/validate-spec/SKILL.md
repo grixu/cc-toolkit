@@ -11,8 +11,8 @@ The invocation carries the spec's path, and on a later pass the status the previ
 A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming what you
 need, then end your turn. Do not guess it and do not go looking for it.
 
-**That spec file is the only file you may edit.** Everything else you read is read-only, no matter
-what you find in it.
+**That spec file, and the overflow files step 3 puts under `<spec-dir>/evidence/`, are the only
+files you may write.** Everything else you read is read-only, no matter what you find in it.
 
 A probe — a command you run to settle a claim — runs in a detached worktree under your scratchpad
 (`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout. It never
