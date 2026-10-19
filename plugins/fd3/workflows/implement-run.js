@@ -693,6 +693,7 @@ const CR_MERGE_RESULT = {
           reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
           boyScout: { type: 'boolean', description: 'the finding line carries the `boy-scout` token: it is about code the change did not touch' },
           access: { type: 'boolean', description: 'a security finding whose fix changes who may reach what — a permission, a role, a policy, the scope of an auth check' },
+          specBound: { type: 'boolean', description: 'fixing it would change behaviour the spec states — the finding line says so, or its fix contradicts a line of the spec' },
         },
       },
     },
@@ -881,7 +882,8 @@ const crMergePrompt = (dir) =>
     `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
     `\`boy-scout\` token sets boyScout=true, and a security finding whose fix changes who may reach`,
-    `what — a permission, a role, a policy, an auth check's scope — sets access=true. Return invoked=true; when`,
+    `what — a permission, a role, a policy, an auth check's scope — sets access=true. A finding whose`,
+    `fix would change behaviour the spec states — the line says so — sets specBound=true. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
     ...(reservations
       ? [
@@ -939,13 +941,16 @@ const runReview = async (unit, base, pass, tag) => {
 // boy-scout finding for a yes stopped each branch on a human. Gated keeps that hold for a user who
 // wants to walk security fixes one at a time; a boy-scout fix that is not mechanically safe is
 // reported either way, since it edits code the task never touched. A security fix that changes who
-// may reach what is a policy call, so it waits for a human in both modes. Nits and the remaining comment
+// may reach what is a policy call, and a fix that would change behaviour the spec states — the
+// correctness lens marks those — is the spec owner's call; both wait for a human in either mode.
+// Nits and the remaining comment
 // verdicts are reported, never applied unasked.
 const serious = (f) => f.severity === 'high' || f.severity === 'medium'
 const fixable = (f) =>
-  gated
+  !f.specBound &&
+  (gated
     ? f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout
-    : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe') && !f.access
+    : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe') && !f.access)
 const sortFindings = (findings) => {
   const live = findings.filter((f) => !f.reserved)
   const applied = live.filter(

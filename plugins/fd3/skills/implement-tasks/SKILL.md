@@ -116,7 +116,7 @@ Then make the graph launchable:
 One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`:
 
 - whether to review each branch. Review is the `code-review` plugin's headless lenses — one
-  agent per lens `cr-prepare` makes active, six to eight, after the branch's scoped CI passes —
+  agent per lens `cr-prepare` makes active, seven to nine, after the branch's scoped CI passes —
   then a delta review of whatever the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
   bot on the pull request finds different things, not the same ones: `no` is a valid answer but a
   real trade. Offer three answers: `yes` — the fixer applies every fixable finding, security fixes
@@ -236,7 +236,8 @@ asks for is a corrected task file before the next split or relaunch, never a dec
 those tasks, so neither is one of the items step 4 puts to the user below.
 
 A `review` item is a finding the workflow would not fix unasked — a `spec` finding, a security
-finding whose fix changes who may reach what, a report-only
+finding whose fix changes who may reach what, a finding whose fix would change behaviour the spec
+states, a report-only
 one, a boy-scout finding whose fix is not mechanically safe, a finding the fixer left unfixed, or
 anything the delta review found in the fixes it did apply; under `gated`, also every `security`
 fix and every boy-scout finding. Without `gated` the item holds nothing: its branch is `done`, and
