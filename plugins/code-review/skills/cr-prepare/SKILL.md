@@ -43,6 +43,12 @@ Apply `${CLAUDE_PLUGIN_ROOT}/references/scope.md` to the list: which files are j
 skipped and why, and each judged file's kind (`source`, `test`, `iac`) from its `## File kinds`
 section.
 
+A change whose every file is skipped has nothing to judge either: return `status: empty` with
+`files: 0 judged` and each skip reason in `skipped`, never `ready`. Lenses that "pass" over zero
+files read downstream as a clean review of a change nobody looked at. For the same reason an
+active lens never carries an empty `files` list — a lens with nothing of its kind to read is
+inactive, with that reason.
+
 `--spec` counts only when it names a readable local file. Anything else — a URL, a ticket id, a
 path that does not open — leaves the `spec` Lens inactive with that reason; never substitute a file
 you think was meant.
@@ -97,4 +103,5 @@ active: <lens, lens, …>
 inactive: <lens — reason; …>
 ```
 
-On `empty`, add `alternate: <ref> — <count> files`; on `error`, `reason: <what stopped you>`.
+On `empty`, add `alternate: <ref> — <count> files` when the script returned one, or
+`reason: every file skipped` when the count was above zero; on `error`, `reason: <what stopped you>`.
