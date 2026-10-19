@@ -69,7 +69,10 @@ that pass; it does not start a new one — the status you return carries the pas
 invocation gave it, and counts the rounds inside it separately.
 
 **A previous pass.** Where the invocation carries the status an earlier pass of this skill returned
-for this same spec, read it before step 1: it says which of the twelve checks passed and on what,
+for this same spec, read it before step 1. It arrives as the text that pass returned; a pointer in
+its place — a transcript or JSONL path, "see the previous pass" — is not a status, and transcripts are
+not yours to read: take the last dated block of the spec's own evidence record instead. The status says which
+of the twelve checks passed and on what,
 what it left open, and which claims it recorded `verified` or `deferred`.
 
 Re-derive all twelve checks against the file you now hold. A check the previous pass answered was
