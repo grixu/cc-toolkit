@@ -313,7 +313,10 @@ the decision deliberately leaves the branch incomplete, because a repair-run wou
 CI on that intended state. Anything that touches file content still goes through `repair-run`.
 
 Never run two workflows at once — validation tolerates exactly one build/lint/test pipeline on
-the machine. Repairs first, then the implement relaunch. When a relaunch completes, check its
+the machine. Repairs first, then the implement relaunch. While a workflow runs, its worktrees and
+target branches are its alone: no edit, commit, merge or checkout in them from this conversation —
+the mechanical carve-out above included — because an agent mid-step then works on a tree that
+moved under it. When a relaunch completes, check its
 branches against the standing HIL decisions before relaying success — an agent that undid a
 reserved human step is the first thing to report, not a footnote. Repeat until every task is
 `done` or the user stops; a stop still closes with step 5, because the deferred decisions and
