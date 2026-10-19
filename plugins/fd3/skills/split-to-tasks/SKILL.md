@@ -166,6 +166,8 @@ phase-ordered cuts. Never force a slice across a boundary the rules above drew.
 A task that changes the type or shape of a shared identity or contract — a primary-key type, a
 wire format, a schema field — owns the ripple: propagation to every consumer, fixtures, seed
 data and test seeders included, either inside the task or explicitly handed to a named task.
+Another task that edits a file the ripple reaches draws a `depends-on` edge onto the owner, so the
+consumer is written against the new shape rather than racing it.
 A ripple nobody owns surfaces as a wall of type errors in whichever branch validates first, and
 gets fixed there twice.
 
@@ -218,8 +220,12 @@ is policy of this skill and never appears in the spec.
 
 ### 4. Order
 
-Dependencies come from the spec's build order and its phase table. Record each as a `depends-on`
-edge between task slugs: an edge means the other task must land first.
+Dependencies come from the spec's build order: an edge means a task cannot be written or verified
+without the other's work — a file, symbol or migration it builds on. Record each as a `depends-on`
+edge between task slugs: the other task must land first. The phase table orders *landing*, which
+step 3 records as the merge order; a later phase alone is not an edge, and an edge drawn from it
+across branches strands a whole branch behind work it never uses. A docs or changeset task that
+describes another task's change does depend on it: the change it describes is what they share.
 
 **An edge between two tasks on the same branch has to name what they share.** Same-branch tasks
 land together, so an edge there is a claim that one must be *written* before the other, and only a

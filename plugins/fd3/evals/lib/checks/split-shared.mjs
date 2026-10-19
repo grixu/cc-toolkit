@@ -104,7 +104,14 @@ export function checkBoundaries(c, tasks, { precedesDb = null } = {}) {
     const deps = (t.fm && t.fm['depends-on']) || [];
     if (isPhase2) {
       c.check(/2/.test(String(t.fm.phase)), `${t.file}: phase-2 element in a task whose phase is ${t.fm.phase}`);
-      c.check(Array.isArray(deps) && deps.length > 0, `${t.file}: phase-2 task has no depends-on edge`);
+      // A later phase orders landing, not writing: an edge, a stack onto a phase-1 branch or a recorded merge order all hold it back.
+      const phase1Branches = tasks.filter((o) => !/2/.test(String(o.fm && o.fm.phase))).map((o) => o.fm && o.fm.branch);
+      const stacked = phase1Branches.includes(t.fm['branch-base']);
+      const mergeOrder = /merge order|(do not|never|must not) merge/i.test(t.body || '');
+      c.check(
+        (Array.isArray(deps) && deps.length > 0) || stacked || mergeOrder,
+        `${t.file}: phase-2 task is held behind phase 1 by no edge, stack or merge order`,
+      );
     }
     for (const d of Array.isArray(deps) ? deps : []) {
       c.check(!/^\d{4}-/.test(String(d)), `${t.file}: depends-on "${d}" carries the filename ordinal — edges must use the bare slug`);
