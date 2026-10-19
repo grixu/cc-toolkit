@@ -4,7 +4,7 @@ Every finding that reports as `family` · rule · severity carries one **family*
 **rule**, and one **severity**, all three **verbatim** from this table — never a code
 number, never a paraphrase invented this run. Two reviews of the same code name the
 same `family` · rule every time. Twelve families report in that shape: the eleven below
-with **50 fixed rows**, plus `standards`, whose rules are the project's own and are
+with **51 fixed rows**, plus `standards`, whose rules are the project's own and are
 graded by the mapping at the end of this file.
 
 Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
@@ -38,7 +38,8 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `patterns`    | composition         | inheritance that already causes duplication/coupling delegation would remove | medium |
 | `patterns`    | polymorphism        | the same type-discriminant `if`/`switch` repeated in ≥2 places | medium |
 | `patterns`    | execute-around      | a paired setup/teardown left to callers, already duplicated or forgotten | medium |
-| `simplicity`  | over-complex        | code that collapses into something smaller (duplication → one parameter) | high |
+| `simplicity`  | over-complex        | duplication that collapses into one shape (near-identical functions → one parameter, a copy-pasted block → one extraction) | high |
+| `simplicity`  | verbose             | a single piece of code longer or more nested than its idea needs (an `if/else` chain that is a lookup, a loop that is a `map`) | nit |
 | `simplicity`  | needless-cast       | a type cast the value's type already guarantees | high |
 | `simplicity`  | dead-code           | code that can never run or whose result is never used (an unreachable branch, an unread binding) | high |
 | `security`    | secret-in-source    | credential/private key/password-bearing string as a literal, or a secret written to a log/exception | high |
@@ -97,7 +98,7 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   never sees (`swallowed-error`), and a requirement
   half-met or exceeded (`partial-requirement`, `scope-creep`).
 - **nit** — local `openness` / spacing, an inline `explaining-variable`, a
-  type-in-the-name `role-name`. Real, but cheap; cluster them so the report does not
+  type-in-the-name `role-name`, a `verbose` site a shorter form would say plainly. Real, but cheap; cluster them so the report does not
   drown in nits.
 
 A `security`, `correctness` or `spec` finding is never `nit`: those families grade `high`
