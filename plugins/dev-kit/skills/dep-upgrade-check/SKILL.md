@@ -57,7 +57,7 @@ Enumerate every way the codebase touches the package, in every project the unit 
 - side-effect imports and global registrations, and environment variables the package reads;
 - the runtime the project runs on (`.nvmrc`, `.node-version`, `engines`, the CI setup step, the Dockerfile base image) and the installed versions of the target's peers, for the engine and peer entries.
 
-When the repository is indexed in a code graph (for example the codebase-memory MCP), query it for imports and callers first; otherwise use text search over the source. Record each site as `file:line`.
+When the repository is indexed in a code graph (for example the codebase-memory MCP), query it for imports and callers first; otherwise use text search over the source. A zero-hit graph query is not absence: confirm "not used" with one text search before marking an entry not affected. Record each site as `file:line`.
 
 Then intersect: for each ledger entry, check whether any usage-surface site touches it. An entry is **affected** (a site uses the changed thing), **not affected** (the change is outside the surface), or **unknown** (runtime behavior or a changed default that static reading cannot settle).
 
