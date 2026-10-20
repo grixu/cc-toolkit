@@ -11,8 +11,10 @@ findings.
 
 Source files that carry human-authored code and comments: `.ts .tsx .mts .cts .js .jsx
 .mjs .cjs .py .go .rs .java .kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus
-**infrastructure-as-code** (`.tf`/HCL and similar declarative surfaces that still carry
-comments and structure worth reviewing). The ES-module and CommonJS extensions carry the
+**infrastructure-as-code** — declarative surfaces that still carry comments and structure
+worth reviewing: `.tf`/HCL; Dockerfiles (`Dockerfile`, `*.Dockerfile`, `Containerfile`); Helm
+charts (templates and `values*.yaml` under a directory holding a `Chart.yaml`); compose files
+(`docker-compose*.yml`, `compose*.yaml`); and similar. The ES-module and CommonJS extensions carry the
 same hand-written code as `.js` — a build script or a config-as-code module under
 `.mjs`/`.cjs` is reviewed, not skipped as tooling.
 
@@ -29,7 +31,8 @@ Cerbos policy (`api.cerbos.dev`) or a Kubernetes `Role`, `ClusterRole` or `*Role
 JSON, lockfiles, generated or minified files (a generator's `.d.ts`, `*_pb.*`, anything
 under `dist/`, `build/`, `node_modules/`), `.md` and docs (in a comment review the prose
 *is* the content), plain text (`.txt`), **static config data** (`.yaml`/`.toml`/`.ini`
-settings, `.env`), and license/SPDX headers.
+settings, `.env` — YAML named as infrastructure-as-code or a policy file excepted), and
+license/SPDX headers.
 
 Note every skipped file in one line, so coverage stays honest.
 
@@ -68,12 +71,12 @@ eyeballing the content:
   of: `*.test.*`, `*.spec.*`, `*_test.go`,
   `test_*.py`, `*_test.py`, `conftest.py`, `*Test.php`, `*Test.java`, `*Test.kt`,
   `*Tests.cs`, `*_spec.rb`, `*.feature`, `*.stories.*`, `setupTests.*`.
-- **`iac`** — `.tf`/HCL and the other declarative infrastructure-as-code surfaces named
-  under *In scope*.
+- **`iac`** — `.tf`/HCL, Dockerfiles, Helm charts, compose files and the other
+  declarative infrastructure-as-code surfaces named under *In scope*.
 - **`policy`** — the access policy and pipeline files named under *In scope*.
 - **`source`** — everything else in scope.
 
-Four consumers depend on this list:
+Five consumers depend on this list:
 
 - **`policy` files go to the `security` lens only** among the grading lenses — every
   other craft, `correctness` and `performance` lens's `<files>` leaves them out, so a
@@ -86,6 +89,9 @@ Four consumers depend on this list:
   `*.config.*` modules (build and tool configuration runs once, never per request) — and is not
   dispatched at all when that subset is empty (a tests-only or IaC-only change has no
   performance lens, and the report's Tally names it as skipped);
+- the **`objects & patterns` lens** is not dispatched when every file in its list is
+  `iac`: both its families are N/A there (see *Language applicability*), and the Tally
+  names it as skipped;
 - the **comments lens's higher test-file bar** (R11 in `rules/comments.md`) applies to
   exactly the `test` kind above, so "is this a test file?" is answered by the list, not
   by how the file reads.
@@ -96,9 +102,11 @@ The rule families are written against imperative, object-oriented code (mostly J
 When the change targets a language where a family — or a single rule — has no
 counterpart, clear it in one line instead of inventing findings to fit it.
 
-- **HCL/Terraform** and other declarative infrastructure-as-code: no module system
-  (`module`), no object construction (`objects`), no type casts (`needless-cast`), and
-  no tests inside the config itself (`tests`).
+- **HCL/Terraform, Dockerfiles, Helm charts, compose files** and other declarative
+  infrastructure-as-code: no module system (`module`), no object construction
+  (`objects`), no inheritance or type dispatch to refactor (`patterns`; a Dockerfile's
+  stage chain is shared ancestry, not a class hierarchy), no type casts
+  (`needless-cast`), and no tests inside the config itself (`tests`).
 - **SQL, protobuf, plain config-as-code**: similar.
 - **`performance` · wasted-render** applies only to `.tsx`/`.jsx` files (React's
   memoisation model); it is N/A everywhere else, Vue included.
@@ -107,7 +115,9 @@ counterpart, clear it in one line instead of inventing findings to fit it.
 
 A family that *does* have a counterpart stays in play — `naming`, `comments`,
 `readability`, and duplication (`over-complex`) apply almost everywhere. Clear a family
-or a rule on language grounds only, never a whole lens. The Step 2 conventions note
+or a rule on language grounds only, never a whole lens — the one exception is `objects
+& patterns` over a list of `iac` files alone, which the lens set makes inactive because
+both its families are N/A there. The Step 2 conventions note
 names an N/A rule the same way it names an N/A family, so the owning Scanner clears it
 in one line.
 

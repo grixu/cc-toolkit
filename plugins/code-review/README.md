@@ -61,15 +61,15 @@ next to the repository, and your checkout is never switched.
 
 ## The lenses
 
-You do not pick lenses; the change decides. Seven run every time, two depend on the input, and the
-report's tally lists any lens that did not run and why.
+You do not pick lenses; the change decides. Seven run on any change of code, two depend on the
+input, and the report's tally lists any lens that did not run and why.
 
 | Lens | Runs | Looks for |
 |---|---|---|
 | comments | always | Comments that narrate the code, cite tickets or other files, contradict the code, or are missing where a decision needs explaining. |
 | readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that do not check what their name claims. |
 | naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has, wrappers that only forward a call. |
-| objects & patterns | always | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
+| objects & patterns | always, except on a change of infrastructure code only | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
 | simplicity & types | always | Duplication that collapses into one shape, code longer than its idea, needless casts, dead code. |
 | correctness | always | Conditions that pick the wrong branch, cases nothing handles, off-by-one bounds, swallowed errors, races on shared state, calls that break their callee's contract. |
 | security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, exposed infrastructure, widened access, including in access policies, RBAC, `CODEOWNERS` and CI workflows. |
@@ -194,8 +194,9 @@ specific one wins, and the report names the conflict on its `Conventions` line.
 ## What it reviews and what it skips
 
 Reviewed: source files with the extensions `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .rs .java
-.kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus Terraform and other infrastructure-as-code.
-Tests and infrastructure code get every lens except performance. Access policies (`*.rego`,
+.kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus Terraform, Dockerfiles, Helm charts,
+compose files and other infrastructure-as-code. Tests get every lens except performance;
+infrastructure code also skips objects & patterns. Access policies (`*.rego`,
 `*.cedar`, Cerbos and Kubernetes RBAC manifests, IAM policy files), `CODEOWNERS` and CI workflow
 files are reviewed by the security lens only.
 
@@ -214,8 +215,8 @@ Limits:
   back marked `(verify)`.
 - The rules are written for imperative and object-oriented code, mostly JavaScript and TypeScript.
   A rule with no counterpart in a language is cleared, not forced: wasted-render applies only to
-  `.tsx` and `.jsx`, blocking-in-async only to Node and Python asyncio, and Terraform skips the
-  module, object, test and cast rules.
+  `.tsx` and `.jsx`, blocking-in-async only to Node and Python asyncio, and infrastructure code
+  skips the module, object, pattern, test and cast rules.
 
 ## Internal parts
 

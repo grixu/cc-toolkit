@@ -81,6 +81,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The spec lens receives the whole change — `policy` files and skipped files included — so a CI
   workflow or a manifest a spec describes is mapped; `cr-prepare` returns `ready` for an
   all-skipped change when a spec is active, with `spec` the only active lens
+- Dockerfiles, Helm charts and compose files are named as `iac`, and `objects & patterns` is
+  inactive when every file it would read is `iac`: both its families are N/A there
 - The performance subset leaves out test-support helpers and `*.config.*` modules
 - The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
   the diff carries none; each structural fix gets its own yes; the approved list is ticked off

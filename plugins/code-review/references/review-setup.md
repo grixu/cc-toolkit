@@ -52,6 +52,9 @@ never from a preference:
   **always active** — seven on any change, however small — except that a Lens whose own
   `<files>` comes out empty is inactive with that reason: a change of `policy` files only
   runs `security` alone, plus `spec` when one is active;
+- **`objects & patterns`** is inactive, with the reason `declarative files only`, when
+  every file in its `<files>` is `iac` — both its families are N/A for infrastructure code,
+  and a scanner dispatched there only writes why;
 - **`performance`** is active iff the `source`-kind subset of the resolved list,
   **minus `.sh` files and `*.config.*` modules**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;

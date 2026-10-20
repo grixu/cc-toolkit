@@ -24,7 +24,8 @@ and only for what the user picks.
 
 This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
-user choice: the five craft Lenses, `correctness` and `security` always run, `performance` runs
+user choice: the five craft Lenses, `correctness` and `security` always run (`objects & patterns`
+except over infrastructure code alone), `performance` runs
 when executable source is in scope, `spec` when a spec file is named. For a partial
 review the user invokes `/code-review:comment-review` or `/code-review:quality-review` directly.
 
