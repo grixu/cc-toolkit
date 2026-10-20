@@ -109,6 +109,8 @@ The last evidence block records the commit each repository was validated at, on 
 line; a block older than that line is measured from the commit that last changed the spec file. Where `origin/<default>`
 has moved past it, the spec may describe code that is no longer there: intersect `git diff --name-only
 <validated commit>..origin/<default>` with the paths the spec cites. No hit, and the split goes on. A
+hit clears when that path's diff leaves every claim the spec makes about it intact — its line pins,
+the symbols and shapes it quotes — and the report names the path and what was checked. Any other
 hit is a stop before anything is written — name the paths the new commits changed and the route
 `/fd3:build-spec <spec path>`; rebasing a branch or correcting the spec to follow is that route's
 work, never this skill's.
@@ -148,7 +150,8 @@ reason, and the reason decides the edge cases:
 5. **A protected path cuts, and keeps its own branch.** An edit to a path the repository guards —
    a `CODEOWNERS` entry naming another team, a branch-protection or required-review rule, a
    release manifest, the CI workflow definitions — waits on an approval the rest of the unit does
-   not. It is a delivery task like any other, with its own element and done criterion, on a branch
+   not. A listed path cuts only when its approval does differ: the same owners and reviewers as the
+   rest of the unit mean one review, and no cut. It is a delivery task like any other, with its own element and done criterion, on a branch
    of its own, so one external approval never holds the whole landing unit. Step 1 lists which
    paths these are; where the repository declares none, the rule finds nothing and costs nothing.
    The approval it waits on is the pull request's review, never a precondition for writing the
