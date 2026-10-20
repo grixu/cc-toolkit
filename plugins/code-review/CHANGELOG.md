@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comments lens: a sanctioned note prefix is never a finding, but the text after it is judged by
   every rule and the project's own limits for that shape; a term the code or the spec uses is not
   an R9 contradiction; a tag that recurs across the repository is a project marker, never removed
+- Readability lens: a `magic-literal` shared across modules lives in a module both sides may
+  import, never a repository, adapter or test helper; bot-managed version pins are self-evident;
+  a test title's mechanism clause a mock cannot check is `test-fidelity`; test helpers one position
+  off are within `ordering`'s "roughly"; moving code is never an `openness` fix
 - The performance subset leaves out test-support helpers and `*.config.*` modules
 - The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
   the diff carries none; each structural fix gets its own yes; the approved list is ticked off

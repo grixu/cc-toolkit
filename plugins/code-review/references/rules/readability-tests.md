@@ -67,7 +67,8 @@ line between concepts so the eye can group.
   its `return`, a two-line variable-then-use pair, a small cohesive object
   literal). Do not demand blank lines *inside* a cohesive block, and do not ask
   for openness in trivially short functions. The goal is grouping, not double-
-  spacing everything.
+  spacing everything. Moving code is never an openness fix: a local declared far from
+  its only use is not this rule.
 
 #### `guard-clause` — handle edge cases up top, return early
 
@@ -120,14 +121,20 @@ appears. Give it a name defined once.
   meaning: `* 86400`, `status === 3`, `retries < 5`, a hard-coded URL/limit/role
   string; or the same literal repeated across several sites.
 - **Suggested fix**: name it once at the right scope (`const SECONDS_PER_DAY = 86400`,
-  an enum/const for the status) and reference the name.
+  an enum/const for the status) and reference the name. When the literal restates a value
+  another module owns, the shared name goes where both sides may already import from — a
+  constants or config module, or passed in from the composition root — never exported
+  from a repository, an adapter or a test helper; say so in the fix, which is then
+  structural.
 - **Calibration → not a finding**: literals that are self-evidently themselves —
   `0`/`1`/`-1` as identity/index/step, `2` in a halving, an empty string/array
   default, an obvious base case; or a one-off literal whose meaning the surrounding
   name already makes plain. Don't name `i + 1`. In a test, a literal that *is* the
   case under test — the input a fixture feeds, the value an assertion expects — is the
   test's own data, not a magic number. A default declared once beside the key that
-  names it (`timeoutMs: 30_000` in a config object) is already named. The same literal
+  names it (`timeoutMs: 30_000` in a config object) is already named. A version pin a
+  dependency bot updates at every site (a `# renovate:` marker, an image tag in `FROM`) is
+  self-evident, and its repetition is no drift risk. The same literal
   repeated across several files is duplication, which the merge files under
   `over-complex` or `canonical-helper`: flag it here at one site and say where it
   recurs, never as one bullet per file.
@@ -181,7 +188,9 @@ descends one level of abstraction at a time instead of scrolling up and down.
 - **Calibration → not a finding**: hoisting-dependent or convention-bound orders
   (a language/linter that wants exports first, alphabetized members, React
   hooks-then-handlers conventions); type/constant declarations that legitimately
-  sit at the top; and any ordering the `<conventions>` note documents. **N/A** for
+  sit at the top; any ordering the `<conventions>` note documents; and file-local
+  helpers in a test file one position off the call order, which is within "roughly".
+  **N/A** for
   declarative IaC (HCL/Terraform): its blocks have no call flow to step down, so clear
   the rule in one line. Don't relocate
   something across a meaningful boundary just to satisfy the rule — judgment over
@@ -232,7 +241,10 @@ wrong thing — and a regression that relaxes the real boundary slips through gr
     schema caps at 200);
   - a fixture literal picked to represent a boundary no longer matches the boundary
     it probes, so the test would still pass if the boundary moved;
-  - a test named for behaviour X asserts only behaviour Y.
+  - a test named for behaviour X asserts only behaviour Y;
+  - a title clause names a mechanism (`"so the update rolls back"`, `"in the same
+    transaction"`, `"holds the pod id"`) that a mock makes uncheckable — the clause is
+    a factual claim, so tighten the double until it checks it, or drop the clause.
 - **Suggested fix**: align the claim with the real behaviour — retitle to the actual
   boundary and adjust the fixture, or tighten the assertion so it genuinely guards the
   claimed boundary.
