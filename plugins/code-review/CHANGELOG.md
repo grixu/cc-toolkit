@@ -53,6 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/start-cr` points to the single-lens skills by their namespaced names, `/code-review:comment-review` and `/code-review:quality-review`.
 - `cr-prepare` returns `empty`, not `ready`, when every changed file is skipped, and never hands an
   active lens an empty file list
+- `cr-merge` writes its report to `cr-report.md`: Claude Code's `Write` tool refuses a sub-agent
+  file named `REPORT*.md`. A failed report write returns `report: none (<reason>)` and never turns
+  a finished merge into `status: error`
 
 ## [0.4.0] - 2026-10-03
 
