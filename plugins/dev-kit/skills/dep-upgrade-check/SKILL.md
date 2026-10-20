@@ -84,6 +84,8 @@ Lead with the verdict and one sentence of reasoning:
 - **safe with changes**: affected entries exist, each with a known, bounded fix (a rename, a config key, a codemod, a peer bump).
 - **breaking**: an affected entry has no drop-in fix, the runtime or engine floor is above what the project runs, or the fix spans a redesign.
 
+While a load-bearing unknown remains, give the worst verdict it could resolve to, mark it `provisional`, name the unknown, and make the step-4 offer in the same message.
+
 Then:
 
 | Change (version) | Where used | Impact | Required fix |

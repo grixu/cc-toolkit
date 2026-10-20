@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `dep-upgrade-check`: while a load-bearing unknown remains, the verdict is the worst it could resolve to, marked `provisional`, with the unknown named and the local build offered in the same message
 - `pr-shepherd`: stacks: several PR numbers run per PR in its own worktree; a fix lands on the lowest owning branch and reaches the others by a plain base-into-child merge, never a rebase and never from the default branch; a thread another PR in the stack fixes is answered with that commit
 - `pr-shepherd`: a `decision` verdict for a comment whose fix is a trade-off only the owner can make: one reply with the options and their cost, the thread left unresolved and handed over in the report
 

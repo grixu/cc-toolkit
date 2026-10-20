@@ -88,7 +88,7 @@ It starts from the version your lockfile resolves today and lists every change u
 
 The check is read-only: it changes no manifest, lockfile or source file. When the result is not `safe`, or questions remain open, it offers to install and build the upgrade in a throwaway git worktree, and runs that build only if you agree.
 
-Output: a verdict (`safe`, `safe with changes` or `breaking`), a table of affected changes with `file:line` locations and the fix for each, the open unknowns, and the sources it used. If you then ask it to apply the upgrade, it applies the fixes from the table and runs your checks.
+Output: a verdict (`safe`, `safe with changes` or `breaking`; marked `provisional`, at the worst value still possible, while an open question could change it), a table of affected changes with `file:line` locations and the fix for each, the open unknowns, and the sources it used. If you then ask it to apply the upgrade, it applies the fixes from the table and runs your checks.
 
 ### pr-open: push the branch and open a pull request
 
