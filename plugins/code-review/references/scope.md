@@ -37,7 +37,7 @@ Note every skipped file in one line, so coverage stays honest.
 `.github/workflows/*.yml` or `.gitlab-ci.yml` routinely carries a real exposure — a
 `pull_request_target` job checking out and running untrusted code, a widened
 `permissions:` block, a secret passed into a step that echoes it — so the `security` lens
-judges it like any policy file, and the other lenses never see it. The dependency and
+judges it like any policy file, and no other lens grades it. The dependency and
 action-pinning audit stays with `/security-review`, so when a pipeline file changed the
 `Skipped` line still names it — graded by `security` alone — and points the reader to
 `/security-review` for that audit, in those words.
@@ -73,10 +73,15 @@ eyeballing the content:
 - **`policy`** — the access policy and pipeline files named under *In scope*.
 - **`source`** — everything else in scope.
 
-Three consumers depend on this list:
+Four consumers depend on this list:
 
-- **`policy` files go to the `security` lens only** — every other lens's `<files>` leaves
-  them out, so a change that touches nothing but policy runs `security` alone;
+- **`policy` files go to the `security` lens only** among the grading lenses — every
+  other craft, `correctness` and `performance` lens's `<files>` leaves them out, so a
+  change that touches nothing but policy runs `security` alone, plus `spec` when one is
+  active;
+- the **`spec` lens** receives the whole change — every judged file, `policy` files
+  included, plus every file *Skip* leaves out: conformance is not line-graded craft, and
+  a skipped workflow, manifest or doc is often exactly what a spec line describes;
 - the **`performance` lens** receives only the `source` files, minus `.sh` files and
   `*.config.*` modules (build and tool configuration runs once, never per request) — and is not
   dispatched at all when that subset is empty (a tests-only or IaC-only change has no

@@ -135,7 +135,8 @@ about a skipped dependency manifest that is the substance of the change — is i
 `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. Read it and apply it to the resolved
 list. Then classify every surviving file by that file's `## File kinds` section —
 `source`, `test`, `iac`, or `policy` — and record the kind beside each path: Step 2b gates the
-`performance` Lens on the `source` subset and sends `policy` files to `security` alone, and the
+`performance` Lens on the `source` subset, sends `policy` files to `security` and `spec` alone and
+skipped files to `spec` alone, and the
 `comments` Scanner's test-file bar (R11) keys off the same classification.
 
 ## Step 2 — Read project conventions and standards (once)

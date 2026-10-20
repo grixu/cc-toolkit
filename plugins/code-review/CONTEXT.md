@@ -42,7 +42,7 @@ The root pair `CODING_STANDARDS.md` + `CODING_STANDARDS.local.md`, read together
 _Avoid_: style guide, conventions file (a conventions file — `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.claude/rules`, `.cursor/rules` — only suppresses)
 
 **Active lens set**:
-The N Lenses (up to 9) that Step 2b of **start-cr** resolves for one run: the five craft Lenses, correctness and security always — each needs files of its own, so a change of policy files only runs security alone — performance when the source-kind subset of the resolved files (minus `.sh` and `*.config.*`) is non-empty, spec when a spec file was named. The report's `Lenses: L of 9` line records it, naming every inactive Lens with its reason.
+The N Lenses (up to 9) that Step 2b of **start-cr** resolves for one run: the five craft Lenses, correctness and security always — each needs files of its own, so a change of policy files only runs security alone, plus spec when one is named — performance when the source-kind subset of the resolved files (minus `.sh` and `*.config.*`) is non-empty, spec when a spec file was named. The report's `Lenses: L of 9` line records it, naming every inactive Lens with its reason.
 _Avoid_: lens selection (the user never picks), enabled lenses
 
 ## Relationships

@@ -17,7 +17,7 @@ Send each Scanner a brief in this shape, filling every slot:
 <scanner_brief>
   <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness</lens>
   <rules_file>rules/<lens>.md</rules_file>
-  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security`, the resolved list minus `policy` files for every other Lens --></files>
+  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security`, the full resolved list plus every skipped file for `spec`, the resolved list minus `policy` files for every other Lens --></files>
   <diff_args><!-- from the scope resolution --></diff_args>
   <how_to_view>
     tracked → `git diff <diff_args> -- <path>`

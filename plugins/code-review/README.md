@@ -201,7 +201,9 @@ files are reviewed by the security lens only.
 
 Skipped, and listed on the report's `Skipped` line: JSON, lockfiles, generated or minified files,
 Markdown and other docs, `.txt`, other static config (`.yaml`, `.toml`, `.ini`, `.env`), and
-license headers.
+license headers. The spec lens is the exception: with a spec given, it maps the spec against every
+changed file, skipped and policy files included, because a workflow or a manifest is often what a
+spec line describes.
 
 Limits:
 

@@ -51,7 +51,7 @@ never from a preference:
   `objects & patterns`, `simplicity & types`), **`correctness`** and **`security`** are
   **always active** — seven on any change, however small — except that a Lens whose own
   `<files>` comes out empty is inactive with that reason: a change of `policy` files only
-  runs `security` alone;
+  runs `security` alone, plus `spec` when one is active;
 - **`performance`** is active iff the `source`-kind subset of the resolved list,
   **minus `.sh` files and `*.config.*` modules**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;
@@ -60,6 +60,7 @@ never from a preference:
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
 `performance` gets the source subset it was gated on; `security` gets the full resolved
-list; every other Lens gets the resolved list minus its `policy` files. Record every **inactive** Lens with its reason (`performance — no
+list; `spec` gets the full resolved list plus every skipped file; every other Lens gets
+the resolved list minus its `policy` files. Record every **inactive** Lens with its reason (`performance — no
 executable code`, `spec — no spec named`); the Tally prints them. From here on
 **N** means this count: N Scanners run, N outputs awaited, N outputs merged.
