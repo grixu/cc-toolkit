@@ -253,7 +253,7 @@ never something a repair fixes; it is settled when the user has run it or dismis
 the item waits in the end-of-run decision list (step 5), never as a question of its own. Under
 `gated` the branch passed CI and stays `merged` until the item is settled: a finding the user wants
 fixed goes to a repair; one the user dismisses needs no work, and when every `review` item of a
-branch is dismissed, set that branch's tasks to `done` yourself — CI already passed on the commit
+branch is settled without a repair — dismissed, or a `/security-review` pointer the user ran — set that branch's tasks to `done` yourself — CI already passed on the commit
 they sit on. Give the `cr-report.md` path with the findings: the one-line form in the HIL list drops
 the evidence.
 
