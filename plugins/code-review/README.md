@@ -9,7 +9,7 @@ a short menu asks which fixes to apply. Nothing is edited until you choose.
 A single "review this" prompt reads the change once, from one angle, and decides on the fly what
 counts as a problem. This plugin instead:
 
-- runs one reviewer per lens in parallel, each with its own written rule set (52 named rules plus
+- runs one reviewer per lens in parallel, each with its own written rule set (55 named rules plus
   12 comment rules), so every finding names its rule and runs are comparable;
 - merges the findings centrally: duplicates collapse, and severities follow one fixed table;
 - reads your project's conventions first, so a documented house style is not reported as a

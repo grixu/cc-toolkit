@@ -232,7 +232,7 @@ anything:
 | `simplicity` | `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md` |
 
 **Severity comes from `${CLAUDE_PLUGIN_ROOT}/references/severity.md`** — the master
-table of all 52 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
+table of all 55 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
 mapping for `standards` findings, and the anti-anchoring rule. Read it and grade every
 finding against its own row there (a `standards` finding against its keyword). The
 family, the rule, and the severity are all used **verbatim**, so a reader (and a diff
@@ -374,13 +374,15 @@ choices that actually apply to this review, for example:
   lines, `explaining-variable` locals, `magic-literal` constants that stay in their own
   file, `role-name`
   renames, `guard-clause` inversions, verified-redundant `needless-cast`, `verbose`
-  simplifications, and `dead-code` that is an unread binding or an
-  always-true guard.
+  simplifications, `dead-code` that is an unread binding or an
+  always-true guard, and `dead-code-surface` that drops a redundant fallback or conjunct.
 - **Walk the structural ones** — one at a time, since they move or remove code across
   boundaries and are riskier: `ordering` reordering, `composed-method` extraction,
   `style-mix` extract/move/split, `command-query` splits, `full-construction` /
-  `leaky-collection` reshaping, the `patterns` refactors (`composition`,
-  `polymorphism`, `execute-around`), `over-complex` unifications,
+  `exposed-representation` / `leaky-collection` reshaping, the `patterns` refactors
+  (`composition`, `polymorphism`, `execute-around`), `over-complex` and
+  `shallow-duplication` unifications, `dead-code-surface` that removes an export or a
+  return field,
   `test-structure` restructuring, `dead-code` removal of a branch that looks
   reachable, a `magic-literal` constant a second module imports, and every cross-module
   move: `dependency-direction` re-pointing,

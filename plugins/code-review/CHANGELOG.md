@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the security lens alone for access widening and exposure
 - `simplicity` · `verbose` (nit) for a single site longer than its idea, and `performance` ·
   `missing-index` for a new query on an unindexed column
+- Three `medium` rows for findings that were graded `high` with nothing to drift or break:
+  `simplicity` · `shallow-duplication` (near-identical test cases, a repeated one-line expression,
+  a restated declaration), `simplicity` · `dead-code-surface` (an unused export or return field, a
+  redundant fallback or conjunct) and `objects` · `exposed-representation` (a public mutable field
+  or a getter exposing the layout). The master table grows from 52 to 55 rows
 - `cr-merge` returns an `unowned` list — each `Not flagged` bullet that is a real problem with no
   rule — and a `security-review` line carrying the `Skipped` line's `/security-review` pointer, so
   a headless caller sees both without opening the report

@@ -28,7 +28,9 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   canonical-helper; `readability` · magic-literal is only the unnamed literal itself. When two lenses report the
   same repetition under different rules, keep the owner's bullet and fold the other into it —
   a magic-literal bullet listing the same value in five files is a duplication finding filed
-  under the wrong rule.
+  under the wrong rule. Repetition with no logic to drift — test cases, a one-line expression,
+  a restated declaration — is `shallow-duplication` at either reach; a copy of an exported
+  helper stays `canonical-helper`.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
@@ -79,7 +81,7 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   resolved under its own name.
 - **Re-grade every quality finding's severity yourself** against the master table in
   `severity.md` — read it now if you have not. It
-  carries the 52 rows, what each severity means, the anti-anchoring rule, and the
+  carries the 55 rows, what each severity means, the anti-anchoring rule, and the
   **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
   medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
   no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
@@ -123,17 +125,19 @@ the fix* is `report-only` too, with its one-line reason.
 
 - **Safe fixes** — mechanical, easy to eyeball: quality `openness`,
   `explaining-variable`, `magic-literal` whose name stays in its own file, `role-name`, `guard-clause`,
-  verified-redundant `needless-cast`, `verbose`, and `dead-code` that is an
-  unread binding or an always-true/false guard; **plus** comment
+  verified-redundant `needless-cast`, `verbose`, `dead-code` that is an
+  unread binding or an always-true/false guard, and `dead-code-surface` that drops a
+  redundant fallback or conjunct; **plus** comment
   **REMOVE** and **REWRITE**, and a comment **ADD** whose rationale the review
   actually confirmed — locate the code site by content and insert the comment
   above it. An `ADD` whose WHY you could only guess is **report-only**: hand the
   author the suggested text, since only they know the real reason.
 - **Walk the structural ones (one at a time)** — riskier, they move or remove code:
   `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
-  `full-construction` / `leaky-collection` reshaping, the `patterns` refactors
-  (`composition`, `polymorphism`, `execute-around`), `over-complex`
-  unifications, `test-structure` restructuring, a `magic-literal` name a second module
+  `full-construction` / `exposed-representation` / `leaky-collection` reshaping, the
+  `patterns` refactors (`composition`, `polymorphism`, `execute-around`), `over-complex`
+  and `shallow-duplication` unifications, `test-structure` restructuring, `dead-code-surface`
+  that removes an export or a return field, a `magic-literal` name a second module
   imports (where it lives decides an import edge), and `dead-code` removal of a branch that
   looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
   `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,

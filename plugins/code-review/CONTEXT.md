@@ -25,7 +25,7 @@ The single source of truth for one Lens's rule text: `references/rules/<lens>.md
 One of the twelve stable top-level labels in the quality vocabulary: `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `performance`, `spec`, and `standards`. Eleven are fixed by the plugin; `standards` is repo-defined (its rules come from the Standards file).
 
 **Rule**:
-A specific sub-tag under a Family — one of the 52 fixed rules across the eleven plugin-defined Families, or a repo-defined `standards` rule whose slug derives from the quoted rule — or one of the comment rules `R1`–`R12`.
+A specific sub-tag under a Family — one of the 55 fixed rules across the eleven plugin-defined Families, or a repo-defined `standards` rule whose slug derives from the quoted rule — or one of the comment rules `R1`–`R12`.
 
 **Finding**:
 The quality-side unit of output: `family` · rule · severity · lines → fix.
@@ -71,4 +71,5 @@ _Avoid_: lens selection (the user never picks), enabled lenses
 - a `critical` severity was proposed for security — resolved: severity stays `high | medium | nit`; a `security` or `spec` Finding is never `nit`.
 - a `types` Family (Primitive Obsession, explicit type boundaries) was proposed — resolved: not added; type concerns stay under `simplicity` · needless-cast and the language-applicability rules.
 - logic bugs were first left out of scope (the bundled `/code-review` hunts bugs) — resolved: Scanners kept handing them off under invented families with no row to grade them on, so a `correctness` Lens owns them, always on, never `nit`. A HANDOFF names one of the fixed Families, never a new one.
-- `over-complex` once covered both duplication and a single long site — resolved: duplication stays `over-complex` (high); a single site longer than its idea is `verbose` (nit).
+- `over-complex` once covered both duplication and a single long site — resolved: duplicated logic stays `over-complex` (high); duplication with no logic to drift (test cases, a one-line expression, a restated declaration) is `shallow-duplication` (medium); a single site longer than its idea is `verbose` (nit).
+- `dead-code` and `full-construction` once graded every case `high` — resolved: an unused export or return field and a redundant fallback are `dead-code-surface` (medium), and a complete object exposing its layout is `exposed-representation` (medium); an unreachable branch, an unread binding and a half-initialised object stay `high`.
