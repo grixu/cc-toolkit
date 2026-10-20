@@ -75,6 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security lens: a grant surviving a concurrent revoke goes to `correctness` · state-race;
   malformed input that only breaks the sender's own request is `correctness`, not
   `unvalidated-boundary`; intent comes only from the spec or the conventions note
+- Performance lens: a loop that isolates each item's failure is sequential by contract, a
+  candidate naming what a batch would lose; `blocking-in-async` covers synchronous calls with an
+  async counterpart, not in-memory CPU work
 - The performance subset leaves out test-support helpers and `*.config.*` modules
 - The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
   the diff carries none; each structural fix gets its own yes; the approved list is ticked off
