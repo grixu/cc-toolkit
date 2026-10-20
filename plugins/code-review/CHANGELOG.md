@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   walk structurally, and one that collides with a spec line or an existing test is report-only
 - `/start-cr --pr <number>` reviews a GitHub pull request's head against its base, in a detached
   worktree when the checkout is elsewhere, without switching the user's checkout
-- `/start-cr` closes with one commit question — by family with each security fix alone, one
-  commit, or none — and with `--pr` offers to push to the PR branch
+- `/start-cr` asks the commit mode together with the apply menu — each family committed as it
+  lands with each security fix alone, fixups into the branch commits that introduced the lines,
+  one commit, or none — and with `--pr` offers to push to the PR branch
 - A `policy` file kind — access policies, RBAC manifests, `CODEOWNERS` and CI workflows — judged by
   the security lens alone for access widening and exposure
 - `simplicity` · `verbose` (nit) for a single site longer than its idea, and `performance` ·

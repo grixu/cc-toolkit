@@ -144,9 +144,11 @@ Spec findings describe work to do, so they are report-only, with one exception: 
 and tests run once, and the wrap-up lists any approved fix that was skipped or could not be applied
 as approved. When a fix removes a secret from the source, rotating that secret is still your job.
 
-Last, one question offers to commit what landed: one commit per finding family (each security fix
-in a commit of its own), one commit for everything, or nothing. With `--pr` it then offers to push
-the commits to the pull request's branch, when that branch is writable from here.
+The same menu asks how to commit what lands: one commit per finding family, made as each family
+lands (each security fix in a commit of its own); fixup commits onto the branch commits that
+introduced the edited lines, when the branch has commits of its own; one commit for everything; or
+nothing. With `--pr` it then offers to push the commits to the pull request's branch, when that
+branch is writable from here.
 
 Before applying anything, the review saves the report and your selection to the session's scratch
 directory, so a long apply walk survives a context compaction.

@@ -308,12 +308,28 @@ must stay honest when findings don't spread across them:
 - A before/after **preview** diff belongs in an `AskUserQuestion` option, never in the
   report body — Step 5 stays clause-only.
 
+**Ask the commit mode in the same call.** The same `AskUserQuestion` carries a second,
+single-select question — how the fixes get committed — so the apply phase can commit as it
+goes instead of rebuilding history afterwards:
+
+- **Commit each family as it lands (Recommended)** — one commit per finding family the
+  fixes come from (`comments`, each craft family, `security`, `correctness`…), each
+  `security` fix in a commit of its own so it can be reverted or reviewed alone;
+- **Fixup into the commit that introduced the line** — offered only when the branch has its
+  own commits above the base (`git rev-list --count <base>..HEAD` above zero): each fix
+  becomes a `git commit --fixup=<sha>` of the branch commit `git blame` names for the line
+  it edits;
+- **One commit** — every applied fix together, at the end;
+- **Leave uncommitted** — the edits stay in the working tree for the user.
+
+`Report only` alone makes the second answer moot; ignore it then.
+
 **Put the review on disk before the apply phase starts.** The apply walk is the longest stretch
 of the run and the one most likely to be compacted; when that happens mid-walk, the report and
 the user's answer are gone, and a run that had to reconstruct its approved list by parsing its
 own transcript spent that effort for nothing. Write the rendered report to a file in the session
 scratchpad before the menu, and the user's selection — each approved finding with its file, site
-and exact fix — under it as soon as the answer arrives. Read it back rather than recalling it,
+and exact fix, and the commit mode — under it as soon as the answer arrives. Read it back rather than recalling it,
 and say where it is in the wrap-up.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
@@ -374,6 +390,16 @@ nothing beyond the listed fixes, and **do not run build/tests** (you run them on
 applied per file and what it skipped, with the reason. Run the editors to completion
 first, then walk the structural fixes.
 
+**Commit as the fixes land, in the mode the user chose.** Apply family by family and commit
+each family's edits before the next family touches the same files, so `git add <paths>`
+always captures one family and never another's half — splitting one file's mixed edits by
+hunk afterwards is the work this ordering avoids. The safe batch follows the same order:
+its editors (or your inline edits) take one family at a time, and families whose edits share
+no file may run together. In fixup mode, commit each fix as it
+lands, blaming the line before the edit; a fix on a line no branch commit introduced (base
+code, a boy-scout fix) gets a commit of its own. A fix that has to touch a file another
+family's commit is still pending on waits until that commit is made.
+
 **Walk the structural fixes yourself, one at a time — never fan these out.** They
 move code, must be sequenced, and are verified by build/tests, so they stay under
 your control even when the safe batch is parallelized. **Each one gets its own yes**:
@@ -393,16 +419,13 @@ what each editor applied or skipped into the wrap-up, and when a `secret-in-sour
 fix landed, say plainly that the secret still needs rotating and that is the user's
 step.
 
-## Step 7 — Commit (one question)
+## Step 7 — Commit
 
-When at least one fix landed, close with **one** `AskUserQuestion` about committing them —
-the same turn as the wrap-up, never left for the user to ask:
-
-- **Commit by family (Recommended)** — one commit per finding family the fixes came from
-  (`comments`, each craft family, `security`, `correctness`…), each `security` fix in a
-  commit of its own so it can be reverted or reviewed alone;
-- **One commit** — every applied fix together;
-- **Leave uncommitted** — the edits stay in the working tree for the user.
+The commit mode was answered with the menu in Step 6; this step never asks it again. Family and
+fixup commits were made as the fixes landed. With **One commit**, make it now, after the
+build/tests run. Either way the wrap-up lists the commits made (`git log --oneline
+<first>^..HEAD`); in fixup mode it adds that folding them in is the user's step —
+`git rebase -i --autosquash <base>` — never one the review runs.
 
 Stage only the files the apply phase edited, by path — `git add <paths>`, never `-A` or `.`
 — so the user's own uncommitted work and the review's scratchpad file stay out. Match the
