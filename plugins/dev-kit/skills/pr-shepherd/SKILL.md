@@ -2,7 +2,7 @@
 name: pr-shepherd
 description: Shepherd the current branch's pull request in a self-paced loop until CI is green and every review thread is resolved, fixing failures and review comments with commits and pushes, and answering the unjustified ones in-thread. Use when the user asks to babysit, watch or drive a PR to green, or to keep fixing CI and review comments until the PR is clean.
 argument-hint: "[iteration]"
-allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only) Bash(git log *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
+allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
 disallowed-tools: AskUserQuestion
 ---
 
@@ -20,8 +20,8 @@ To **stop**: call `ScheduleWakeup` with `stop: true` (on a fixed-interval loop, 
 
 ## 1. Read the state
 
-1. `gh pr view --json number,url,state,headRefName,baseRefName,headRefOid,mergeable,comments,reviews`. No PR for the current branch, or `state` is not `OPEN`: stop.
-2. `git status --porcelain` and `git fetch`, then `git rev-list --left-right --count HEAD...@{u}`. A dirty tree, local commits ahead of the remote, or a diverged branch: stop, naming which; those changes are the user's. Untracked files (`??`) do not block, but are the user's: never stage them. Behind only: `git pull --ff-only`.
+1. `gh pr view --json number,url,state,headRefName,baseRefName,headRefOid,mergeable`. No PR for the current branch, or `state` is not `OPEN`: stop.
+2. `git status --porcelain` and `git fetch`, then `git rev-list --left-right --count HEAD...origin/<headRefName>` (`@{u}` may be unset). A dirty tree, local commits ahead of the remote, or a diverged branch: stop, naming which; those changes are the user's. Untracked files (`??`) do not block, but are the user's: never stage them. Behind only: `git pull --ff-only origin <headRefName>`.
 3. `mergeable == "CONFLICTING"`: stop; resolving conflicts with the base is the user's call. `UNKNOWN` is still computing and blocks nothing.
 4. Checks: `gh pr checks --required --json name,bucket,state,link,workflow`; when it reports no required checks, the same without `--required`. `pass` and `skipping` (skipped, neutral) are green; `fail` and `cancel` are *red*; `pending`, or no checks reported yet for the head commit, is *pending*.
 5. Review threads, with `OWNER`/`REPO` filled by `gh` and `N` the PR number:
@@ -62,7 +62,13 @@ When any check is red, invoke `dev-kit:ci-fix` with the arguments `<PR url> push
 
 ## 3. Handle review
 
-Take every *open* thread, reading the whole thread, the code at `path`/`line` on HEAD, and the PR's intent. Also read the `reviews` bodies and the PR conversation `comments`: they have no resolution state, so they sit outside the exit condition, but a concrete change request in one that no later comment of ours links to is handled like a thread, answered once with `gh pr comment <N> --body` that links its URL.
+Take every *open* thread, reading the whole thread, the code at `path`/`line` on HEAD, and the PR's intent. Also read the `reviews` bodies and the PR conversation `comments`, trimmed to what judging needs:
+
+```bash
+gh pr view <N> --json comments,reviews --jq '{comments: [.comments[] | {author: .author.login, url, createdAt, body: .body[0:500]}], reviews: [.reviews[] | select(.body != "") | {author: .author.login, state, submittedAt, body: .body[0:500]}]}'
+```
+
+They have no resolution state, so they sit outside the exit condition, but a concrete change request in one that no later comment of ours links to is handled like a thread, answered once with `gh pr comment <N> --body` that links its URL (a review has none: name its author and `submittedAt`). Read a truncated body in full only when it holds such a request.
 
 Judge each comment on its merits, whoever wrote it, into one verdict:
 
