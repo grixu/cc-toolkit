@@ -148,7 +148,8 @@ end of a live bug.
   - a binding is computed but never read — a variable, parameter, or import with no use;
   - an entry in a list or map that an earlier filter or match already removes, so it
     never takes effect;
-  - a function or method introduced by the change has no caller in scope;
+  - a function or method introduced by the change, and not exported, has no caller in
+    scope (an exported one nothing consumes is `dead-code-surface`);
   - speculative generality — an interface with a single implementer, a parameter
     always passed the same value, a hook/extension point nothing calls.
 - **Suggested fix**: delete the unreachable arm or the unused binding; or, if the code
