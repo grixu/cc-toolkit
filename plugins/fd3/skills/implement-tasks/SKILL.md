@@ -245,7 +245,11 @@ finding whose fix changes who may reach what, a finding whose fix would change b
 states, a report-only
 one, a boy-scout finding whose fix is not mechanically safe, a finding the fixer left unfixed, or
 anything the delta review found in the fixes it did apply; under `gated`, also every `security`
-fix and every boy-scout finding. Without `gated` the item holds nothing: its branch is `done`, and
+fix and every boy-scout finding. Three notices ride the same kind and hold a `gated` branch the same
+way: a real problem no review rule covers (settled like a finding: a repair, or dismissed), a
+structural comment verdict such as a MOVE (applied by a repair, or dismissed), and a
+`run /security-review` pointer — a command for the user to run on the files the review skipped,
+never something a repair fixes; it is settled when the user has run it or dismisses it. Without `gated` the item holds nothing: its branch is `done`, and
 the item waits in the end-of-run decision list (step 5), never as a question of its own. Under
 `gated` the branch passed CI and stays `merged` until the item is settled: a finding the user wants
 fixed goes to a repair; one the user dismisses needs no work, and when every `review` item of a
