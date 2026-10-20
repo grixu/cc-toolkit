@@ -272,7 +272,9 @@ Rules for filling it in:
   to land on. **Its entries stay countable**: separated by `;` on the one-line form, one bullet
   each otherwise, because the `Reconciliation` line's last two numbers are checked against them. A real problem keeps its own bullet rather than being compressed into a
   subordinate clause; that compression is how something worth acting on disappears. Drop
-  the block if empty.
+  the block if empty. A headless merge (`cr-merge`) also returns each such real-problem bullet
+  verbatim in its `unowned` list, and the `Skipped` line's `/security-review` pointer in its
+  `security-review` line: its caller reads the return, not the report.
 - **`Boy-scout`** holds only findings in code the change did not touch; omit the
   whole block when there are none.
 - **Resolved findings only.** The body lists confirmed findings; a refuted one goes in

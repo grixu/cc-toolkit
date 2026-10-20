@@ -54,8 +54,18 @@ lenses: <L> of 9 (skipped: <lens — reason; …>)
 findings:
 - <severity> · <family> · <rule> · <path>:L<lines> · <safe | structural | report-only> — <the fix, as a clause>
 - comments · R<n> · <VERDICT> · <path>:L<line> · <safe | structural | report-only> — <the fix>
+unowned:
+- <each Not flagged bullet that is a real problem merely without a rule, verbatim>
+security-review: <the Skipped line's /security-review pointer clause verbatim, naming the files>
 ```
 
 A `spec` · missing-requirement anchors to the spec's own path and lines. A boy-scout finding says
 `boy-scout` after its class. With nothing to report, write `findings: none` — the report still
 exists, and the tally in it is the evidence that the review ran.
+
+`unowned` carries what the findings list cannot: a problem the merge confirmed that no rule names
+sits in `Not flagged` as its own bullet, and a caller that reads only this block would never see
+it. Copy each such bullet as the report renders it; a look-alike passed on as a genuine
+non-finding stays out. With none, write the single line `unowned: none`. `security-review` copies
+the clause of the report's `Skipped` line that sends files to `/security-review`, file names
+included; when nothing skipped calls for it, write `security-review: none`.

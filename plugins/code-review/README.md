@@ -225,7 +225,7 @@ the `fd3` plugin's implementation workflows, and not meant for you to run.
 |---|---|---|
 | `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path>]` | `scope.json`, `conventions.md`, `standards.md` |
 | `code-review:cr-scan` | `--lens <lens> --context <dir>`, one agent per active lens | `<lens>.md` |
-| `code-review:cr-merge` | `--context <dir>` | `cr-report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only` |
+| `code-review:cr-merge` | `--context <dir>` | `cr-report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only`, plus the real problems no rule names and the files left to `/security-review` |
 
 They review committed changes only, never edit the checkout, and never ask anything. An empty
 change or a lens that did not report comes back as a status (`empty`, `incomplete`), never as a
