@@ -162,8 +162,10 @@ Authentication says who is calling; authorization says whether *this* caller may
   request-facing caller — **a test that would stay green if the guard regressed is
   `tests` · test-fidelity, not this rule**: the missing assertion is a test defect, and
   grading it here turns a medium into a high and puts the whole review under a security
-  headline it has not earned. This rule almost always needs the registration read; when it
-  is out of reach, the finding is `(verify)`, never an assertion.
+  headline it has not earned. A grant that survives a concurrent revoke — roles read
+  outside the transaction that applies them, a count never checked — is a `HANDOFF` to
+  `correctness` · state-race, never a cleared line. This rule almost always needs the
+  registration read; when it is out of reach, the finding is `(verify)`, never an assertion.
 
 #### `unvalidated-boundary` — parse at the edge, then trust
 
@@ -186,7 +188,10 @@ unparsed inherits every malformed or unexpected value the sender chooses.
   equality or enum membership; internal-only callers already fed validated data; a
   framework that validates by declaration (typed route params, a validation pipe).
   When the sink is an interpreter this is `injection-sink`; when it is an id with no
-  owner predicate it is `missing-access-check` — most-specific wins.
+  owner predicate it is `missing-access-check` — most-specific wins. When malformed input
+  only breaks the sender's own request or record — no reach into another tenant, no
+  privilege, no data exposure, no interpreter sink — it is a `HANDOFF` to `correctness` ·
+  unhandled-case, not this rule.
 
 #### `insecure-setting` — a literal that switches a protection off
 
@@ -263,4 +268,6 @@ yesterday, and nothing in the code looks wrong afterwards.
   of the same permission; a boundary moved rather than removed — the guard now sits one
   layer up and you have read it; a new endpoint with no previous boundary, which is
   `missing-access-check` territory if anything. When the diff does not show the previous
-  boundary, this rule does not apply.
+  boundary, this rule does not apply. Intent comes from the spec and the conventions note
+  only: a design doc you found by searching is cited in a candidate as "intent
+  unconfirmed", never weighed as authority for clearing or raising a finding.
