@@ -45,18 +45,20 @@ Output: a `ci-fix result` block with the status (`fixed`, `rerun`, `nothing-to-f
 
 ### pr-shepherd: drive a pull request to green
 
-Use it when your branch has an open pull request and you want CI fixed and review comments handled without watching it.
+Use it when your branch has an open pull request and you want CI fixed and review comments handled without watching it. Pass several pull request numbers to shepherd a stack:
 
 ```
 /dev-kit:pr-shepherd
+/dev-kit:pr-shepherd 101 102 103
 ```
 
-Running it authorizes commits and pushes to the pull request's branch, and counts as the per-branch push consent a repository rule reserving `git push` for humans asks for. It never merges or rebases the base into the branch, resolves conflicts, force-pushes, or closes, reopens or edits the pull request unless a later message of yours names that action. It starts a self-paced `/loop`, and each round does the following:
+Running it authorizes commits and pushes to the pull request's branch, and counts as the per-branch push consent a repository rule reserving `git push` for humans asks for. Outside the stack merges below, it never merges or rebases the base into the branch, resolves conflicts, force-pushes, or closes, reopens or edits the pull request unless a later message of yours names that action. It starts a self-paced `/loop`, and each round does the following:
 
 - It hands every red check to `ci-fix`, which may push without asking; it never fixes or reruns CI itself. A red check that is not required gets one `ci-fix` run; if it stays red, the report lists it for you instead of holding the loop.
 - It judges each open review comment on its merits. For a comment it agrees with, it makes the change, commits and pushes it, replies `Fixed in <sha>`, and resolves the thread.
 - It answers a comment it disagrees with, or a question, with evidence and an @-mention of the author. It resolves bot threads after replying and leaves human threads for the reviewer to resolve.
 - A comment whose fix is a trade-off only you can make (security posture, scope) gets one reply listing the options and their cost; the thread stays open for you, and the report lists it.
+- In a stack, each pull request gets its own worktree. A fix lands on the lowest branch that owns the code and reaches the branches above it by a plain merge of each base into its child, never a rebase; it never merges the default branch in.
 - It waits 5 minutes while checks run, and 30, then 60 minutes while it waits for reviewers.
 
 It never asks you anything mid-run. It stops and reports when any of these happens:
@@ -115,7 +117,7 @@ Each skill pre-approves only some of the commands it runs. Anything else asks fo
 | Skill | Pre-approved | Still asks |
 |---|---|---|
 | `ci-fix` | File edits; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checks from third-party apps); your test, lint and build commands |
-| `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
+| `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `merge`, `worktree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
 | `dep-upgrade-check` | `gh repo view`; `gh pr view`, `diff`, `checks`; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; firecrawl search and scrape; context7 | `gh api` (changelog files, commit ranges); lookups for npm, yarn, Python, Go, PHP and Rust; the optional worktree build |
 | `pr-open` | Nothing | Every `git` and `gh` command |
 
@@ -124,5 +126,5 @@ An unattended `pr-shepherd` loop pauses at the first permission prompt. Before y
 ## Advanced
 
 - `ci-fix` accepts the extra argument `push-authorized`. It then pushes without asking and ends with status `blocked` wherever it would otherwise ask you. `pr-shepherd` calls it this way.
-- `pr-shepherd` accepts an `iteration` argument. The loop passes it; you do not need to.
+- `pr-shepherd` accepts an `iteration` argument after any pull request numbers. The loop passes it; you do not need to.
 - `skills/dep-upgrade-check/bot-prs.md` and `ecosystems.md` are reference files the skill reads, not commands.

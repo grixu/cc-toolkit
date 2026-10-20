@@ -1,26 +1,28 @@
 ---
 name: pr-shepherd
-description: Shepherd the current branch's pull request in a self-paced loop until CI is green and every review thread is resolved, fixing failures and review comments with commits and pushes, and answering the unjustified ones in-thread. Use when the user asks to babysit, watch or drive a PR to green, or to keep fixing CI and review comments until the PR is clean.
-argument-hint: "[iteration]"
-allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git merge-tree *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
+description: Shepherd the current branch's pull request, or a stack of pull requests named by number, in a self-paced loop until CI is green and every review thread is resolved, fixing failures and review comments with commits and pushes, and answering the unjustified ones in-thread. Use when the user asks to babysit, watch or drive a PR to green, or to keep fixing CI and review comments until the PR is clean.
+argument-hint: "[PR …] [iteration]"
+allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git merge-tree *) Bash(git merge *) Bash(git worktree *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
 disallowed-tools: AskUserQuestion
 ---
 
 Arguments: **$ARGUMENTS**
 
-Invoking this skill authorizes every commit and push it describes, on the PR's branch only. It does not cover merging or rebasing the base into the branch, resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. It runs unattended: wherever it needs a human, it *stops* (below) with a report instead of asking.
+Invoking this skill authorizes every commit and push it describes, on the branches of the PRs it shepherds only. It does not cover merging or rebasing the base into the branch (the stack merge under Entry is the one exception), resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. It runs unattended: wherever it needs a human, it *stops* (below) with a report instead of asking.
 
 ## Entry
 
-This skill body is one *iteration* of a self-paced `/loop`. When the arguments carry `iteration`, or this turn is already a `/loop` fire, run the iteration. Otherwise invoke the `loop` skill with the arguments `/dev-kit:pr-shepherd iteration` and end the turn: the loop runs the first iteration at once and paces the rest. When the `loop` skill is unavailable, run one iteration and tell the user the loop could not start.
+This skill body is one *iteration* of a self-paced `/loop`. When the arguments carry `iteration`, or this turn is already a `/loop` fire, run the iteration. Otherwise invoke the `loop` skill with the arguments `/dev-kit:pr-shepherd <PR numbers, if any> iteration` and end the turn: the loop runs the first iteration at once and paces the rest. When the `loop` skill is unavailable, run one iteration and tell the user the loop could not start.
 
 Every iteration re-reads the whole state from git and GitHub; the transcript of earlier iterations counts only toward the caps.
+
+**Stacks.** With no PR number in the arguments, the PR is the current branch's; with one, it is that PR. With several, they form a stack: run steps 1–3 for each PR in its own worktree on its head branch (`git worktree add <dir> <headRefName>` outside the repository, or the worktree `git worktree list` already shows on that branch), lowest PR first. A fix lands on the lowest branch in the stack that owns the code and reaches the PRs above it by a plain merge of base into child: after pushing the base, run `git fetch` and `git merge --no-edit origin/<baseRefName>` in the child's worktree, then push the child, one level at a time. Never rebase. This is the one exception to the base-merge ban, and only between branches of the set; merging the default branch into any of them stays forbidden. When such a merge conflicts, `git merge --abort` and stop, naming the files. Mergeability is judged per PR, as GitHub reports it. Step 4 decides over the whole set: done needs every PR done, and a stop that fires for one PR stops the loop once every PR has finished this iteration's steps 1–3.
 
 To **stop**: call `ScheduleWakeup` with `stop: true` (on a fixed-interval loop, delete its job with `CronDelete` instead), then write the final report.
 
 ## 1. Read the state
 
-1. `gh pr view --json number,url,state,headRefName,baseRefName,headRefOid,mergeable`. No PR for the current branch, or `state` is not `OPEN`: stop.
+1. `gh pr view [<N>] --json number,url,state,headRefName,baseRefName,headRefOid,mergeable`, with `<N>` the PR number when the arguments name one. No PR for the current branch, or `state` is not `OPEN`: stop.
 2. `git status --porcelain` and `git fetch`, then `git rev-list --left-right --count HEAD...origin/<headRefName>` (`@{u}` may be unset). A dirty tree, local commits ahead of the remote, or a diverged branch: stop, naming which; those changes are the user's. Untracked files (`??`) do not block, but are the user's: never stage them. Behind only: `git pull --ff-only origin <headRefName>`.
 3. `mergeable == "CONFLICTING"`: trust GitHub. Never argue it away with a local merge check, and never close, reopen, retarget or edit the PR to make GitHub recompute; a stacked PR conflicts through its whole base chain down to the default branch. Skip step 2 (GitHub runs no `pull_request` CI on a conflicting PR), finish step 3 and push, then stop, naming the conflicting files (`git merge-tree --write-tree --name-only HEAD origin/<baseRefName>`, or the lower branch of the chain where the conflict sits) and saying that re-running before the conflict is resolved repeats this stop. Resolving it is the user's call. `UNKNOWN` is still computing and blocks nothing.
 4. Checks: `gh pr checks --json name,bucket,state,link,workflow` for every check, and the same with `--required` for the required ones; when none is required, every check counts as required. `pass` and `skipping` (skipped, neutral) are green; `fail` and `cancel` are *red*; `pending`, or no checks reported yet for the head commit, is *pending*. A red non-required check is sent to ci-fix once; when it stays red after that, it goes under left-to-the-user in the report instead of blocking done.
@@ -77,9 +79,9 @@ Judge each comment on its merits, whoever wrote it, into one verdict:
 - **question**: it asks rather than requests. Answer it the same way, @-mentioning the author. When the honest answer reveals a defect, the verdict is justified.
 - **decision**: the fix is a trade-off only the PR's owner can make (security posture, a scope or spec change). Change nothing; reply once with the options and the cost of each, @-mentioning the author, and list it under left-to-the-user in the report.
 
-An outdated thread (`isOutdated`) whose point a later commit already addresses is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, apply neither and reply in both, linking each to the other and @-mentioning both authors. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
+An outdated thread (`isOutdated`) whose point a later commit already addresses, or a thread whose point another PR in the stack already fixes, is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, apply neither and reply in both, linking each to the other and @-mentioning both authors. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
 
-After the fixes are committed, `git push` once, then post and resolve through GraphQL (`THREAD_ID` is the thread's `id`):
+After the fixes are committed, `git push` once per branch, then post and resolve through GraphQL (`THREAD_ID` is the thread's `id`):
 
 ```bash
 gh api graphql -F threadId=THREAD_ID -f body="$BODY" -f query='
@@ -90,7 +92,7 @@ gh api graphql -F threadId=THREAD_ID -f query='
 mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { thread { isResolved } } }'
 ```
 
-- **justified**: reply `Fixed in <short SHA>.` with one line on what changed, then resolve.
+- **justified**: reply `Fixed in <short SHA>.` (`Fixed in <short SHA> (#<PR>).` when another PR in the stack carries it) with one line on what changed, then resolve.
 - **unjustified** or **question** from a bot (`author.__typename == "Bot"`): post the reply, then resolve.
 - **unjustified** or **question** from a human: post the reply and leave the thread unresolved; it is now awaiting and theirs to resolve.
 - **decision**, from anyone: post the reply and leave the thread unresolved; it is handed over.
@@ -112,7 +114,7 @@ Else call `ScheduleWakeup` for the next iteration, choosing the delay by what is
 - something was pushed or checks are pending: 5 minutes, longer when the pending checks took longer on earlier runs;
 - every required check is green and only awaiting threads remain: 30 minutes, then 60 once an iteration found nothing new.
 
-End every iteration with one status line: checks green/red/pending counts, threads open/awaiting, and what this iteration did.
+End every iteration with one status line (one per PR in a stack): checks green/red/pending counts, threads open/awaiting, and what this iteration did.
 
 ## Final report
 
