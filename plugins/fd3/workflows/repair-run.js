@@ -731,20 +731,28 @@ const strayChanges = (dirty, unit) => {
   const toolDirt = new Set((baseline.get(unit.repo) && baseline.get(unit.repo).dirty) || [])
   const tracked = []
   const untracked = []
+  const prose = []
   for (const line of (dirty || '').split('\n')) {
     if (!line.trim()) continue
+    // A runner that returned prose here never captured the status, so no path in it is real.
+    if (!/^[ MADRCU?!]{2} /.test(line)) {
+      prose.push(line.trim())
+      continue
+    }
     const p = porcelainPath(line)
     if (!p || own.has(`${tree}/${p}`) || toolDirt.has(p)) continue
     ;(line.startsWith('??') ? untracked : tracked).push(p)
   }
-  return { tracked, untracked }
+  return { tracked, untracked, prose }
 }
 
 const ciFault = (ci, unit) => {
   const ran = (ci.branch || '').trim()
   if (ran && ran !== unit.branch) return `ran in a checkout on ${ran} instead of ${unit.branch}`
   if (!ran) return `could not name the branch it ran on`
-  const stray = strayChanges(ci.dirty, unit).tracked
+  const changes = strayChanges(ci.dirty, unit)
+  if (changes.prose.length > 0) return `did not capture \`git status --porcelain\` (dirty reads "${changes.prose[0].slice(0, 120)}")`
+  const stray = changes.tracked
   if (stray.length > 0) {
     const shown = stray.slice(0, 5).join(', ')
     return `left ${stray.length} uncommitted change(s) in the worktree (${shown}${stray.length > 5 ? ', …' : ''}), so its verdict describes a tree no commit holds`
