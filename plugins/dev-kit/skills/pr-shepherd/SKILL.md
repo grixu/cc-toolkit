@@ -23,7 +23,7 @@ To **stop**: call `ScheduleWakeup` with `stop: true` (on a fixed-interval loop, 
 1. `gh pr view --json number,url,state,headRefName,baseRefName,headRefOid,mergeable`. No PR for the current branch, or `state` is not `OPEN`: stop.
 2. `git status --porcelain` and `git fetch`, then `git rev-list --left-right --count HEAD...origin/<headRefName>` (`@{u}` may be unset). A dirty tree, local commits ahead of the remote, or a diverged branch: stop, naming which; those changes are the user's. Untracked files (`??`) do not block, but are the user's: never stage them. Behind only: `git pull --ff-only origin <headRefName>`.
 3. `mergeable == "CONFLICTING"`: trust GitHub. Never argue it away with a local merge check, and never close, reopen, retarget or edit the PR to make GitHub recompute; a stacked PR conflicts through its whole base chain down to the default branch. Skip step 2 (GitHub runs no `pull_request` CI on a conflicting PR), finish step 3 and push, then stop, naming the conflicting files (`git merge-tree --write-tree --name-only HEAD origin/<baseRefName>`, or the lower branch of the chain where the conflict sits) and saying that re-running before the conflict is resolved repeats this stop. Resolving it is the user's call. `UNKNOWN` is still computing and blocks nothing.
-4. Checks: `gh pr checks --required --json name,bucket,state,link,workflow`; when it reports no required checks, the same without `--required`. `pass` and `skipping` (skipped, neutral) are green; `fail` and `cancel` are *red*; `pending`, or no checks reported yet for the head commit, is *pending*.
+4. Checks: `gh pr checks --json name,bucket,state,link,workflow` for every check, and the same with `--required` for the required ones; when none is required, every check counts as required. `pass` and `skipping` (skipped, neutral) are green; `fail` and `cancel` are *red*; `pending`, or no checks reported yet for the head commit, is *pending*. A red non-required check is sent to ci-fix once; when it stays red after that, it goes under left-to-the-user in the report instead of blocking done.
 5. Review threads, with `OWNER`/`REPO` filled by `gh` and `N` the PR number:
 
 ```bash
@@ -52,13 +52,13 @@ Classify each unresolved thread by its last comment:
 
 ## 2. Fix red CI
 
-When any check is red, invoke `dev-kit:ci-fix` with the arguments `<PR url> push-authorized`, and read its result block:
+Every red check goes through ci-fix; never fix or rerun CI directly in this skill. When a required check is red, or a red non-required one has not had its ci-fix run yet, invoke `dev-kit:ci-fix` with the arguments `<PR url> push-authorized`, and read its result block:
 
 - `fixed` or `rerun`: CI restarts; continue.
 - `nothing-to-fix`: the red check went green or pending meanwhile; continue.
 - `not-fixable` or `blocked`: finish step 3, then stop with ci-fix's `cause` and `next`.
 
-**Fix cap**: when the same check is red again after two ci-fix runs that reported `fixed` or `rerun` for it, stop instead of invoking ci-fix a third time; the cycle needs a human.
+**Fix cap**: count every fix or rerun cycle on a check, whichever step made it (a ci-fix run reporting `fixed` or `rerun`, or a review fix aimed at that check). When the same check is red again after two such cycles, stop instead of invoking ci-fix a third time; the cycle needs a human.
 
 ## 3. Handle review
 
@@ -99,18 +99,18 @@ A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report 
 
 ## 4. Decide: stop or wake
 
-**Done** when every check is green and no unresolved thread remains: stop, reporting success.
+**Done** when every required check is green, every red non-required check has had its one ci-fix run, and no unresolved thread remains: stop, reporting success.
 
 Otherwise stop when one of these holds:
 
-- CI is green and every unresolved thread is either *handed over* (two rebuttals already posted, a decision reply posted, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
+- Every required check is green and every unresolved thread is either *handed over* (two rebuttals already posted, a decision reply posted, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
 - A stop named in steps 1 to 3 fired.
 - This is iteration 48 of the loop.
 
 Else call `ScheduleWakeup` for the next iteration, choosing the delay by what is still moving:
 
 - something was pushed or checks are pending: 5 minutes, longer when the pending checks took longer on earlier runs;
-- CI is green and only awaiting threads remain: 30 minutes, then 60 once an iteration found nothing new.
+- every required check is green and only awaiting threads remain: 30 minutes, then 60 once an iteration found nothing new.
 
 End every iteration with one status line: checks green/red/pending counts, threads open/awaiting, and what this iteration did.
 

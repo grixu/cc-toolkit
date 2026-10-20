@@ -53,7 +53,7 @@ Use it when your branch has an open pull request and you want CI fixed and revie
 
 Running it authorizes commits and pushes to the pull request's branch, and counts as the per-branch push consent a repository rule reserving `git push` for humans asks for. It never merges or rebases the base into the branch, resolves conflicts, force-pushes, or closes, reopens or edits the pull request unless a later message of yours names that action. It starts a self-paced `/loop`, and each round does the following:
 
-- It hands red checks to `ci-fix`, which may push without asking.
+- It hands every red check to `ci-fix`, which may push without asking; it never fixes or reruns CI itself. A red check that is not required gets one `ci-fix` run; if it stays red, the report lists it for you instead of holding the loop.
 - It judges each open review comment on its merits. For a comment it agrees with, it makes the change, commits and pushes it, replies `Fixed in <sha>`, and resolves the thread.
 - It answers a comment it disagrees with, or a question, with evidence and an @-mention of the author. It resolves bot threads after replying and leaves human threads for the reviewer to resolve.
 - A comment whose fix is a trade-off only you can make (security posture, scope) gets one reply listing the options and their cost; the thread stays open for you, and the report lists it.
@@ -61,11 +61,11 @@ Running it authorizes commits and pushes to the pull request's branch, and count
 
 It never asks you anything mid-run. It stops and reports when any of these happens:
 
-- Every check is green and no review thread is open (success).
+- Every required check is green and no review thread is open (success).
 - The branch has no open pull request, uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
 - GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files; it never resolves the conflict, and running it again before you do stops the same way.
-- `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix attempts.
-- CI is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals or its reply on a decision, or cannot be replied to.
+- `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix or rerun cycles, whichever step made them.
+- Every required check is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals or its reply on a decision, or cannot be replied to.
 - It has run 48 rounds.
 
 Output: a final report listing the commits pushed, the threads fixed, answered or rebutted (with links), and everything left for you.
