@@ -193,7 +193,7 @@ commits its target lacks is never removed.
 | `tasks/NNNN-<slug>.md` | split-to-tasks | One file per task, next to the spec unless you name another directory. Its `status:` field is the run's state; keep the directory until the run is over. |
 | `<spec>.split.md` | split-to-tasks | The task table, the branch order per repository, and the coverage check. |
 | `<repo>.worktrees/<name>/` | implement | The worktrees, created beside the repository, not inside it. |
-| `<repo>.worktrees/.review/` | implement | The code-review working files and a `report.md` per branch and pass. |
+| `<repo>.worktrees/.review/` | implement | The code-review working files and a `cr-report.md` per branch and pass. |
 | `HIL_ACTIONS.md` | implement | The human steps in order, next to the tasks directory, for a run that waits days on people. |
 | `implement-answers.md` | implement | The answers to implement's first question batch and the decisions later report rounds settled, next to the tasks directory. |
 

@@ -219,7 +219,7 @@ dispatch implementation agents yourself.
 The completion notification truncates the result — read the full report from the notification's
 `<output-file>` path before relaying anything. The workflow returns per-task statuses,
 per-branch validation outcomes (with each branch's review findings and the path of its review
-`report.md`), agent `caveats`, the HIL
+`cr-report.md`), agent `caveats`, the HIL
 list, the tasks left unreachable behind blockers, and its `toolchain` and `baseline` knowledge.
 Relay it faithfully — a failed CI stays failed in the telling, and any totals you state are the
 report's own `tasks[]` tally, never hand-counted — with one distinction the report already
@@ -245,7 +245,7 @@ the item waits in the end-of-run decision list (step 5), never as a question of 
 `gated` the branch passed CI and stays `merged` until the item is settled: a finding the user wants
 fixed goes to a repair; one the user dismisses needs no work, and when every `review` item of a
 branch is dismissed, set that branch's tasks to `done` yourself — CI already passed on the commit
-they sit on. Give the `report.md` path with the findings: the one-line form in the HIL list drops
+they sit on. Give the `cr-report.md` path with the findings: the one-line form in the HIL list drops
 the evidence.
 
 Caveats are triaged, not relayed wholesale, and triage is not a question. One that names a
@@ -348,7 +348,7 @@ holds, in this order: one table — repository, branch, its stack base,
 its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
 citing the tickets; the still-open operational tasks — they need the branches landed first, so
 they never gate this proposal; *Decisions taken for you*, each with how to revert it; and the
-`review` items left open, numbered, each with its `report.md` path. Stacked branches make a pull-request chain: each pull
+`review` items left open, numbered, each with its `cr-report.md` path. Stacked branches make a pull-request chain: each pull
 request's base is its branch's stack base, and after one lands its successor is retargeted onto
 the default branch — but only when the predecessor landed as a merge commit. After a squash
 merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget

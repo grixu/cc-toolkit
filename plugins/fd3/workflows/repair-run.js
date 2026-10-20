@@ -602,7 +602,9 @@ const CR_MERGE_RESULT = {
   properties: {
     invoked: { type: 'boolean', description: 'the code-review:cr-merge skill was invoked through the Skill tool' },
     status: { enum: ['merged', 'incomplete', 'error'] },
-    report: { type: 'string', description: 'absolute path of report.md' },
+    report: { type: 'string', description: 'absolute path of cr-report.md' },
+    unowned: { type: 'array', items: { type: 'string' }, description: 'the `unowned:` lines, verbatim: real problems no rule covers' },
+    securityReview: { type: 'string', description: 'the `security-review:` line, verbatim; empty when it reads none' },
     missing: { type: 'array', items: { type: 'string' }, description: 'lenses that did not report; only when status is incomplete' },
     findings: {
       type: 'array',
@@ -662,7 +664,9 @@ const crMergePrompt = (dir, unit) =>
     `and return what its closing block says: status, the report path, the lenses that did not`,
     `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
-    `\`boy-scout\` token sets boyScout=true. Return invoked=true; when`,
+    `\`boy-scout\` token sets boyScout=true. Copy every \`unowned:\` line verbatim as one entry under`,
+    `unowned, and the \`security-review:\` line's text as securityReview, empty when either reads none.`,
+    `Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
     ...(reservationsFor(unit)
       ? [``, reservationsFor(unit), ``, `Set reserved=true on a finding that asks to undo a listed decision. Change nothing else the skill returned.`]
@@ -705,10 +709,24 @@ const runReview = async (unit, base, pass, tag) => {
         : 'failed'
     return { dir, dead: `cr-merge ${why}` }
   }
-  return { dir, report: merged.report, files: prep.files || 0, lenses: lenses.length, findings: merged.findings }
+  return {
+    dir,
+    report: merged.report || `${dir}/cr-report.md`,
+    files: prep.files || 0,
+    lenses: lenses.length,
+    findings: merged.findings,
+    notices: [
+      ...(merged.unowned || []).map((u) => `${u} — a real problem no review rule covers`),
+      ...(merged.securityReview ? [`run /security-review: ${merged.securityReview}`] : []),
+    ],
+  }
 }
 
 const serious = (f) => f.severity === 'high' || f.severity === 'medium'
+const isKeep = (f) => f.severity === 'comment' && /\bKEEP\b/.test(f.rule)
+// A comment move is structural, so it is never applied unasked; with no severity it would
+// otherwise fall to the report list nobody acts on.
+const needsHuman = (f) => serious(f) || (f.severity === 'comment' && f.risk === 'structural')
 const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
 
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
@@ -929,16 +947,18 @@ for (const unit of units) {
       if (delta.dead && !delta.empty) {
         reviewDead = `the review of the repair did not run: ${delta.dead}`
       } else if (!delta.empty) {
-        const open = delta.findings.filter((f) => serious(f) && !f.reserved)
-        summary.review.findings = delta.findings.map(findingLine)
+        // Pre-existing code in a touched file is listed apart: offering it as open review work
+        // turns every repair into the next repair's input.
+        const live = delta.findings.filter((f) => !f.reserved && !isKeep(f))
+        const open = live.filter((f) => !f.boyScout && needsHuman(f))
+        summary.review.findings = live.filter((f) => !f.boyScout).map(findingLine)
+        summary.review.boyScout = live.filter((f) => f.boyScout).map(findingLine)
+        const held = gated ? 'the task files keep their status until a repair settles it' : 'left for the end-of-run decision; the branch is not held on it'
         for (const f of open) {
-          hil.push({
-            slug: null,
-            kind: 'review',
-            reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${gated ? 'the task files keep their status until a repair settles it' : 'left for the end-of-run decision; the branch is not held on it'}`,
-          })
+          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${held}` })
         }
-        reviewHeld = gated && open.length > 0
+        for (const n of delta.notices) hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${n} — ${held}` })
+        reviewHeld = gated && open.length + delta.notices.length > 0
       }
     }
   }

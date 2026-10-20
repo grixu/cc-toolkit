@@ -693,7 +693,9 @@ const CR_MERGE_RESULT = {
   properties: {
     invoked: { type: 'boolean', description: 'the code-review:cr-merge skill was invoked through the Skill tool' },
     status: { enum: ['merged', 'incomplete', 'error'] },
-    report: { type: 'string', description: 'absolute path of report.md' },
+    report: { type: 'string', description: 'absolute path of cr-report.md' },
+    unowned: { type: 'array', items: { type: 'string' }, description: 'the `unowned:` lines, verbatim: real problems no rule covers' },
+    securityReview: { type: 'string', description: 'the `security-review:` line, verbatim; empty when it reads none' },
     missing: { type: 'array', items: { type: 'string' }, description: 'lenses that did not report; only when status is incomplete' },
     findings: {
       type: 'array',
@@ -905,7 +907,9 @@ const crMergePrompt = (dir) =>
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
     `\`boy-scout\` token sets boyScout=true, and a security finding whose fix changes who may reach`,
     `what — a permission, a role, a policy, an auth check's scope — sets access=true. A finding whose`,
-    `fix would change behaviour the spec states — the line says so — sets specBound=true. Return invoked=true; when`,
+    `fix would change behaviour the spec states — the line says so — sets specBound=true. Copy every`,
+    `\`unowned:\` line verbatim as one entry under unowned, and the \`security-review:\` line's text`,
+    `as securityReview, empty when either reads none. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
     ...(reservations
       ? [
@@ -955,7 +959,17 @@ const runReview = async (unit, base, pass, tag) => {
         : 'failed'
     return { dir, dead: `cr-merge ${why}` }
   }
-  return { dir, report: merged.report, files: prep.files || 0, lenses: lenses.length, findings: merged.findings }
+  return {
+    dir,
+    report: merged.report || `${dir}/cr-report.md`,
+    files: prep.files || 0,
+    lenses: lenses.length,
+    findings: merged.findings,
+    notices: [
+      ...(merged.unowned || []).map((u) => `${u} — a real problem no review rule covers`),
+      ...(merged.securityReview ? [`run /security-review: ${merged.securityReview}`] : []),
+    ],
+  }
 }
 
 // A spec finding is work the spec never asked for, and a report-only one has no fix to apply — both
@@ -973,14 +987,18 @@ const fixable = (f) =>
   (gated
     ? f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout
     : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe') && !f.access)
+const isKeep = (f) => f.severity === 'comment' && /\bKEEP\b/.test(f.rule)
+// A comment move is structural, so it is never applied unasked; with no severity it would
+// otherwise fall to the report list nobody acts on.
+const needsHuman = (f) => serious(f) || (f.severity === 'comment' && f.risk === 'structural')
 const sortFindings = (findings) => {
-  const live = findings.filter((f) => !f.reserved)
+  const live = findings.filter((f) => !f.reserved && !isKeep(f))
   const applied = live.filter(
     (f) => (serious(f) && fixable(f)) || (f.severity === 'comment' && f.risk === 'safe' && !(gated && f.boyScout)),
   )
-  const forHuman = live.filter((f) => !applied.includes(f) && serious(f))
+  const forHuman = live.filter((f) => !applied.includes(f) && needsHuman(f))
   const reported = live.filter((f) => !applied.includes(f) && !forHuman.includes(f))
-  return { applied, forHuman, reported, reserved: findings.length - live.length }
+  return { applied, forHuman, reported, reserved: findings.filter((f) => f.reserved).length }
 }
 const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
 const heldNote = gated
@@ -1215,6 +1233,7 @@ for (const unit of units) {
       reviewDead = `the review did not run: ${first.dead}`
     } else {
       const sorted = sortFindings(first.findings)
+      const notices = [...first.notices]
       summary.reviewFindings = first.findings.length
       summary.findings = [...sorted.applied, ...sorted.forHuman, ...sorted.reported].map(findingLine)
       Object.assign(summary.review, { applied: sorted.applied.length, forHuman: sorted.forHuman.length, reported: sorted.reported.length, reserved: sorted.reserved })
@@ -1245,13 +1264,15 @@ for (const unit of units) {
             const open = [...d.applied, ...d.forHuman]
             summary.review.delta.findings = open.length
             sorted.forHuman.push(...open)
+            notices.push(...(delta.notices || []))
           }
         }
       }
       for (const f of sorted.forHuman) {
         hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${heldNote}` })
       }
-      reviewHeld = reviewHeld || (gated && sorted.forHuman.length > 0)
+      for (const n of notices) hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${n} — ${heldNote}` })
+      reviewHeld = reviewHeld || (gated && sorted.forHuman.length + notices.length > 0)
     }
   }
 
