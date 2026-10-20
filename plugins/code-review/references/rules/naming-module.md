@@ -72,14 +72,21 @@ If not, the name has leaked the mechanism and should be generalized.
     `retryLoop`, `mapReduceUsers`, a boolean `usesRegexMatch`; any name that would
     have to change if you swapped in an equivalent implementation;
   - a name reveals nothing (`data`, `handle`, `process`, `result`, `temp` without
-    context) — if no honest name comes, the design is murky.
+    context) — if no honest name comes, the design is murky;
+  - a name says something the code does not do: one the change left in place after
+    altering what the code does (in scope even though the name predates the change), a
+    sibling or paired name that promises the same thing but answers differently
+    (`memberOf` / `isMemberOf`), or one name for two different things in one scope.
 - **Suggested fix**: rename to the concept — `includes`, `sortedUsers`,
   `activeUsers` — so callers read intent, not implementation.
 - **Calibration → not a finding**: names where the mechanism *is* the intent — a
   `quickSortComparator` inside a sorting library, `debounce`, `LinkedList`, a
   `sha256` helper — and established domain/algorithm names that are the public
   contract. Flag leaking implementation, not a legitimately mechanism-named
-  abstraction.
+  abstraction. A pure consistency difference — tense, a prefix, singular vs plural —
+  that no reader could take for a false claim is not a finding. A name that reads like
+  the domain's own vocabulary may be one a spec or task file prescribes, which you
+  cannot see: when you suspect it, `CANDIDATES`, so the merge checks the spec.
 
 #### `role-name` — name by role, not type
 
@@ -209,7 +216,8 @@ it, and the next feature adds its own.
 - **Calibration → not a finding**: a shared module whose *purpose* is per-feature
   registration (a router table, plugin manifest, registry); a generic parameter one
   feature happens to use first; a module that looks shared by directory name but has
-  one importer — Grep first; with one consumer nothing is "leaking".
+  one importer — Grep first; with one consumer nothing is "leaking". A placement a spec
+  or task file may prescribe goes to `CANDIDATES`, as for `intent-name`.
 
 #### `canonical-helper` — one helper per job
 
@@ -222,13 +230,18 @@ quarter.
   a second date format, a copied retry loop) — Grep the helper's name and its
   distinctive expression, open the matches, and confirm the contract is the same.
 - **Suggested fix**: delete the new helper and import the existing one (name it and
-  its path). Compare what each one *rejects* first: when the existing helper accepts
-  input the new one refuses (a looser pattern, no length cap, no null check), the swap
-  loosens validation at this call site — name the difference and keep the stricter
-  check in the fix, or send the site to `CANDIDATES`.
+  its path). Compare what each one *rejects* and *returns* first: when the existing
+  helper accepts input the new one refuses (a looser pattern, no length cap, no null
+  check), the swap loosens validation at this call site — name the difference and keep
+  the stricter check in the fix, or send the site to `CANDIDATES`. When it returns a
+  different shape or does more (a `select` the new one adds, an extra branch, a message
+  the user now sees), name the parameter the existing helper must gain, or send the site
+  to `CANDIDATES` as a behaviour change. A deletion that leaves the same call repeated at
+  several sites is not a fix.
 - **Calibration → not a finding**: a local variant with a genuinely different
   contract (rounding, locale, error behaviour) that says so; a test-only fake;
-  same-file duplication, which is `over-complex` — most-specific wins. A Grep that
+  duplication where no copy is exported, which is `over-complex`; a class or
+  repository overlapping another, which is `over-complex` too — most-specific wins. A Grep that
   finds nothing conclusive is `(verify)`, not a finding. On the same lines this
   deletion finding beats an extraction.
 

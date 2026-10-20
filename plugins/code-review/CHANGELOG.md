@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   import, never a repository, adapter or test helper; bot-managed version pins are self-evident;
   a test title's mechanism clause a mock cannot check is `test-fidelity`; test helpers one position
   off are within `ordering`'s "roughly"; moving code is never an `openness` fix
+- Naming lens: `intent-name` flags a name the code makes untrue, even one the change left in
+  place, and clears pure consistency differences; a name or placement a spec may prescribe goes to
+  `CANDIDATES`; `canonical-helper` compares what both helpers return too, never leaves the call
+  repeated, and hands an overlapping class to `over-complex`
 - The performance subset leaves out test-support helpers and `*.config.*` modules
 - The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
   the diff carries none; each structural fix gets its own yes; the approved list is ticked off
