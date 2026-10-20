@@ -371,7 +371,8 @@ faster, cleaner decision than an open-ended "want me to apply these?". Offer the
 choices that actually apply to this review, for example:
 
 - **Apply the safe fixes** — local, mechanical, easy to eyeball: `openness` blank
-  lines, `explaining-variable` locals, `magic-literal` constants, `role-name`
+  lines, `explaining-variable` locals, `magic-literal` constants that stay in their own
+  file, `role-name`
   renames, `guard-clause` inversions, verified-redundant `needless-cast`, `verbose`
   simplifications, and `dead-code` that is an unread binding or an
   always-true guard.
@@ -381,7 +382,8 @@ choices that actually apply to this review, for example:
   `leaky-collection` reshaping, the `patterns` refactors (`composition`,
   `polymorphism`, `execute-around`), `over-complex` unifications,
   `test-structure` restructuring, `dead-code` removal of a branch that looks
-  reachable, and every cross-module move: `dependency-direction` re-pointing,
+  reachable, a `magic-literal` constant a second module imports, and every cross-module
+  move: `dependency-direction` re-pointing,
   `misplaced-logic` relocation, `canonical-helper` replacement, `pass-through`
   removal, `feature-envy` method moves, `data-clump` value objects, and
   `message-chain` unwrapping.

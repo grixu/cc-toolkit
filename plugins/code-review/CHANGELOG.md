@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   family, gives duplication one owner per reach, re-checks comment fixes against R9, and
   `/start-cr` checks every grade against the severity table before it renders
 - `simplicity` · `over-complex` now covers duplication only
+- The merge keys duplication's owner on whether a copy is exported, so cross-file copies with no
+  exported one are `over-complex`; a fix that imports a shared value from a repository, adapter or
+  test helper is fixed before it is offered; a `magic-literal` constant a second module imports is
+  structural; a comment rewrite of text a spec line quotes is report-only
 - A suggested comment fix checks every claim it keeps, not only the clause it changed, and fits the
   file's print width; a name any fix proposes passes `intent-name` and `role-name` and reuses no
   exported name; a fix that is one move is one finding listing every site; a fix round's own
