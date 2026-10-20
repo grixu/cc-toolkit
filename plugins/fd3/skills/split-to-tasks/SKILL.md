@@ -68,11 +68,10 @@ repairing goes through the route above, and the split stops.
 
 ## Workflow
 
-Open your first reply with this checklist, before any tool call — a run that then stops on an
-unresolvable path has cost one message — and make the first tool call in that same reply. A reply
-that only announces the checklist, or only posts it, ends the turn with nothing done. Post it again
-in full — marks updated, never compressed to a line and never summarised — before every user
-interaction (the question batch, the report) and at the close:
+Post this checklist in full — marks updated, never compressed to a line and never summarised — in
+the same reply as every user interaction (the question batch, the report) and at the close. Step 1
+needs no announcement: start it with a tool call. A reply that only posts the checklist ends the
+turn with nothing done:
 
 ```
 - [ ] 1. Enumerate: work items, element codes, phases and gates, ownership, tickets
