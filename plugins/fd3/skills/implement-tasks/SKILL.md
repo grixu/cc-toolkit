@@ -183,6 +183,7 @@ Workflow({
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
     review: <true, "gated" or false — the step-2 answer>,
     decisions: [<on a relaunch: every decision earlier report rounds settled, verbatim>],
+    knownBases: ["<repository path>:<branch>", ...],
     maxFixRounds: 3,
     reportPath: <on a relaunch: the previous report's `<output-file>` path — omit on a first launch>
   }
@@ -193,6 +194,9 @@ Workflow({
 and repair instructions, verbatim, as `implement-answers.md` records them; a first launch omits it.
 Review and fix agents read them as settled, so a finding that would undo one reaches neither a fixer
 nor the user again.
+`knownBases` lists every `branch-base` no task builds that step 1 resolved to an existing branch, as
+`<repository path>:<branch>`; the workflow raises a `graph` item only for the others, so a confirmed
+root is not put to the user again on every launch.
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
 repository's `startRef` — the ref the user confirmed in step 2, fetched fresh in step 1.

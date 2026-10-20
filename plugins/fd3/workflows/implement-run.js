@@ -28,6 +28,8 @@ export const meta = {
 //                 security, boy-scout, unfixed and fix-review findings for a human; false skips review
 //   decisions     (optional) [string] — the user's standing decisions on this task graph from earlier
 //                 report rounds, verbatim; review and fix agents treat a finding against one as reserved
+//   knownBases    (optional) ["<repository path>:<branch>"] — branch-bases no task builds that the
+//                 skill already resolved to an existing branch; they raise no graph item
 //   maxFixRounds  CI fix attempts per branch before giving up
 //   reportPath    (optional) absolute path of a previous run's report file; one cheap agent reads
 //                 its toolchain and baseline knowledge, so a relaunch skips the re-scout and the
@@ -491,7 +493,7 @@ for (const t of tasks) {
   if (!t.baseBranch || t.repository === 'none') continue
   if (tasks.some((x) => x.repository === t.repository && x.branch === t.baseBranch)) continue
   const key = `${t.repository}:${t.baseBranch}`
-  if (danglingBases.has(key)) continue
+  if (danglingBases.has(key) || (input.knownBases || []).includes(key)) continue
   danglingBases.add(key)
   const affected = tasks.filter((x) => x.repository === t.repository && x.baseBranch === t.baseBranch).map((x) => x.slug)
   hil.push({ slug: null, kind: 'graph', reason: `branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds, so ${affected.join(', ')} start from it if it already exists and as stack roots if it does not. Confirm the base exists, or fix the branch-base.` })
