@@ -57,7 +57,9 @@ They write five lines where two read better. Hunt for the smaller version.
   the parameter that absorbs the difference ("collapse into
   `renderLine(invoice, label)` and pass the label at each site"), or the shorter
   expression it becomes. Treat this as a real defect, not a nicety: duplication that
-  drifts out of sync is a future bug.
+  drifts out of sync is a future bug. A collapse keeps what every caller and every
+  implementation of the same port or contract receives — a merged function that passes
+  a different shape to one of them is a behaviour change, not this fix.
 - **Calibration → the flag-argument trade-off**: Clean Code also warns that a
   **boolean/flag argument is a smell** — it usually means the function does two
   things. So weigh it: unify when the two bodies are *the same shape* and the
@@ -65,7 +67,9 @@ They write five lines where two read better. Hunt for the smaller version.
   when collapsing would force a flag that makes one function secretly do two jobs,
   or when the two are *conceptually distinct and likely to diverge* — premature
   DRY that couples unrelated things is its own defect. The goal is the simplest
-  code that still reads clearly, not the fewest functions at any cost.
+  code that still reads clearly, not the fewest functions at any cost. Copies a
+  dependency bot visibly keeps in sync — a `# renovate:` marker on each, an image tag in
+  `FROM` — carry no drift risk: not a finding here or under `shallow-duplication`.
 
 #### `shallow-duplication` — copies with no logic to drift
 
@@ -114,6 +118,10 @@ type — and a stale one actively hides a bug.
   - a cast that was needed only because some generated types were stale when the
     code was written, but **are regenerated now** — re-check against the current
     types before deciding.
+
+  Flag too a cast that exists only because a predicate the code already calls returns
+  `boolean` instead of a type guard (`isMultiple(x)` followed by `x as Multiple`): the
+  fix is the guard (`x is Multiple`), which removes every such cast.
 - **Verify before flagging**: this is a static-type claim. If type diagnostics or
   an LSP are available, use them to confirm the cast is redundant. If you cannot
   verify, mark the finding **(verify)** rather than asserting it — a wrong "remove
@@ -138,6 +146,8 @@ end of a live bug.
     surrounding code (nothing sets the field it tests, an earlier `return`/`throw`
     precedes it), so one arm never runs;
   - a binding is computed but never read — a variable, parameter, or import with no use;
+  - an entry in a list or map that an earlier filter or match already removes, so it
+    never takes effect;
   - a function or method introduced by the change has no caller in scope;
   - speculative generality — an interface with a single implementer, a parameter
     always passed the same value, a hook/extension point nothing calls.

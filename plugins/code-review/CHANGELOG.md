@@ -69,6 +69,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   repeated, and hands an overlapping class to `over-complex`
 - Objects lens: an exported mutable collection a module enforces an invariant with is
   `leaky-collection`; a two-variant flag or union is a stable enum, cleared without a candidate
+- Simplicity lens: a collapse keeps what every implementation of the same port receives;
+  bot-synced copies are not duplication; a cast a missing type guard forces is `needless-cast`; a
+  list entry an earlier filter removes is `dead-code`
 - The performance subset leaves out test-support helpers and `*.config.*` modules
 - The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
   the diff carries none; each structural fix gets its own yes; the approved list is ticked off
