@@ -638,6 +638,8 @@ const reviewDir = (unit, pass) => `${unit.repo}.worktrees/.review/${unit.branch.
 
 const prepPrompt = (unit, base, dir) => {
   const tree = validationTree(unit)
+  // A repair may amend the spec on the branch; the main checkout's copy is then stale.
+  const rel = specPath && specPath.startsWith(`${unit.repo}/`) ? specPath.slice(unit.repo.length + 1) : null
   return [
     `Prepare a code review of the branch ${unit.branch} (repository ${unit.repo}) in the checkout`,
     `${tree}, measured from ${base}.`,
@@ -649,6 +651,9 @@ const prepPrompt = (unit, base, dir) => {
     `Remove ${dir} if it exists — lens files left there by an earlier run would be read as this`,
     `run's. Then invoke the \`code-review:cr-prepare\` skill through the Skill tool with:`,
     `\`--base ${base} --out ${dir} -C ${tree}${specPath ? ` --spec ${specPath}` : ''}\``,
+    ...(rel
+      ? [`When \`git -C ${tree} cat-file -e HEAD:${rel}\` succeeds, pass \`--spec ${tree}/${rel}\` instead:`, `the branch's copy carries any amendment a repair made.`]
+      : []),
     ``,
     `Return what its closing block says: status, judged file count, active and inactive lenses,`,
     `the alternate on empty, the reason on error — and invoked=true. When the Skill tool is not`,
