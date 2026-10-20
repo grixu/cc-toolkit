@@ -367,7 +367,11 @@ while (pending.size > 0) {
       }
       // A branch stacked on a repaired one carries the repair after the refresh above; it has no
       // decision of its own, only the validation its new base owes it.
-      if (r.instructions.length === 0) return { outcome: 'repaired', summary: 'carried onto its repaired base', fromSha: null }
+      if (r.instructions.length === 0) {
+        return repairedBase(i)
+          ? { outcome: 'repaired', summary: 'carried onto its repaired base', fromSha: null }
+          : { outcome: 'blocked', summary: 'its base was not repaired', reason: `its base ${r.base} was not repaired, so there was nothing to carry onto it` }
+      }
       return tryTwice(repairPrompt(r), {
         label: `repair:${unitTag(r)}`,
         phase: 'Repair',
