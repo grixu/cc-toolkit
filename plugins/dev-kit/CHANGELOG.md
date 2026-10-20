@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `pr-shepherd`: a `decision` verdict for a comment whose fix is a trade-off only the owner can make: one reply with the options and their cost, the thread left unresolved and handed over in the report
+
 ### Changed
 - `pr-shepherd`: a `CONFLICTING` PR is taken as GitHub reports it, never closed, reopened, retargeted or edited; the loop skips CI, still handles review threads and pushes, then stops naming the conflicting files
 - `pr-shepherd`: the per-iteration state fetch leaves out comment and review bodies, which step 3 reads trimmed; the branch is compared with `origin/<headRefName>`, so a branch without an upstream no longer fails step 1

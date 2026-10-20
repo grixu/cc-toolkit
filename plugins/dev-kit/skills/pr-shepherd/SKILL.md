@@ -75,6 +75,7 @@ Judge each comment on its merits, whoever wrote it, into one verdict:
 - **justified**: it names a real defect or a clear improvement within the PR's scope. Make the change, verify it with the repository's own lint/test commands for the touched files, and commit it (one commit per thread, or per group of threads fixed by one change; conventional commit style matching `git log`). Stage by explicit file path (`git add <file>…`), never a directory, `-A` or `-a`.
 - **unjustified**: wrong, out of scope, or contradicted by the codebase. Write a *rebuttal*: the concrete reason, with file/line or doc evidence, opening with an @-mention of the comment's author.
 - **question**: it asks rather than requests. Answer it the same way, @-mentioning the author. When the honest answer reveals a defect, the verdict is justified.
+- **decision**: the fix is a trade-off only the PR's owner can make (security posture, a scope or spec change). Change nothing; reply once with the options and the cost of each, @-mentioning the author, and list it under left-to-the-user in the report.
 
 An outdated thread (`isOutdated`) whose point a later commit already addresses is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, apply neither and reply in both, linking each to the other and @-mentioning both authors. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
 
@@ -92,6 +93,7 @@ mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { t
 - **justified**: reply `Fixed in <short SHA>.` with one line on what changed, then resolve.
 - **unjustified** or **question** from a bot (`author.__typename == "Bot"`): post the reply, then resolve.
 - **unjustified** or **question** from a human: post the reply and leave the thread unresolved; it is now awaiting and theirs to resolve.
+- **decision**, from anyone: post the reply and leave the thread unresolved; it is handed over.
 
 A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report unhandled.
 
@@ -101,7 +103,7 @@ A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report 
 
 Otherwise stop when one of these holds:
 
-- CI is green and every unresolved thread is either *handed over* (two rebuttals already posted, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
+- CI is green and every unresolved thread is either *handed over* (two rebuttals already posted, a decision reply posted, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
 - A stop named in steps 1 to 3 fired.
 - This is iteration 48 of the loop.
 
@@ -114,4 +116,4 @@ End every iteration with one status line: checks green/red/pending counts, threa
 
 ## Final report
 
-On every stop: why it stopped; commits pushed during the loop (short SHA and subject); threads fixed, rebutted and answered, with URLs; every thread or check left to the user and what it needs from them.
+On every stop: why it stopped; commits pushed during the loop (short SHA and subject); threads fixed, rebutted and answered, with URLs; every thread or check left to the user, each decision with its options, and what it needs from them.
