@@ -10,7 +10,7 @@ export default (output) => {
   c.check(/notes/i.test(output), 'the output never names the input it could not resolve');
   // "Nothing was created: no spec" is the stop being reported, not a claim to have written one.
   const claims = [...output.matchAll(/\b(?:wrote|written|created)\b[^.\n]{0,60}spec/gi)]
-    .filter((m) => !/\b(?:no|not|nothing|never|without)\b/i.test(m[0]));
+    .filter((m) => !/\b(?:no|not|nothing|never|without)\b|n't\b/i.test(output.slice(Math.max(0, m.index - 20), m.index + m[0].length)));
   c.check(claims.length === 0, `the output claims a spec was written: ${claims[0]?.[0]}`);
 
   return c.verdict();
