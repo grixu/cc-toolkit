@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pr-shepherd`: a `decision` verdict for a comment whose fix is a trade-off only the owner can make: one reply with the options and their cost, the thread left unresolved and handed over in the report
 
 ### Changed
+- `pr-open`: for an existing PR it pushes and reports URL, base and push result; it rewrites the description only when the request asks, and otherwise offers it in one report line instead of asking
 - `pr-open`: the existing-PR check runs before the base is chosen, the stacked-base scan skips the current branch, and a second open-PR parent the chosen base does not contain is named in the report and the body's dependency section
 - `ci-fix`: `nothing-to-fix` also covers a cause already fixed on the branch head that no newer run will replace; `next` names the `workflow_dispatch` command, and a deploy workflow is never dispatched
 - `ci-fix`: changing an assertion to match the documented contract is a fix whose commit quotes the contract line; accepting output the contract does not name is loosening, so `blocked` under `push-authorized`
