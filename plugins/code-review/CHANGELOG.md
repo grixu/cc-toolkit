@@ -13,7 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   swallowed errors, races on shared state and broken call contracts, never graded `nit`. Its fixes
   walk structurally, and one that collides with a spec line or an existing test is report-only
 - `/start-cr --pr <number>` reviews a GitHub pull request's head against its base, in a detached
-  worktree when the checkout is elsewhere, without switching the user's checkout
+  worktree when the checkout is elsewhere, without switching the user's checkout. On someone
+  else's pull request it runs in reviewer mode: no apply phase, findings anchored to head-side
+  diff hunks, an English draft labelled with Conventional Comments, and one question — post it as
+  a single `COMMENT` review through `gh api`, or keep the draft
 - `/start-cr` asks the commit mode together with the apply menu — each family committed as it
   lands with each security fix alone, fixups into the branch commits that introduced the lines,
   one commit, or none — and with `--pr` offers to push to the PR branch

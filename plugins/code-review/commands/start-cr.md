@@ -9,7 +9,8 @@ description: >-
   the one the diff itself carries. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
-  With `--pr <number>` it reviews a GitHub pull request's head against its base.
+  With `--pr <number>` it reviews a GitHub pull request's head against its base; on
+  someone else's pull request it drafts review comments instead of applying fixes.
 allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
@@ -55,7 +56,8 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   `--pr` takes no paths and no `--base` (the PR defines both); `--spec` still works.
 
   ```bash
-  gh pr view <number> --json number,title,url,state,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,maintainerCanModify
+  gh pr view <number> --json number,title,url,state,author,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,maintainerCanModify
+  gh api user --jq .login
   git fetch origin <baseRefName>
   git fetch origin pull/<number>/head
   ```
@@ -73,6 +75,11 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   A `count` of zero on an open PR means the fetch or the base is wrong, not that the PR
   is clean: say which and stop. Name the PR (number, title, `head → base`) in the
   report's scope line.
+
+  When `author.login` differs from the login `gh api user` returned, the PR is someone
+  else's and the run is in **reviewer mode** (see the section after Step 7): say so in one
+  line now. The author decides what lands on their branch, so the review drafts comments
+  for them instead of editing anything.
 - **No path arguments** → review the current branch diff. Detect what exists with
   the bundled script, which resolves the base defensively (`@{upstream}`, then
   `origin/main`, `origin/master`, `main`, `master`) and covers committed,
@@ -266,7 +273,8 @@ Render the review with **exactly** the skeleton in the **Report** half of
 follows the skeleton there — same structure between runs, nothing added.
 
 **`Tally` ends the report text, not the turn.** Go straight into Step 6's
-`AskUserQuestion` — same turn, no pause, nothing between it and the tally. A turn that
+`AskUserQuestion` — or, in reviewer mode, into its draft and closing question — same turn,
+no pause, nothing between it and the tally. A turn that
 ends on the report leaves the run stalled with the findings unactionable until the user
 prods it, and the report then costs a second render to get back on screen. The closure
 cues in the skeleton's rules (`closes with Tally`, `the skeleton is the whole report`) bound
@@ -448,6 +456,37 @@ the head repository by URL —
 repository's own branch of that name. A cross-repository PR without `maintainerCanModify` gets no
 offer: say the branch is not writable from here and leave the commits in the worktree. Either way, name the
 worktree's path and how to remove it (`git worktree remove <path>`) when the review made one.
+
+## Reviewer mode — someone else's pull request
+
+When Step 1 found that the PR's author is not the `gh` user, Steps 6 and 7 do not run:
+nothing is edited, committed or pushed, and the worktree serves only for reading. Steps 1–5
+run as usual, with two changes to the report:
+
+- **Every bullet anchors to the head side of a diff hunk.** Its `L<lines>` are head-side line
+  numbers inside one hunk of `git diff <diff_args> -- <path>` (read the `@@ … +start,count @@`
+  headers), because GitHub accepts an inline comment only there. A finding whose lines fall
+  outside every hunk says `file-level` in place of `L<lines>`; never move it to a nearby
+  line that is in a hunk.
+- **The draft is in English**, whatever language the conversation uses, and each comment
+  opens with a Conventional Comments label taken from the finding: `high` → `issue:`,
+  `medium` → `suggestion:`, `nit` → `nitpick:`; a comment verdict R9 → `issue:`, any other
+  comment verdict → `suggestion:`. The label never softens or raises the graded severity.
+
+After the report, write the draft to a file in the session scratchpad as the request body of
+`POST repos/<owner>/<repo>/pulls/<number>/reviews` (owner and repo from the PR's `url`):
+`commit_id` set to `headRefOid`, `event` set to `COMMENT`, one `comments` entry per anchored
+bullet (`path`, `line`, `side: RIGHT`, and `start_line` with `start_side: RIGHT` for a range,
+`body` the labelled comment with its fix clause), and a `body` holding the headline plus every
+`file-level` finding under its file path — the endpoint takes no file-level comment, so the
+review body carries them. Then, in the same turn, close with **one** `AskUserQuestion`:
+
+- **Post as a COMMENT review** — `gh api repos/<owner>/<repo>/pulls/<number>/reviews --method
+  POST --input <draft file>`, then report the review's URL from the response;
+- **Keep the draft** — name the draft file and post nothing.
+
+The review never approves, never requests changes, and posts only on that answer. Name the
+worktree the review made and how to remove it (`git worktree remove <path>`).
 
 <review_tone>
 Say in one sentence what you are about to do before the first tool call. While the

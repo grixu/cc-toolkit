@@ -57,7 +57,11 @@ run again against that base.
 
 With `--pr <number>` it reviews a GitHub pull request's head against the PR's base, using `gh`.
 When your checkout is not at the PR's head, it reviews and applies fixes in a detached worktree
-next to the repository, and your checkout is never switched.
+next to the repository, and your checkout is never switched. When someone else authored the pull
+request, it applies nothing: every finding is anchored to a line of the diff, a draft review in
+English labels each one with a [Conventional Comments](https://conventionalcomments.org/) label
+(`issue:`, `suggestion:`, `nitpick:`), and one question asks whether to post the draft as a single
+comment review or keep it.
 
 ## The lenses
 
