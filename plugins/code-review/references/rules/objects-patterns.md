@@ -107,17 +107,22 @@ A getter that hands back the object's actual internal collection lets any caller
 mutate its state from the outside, behind its back. Return something the caller can't
 use to corrupt you.
 
-- **Flag** a getter/property that returns the real internal mutable array/map/set
-  (not a copy or read-only view) — `getItems() { return this.items }` where `items`
-  is the object's own mutable field.
+- **Flag** when:
+  - a getter/property returns the real internal mutable array/map/set (not a copy or
+    read-only view) — `getItems() { return this.items }` where `items` is the object's
+    own mutable field;
+  - a module exports a mutable module-level collection it enforces an invariant with
+    (an allowlist, a permission set), so any importer can `.add()` to it and widen
+    what the module allows.
 - **Suggested fix**: return a copy, an immutable/read-only view, or expose
   domain-specific `add`/`remove`/iterate methods so all mutation goes through the
-  object.
+  object; type an exported collection `ReadonlySet`/`ReadonlyArray` (or freeze it).
 - **Calibration → not a finding**: returning a freshly-built collection the object
   does not retain; an already-immutable/readonly type (`ReadonlyArray`, a frozen
   object); a deliberate, documented shared buffer for performance; value-type
-  collections in languages that copy on assignment. Flag the *aliased internal
-  mutable* collection, not every collection return.
+  collections in languages that copy on assignment; an exported display or option list
+  nothing enforces anything with. Flag the *aliased internal mutable* collection, not
+  every collection return.
 
 #### `feature-envy` — a method belongs with the data it reads
 
@@ -205,7 +210,9 @@ object, not an edit to N conditionals.
   interface; each absorbs its branch.
 - **Calibration → not a finding**: a single, localized switch that lives in exactly
   one place — a factory/dispatcher is the *right* home for one switch; conditionals
-  over values that aren't a type discriminant; small, stable enums unlikely to grow;
+  over values that aren't a type discriminant; small, stable enums unlikely to grow —
+  a two-variant flag or union (`allOf`/`anyOf`, single/multiple, member/invitation) is
+  one until a third variant exists, so clear it rather than filing a candidate;
   a status or lifecycle enum where each behaviour switches on it once (the label, the
   allowed transitions, the badge colour) — each switch answers a different question,
   so there is nothing duplicated to absorb. One switch is fine — flag the *duplicated*

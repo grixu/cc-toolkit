@@ -67,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   place, and clears pure consistency differences; a name or placement a spec may prescribe goes to
   `CANDIDATES`; `canonical-helper` compares what both helpers return too, never leaves the call
   repeated, and hands an overlapping class to `over-complex`
+- Objects lens: an exported mutable collection a module enforces an invariant with is
+  `leaky-collection`; a two-variant flag or union is a stable enum, cleared without a candidate
 - The performance subset leaves out test-support helpers and `*.config.*` modules
 - The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
   the diff carries none; each structural fix gets its own yes; the approved list is ticked off
