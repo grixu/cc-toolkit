@@ -38,7 +38,7 @@ Fixing happens only in a local clone of the run's repository, on the run's `head
 
 ## 3. Find the root cause
 
-Read `gh run view <run-id> --log-failed` (add `--job <job-id>` per job) into a temp file and search it; failed logs can be huge. When it answers 403/404 or returns no logs (a fork's run, missing permission, expired logs), end with status `blocked` and ask the user for the log excerpt. A cause guessed from code alone is not a root cause.
+Read `gh run view <run-id> --log-failed` (add `--job <job-id>` per job) into a temp file and search it; failed logs can be huge. When `--log-failed` is empty or answers 403/404, read `gh api repos/OWNER/REPO/actions/jobs/<job-id>/logs`, then the step conclusions (`gh api repos/OWNER/REPO/actions/jobs/<job-id> --jq '.steps[]|{name,conclusion}'`) and `gh api repos/OWNER/REPO/check-runs/<job-id>/annotations`, before concluding anything. When none of them shows the failure (a fork's run, missing permission, expired logs), end with status `blocked` and ask the user for the log excerpt. A cause guessed from code alone is not a root cause.
 
 Then read the failing step in the workflow YAML (its `run:`, `uses:`, versions, env, matrix entry) and the code the error points at. The root cause is found when you can name the change that made it fail (a commit, a dependency release, a runner image or action update) and explain why this check saw it. The first error line is often a symptom of an earlier one; follow it back.
 
