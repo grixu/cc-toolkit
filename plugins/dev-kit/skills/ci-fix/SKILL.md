@@ -47,7 +47,7 @@ Classify each failed job; jobs sharing one cause are one cause:
 - **Code or config**: the repository is wrong. Fix it, in the code or in the workflow file, wherever the cause lives.
 - **Dependency or upstream**: a floating version resolved to a breaking release, an action tag moved, a base image changed. Adapt the code to the new version, or pin the last good version when the release itself is broken; say which in the report.
 - **Transient**: runner lost or out of disk, network timeout, registry 5xx, rate limit. Mark it for a *rerun*, which needs no consent and happens once per run: when `attempt` is already above 1 with the same failure, it is not transient. Status `rerun`.
-- **Flaky test**: fails intermittently, passes locally, unrelated to the branch's changes. Mark it for a *rerun* as above and name the test in the report so the flake can be fixed on its own.
+- **Flaky test**: fails intermittently, passes locally, unrelated to the branch's changes. Check relatedness with `git diff origin/<base>...HEAD --stat` against the failing test's subject (the test file and the code it exercises): a test whose subject the branch touches is not flaky until it passes locally twice; until then it is code or config. Mark a flaky test for a *rerun* as above and name it in the report so the flake can be fixed on its own. An unrelated test that was not run locally is still marked for a rerun, but `cause` says "rerun, unverified flake", never "flaky".
 - **Environment**: missing secret, expired credential, required permission, disabled runner, billing. Status `not-fixable`, naming what an admin must change.
 
 ## 4. Fix and verify

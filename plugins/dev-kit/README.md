@@ -35,7 +35,7 @@ Use it when a GitHub Actions run, job or check has failed. Pass a run, job, PR o
 
 It reads the failed logs and the workflow file, finds the change that caused the failure, reproduces it locally, fixes it, and runs the same command again to confirm the fix. It makes one commit per root cause and asks before pushing.
 
-- A transient failure (lost runner, network timeout, rate limit) or a flaky test gets one rerun instead of a code change.
+- A transient failure (lost runner, network timeout, rate limit) or a flaky test gets one rerun instead of a code change. A test whose subject the branch changes counts as flaky only after it passes locally twice; a rerun without a local run is reported as an unverified flake.
 - An environment problem (missing secret, expired credential, permission, billing) is reported for an admin, not patched.
 - It works only in a local clone of the failing repository, and asks before switching to the run's branch.
 - It asks you before it skips, loosens or removes a check.
