@@ -2,7 +2,7 @@
 name: pr-shepherd
 description: Shepherd the current branch's pull request in a self-paced loop until CI is green and every review thread is resolved, fixing failures and review comments with commits and pushes, and answering the unjustified ones in-thread. Use when the user asks to babysit, watch or drive a PR to green, or to keep fixing CI and review comments until the PR is clean.
 argument-hint: "[iteration]"
-allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
+allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git merge-tree *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
 disallowed-tools: AskUserQuestion
 ---
 
@@ -22,7 +22,7 @@ To **stop**: call `ScheduleWakeup` with `stop: true` (on a fixed-interval loop, 
 
 1. `gh pr view --json number,url,state,headRefName,baseRefName,headRefOid,mergeable`. No PR for the current branch, or `state` is not `OPEN`: stop.
 2. `git status --porcelain` and `git fetch`, then `git rev-list --left-right --count HEAD...origin/<headRefName>` (`@{u}` may be unset). A dirty tree, local commits ahead of the remote, or a diverged branch: stop, naming which; those changes are the user's. Untracked files (`??`) do not block, but are the user's: never stage them. Behind only: `git pull --ff-only origin <headRefName>`.
-3. `mergeable == "CONFLICTING"`: stop; resolving conflicts with the base is the user's call. `UNKNOWN` is still computing and blocks nothing.
+3. `mergeable == "CONFLICTING"`: trust GitHub. Never argue it away with a local merge check, and never close, reopen, retarget or edit the PR to make GitHub recompute; a stacked PR conflicts through its whole base chain down to the default branch. Skip step 2 (GitHub runs no `pull_request` CI on a conflicting PR), finish step 3 and push, then stop, naming the conflicting files (`git merge-tree --write-tree --name-only HEAD origin/<baseRefName>`, or the lower branch of the chain where the conflict sits) and saying that re-running before the conflict is resolved repeats this stop. Resolving it is the user's call. `UNKNOWN` is still computing and blocks nothing.
 4. Checks: `gh pr checks --required --json name,bucket,state,link,workflow`; when it reports no required checks, the same without `--required`. `pass` and `skipping` (skipped, neutral) are green; `fail` and `cancel` are *red*; `pending`, or no checks reported yet for the head commit, is *pending*.
 5. Review threads, with `OWNER`/`REPO` filled by `gh` and `N` the PR number:
 

@@ -61,7 +61,8 @@ Running it authorizes commits and pushes to the pull request's branch, and count
 It never asks you anything mid-run. It stops and reports when any of these happens:
 
 - Every check is green and no review thread is open (success).
-- The branch has no open pull request, has merge conflicts, uncommitted changes or unpushed commits, or has diverged from the remote.
+- The branch has no open pull request, uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
+- GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files; it never resolves the conflict, and running it again before you do stops the same way.
 - `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix attempts.
 - CI is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals, or cannot be replied to.
 - It has run 48 rounds.
@@ -113,7 +114,7 @@ Each skill pre-approves only some of the commands it runs. Anything else asks fo
 | Skill | Pre-approved | Still asks |
 |---|---|---|
 | `ci-fix` | File edits; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checks from third-party apps); your test, lint and build commands |
-| `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
+| `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
 | `dep-upgrade-check` | `gh repo view`; `gh pr view`, `diff`, `checks`; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; firecrawl search and scrape; context7 | `gh api` (changelog files, commit ranges); lookups for npm, yarn, Python, Go, PHP and Rust; the optional worktree build |
 | `pr-open` | Nothing | Every `git` and `gh` command |
 
