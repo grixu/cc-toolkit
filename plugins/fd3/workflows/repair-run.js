@@ -13,7 +13,8 @@ export const meta = {
 //   repairs      [{ repo, branch, worktree, base, instructions, taskFiles }]
 //                repo and worktree are absolute paths; base is the ref the branch's diff is
 //                measured against (its stack base, or the repo's diffBase); instructions carry
-//                the user's HIL decisions verbatim; taskFiles are the task files to flip to done
+//                the user's HIL decisions verbatim, empty for a branch only stacked on a repaired
+//                one (carried onto it and validated); taskFiles are the task files to flip to done
 //                when the branch passes, may be empty
 //   repos        { [repository path]: { startRef, diffBase } } — as implement-run takes them
 //   reportPath   (optional) absolute path of the previous run's report file; one cheap agent reads
@@ -364,6 +365,9 @@ while (pending.size > 0) {
           return null
         }
       }
+      // A branch stacked on a repaired one carries the repair after the refresh above; it has no
+      // decision of its own, only the validation its new base owes it.
+      if (r.instructions.length === 0) return { outcome: 'repaired', summary: 'carried onto its repaired base', fromSha: null }
       return tryTwice(repairPrompt(r), {
         label: `repair:${unitTag(r)}`,
         phase: 'Repair',
@@ -949,7 +953,7 @@ for (const unit of units) {
   // did only what was decided — the review reads the repair's own commits, and a human reads that.
   let reviewDead = null
   let reviewHeld = false
-  if (review) {
+  if (review && unit.instructions.length > 0) {
     if (!unit.fromSha) {
       reviewDead = 'the repair agent did not report its starting commit, so the repair delta is unknown'
     } else {
