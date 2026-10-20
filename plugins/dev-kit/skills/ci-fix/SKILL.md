@@ -1,7 +1,7 @@
 ---
 name: ci-fix
 description: Fix a failed CI pipeline at its root cause, verify locally, and commit. Use when the user pastes a GitHub Actions run, job, PR or commit-checks URL, says CI, a pipeline or a build is red, or another skill hands over a failing check.
-argument-hint: "[run/job/PR/commit URL | run ID | PR number] [push-authorized]"
+argument-hint: "[run/job/PR/commit URL | run ID | PR number] [push-authorized] [checkout=<dir>]"
 allowed-tools: Read Edit Write Grep Glob Bash(gh run view *) Bash(gh run list *) Bash(gh run rerun *) Bash(gh pr checks *) Bash(gh pr checkout *) Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git switch *) Bash(git log *) Bash(git diff *) Bash(git show *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *)
 ---
 
@@ -11,6 +11,7 @@ Target: **$ARGUMENTS**
 
 - **Target**: a GitHub URL (run, job, PR, PR checks, commit, commit checks), a run ID, or a PR number. Empty means the current branch.
 - **`push-authorized`**: when this literal token appears in the arguments, the caller has already been granted consent to push. Push without asking, and run *unattended*: wherever a step below says to ask the user, end with status `blocked` instead. `pr-shepherd` invokes this skill that way. Without the token, every push waits for the user's yes. The token, or that yes, is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. It does not cover merging or rebasing the base into the branch, resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly.
+- **`checkout=<dir>`**: the local checkout to fix in, when the caller works in a worktree on the run's branch. It stands for "the checkout" in step 2, and every git and build command runs there (`git -C <dir>`, or from that directory).
 - Every run ends with the **result block** (last section), even an early stop. Under `push-authorized`, print it before returning to the caller, even when the caller continues in the same turn.
 
 ## 1. Locate the failure

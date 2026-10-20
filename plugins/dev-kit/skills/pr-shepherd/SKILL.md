@@ -16,7 +16,7 @@ This skill body is one *iteration* of a self-paced `/loop`. When the arguments c
 
 Every iteration re-reads the whole state from git and GitHub; the transcript of earlier iterations counts only toward the caps.
 
-**Stacks.** With no PR number in the arguments, the PR is the current branch's; with one, it is that PR. With several, they form a stack: run steps 1–3 for each PR in its own worktree on its head branch (`git worktree add <dir> <headRefName>` outside the repository, or the worktree `git worktree list` already shows on that branch), lowest PR first. A fix lands on the lowest branch in the stack that owns the code and reaches the PRs above it by a plain merge of base into child: after pushing the base, run `git fetch` and `git merge --no-edit origin/<baseRefName>` in the child's worktree, then push the child, one level at a time. Never rebase. This is the one exception to the base-merge ban, and only between branches of the set; merging the default branch into any of them stays forbidden. When such a merge conflicts, `git merge --abort` and stop, naming the files. Mergeability is judged per PR, as GitHub reports it. Step 4 decides over the whole set: done needs every PR done, and a stop that fires for one PR stops the loop once every PR has finished this iteration's steps 1–3.
+**Stacks.** With no PR number in the arguments, the PR is the current branch's; with one, it is that PR, and when the current branch is not its `headRefName`, steps 1–3 run in a worktree on that branch, as for a stack: never pull, commit or push from another branch. With several, they form a stack: run steps 1–3 for each PR in its own worktree on its head branch (`git worktree add <dir> <headRefName>` outside the repository, or the worktree `git worktree list` already shows on that branch), lowest PR first. A fix lands on the lowest branch in the stack that owns the code and reaches the PRs above it by a plain merge of base into child: after pushing the base, run `git fetch` and `git merge --no-edit origin/<baseRefName>` in the child's worktree, then push the child, one level at a time. Never rebase. This is the one exception to the base-merge ban, and only between branches of the set; merging the default branch into any of them stays forbidden. When such a merge conflicts, `git merge --abort` and stop, naming the files. Mergeability is judged per PR, as GitHub reports it. Step 4 decides over the whole set: done needs every PR done, and a stop that fires for one PR stops the loop once every PR has finished this iteration's steps 1–3.
 
 To **stop**: call `ScheduleWakeup` with `stop: true` (on a fixed-interval loop, delete its job with `CronDelete` instead), then write the final report.
 
@@ -54,7 +54,7 @@ Classify each unresolved thread by its last comment:
 
 ## 2. Fix red CI
 
-Every red check goes through ci-fix; never fix or rerun CI directly in this skill. When a required check is red, or a red non-required one has not had its ci-fix run yet, invoke `dev-kit:ci-fix` with the arguments `<PR url> push-authorized`, and read its result block:
+Every red check goes through ci-fix; never fix or rerun CI directly in this skill. When a required check is red, or a red non-required one has not had its ci-fix run yet, invoke `dev-kit:ci-fix` with the arguments `<PR url> push-authorized`, plus `checkout=<dir>` when this PR's steps run in a worktree, and read its result block:
 
 - `fixed` or `rerun`: CI restarts; continue.
 - `nothing-to-fix`: the red check went green or pending meanwhile; continue.
