@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pr-shepherd`: a `decision` verdict for a comment whose fix is a trade-off only the owner can make: one reply with the options and their cost, the thread left unresolved and handed over in the report
 
 ### Changed
+- `pr-open`: the report ends with a one-line suggestion of `/dev-kit:pr-shepherd`, never invoked
 - `pr-open`: the body aims for about 250 words outside dependency and checklist sections, with 6–8 one-sentence change bullets at most and long logs in `<details>`; specs and ADRs the diff adds or commits name get a **Go deeper** link, also under a repository template
 - `pr-open`: a branch behind its base is reported with the commit count and the `git merge-tree` conflict state and opened as is; the skill never merges, rebases or commits to sync it
 - `pr-open`: for an existing PR it pushes and reports URL, base and push result; it rewrites the description only when the request asks, and otherwise offers it in one report line instead of asking

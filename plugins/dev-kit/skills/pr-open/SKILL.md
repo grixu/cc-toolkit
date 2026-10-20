@@ -84,4 +84,4 @@ Keep the template's structure intact: every heading, in its order, and every che
 4. Delete the temporary file.
 5. `gh pr edit <url> --add-assignee @me`. It runs apart from the create because assignment can fail on its own (no push access to the base repository); on failure the PR stays opened, and the report says it is unassigned and why.
 
-Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), each section left `N/A` or checkbox left unticked for the author to complete, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state.
+Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), each section left `N/A` or checkbox left unticked for the author to complete, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.
