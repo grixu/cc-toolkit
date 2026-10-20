@@ -1042,7 +1042,7 @@ const strayChanges = (dirty, worktree, repo) => {
   for (const line of (dirty || '').split('\n')) {
     if (!line.trim()) continue
     // A runner that returned prose here never captured the status, so no path in it is real.
-    if (!/^[ MADRCU?!]{2} /.test(line)) {
+    if (!/^[ MTADRCU?!]{2} /.test(line)) {
       prose.push(line.trim())
       continue
     }
