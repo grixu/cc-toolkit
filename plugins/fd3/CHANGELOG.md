@@ -14,8 +14,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `repair-run` adds each repair's own instructions
 - `implement-tasks` asks at the close whether to remove the worktrees and merged task branches,
   recommending it, and never removes a task branch with unmerged commits
+- CI and baseline runners wait for every command's exit line; a command left running comes back as
+  `incomplete` (baseline: `completed: false`), is re-dispatched once and then reported as no verdict,
+  never as a failure a fix round chases; a baseline command without a verdict is run on every branch
+- review results fd3 never surfaced reach the HIL list: real problems with no rule (`unowned:`), the
+  `/security-review` pointer for skipped files, and comment MOVE verdicts
+- `implement-run` takes `knownBases`, so a prerequisite base step 1 resolved raises no graph item
+- branches stacked on a repaired branch join the repair run with no instructions: refreshed onto the
+  repaired base and validated, with no repair agent or review
 
 ### Changed
+
+- the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
+- a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
+  recommends per review item with an "all fixable" option and names tasks by `name:`, never by
+  split code; a branch is never set `done` on the orchestrator's own build
+- every fixer edits with the Edit tool only; a merge conflict in a generated file is regenerated;
+  fix-cr adds no name the module exports and imports no shared value from a repository or adapter
+- a CI runner's `dirty` field that is prose, not porcelain, is a missed status, not tree edits
+- the toolchain scout keeps virtualenvs and caches out of the worktree
+- a repair review reads the branch's own copy of the spec
+- the checklist rides on each question batch and the close instead of the first reply
+- `build-spec` validates the capped third pass's own body edits and relays write-spec questions in
+  their own wording; `write-spec` runs probes in a detached worktree; the researcher asserts nothing
+  about the project's own code; `grill-topic` blocks a question on a running lookup that covers its
+  subject
+- `split-to-tasks` clears origin drift that breaks no claim the spec makes about the path, and cuts
+  a protected path only when its approval differs from the rest of the unit
 
 - `split-to-tasks` reads `CODEOWNERS`, branch protection and the repository's consent list in step 1
   and asks any required consent in its own batch; no task note asks for a confirmation, and
