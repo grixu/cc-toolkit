@@ -25,6 +25,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# An eval is one headless query: a subagent left running in the background reports after the
+# result, so the graded turn ends on "waiting for the fork" with nothing written.
+export CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1
+
 bin="./node_modules/.bin/promptfoo"
 if [ ! -x "$bin" ]; then
   echo "promptfoo not installed at root. Run: pnpm install" >&2
