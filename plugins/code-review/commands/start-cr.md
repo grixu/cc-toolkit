@@ -126,7 +126,13 @@ one decision, a spec states what the change must do — then the one the other f
 under, then the most recently changed. More than two options is a menu, not an offer.
 When the diff carries none, look once at the base too: a spec usually lands before its
 implementation, so `git ls-files '*SPEC*.md' 'specs/**/*.md'` and offer the one whose
-directory or name matches the branch name's last segment, when exactly one does. On acceptance, treat it exactly as a passed
+directory or name matches the branch name's last segment, when exactly one does. When neither
+finds one, look once in the primary worktree — the first `worktree` entry of
+`git worktree list --porcelain`, where a spec workflow often leaves its files untracked or on a
+sibling branch: among its `SPEC.split.md` and `tasks/*.md` files, tracked or not
+(`git -C <primary> ls-files --cached --others --exclude-standard`), find the ones that name the
+current branch (`git branch --show-current`) and offer the `SPEC.md` beside them, when exactly
+one does. On acceptance, treat it exactly as a passed
 `--spec` — Read it now — and note in the Tally that the spec Lens was activated from the
 diff rather than from the flag. Do not make this offer twice, and never activate the
 Lens without the user saying yes.

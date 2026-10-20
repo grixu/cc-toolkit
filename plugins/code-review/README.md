@@ -84,7 +84,8 @@ When the change itself contains a spec-shaped Markdown file (under `specs/`, `sp
 or `tasks/`, or named `*SPEC*.md`, `*ADR*.md`, `*.spec.md` or `*-plan.md`) and you passed no
 `--spec`, the review offers to check the change against it, preferring a spec over an ADR. When the
 change carries none, it looks for a `SPEC.md` already in the repository that matches the branch's
-name. `--spec` takes a local file only. For a URL or a
+name, then in the main worktree for a `SPEC.split.md` or task file that names the branch, and
+offers the `SPEC.md` beside it. `--spec` takes a local file only. For a URL or a
 ticket id, the review asks for a local path; it never fetches one.
 
 ## What you get

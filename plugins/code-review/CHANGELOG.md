@@ -85,8 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dockerfiles, Helm charts and compose files are named as `iac`, and `objects & patterns` is
   inactive when every file it would read is `iac`: both its families are N/A there
 - The performance subset leaves out test-support helpers and `*.config.*` modules
-- The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
-  the diff carries none; each structural fix gets its own yes; the approved list is ticked off
+- The spec offer considers Markdown only, prefers a SPEC over an ADR, looks at the base when
+  the diff carries none, then in the primary worktree for a split or task file naming the branch; each structural fix gets its own yes; the approved list is ticked off
   before the wrap-up
 - README rewritten for first-time readers: purpose and the difference from the bundled `/code-review`,
   requirements, namespaced `/code-review:` invocations, a sample report, the apply menu, scope and
