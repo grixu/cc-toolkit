@@ -84,9 +84,12 @@ it still writes nothing.
    dressed as a WHY. Every suggested fix obeys **all** the comment rules itself, judged
    by the same deletion test as the comment it replaces: it restates nothing the code
    says (R1), stays one load-bearing sentence (R3), matches what the code actually does
-   (R9 — reread the line before writing the replacement), and carries no spec-id
-   fragments (`(R2)`, `F1:`, `§4.1`), no new file/doc cross-references (R4), no
-   banners (R5). A replacement you would flag yourself is not a fix. For MOVE, name the destination and give the exact text to place
+   (R9 — check every claim the replacement keeps against the code, not only the clause you
+   changed), and carries no spec-id fragments (`(R2)`, `F1:`, `§4.1`), no new file/doc
+   cross-references (R4), no banners (R5). It fits the file's print width — the formatter
+   config's, else the width the file's other comments wrap at — and comes as several lines
+   when one does not hold it: a formatter does not rewrap comments. A replacement you would
+   flag yourself is not a fix. For MOVE, name the destination and give the exact text to place
    there, plus "delete from the declaration".
 
 2. **readability & tests** → `rules/readability-tests.md`
@@ -171,6 +174,11 @@ finding is never `nit`, and a doubt about its grade goes to `CANDIDATES`, never 
 first pass** — you re-grade every quality finding centrally in the merge, so it grades
 honestly against its rules without agonizing over the boundary.
 
+**A name a fix proposes is held to the naming rules.** Every name a suggested fix introduces —
+a rename, an extracted helper, a new constant — passes `naming` · intent-name and role-name
+itself and reuses no name the module already exports. A name you would flag yourself is not a
+fix, and the next review round flags it.
+
 **The FINDINGS section holds findings only.** Anything a Scanner checked and cleared
 belongs in one prose line, never in the finding shape — a "none found" or "is **not**
 a finding" bullet with a dash where the severity goes reads as a finding to everything
@@ -181,7 +189,9 @@ for most rules, but duplication is the exception: when you flag repeated code (a
 `over-complex` duplication, a copy-pasted predicate), scan the **rest of the file** for
 every other copy of the same pattern and list all the call sites in the one finding —
 including copies in code the change didn't touch. A finding that names two of three
-copies makes the extraction fix leave a straggler behind. The one **cross-file**
+copies makes the extraction fix leave a straggler behind. The same holds for any finding
+whose fix is a **single move** — one import re-pointed, one constant relocated: it is one
+finding listing every site the move fixes, never a bullet per importer. The one **cross-file**
 exception is `module` · canonical-helper: a new helper duplicating an exported helper
 elsewhere in the repo is found by the one-hop Grep, bounded to the helper's name and its
 distinctive expression — never a repo-wide sweep, and inconclusive means `(verify)`.
@@ -192,6 +202,9 @@ edits that round made are what the previous review asked for. Judge them like an
 never raise a finding whose fix reverses one (renaming back, inlining what was just
 extracted, restoring a removed comment): two rounds that disagree only flip the code back and
 forth. A fix that is itself wrong is a finding on what it broke, not on the edit's direction.
+A comment the fix round wrote is re-judged for R9 and print width only; a taste-level R1 or R3
+on it goes to `CANDIDATES`, where the merge clears it. A candidate the previous round's merge
+cleared is not raised again unless this change moved the code further from its rule.
 
 ## Three side-channels, three distinct meanings
 

@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   family, gives duplication one owner per reach, re-checks comment fixes against R9, and
   `/start-cr` checks every grade against the severity table before it renders
 - `simplicity` · `over-complex` now covers duplication only
+- A suggested comment fix checks every claim it keeps, not only the clause it changed, and fits the
+  file's print width; a name any fix proposes passes `intent-name` and `role-name` and reuses no
+  exported name; a fix that is one move is one finding listing every site; a fix round's own
+  comments are re-judged for R9 and width only, and a candidate a merge cleared is not raised again
 - Lens calibration from run audits: R11 and the note-prefix preamble yield to a sanctioned
   convention; `magic-literal` clears test data and named config defaults; `ordering` is N/A for
   HCL; `canonical-helper` catches inline re-implementations and never loosens validation; a status

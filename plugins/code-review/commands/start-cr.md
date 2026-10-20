@@ -230,8 +230,8 @@ before the dispatch and fill every slot of the brief it defines. Its paths are r
 `${CLAUDE_PLUGIN_ROOT}/references/rules/<lens>.md` in its `<rules_file>` slot.
 
 The `<output_contract>` slot is **copied, never summarized**: the header line, the Lens's own
-numbered entry, the finding shapes, the severity paragraph, the FINDINGS-only and duplication
-paragraphs, and the three side-channels, verbatim from the file. Briefs that paraphrased it lost
+numbered entry, the finding shapes, the severity paragraph, the proposed-name, FINDINGS-only,
+duplication and fix-round paragraphs, and the three side-channels, verbatim from the file. Briefs that paraphrased it lost
 the finding's path slot, the `files judged` header and the closed HANDOFF families, and their
 Scanners graded below the table. Paste the same contract text into every brief; only the Lens
 entry differs.
