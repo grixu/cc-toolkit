@@ -105,7 +105,7 @@ It pushes the current branch and fills the repository's pull request template. I
 - It ticks a checkbox only when it has evidence that the item is true.
 - It writes a Conventional Commits title when the base branch's history uses that style.
 - It assigns the pull request to you.
-- When your branch builds on another open pull request's branch, it targets that branch.
+- When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
 - When a pull request already exists, it pushes and offers to rewrite the description.
 
 It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.

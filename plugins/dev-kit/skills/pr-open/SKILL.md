@@ -16,9 +16,9 @@ Run `git fetch origin` first, then resolve each before moving on:
 
 - **Branch.** `git branch --show-current`. On the default branch (`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`) or a detached HEAD, stop and say so.
 - **Working tree.** When `git status --porcelain --untracked-files=no` prints anything, list it and ask whether to open the PR from the committed state or stop so the user can commit. The PR carries commits only; this skill never commits. Untracked files do not block; list their paths in the final report as not in the PR.
-- **Base.** Take a base named in the request. Otherwise use the default branch, unless the branch is stacked: when an open PR's head branch (`gh pr list --state open --json headRefName`) is an ancestor of HEAD (`git merge-base --is-ancestor origin/<head> HEAD`), base on the nearest such branch and say so.
+- **Existing PR.** Check this before the base: `gh pr list --head <branch> --state open --json number,url`. When one exists, push (step 5), print its URL, and ask whether to rewrite its description from the current diff. On yes, draft the body (steps 2-4) against that PR's base and apply it with `gh pr edit <number> --body-file <file>`. Leave its title as it is.
+- **Base.** Take a base named in the request. Otherwise use the default branch, unless the branch is stacked: when the head branch of an open PR other than the current branch (`gh pr list --state open --json number,headRefName`) is an ancestor of HEAD (`git merge-base --is-ancestor origin/<head> HEAD`), base on the nearest such branch and say so. Every other such ancestor that is not itself an ancestor of the chosen base (`git merge-base --is-ancestor origin/<head> origin/<base>` fails) is a second parent: name its PR in the report and in the body's dependency section, and say that its commits show in this PR's diff until it merges.
 - **Commits ahead.** `git log --oneline origin/<base>..HEAD` lists at least one commit. With none, stop: there is nothing to open.
-- **Existing PR.** `gh pr list --head <branch> --state open --json number,url`. When one exists, push (step 5), print its URL, and ask whether to rewrite its description from the current diff. On yes, draft the body (steps 2-4) against that PR's base and apply it with `gh pr edit <number> --body-file <file>`. Leave its title as it is.
 
 ## 2. Gather the change
 
