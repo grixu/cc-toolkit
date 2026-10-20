@@ -38,7 +38,7 @@ It reads the failed logs and the workflow file, finds the change that caused the
 - A transient failure (lost runner, network timeout, rate limit) or a flaky test gets one rerun instead of a code change. A test whose subject the branch changes counts as flaky only after it passes locally twice; a rerun without a local run is reported as an unverified flake.
 - An environment problem (missing secret, expired credential, permission, billing) is reported for an admin, not patched.
 - It works only in a local clone of the failing repository, and asks before switching to the run's branch.
-- It asks you before it skips, loosens or removes a check.
+- It asks you before it skips, loosens or removes a check. Aligning an assertion with a documented contract is a fix, and the commit quotes the contract line.
 - It never merges or rebases the base into the branch, resolves conflicts, force-pushes or edits the pull request unless you name that action.
 
 Output: a `ci-fix result` block with the status (`fixed`, `rerun`, `nothing-to-fix`, `not-fixable` or `blocked`), the cause, the commits, how the fix was verified, whether it was pushed, and what is left for you.

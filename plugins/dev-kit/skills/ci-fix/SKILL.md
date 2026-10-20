@@ -54,7 +54,7 @@ Classify each failed job; jobs sharing one cause are one cause:
 
 Reproduce first: run the failing step's command locally, with the tool versions the workflow pins, and watch it go *red*. Fix the cause, then the same command goes *green*. Run the repository's lint and typecheck on the touched files too. When the step cannot run locally (services, secrets, another OS), say so in the report's `verified` field.
 
-A fix makes the check pass on its merits. A test, lint rule or check that is removed, skipped, loosened, or given `continue-on-error` only moves the failure out of sight; when that is genuinely the right fix, ask the user first.
+A fix makes the check pass on its merits. A test, lint rule or check that is removed, skipped, loosened, or given `continue-on-error` only moves the failure out of sight; when that is genuinely the right fix, ask the user first. Changing an assertion so it matches the documented contract (cite the line) is a fix, and the commit message quotes that line. Accepting output the contract does not name is loosening: under `push-authorized`, status `blocked`.
 
 ## 5. Commit and push
 
