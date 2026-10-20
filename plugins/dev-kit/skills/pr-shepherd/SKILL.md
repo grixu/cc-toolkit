@@ -21,7 +21,7 @@ To **stop**: call `ScheduleWakeup` with `stop: true` (on a fixed-interval loop, 
 ## 1. Read the state
 
 1. `gh pr view --json number,url,state,headRefName,baseRefName,headRefOid,mergeable,comments,reviews`. No PR for the current branch, or `state` is not `OPEN`: stop.
-2. `git status --porcelain` and `git fetch`, then `git rev-list --left-right --count HEAD...@{u}`. A dirty tree, local commits ahead of the remote, or a diverged branch: stop, naming which; those changes are the user's. Behind only: `git pull --ff-only`.
+2. `git status --porcelain` and `git fetch`, then `git rev-list --left-right --count HEAD...@{u}`. A dirty tree, local commits ahead of the remote, or a diverged branch: stop, naming which; those changes are the user's. Untracked files (`??`) do not block, but are the user's: never stage them. Behind only: `git pull --ff-only`.
 3. `mergeable == "CONFLICTING"`: stop; resolving conflicts with the base is the user's call. `UNKNOWN` is still computing and blocks nothing.
 4. Checks: `gh pr checks --required --json name,bucket,state,link,workflow`; when it reports no required checks, the same without `--required`. `pass` and `skipping` (skipped, neutral) are green; `fail` and `cancel` are *red*; `pending`, or no checks reported yet for the head commit, is *pending*.
 5. Review threads, with `OWNER`/`REPO` filled by `gh` and `N` the PR number:
@@ -66,7 +66,7 @@ Take every *open* thread, reading the whole thread, the code at `path`/`line` on
 
 Judge each comment on its merits, whoever wrote it, into one verdict:
 
-- **justified**: it names a real defect or a clear improvement within the PR's scope. Make the change, verify it with the repository's own lint/test commands for the touched files, and commit it (one commit per thread, or per group of threads fixed by one change; conventional commit style matching `git log`).
+- **justified**: it names a real defect or a clear improvement within the PR's scope. Make the change, verify it with the repository's own lint/test commands for the touched files, and commit it (one commit per thread, or per group of threads fixed by one change; conventional commit style matching `git log`). Stage by explicit file path (`git add <file>…`), never a directory, `-A` or `-a`.
 - **unjustified**: wrong, out of scope, or contradicted by the codebase. Write a *rebuttal*: the concrete reason, with file/line or doc evidence, opening with an @-mention of the comment's author.
 - **question**: it asks rather than requests. Answer it the same way, @-mentioning the author. When the honest answer reveals a defect, the verdict is justified.
 

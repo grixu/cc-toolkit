@@ -15,7 +15,7 @@ Every claim in the PR body is backed by **evidence**: the diff, a commit message
 Run `git fetch origin` first, then resolve each before moving on:
 
 - **Branch.** `git branch --show-current`. On the default branch (`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`) or a detached HEAD, stop and say so.
-- **Working tree.** When `git status --porcelain` prints anything, list it and ask whether to open the PR from the committed state or stop so the user can commit. The PR carries commits only; this skill never commits.
+- **Working tree.** When `git status --porcelain --untracked-files=no` prints anything, list it and ask whether to open the PR from the committed state or stop so the user can commit. The PR carries commits only; this skill never commits. Untracked files do not block; list their paths in the final report as not in the PR.
 - **Base.** Take a base named in the request. Otherwise use the default branch, unless the branch is stacked: when an open PR's head branch (`gh pr list --state open --json headRefName`) is an ancestor of HEAD (`git merge-base --is-ancestor origin/<head> HEAD`), base on the nearest such branch and say so.
 - **Commits ahead.** `git log --oneline origin/<base>..HEAD` lists at least one commit. With none, stop: there is nothing to open.
 - **Existing PR.** `gh pr list --head <branch> --state open --json number,url`. When one exists, push (step 5), print its URL, and ask whether to rewrite its description from the current diff. On yes, draft the body (steps 2-4) against that PR's base and apply it with `gh pr edit <number> --body-file <file>`. Leave its title as it is.
@@ -82,4 +82,4 @@ Keep the template's structure intact: every heading, in its order, and every che
 4. Delete the temporary file.
 5. `gh pr edit <url> --add-assignee @me`. It runs apart from the create because assignment can fail on its own (no push access to the base repository); on failure the PR stays opened, and the report says it is unassigned and why.
 
-Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), and each section left `N/A` or checkbox left unticked for the author to complete.
+Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), each section left `N/A` or checkbox left unticked for the author to complete, and the untracked paths that are not in the PR.

@@ -58,7 +58,7 @@ A fix makes the check pass on its merits. A test, lint rule or check that is rem
 
 ## 5. Commit and push
 
-One commit per root cause, conventional commit style matching `git log`. Stage only the fix's files (`git add <paths>`); pre-existing changes in the tree are the user's and stay out.
+One commit per root cause, conventional commit style matching `git log`. Stage only the fix's files, by explicit file path (`git add <file>…`), never a directory, `-A` or `-a`; pre-existing changes and untracked files (`??`) in the tree are the user's and stay out.
 
 Push to the run's branch with `git push`: at once under `push-authorized`, otherwise ask the user and push on their yes. Pushing a change under `.github/workflows/` needs a token with the `workflow` scope; when the push is refused for it, report `pushed: no` with that reason. Last, trigger each marked *rerun* with `gh run rerun <run-id> --failed`, unless a push to that branch just started fresh runs.
 

@@ -102,7 +102,7 @@ It pushes the current branch and fills the repository's pull request template. I
 - When your branch builds on another open pull request's branch, it targets that branch.
 - When a pull request already exists, it pushes and offers to rewrite the description.
 
-It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when there are uncommitted changes.
+It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
 Output: the pull request URL, its base branch, the template it used, and the sections and checkboxes left for you to complete.
 
