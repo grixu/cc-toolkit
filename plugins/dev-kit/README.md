@@ -39,6 +39,7 @@ It reads the failed logs and the workflow file, finds the change that caused the
 - An environment problem (missing secret, expired credential, permission, billing) is reported for an admin, not patched.
 - It works only in a local clone of the failing repository, and asks before switching to the run's branch.
 - It asks you before it skips, loosens or removes a check.
+- It never merges or rebases the base into the branch, resolves conflicts, force-pushes or edits the pull request unless you name that action.
 
 Output: a `ci-fix result` block with the status (`fixed`, `rerun`, `nothing-to-fix`, `not-fixable` or `blocked`), the cause, the commits, how the fix was verified, whether it was pushed, and what is left for you.
 
@@ -50,7 +51,7 @@ Use it when your branch has an open pull request and you want CI fixed and revie
 /dev-kit:pr-shepherd
 ```
 
-Running it authorizes commits and pushes to the pull request's branch. It starts a self-paced `/loop`, and each round does the following:
+Running it authorizes commits and pushes to the pull request's branch, and counts as the per-branch push consent a repository rule reserving `git push` for humans asks for. It never merges or rebases the base into the branch, resolves conflicts, force-pushes, or closes, reopens or edits the pull request unless a later message of yours names that action. It starts a self-paced `/loop`, and each round does the following:
 
 - It hands red checks to `ci-fix`, which may push without asking.
 - It judges each open review comment on its merits. For a comment it agrees with, it makes the change, commits and pushes it, replies `Fixed in <sha>`, and resolves the thread.
@@ -101,7 +102,7 @@ It pushes the current branch and fills the repository's pull request template. I
 - When your branch builds on another open pull request's branch, it targets that branch.
 - When a pull request already exists, it pushes and offers to rewrite the description.
 
-It never commits. It stops on the default branch or a detached HEAD, and asks what to do when there are uncommitted changes.
+It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when there are uncommitted changes.
 
 Output: the pull request URL, its base branch, the template it used, and the sections and checkboxes left for you to complete.
 

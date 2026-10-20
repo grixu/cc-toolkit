@@ -6,7 +6,9 @@ argument-hint: "[draft] [base branch]"
 
 Request: **$ARGUMENTS**
 
-Invoking this skill authorizes the push. Every claim in the PR body is backed by **evidence**: the diff, a commit message, a linked issue, or a command run in this session.
+Invoking this skill authorizes the push. It does not cover merging or rebasing the base into the branch, resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line.
+
+Every claim in the PR body is backed by **evidence**: the diff, a commit message, a linked issue, or a command run in this session.
 
 ## 1. Preconditions
 

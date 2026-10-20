@@ -10,7 +10,7 @@ Target: **$ARGUMENTS**
 ## Invocation contract
 
 - **Target**: a GitHub URL (run, job, PR, PR checks, commit, commit checks), a run ID, or a PR number. Empty means the current branch.
-- **`push-authorized`**: when this literal token appears in the arguments, the caller has already been granted consent to push. Push without asking, and run *unattended*: wherever a step below says to ask the user, end with status `blocked` instead. `pr-shepherd` invokes this skill that way. Without the token, every push waits for the user's yes.
+- **`push-authorized`**: when this literal token appears in the arguments, the caller has already been granted consent to push. Push without asking, and run *unattended*: wherever a step below says to ask the user, end with status `blocked` instead. `pr-shepherd` invokes this skill that way. Without the token, every push waits for the user's yes. The token, or that yes, is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. It does not cover merging or rebasing the base into the branch, resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly.
 - Every run ends with the **result block** (last section), even an early stop.
 
 ## 1. Locate the failure

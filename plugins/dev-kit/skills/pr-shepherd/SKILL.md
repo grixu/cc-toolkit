@@ -8,7 +8,7 @@ disallowed-tools: AskUserQuestion
 
 Arguments: **$ARGUMENTS**
 
-Invoking this skill authorizes every commit and push it describes, on the PR's branch only. It runs unattended: wherever it needs a human, it *stops* (below) with a report instead of asking.
+Invoking this skill authorizes every commit and push it describes, on the PR's branch only. It does not cover merging or rebasing the base into the branch, resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. It runs unattended: wherever it needs a human, it *stops* (below) with a report instead of asking.
 
 ## Entry
 
