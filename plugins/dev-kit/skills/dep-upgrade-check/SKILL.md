@@ -65,7 +65,7 @@ Done when every ledger entry carries one of the three marks, and every affected 
 
 ## 4. Gather cheap empirical evidence
 
-For a PR input, read its CI result: `gh pr checks <url> --json name,bucket,link`. A failing check on a bot PR is direct evidence; read its log (`gh run view <run-id> --log-failed`) before concluding. When `--log-failed` is empty or answers 403/404, read `gh api repos/OWNER/REPO/actions/jobs/<job-id>/logs`, then the step conclusions (`gh api repos/OWNER/REPO/actions/jobs/<job-id> --jq '.steps[]|{name,conclusion}'`) and `gh api repos/OWNER/REPO/check-runs/<job-id>/annotations`, before concluding anything.
+For a PR input, read its CI result: `gh pr checks <url> --json name,bucket,link`. A failing check on a bot PR is direct evidence; read its log (`gh run view <run-id> --log-failed`) before concluding. When `--log-failed` is empty or answers 403/404, read `gh api repos/OWNER/REPO/actions/jobs/<job-id>/logs`, then the step conclusions (`gh api repos/OWNER/REPO/actions/jobs/<job-id> --jq '.steps[]|{name,conclusion}'`) and `gh api repos/OWNER/REPO/check-runs/<job-id>/annotations`, before concluding anything. A failure in a setup or post step after the test/build step succeeded is runner infrastructure, not evidence for or against the upgrade; say so and suggest `gh run rerun <id> --failed`.
 
 A local build against the target is offered, not run by default: it downloads packages and runs their install scripts. Offer it when the verdict is not `safe` or when unknowns remain. On consent, run it in a throwaway worktree so the user's working tree and lockfile stay untouched:
 
