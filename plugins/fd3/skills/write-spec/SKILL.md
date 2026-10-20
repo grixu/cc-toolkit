@@ -25,6 +25,11 @@ and hold it as the checklist section 6 walks; a fact in neither it nor the resea
 gap to declare or a lookup to dispatch, never a recollection. The decisions in it are ratified —
 you write them up, you do not reopen them.
 
+A probe — a command you run to settle a claim, a repository's own script included (a `package.json`
+script, a Makefile target, a docs build) — runs in a detached worktree under your scratchpad
+(`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout, and never
+installs, links or rebuilds dependencies; a claim that needs more is a gap to declare.
+
 The closing notes name each research file and what it establishes; that line is the index. Read
 a report's headings first, then the sections you are about to cite. Do not re-read a file you
 have already read in this pass: if a `cat` trips the tool cap, the payload is on disk and the
