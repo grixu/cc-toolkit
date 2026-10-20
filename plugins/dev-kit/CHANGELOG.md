@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pr-shepherd`: a `decision` verdict for a comment whose fix is a trade-off only the owner can make: one reply with the options and their cost, the thread left unresolved and handed over in the report
 
 ### Changed
+- `dep-upgrade-check`: anything that downloads and executes third-party code (installs, `docker pull`/`run`, binaries) is offered, not run; `ecosystems.md` gains container image and GitHub Actions rows
 - `dep-upgrade-check`: applying the fixes for a PR input happens on the PR's head branch in a separate worktree, committed locally and pushed only on the user's go-ahead, with a warning that dependency bots drop foreign commits and the bot setting that removes the need
 - `dep-upgrade-check`: a CI failure in a setup or post step after the test/build step succeeded is reported as runner infrastructure with a rerun suggestion, not as evidence about the upgrade
 - `pr-open`: the report ends with a one-line suggestion of `/dev-kit:pr-shepherd`, never invoked

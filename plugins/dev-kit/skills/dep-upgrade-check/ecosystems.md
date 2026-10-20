@@ -10,6 +10,8 @@ The skill's steps hold for every ecosystem; only the lookups change. Once the so
 | Go | `go list -m all`, `go mod why -m <module>` | `go list -m -versions <module>` | the module path is the repo; `go.mod` at the target tag gives the `go` directive and requirements |
 | PHP | `composer show <pkg>`, `composer why <pkg>` | `composer show --all <pkg>` | `composer why-not <pkg> <target>` names what blocks the target, including the `php` constraint |
 | Rust | `cargo tree -i <crate>` | `cargo info <crate>` or `https://crates.io/api/v1/crates/<crate>/versions` | `Cargo.toml` at the target tag: `rust-version`, features, dependencies |
+| Container image | the tag or digest on `FROM` and `COPY --from=` lines; those lines are the usage surface | the registry's tags (`https://hub.docker.com/v2/repositories/<namespace>/<image>/tags` on Docker Hub) | the vendor repository's tags, often in a monorepo (`<component>-1.11.0`), or the image's registry page; compare base image, `ENTRYPOINT` and `USER` between both tags |
+| GitHub Actions | `uses: <owner>/<repo>@<ref>` pins in `.github/workflows/` and composite actions | `gh release list -R <owner>/<repo>` or `gh api repos/<owner>/<repo>/tags` | `action.yml` at the target tag: `inputs`, `outputs`, and the node version in `runs.using` |
 
 Ecosystem traps that change the ledger:
 

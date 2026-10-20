@@ -13,7 +13,7 @@ Two artifacts carry the analysis: the **usage surface** (every way the codebase 
 
 Input: `$ARGUMENTS`. With nothing given, ask for a package and target version or a PR link.
 
-The commands below are pnpm/npm defaults. For a Python, Go, PHP, or Rust dependency, or a JS repo on npm or yarn, read [`ecosystems.md`](ecosystems.md) for the equivalents; every step stays the same.
+The commands below are pnpm/npm defaults. For a Python, Go, PHP, or Rust dependency, a container image, a GitHub Action, or a JS repo on npm or yarn, read [`ecosystems.md`](ecosystems.md) for the equivalents; every step stays the same.
 
 ## 1. Pin the range
 
@@ -67,7 +67,7 @@ Done when every ledger entry carries one of the three marks, and every affected 
 
 For a PR input, read its CI result: `gh pr checks <url> --json name,bucket,link`. A failing check on a bot PR is direct evidence; read its log (`gh run view <run-id> --log-failed`) before concluding. When `--log-failed` is empty or answers 403/404, read `gh api repos/OWNER/REPO/actions/jobs/<job-id>/logs`, then the step conclusions (`gh api repos/OWNER/REPO/actions/jobs/<job-id> --jq '.steps[]|{name,conclusion}'`) and `gh api repos/OWNER/REPO/check-runs/<job-id>/annotations`, before concluding anything. A failure in a setup or post step after the test/build step succeeded is runner infrastructure, not evidence for or against the upgrade; say so and suggest `gh run rerun <id> --failed`.
 
-A local build against the target is offered, not run by default: it downloads packages and runs their install scripts. Offer it when the verdict is not `safe` or when unknowns remain. On consent, run it in a throwaway worktree so the user's working tree and lockfile stay untouched:
+Anything that downloads and executes third-party code (package installs, `docker pull` or `docker run`, release binaries) is offered, not run by default. That includes a local build against the target: it downloads packages and runs their install scripts. Offer it when the verdict is not `safe` or when unknowns remain. On consent, run it in a throwaway worktree so the user's working tree and lockfile stay untouched:
 
 1. `git worktree add --detach <tmpdir> <ref>`, where the ref is the PR head for a PR (`git fetch origin pull/<number>/head`, then `FETCH_HEAD`; its lockfile already carries the upgrade) or the current `HEAD` otherwise.
 2. In the worktree, install the way the repository's CI does, and for a non-PR input add the target (`pnpm add <pkg>@<target> --filter <project>`).
