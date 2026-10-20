@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a headless caller sees both without opening the report
 - Evals 21–23: correctness recall with a HANDOFF-family check, `cr-prepare` on an all-skipped
   commit, and `--pr` scope resolution against a sandbox origin and a `gh` stand-in
+- Eval-24: `--pr` on a pull request someone else authored resolves the same scope in reviewer
+  mode; eval-23 now also checks the `gh` user lookup and its own-PR mode
 
 ### Changed
 
