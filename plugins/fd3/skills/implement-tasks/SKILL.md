@@ -33,11 +33,10 @@ to have.
 
 ## Workflow
 
-Open your first reply with this checklist, before any tool call — a run that then stops on an
-unresolvable path has cost one message — and make the first tool call in that same reply. A reply
-that only announces the checklist, or only posts it, ends the turn with nothing done. Post it again
-in full — marks updated, never compressed to a line and never summarised — before every user
-interaction (the question batch, each report round) and at the close:
+Post this checklist in full — marks updated, never compressed to a line and never summarised — in
+the same reply as every user interaction (the step-2 question batch, each report round) and at the
+close. Step 1 needs no announcement: start it with a tool call. A reply that only posts the
+checklist ends the turn with nothing done:
 
 ```
 - [ ] 1. Read the graph: parse task frontmatter, resolve repositories, check integrity
@@ -230,6 +229,8 @@ report's own `tasks[]` tally, never hand-counted — with one distinction the re
 draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
 failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
 Relay each branch's `skipped` commands with its outcome: a check that never ran is not a pass.
+A check you run yourself never stands in for the gate: a `no-verdict` or `failed-final` branch is
+relaunched or repaired, never set to `done` by hand.
 `graph` items are the other kind that is information rather than work — one per `branch-base` that
 named a branch no task builds, naming the tasks it carries. The workflow sees the task files alone,
 so step 1's resolution says what each one means: a base that resolved is the pre-existing branch the
@@ -345,6 +346,10 @@ each pointing at its task file and what it unblocks, plus where the branches and
 live, followed by *Decisions taken for you* and the open `review` items as step 5 lists them. A
 pause that survives only in this conversation is state lost.
 
+Every task or branch you mention — in a report, in `HIL_ACTIONS.md`, in a question — leads with the
+task's `name:` or a short description of the branch; a split code or ordinal (`m1`, `C1`) goes in
+parentheses after it, never alone: the user reads the report, not the split.
+
 ### 5. Propose, never push
 
 When every repository-bearing task is `done`, or the loop ends short of that, close with one
@@ -361,8 +366,10 @@ the default branch — but only when the predecessor landed as a merge commit. A
 merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget
 shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
 Say that in the proposal. The batch then asks two things: whether to push the branches and open
-the pull requests, and which open `review` items, by number, go to a repair before that — none is
-the default, and a decision taken for the user that they want reverted is named the same way. Only
+the pull requests, and which open `review` items, by number, go to a repair before that. Recommend
+per item on its merit and offer one "all fixable" option; list a branch's boy-scout findings — the
+report's separate list, pre-existing code in a touched file — on their own line, recommended to
+leave. A decision taken for the user that they want reverted is named the same way. Only
 after explicit consent: push, `gh pr create` per branch (`--base` set to the stack base) with a
 description naming the tasks, the spec and the branch's element codes. When the repository's own
 rules reserve pushing to a human — its `AGENTS.md`, `CLAUDE.md` or contributing guide says so —
