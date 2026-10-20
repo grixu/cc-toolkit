@@ -154,7 +154,8 @@ Steps 1–3 only **suppress**. What they document is the standard here: if the p
 documents barrel exports as its public-API style, a layered file ordering, a naming
 convention, or a sanctioned anchor-comment prefix (e.g. `AGENTS-NOTE:`), that is not a
 finding — a rule you would otherwise raise becomes a non-finding when the project has
-deliberately chosen it. Capture what you picked up in one short conventions note.
+deliberately chosen it. A sanctioned prefix clears the prefix, not the text after it: the
+comment rules still judge that, within the limits the project sets for the shape. Capture what you picked up in one short conventions note.
 
 **Precedence** when two of these files disagree, most specific first: a file in a
 closer directory > `CODING_STANDARDS.local.md` > `CODING_STANDARDS.md` > `CLAUDE.md` /

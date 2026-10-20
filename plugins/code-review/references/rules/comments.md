@@ -34,8 +34,10 @@ not exempt the comment from any rule. Strip the prefix and judge what remains on
 its merits: if the remainder restates the code (R1) or points at an internal doc
 (R4), it goes despite the label. The one exception is a prefix the `<conventions>` note
 quotes as the project's own (an `AGENTS-NOTE:` its `CLAUDE.md` asks agents to leave): a
-project file outranks this rules file, so a comment in that sanctioned shape is the
-convention working, not a finding — judge only whether what it says is still true (R9).
+project file outranks this rules file, so the prefix itself is never a finding and a REWRITE
+keeps it. The text after it is still judged by every rule here, and by the limits the project
+sets for that shape (a length cap, a WHY-not-WHAT rule) — a sanctioned note that restates the
+code is still R1. Only R11's default-REMOVE yields to the convention.
 
 ## R1 — No narrating *what* the code does
 The code is there to be read. A comment that restates what the code below *is* or
@@ -241,6 +243,10 @@ noise-level finding.
 - This is a semantic check — you must have read the code to claim it. Never
   raise R9 on suspicion; cite the exact line of code that contradicts the
   comment.
+- A term the code's own identifiers or the spec's vocabulary use is not a
+  contradiction: "Organization Member" beside `ORGANIZATION_MEMBER_TEMPLATE_ROLE`
+  names the same thing, whatever string the constant holds. R9 needs a behaviour or
+  a value the code does not have.
 - On **modified files**, this is where rot shows up: code changed, comment
   didn't. Re-read the comment against the *new* code, not the touched lines.
 
@@ -363,6 +369,11 @@ the comment's right to exist; it does not exempt it from being correct and tight
 Each rule has a look-alike that is *not* a violation. Check these before
 emitting — a wrong REMOVE is worse than a missed nitpick.
 
+- **A tag vs a project marker** — a tag-shaped comment (`[ARCH]: …`, `@pattern …`)
+  may be a marker the project repeats everywhere without documenting it. Before
+  flagging one, Grep its exact tag across the repository: a tag that recurs in many
+  files is the project's marker — keep it, or put a doubt about its text in `Not
+  flagged`, never REMOVE it.
 - **R1 vs self-documenting markup** — JSX/template props and declarative config
   read like "comment == code" by convention (`<Button label="Save"/>`,
   `timeout: 30_000  # 30s`). Do **not** flag the absence or presence here; the

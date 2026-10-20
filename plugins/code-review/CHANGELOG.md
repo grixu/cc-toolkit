@@ -56,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spec says a later step uses; security clears a candidate only on a mitigation it read; the spec
   lens leaves requirements another branch owns and departures already approved; a fix round's
   edits are never reversed
+- Comments lens: a sanctioned note prefix is never a finding, but the text after it is judged by
+  every rule and the project's own limits for that shape; a term the code or the spec uses is not
+  an R9 contradiction; a tag that recurs across the repository is a project marker, never removed
 - The performance subset leaves out test-support helpers and `*.config.*` modules
 - The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
   the diff carries none; each structural fix gets its own yes; the approved list is ticked off
