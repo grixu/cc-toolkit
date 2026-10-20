@@ -26,6 +26,7 @@ Run `git fetch origin` first, then resolve each before moving on:
 - `git log --format='%h %s%n%b' origin/<base>..HEAD` for intent, `git diff --stat origin/<base>...HEAD` for scope, `git diff origin/<base>...HEAD` for substance. Read the diff itself; the commit subjects alone miss what changed.
 - **Linked issue.** Look for an issue number or tracker key (`#123`, `ABC-123`) in the branch name and commit messages. Write `Closes #123` only for a GitHub issue that a commit or the branch explicitly names; mention a tracker key as plain text.
 - **Why.** Take it from commit bodies, the issue, or the conversation. When none of them gives a reason, describe the effect of the change and leave the motive out.
+- **Design docs.** Collect the specs, ADRs and design documents the diff adds or a commit message names.
 - **Testing.** Collect what is evidenced: tests added or changed in the diff, and commands run in this session with their result. Nothing else counts as tested.
 
 ## 3. Find the template
@@ -62,7 +63,7 @@ Keep the template's structure intact: every heading, in its order, and every che
 - Delete instructional HTML comments (`<!-- ... -->`) and replace placeholder prompts with the answer.
 - A section the change does not touch gets `N/A`, plus a few words of reason when it is not obvious.
 - Tick a checkbox only when evidence shows it is true. Leave the rest unticked, as written.
-- The first section that describes the change opens with the **one big thing** in bold, then a **Why it matters** line, then bullets.
+- The first section that describes the change opens with the **one big thing** in bold, then a **Why it matters** line, then bullets. It ends with a **Go deeper** line linking the design docs from step 2 (a repository-relative path or a blob URL), even when the repository has its own template; drop the line when there are none.
 
 **Title.** Check `git log --format=%s -30 origin/<base>`: when most subjects follow Conventional Commits (`type(scope): subject`), write the title that way, with the type and scope the branch's commits use. Otherwise write a concise imperative sentence. Keep it under 70 characters.
 
@@ -73,7 +74,7 @@ Keep the template's structure intact: every heading, in its order, and every che
 - Group bullets by behavior. Name a file only when the reviewer needs to find it.
 - Bold the one big thing and the axiom labels (**Why it matters**, **What changed**); leave everything else plain.
 - Write like an engineer explaining the change to a teammate: specific verbs (adds, removes, renames, fixes) over adjectives, numbers over intensifiers, and the claim itself with no preamble or closing summary.
-- Keep the body short enough to read in under a minute; move long detail behind a **Go deeper** link.
+- Keep the body short enough to read in under a minute: about 250 words outside the template's dependency and checklist sections, and 6–8 one-sentence **What changed** bullets at most. Put long logs in a `<details>` block and move other long detail behind the **Go deeper** link.
 
 ## 5. Push and open
 

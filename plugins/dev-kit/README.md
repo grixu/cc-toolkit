@@ -102,6 +102,7 @@ Use it when your commits are ready for review. Add `draft` for a draft pull requ
 It pushes the current branch and fills the repository's pull request template. It looks for the template in the repository root, `docs/`, `.github/`, a `PULL_REQUEST_TEMPLATE/` directory, or the owner's `.github` repository, and uses a short default when none exists.
 
 - Every claim in the description comes from the diff, the commits, a linked issue, or a command run in the session.
+- The description stays around 250 words, with long logs folded into a `<details>` block, and links the specs and ADRs the branch adds or its commits name under **Go deeper**.
 - It ticks a checkbox only when it has evidence that the item is true.
 - It writes a Conventional Commits title when the base branch's history uses that style.
 - It assigns the pull request to you.
