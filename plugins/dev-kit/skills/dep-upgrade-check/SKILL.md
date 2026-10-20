@@ -97,4 +97,7 @@ Then:
 - **Sources**: the release, changelog, and guide URLs the ledger used.
 - **Evidence run**: CI and worktree results, or the offer to run them.
 
-Split the table by unit when a PR or monorepo carries several. When the user asks to apply the upgrade, apply the fixes from the table, then run the step-4 checks in the working tree.
+Split the table by unit when a PR or monorepo carries several. When the user asks to apply the upgrade:
+
+- **Package + version input**: apply the fixes from the table in the working tree, then run the step-4 checks there.
+- **PR input**: apply them on the PR's head branch in a worktree outside the user's checkout (the session scratchpad when there is one; `git fetch origin <headRefName>`, then `git worktree add <dir> <headRefName>`). Commit there, staging by explicit file path, run the step-4 checks there, and push only on the user's explicit go-ahead. Say that Renovate and Dependabot rebase their branches and drop commits that are not theirs, and name the bot setting that removes the need for the commit when one exists (for example Renovate `postUpdateOptions: ["pnpmDedupe"]`).
