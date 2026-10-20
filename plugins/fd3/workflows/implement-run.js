@@ -869,6 +869,10 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
       ? [
           `Under skipped, also copy verbatim every listed problem you left unfixed, whatever the reason.`,
           ``,
+          `A name you add says what the code does, not where it sends it, and reuses no name the module`,
+          `already exports. A value two modules need moves to a module both already import (constants,`,
+          `config) — never import it from a repository, an adapter or an app-composition file: each`,
+          `such fix came back as the next review's dependency-direction finding.`,
           `Commit each \`security\` finding's fix on its own, naming`,
           `its rule in the message, so one can be reverted without the rest; the other fixes share a commit.`,
           `Every commit message names the findings it fixes, by rule and location: that is how the delta`,
