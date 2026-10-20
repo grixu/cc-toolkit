@@ -41,6 +41,8 @@ It reads the failed logs and the workflow file, finds the change that caused the
 - It asks you before it skips, loosens or removes a check. Aligning an assertion with a documented contract is a fix, and the commit quotes the contract line.
 - It never merges or rebases the base into the branch, resolves conflicts, force-pushes or edits the pull request unless you name that action.
 
+When the cause is already fixed on the branch but no new run will come (a path filter, a deploy workflow), it reports `nothing-to-fix` and names the `gh workflow run` command for you; it never dispatches a deploy itself.
+
 Output: a `ci-fix result` block with the status (`fixed`, `rerun`, `nothing-to-fix`, `not-fixable` or `blocked`), the cause, the commits, how the fix was verified, whether it was pushed, and what is left for you.
 
 ### pr-shepherd: drive a pull request to green

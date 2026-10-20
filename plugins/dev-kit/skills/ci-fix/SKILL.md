@@ -26,7 +26,7 @@ Resolve the target to a repository, one or more failed runs, and their failed jo
 
 A run superseded by a newer green run of the same workflow on the same branch is not a failure; drop it. Use a job's `databaseId` from `--json jobs` as its ID. A failing check with no Actions run behind it (a third-party app) has its details in `gh api repos/OWNER/REPO/commits/<sha>/check-runs` (`output`, `details_url`) and `gh api repos/OWNER/REPO/check-runs/<id>/annotations`.
 
-When nothing is failing (all green, or still pending), end with status `nothing-to-fix`.
+When nothing is failing (all green, or still pending), end with status `nothing-to-fix`. The same status applies when steps 2–3 find the cause already fixed on the branch head and no newer run will replace this one (a path filter skips it, a deploy workflow runs only on dispatch): `next` names the `gh workflow run <workflow> --ref <branch>` command for a workflow with `workflow_dispatch`. Never dispatch a deploy workflow yourself.
 
 ## 2. Guard the checkout
 

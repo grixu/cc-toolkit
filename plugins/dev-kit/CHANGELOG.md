@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pr-shepherd`: a `decision` verdict for a comment whose fix is a trade-off only the owner can make: one reply with the options and their cost, the thread left unresolved and handed over in the report
 
 ### Changed
+- `ci-fix`: `nothing-to-fix` also covers a cause already fixed on the branch head that no newer run will replace; `next` names the `workflow_dispatch` command, and a deploy workflow is never dispatched
 - `ci-fix`: changing an assertion to match the documented contract is a fix whose commit quotes the contract line; accepting output the contract does not name is loosening, so `blocked` under `push-authorized`
 - `ci-fix`: a flaky-test call needs a relatedness check against the branch diff; a test whose subject the branch touches is not flaky until it passes locally twice, and a rerun without a local run is reported as an unverified flake
 - `ci-fix`: under `push-authorized` the result block is printed before control returns to the caller, even within the same turn
