@@ -112,7 +112,7 @@ export function checkBoundaries(c, tasks, { precedesDb = null, report = '' } = {
       const ids = [t.fm.branch, t.slug, t.fm.name, t.file.replace(/\.md$/, '').replace(/^\d+-/, '')].filter(Boolean);
       const namesThisBranch = (line) => ids.some((id) => line.includes(id)) || /phase[ -]?2 branch/i.test(line);
       // A report bullet wraps across lines, so judge it whole.
-      const reportHold = (report || '').split(/\n(?=\s*(?:[-*] |\d+\. |$))/).some((item) => namesThisBranch(item) && MERGE_HOLD.test(item));
+      const reportHold = (report || '').split(/\n(?=\s*(?:[-*] |\d+\. |$))/m).some((item) => namesThisBranch(item) && MERGE_HOLD.test(item));
       const mergeOrder = MERGE_HOLD.test(t.body || '') || reportHold;
       c.check(
         (Array.isArray(deps) && deps.length > 0) || stacked || mergeOrder,
