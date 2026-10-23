@@ -144,6 +144,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- repair-mode fixers are told, like implement fixers, that a caveat says only what the parent
+  could not otherwise know — following the prompt is not one
 - CI verdicts are no longer voided by files the toolchain itself writes: the baseline records them,
   and a new untracked file is a caveat rather than a fault
 - A CI fix round that commits nothing ends the loop; fixers see pre-existing failures and skip

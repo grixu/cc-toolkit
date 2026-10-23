@@ -1120,9 +1120,8 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
     `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
     `reason, any judgment call that went beyond the listed problems, and any change that touches`,
     `a decision recorded in the spec.`,
-    ...(repairMode
-      ? []
-      : [`A caveat says something the parent could not otherwise know. Following this prompt is not a`, `caveat.`]),
+    `A caveat says something the parent could not otherwise know. Following this prompt is not a`,
+    `caveat.`,
     `Make every edit with the Edit tool — never \`sed -i\`, a Python or heredoc rewrite, or any`,
     `script that rewrites a file: a scripted rewrite changes lines nobody asked for, and the review`,
     `that follows reads them as new code.`,

@@ -165,6 +165,7 @@ test('fix prompts route a spec change to build-spec and stage by name', async ()
       assert.match(c.prompt, /never `git add -A`/)
       assert.match(c.prompt, /Make every edit with the Edit tool/)
       assert.match(c.prompt, /return it as fromSha/)
+      assert.match(c.prompt, /A caveat says something the parent could not otherwise know\. Following this prompt is not a\ncaveat\./, c.label)
     }
   }
 })
