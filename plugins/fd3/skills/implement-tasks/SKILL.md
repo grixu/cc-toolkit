@@ -169,9 +169,10 @@ report it, do not ask.
 
 Record the answers in `implement-answers.md` next to the tasks directory, never inside it where it
 would read as a task file — the start ref per repository, the review choice, the commit choice,
-each consent granted (with its task), and each decision a later report round settles. A later
-invocation over the same directory reads that file first and asks only what it does not settle or
-what has changed since: a new repository, a base that moved, a stale `in-progress`.
+each consent granted (with its task), each decision a later report round settles, and the last
+report's path (step 4). A later invocation over the same directory reads that file first and asks
+only what it does not settle or what has changed since: a new repository, a base that moved, a
+stale `in-progress`.
 
 Committing the spec and the tasks directory before launch is the user's call, and the commit
 happens where they already live — the repository and branch the spec sits in. Never copy the spec
@@ -229,7 +230,8 @@ main checkout rather than discover the refusal. Merges and fixes for that branch
 the checkout, but its validation does not: the workflow grades it in a detached worktree beside
 the repository, so the verdict describes the branch's commit rather than whatever else the user
 has open in that tree. On a relaunch, pass `reportPath` — the `<output-file>`
-path from the previous run's completion notification. The workflow reads that file's toolchain and
+path from the previous run's completion notification, or from the `Last report:` line in
+`implement-answers.md` when that notification is not in this conversation. The workflow reads that file's toolchain and
 baseline knowledge with one cheap agent, so the run skips a re-scout and a re-baseline of every
 repository it already knows. Never transcribe that knowledge into the call yourself: it is tens of
 kilobytes of prose, and a command list that differs by a word from the one the baseline measured
@@ -240,7 +242,12 @@ dispatch implementation agents yourself.
 ### 4. Work the report
 
 The completion notification truncates the result — read the full report from the notification's
-`<output-file>` path before relaying anything. The workflow returns per-task statuses,
+`<output-file>` path before relaying anything. Record that path in `implement-answers.md` as
+`Last report: <path> (<implement-run or repair-run>, <date>)` — one line per workflow kind, each
+replacing its previous one — so the next launch has its `reportPath` even after `/clear` or in a
+new session. A later invocation passes the implement-run line when its file still exists: a
+repair-run report holds toolchain knowledge only for the repositories it repaired, so it is the
+fallback. A path that no longer exists is omitted, and the workflow re-scouts. The workflow returns per-task statuses,
 per-branch validation outcomes (with each branch's review findings and the path of its review
 `cr-report.md`), agent `caveats`, the HIL
 list, the tasks left unreachable behind blockers, and its `toolchain` and `baseline` knowledge.
