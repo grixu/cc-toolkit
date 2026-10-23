@@ -111,6 +111,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer slips into the auto-fix set; fix and repair results must report `fromSha`/`toSha`, and
   the prepare result its judged file count. `specBound` is set only when the finding line says so —
   the merge agent never sees the spec, so it no longer claims to compare against it
+- The spec exists once, at `specPath`: a repair review's spec lens no longer reads a copy tracked on
+  the branch, and implement, fix and repair agents never edit, copy or commit the spec — a needed
+  spec change comes back as a caveat or blocked reason naming `/fd3:build-spec <spec>`
 
 ## [0.3.0] - 2026-10-12
 

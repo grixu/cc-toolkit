@@ -26,7 +26,8 @@ export const meta = {
 //   review       true or "gated" to review each repaired branch's delta with the code-review plugin's
 //                headless lenses; its findings go to the human, never to a fixer, and only a gated
 //                review keeps the task files from being marked done until the human settles them
-//   specPath     (optional) absolute path of the spec, for the review's spec lens
+//   specPath     (optional) absolute path of the spec, for the review's spec lens and the
+//                build-spec route agents name for a spec change
 //   decisions    (optional) [string] — the user's standing decisions on this task graph from earlier
 //                report rounds, verbatim; with each repair's own instructions they mark review findings
 //                that would undo them as reserved
@@ -35,6 +36,8 @@ export const meta = {
 const input = typeof args === 'string' ? JSON.parse(args) : args
 const { repairs, repos, specPath } = input
 const decisions = input.decisions || []
+const specRef = specPath ? `the specification at ${specPath}` : 'the specification'
+const specArg = specPath || '<spec>'
 const review = input.review === true || input.review === 'gated'
 const gated = input.review === 'gated'
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
@@ -282,6 +285,10 @@ const repairPrompt = (r) =>
     `The authority for this change is the decision quoted above — not the specification and not`,
     `your own reading of the design. Do not read the spec; do not re-derive the design; apply`,
     `the decision exactly as stated.`,
+    `Never edit, copy or commit ${specRef}, even when a decision above asks for it: the spec`,
+    `changes only through \`/fd3:build-spec ${specArg}\`. Apply the rest and name the spec change`,
+    `under caveats with that command; when a decision is nothing but a spec change, return outcome`,
+    `"blocked" with that reason.`,
     ``,
     `Before your first edit, run \`git rev-parse HEAD\` in the worktree and return it as fromSha.`,
     `Work only inside the worktree. Do not run linters, test suites or builds — validation runs`,
@@ -561,6 +568,8 @@ const fixPrompt = (unit, problems, preExisting = []) =>
     `A listed failure in a file this branch did not change (\`git diff --name-only ${unit.base || diffBase(unit.repo)}...HEAD\`)`,
     `that no change of the branch explains is not this branch's either: skip it and record it under`,
     `caveats as out of scope — a fix there edits code the branch was never about.`,
+    `Never edit, copy or commit ${specRef}: a problem that needs the spec changed is skipped and`,
+    `recorded under caveats naming \`/fd3:build-spec ${specArg}\`, the only route by which the spec changes.`,
     ``,
     ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo), ``] : []),
     `Toolchain report for this repository — when a fix changes something a listed command`,
@@ -652,8 +661,6 @@ const reviewDir = (unit, pass) => `${unit.repo}.worktrees/.review/${unit.branch.
 
 const prepPrompt = (unit, base, dir) => {
   const tree = validationTree(unit)
-  // A repair may amend the spec on the branch; the main checkout's copy is then stale.
-  const rel = specPath && specPath.startsWith(`${unit.repo}/`) ? specPath.slice(unit.repo.length + 1) : null
   return [
     `Prepare a code review of the branch ${unit.branch} (repository ${unit.repo}) in the checkout`,
     `${tree}, measured from ${base}.`,
@@ -665,9 +672,6 @@ const prepPrompt = (unit, base, dir) => {
     `Remove ${dir} if it exists — lens files left there by an earlier run would be read as this`,
     `run's. Then invoke the \`code-review:cr-prepare\` skill through the Skill tool with:`,
     `\`--base ${base} --out ${dir} -C ${tree}${specPath ? ` --spec ${specPath}` : ''}\``,
-    ...(rel
-      ? [`When \`git -C ${tree} cat-file -e HEAD:${rel}\` succeeds, pass \`--spec ${tree}/${rel}\` instead:`, `the branch's copy carries any amendment a repair made.`]
-      : []),
     ``,
     `Return what its closing block says: status, judged and skipped file counts, active and inactive`,
     `lenses, the alternate or reason on empty, the reason on error — and invoked=true. When the Skill tool is not`,
