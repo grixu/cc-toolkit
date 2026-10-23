@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its own step before grouping and stacking use it, and keeps an order the spec's build order binds
   inside a phase as an edge; the fork-renderer dispatch is gone, and the written files are
   re-checked for coverage either way
+- `implement-tasks` keeps its close and the repair-run launch contract in `close.md` and
+  `repair-launch.md` beside the skill, read when they are needed
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by
