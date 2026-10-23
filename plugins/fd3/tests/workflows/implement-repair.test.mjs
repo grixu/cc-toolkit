@@ -269,6 +269,22 @@ test('CI failure then pass after a fix round', async () => {
   assert.equal(r.result.branches[0].fixRounds, 1)
 })
 
+test('final gate failure gets one fix round, then passes and marks', async () => {
+  const r = await run(repairArgs({ review: false }), [
+    ['ci:app:feat-x:final#2', ciPass],
+    ['ci:app:feat-x:final', ciFail(['stale index'])],
+    ['ci:app:feat-x#2', ciPass],
+    ['ci:app:feat-x', ciFail(['boom'])],
+    ['fix-final:', { summary: 'fixed', fromSha: 'bbb222', toSha: 'ccc333' }],
+  ])
+  assert.deepEqual(r.callsMatching(/^(ci|fix)/).map((c) => c.label), ['ci:app:feat-x', 'fix-ci:app:feat-x#1', 'ci:app:feat-x#2', 'ci:app:feat-x:final', 'fix-final:app:feat-x', 'ci:app:feat-x:final#2'])
+  assert.match(r.call('fix-final:app:feat-x').prompt, /Fix final-gate CI problems/)
+  assert.match(r.call('ci:app:feat-x:final#2').prompt, /set `status: done`/)
+  assert.equal(r.result.branches[0].fixRounds, 2)
+  assert.equal(r.result.branches[0].ci, 'passed')
+  assert.deepEqual(r.result.hil, [])
+})
+
 test('CI incomplete is re-dispatched once and then has no verdict', async () => {
   const r = await run(repairArgs(), [['ci:app:feat-x', (p) => ({ ...ciPass(p), passed: false, incomplete: ['pnpm test'] })]])
   assert.ok(r.has('ci:app:feat-x:unfinished'))

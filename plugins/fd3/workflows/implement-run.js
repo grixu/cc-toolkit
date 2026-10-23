@@ -1793,7 +1793,7 @@ for (const unit of units) {
   if (finalNeeded) {
     let finalFault
     ;({ ci: finalCi, fault: finalFault } = await runCi(unit, 'full', markFiles, `ci:${tag}:final`))
-    if (!repairMode && finalCi && !finalFault && !finalCi.passed) {
+    if (finalCi && !finalFault && !finalCi.passed) {
       // One fix round here: a final-gate failure is often mechanical — a derived artifact the
       // review fixes invalidated — and only what survives the round deserves a human.
       summary.fixRounds += 1

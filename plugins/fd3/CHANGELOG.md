@@ -144,6 +144,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- a repair's final full gate gets the one fix round an implement run's has, so a failure the review
+  fixes left mechanical — a stale derived artifact — no longer goes straight to a human
 - repair-mode fixers are told, like implement fixers, that a caveat says only what the parent
   could not otherwise know — following the prompt is not one
 - CI verdicts are no longer voided by files the toolchain itself writes: the baseline records them,
