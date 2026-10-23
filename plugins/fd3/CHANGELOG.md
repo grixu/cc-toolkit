@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/workflows/` — a model-free `node:test` harness for `implement-run` and `repair-run`: each
+  agent call is answered by scripted rules keyed by its label, and the tests pin the wave, merge,
+  CI, review-routing and repair flows and each agent kind's prompt invariants; CI runs it on every
+  fd3 pull request
 - `scripts/task-graph.mjs` parses a tasks directory, checks its graph (cycles, edge order, statuses,
   one `branch-base` per branch, repositories, spec pointer) and prints the workflow's `tasks`
   argument as JSON; `implement-tasks` step 1 and the split's post-write coverage re-run use it

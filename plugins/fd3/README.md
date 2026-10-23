@@ -231,6 +231,8 @@ You do not call these. They are listed so you recognise them in the `/` menu and
 | `fd3:researcher` | sub-agent | Looks up documentation and other external facts. |
 | `fd3:toolchain-scout` | sub-agent | Finds a repository's build, typecheck, lint and test commands. |
 
+To test the two workflows without model calls, run `node --test 'plugins/fd3/tests/workflows/*.test.mjs'` from the repository root.
+
 ## Example
 
 A typical sequence; the paths are examples.
