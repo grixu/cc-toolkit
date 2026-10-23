@@ -582,6 +582,8 @@ while (true) {
           label: `merge${wave ? wave : ''}:${repo.split('/').pop()}`,
           phase: 'Implement',
           schema: MERGE_RESULT,
+          // Mechanical git work: a conflict that needs judgment is aborted and reported, never resolved here.
+          model: 'sonnet',
         }),
       ),
     )
@@ -991,7 +993,7 @@ const norm = (s) => String(s ?? '').replace(/`/g, '').trim().toLowerCase()
 // never invoked comes back as a reason, never as an empty findings list.
 const runReview = async (unit, base, pass, tag) => {
   const dir = reviewDir(unit, pass)
-  const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT })
+  const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT, model: 'sonnet' })
   if (!prep || !prep.invoked || prep.status === 'error') {
     return { dir, dead: `cr-prepare ${prep ? `failed: ${prep.reason || 'the skill was not invoked'}` : 'returned no result after a retry'}` }
   }
@@ -1253,7 +1255,7 @@ for (const unit of units) {
         `call, abort (git merge --abort) and return refreshed=false with the conflict described.`,
         ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo)] : []),
       ].join('\n'),
-      { label: `refresh:${tag}`, phase: 'Validate', schema: REFRESH_RESULT },
+      { label: `refresh:${tag}`, phase: 'Validate', schema: REFRESH_RESULT, model: 'sonnet' },
     )
     if (!refresh || !refresh.refreshed) {
       summary.ci = refresh ? 'skipped' : 'no-verdict'

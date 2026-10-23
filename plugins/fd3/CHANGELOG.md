@@ -119,6 +119,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gate runs again at the end only when a fix moved HEAD past the commit it graded (CI results now
   carry `head`). A branch whose first full verdict still stands gets its task files marked by one
   cheap agent, or by that run itself when no review follows it
+- `cr-prep`, wave merges and base refreshes run on Sonnet: they do git and scope resolution, and a
+  merge conflict that needs judgment is still aborted and reported
 
 ### Fixed
 

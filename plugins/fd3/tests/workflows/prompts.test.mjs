@@ -125,10 +125,13 @@ for (const [name, runIt] of [['implement-run', implementRun], ['repair-run', rep
 
   test(`${name}: model and effort choices per agent kind`, async () => {
     const r = await runIt()
+    // Git and scope resolution only; implement waves, lenses, cr-merge and fixers keep the session model.
+    const mechanical = ['cr-prep', 'merge', 'refresh']
     const cheap = { handover: 'low', 'mark-blocked': 'low', unmark: 'low', mark: 'low', 'toolchain-touch': 'low', baseline: 'high', ci: 'high' }
     for (const c of r.calls) {
       const k = kind(c.label)
       if (k in cheap) assert.deepEqual([c.model, c.effort], ['haiku', cheap[k]], c.label)
+      else if (mechanical.includes(k)) assert.deepEqual([c.model, c.effort], ['sonnet', null], c.label)
       else assert.equal(c.model, null, `${c.label} overrides the model`)
     }
     for (const c of r.callsMatching('scout:')) {

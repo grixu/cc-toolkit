@@ -339,7 +339,7 @@ const refreshBase = (unit, label, phaseName, reviewFrom) =>
           ]
         : []),
     ].join('\n'),
-    { label, phase: phaseName, schema: REFRESH_RESULT },
+    { label, phase: phaseName, schema: REFRESH_RESULT, model: 'sonnet' },
   )
 
 // Repair agents edit code and run no pipelines, so they run in parallel across branches — except a
@@ -738,7 +738,7 @@ const norm = (s) => String(s ?? '').replace(/`/g, '').trim().toLowerCase()
 // never invoked comes back as a reason, never as an empty findings list.
 const runReview = async (unit, base, pass, tag) => {
   const dir = reviewDir(unit, pass)
-  const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT })
+  const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT, model: 'sonnet' })
   if (!prep || !prep.invoked || prep.status === 'error') {
     return { dir, dead: `cr-prepare ${prep ? `failed: ${prep.reason || 'the skill was not invoked'}` : 'returned no result after a retry'}` }
   }
