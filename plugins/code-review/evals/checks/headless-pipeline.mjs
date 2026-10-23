@@ -36,6 +36,13 @@ export default (output, context) => {
       const stray = strayHandoffFamilies(text);
       check(stray.length === 0, `${lens}.md hands off to families outside severity.md: ${stray.join(', ')}`);
     }
+    if (context.vars.list) {
+      const blocks = [...output.matchAll(/^lens: (\S+)\s*$/gm)].map((m) => m[1]);
+      for (const lens of active) {
+        const n = blocks.filter((b) => b === lens).length;
+        check(n === 1, `the lens-list cr-scan printed ${n} closing blocks for ${lens}, not one`);
+      }
+    }
   }
 
   const report = path.join(ctx, 'cr-report.md');

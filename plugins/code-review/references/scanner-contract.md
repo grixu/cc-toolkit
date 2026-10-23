@@ -2,7 +2,7 @@
 
 The brief a Scanner receives and the output it returns, for one Lens. Two callers use it:
 `/start-cr` dispatches one Scanner per active Lens as a sub-agent, and the `cr-scan` skill runs one
-Lens in its own context. Either way the scope resolution (the file list and its `diff_args`), the
+Lens in its own context, or a caller's list of Lenses one after another, each as its own Scanner. Either way the scope resolution (the file list and its `diff_args`), the
 conventions note, the standards text and the lens set come from whoever prepared the review —
 `/start-cr` Steps 1–2b, or `cr-prepare` — and the merge (`/start-cr` Step 4, or `cr-merge`) is where
 severity is re-graded and every side-channel entry finds its home.

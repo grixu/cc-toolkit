@@ -234,8 +234,15 @@ the `fd3` plugin's implementation workflows, and not meant for you to run.
 | Skill | Arguments | Writes |
 |---|---|---|
 | `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path>]` | `scope.json`, `conventions.md`, `standards.md` |
-| `code-review:cr-scan` | `--lens <lens> --context <dir>`, one agent per active lens | `<lens>.md` |
+| `code-review:cr-scan` | `--lens <lens>[,<lens>…] --context <dir>`: one agent per active lens, or one agent judging a comma-separated list in turn | `<lens>.md` per lens |
 | `code-review:cr-merge` | `--context <dir>` | `cr-report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only`, plus the real problems no rule names and the files left to `/security-review` |
+
+A cr-scan list trades isolation for cost. Every cr-scan agent pays the same start-up reading
+before it judges a line, which is most of the cost on a change of a few files; one agent judging
+a list pays it once, but its later lenses read the change with the earlier lenses' work in context,
+and the lenses run in turn rather than in parallel. The caller decides: a list for a small change,
+one agent per lens for a large one. Each lens in a list still writes its own `<lens>.md` and gets
+its own closing block, in the listed order, so `cr-merge` works the same either way.
 
 They review committed changes only, never edit the checkout, and never ask anything. An empty
 change or a lens that did not report comes back as a status (`empty`, `incomplete`), never as a

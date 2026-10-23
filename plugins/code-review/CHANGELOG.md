@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commit, and `--pr` scope resolution against a sandbox origin and a `gh` stand-in
 - Eval-24: `--pr` on a pull request someone else authored resolves the same scope in reviewer
   mode; eval-23 now also checks the `gh` user lookup and its own-PR mode
+- `cr-scan --lens a,b,c` judges a comma-separated list of lenses in one agent, one after another:
+  each lens re-reads its own rules, writes its own `<lens>.md` exactly as a single-lens run would,
+  and gets its own closing block in the listed order, an `error` block for a lens it could not
+  complete. The caller trades lens isolation for one bootstrap instead of one per lens; eval-25
+  runs the headless pipeline with one list-form `cr-scan`
 
 ### Changed
 

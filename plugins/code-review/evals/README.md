@@ -25,6 +25,7 @@ evals/
   scope-mix/               # eval-19 input, kept out of fixtures/ so its paths classify by kind
   prompts/headless.txt     # cr-prepare → cr-scan × N → cr-merge, in that order — headless track
   prompts/headless-prepare.txt # cr-prepare alone — eval-22
+  prompts/headless-list.txt # the headless track with one cr-scan over a lens list — eval-25
   prompts/correctness.txt  # scanner brief — correctness lens
   prompts/pr-scope.txt     # start-cr Step 1 for --pr, with a gh stand-in — eval-23
   checks/                  # deterministic asserts that read files on disk (headless, pr, HANDOFF families)
@@ -65,6 +66,7 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-22 | headless | `.sandbox/headless-skipped` | a docs-only commit makes `cr-prepare` return `empty` with 0 judged files and no active lens |
 | eval-23 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 7` reviews the PR head in a detached worktree against `origin/main`; the user's checkout stays on `main`, untouched; the gh user authored it, so `mode: own` |
 | eval-24 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 8`, the same head authored by someone else, gives the eval-23 scope with `mode: reviewer` |
+| eval-25 | headless | `.sandbox/headless` | one `cr-scan --lens a,b,…` over every active lens writes each `<lens>.md` and one closing block per lens, and `cr-merge` merges them as in eval-20 |
 
 **eval-6 and eval-7 are the two halves of one gate.** eval-6 fails when the review
 under-reports; eval-7 fails when it compensates by flagging look-alikes. A prompt

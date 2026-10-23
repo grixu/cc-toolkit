@@ -30,6 +30,8 @@ prompts:
     label: headless-track
   - id: file://prompts/headless-prepare.txt
     label: headless-prepare-track
+  - id: file://prompts/headless-list.txt
+    label: headless-list-track
   # The correctness lens, briefed like the other scanner-only lenses.
   - id: file://prompts/correctness.txt
     label: correctness-track
@@ -893,3 +895,14 @@ tests:
     assert:
       - type: javascript
         value: file://checks/pr-scope.mjs
+
+  - description: 'eval-25 headless-lens-list (cr-prepare → one cr-scan over every lens → cr-merge)'
+    prompts: [headless-list-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/headless
+      context: plugins/code-review/evals/.sandbox/headless-list-ctx
+      list: true
+    options: { max_budget_usd: 12, allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/headless-pipeline.mjs
