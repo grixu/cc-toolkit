@@ -180,7 +180,9 @@ asking whether to. This repeats until every task is `done` or you stop.
 
 Finally Claude gives one report and asks one batch: the pull requests (one per branch, with its
 base branch, worktree path, tasks and title), the decisions taken for you with how to revert each,
-and the open review findings. You say whether to push and which findings, if any, to repair first.
+and the open review findings. You say whether to push and which findings, if any, to repair first. From a branch's second repair
+on, the recommendation is to push it as is; a third repair of one branch happens only when you name
+it.
 It pushes and runs `gh pr create` only after you agree; when the repository's own rules reserve
 pushing to a person, it prints the commands instead. The same batch asks whether to remove the
 worktrees and merged task branches now (recommended) or print the commands; a task branch with

@@ -172,8 +172,8 @@ report it, do not ask.
 
 Record the answers in `implement-answers.md` next to the tasks directory, never inside it where it
 would read as a task file — the start ref per repository, the review choice, the commit choice,
-each consent granted (with its task), each decision a later report round settles, and the last
-report's path (step 4). A later invocation over the same directory reads that file first and asks
+each consent granted (with its task), each decision a later report round settles, each branch's
+repair count (`repair-launch.md`), and the last report's path (step 4). A later invocation over the same directory reads that file first and asks
 only what it does not settle or what has changed since: a new repository, a base that moved, a
 stale `in-progress`.
 

@@ -21,7 +21,12 @@ prerequisite merges, the merge order. The batch then asks two things: whether to
 the pull requests, and which open `review` items, by number, go to a repair before that. Recommend
 per item on its merit and offer one "all fixable" option; list a branch's boy-scout findings — the
 report's separate list, pre-existing code in a touched file — on their own line, recommended to
-leave. A decision taken for the user that they want reverted is named the same way. Only
+leave. A repair's own review can raise new items, so rounds do not converge by themselves; the
+branch's `Repairs:` count in `implement-answers.md` caps them. A branch already repaired once is
+on its second round: recommend "push as is" for every `review` item still open on it, with a
+repair still offered. A branch repaired twice gets no repair option at all — a third repair
+happens only when the user names it for that branch unprompted, and is never recommended, nor
+part of "all fixable". A decision taken for the user that they want reverted is named the same way. Only
 after explicit consent: push, `gh pr create` per branch (`--base` set to the stack base) with a
 description naming the tasks, the spec and the branch's element codes. When the repository's own
 rules reserve pushing to a human — its `AGENTS.md`, `CLAUDE.md` or contributing guide says so —

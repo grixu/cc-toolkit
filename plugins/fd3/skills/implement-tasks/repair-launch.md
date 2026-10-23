@@ -38,6 +38,11 @@ never a security one, and never one that changes access or behaviour the spec st
 come back as `review` items for the user and hold the branch only under `gated`. Findings in code
 the repair did not touch are listed apart, never as open work.
 
+Count the rounds. Before each launch, for every branch with non-empty `instructions`, raise its
+line `Repairs: <repository> <branch>: <n>` in `implement-answers.md` by one, adding it at 1; a
+carried branch with `instructions: []` is not repaired and keeps its count. The close reads the
+count to stop the repair loop from feeding itself.
+
 An `instructions` line says what to change, never asks for validation. "Then run the tests and
 confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent
 returns, and an agent that runs it too puts a second pipeline on a machine that tolerates one.

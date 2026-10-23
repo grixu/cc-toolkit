@@ -127,6 +127,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer read repairs. Findings rated safe in the repair's own hunks are fixed in the same run by
   one fixer with no further review (under `gated`, never a security fix; never one that changes
   access or spec-stated behaviour); the rest stay `review` items, and boy-scout findings stay apart
+- `implement-tasks` counts repairs per branch (`Repairs:` in `implement-answers.md`); from a
+  branch's second repair round on the close recommends pushing its open `review` items as is, and a
+  third repair of one branch is never offered or recommended — only run when the user names it
 
 ### Fixed
 
