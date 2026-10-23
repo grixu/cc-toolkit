@@ -198,16 +198,16 @@ test('a review that did not run leaves the task files unmarked', async () => {
   assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /cr-prepare failed: bad base/)
 })
 
-test(
-  'an empty repair delta passes silently',
-  { todo: 'suspected gap: an empty repair delta (no file, skipped 0) is neither dead nor not-applicable here, unlike the first review in implement-run' },
-  async () => {
-    const r = await run(repairArgs(), [['cr-prep:', { status: 'empty', invoked: true, files: 0, skipped: 0 }]])
-    assert.deepEqual(r.result.hil, [])
-    assert.deepEqual(r.result.branches[0].review, { context: '/r/app.worktrees/.review/feat-x-repair', report: null })
-    assert.match(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
-  },
-)
+test('a repair that committed nothing has no review verdict and leaves the task files unmarked', async () => {
+  const r = await run(repairArgs(), [['cr-prep:', { status: 'empty', invoked: true, files: 0, skipped: 0 }]])
+  assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /reported the decision applied but committed nothing since /)
+  assert.doesNotMatch(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+})
+
+test('an empty repair delta against an alternate base stays a dead review', async () => {
+  const r = await run(repairArgs(), [['cr-prep:', { status: 'empty', invoked: true, files: 0, skipped: 0, alternate: 'origin/dev' }]])
+  assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /did not run: .*the skill names origin\/dev/)
+})
 
 test('a decorated lens name is normalised in the repair review', async () => {
   const r = await run(repairArgs(), [['cr-prep:', { status: 'ready', invoked: true, files: 2, skipped: 0, active: ['`Simplicity` '] }]])

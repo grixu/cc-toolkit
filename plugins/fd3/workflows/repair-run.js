@@ -727,7 +727,7 @@ const runReview = async (unit, base, pass, tag) => {
     // A diff with no file at all is how a base equal to the branch shows itself, so only a change
     // whose files review skips is not applicable.
     if (prep.alternate || !(prep.skipped > 0)) {
-      return { dir, empty: true, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
+      return { dir, empty: true, alternate: prep.alternate, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
     }
     return { dir, empty: true, notApplicable: `review not applicable: every changed file against ${base} (${prep.skipped}) is skipped by review` }
   }
@@ -995,7 +995,11 @@ for (const unit of units) {
     } else {
       const delta = await runReview(unit, reviewFrom, 'repair', tag)
       summary.review = { context: delta.dir, report: delta.report || null }
-      if (delta.dead && !delta.empty) {
+      // A repair that reports a decision applied yet changed nothing against its starting commit
+      // left the decision off the branch, so marking its task files would close work never done.
+      if (delta.dead && delta.empty && !delta.alternate) {
+        reviewDead = `the repair reported the decision applied but committed nothing since ${unit.fromSha}`
+      } else if (delta.dead) {
         reviewDead = `the review of the repair did not run: ${delta.dead}`
       } else if (delta.notApplicable) {
         summary.review.notApplicable = delta.notApplicable

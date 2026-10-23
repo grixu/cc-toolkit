@@ -135,6 +135,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   verdict; with no spec, the branch summary records the review as not applicable
   (`review.notApplicable`) and the branch can reach done instead of staying merged on every
   relaunch. A diff with no file at all, or one whose prepare names an alternate base, stays no verdict
+- A repair that reports its decision applied but commits nothing is now a review no verdict and
+  leaves its task files unmarked; the empty repair delta used to pass as a clean review and mark
+  the branch done with the decision missing from it
 - Review findings carry `severity` and `family` as enums of the code-review values, and the filters
   compare them normalised (backticks, whitespace, case), so a decorated `security` or `spec` token
   no longer slips into the auto-fix set; fix and repair results must report `fromSha`/`toSha`, and
