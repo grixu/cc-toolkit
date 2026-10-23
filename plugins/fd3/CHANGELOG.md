@@ -82,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changes who may reach what, or any fix that would change behaviour the spec states, waits for a
   human in both review modes
 - The review question counts seven to nine lenses, with the code-review `correctness` lens
+- An implementing agent reads the task's `## Note` as part of the task, and a `Consent:` line there
+  grants exactly what it names — it no longer stops on a protected path the user already allowed
 
 ### Fixed
 
