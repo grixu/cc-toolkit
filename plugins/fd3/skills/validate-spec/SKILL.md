@@ -286,8 +286,7 @@ repair choice, never a claim you record `verified` because the risk looks small.
 Four things go to the user, and nothing else:
 
 1. **A fact only the user holds.**
-2. **A parked choice**, with the answer the spec's own evidence points to as your recommendation —
-   left in place, it reaches the split or the implementation run as a question that stops them.
+2. **A parked choice**, with the answer the spec's own evidence points to as your recommendation.
 3. **A repair choice**, as step 3's carve-out defines it — accepting a risk included.
 4. **The owner and placement of a claim nothing settles** — the last move before recording it
    `blocked` (step 5).

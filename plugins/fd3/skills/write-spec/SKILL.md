@@ -136,9 +136,8 @@ pass to find.
 
 Anything the session could not settle goes into the document as a **declared gap**, on the terms
 `spec-rules.md` sets. A gap left as confident prose is the failure this whole section exists to
-prevent. A choice the session left open is not a gap: it goes to `main` as a question, never into
-the document as "decided at task split" or "confirm before implementation" — that placement only
-moves the question to a stage that has to stop for it.
+prevent. A choice the session left open is a parked choice, not a gap (`spec-rules.md`): it goes to
+`main` as a question, never into the document.
 
 ## 5. Length and tone
 
@@ -177,4 +176,5 @@ notes do not cover — a default, a value, a seam — with the `Dn` row it lande
 written as `assistant-taken`; the batch is where the user ratifies or overturns them, at one known
 point. Each row is its own question, quoting the decision it records — never a single "ratify all"
 over rows the user cannot see; more rows than one batch carries go out as consecutive batches, in `Dn`
-order. A decision left "worth confirming before the split" is a question the split stops on.
+order. A decision left "worth confirming before the split" is a parked choice (`spec-rules.md`), so
+it goes in this batch.
