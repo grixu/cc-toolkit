@@ -732,6 +732,27 @@ const SCAN_RESULT = {
   },
 }
 
+const SCAN_ALL_RESULT = {
+  type: 'object',
+  required: ['invoked', 'lenses'],
+  properties: {
+    invoked: { type: 'boolean', description: 'the code-review:cr-scan skill was invoked through the Skill tool' },
+    lenses: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['lens', 'status', 'filesJudged', 'filesTotal'],
+        properties: {
+          lens: { type: 'string' },
+          status: { enum: ['scanned', 'inactive', 'error'] },
+          filesJudged: { type: 'number' },
+          filesTotal: { type: 'number' },
+        },
+      },
+    },
+  },
+}
+
 const SEVERITIES = ['high', 'medium', 'nit', 'comment']
 const FAMILIES = ['readability', 'tests', 'naming', 'module', 'objects', 'patterns', 'simplicity', 'security', 'performance', 'correctness', 'spec', 'standards', 'comments']
 
@@ -961,6 +982,36 @@ const scanPrompt = (lens, dir) =>
     `invoked=false, status "error" and zero counts; never judge the change by hand.`,
   ].join('\n')
 
+const scanAllPrompt = (lenses, dir) =>
+  [
+    `Invoke the \`code-review:cr-scan\` skill through the Skill tool once, with`,
+    `\`--lens ${lenses.join(',')} --context ${dir}\`. It judges each listed lens in turn and prints one`,
+    `closing block per lens. Return one entry under lenses per closing block — the lens it names, its`,
+    `status, files judged of the total — with invoked=true. When the Skill tool is not available to`,
+    `you, return invoked=false and no lenses; never judge the change by hand.`,
+  ].join('\n')
+
+// Every scan agent pays a fixed start-up cost — the skill, the context, the diff — which on a change
+// this small outweighs each lens's own judging, so one agent runs every lens.
+const SINGLE_SCAN_MAX_FILES = 3
+
+const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
+
+// Returns the lenses that did not report; a lens the single scanner left out of its list is one.
+const scanLenses = async (lenses, dir, files, tag, pass) => {
+  if (lenses.length > 1 && files <= SINGLE_SCAN_MAX_FILES) {
+    const r = await tryTwice(scanAllPrompt(lenses, dir), { label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
+    const reported = new Map((r && r.invoked ? r.lenses || [] : []).map((e) => [norm(e.lens), { ...e, invoked: true }]))
+    return lenses.filter((l) => lensDead(reported.get(l)))
+  }
+  const scans = await parallel(
+    lenses.map((lens) => () =>
+      tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+    ),
+  )
+  return lenses.filter((_, i) => lensDead(scans[i]))
+}
+
 const crMergePrompt = (dir) =>
   [
     `Invoke the \`code-review:cr-merge\` skill through the Skill tool with \`--context ${dir}\`,`,
@@ -1018,15 +1069,7 @@ const runReview = async (unit, base, pass, tag) => {
   if (lenses.length === 0 || (!(prep.files > 0) && !specOnly)) {
     return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
   }
-  const scans = await parallel(
-    lenses.map((lens) => () =>
-      tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
-    ),
-  )
-  const deadLenses = lenses.filter((_, i) => {
-    const r = scans[i]
-    return !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
-  })
+  const deadLenses = await scanLenses(lenses, dir, prep.files || 0, tag, pass)
   if (deadLenses.length > 0) return { dir, dead: `lens ${deadLenses.join(', ')} did not report` }
   const merged = await tryTwice(crMergePrompt(dir), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {

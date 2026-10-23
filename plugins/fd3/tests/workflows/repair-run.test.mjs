@@ -102,6 +102,13 @@ test('the repair review is narrowed to the correctness and security lenses', asy
   assert.deepEqual(r.callsMatching('cr:').map((c) => c.label), ['cr:app:feat-x:repair:correctness'])
 })
 
+test('a small repair gets one scan agent for both review lenses', async () => {
+  const r = await run(repairArgs(), [['cr-prep:', prepReady(['correctness', 'security'], 1)]])
+  assert.deepEqual(r.callsMatching('cr:').map((c) => c.label), ['cr:app:feat-x:repair:all'])
+  assert.match(r.call('cr:app:feat-x:repair:all').prompt, /`--lens correctness,security --context /)
+  assert.ok(r.has('mark:app:feat-x'))
+})
+
 test('with no narrowed lens active the conformance check alone is the review', async () => {
   const r = await run(repairArgs(), [['cr-prep:', prepReady(['simplicity'])]])
   assert.ok(!r.has('cr:') && !r.has('cr-merge:'))

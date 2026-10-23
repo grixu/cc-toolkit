@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runWorkflow, seq } from './harness.mjs'
-import { REPO, SPEC, TOOLCHAIN, task, implementArgs, implementDefaults, repair, repairArgs, repairDefaults, finding, ciPass, ciFail, crMerged } from './fixtures.mjs'
+import { REPO, SPEC, TOOLCHAIN, task, implementArgs, implementDefaults, repair, repairArgs, repairDefaults, finding, ciPass, ciFail, crMerged, prepReady } from './fixtures.mjs'
 
 const STEP_GUARD = 'Do only the step this prompt describes. Invoke no skill or slash command unless this prompt names it'
 const WAIT = ['A command is finished only when its exit line exists.', 'until [ -s <log>.exit ]; do sleep 15; done', 'An unfinished command is never a failure and never a pass.']
@@ -26,6 +26,9 @@ const implementRun = () =>
       ...implementDefaults(),
     ],
   )
+
+const smallReview = () =>
+  runWorkflow('implement-run.js', implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security'], 1)], ...implementDefaults()])
 
 const repairRun = () =>
   runWorkflow(
@@ -167,11 +170,13 @@ test('fix prompts route a spec change to build-spec and stage by name', async ()
 })
 
 test('code-review wrappers invoke the skill and never do its work by hand', async () => {
-  for (const r of [await implementRun(), await repairRun()]) {
+  for (const r of [await implementRun(), await repairRun(), await smallReview()]) {
     for (const c of r.callsMatching('cr-prep:')) assert.match(c.prompt, /invoke the `code-review:cr-prepare` skill through the Skill tool[\s\S]*never do the skill's work by hand/)
     for (const c of r.callsMatching('cr:')) {
       const lens = c.label.split(':').pop()
-      assert.ok(c.prompt.includes(`\`--lens ${lens} --context ${REPO}.worktrees/.review/`), c.label)
+      const arg = lens === 'all' ? /--lens ([a-z,]+) --context/.exec(c.prompt)[1] : lens
+      assert.ok(lens !== 'all' || arg.includes(','), c.label)
+      assert.ok(c.prompt.includes(`\`--lens ${arg} --context ${REPO}.worktrees/.review/`), c.label)
       assert.match(c.prompt, /never judge the change by hand/)
     }
     for (const c of r.callsMatching('cr-merge:')) assert.match(c.prompt, /Invoke the `code-review:cr-merge` skill through the Skill tool/)

@@ -25,6 +25,7 @@ const SCHEMA_NAMES = {
   'summary,fromSha,toSha': 'FIX_RESULT',
   'status,invoked,files': 'PREP_RESULT',
   'status,invoked,filesJudged,filesTotal': 'SCAN_RESULT',
+  'invoked,lenses': 'SCAN_ALL_RESULT',
   'status,invoked,findings': 'CR_MERGE_RESULT',
   touched: 'TOOLCHAIN_TOUCH_RESULT',
   refreshed: 'REFRESH_RESULT',

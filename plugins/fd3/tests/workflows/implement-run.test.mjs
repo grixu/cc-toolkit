@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runWorkflow, seq } from './harness.mjs'
-import { REPO, SPEC, TOOLCHAIN, BASELINE, task, implementArgs, implementDefaults, finding, line, ciPass, ciFail, crMerged } from './fixtures.mjs'
+import { REPO, SPEC, TOOLCHAIN, BASELINE, task, implementArgs, implementDefaults, finding, line, ciPass, ciFail, crMerged, prepReady, scannedAll } from './fixtures.mjs'
 
 const run = (args, rules = []) => runWorkflow('implement-run.js', args, [...rules, ...implementDefaults()])
 const status = (r) => Object.fromEntries(r.result.tasks.map((t) => [t.slug, t.status]))
@@ -187,6 +187,35 @@ test('a lens that judged nothing of a non-empty change makes the review dead', a
   assert.ok(!r.has('cr-merge:'))
   assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /lens security did not report/)
   assert.deepEqual(status(r), { t1: 'merged', t2: 'merged' })
+})
+
+test('a change of at most three judged files gets one scan agent for every lens', async () => {
+  const r = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity', '`Security`', 'spec'], 3)]])
+  assert.deepEqual(r.callsMatching('cr:').map((c) => c.label), ['cr:app:feat-x:review:all'])
+  const scan = r.call('cr:app:feat-x:review:all')
+  assert.equal(scan.schema, 'SCAN_ALL_RESULT')
+  assert.match(scan.prompt, /`--lens simplicity,security,spec --context \/r\/app\.worktrees\/\.review\/feat-x-review`/)
+  assert.ok(r.has('cr-merge:app:feat-x:review'))
+  assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
+})
+
+test('four judged files keep one scan agent per lens', async () => {
+  const r = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security'], 4)]])
+  assert.deepEqual(r.callsMatching(/^cr:.*:review:/).map((c) => c.label), ['cr:app:feat-x:review:simplicity', 'cr:app:feat-x:review:security'])
+})
+
+test('a lens the single scanner leaves out, or that judged nothing, makes the review dead', async () => {
+  const small = ['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security', 'spec'], 2)]
+  const missing = await run(implementArgs(), [small, ['cr:app:feat-x:review:all', { invoked: true, lenses: [{ lens: 'simplicity', status: 'scanned', filesJudged: 2, filesTotal: 2 }, { lens: '`Spec`', status: 'scanned', filesJudged: 2, filesTotal: 2 }] }]])
+  assert.ok(!missing.has('cr-merge:'))
+  assert.match(missing.result.hil.find((h) => h.stage === 'review').reason, /lens security did not report/)
+  assert.deepEqual(status(missing), { t1: 'merged', t2: 'merged' })
+
+  const blind = await run(implementArgs(), [small, ['cr:app:feat-x:review:all', (p) => ({ ...scannedAll(p), lenses: scannedAll(p).lenses.map((e) => (e.lens === 'spec' ? { ...e, filesJudged: 0 } : e)) })]])
+  assert.match(blind.result.hil.find((h) => h.stage === 'review').reason, /lens spec did not report/)
+
+  const dead = await run(implementArgs(), [small, ['cr:app:feat-x:review:all', { invoked: false, lenses: [] }]])
+  assert.match(dead.result.hil.find((h) => h.stage === 'review').reason, /lens simplicity, security, spec did not report/)
 })
 
 test('cr-merge incomplete makes the review dead and names the missing lens', async () => {

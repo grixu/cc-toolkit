@@ -63,8 +63,14 @@ export const mergeAll = (prompt) => {
 
 export const implemented = (prompt) => ({ slug: /Return slug "([^"]+)"/.exec(prompt)[1], outcome: 'implemented', summary: 'did it' })
 
-export const prepReady = (active = ['simplicity', 'security', 'spec']) => ({ status: 'ready', invoked: true, files: 2, skipped: 0, active })
+// Four judged files: past the single-scanner threshold, so each lens gets its own scan agent.
+export const prepReady = (active = ['simplicity', 'security', 'spec'], files = 4) => ({ status: 'ready', invoked: true, files, skipped: 0, active })
 export const scanned = { status: 'scanned', invoked: true, filesJudged: 2, filesTotal: 2 }
+// The single scanner's reply, read off its prompt's lens list.
+export const scannedAll = (prompt) => ({
+  invoked: true,
+  lenses: /--lens (\S+) --context/.exec(prompt)[1].split(',').map((lens) => ({ lens, status: 'scanned', filesJudged: 2, filesTotal: 2 })),
+})
 export const crMerged = (findings = []) => ({ status: 'merged', invoked: true, report: '/tmp/cr-report.md', findings })
 
 // The defaults answer every label a clean implement-run produces; a test puts its own rules first.
@@ -79,6 +85,7 @@ export const implementDefaults = () => [
   [/^ci:/, ciPass],
   [/^cr-prep:.*:delta$/, prepReady(['simplicity'])],
   ['cr-prep:', prepReady()],
+  [/^cr:.*:all$/, scannedAll],
   ['cr:', scanned],
   ['cr-merge:', crMerged()],
   [/^fix-/, { summary: 'fixed', fromSha: 'aaa111', toSha: 'bbb222', skipped: [] }],
@@ -115,6 +122,7 @@ export const repairDefaults = () => [
   ['toolchain-touch:', { touched: false }],
   [/^ci:/, ciPass],
   ['cr-prep:', prepReady(['correctness', 'security'])],
+  [/^cr:.*:all$/, scannedAll],
   ['cr:', scanned],
   ['cr-merge:', crMerged()],
   ['conformance:', { checked: true, findings: [] }],
