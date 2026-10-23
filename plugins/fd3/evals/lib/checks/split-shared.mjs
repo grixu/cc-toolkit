@@ -112,7 +112,10 @@ export function checkBoundaries(c, tasks, { precedesDb = null, report = '' } = {
       const ids = [t.fm.branch, t.slug, t.fm.name, t.file.replace(/\.md$/, '').replace(/^\d+-/, '')].filter(Boolean);
       const namesThisBranch = (line) => ids.some((id) => line.includes(id)) || /phase[ -]?2 branch/i.test(line);
       // A report bullet wraps across lines, so judge it whole.
-      const reportHold = (report || '').split(/\n(?=\s*(?:[-*] |\d+\. |$))/m).some((item) => namesThisBranch(item) && MERGE_HOLD.test(item));
+      const bulletHold = (report || '').split(/\n(?=\s*(?:[-*] |\d+\. |$))/m).some((item) => namesThisBranch(item) && MERGE_HOLD.test(item));
+      // The report keeps one subsection per branch, whose bullets need not repeat the branch name.
+      const sectionHold = (report || '').split(/\n(?=#{2,4}\s)/).some((sec) => /^#{2,4}\s/.test(sec) && namesThisBranch(sec.split('\n')[0]) && MERGE_HOLD.test(sec));
+      const reportHold = bulletHold || sectionHold;
       const mergeOrder = MERGE_HOLD.test(t.body || '') || reportHold;
       c.check(
         (Array.isArray(deps) && deps.length > 0) || stacked || mergeOrder,

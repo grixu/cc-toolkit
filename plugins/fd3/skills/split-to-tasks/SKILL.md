@@ -217,9 +217,9 @@ pays for per branch: one validation wave each, regardless of diff size, so a cha
 branches costs N full validation ladders.
 
 A branch the spec names as a prerequisite that has not landed — an open pull request its work
-builds on — is a base like any other: stack the branch that needs it on that branch, record in the
-report how far it is behind `origin/<default>`, and say in the dependent tasks' `## Note` that the
-pull request is retargeted once that one merges. It is a fact the spec settled, not a question.
+builds on — is a base like any other: stack the branch that needs it on that branch, and record in
+that branch's section of the report how far the base is behind `origin/<default>` and that the pull
+request is retargeted once that one merges. It is a fact the spec settled, not a question.
 
 Then the size check: estimate each branch's aggregate diff from its tasks' citations. Past **80
 changed files or 2000 changed lines**, generated files excluded, a reviewer stops reading and
@@ -272,8 +272,8 @@ question joins the batch with reuse as the recommendation.
 When the edge onto an operational task is real, carry it up to the branch: a landing unit that
 mixes a gate-blocked task with implementable ones cannot reach a complete state in one run. Cut
 the blocked task onto its own branch by default. Where the spec's gate genuinely holds the whole
-unit, say in the report — and in the blocked task's `## Note`, naming the branch its output must
-land on — that the unit lands as a draft pull request until the gate clears.
+unit, say in that branch's section of the report that the unit lands as a draft pull request until
+the gate clears, and name in the blocked task's `## Note` the branch its output must land on.
 
 Then fix the reading order: a topological sort of the `depends-on` graph, ties broken by the
 spec's phase-table order, then alphabetically by slug. This ordinal becomes the filename prefix in
@@ -331,7 +331,8 @@ already settled, report rather than ask. Three more things are never questions:
   setup step the implementation stage owns. It goes into the report under what is still owed.
 - A choice an older spec left for the split ("decided at task split") whose answer follows from the
   spec's own evidence. Decide it, and record the decision with its evidence in the report and in the
-  `## Note` of every task it binds. Only a choice the evidence leaves open joins the batch.
+  `## Note` of every task whose work it changes — a choice that binds only how a branch lands stays
+  in that branch's section. Only a choice the evidence leaves open joins the batch.
 - Anything a rule in this skill decides. When an answer conflicts with such a rule, or with another
   answer, that conflict is the question — ask it as a follow-up rather than resolving it yourself.
 
@@ -365,9 +366,21 @@ of five files or fewer is faster written here.
 Write the report to `<spec-basename>.split.md` beside the spec — never inside `tasks/`, where
 a task-file glob trips over it — after that re-run, since its coverage statement is the re-run's
 result. It carries one table (slug, repository, branch, phase, depends-on as the bare slugs the
-frontmatter holds, elements), the branch creation order and stack chain per repository, where the
-files went, the coverage statement from step 5, every work item split across tasks with its
-seam, any size-check warning, the verdict line this split was taken against quoted verbatim,
-and anything the user still owes an answer. In the conversation give the path and the same
-table — all six columns, `elements` included — not the file. Anything in the report that binds one task's work also goes into that task's
-`## Note`, in the imperative — the conversation ends before implementation starts.
+frontmatter holds, elements); a `## Branches` section with the creation order and stack chain per
+repository and one `### <branch>` subsection per branch holding every landing fact about it — its
+base and how far that is behind `origin/<default>`, its place in the merge order, a draft pull
+request until a gate clears, a retarget once a prerequisite merges, a reuse the user answered, the
+readings step 3 applied; where the files went; the coverage statement from step 5; every work item
+split across tasks with its seam; any size-check warning; the verdict line this split was taken
+against, quoted verbatim; and a `## Still owed` section with anything the user still owes an
+answer. In the conversation give the path and the same table — all six columns, `elements`
+included — not the file.
+
+The implementation stage reads that report's `## Branches` and `## Still owed` sections, so a
+branch-level fact lives there once. A task's `## Note` carries only what changes *that task's*
+work, in the imperative — a shared file an edge names, a consent recorded, a decision that binds
+it, where an operational task's output lands, and for a declared gap's task what has to come back
+and from whom — because the conversation ends before
+implementation starts. Never copy a branch's landing facts into its tasks' Notes: the implementing
+agents neither cut branches nor open pull requests, and the same line in a dozen files is noise to
+every one of them.

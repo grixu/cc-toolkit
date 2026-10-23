@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   branch, `implement-tasks` commits it only where it already lives, and a spec discrepancy found
   during implementation or repair is a HIL item routed to `/fd3:build-spec`, never an orchestrator
   edit or a repair instruction
+- `split-to-tasks` keeps branch landing facts (base, merge order, draft pull request, retarget) in a
+  per-branch section of `<spec>.split.md` and only task facts in a task's `## Note`;
+  `implement-tasks` reads the report's `## Branches` and `## Still owed` sections in step 1 and
+  carries them into the pull-request proposal
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by

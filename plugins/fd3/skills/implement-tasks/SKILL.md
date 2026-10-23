@@ -54,7 +54,7 @@ checklist ends the turn with nothing done:
 
 Parse the YAML frontmatter of every task file in the directory: slug (the filename without its
 ordinal prefix and extension), name, repository, branch, branch-base, phase, depends-on, status,
-tickets. The spec is not read — the task files are the whole input.
+tickets. The spec is not read — the task files and the split report are the whole input.
 
 Then make the graph launchable:
 
@@ -63,6 +63,13 @@ Then make the graph launchable:
   the file exists; the spec itself stays unread — implementation agents read it, this step only
   guarantees the path is real. When the resolved path does not exist (or tasks point at different
   files), the spec location joins the step-2 batch.
+- **Read the split report's branch facts.** `<spec-basename>.split.md` beside the spec is the
+  split's report, not the spec: read its `## Branches` section (per-branch landing facts — draft
+  pull requests, retargets, merge order, a branch reuse the user already answered) and its
+  `## Still owed` section. A report from an older split has no such headings — read its branch
+  creation order and stack chain instead. A branch call the report settles is not asked again in
+  step 2, and step 5's pull-request chain carries its facts. No report, or no branch facts in it,
+  leaves the task files as the whole input.
 - **Resolve repositories to absolute paths.** A `repository:` value that is not an existing
   directory is a missing input, not something to search for: it joins the step-2 batch, naming
   the tasks it blocks.
@@ -386,7 +393,9 @@ request's base is its branch's stack base, and after one lands its successor is 
 the default branch — but only when the predecessor landed as a merge commit. After a squash
 merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget
 shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
-Say that in the proposal. The batch then asks two things: whether to push the branches and open
+Say that in the proposal, together with each branch's landing facts from the split report read in
+step 1 — a draft pull request until a gate clears (`gh pr create --draft`), a retarget once a
+prerequisite merges, the merge order. The batch then asks two things: whether to push the branches and open
 the pull requests, and which open `review` items, by number, go to a repair before that. Recommend
 per item on its merit and offer one "all fixable" option; list a branch's boy-scout findings — the
 report's separate list, pre-existing code in a touched file — on their own line, recommended to
