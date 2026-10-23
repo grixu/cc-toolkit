@@ -193,6 +193,18 @@ test('repair prompt: the decision is the authority, one commit per decision', as
   assert.match(p, /Merge no other branch into this one/)
 })
 
+test('a base refresh counts a base the branch already contains as refreshed', async () => {
+  for (const r of [await implementRun(), await repairRun()]) {
+    const refreshes = r.callsMatching('refresh:')
+    assert.ok(refreshes.length > 0)
+    for (const c of refreshes) {
+      assert.match(c.prompt, /Return refreshed=true when the merge landed or the branch already contained feat\/a\./, c.label)
+      assert.equal(c.schema, 'REFRESH_RESULT')
+      assert.ok('reviewBase' in c.opts.schema.properties, c.label)
+    }
+  }
+})
+
 test('toolchain fixture reaches the scoped CI prompt verbatim', async () => {
   const r = await implementRun()
   assert.ok(r.call('ci:app:feat-a').prompt.includes(`<toolchain_report>\n${TOOLCHAIN}\n</toolchain_report>`))

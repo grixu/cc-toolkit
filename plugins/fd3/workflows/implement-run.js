@@ -298,7 +298,7 @@ const REFRESH_RESULT = {
   properties: {
     refreshed: { type: 'boolean' },
     conflict: { type: 'string', description: 'what needs a judgment call; only when refreshed is false' },
-    ...(repairMode ? { reviewBase: { type: 'string', description: 'the synthetic review base commit; only when one was asked for and built' } } : {}),
+    reviewBase: { type: 'string', description: 'the synthetic review base commit; only when one was asked for and built' },
   },
 }
 
@@ -311,7 +311,7 @@ const refreshBase = (unit, label, phaseName, reviewFrom) =>
       `${unit.branch}, so the branch ${repairMode ? 'builds on its repaired base' : 'is validated against its current base'}. Resolve a conflict`,
       `only when the resolution is mechanical; commit it. When a conflict needs a judgment`,
       `call, abort (git merge --abort) and return refreshed=false with the conflict described.`,
-      ...(repairMode ? [`Return refreshed=true when the merge landed or the branch already contained ${unit.base}.`] : []),
+      `Return refreshed=true when the merge landed or the branch already contained ${unit.base}.`,
       ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo)] : []),
       ...(reviewFrom
         ? [
