@@ -48,7 +48,7 @@ equals `wc -l` on the spec.
 and a placement as a `deferred` claim, and a `ready` verdict may carry any number of them: the
 fact is unresolved and the spec names who resolves it. Each such gap gets an **operational task**
 of its own, whose `## Note` says what has to come back and from whom, and every task the gap
-blocks from being *written* draws a `depends-on` edge onto it (step 4's authorship rule). A
+blocks from being *written* draws a `depends-on` edge onto it (step 3's authorship test). A
 `blocked` claim is a gap nothing owns — it is not a declared gap, and it stops the split.
 
 Anything short of that — a blocked claim, a count that does not match, a dated block
@@ -75,8 +75,8 @@ starts with its tool call, not with the list:
 ```
 - [ ] 1. Enumerate: work items, element codes, phases and gates, ownership, tickets
 - [ ] 2. Cut along the boundaries
-- [ ] 3. Group tasks onto branches along the rollout gates
-- [ ] 4. Order by phase and dependency
+- [ ] 3. Draw the edges: authorship, never landing
+- [ ] 4. Group tasks onto branches along the rollout gates, stack, fix the reading order
 - [ ] 5. Check coverage
 - [ ] 6. Put the judgment calls to the user, in one batch
 - [ ] 7. Write the task files and report
@@ -135,7 +135,7 @@ reason, and the reason decides the edge cases:
    repositories cannot share a branch. This holds even when one team owns both repositories.
 2. **Inside a monorepo, ownership cuts.** The unit is a subtree with one review-and-apply owner —
    the spec's ownership section says whose. An item set whose review needs two teams' approval is
-   two tasks, and their branches never group either (step 3).
+   two tasks, and their branches never group either (step 4).
 3. **A rollout phase cuts.** A task belongs to one phase; an item set spanning two phases is two
    tasks, ordered. Whether a phase closes a landing unit matters to branch grouping, not to this
    cut.
@@ -168,8 +168,7 @@ phase-ordered cuts. Never force a slice across a boundary the rules above drew.
 A task that changes the type or shape of a shared identity or contract — a primary-key type, a
 wire format, a schema field — owns the ripple: propagation to every consumer, fixtures, seed
 data and test seeders included, either inside the task or explicitly handed to a named task.
-Another task that edits a file the ripple reaches draws a `depends-on` edge onto the owner, so the
-consumer is written against the new shape rather than racing it.
+Another task that edits a file the ripple reaches has an edge onto the owner (step 3).
 A ripple nobody owns surfaces as a wall of type errors in whichever branch validates first, and
 gets fixed there twice.
 
@@ -183,11 +182,47 @@ spec where it lives is a question the implementation stage asks before launch. A
 spec lists for registering or publishing the spec itself gets no task: record it in the report
 under what the user still owes, and it counts as covered there.
 
-### 3. Group onto branches
+### 3. Draw the edges
+
+Dependencies come from the spec's build order, and one test decides every edge you derive:
+**authorship, not landing**. An edge exists when a task cannot be *written* without another task's
+output, or when the spec itself binds the order:
+
+- a file both edit or one builds on, a symbol or module one defines and the other uses or pins, a
+  migration one writes and the other reads;
+- the new shape a ripple owner (step 2) introduces, for a task that edits a file the ripple
+  reaches — the consumer is written against the new shape rather than racing it;
+- the change a docs or changeset task describes;
+- a commit order the spec binds inside one branch — one commit per module in a stated order, a
+  gate every commit from some point on must pass. Concurrent tasks merge in whatever order they
+  finish, so a per-commit gate is checked in sequence only when each such task has an edge onto its
+  predecessor in the spec's order;
+- an order the spec's build order states between two items of one phase — the author decided it,
+  and nothing downstream re-derives it: the implementation stage merges and deploys whatever has
+  no edge in whatever order it finishes;
+- a human action that reveals what to write — a gate that blocks authorship — drawn onto the
+  operational task that performs the gate. If no operational task exists for that gate, that is a
+  coverage failure in step 5, not a licence to record the gate in prose.
+
+Anything else that binds only *landing* is never an edge: the phase table's order between phases,
+a gate the spec lets the code land before, a dependency that only gates *verification*. Phase order is the merge order
+step 4 records in the report; a gate that only verifies goes in the task's Done-when. An edge drawn
+from landing strands work — across branches, a whole branch behind work it never uses; onto an
+operational task, implementable work behind human hands, and a whole extra run pays for it.
+
+Record each edge as a `depends-on` entry — a bare slug; the other task must land first — and name
+what it shares in the dependent task's `## Note` and in the report's table: the file, symbol or
+migration, the change described, or for an order the spec binds its ordering sentence, quoted.
+The frontmatter field stays a bare slug list, because prose in a machine-read field breaks the
+reader. An edge you cannot name is sequencing by intuition: drop it. It buys nothing and costs the
+implementation stage a serialisation, since tasks with no edge between them are implemented
+concurrently.
+
+### 4. Group onto branches and order
 
 Per repository, walk the spec's rollout table: the consecutive phases up to and including a gate
-form one landing unit, and the unit's tasks share one `branch:`. Three overrides, none of them
-yours to relax:
+form one landing unit, and the unit's tasks share one `branch:`. Four overrides, none of them yours
+to relax:
 
 - A repository whose ownership section declares a landing constraint — every change lands as its
   own pull request — gets one branch per task there.
@@ -195,16 +230,21 @@ yours to relax:
 - An irreversible task keeps its own branch when a shared environment is actually contended —
   something would queue up behind it. Where the phase deploys nothing and a revert restores the
   change, the task cut suffices; the report states which reading applied.
+- A task with an edge onto an operational task keeps its own branch: a landing unit that mixes a
+  gate-blocked task with implementable ones cannot reach a complete state in one run. Where the
+  spec's gate genuinely holds the whole unit, the unit stays together instead: say in that branch's
+  section of the report that it lands as a draft pull request until the gate clears, and name in
+  the blocked task's `## Note` the branch its output must land on.
 
-Branches in one repository **stack** only on a real ordering: a file both units touch, a symbol
-or module one defines and the other uses or pins, or an environment order the spec states. Each
-branch starts from the latest earlier branch whose work it builds on that way — not merely the
-previous landing unit — and a branch that builds on none starts from the repository's default
-branch. A branch that builds on two earlier branches neither of which builds on the other has no
-single base holding both: stack the later of the two on the earlier, so one chain carries both,
-then base the branch on the later one, and name that extra stacking in the report. The order the
-gates impose on landing is a merge order, stated in the report's chain; it is not a base. Stacking on the previous unit by habit cuts a branch from a base that lacks the files it
-needs whenever the unit in between touched something else, and it chains the branch to whatever
+Branches in one repository **stack** only where step 3's test finds an edge between their tasks, or
+where the spec states an environment order. Each branch starts from the latest earlier branch one of
+its tasks has an edge onto — not merely the previous landing unit — and a branch with none starts
+from the repository's default branch. A branch that builds on two earlier branches neither of which
+builds on the other has no single base holding both: stack the later of the two on the earlier, so
+one chain carries both, then base the branch on the later one, and name that extra stacking in the
+report. The order the gates impose on landing is the merge order, stated in the report's chain; it
+is not a base. Stacking on the previous unit by habit cuts a branch from a base that lacks the files
+it needs whenever the unit in between touched something else, and it chains the branch to whatever
 that unit waits on. Record each branch's base in its tasks' `branch-base:` frontmatter field — the
 same value on every task of the branch, and the field implementation reads; a base recorded only in
 the report is a base lost with the conversation.
@@ -220,59 +260,22 @@ builds on — is a base like any other: stack the branch that needs it on that b
 that branch's section of the report how far the base is behind `origin/<default>` and that the pull
 request is retargeted once that one merges. It is a fact the spec settled, not a question.
 
+Propose each branch's name following its repository's visible convention — existing branches show
+it; the name belongs to the group, not the task. A repository with no branches yet takes the
+convention of another repository the spec touches, and the report says whose it borrowed. One
+exception joins the step-6 batch: when the checkout already sits on a branch carrying
+implementation commits for this spec, whether the first landing unit reuses that branch or cuts
+fresh by the convention is the user's call — a user mid-feature may have chosen it deliberately. A
+branch that carries only the spec file itself is not that case — unless the spec names that branch
+as where its work lands, which makes reuse the spec's own answer: then the question joins the batch
+with reuse as the recommendation.
+
 Then the size check: estimate each branch's aggregate diff from its tasks' citations. Past **80
 changed files or 2000 changed lines**, generated files excluded, a reviewer stops reading and
 starts skimming — but the grouping still follows the spec: **warn, never subdivide**. A breach
 goes into the report with a recommendation to revisit the spec's rollout table, because a branch
 structure the spec does not describe is a second source of truth about the rollout. The threshold
 is policy of this skill and never appears in the spec.
-
-### 4. Order
-
-Dependencies come from the spec's build order: an edge means a task cannot be written or verified
-without the other's work — a file, symbol or migration it builds on. Record each as a `depends-on`
-edge between task slugs: the other task must land first. The phase table orders *landing*, which
-step 3 records as the merge order; a later phase alone is not an edge, and an edge drawn from it
-across branches strands a whole branch behind work it never uses. A docs or changeset task that
-describes another task's change does depend on it: the change it describes is what they share.
-
-**An edge between two tasks on the same branch has to name what they share.** Same-branch tasks
-land together, so an edge there is a claim that one must be *written* before the other, and only a
-concrete overlap makes that true: a file both touch, a symbol one defines and the other calls, a
-migration one writes and the other reads. Name it in the dependent task's `## Note` and in the
-report's table — the frontmatter field stays a bare slug list, because prose in a machine-read
-field breaks the reader. An edge you cannot name that way is sequencing by intuition: drop it. It
-buys nothing on a shared branch and costs the implementation stage a serialisation, since tasks
-with no edge between them are implemented concurrently.
-
-**A commit sequence the spec binds is an edge too.** Where the spec orders the commits inside one
-branch — one commit per module in a stated order, a gate that every commit from some point on must
-pass — tasks that follow that order land in it only if the graph says so: concurrent tasks merge in
-whatever order they finish, and a per-commit gate is then never checked in sequence. Give each such
-task a `depends-on` edge onto its predecessor in the spec's order, and let its `## Note` quote the
-spec's ordering sentence in place of a shared file or symbol; the drop rule above does not apply to
-these edges. Never draw an edge onto
-an operational task when the spec lets the code land before that gate — an edge there strands
-implementable work behind human hands, and a whole extra run pays for it; a dependency that only
-gates *verification* belongs in the task's Done-when, not in the graph. A gate that blocks
-**authorship** — the work cannot be written until a human action reveals what to write — is the
-exception: it is a real edge, drawn onto the operational task that performs the gate. If no
-operational task exists for that gate, that is a coverage failure in step 5, not a licence to
-record the gate in prose. Propose each branch's name
-following its repository's visible convention — existing branches show it; the name belongs to the
-group, not the task. A repository with no branches yet takes the convention of another repository
-the spec touches, and the report says whose it borrowed. One exception joins the step-6 batch: when the checkout already sits on a
-branch carrying implementation commits for this spec, whether the first landing unit reuses that
-branch or cuts fresh by the convention is the user's call — a user mid-feature may have chosen it
-deliberately. A branch that carries only the spec file itself is not that case — unless the spec
-names that branch as where its work lands, which makes reuse the spec's own answer: then the
-question joins the batch with reuse as the recommendation.
-
-When the edge onto an operational task is real, carry it up to the branch: a landing unit that
-mixes a gate-blocked task with implementable ones cannot reach a complete state in one run. Cut
-the blocked task onto its own branch by default. Where the spec's gate genuinely holds the whole
-unit, say in that branch's section of the report that the unit lands as a draft pull request until
-the gate clears, and name in the blocked task's `## Note` the branch its output must land on.
 
 Then fix the reading order: a topological sort of the `depends-on` graph, ties broken by the
 spec's phase-table order, then alphabetically by slug. This ordinal becomes the filename prefix in
@@ -305,7 +308,7 @@ Before writing anything, check — and say in the report — that:
   workflow's merge planning relies on that;
 - the `branch-base` chain is rooted, acyclic, single-parent and identical on every task of a
   branch. Its one root is the repository's default branch — or a prerequisite branch the spec names
-  as not yet landed (step 3) — or, where step 4 found the checkout
+  as not yet landed (step 4) — or, where step 4 found the checkout
   already sitting on a branch that carries implementation commits for this spec, that branch: the root is then
   whatever the step-6 answer settles, so a chain rooted there is a question still pending, never a
   coverage failure. Stopping on it would abort a split the user was never asked about.
@@ -352,15 +355,8 @@ The body obeys the index card rule: the goal in the task's own words, pointers b
 section heading, nothing copied out of the spec — no contract prose, no schemas, no `path:line`
 lists. The implementation agent reads those from the spec sections the pointers name.
 
-Rendering the files is the one part of this skill worth dispatching. Dispatch the `fork`
-sub-agent, one per repository — unnamed, per `fact-routes.md`: it already holds the cuts, the
-grouping and the pointers, so its prompt names only the files it writes and this section's
-prohibitions. The territories are exclusive: each prompt lists that agent's own files, names the
-repositories that belong to the other agents, and states that it writes nothing outside its list.
-Two agents that both take a task for theirs write it twice, and the second write wins with nothing
-reporting that it happened. Nothing is left for it to decide; it renders. Then re-run step 5 mechanically
-over the written files — coverage is the one check a fan-out cannot perform on itself. A split
-of five files or fewer is faster written here.
+Once every file is written, re-run step 5 mechanically over the files on disk — the written set is
+what implementation reads, and a file that drifted from the plan shows only there.
 
 Write the report to `<spec-basename>.split.md` beside the spec — never inside `tasks/`, where
 a task-file glob trips over it — after that re-run, since its coverage statement is the re-run's
@@ -369,7 +365,7 @@ frontmatter holds, elements); a `## Branches` section with the creation order an
 repository and one `### <branch>` subsection per branch holding every landing fact about it — its
 base and how far that is behind `origin/<default>`, its place in the merge order, a draft pull
 request until a gate clears, a retarget once a prerequisite merges, a reuse the user answered, the
-readings step 3 applied; where the files went; the coverage statement from step 5; every work item
+readings step 4 applied; where the files went; the coverage statement from step 5; every work item
 split across tasks with its seam; any size-check warning; the verdict line this split was taken
 against, quoted verbatim; and a `## Still owed` section with anything the user still owes an
 answer. In the conversation give the path and the same table — all six columns, `elements`
