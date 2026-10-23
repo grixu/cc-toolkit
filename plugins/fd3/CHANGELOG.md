@@ -97,6 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The CI result schema's `branch` field matches what the prompt asks for on a detached tree
 - Workflow agents may use a skill their task file names for the step
 - `validate-spec` may write the evidence overflow files it is told to use
+- CI no longer skips a command that fails on the clean base: it runs, scoped where it can be, and
+  only failures matching the baseline are pre-existing, so a branch cannot add failures to an
+  already-red typecheck or test suite unseen
 
 ## [0.3.0] - 2026-10-12
 
