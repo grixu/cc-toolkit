@@ -51,17 +51,20 @@ other step starts with its tool call, not with the list:
 
 ### 1. Read the graph
 
-Parse the YAML frontmatter of every task file in the directory: slug (the filename without its
-ordinal prefix and extension), name, repository, branch, branch-base, phase, depends-on, status,
-tickets. The spec is not read — the task files and the split report are the whole input.
+Parse the directory with `node ${CLAUDE_PLUGIN_ROOT}/scripts/task-graph.mjs <tasks dir>` — never a
+parser of your own. It prints one JSON object: `tasks` (every frontmatter field per task, slug and
+ordinal included), `launch` (step 3's `tasks` argument, `baseBranch` carrying the raw `branch-base`
+or `null`), `specPaths` (each resolved `spec:` pointer and whether it exists) and `problems`, each
+with a `kind`, the slugs it names and a detail line; it exits 2 when there are problems. Nothing it
+prints is written to disk: rerun it whenever the files change. The spec is not read — the task
+files and the split report are the whole input.
 
 Then make the graph launchable:
 
-- **Resolve the spec path.** Each task's `spec:` pointer is relative to its own file — usually
-  `../SPEC.md`, one directory above the tasks directory. Resolve it to an absolute path and check
-  the file exists; the spec itself stays unread — implementation agents read it, this step only
-  guarantees the path is real. When the resolved path does not exist (or tasks point at different
-  files), the spec location joins the step-2 batch.
+- **Resolve the spec path.** `specPaths` holds each task's `spec:` pointer resolved against its
+  own file; the spec itself stays unread — implementation agents read it, this step only
+  guarantees the path is real. A `spec` problem — a path that does not exist, or tasks pointing at
+  different files — puts the spec location in the step-2 batch.
 - **Read the split report's branch facts.** `<spec-basename>.split.md` beside the spec is the
   split's report, not the spec: read its `## Branches` section (per-branch landing facts — draft
   pull requests, retargets, merge order, a branch reuse the user already answered) and its
@@ -69,17 +72,17 @@ Then make the graph launchable:
   creation order and stack chain instead. A branch call the report settles is not asked again in
   step 2, and step 5's pull-request chain carries its facts. No report, or no branch facts in it,
   leaves the task files as the whole input.
-- **Resolve repositories to absolute paths.** A `repository:` value that is not an existing
-  directory is a missing input, not something to search for: it joins the step-2 batch, naming
-  the tasks it blocks.
+- **Resolve repositories to absolute paths.** A `repository` problem — a value that is not an
+  existing absolute directory — is a missing input, not something to search for: it joins the
+  step-2 batch, naming the tasks it blocks.
 - **Sync with origin.** In every resolved repository run `git fetch origin` — mandatory, stale
   local refs poison every branch cut from them. Record the default branch and its
   `origin/<default>` ref; note which branch the checkout currently sits on and whether that
   branch carries commits beyond `origin/<default>`. A repository parked on a non-default branch,
   or a base candidate behind `origin/<default>`, joins the step-2 batch.
 - **Resolve each branch's stack base.** Read it from the tasks' `branch-base:` field — the split
-  records the same value on every task of a branch, and a disagreement inside one branch joins
-  the step-2 batch. Only when the field is absent (tasks split before it existed), derive it:
+  records the same value on every task of a branch, and a disagreement inside one branch (a
+  `branch-base` problem) joins the step-2 batch. Only when the field is absent (tasks split before it existed), derive it:
   order the repository's distinct `branch:` values by their tasks' rollout phase (the numeric
   prefix of `phase:`; `cleanup` sorts after every numbered phase), the first stacking on the
   repository's base ref (`baseBranch: null` — resolved to the `startRef` confirmed in step 2),
@@ -104,10 +107,11 @@ Then make the graph launchable:
   resolves nowhere joins the step-2 batch. Only here can the two be told apart — the workflow sees
   the task files alone, so it falls back to the repository's default ref and reports the lost
   stacking after the run, when the work is already built on the wrong foundation.
-- **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that
-  exists **and carries a lower ordinal** — the merge planning relies on the file order being
-  topological — and every status is one of the six. A broken graph stops the run — recommend
-  re-running `fd3:split-to-tasks` rather than patching by hand.
+- **Check integrity**: the script checks for dependency cycles, that every `depends-on` edge
+  points at a task that exists **and carries a lower ordinal** — the merge planning relies on the
+  file order being topological — that every status is one of the six, and that the frontmatter
+  reads. A problem of any kind other than `spec`, `repository` or `branch-base` is a broken graph
+  and stops the run — recommend re-running `fd3:split-to-tasks` rather than patching by hand.
 - **Find the confirmations a task asks for.** A task whose `## Note` asks for a human's
   confirmation or approval before its work starts — a protected path, a consent the repository's
   instructions require — would stop its agent mid-run, since the workflow never waits for a human.
@@ -216,6 +220,8 @@ nor the user again.
 `knownBases` lists every `branch-base` no task builds that step 1 resolved to an existing branch, as
 `<repository path>:<branch>`; the workflow raises a `graph` item only for the others, so a confirmed
 root is not put to the user again on every launch.
+`tasks` is the script's `launch` array, with step 1's root normalisation applied (a root base
+becomes `null`) and any task file step 2 corrected re-parsed.
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
 repository's `startRef` — the ref the user confirmed in step 2, fetched fresh in step 1.

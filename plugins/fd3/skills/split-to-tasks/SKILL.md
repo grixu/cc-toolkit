@@ -357,6 +357,10 @@ lists. The implementation agent reads those from the spec sections the pointers 
 
 Once every file is written, re-run step 5 mechanically over the files on disk — the written set is
 what implementation reads, and a file that drifted from the plan shows only there.
+`node ${CLAUDE_PLUGIN_ROOT}/scripts/task-graph.mjs <tasks dir>` does the graph half — cycles, edge
+order, statuses, one `branch-base` per branch, readable frontmatter — and prints every task's
+fields for the element and phase checks; any `problems` entry it prints is a file to fix before the
+report.
 
 Write the report to `<spec-basename>.split.md` beside the spec — never inside `tasks/`, where
 a task-file glob trips over it — after that re-run, since its coverage statement is the re-run's

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `scripts/task-graph.mjs` parses a tasks directory, checks its graph (cycles, edge order, statuses,
+  one `branch-base` per branch, repositories, spec pointer) and prints the workflow's `tasks`
+  argument as JSON; `implement-tasks` step 1 and the split's post-write coverage re-run use it
+  instead of a hand-written parser
 - `implement-run` and `repair-run` take a `decisions` list — the user's settled answers from earlier
   report rounds — and reviewers and fixers treat a finding that would undo one as reserved;
   `repair-run` adds each repair's own instructions
