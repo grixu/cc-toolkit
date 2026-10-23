@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-run` takes `knownBases`, so a prerequisite base step 1 resolved raises no graph item
 - branches stacked on a repaired branch join the repair run with no instructions: refreshed onto the
   repaired base and validated, with no repair agent or review
+- `grill-topic` keeps `research/INDEX.md` — one entry per answered lookup question with its
+  condensed answer, sources and report file — and every decision in the closing notes points to
+  its entries; `write-spec` writes from the index and opens a raw report only to quote it
 
 ### Changed
 
