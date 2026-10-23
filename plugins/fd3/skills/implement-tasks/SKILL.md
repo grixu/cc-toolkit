@@ -102,7 +102,8 @@ Then make the graph launchable:
   confirmation or approval before its work starts — a protected path, a consent the repository's
   instructions require — would stop its agent mid-run, since the workflow never waits for a human.
   Read each task's `## Note` for that alone; every such ask joins the step-2 batch, naming the
-  task. An approval the pull request's review gives is not one: it gates landing, not writing.
+  task. An approval the pull request's review gives is not one: it gates landing, not writing. A
+  `Consent:` line already in the Note settles its ask — an earlier invocation recorded it.
 - **Classify what a resumed run inherits**: `done` is skipped; `implemented` and `merged` both
   re-enter the first merge round — whether a branch already reached the target is git's knowledge,
   and an already-merged branch no-ops there, which is what re-records the unit validation runs on,
@@ -144,16 +145,20 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   unchanged rather than nulling it, so the workflow raises its stack-base item and the run's own
   report carries what was consented to; nulled, those tasks would read as genuine roots and
   nothing would record the anomaly;
-- each confirmation a task's `## Note` asks for, from step 1. An answer that withholds it takes
-  the task out of this launch as `blocked`, an item in the report rather than a stopped run;
+- each confirmation a task's `## Note` asks for, from step 1. A yes is written into that task file
+  before launch: append the line `Consent: <the user's answer, verbatim>` to its `## Note`. The
+  task file is what its implementing agent reads, so a consent recorded only in this batch or
+  `implement-answers.md` never reaches it and the agent stops on the ask anyway. An answer that
+  withholds it takes the task out of this launch as `blocked`, an item in the report rather than a
+  stopped run;
 - confirmation of scope when the directory mixes done and pending work.
 
 Everything else — wave composition, branch names, merge order — the task files already decided;
 report it, do not ask.
 
 Record the answers in `implement-answers.md` next to the tasks directory, never inside it where it
-would read as a task file — the start ref per repository, the review choice, the commit choice, and
-each decision a later report round settles. A later
+would read as a task file — the start ref per repository, the review choice, the commit choice,
+each consent granted (with its task), and each decision a later report round settles. A later
 invocation over the same directory reads that file first and asks only what it does not settle or
 what has changed since: a new repository, a base that moved, a stale `in-progress`.
 
