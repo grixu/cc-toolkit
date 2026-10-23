@@ -1,11 +1,12 @@
-# Launching repair-run
+# Launching a repair run
 
 Read by `implement-tasks` step 4 when a decision changes an existing branch.
 
 ```
 Workflow({
-  scriptPath: "<the directory this file sits in>/../../workflows/repair-run.js",
+  scriptPath: "<the directory this file sits in>/../../workflows/implement-run.js",
   args: {
+    mode: "repair",
     repairs: [{ repo, branch, worktree, base, instructions: [<the user's decisions for this
                branch, quoted verbatim>], taskFiles: [<task files to flip to done on pass>] }, ...],
     repos: <as at launch>,

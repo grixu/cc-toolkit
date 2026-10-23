@@ -249,10 +249,10 @@ dispatch implementation agents yourself.
 
 The completion notification truncates the result — read the full report from the notification's
 `<output-file>` path before relaying anything. Record that path in `implement-answers.md` as
-`Last report: <path> (<implement-run or repair-run>, <date>)` — one line per workflow kind, each
+`Last report: <path> (<implement or repair>, <date>)` — one line per run mode, each
 replacing its previous one — so the next launch has its `reportPath` even after `/clear` or in a
-new session. A later invocation passes the implement-run line when its file still exists: a
-repair-run report holds toolchain knowledge only for the repositories it repaired, so it is the
+new session. A later invocation passes the implement line when its file still exists: a
+repair report holds toolchain knowledge only for the repositories it repaired, so it is the
 fallback. A path that no longer exists is omitted, and the workflow re-scouts. The workflow returns per-task statuses,
 per-branch validation outcomes (with each branch's review findings and the path of its review
 `cr-report.md`), agent `caveats`, the HIL
@@ -306,14 +306,14 @@ Put to the user only what needs a human: an operational task is theirs to execut
 file's steps as a script to follow; mark `done` only when they confirm), and a blocker or a
 judgment conflict needs their call on how to proceed. Every such decision of one report goes in one
 batch — never one question per turn. A `ci` item is not a question: diagnose it — read-only, in
-the branch's worktree — and send it to `repair-run` with the diagnosis verbatim in the
+the branch's worktree — and send it to a repair run with the diagnosis verbatim in the
 `instructions`, sparing the repair agent a re-investigation. It becomes a question only when the
 diagnosis shows the fix must change behaviour, the case the fixer already refused. Diagnose by
 **running the failing check** in that worktree and reading what it says. Grepping the source for
 what the report's message suggests names a plausible cause, not the cause: the check is the only
 thing that knows which of them is true, and a repair composed from the plausible one costs a full
 round to disprove. A failure the branch did not cause — the baseline already failed that check, or
-it sits in files no task on the branch touched — is no repair's to fix: a repair-run grades the
+it sits in files no task on the branch touched — is no repair's to fix: a repair run grades the
 same check and fails it again. It is a question (fix it as its own decision, or accept it as a known
 failure), asked before any repair launches on that branch.
 
@@ -336,8 +336,8 @@ split into two lanes:
 
 One carve-out from the second lane: a purely mechanical git operation — merging an existing
 task branch into its target, reverting a named commit — may be done by this skill directly when
-the decision deliberately leaves the branch incomplete, because a repair-run would fail its own
-CI on that intended state. Anything that touches file content still goes through `repair-run`.
+the decision deliberately leaves the branch incomplete, because a repair run would fail its own
+CI on that intended state. Anything that touches file content still goes through a repair run.
 
 Never run two workflows at once — validation tolerates exactly one build/lint/test pipeline on
 the machine. Repairs first, then the implement relaunch. While a workflow runs, its worktrees and

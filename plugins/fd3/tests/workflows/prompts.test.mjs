@@ -32,7 +32,7 @@ const smallReview = () =>
 
 const repairRun = () =>
   runWorkflow(
-    'repair-run.js',
+    'implement-run.js',
     repairArgs({ reportPath: '/r/report.md', toolchain: undefined, baseline: undefined, repairs: [repair('feat/a'), repair('feat/b', { base: 'feat/a' })] }),
     [
       ['handover', { toolchain: [], baseline: [] }],
@@ -71,7 +71,7 @@ const EXPECTED_TAGS = {
   'fix-review': ['toolchain_report'],
 }
 
-for (const [name, runIt] of [['implement-run', implementRun], ['repair-run', repairRun]]) {
+for (const [name, runIt] of [['implement-run', implementRun], ['implement-run repair mode', repairRun]]) {
   test(`${name}: the broad run covers every agent kind it is checked for`, async () => {
     const r = await runIt()
     const kinds = new Set(r.labels.map(kind))
@@ -211,6 +211,6 @@ test('every fixer is told to read the Consent lines of its own branch task files
 
   const rep = await repairRun()
   for (const label of ['fix-ci:app:feat-a#1', 'fix-review:app:feat-a']) assert.equal(consent.exec(rep.call(label).prompt)[1], '- /r/app/tasks/feat-a.md\n', label)
-  const noFiles = await runWorkflow('repair-run.js', repairArgs({ review: false, repairs: [repair('feat/x', { taskFiles: [] })] }), [['ci:app:feat-x:final', ciPass], ['ci:app:feat-x', seq(ciFail(['boom']), ciPass)], ...repairDefaults()])
+  const noFiles = await runWorkflow('implement-run.js', repairArgs({ review: false, repairs: [repair('feat/x', { taskFiles: [] })] }), [['ci:app:feat-x:final', ciPass], ['ci:app:feat-x', seq(ciFail(['boom']), ciPass)], ...repairDefaults()])
   assert.doesNotMatch(noFiles.call('fix-ci:app:feat-x#1').prompt, /Consent:/)
 })

@@ -137,6 +137,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-tasks` counts repairs per branch (`Repairs:` in `implement-answers.md`); from a
   branch's second repair round on the close recommends pushing its open `review` items as is, and a
   third repair of one branch is never offered or recommended — only run when the user names it
+- `repair-run` is folded into `implement-run` as `mode: "repair"`: the recon, CI, fix-prompt, review,
+  finding-filter, consent, refresh and done-marking code the two scripts duplicated now exists once,
+  so a fix reaches both modes. `/fd3:repair-run` leaves the `/` menu, and `implement-tasks` launches
+  a repair as `implement-run` with `mode: "repair"` and the same repair arguments
 
 ### Fixed
 

@@ -104,6 +104,7 @@ export const repair = (branch, over = {}) => ({
 })
 
 export const repairArgs = (over = {}) => ({
+  mode: 'repair',
   repairs: [repair('feat/x')],
   repos: { [REPO]: { startRef: 'origin/main', diffBase: 'origin/main' } },
   review: true,

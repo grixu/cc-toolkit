@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { runWorkflow, seq } from './harness.mjs'
 import { REPO, TOOLCHAIN, repair, repairArgs, repairDefaults, finding, line, ciPass, ciFail, crMerged, prepReady } from './fixtures.mjs'
 
-const run = (args, rules = [], options) => runWorkflow('repair-run.js', args, [...rules, ...repairDefaults()], options)
+const run = (args, rules = [], options) => runWorkflow('implement-run.js', args, [...rules, ...repairDefaults()], options)
 
 test('repair, then the full gate, a review of the repair delta, and a marking agent', async () => {
   const r = await run(repairArgs())

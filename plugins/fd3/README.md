@@ -40,7 +40,7 @@ that stops halfway restarts from those files.
         |                  one worktree per task, merged into the       beside the repository
         |                  branch, then checks and code review
         |-- you decide the items only a human can settle
-        |-- repair-run     (background) applies your decisions
+        |-- implement-run  (background, repair mode) applies your decisions
         '-- proposes push and pull requests; pushes only if you say yes
 ```
 
@@ -173,9 +173,9 @@ When the run ends you get its report: task statuses, check and review results pe
 agents flagged, and the list of human-in-the-loop (HIL) items, meaning everything only a person can
 settle: a manual step against a live system, a blocker an agent would not guess past, a merge
 conflict. You decide those in one batch. A check that would not pass is diagnosed and sent to
-`repair-run` without asking, unless the fix would change behaviour. Decisions an agent took inside
+a repair run without asking, unless the fix would change behaviour. Decisions an agent took inside
 its task are kept and listed for the end. Claude then restarts `implement-run` for tasks your
-decision unblocked, or starts `repair-run` to apply your decision to an existing branch, without
+decision unblocked, or starts it in repair mode to apply your decision to an existing branch, without
 asking whether to. This repeats until every task is `done` or you stop.
 
 Finally Claude gives one report and asks one batch: the pull requests (one per branch, with its
@@ -216,7 +216,7 @@ Branches: one `task/<slug>` per task, plus the target branches named in the task
   `/fd3:build-spec <spec>` as the route that amends the spec.
 - Copy the spec onto a work branch. The spec exists once, where `build-spec` wrote it, and every
   agent reads it there.
-- Run two workflows at once. Only one `implement-run` or `repair-run` runs at a time, so only one
+- Run two workflows at once. Only one `implement-run` runs at a time, in either mode, so only one
   build, lint and test pipeline runs on the machine.
 - Mark a branch `done` when its review did not run, or when a `gated` review left findings for you.
   It stays `merged`.
@@ -229,8 +229,7 @@ You do not call these. They are listed so you recognise them in the `/` menu and
 |---|---|---|
 | `write-spec` | skill, hidden from the `/` menu | Writes the spec from the interview notes. `build-spec` starts it. |
 | `validate-spec` | skill, hidden from the `/` menu | Checks the spec and appends the verdict. `build-spec` starts it. |
-| `implement-run` | workflow | Waves, merges, checks and review. It appears in the `/` menu as `/fd3:implement-run`; do not run it directly. |
-| `repair-run` | workflow | Applies your HIL decisions to existing branches and checks them again. It appears in the `/` menu as `/fd3:repair-run`; do not run it directly. |
+| `implement-run` | workflow | Waves, merges, checks and review; in repair mode, applies your HIL decisions to existing branches and checks them again. It appears in the `/` menu as `/fd3:implement-run`; do not run it directly. |
 | `fd3:researcher` | sub-agent | Looks up documentation and other external facts. |
 | `fd3:toolchain-scout` | sub-agent | Finds a repository's build, typecheck, lint and test commands. |
 
