@@ -262,7 +262,7 @@ phase('Repair')
 
 const REPAIR_RESULT = {
   type: 'object',
-  required: ['outcome', 'summary'],
+  required: ['outcome', 'summary', 'fromSha'],
   properties: {
     outcome: { enum: ['repaired', 'blocked'] },
     summary: { type: 'string' },
@@ -530,7 +530,7 @@ const reservationsFor = (unit) => {
 
 const FIX_RESULT = {
   type: 'object',
-  required: ['summary'],
+  required: ['summary', 'fromSha', 'toSha'],
   properties: {
     summary: { type: 'string' },
     fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
@@ -589,7 +589,7 @@ const fixPrompt = (unit, problems, preExisting = []) =>
 
 const PREP_RESULT = {
   type: 'object',
-  required: ['status', 'invoked'],
+  required: ['status', 'invoked', 'files'],
   properties: {
     invoked: { type: 'boolean', description: 'the code-review:cr-prepare skill was invoked through the Skill tool' },
     status: { enum: ['ready', 'empty', 'error'] },
@@ -613,6 +613,9 @@ const SCAN_RESULT = {
   },
 }
 
+const SEVERITIES = ['high', 'medium', 'nit', 'comment']
+const FAMILIES = ['readability', 'tests', 'naming', 'module', 'objects', 'patterns', 'simplicity', 'security', 'performance', 'correctness', 'spec', 'standards', 'comments']
+
 const CR_MERGE_RESULT = {
   type: 'object',
   required: ['status', 'invoked', 'findings'],
@@ -629,8 +632,8 @@ const CR_MERGE_RESULT = {
         type: 'object',
         required: ['severity', 'family', 'rule', 'location', 'risk', 'fix'],
         properties: {
-          severity: { type: 'string', description: 'high | medium | nit; `comment` for a comment verdict' },
-          family: { type: 'string' },
+          severity: { enum: SEVERITIES, description: '`comment` for a comment verdict' },
+          family: { enum: FAMILIES, description: '`comments` for a comment verdict' },
           rule: { type: 'string', description: 'the rule, or for a comment verdict R<n> and its verdict' },
           location: { type: 'string', description: '<path>:L<lines>' },
           risk: { enum: ['safe', 'structural', 'report-only'] },
@@ -668,7 +671,7 @@ const prepPrompt = (unit, base, dir) => {
     ``,
     `Return what its closing block says: status, judged and skipped file counts, active and inactive`,
     `lenses, the alternate or reason on empty, the reason on error — and invoked=true. When the Skill tool is not`,
-    `available to you, return invoked=false and status "error"; never do the skill's work by hand.`,
+    `available to you, return invoked=false, status "error" and zero files; never do the skill's work by hand.`,
   ].join('\n')
 }
 
@@ -760,11 +763,11 @@ const runReview = async (unit, base, pass, tag) => {
   }
 }
 
-const serious = (f) => f.severity === 'high' || f.severity === 'medium'
-const isKeep = (f) => f.severity === 'comment' && /\bKEEP\b/.test(f.rule)
+const serious = (f) => norm(f.severity) === 'high' || norm(f.severity) === 'medium'
+const isKeep = (f) => norm(f.severity) === 'comment' && /\bkeep\b/.test(norm(f.rule))
 // A comment move is structural, so it is never applied unasked; with no severity it would
 // otherwise fall to the report list nobody acts on.
-const needsHuman = (f) => serious(f) || (f.severity === 'comment' && f.risk === 'structural')
+const needsHuman = (f) => serious(f) || (norm(f.severity) === 'comment' && norm(f.risk) === 'structural')
 const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
 
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing

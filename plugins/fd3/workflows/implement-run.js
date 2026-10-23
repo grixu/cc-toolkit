@@ -665,7 +665,7 @@ const CI_RESULT = {
 
 const FIX_RESULT = {
   type: 'object',
-  required: ['summary'],
+  required: ['summary', 'fromSha', 'toSha'],
   properties: {
     summary: { type: 'string' },
     fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
@@ -677,7 +677,7 @@ const FIX_RESULT = {
 
 const PREP_RESULT = {
   type: 'object',
-  required: ['status', 'invoked'],
+  required: ['status', 'invoked', 'files'],
   properties: {
     invoked: { type: 'boolean', description: 'the code-review:cr-prepare skill was invoked through the Skill tool' },
     status: { enum: ['ready', 'empty', 'error'] },
@@ -701,6 +701,9 @@ const SCAN_RESULT = {
   },
 }
 
+const SEVERITIES = ['high', 'medium', 'nit', 'comment']
+const FAMILIES = ['readability', 'tests', 'naming', 'module', 'objects', 'patterns', 'simplicity', 'security', 'performance', 'correctness', 'spec', 'standards', 'comments']
+
 const CR_MERGE_RESULT = {
   type: 'object',
   required: ['status', 'invoked', 'findings'],
@@ -717,8 +720,8 @@ const CR_MERGE_RESULT = {
         type: 'object',
         required: ['severity', 'family', 'rule', 'location', 'risk', 'fix'],
         properties: {
-          severity: { type: 'string', description: 'high | medium | nit; `comment` for a comment verdict' },
-          family: { type: 'string' },
+          severity: { enum: SEVERITIES, description: '`comment` for a comment verdict' },
+          family: { enum: FAMILIES, description: '`comments` for a comment verdict' },
           rule: { type: 'string', description: 'the rule, or for a comment verdict R<n> and its verdict' },
           location: { type: 'string', description: '<path>:L<lines>' },
           risk: { enum: ['safe', 'structural', 'report-only'] },
@@ -726,7 +729,7 @@ const CR_MERGE_RESULT = {
           reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
           boyScout: { type: 'boolean', description: 'the finding line carries the `boy-scout` token: it is about code the change did not touch' },
           access: { type: 'boolean', description: 'a security finding whose fix changes who may reach what — a permission, a role, a policy, the scope of an auth check' },
-          specBound: { type: 'boolean', description: 'fixing it would change behaviour the spec states — the finding line says so, or its fix contradicts a line of the spec' },
+          specBound: { type: 'boolean', description: 'the finding line says fixing it would change behaviour the spec states' },
         },
       },
     },
@@ -908,7 +911,7 @@ const prepPrompt = (unit, base, dir) => {
     ``,
     `Return what its closing block says: status, judged and skipped file counts, active and inactive`,
     `lenses, the alternate or reason on empty, the reason on error — and invoked=true. When the Skill tool is not`,
-    `available to you, return invoked=false and status "error"; never do the skill's work by hand.`,
+    `available to you, return invoked=false, status "error" and zero files; never do the skill's work by hand.`,
   ].join('\n')
 }
 
@@ -928,7 +931,7 @@ const crMergePrompt = (dir) =>
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
     `\`boy-scout\` token sets boyScout=true, and a security finding whose fix changes who may reach`,
     `what — a permission, a role, a policy, an auth check's scope — sets access=true. A finding whose`,
-    `fix would change behaviour the spec states — the line says so — sets specBound=true. Copy every`,
+    `line says its fix would change behaviour the spec states sets specBound=true. Copy every`,
     `\`unowned:\` line verbatim as one entry under unowned, and the \`security-review:\` line's text`,
     `as securityReview, empty when either reads none. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
@@ -1018,20 +1021,20 @@ const runReview = async (unit, base, pass, tag) => {
 // correctness lens marks those — is the spec owner's call; both wait for a human in either mode.
 // Nits and the remaining comment
 // verdicts are reported, never applied unasked.
-const serious = (f) => f.severity === 'high' || f.severity === 'medium'
+const serious = (f) => norm(f.severity) === 'high' || norm(f.severity) === 'medium'
 const fixable = (f) =>
   !f.specBound &&
   (gated
-    ? f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout
-    : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe') && !f.access)
-const isKeep = (f) => f.severity === 'comment' && /\bKEEP\b/.test(f.rule)
+    ? norm(f.risk) !== 'report-only' && norm(f.family) !== 'security' && norm(f.family) !== 'spec' && !f.boyScout
+    : norm(f.risk) !== 'report-only' && norm(f.family) !== 'spec' && (!f.boyScout || norm(f.risk) === 'safe') && !f.access)
+const isKeep = (f) => norm(f.severity) === 'comment' && /\bkeep\b/.test(norm(f.rule))
 // A comment move is structural, so it is never applied unasked; with no severity it would
 // otherwise fall to the report list nobody acts on.
-const needsHuman = (f) => serious(f) || (f.severity === 'comment' && f.risk === 'structural')
+const needsHuman = (f) => serious(f) || (norm(f.severity) === 'comment' && norm(f.risk) === 'structural')
 const sortFindings = (findings) => {
   const live = findings.filter((f) => !f.reserved && !isKeep(f))
   const applied = live.filter(
-    (f) => (serious(f) && fixable(f)) || (f.severity === 'comment' && f.risk === 'safe' && !(gated && f.boyScout)),
+    (f) => (serious(f) && fixable(f)) || (norm(f.severity) === 'comment' && norm(f.risk) === 'safe' && !(gated && f.boyScout)),
   )
   const forHuman = live.filter((f) => !applied.includes(f) && needsHuman(f))
   const reported = live.filter((f) => !applied.includes(f) && !forHuman.includes(f))
