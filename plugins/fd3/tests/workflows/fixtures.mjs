@@ -114,10 +114,12 @@ export const repairDefaults = () => [
   ['refresh:', { refreshed: true }],
   ['toolchain-touch:', { touched: false }],
   [/^ci:/, ciPass],
-  ['cr-prep:', prepReady()],
+  ['cr-prep:', prepReady(['correctness', 'security'])],
   ['cr:', scanned],
   ['cr-merge:', crMerged()],
+  ['conformance:', { checked: true, findings: [] }],
   ['fix-ci:', { summary: 'fixed', fromSha: 'aaa111', toSha: 'bbb222' }],
+  ['fix-review:', { summary: 'fixed', fromSha: 'aaa111', toSha: 'bbb222', skipped: [] }],
   ['unmark:', 'ok'],
   ['mark:', { marked: true }],
 ]

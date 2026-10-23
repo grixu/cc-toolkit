@@ -121,6 +121,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cheap agent, or by that run itself when no review follows it
 - `cr-prep`, wave merges and base refreshes run on Sonnet: they do git and scope resolution, and a
   merge conflict that needs judgment is still aborted and reported
+- `repair-run` reviews a repair narrowly: one decision-conformance agent reads the repair's diff
+  against the quoted decisions and reports changes no decision asked for and decisions not carried
+  out, and only the `correctness` and `security` lenses run over the repair delta; craft lenses no
+  longer read repairs. Findings rated safe in the repair's own hunks are fixed in the same run by
+  one fixer with no further review (under `gated`, never a security fix; never one that changes
+  access or spec-stated behaviour); the rest stay `review` items, and boy-scout findings stay apart
 
 ### Fixed
 

@@ -33,6 +33,7 @@ const repairRun = () =>
     repairArgs({ reportPath: '/r/report.md', toolchain: undefined, baseline: undefined, repairs: [repair('feat/a'), repair('feat/b', { base: 'feat/a' })] }),
     [
       ['handover', { toolchain: [], baseline: [] }],
+      ['cr-merge:app:feat-a:repair', crMerged([finding({ family: 'correctness' })])],
       ['ci:app:feat-a#2', ciPass],
       ['ci:app:feat-a:final', ciPass],
       ['ci:app:feat-a', ciFail(['boom'])],
@@ -64,6 +65,7 @@ const EXPECTED_TAGS = {
   'fix-ci': ['toolchain_report'],
   'fix-cr': ['toolchain_report'],
   'fix-final': ['toolchain_report'],
+  'fix-review': ['toolchain_report'],
 }
 
 for (const [name, runIt] of [['implement-run', implementRun], ['repair-run', repairRun]]) {
@@ -73,7 +75,7 @@ for (const [name, runIt] of [['implement-run', implementRun], ['repair-run', rep
     const expected =
       name === 'implement-run'
         ? ['handover', 'scout', 'baseline', 'mark-blocked', 'wave', 'merge', 'toolchain-touch', 'refresh', 'ci', 'fix-ci', 'cr-prep', 'cr', 'cr-merge', 'fix-cr', 'unmark', 'mark']
-        : ['handover', 'scout', 'baseline', 'repair', 'refresh', 'toolchain-touch', 'ci', 'fix-ci', 'cr-prep', 'cr', 'cr-merge', 'unmark', 'mark']
+        : ['handover', 'scout', 'baseline', 'repair', 'refresh', 'toolchain-touch', 'ci', 'fix-ci', 'cr-prep', 'cr', 'cr-merge', 'conformance', 'fix-review', 'unmark', 'mark']
     for (const k of expected) assert.ok(kinds.has(k), `no ${k} call in ${[...kinds].join(', ')}`)
   })
 
@@ -98,7 +100,7 @@ for (const [name, runIt] of [['implement-run', implementRun], ['repair-run', rep
 
   test(`${name}: CI, baseline and fix runners carry the wait rule`, async () => {
     const r = await runIt()
-    for (const c of r.calls.filter((x) => ['ci', 'baseline', 'fix-ci', 'fix-cr', 'fix-final'].includes(kind(x.label)))) {
+    for (const c of r.calls.filter((x) => ['ci', 'baseline', 'fix-ci', 'fix-cr', 'fix-final', 'fix-review'].includes(kind(x.label)))) {
       for (const w of WAIT) assert.ok(c.prompt.includes(w), `${c.label} lacks "${w}"`)
     }
   })
@@ -203,7 +205,7 @@ test('every fixer is told to read the Consent lines of its own branch task files
   assert.equal(consent.exec(final.call('fix-final:app:feat-x').prompt)[1], '- /r/app/tasks/t1.md\n- /r/app/tasks/t2.md\n')
 
   const rep = await repairRun()
-  assert.equal(consent.exec(rep.call('fix-ci:app:feat-a#1').prompt)[1], '- /r/app/tasks/feat-a.md\n')
+  for (const label of ['fix-ci:app:feat-a#1', 'fix-review:app:feat-a']) assert.equal(consent.exec(rep.call(label).prompt)[1], '- /r/app/tasks/feat-a.md\n', label)
   const noFiles = await runWorkflow('repair-run.js', repairArgs({ review: false, repairs: [repair('feat/x', { taskFiles: [] })] }), [['ci:app:feat-x:final', ciPass], ['ci:app:feat-x', seq(ciFail(['boom']), ciPass)], ...repairDefaults()])
   assert.doesNotMatch(noFiles.call('fix-ci:app:feat-x#1').prompt, /Consent:/)
 })

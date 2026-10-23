@@ -5,7 +5,7 @@ export const meta = {
   phases: [
     { title: 'Recon', detail: 'only for repositories whose toolchain or baseline knowledge did not arrive in args' },
     { title: 'Repair', detail: 'one agent per branch, the HIL decision applied verbatim; a stacked branch after its base' },
-    { title: 'Validate', detail: 'the full CI gate with scoped fix rounds, a review of the repair delta, and a second full run only when HEAD moved, one branch at a time' },
+    { title: 'Validate', detail: 'the full CI gate with scoped fix rounds, a decision-conformance check and a correctness/security review of the repair delta with its safe findings fixed, and a second full run only when HEAD moved, one branch at a time' },
   ],
 }
 
@@ -569,16 +569,17 @@ const FIX_RESULT = {
     fromSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree before the first edit' },
     toSha: { type: 'string', description: '`git rev-parse HEAD` in the worktree after the last commit; equal to fromSha when nothing was committed' },
     caveats: { type: 'array', items: { type: 'string' }, description: 'problems skipped with the reason, judgment calls that went beyond the listed problems, and any change that touches a spec decision' },
+    skipped: { type: 'array', items: { type: 'string' }, description: 'every listed problem left unfixed, copied verbatim from the list' },
   },
 }
 
-const fixPrompt = (unit, problems, preExisting = []) =>
+const fixPrompt = (unit, problems, preExisting = [], source = 'CI') =>
   [
     `<toolchain_report>`,
     toolchainFor(unit),
     `</toolchain_report>`,
     ``,
-    `Fix CI problems on branch ${unit.branch} in the worktree ${unit.worktree}`,
+    `Fix ${source} problems on branch ${unit.branch} in the worktree ${unit.worktree}`,
     `(repository ${unit.repo}). Problems:`,
     ``,
     ...problems.map((p) => `- ${p}`),
@@ -622,6 +623,16 @@ const fixPrompt = (unit, problems, preExisting = []) =>
     `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
     `reason, any judgment call that went beyond the listed problems, and any change that touches`,
     `a decision recorded in the spec.`,
+    ...(source === 'review'
+      ? [
+          `Under skipped, also copy verbatim every listed problem you left unfixed, whatever the reason.`,
+          `Each listed problem sits in the repair's own change; a fix that reaches beyond it is skipped.`,
+          `Commit each \`security\` finding's fix on its own, naming its rule in the message, so one can be`,
+          `reverted without the rest; the other fixes share a commit. Every commit message names the`,
+          `findings it fixes, by rule and location: no review reads these fixes after you, so the history`,
+          `is their only record.`,
+        ]
+      : []),
   ].join('\n')
 
 const PREP_RESULT = {
@@ -677,6 +688,8 @@ const CR_MERGE_RESULT = {
           fix: { type: 'string' },
           reserved: { type: 'boolean', description: 'a direct consequence of the open work the prompt lists' },
           boyScout: { type: 'boolean', description: 'the finding line carries the `boy-scout` token: it is about code the change did not touch' },
+          access: { type: 'boolean', description: 'a security finding whose fix changes who may reach what — a permission, a role, a policy, the scope of an auth check' },
+          specBound: { type: 'boolean', description: 'the finding line says fixing it would change behaviour the spec states' },
         },
       },
     },
@@ -687,7 +700,24 @@ const CR_MERGE_RESULT = {
 // which base, what is deliberately unfinished — reach them only through the wrapper agents.
 const reviewDir = (unit, pass) => `${unit.repo}.worktrees/.review/${unit.branch.replace(/\//g, '-')}-${pass}`
 
-const prepPrompt = (unit, base, dir) => {
+// A repair is a few lines a human decided; the craft lenses returned comment churn on it that fed
+// the next repair, so only the lenses that catch a real defect read it.
+const REPAIR_LENSES = ['correctness', 'security']
+
+// cr-prepare takes no lens filter, and cr-merge reports any active lens without a file as missing,
+// so the review is narrowed in the context it writes.
+const narrowRule = (dir, only) =>
+  only
+    ? [
+        ``,
+        `When the skill returns status "ready", narrow the review to the ${only.join(' and ')} lenses: in`,
+        `${dir}/scope.json, move every entry of \`lenses.active\` naming another lens to \`lenses.inactive\``,
+        `as { "lens": <its name>, "reason": "not judged on a repair" }, changing nothing else in the file.`,
+        `Then return active and inactive as the file reads after that edit. Run no lens yourself.`,
+      ]
+    : []
+
+const prepPrompt = (unit, base, dir, only) => {
   const tree = validationTree(unit)
   return [
     `Prepare a code review of the branch ${unit.branch} (repository ${unit.repo}) in the checkout`,
@@ -704,6 +734,7 @@ const prepPrompt = (unit, base, dir) => {
     `Return what its closing block says: status, judged and skipped file counts, active and inactive`,
     `lenses, the alternate or reason on empty, the reason on error — and invoked=true. When the Skill tool is not`,
     `available to you, return invoked=false, status "error" and zero files; never do the skill's work by hand.`,
+    ...narrowRule(dir, only),
   ].join('\n')
 }
 
@@ -721,9 +752,11 @@ const crMergePrompt = (dir, unit) =>
     `and return what its closing block says: status, the report path, the lenses that did not`,
     `report on incomplete, and every finding line as one entry — severity, family, rule, location,`,
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
-    `\`boy-scout\` token sets boyScout=true. Copy every \`unowned:\` line verbatim as one entry under`,
-    `unowned, and the \`security-review:\` line's text as securityReview, empty when either reads none.`,
-    `Return invoked=true; when`,
+    `\`boy-scout\` token sets boyScout=true, and a security finding whose fix changes who may reach`,
+    `what — a permission, a role, a policy, an auth check's scope — sets access=true. A finding whose`,
+    `line says its fix would change behaviour the spec states sets specBound=true. Copy every`,
+    `\`unowned:\` line verbatim as one entry under unowned, and the \`security-review:\` line's text`,
+    `as securityReview, empty when either reads none. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
     ...(reservationsFor(unit)
       ? [``, reservationsFor(unit), ``, `Set reserved=true on a finding that asks to undo a listed decision. Change nothing else the skill returned.`]
@@ -736,9 +769,9 @@ const norm = (s) => String(s ?? '').replace(/`/g, '').trim().toLowerCase()
 
 // A review that did not run is absence of evidence: a lens that judged nothing or a skill the agent
 // never invoked comes back as a reason, never as an empty findings list.
-const runReview = async (unit, base, pass, tag) => {
+const runReview = async (unit, base, pass, tag, only) => {
   const dir = reviewDir(unit, pass)
-  const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT, model: 'sonnet' })
+  const prep = await tryTwice(prepPrompt(unit, base, dir, only), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT, model: 'sonnet' })
   if (!prep || !prep.invoked || prep.status === 'error') {
     return { dir, dead: `cr-prepare ${prep ? `failed: ${prep.reason || 'the skill was not invoked'}` : 'returned no result after a retry'}` }
   }
@@ -754,7 +787,13 @@ const runReview = async (unit, base, pass, tag) => {
     return { dir, empty: true, notApplicable: `review not applicable: every changed file against ${base} (${prep.skipped}) is skipped by review` }
   }
   // The lens name goes into a label and a backticked skill argument, so it travels normalised.
-  const lenses = (prep.active || []).map(norm)
+  const all = (prep.active || []).map(norm)
+  // A lens outside the narrowed set that is still active fails at cr-merge as missing, which is the
+  // honest outcome: its scope.json was not narrowed.
+  const lenses = only ? all.filter((l) => only.includes(l)) : all
+  // None of the narrowed lenses applies — an all-skipped change the spec lens alone would read — so
+  // the caller's own checks are the review.
+  if (only && lenses.length === 0) return { dir, files: prep.files || 0, lenses: 0, findings: [], notices: [] }
   // cr-prepare keeps an all-skipped change ready when a spec is given, with the spec lens alone
   // reading the skipped paths: zero judged files is then a real review, not an empty one.
   const specOnly = lenses.length > 0 && lenses.every((l) => l === 'spec')
@@ -801,6 +840,64 @@ const isKeep = (f) => norm(f.severity) === 'comment' && /\bkeep\b/.test(norm(f.r
 // otherwise fall to the report list nobody acts on.
 const needsHuman = (f) => serious(f) || (norm(f.severity) === 'comment' && norm(f.risk) === 'structural')
 const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
+// A safe fix in the repair's own hunks is applied in the same run; everything else reaches a human,
+// and nothing the fixer writes is reviewed again — that review is what made repairs spiral.
+const repairFixable = (f) =>
+  serious(f) && norm(f.risk) === 'safe' && !f.boyScout && !f.specBound && !f.access && !(gated && norm(f.family) === 'security')
+
+const CONFORMANCE_RESULT = {
+  type: 'object',
+  required: ['checked', 'findings'],
+  properties: {
+    checked: { type: 'boolean', description: 'you read the whole repair diff' },
+    findings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['severity', 'rule', 'location', 'risk', 'fix', 'decision'],
+        properties: {
+          severity: { enum: ['high', 'medium', 'nit'] },
+          rule: { enum: ['unasked', 'missing'] },
+          location: { type: 'string', description: '<path>:L<lines>' },
+          risk: { enum: ['safe', 'structural'] },
+          fix: { type: 'string', description: 'the fix, as one clause' },
+          decision: { type: 'string', description: 'the decision this finding is about, quoted; "none" for an unasked hunk no decision is near' },
+        },
+      },
+    },
+  },
+}
+
+// CI proves a repair builds and the lenses that it is sound; only a reader holding the decisions
+// can say whether it did what was decided and nothing else.
+const conformancePrompt = (unit, base) =>
+  [
+    `Check one repair against the decisions it was made to apply: the branch ${unit.branch} of the`,
+    `repository ${unit.repo}.`,
+    ``,
+    `A human decided:`,
+    ...unit.instructions.map((x) => `- ${x}`),
+    ``,
+    `The repair is \`git -C ${unit.worktree} diff ${base}..HEAD\`: read all of it. Read the code around`,
+    `a hunk in the worktree ${unit.worktree} only where the hunk needs it. Do not read the spec. Judge conformance alone — whether the diff does what the`,
+    `decisions ask and nothing else; style, naming, tests and design quality are another reviewer's.`,
+    ``,
+    `Report each place where:`,
+    `- unasked: a hunk no decision above asks for. A change a decision needs in order to work — an`,
+    `  import, an updated caller, a test following the changed code, a regenerated artifact — is asked`,
+    `  for by that decision.`,
+    `- missing: a decision, or a part of one, the diff does not carry out.`,
+    `Severity is high when the gap or the unasked change alters behaviour, medium when it does not, nit`,
+    `for a whitespace- or format-only hunk. Risk is safe when the fix is mechanical and stays inside the`,
+    `repair's own hunks — reverting an unasked hunk, finishing a change at the places the decision`,
+    `names — and structural when it needs a design call. Give the location as <path>:L<lines>, the fix`,
+    `as one clause, and the decision quoted.`,
+    ``,
+    `Change nothing and commit nothing. Return checked=true with the findings — an empty list when the`,
+    `diff does exactly what was decided.`,
+  ].join('\n')
+
+const conformanceFinding = (f) => ({ severity: f.severity, family: 'conformance', rule: f.rule, location: f.location, risk: f.risk, fix: f.fix })
 
 const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
@@ -980,11 +1077,13 @@ for (const unit of units) {
   await rescoutIfTouched(unit, tag)
   const hasFiles = !!(unit.taskFiles && unit.taskFiles.length > 0)
   const reviewed = review && unit.instructions.length > 0
-  // The full gate runs first and is the verdict; it runs again at the end only when a fix round
-  // moved HEAD past the commit it graded. Without a review nothing after it can withhold the marks.
+  // The full gate runs first and is the verdict; it runs again at the end only when a fixer moved
+  // HEAD past the commit it graded. Without a review nothing after it can withhold the marks.
   let { ci, fault } = await runCi(unit, 'full', hasFiles && !reviewed, `ci:${tag}`)
   const fullCi = ci
   const fullHead = ci && !fault ? (ci.head || '').trim() || null : null
+  // After a passing full verdict only the review fixer commits; a sha it did not report counts as moved.
+  let head = fullHead
   let stalled = 0
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
@@ -1033,7 +1132,7 @@ for (const unit of units) {
     if (!unit.fromSha) {
       reviewDead = 'the repair agent did not report its starting commit, so the repair delta is unknown'
     } else {
-      const delta = await runReview(unit, reviewFrom, 'repair', tag)
+      const delta = await runReview(unit, reviewFrom, 'repair', tag, REPAIR_LENSES)
       summary.review = { context: delta.dir, report: delta.report || null }
       // A repair that reports a decision applied yet changed nothing against its starting commit
       // left the decision off the branch, so marking its task files would close work never done.
@@ -1041,29 +1140,51 @@ for (const unit of units) {
         reviewDead = `the repair reported the decision applied but committed nothing since ${unit.fromSha}`
       } else if (delta.dead) {
         reviewDead = `the review of the repair did not run: ${delta.dead}`
-      } else if (delta.notApplicable) {
-        summary.review.notApplicable = delta.notApplicable
-      } else if (!delta.empty) {
-        // Pre-existing code in a touched file is listed apart: offering it as open review work
-        // turns every repair into the next repair's input.
-        const live = delta.findings.filter((f) => !f.reserved && !isKeep(f))
-        const open = live.filter((f) => !f.boyScout && needsHuman(f))
-        summary.review.findings = live.filter((f) => !f.boyScout).map(findingLine)
-        summary.review.boyScout = live.filter((f) => f.boyScout).map(findingLine)
-        const held = gated ? 'the task files keep their status until a repair settles it' : 'left for the end-of-run decision; the branch is not held on it'
-        for (const f of open) {
-          hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${held}` })
+      } else {
+        if (delta.notApplicable) summary.review.notApplicable = delta.notApplicable
+        const conformance = await tryTwice(conformancePrompt(unit, reviewFrom), { label: `conformance:${tag}`, phase: 'Validate', schema: CONFORMANCE_RESULT })
+        if (!conformance || !conformance.checked) {
+          reviewDead = `the decision-conformance check ${conformance ? 'did not read the repair' : 'returned no result after a retry'}`
+        } else {
+          // Pre-existing code in a touched file is listed apart: offering it as open review work
+          // turns every repair into the next repair's input.
+          const findings = [...conformance.findings.map(conformanceFinding), ...(delta.findings || [])]
+          const notices = delta.notices || []
+          const live = findings.filter((f) => !f.reserved && !isKeep(f))
+          const own = live.filter((f) => !f.boyScout)
+          const applied = own.filter(repairFixable)
+          const open = own.filter((f) => !applied.includes(f) && needsHuman(f))
+          summary.review.findings = own.map(findingLine)
+          summary.review.boyScout = live.filter((f) => f.boyScout).map(findingLine)
+          summary.review.applied = 0
+          const held = gated ? 'the task files keep their status until a repair settles it' : 'left for the end-of-run decision; the branch is not held on it'
+          if (applied.length > 0) {
+            const fix = await tryTwice(fixPrompt(unit, applied.map(findingLine), [], 'review'), { label: `fix-review:${tag}`, phase: 'Validate', schema: FIX_RESULT })
+            if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-review: ${c}`))
+            head = (fix && fix.toSha) || null
+            const declined = fix ? fix.skipped || [] : applied.map(findingLine)
+            const unfixed = applied.filter((f) => declined.includes(findingLine(f)))
+            open.push(...unfixed)
+            summary.review.applied = applied.length - unfixed.length
+            for (const line of declined.filter((l) => !unfixed.some((f) => findingLine(f) === l))) {
+              hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${line} — the fixer left it unfixed; ${held}` })
+              if (gated) reviewHeld = true
+            }
+          }
+          for (const f of open) {
+            hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${held}` })
+          }
+          for (const n of notices) hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${n} — ${held}` })
+          reviewHeld = reviewHeld || (gated && open.length + notices.length > 0)
         }
-        for (const n of delta.notices) hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${n} — ${held}` })
-        reviewHeld = gated && open.length + delta.notices.length > 0
       }
     }
   }
 
-  // Repairs go out only fully validated: a verdict left by a scoped fix-round run, or a full run
-  // that named no commit, needs the full list again.
+  // Repairs go out only fully validated: a verdict left by a scoped fix-round run, or a HEAD the
+  // review fixer moved, needs the full list again.
   const markFiles = hasFiles && !reviewDead && !reviewHeld
-  const finalNeeded = ci !== fullCi || !fullHead
+  const finalNeeded = ci !== fullCi || !fullHead || head !== fullHead
   let finalCi = ci
   if (finalNeeded) {
     let finalFault

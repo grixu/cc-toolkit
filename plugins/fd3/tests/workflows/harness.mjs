@@ -29,6 +29,7 @@ const SCHEMA_NAMES = {
   touched: 'TOOLCHAIN_TOUCH_RESULT',
   refreshed: 'REFRESH_RESULT',
   'outcome,summary,fromSha': 'REPAIR_RESULT',
+  'checked,findings': 'CONFORMANCE_RESULT',
 }
 export const schemaName = (schema) => {
   if (!schema) return null

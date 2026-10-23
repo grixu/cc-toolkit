@@ -30,9 +30,13 @@ repair is about to change, and only the repair's own validation may mark them ag
 branch stacked on a repaired branch, transitively, joins `repairs` too, with `instructions: []`
 and its own done tasks reset the same way: it carries the repaired base and owes it a CI run,
 which a merge-up done by hand never gets. With
-review on, the workflow reviews the repair's own commits after its CI passes; those findings
-come back as `review` items for the user, never to a fixer, and hold the branch only under
-`gated`.
+review on, the workflow reviews the repair's own commits after its CI passes, narrowly: one agent
+checks the diff against the quoted decisions — a change no decision asked for, or a decision not
+carried out — and only the `correctness` and `security` lenses read it. A finding rated safe in the
+repair's own lines is fixed in the same run, with no further review of that fix (under `gated`,
+never a security one, and never one that changes access or behaviour the spec states); the rest
+come back as `review` items for the user and hold the branch only under `gated`. Findings in code
+the repair did not touch are listed apart, never as open work.
 
 An `instructions` line says what to change, never asks for validation. "Then run the tests and
 confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent

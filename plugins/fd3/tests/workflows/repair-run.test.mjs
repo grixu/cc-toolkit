@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runWorkflow, seq } from './harness.mjs'
-import { REPO, TOOLCHAIN, repair, repairArgs, repairDefaults, finding, line, ciPass, ciFail, crMerged } from './fixtures.mjs'
+import { REPO, TOOLCHAIN, repair, repairArgs, repairDefaults, finding, line, ciPass, ciFail, crMerged, prepReady } from './fixtures.mjs'
 
 const run = (args, rules = [], options) => runWorkflow('repair-run.js', args, [...rules, ...repairDefaults()], options)
 
@@ -12,10 +12,10 @@ test('repair, then the full gate, a review of the repair delta, and a marking ag
     'toolchain-touch:app:feat-x',
     'ci:app:feat-x',
     'cr-prep:app:feat-x:repair',
-    'cr:app:feat-x:repair:simplicity',
+    'cr:app:feat-x:repair:correctness',
     'cr:app:feat-x:repair:security',
-    'cr:app:feat-x:repair:spec',
     'cr-merge:app:feat-x:repair',
+    'conformance:app:feat-x',
     'mark:app:feat-x',
   ])
   assert.deepEqual(r.phases, ['Recon', 'Repair', 'Validate'])
@@ -33,7 +33,7 @@ test('repair, then the full gate, a review of the repair delta, and a marking ag
       fixRounds: 0,
       preExisting: 1,
       skipped: [],
-      review: { context: '/r/app.worktrees/.review/feat-x-repair', report: '/tmp/cr-report.md', findings: [], boyScout: [] },
+      review: { context: '/r/app.worktrees/.review/feat-x-repair', report: '/tmp/cr-report.md', findings: [], boyScout: [], applied: 0 },
     },
   ])
   assert.deepEqual(r.result.hil, [])
@@ -47,28 +47,89 @@ test('no toolchain handed in: scout and baseline run first', async () => {
   assert.deepEqual(r.labels.slice(0, 3), ['scout:app', 'baseline:app', 'repair:app:feat-x'])
 })
 
-test('review findings go to a human, never to a fixer; boy-scout findings are listed apart', async () => {
-  const serious = finding({ location: 'src/a.ts:L1' })
+test('only a safe finding in the repair own hunks is fixed; the rest go to a human, boy-scout findings apart', async () => {
+  const safe = finding({ family: 'correctness', rule: 'off-by-one', location: 'src/a.ts:L1' })
+  const structural = finding({ family: 'correctness', risk: 'structural', location: 'src/s.ts:L1' })
+  const bound = finding({ family: 'correctness', specBound: true, location: 'src/sb.ts:L1' })
+  const access = finding({ family: 'security', rule: 'authz', access: true, location: 'src/ac.ts:L1' })
   const nit = finding({ severity: 'nit', location: 'src/b.ts:L1' })
   const move = finding({ severity: 'comment', family: 'comments', rule: 'R3 · MOVE', risk: 'structural', location: 'src/c.ts:L1' })
   const keep = finding({ severity: 'comment', family: 'comments', rule: 'R2 · `KEEP`', location: 'src/d.ts:L1' })
   const scout = finding({ boyScout: true, location: 'src/old.ts:L1' })
   const reserved = finding({ reserved: true, location: 'src/r.ts:L1' })
-  const r = await run(repairArgs(), [['cr-merge:app:feat-x:repair', crMerged([serious, nit, move, keep, scout, reserved])]])
-  assert.ok(!r.has('fix-'))
+  const r = await run(repairArgs(), [['cr-merge:app:feat-x:repair', crMerged([safe, structural, bound, access, nit, move, keep, scout, reserved])]])
+  assert.equal(r.callsMatching('fix-review:').length, 1)
+  const fixer = r.call('fix-review:app:feat-x').prompt
+  assert.match(fixer, /Fix review problems on branch feat\/x/)
+  assert.ok(fixer.includes(`- ${line(safe)}`))
+  for (const f of [structural, bound, access, nit, move, scout]) assert.ok(!fixer.includes(line(f)))
+  assert.match(fixer, /no review reads these fixes after you/)
   const review = r.result.branches[0].review
-  assert.deepEqual(review.findings, [line(serious), line(nit), line(move)])
+  assert.deepEqual(review.findings, [line(safe), line(structural), line(bound), line(access), line(nit), line(move)])
   assert.deepEqual(review.boyScout, [line(scout)])
+  assert.equal(review.applied, 1)
   const reasons = r.result.hil.map((h) => h.reason)
-  assert.equal(reasons.length, 2)
-  assert.ok(reasons[0].includes(line(serious)) && reasons[1].includes(line(move)))
+  assert.equal(reasons.length, 4)
+  for (const [i, f] of [structural, bound, access, move].entries()) assert.ok(reasons[i].includes(line(f)))
   assert.match(reasons[0], /left for the end-of-run decision; the branch is not held on it$/)
-  // Only a gated review keeps the task files from being marked done.
-  assert.ok(r.has('mark:app:feat-x'))
+  // The fixer moved HEAD past the graded commit and nothing reviews its fix, so the full gate runs again and marks.
+  assert.ok(!r.has('cr-prep:app:feat-x:delta'))
+  assert.match(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+  assert.ok(!r.has('mark:'))
+})
+
+test('a fix the review fixer skips goes to a human, and a fixer that commits nothing needs no second gate', async () => {
+  const safe = finding({ family: 'correctness', location: 'src/a.ts:L1' })
+  const r = await run(repairArgs({ review: 'gated' }), [
+    ['cr-merge:app:feat-x:repair', crMerged([safe])],
+    ['fix-review:', { summary: 'no', fromSha: 'head000', toSha: 'head000', skipped: [line(safe)] }],
+  ])
+  assert.ok(r.result.hil.some((h) => h.reason.includes(line(safe))))
+  assert.equal(r.result.branches[0].review.applied, 0)
+  assert.ok(!r.has('ci:app:feat-x:final') && !r.has('mark:'))
+})
+
+test('a gated repair review holds a security fix for a human', async () => {
+  const sec = finding({ family: 'security', rule: 'injection', location: 'src/q.ts:L1' })
+  const r = await run(repairArgs({ review: 'gated' }), [['cr-merge:app:feat-x:repair', crMerged([sec])]])
+  assert.ok(!r.has('fix-review:'))
+  assert.ok(r.result.hil[0].reason.includes(line(sec)))
+})
+
+test('the repair review is narrowed to the correctness and security lenses', async () => {
+  const r = await run(repairArgs(), [['cr-prep:', prepReady(['correctness', 'simplicity', 'spec'])]])
+  assert.match(r.call('cr-prep:app:feat-x:repair').prompt, /narrow the review to the correctness and security lenses[^]*scope\.json/)
+  assert.deepEqual(r.callsMatching('cr:').map((c) => c.label), ['cr:app:feat-x:repair:correctness'])
+})
+
+test('with no narrowed lens active the conformance check alone is the review', async () => {
+  const r = await run(repairArgs(), [['cr-prep:', prepReady(['simplicity'])]])
+  assert.ok(!r.has('cr:') && !r.has('cr-merge:'))
+  assert.ok(r.has('conformance:app:feat-x') && r.has('mark:app:feat-x'))
+  assert.deepEqual(r.result.hil, [])
+})
+
+test('the conformance check reads the repair diff against the quoted decisions', async () => {
+  const unasked = { severity: 'high', rule: 'unasked', location: 'src/z.ts:L4', risk: 'structural', fix: 'drop the new retry', decision: 'none' }
+  const r = await run(repairArgs(), [['conformance:', { checked: true, findings: [unasked] }]])
+  const prompt = r.call('conformance:app:feat-x').prompt
+  assert.match(prompt, /git -C \/r\/app\.worktrees\/feat-x diff rep000\.\.HEAD/)
+  assert.match(prompt, /- rename foo to bar on feat\/x/)
+  assert.equal(r.call('conformance:app:feat-x').model, null)
+  const l = 'src/z.ts:L4 — conformance · unasked (high): drop the new retry'
+  assert.deepEqual(r.result.branches[0].review.findings, [l])
+  assert.ok(r.result.hil[0].reason.includes(l))
+})
+
+test('a conformance check that returns nothing leaves the task files unmarked', async () => {
+  const r = await run(repairArgs(), [['conformance:', null]])
+  assert.ok(r.has('conformance:app:feat-x:retry'))
+  assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /decision-conformance check returned no result/)
+  assert.ok(!r.has('mark:'))
 })
 
 test('gated review holds the task files on open findings', async () => {
-  const r = await run(repairArgs({ review: 'gated' }), [['cr-merge:app:feat-x:repair', crMerged([finding()])]])
+  const r = await run(repairArgs({ review: 'gated' }), [['cr-merge:app:feat-x:repair', crMerged([finding({ risk: 'structural' })])]])
   assert.match(r.result.hil[0].reason, /the task files keep their status until a repair settles it$/)
   assert.ok(!r.has('mark:'))
   assert.equal(r.result.branches[0].ci, 'passed')
@@ -105,10 +166,10 @@ test('a successor with empty instructions is carried onto its repaired base and 
     'toolchain-touch:app:feat-a',
     'ci:app:feat-a',
     'cr-prep:app:feat-a:repair',
-    'cr:app:feat-a:repair:simplicity',
+    'cr:app:feat-a:repair:correctness',
     'cr:app:feat-a:repair:security',
-    'cr:app:feat-a:repair:spec',
     'cr-merge:app:feat-a:repair',
+    'conformance:app:feat-a',
     'mark:app:feat-a',
     'refresh:app:feat-b',
     'toolchain-touch:app:feat-b',
@@ -215,8 +276,8 @@ test('an empty repair delta against an alternate base stays a dead review', asyn
 })
 
 test('a decorated lens name is normalised in the repair review', async () => {
-  const r = await run(repairArgs(), [['cr-prep:', { status: 'ready', invoked: true, files: 2, skipped: 0, active: ['`Simplicity` '] }]])
-  assert.match(r.call('cr:app:feat-x:repair:simplicity').prompt, /`--lens simplicity --context /)
+  const r = await run(repairArgs(), [['cr-prep:', { status: 'ready', invoked: true, files: 2, skipped: 0, active: ['`Correctness` '] }]])
+  assert.match(r.call('cr:app:feat-x:repair:correctness').prompt, /`--lens correctness --context /)
 })
 
 test('a repair with no starting commit has no review verdict', async () => {
