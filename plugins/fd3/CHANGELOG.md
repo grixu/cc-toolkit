@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carries them into the pull-request proposal
 - `implement-tasks` records each workflow report's path in `implement-answers.md` and passes it as
   `reportPath` on a later invocation, so a relaunch after `/clear` skips the re-scout and re-baseline
+- the review question quotes the measured cost: three fifths to three quarters of the workflow's
+  spend
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by

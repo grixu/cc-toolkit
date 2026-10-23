@@ -128,9 +128,9 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
 
 - whether to review each branch. Review is the `code-review` plugin's headless lenses — one
   agent per lens `cr-prepare` makes active, seven to nine, after the branch's scoped CI passes —
-  then a delta review of whatever the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
-  bot on the pull request finds different things, not the same ones: `no` is a valid answer but a
-  real trade. Offer three answers: `yes` — the fixer applies every fixable finding, security fixes
+  then a delta review of whatever the automatic fixes changed. It costs roughly three fifths to
+  three quarters of the workflow's spend, mostly a fixed cost per branch, and a review bot on the
+  pull request finds different things, not the same ones: `no` is a valid answer but a real trade. Offer three answers: `yes` — the fixer applies every fixable finding, security fixes
   (one commit each) and mechanically safe boy-scout fixes included, and what it cannot fix waits in the end-of-run
   report without holding the branch; `gated` — security fixes, boy-scout findings, findings the
   fixer left unfixed and anything the delta review finds hold their branch at `merged` until the
