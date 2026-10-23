@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to do after each validation return, with the same rules
 - "a parked choice is not a gap" is stated once, in `spec-rules.md`; `grill-topic`, `write-spec` and
   `validate-spec` point to it
+- the round mechanics of an access request move from `fact-routes.md` into `grill-topic`, the only
+  skill with rounds
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by

@@ -61,10 +61,5 @@ guess is what ends up quoted. A dispatch prompt states the question, never the t
 to it.
 
 A fact no route can reach because *you* lack access — an expired token, a console-only
-setting — is still not a decision. Ask the user for the commands under their own heading at the
-head of the round, naming the numbered questions they block — a probe that needs four commands or
-a short script is still one request. It stands at the head of every round until it is done. An
-unfulfilled access request is the most expensive thing in the session — everything behind it
-waits. When the frontier would otherwise be empty and the access has still not come, do not close
-on the assumption silently: put it as the round's last numbered question — proceed on the stated
-assumptions as an accepted risk, or stop and wait.
+setting — is still not a decision. Ask the user for the commands that reach it, naming what they
+block — a probe that needs four commands or a short script is still one request.

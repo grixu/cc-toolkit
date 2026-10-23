@@ -89,6 +89,8 @@ A question you dispatched a lookup for is **blocked by that lookup** — no exce
 
 A recommendation is never conditional. If you would write "recommended, provided the check confirms it", the question is blocked by that check and stays out of the round — a conditional recommendation gets answered as an unconditional one. The same bar holds inside an option's cost, its preamble and the recommendation itself: any admission that something outside this conversation is unchecked — a source unread, a contradiction unresolved, a behaviour unobserved — is a conditional recommendation wearing a cost's clothes, and the question is blocked by that lookup. If you find yourself writing the hedge, you have found the dispatch.
 
+An access request — the commands a fact needs that only the user can run — goes under its own heading at the head of the round, naming the numbered questions it blocks, and stands at the head of every round until it is done. An unfulfilled access request is the most expensive thing in the session — everything behind it waits. When the frontier would otherwise be empty and the access has still not come, do not close on the assumption silently: put it as the round's last numbered question — proceed on the stated assumptions as an accepted risk, or stop and wait.
+
 A `path:line` that arrived inside a lookup report is that report's claim, not yours. Open it before you put it in front of the user as the reason a decision changes — a citation off by ten lines reads as a citation nobody checked, and it is the finding you most need believed.
 
 ## Corrections
