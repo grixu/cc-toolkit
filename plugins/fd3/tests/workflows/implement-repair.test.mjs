@@ -219,6 +219,8 @@ test('no review base rebuilt: the stacked review reads from the repair commit an
   const r = await run(args, [['repair:app:feat-b', { outcome: 'repaired', summary: 'ok', fromSha: 'repB' }]])
   assert.match(r.call('cr-prep:app:feat-b:repair').prompt, /--base repB /)
   assert.ok(r.result.caveats.some((c) => /the review base could not be rebuilt with feat\/a's CI fixes/.test(c)))
+  assert.match(r.call('conformance:app:feat-b').prompt, /did not write — a merge of the base branch feat\/a and its CI fixes\. They/)
+  assert.doesNotMatch(r.call('conformance:app:feat-a').prompt, /did not write/)
 })
 
 test('a failed base blocks its carried successor', async () => {
@@ -358,5 +360,12 @@ test('handover from a report path replaces the scout', async () => {
 
 test('the conformance check is told which commits are CI fixes, not the repair', async () => {
   const r = await run(repairArgs(), [['ci:app:feat-x', seq(ciFail(['boom']), ciPass)]])
-  assert.match(r.call('conformance:app:feat-x').prompt, /CI fixes made on this branch after the repair \(aaa111\.\.bbb222\)\. They\nmade the repaired branch pass its gate: never report their hunks as unasked\./)
+  const prompt = r.call('conformance:app:feat-x').prompt
+  assert.match(prompt, /did not write — the CI fixes made on this branch after the repair \(aaa111\.\.bbb222\)\. They\nmade the repaired branch pass its gate: never report their hunks as unasked\./)
+  assert.doesNotMatch(prompt, /a merge of the base branch/)
+})
+
+test('the conformance check names no foreign commits when the range holds only the repair', async () => {
+  const r = await run(repairArgs())
+  assert.doesNotMatch(r.call('conformance:app:feat-x').prompt, /did not write/)
 })

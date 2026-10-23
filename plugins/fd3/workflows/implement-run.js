@@ -1398,8 +1398,12 @@ const CONFORMANCE_RESULT = {
 
 // CI proves a repair builds and the lenses that it is sound; only a reader holding the decisions
 // can say whether it did what was decided and nothing else.
-const conformancePrompt = (unit, base, ciFixes) =>
-  [
+const conformancePrompt = (unit, base, ciFixes, baseMerged) => {
+  const foreign = [
+    ...(baseMerged ? [`a merge of the base branch ${unit.base} and its CI fixes`] : []),
+    ...(ciFixes.length > 0 ? [`the CI fixes made on this branch after the repair (${ciFixes.join(', ')})`] : []),
+  ]
+  return [
     `Check one repair against the decisions it was made to apply: the branch ${unit.branch} of the`,
     `repository ${unit.repo}.`,
     ``,
@@ -1409,9 +1413,12 @@ const conformancePrompt = (unit, base, ciFixes) =>
     `The repair is \`git -C ${unit.worktree} diff ${base}..HEAD\`: read all of it. Read the code around`,
     `a hunk in the worktree ${unit.worktree} only where the hunk needs it. Do not read the spec. Judge conformance alone — whether the diff does what the`,
     `decisions ask and nothing else; style, naming, tests and design quality are another reviewer's.`,
-    `The range also holds commits the repair agent did not write — a merge of the base branch and its`,
-    `CI fixes, and the CI fixes made on this branch after the repair${ciFixes.length > 0 ? ` (${ciFixes.join(', ')})` : ''}. They`,
-    `made the repaired branch pass its gate: never report their hunks as unasked.`,
+    ...(foreign.length > 0
+      ? [
+          `The range also holds commits the repair agent did not write — ${foreign.join(', and ')}. They`,
+          `made the repaired branch pass its gate: never report their hunks as unasked.`,
+        ]
+      : []),
     ``,
     `Report each place where:`,
     `- unasked: a hunk no decision above asks for. A change a decision needs in order to work — an`,
@@ -1427,6 +1434,7 @@ const conformancePrompt = (unit, base, ciFixes) =>
     `Change nothing and commit nothing. Return checked=true with the findings — an empty list when the`,
     `diff does exactly what was decided.`,
   ].join('\n')
+}
 
 const conformanceFinding = (f) => ({ severity: f.severity, family: 'conformance', rule: f.rule, location: f.location, risk: f.risk, fix: f.fix })
 
@@ -1637,7 +1645,7 @@ const reviewImplemented = async (unit, tag, summary) => {
 
 // A repair is new code written to a human's one-line decision; CI proves it builds, never that it
 // did only what was decided — the review reads the repair's own commits, and a human reads that.
-const reviewRepaired = async (unit, tag, summary, reviewFrom, ciFixes) => {
+const reviewRepaired = async (unit, tag, summary, reviewFrom, ciFixes, baseMerged) => {
   let dead = null
   let held = false
   const outcome = {}
@@ -1654,7 +1662,7 @@ const reviewRepaired = async (unit, tag, summary, reviewFrom, ciFixes) => {
       dead = `the review of the repair did not run: ${delta.dead}`
     } else {
       if (delta.notApplicable) summary.review.notApplicable = delta.notApplicable
-      const conformance = await tryTwice(conformancePrompt(unit, reviewFrom, ciFixes), { label: `conformance:${tag}`, phase: 'Validate', schema: CONFORMANCE_RESULT })
+      const conformance = await tryTwice(conformancePrompt(unit, reviewFrom, ciFixes, baseMerged), { label: `conformance:${tag}`, phase: 'Validate', schema: CONFORMANCE_RESULT })
       if (!conformance || !conformance.checked) {
         dead = `the decision-conformance check ${conformance ? 'did not read the repair' : 'returned no result after a retry'}`
       } else {
@@ -1710,10 +1718,12 @@ for (const unit of units) {
   // A stacked branch may predate fixes its base received during the base's own validation;
   // validating against a stale base re-finds the base's problems and re-fixes them divergently.
   let reviewFrom = unit.fromSha
+  let baseMerged = false
   if (units.some((u) => u !== unit && u.repo === unit.repo && u.branch === unit.base)) {
     const refresh = await refreshBase(unit, `refresh:${tag}`, 'Validate', review ? unit.fromSha : null)
     if (refresh && refresh.refreshed && refresh.reviewBase) reviewFrom = refresh.reviewBase
     else if (refresh && refresh.refreshed && review && unit.fromSha) {
+      baseMerged = true
       caveats.push(`${unit.branch}: the review base could not be rebuilt with ${unit.base}'s CI fixes, so the repair-delta review also reads them.`)
     }
     if (!refresh || !refresh.refreshed) {
@@ -1786,7 +1796,7 @@ for (const unit of units) {
   let reviewDead = null // why the review has no verdict for this branch
   let reviewHeld = false // findings wait for a human; only a gated review holds a branch on them
   if (reviewed) {
-    const outcome = repairMode ? await reviewRepaired(unit, tag, summary, reviewFrom, ciFixes) : await reviewImplemented(unit, tag, summary)
+    const outcome = repairMode ? await reviewRepaired(unit, tag, summary, reviewFrom, ciFixes, baseMerged) : await reviewImplemented(unit, tag, summary)
     reviewDead = outcome.dead
     reviewHeld = outcome.held
     if ('head' in outcome) head = outcome.head
