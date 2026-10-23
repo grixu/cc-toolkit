@@ -954,6 +954,19 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
 // which base, what is deliberately unfinished — reach them only through the wrapper agents.
 const reviewDir = (unit, pass) => `${unit.repo}.worktrees/.review/${unit.branch.replace(/\//g, '-')}-${pass}`
 
+// The element and decision codes live in task frontmatter, which the script never sees, so the
+// prepare agent reads them; codes without a spec to resolve them against are noise.
+const specFocusRule = (files) =>
+  specPath && files.length > 0
+    ? [
+        ``,
+        `Before invoking it, read the \`elements:\` and \`decisions:\` frontmatter lists of these task files:`,
+        ...files.map((f) => `- ${f}`),
+        `Append \`--spec-focus "<codes>"\` to the arguments above, with every code those lists carry, each`,
+        `once, joined by commas. When every list is empty, append nothing.`,
+      ]
+    : []
+
 const prepPrompt = (unit, base, dir) => {
   const tree = validationTree(unit)
   return [
@@ -967,6 +980,7 @@ const prepPrompt = (unit, base, dir) => {
     `Remove ${dir} if it exists — lens files left there by an earlier run would be read as this`,
     `run's. Then invoke the \`code-review:cr-prepare\` skill through the Skill tool with:`,
     `\`--base ${base} --out ${dir} -C ${tree} --spec ${specPath}\``,
+    ...specFocusRule(taskFilesOf(unit)),
     ``,
     `Return what its closing block says: status, judged and skipped file counts, active and inactive`,
     `lenses, the alternate or reason on empty, the reason on error — and invoked=true. When the Skill tool is not`,

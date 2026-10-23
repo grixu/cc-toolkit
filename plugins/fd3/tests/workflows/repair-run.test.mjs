@@ -102,6 +102,17 @@ test('the repair review is narrowed to the correctness and security lenses', asy
   assert.deepEqual(r.callsMatching('cr:').map((c) => c.label), ['cr:app:feat-x:repair:correctness'])
 })
 
+test('the repair review focuses on the repaired tasks only when there are task files and a spec', async () => {
+  const withFiles = await run(repairArgs())
+  assert.match(withFiles.call('cr-prep:app:feat-x:repair').prompt, /frontmatter lists of these task files:\n- \/r\/app\/tasks\/feat-x\.md\nAppend `--spec-focus/)
+  const noFiles = await run(repairArgs({ repairs: [repair('feat/x', { taskFiles: [] })] }))
+  assert.doesNotMatch(noFiles.call('cr-prep:app:feat-x:repair').prompt, /spec-focus/)
+  const args = repairArgs()
+  delete args.specPath
+  const noSpec = await run(args)
+  assert.doesNotMatch(noSpec.call('cr-prep:app:feat-x:repair').prompt, /spec-focus/)
+})
+
 test('a small repair gets one scan agent for both review lenses', async () => {
   const r = await run(repairArgs(), [['cr-prep:', prepReady(['correctness', 'security'], 1)]])
   assert.deepEqual(r.callsMatching('cr:').map((c) => c.label), ['cr:app:feat-x:repair:all'])

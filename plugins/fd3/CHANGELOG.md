@@ -130,6 +130,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - a review whose change has at most three judged files dispatches one `cr-scan` agent with the
   whole lens list (`--lens a,b,c`) instead of one agent per lens; each lens it leaves out or that
   judged nothing still makes the review dead. Requires the matching `code-review` change
+- `cr-prep` reads the `elements:` and `decisions:` frontmatter of the branch's task files and passes
+  their union to `cr-prepare` as `--spec-focus`, so the spec and correctness lenses judge the change
+  against those first; omitted when there are no codes, no task files (a repair of a branch without
+  them) or no spec. Requires the matching `code-review` change
 - `implement-tasks` counts repairs per branch (`Repairs:` in `implement-answers.md`); from a
   branch's second repair round on the close recommends pushing its open `review` items as is, and a
   third repair of one branch is never offered or recommended — only run when the user names it

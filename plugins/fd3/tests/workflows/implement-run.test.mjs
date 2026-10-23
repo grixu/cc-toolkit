@@ -189,6 +189,14 @@ test('a lens that judged nothing of a non-empty change makes the review dead', a
   assert.deepEqual(status(r), { t1: 'merged', t2: 'merged' })
 })
 
+test('cr-prep is told to focus the review on the elements and decisions of the branch tasks', async () => {
+  const r = await run(implementArgs(), [['cr-merge:app:feat-x:review', crMerged([finding()])]])
+  const focus = /read the `elements:` and `decisions:` frontmatter lists of these task files:\n((?:- \S+\n)+)Append `--spec-focus "<codes>"` to the arguments above[^]*When every list is empty, append nothing\./
+  for (const label of ['cr-prep:app:feat-x:review', 'cr-prep:app:feat-x:delta']) {
+    assert.equal(focus.exec(r.call(label).prompt)?.[1], '- /r/app/tasks/t1.md\n- /r/app/tasks/t2.md\n', label)
+  }
+})
+
 test('a change of at most three judged files gets one scan agent for every lens', async () => {
   const r = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity', '`Security`', 'spec'], 3)]])
   assert.deepEqual(r.callsMatching('cr:').map((c) => c.label), ['cr:app:feat-x:review:all'])
