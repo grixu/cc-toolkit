@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   change the user brings through the notes and `write-spec` before validating; the spec stays at the
   path build-spec wrote and is never moved or copied; the re-entry focus list comes from the spec's
   own verdict line, not `git log`, so an untracked spec re-enters the same way
+- `validate-spec` lists what goes to the user in one place (a user-held fact, a parked choice, a
+  repair choice, the owner of a claim that would end `blocked`); `deferred` now names only the
+  claim status, and a choice handed to a later stage is a "parked choice" in `spec-rules.md` too
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by

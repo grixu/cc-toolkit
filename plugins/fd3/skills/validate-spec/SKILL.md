@@ -44,10 +44,10 @@ load-bearing claim is verified or deferred to a named owner, and no check in ste
 - A claim is `verified`, `deferred`, `open` or `blocked`:
   - `verified` — the evidence holds.
   - `deferred` — the spec declares the gap and names both an owner and a placement. This passes.
-    A choice the spec hands to a later stage is not a gap (`spec-rules.md`), and never `deferred`
-    however well it is owned and placed.
   - `blocked` — nothing settles it and the spec names no owner and no placement.
   - `open` — not yet settled during this run.
+- **Parked choice** — a choice the spec hands to a later stage instead of making it. It is not a
+  gap (`spec-rules.md`), so it is never `deferred`, however well it is owned and placed.
 
 A finding is **blocking** when an implementer who picked up the work it touches would have to stop
 and ask: a contract that names no fields, a build order whose earlier item cannot compile, two
@@ -267,10 +267,8 @@ Then, per claim:
   row, set the claim `verified`. Edit only what the fact forces: do not rewrite, reformat or extend the
   spec, and do not touch a section no finding points at.
 - **The spec declares the gap with an owner and a placement** — record it `deferred` with both, and move
-  on. Do not put it to the user. A deferred choice is the exception: collect it for step 4 as a fact
-  only the user holds, with the answer the spec's own evidence points to as your recommendation —
-  left in place, it reaches the split or the implementation run as a question that stops them.
-- **A fact only the user holds** — collect a question for step 4 and leave the claim `open`.
+  on.
+- **A parked choice, or a fact only the user holds** — collect it for step 4 and leave the claim `open`.
 - **Anything else** — it is a finding. Record it with its blocking status and move on. A finding is
   never a question: the user is asked for facts, not for defects.
 
@@ -285,8 +283,21 @@ repair choice, never a claim you record `verified` because the risk looks small.
 
 ### 4. Hand up what only the user can settle
 
-`SendMessage` to `main` with everything collected at once — the facts only the user holds and the
-repair choices alike — numbered, each with your recommended answer first, then end your turn. The
+Four things go to the user, and nothing else:
+
+1. **A fact only the user holds.**
+2. **A parked choice**, with the answer the spec's own evidence points to as your recommendation —
+   left in place, it reaches the split or the implementation run as a question that stops them.
+3. **A repair choice**, as step 3's carve-out defines it — accepting a risk included.
+4. **The owner and placement of a claim nothing settles** — the last move before recording it
+   `blocked` (step 5).
+
+Everything else you settle yourself or record as a finding. A gap the spec already declares with an
+owner and a placement is `deferred` on sight — it is not a finding, it does not go into the batch,
+and a pass that asks about it has turned a settled document into a question.
+
+`SendMessage` to `main` with everything collected at once, numbered, each with your recommended
+answer first, then end your turn. The
 answers arrive as a message and you continue from where you stopped, with everything this pass
 established still in front of you.
 
@@ -321,10 +332,6 @@ a declared gap with a named owner and a placement is what a downstream stage can
 leaves it nothing to write, so it makes the verdict `not ready`, however small the gap looks. The
 last move before recording a claim `blocked` is therefore step 4: ask the user who owns it and where
 it lands. An owner and a placement make it `deferred`, and the spec records both.
-
-This reaches the user only for a claim **nothing in the spec owns**, and for a deferred choice. A gap
-the spec already declares with an owner and a placement is `deferred` on sight — it is not a finding, it does not go into the
-batch, and a pass that asks about it has turned a settled document into a question.
 
 ### 6. Report
 
