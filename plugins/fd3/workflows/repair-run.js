@@ -594,10 +594,11 @@ const PREP_RESULT = {
     invoked: { type: 'boolean', description: 'the code-review:cr-prepare skill was invoked through the Skill tool' },
     status: { enum: ['ready', 'empty', 'error'] },
     files: { type: 'number', description: 'judged files' },
+    skipped: { type: 'number', description: 'skipped files' },
     active: { type: 'array', items: { type: 'string' }, description: 'active lenses, by name' },
     inactive: { type: 'array', items: { type: 'string' }, description: 'inactive lenses, each with its reason' },
     alternate: { type: 'string', description: 'the alternate base and its file count; only when status is empty and the skill named one' },
-    reason: { type: 'string', description: 'only when status is error' },
+    reason: { type: 'string', description: 'when status is error, or empty with a reason line' },
   },
 }
 
@@ -665,8 +666,8 @@ const prepPrompt = (unit, base, dir) => {
       ? [`When \`git -C ${tree} cat-file -e HEAD:${rel}\` succeeds, pass \`--spec ${tree}/${rel}\` instead:`, `the branch's copy carries any amendment a repair made.`]
       : []),
     ``,
-    `Return what its closing block says: status, judged file count, active and inactive lenses,`,
-    `the alternate on empty, the reason on error — and invoked=true. When the Skill tool is not`,
+    `Return what its closing block says: status, judged and skipped file counts, active and inactive`,
+    `lenses, the alternate or reason on empty, the reason on error — and invoked=true. When the Skill tool is not`,
     `available to you, return invoked=false and status "error"; never do the skill's work by hand.`,
   ].join('\n')
 }
@@ -694,8 +695,12 @@ const crMergePrompt = (dir, unit) =>
       : []),
   ].join('\n')
 
-// A review that did not run is absence of evidence: an empty change, a lens that judged nothing or a
-// skill the agent never invoked all come back as a reason, never as an empty findings list.
+// Agents echo review tokens as they read them — backticked, padded, capitalised — and an exact
+// comparison then lets a finding past the filters below.
+const norm = (s) => String(s ?? '').replace(/`/g, '').trim().toLowerCase()
+
+// A review that did not run is absence of evidence: a lens that judged nothing or a skill the agent
+// never invoked comes back as a reason, never as an empty findings list.
 const runReview = async (unit, base, pass, tag) => {
   const dir = reviewDir(unit, pass)
   const prep = await tryTwice(prepPrompt(unit, base, dir), { label: `cr-prep:${tag}:${pass}`, phase: 'Validate', schema: PREP_RESULT })
@@ -703,12 +708,24 @@ const runReview = async (unit, base, pass, tag) => {
     return { dir, dead: `cr-prepare ${prep ? `failed: ${prep.reason || 'the skill was not invoked'}` : 'returned no result after a retry'}` }
   }
   if (prep.status === 'empty') {
-    return { dir, empty: true, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
+    // An alternate base says the diff was measured from the wrong ref, which a human settles. A
+    // change with nothing a lens could judge is not a dead review: holding the branch on it would
+    // keep its task files unmarked on every relaunch.
+    // A diff with no file at all is how a base equal to the branch shows itself, so only a change
+    // whose files review skips is not applicable.
+    if (prep.alternate || !(prep.skipped > 0)) {
+      return { dir, empty: true, dead: `the change against ${base} is empty${prep.alternate ? ` (the skill names ${prep.alternate})` : ''}` }
+    }
+    return { dir, empty: true, notApplicable: `review not applicable: every changed file against ${base} (${prep.skipped}) is skipped by review` }
   }
-  const lenses = prep.active || []
+  // The lens name goes into a label and a backticked skill argument, so it travels normalised.
+  const lenses = (prep.active || []).map(norm)
+  // cr-prepare keeps an all-skipped change ready when a spec is given, with the spec lens alone
+  // reading the skipped paths: zero judged files is then a real review, not an empty one.
+  const specOnly = lenses.length > 0 && lenses.every((l) => l === 'spec')
   // A prepare that judged nothing leaves the lenses nothing to read, and their empty reports would
   // merge into a clean review of a change nobody looked at.
-  if (!(prep.files > 0) || lenses.length === 0) {
+  if (lenses.length === 0 || (!(prep.files > 0) && !specOnly)) {
     return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
   }
   const scans = await parallel(
@@ -967,6 +984,8 @@ for (const unit of units) {
       summary.review = { context: delta.dir, report: delta.report || null }
       if (delta.dead && !delta.empty) {
         reviewDead = `the review of the repair did not run: ${delta.dead}`
+      } else if (delta.notApplicable) {
+        summary.review.notApplicable = delta.notApplicable
       } else if (!delta.empty) {
         // Pre-existing code in a touched file is listed apart: offering it as open review work
         // turns every repair into the next repair's input.

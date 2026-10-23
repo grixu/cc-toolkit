@@ -102,6 +102,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI no longer skips a command that fails on the clean base: it runs, scoped where it can be, and
   only failures matching the baseline are pre-existing, so a branch cannot add failures to an
   already-red typecheck or test suite unseen
+- A review where every changed file is skipped runs the `spec` lens alone instead of counting as no
+  verdict; with no spec, the branch summary records the review as not applicable
+  (`review.notApplicable`) and the branch can reach done instead of staying merged on every
+  relaunch. A diff with no file at all, or one whose prepare names an alternate base, stays no verdict
 
 ## [0.3.0] - 2026-10-12
 
