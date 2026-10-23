@@ -125,8 +125,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   against the quoted decisions and reports changes no decision asked for and decisions not carried
   out, and only the `correctness` and `security` lenses run over the repair delta; craft lenses no
   longer read repairs. Findings rated safe in the repair's own hunks are fixed in the same run by
-  one fixer with no further review (under `gated`, never a security fix; never one that changes
-  access or spec-stated behaviour); the rest stay `review` items, and boy-scout findings stay apart
+  one fixer with no further review (never a security fix, and
+  never one that changes access or spec-stated behaviour); the rest stay `review` items, and boy-scout findings stay apart
 - a review whose change has at most three judged files dispatches one `cr-scan` agent with the
   whole lens list (`--lens a,b,c`) instead of one agent per lens; each lens it leaves out or that
   judged nothing still makes the review dead. Requires the matching `code-review` change

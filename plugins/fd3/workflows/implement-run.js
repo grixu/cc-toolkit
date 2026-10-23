@@ -1359,9 +1359,10 @@ const sortFindings = (findings) => {
   return { applied, forHuman, reported, reserved: findings.filter((f) => f.reserved).length }
 }
 // A safe fix in the repair's own hunks is applied in the same run; everything else reaches a human,
-// and nothing the fixer writes is reviewed again — that review is what made repairs spiral.
+// and nothing the fixer writes is reviewed again — that review is what made repairs spiral. The merge
+// contract never rates a security fix safe; one a lens mislabels still never goes in unreviewed.
 const repairFixable = (f) =>
-  serious(f) && norm(f.risk) === 'safe' && !f.boyScout && !f.specBound && !f.access && !(gated && norm(f.family) === 'security')
+  serious(f) && norm(f.risk) === 'safe' && !f.boyScout && !f.specBound && !f.access && norm(f.family) !== 'security'
 const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
 // Where a held branch's task files stand: an implement branch's at merged, a repaired branch's at
 // whatever the skill reset them to before the launch.

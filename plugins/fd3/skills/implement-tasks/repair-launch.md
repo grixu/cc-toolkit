@@ -34,8 +34,8 @@ which a merge-up done by hand never gets. With
 review on, the workflow reviews the repair's own commits after its CI passes, narrowly: one agent
 checks the diff against the quoted decisions — a change no decision asked for, or a decision not
 carried out — and only the `correctness` and `security` lenses read it. A finding rated safe in the
-repair's own lines is fixed in the same run, with no further review of that fix (under `gated`,
-never a security one, and never one that changes access or behaviour the spec states); the rest
+repair's own lines is fixed in the same run, with no further review of that fix (never a
+security one, and never one that changes access or behaviour the spec states); the rest
 come back as `review` items for the user and hold the branch only under `gated`. Findings in code
 the repair did not touch are listed apart, never as open work.
 
