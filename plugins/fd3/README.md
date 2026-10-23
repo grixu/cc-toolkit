@@ -40,7 +40,7 @@ that stops halfway restarts from those files.
         |                  one worktree per task, merged into the       beside the repository
         |                  branch, then checks and code review
         |-- you decide the items only a human can settle
-        |-- repair-run     (background) applies your decisions
+        |-- implement-run  (background, repair mode) applies your decisions
         '-- proposes push and pull requests; pushes only if you say yes
 ```
 
@@ -153,9 +153,12 @@ in the background.
   typecheck, lint, test), and the full set runs once on the untouched base so that failures already
   there are not blamed on your branch. A branch that changes how the repository is checked (a
   manifest, a CI workflow, a lint or test config) is examined again on its own tree. Each branch then
-  runs the checks scoped to its changes, gets up to three fix rounds, and finishes with one full run.
+  runs the full set once, gets up to three fix rounds (each checked against its changes only), and
+  runs the full set again at the end only when a fix moved the branch after that first run.
 - Review (optional). After the checks pass, the `code-review` plugin reviews the branch with one
-  agent per active lens, seven to nine. High and medium findings rated safe or structural, security
+  agent per active lens, seven to nine — or, when the change has at most three judged files, one
+  agent running every active lens in turn. A repair's review is narrower: one agent checks the
+  repair against the decisions it applied, and only the `correctness` and `security` lenses run. High and medium findings rated safe or structural, security
   included (each security fix in its own commit), findings in code the branch did not touch when
   their fix is rated safe, and `comment` findings rated safe are fixed automatically, and the fixes
   are reviewed again. Spec findings, security fixes that change who may reach what, fixes that would
@@ -172,14 +175,16 @@ When the run ends you get its report: task statuses, check and review results pe
 agents flagged, and the list of human-in-the-loop (HIL) items, meaning everything only a person can
 settle: a manual step against a live system, a blocker an agent would not guess past, a merge
 conflict. You decide those in one batch. A check that would not pass is diagnosed and sent to
-`repair-run` without asking, unless the fix would change behaviour. Decisions an agent took inside
+a repair run without asking, unless the fix would change behaviour. Decisions an agent took inside
 its task are kept and listed for the end. Claude then restarts `implement-run` for tasks your
-decision unblocked, or starts `repair-run` to apply your decision to an existing branch, without
+decision unblocked, or starts it in repair mode to apply your decision to an existing branch, without
 asking whether to. This repeats until every task is `done` or you stop.
 
 Finally Claude gives one report and asks one batch: the pull requests (one per branch, with its
 base branch, worktree path, tasks and title), the decisions taken for you with how to revert each,
-and the open review findings. You say whether to push and which findings, if any, to repair first.
+and the open review findings. You say whether to push and which findings, if any, to repair first. From a branch's second repair
+on, the recommendation is to push it as is; a third repair of one branch happens only when you name
+it.
 It pushes and runs `gh pr create` only after you agree; when the repository's own rules reserve
 pushing to a person, it prints the commands instead. The same batch asks whether to remove the
 worktrees and merged task branches now (recommended) or print the commands; a task branch with
@@ -209,8 +214,11 @@ Branches: one `task/<slug>` per task, plus the target branches named in the task
 
 - Push or open pull requests without your explicit yes.
 - Change the spec during the split or the implementation. A defect found there stops the step and
-  is reported.
-- Run two workflows at once. Only one `implement-run` or `repair-run` runs at a time, so only one
+  is reported; a mismatch between the spec and what was built is put to you with
+  `/fd3:build-spec <spec>` as the route that amends the spec.
+- Copy the spec onto a work branch. The spec exists once, where `build-spec` wrote it, and every
+  agent reads it there.
+- Run two workflows at once. Only one `implement-run` runs at a time, in either mode, so only one
   build, lint and test pipeline runs on the machine.
 - Mark a branch `done` when its review did not run, or when a `gated` review left findings for you.
   It stays `merged`.
@@ -223,10 +231,11 @@ You do not call these. They are listed so you recognise them in the `/` menu and
 |---|---|---|
 | `write-spec` | skill, hidden from the `/` menu | Writes the spec from the interview notes. `build-spec` starts it. |
 | `validate-spec` | skill, hidden from the `/` menu | Checks the spec and appends the verdict. `build-spec` starts it. |
-| `implement-run` | workflow | Waves, merges, checks and review. It appears in the `/` menu as `/fd3:implement-run`; do not run it directly. |
-| `repair-run` | workflow | Applies your HIL decisions to existing branches and checks them again. It appears in the `/` menu as `/fd3:repair-run`; do not run it directly. |
+| `implement-run` | workflow | Waves, merges, checks and review; in repair mode, applies your HIL decisions to existing branches and checks them again. It appears in the `/` menu as `/fd3:implement-run`; do not run it directly. |
 | `fd3:researcher` | sub-agent | Looks up documentation and other external facts. |
 | `fd3:toolchain-scout` | sub-agent | Finds a repository's build, typecheck, lint and test commands. |
+
+To test the two workflows without model calls, run `node --test 'plugins/fd3/tests/workflows/*.test.mjs'` from the repository root.
 
 ## Example
 

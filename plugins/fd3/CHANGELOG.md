@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `tests/workflows/` — a model-free `node:test` harness for `implement-run` and `repair-run`: each
+  agent call is answered by scripted rules keyed by its label, and the tests pin the wave, merge,
+  CI, review-routing and repair flows and each agent kind's prompt invariants; CI runs it on every
+  fd3 pull request
+- `scripts/task-graph.mjs` parses a tasks directory, checks its graph (cycles, edge order, statuses,
+  one `branch-base` per branch, repositories, spec pointer) and prints the workflow's `tasks`
+  argument as JSON; `implement-tasks` step 1 and the split's post-write coverage re-run use it
+  instead of a hand-written parser
 - `implement-run` and `repair-run` take a `decisions` list — the user's settled answers from earlier
   report rounds — and reviewers and fixers treat a finding that would undo one as reserved;
   `repair-run` adds each repair's own instructions
@@ -22,9 +30,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `implement-run` takes `knownBases`, so a prerequisite base step 1 resolved raises no graph item
 - branches stacked on a repaired branch join the repair run with no instructions: refreshed onto the
   repaired base and validated, with no repair agent or review
+- `grill-topic` keeps `research/INDEX.md` — one entry per answered lookup question with its
+  condensed answer, sources and report file — and every decision in the closing notes points to
+  its entries; `write-spec` writes from the index and opens a raw report only to quote it
 
 ### Changed
 
+- a spec changes after its verdict only through `/fd3:build-spec <spec>` re-entry, which applies a
+  change the user brings through the notes and `write-spec` before validating; the spec stays at the
+  path build-spec wrote and is never moved or copied; the re-entry focus list comes from the spec's
+  own verdict line, not `git log`, so an untracked spec re-enters the same way
+- `validate-spec` lists what goes to the user in one place (a user-held fact, a parked choice, a
+  repair choice, the owner of a claim that would end `blocked`); `deferred` now names only the
+  claim status, and a choice handed to a later stage is a "parked choice" in `spec-rules.md` too
+- `build-spec` stages 2 and 3 move to `references/build-spec-stages.md`, read when the user confirms
+  or a re-entry starts, so they stay out of the grilling context; stage 3 is an ordered list of what
+  to do after each validation return, with the same rules
+- "a parked choice is not a gap" is stated once, in `spec-rules.md`; `grill-topic`, `write-spec` and
+  `validate-spec` point to it
+- the round mechanics of an access request move from `fact-routes.md` into `grill-topic`, the only
+  skill with rounds
+- `implement-tasks` appends a granted confirmation to the task's `## Note` as a `Consent:` line
+  before launch, so the implementing agent reads it
+- the spec exists once: `split-to-tasks` writes no task that commits or copies it onto a work
+  branch, `implement-tasks` commits it only where it already lives, and a spec discrepancy found
+  during implementation or repair is a HIL item routed to `/fd3:build-spec`, never an orchestrator
+  edit or a repair instruction
+- `split-to-tasks` keeps branch landing facts (base, merge order, draft pull request, retarget) in a
+  per-branch section of `<spec>.split.md` and only task facts in a task's `## Note`;
+  `implement-tasks` reads the report's `## Branches` and `## Still owed` sections in step 1 and
+  carries them into the pull-request proposal
+- `implement-tasks` records each workflow report's path in `implement-answers.md` and passes it as
+  `reportPath` on a later invocation, so a relaunch after `/clear` skips the re-scout and re-baseline
+- the review question quotes the measured cost: three fifths to three quarters of the workflow's
+  spend
+- `split-to-tasks` decides every edge it derives with one authorship-not-landing test, defined in
+  its own step before grouping and stacking use it, and keeps an order the spec's build order binds
+  inside a phase as an edge; the fork-renderer dispatch is gone, and the written files are
+  re-checked for coverage either way
+- `implement-tasks` keeps its close and the repair-run launch contract in `close.md` and
+  `repair-launch.md` beside the skill, read when they are needed
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by
@@ -34,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - a CI runner's `dirty` field that is prose, not porcelain, is a missed status, not tree edits
 - the toolchain scout keeps virtualenvs and caches out of the worktree
 - a repair review reads the branch's own copy of the spec
-- the checklist rides on each question batch and the close instead of the first reply
+- the checklist rides on each question batch and the close only, never on the first reply or any
+  other step
 - `build-spec` validates the capped third pass's own body edits and relays write-spec questions in
   their own wording; `write-spec` runs probes in a detached worktree; the researcher asserts nothing
   about the project's own code; `grill-topic` blocks a question on a running lookup that covers its
@@ -65,9 +111,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changes who may reach what, or any fix that would change behaviour the spec states, waits for a
   human in both review modes
 - The review question counts seven to nine lenses, with the code-review `correctness` lens
+- An implementing agent reads the task's `## Note` as part of the task, and a `Consent:` line there
+  grants exactly what it names — it no longer stops on a protected path the user already allowed
+- CI and review fixers read the `Consent:` lines of their branch's task files too, so a fix round no
+  longer reverts a consented change or skips its failure as awaiting an approval already given
+- Each branch's CI verdict is the full gate, run first; fix rounds still verify scoped, and the full
+  gate runs again at the end only when a fix moved HEAD past the commit it graded (CI results now
+  carry `head`). A branch whose first full verdict still stands gets its task files marked by one
+  cheap agent, or by that run itself when no review follows it
+- `cr-prep`, wave merges and base refreshes run on Sonnet: they do git and scope resolution, and a
+  merge conflict that needs judgment is still aborted and reported
+- `repair-run` reviews a repair narrowly: one decision-conformance agent reads the repair's diff
+  against the quoted decisions and reports changes no decision asked for and decisions not carried
+  out, and only the `correctness` and `security` lenses run over the repair delta; craft lenses no
+  longer read repairs. Findings rated safe in the repair's own hunks are fixed in the same run by
+  one fixer with no further review (never a security fix, and
+  never one that changes access or spec-stated behaviour); the rest stay `review` items, and boy-scout findings stay apart
+- a review whose change has at most three judged files dispatches one `cr-scan` agent with the
+  whole lens list (`--lens a,b,c`) instead of one agent per lens; each lens it leaves out or that
+  judged nothing still makes the review dead. Requires the matching `code-review` change
+- `cr-prep` reads the `elements:` and `decisions:` frontmatter of the branch's task files and passes
+  their union to `cr-prepare` as `--spec-focus`, so the spec and correctness lenses judge the change
+  against those first; omitted when there are no codes, no task files (a repair of a branch without
+  them) or no spec. Requires the matching `code-review` change
+- `implement-tasks` counts repairs per branch (`Repairs:` in `implement-answers.md`); from a
+  branch's second repair round on the close recommends pushing its open `review` items as is, and a
+  third repair of one branch is never offered or recommended — only run when the user names it
+- `repair-run` is folded into `implement-run` as `mode: "repair"`: the recon, CI, fix-prompt, review,
+  finding-filter, consent, refresh and done-marking code the two scripts duplicated now exists once,
+  so a fix reaches both modes. `/fd3:repair-run` leaves the `/` menu, and `implement-tasks` launches
+  a repair as `implement-run` with `mode: "repair"` and the same repair arguments
 
 ### Fixed
 
+- an implement run's base refresh, like a repair's, returns refreshed when the branch already
+  contains its base, instead of leaving that case to the agent's reading of "merge"
+- a repair's final full gate gets the one fix round an implement run's has, so a failure the review
+  fixes left mechanical — a stale derived artifact — no longer goes straight to a human
+- repair-mode fixers are told, like implement fixers, that a caveat says only what the parent
+  could not otherwise know — following the prompt is not one
 - CI verdicts are no longer voided by files the toolchain itself writes: the baseline records them,
   and a new untracked file is a caveat rather than a fault
 - A CI fix round that commits nothing ends the loop; fixers see pre-existing failures and skip
@@ -80,6 +162,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The CI result schema's `branch` field matches what the prompt asks for on a detached tree
 - Workflow agents may use a skill their task file names for the step
 - `validate-spec` may write the evidence overflow files it is told to use
+- CI no longer skips a command that fails on the clean base: it runs, scoped where it can be, and
+  only failures matching the baseline are pre-existing, so a branch cannot add failures to an
+  already-red typecheck or test suite unseen
+- A review where every changed file is skipped runs the `spec` lens alone instead of counting as no
+  verdict; with no spec, the branch summary records the review as not applicable
+  (`review.notApplicable`) and the branch can reach done instead of staying merged on every
+  relaunch. A diff with no file at all, or one whose prepare names an alternate base, stays no verdict
+- implement-tasks relays a branch whose review was not applicable (every changed file skipped by
+  review) as such, never as a clean review
+- A repair that reports its decision applied but commits nothing is now a review no verdict and
+  leaves its task files unmarked; the empty repair delta used to pass as a clean review and mark
+  the branch done with the decision missing from it
+- Review findings carry `severity` and `family` as enums of the code-review values, and the filters
+  compare them normalised (backticks, whitespace, case), so a decorated `security` or `spec` token
+  no longer slips into the auto-fix set; fix and repair results must report `fromSha`/`toSha`, and
+  the prepare result its judged file count. `specBound` is set only when the finding line says so —
+  the merge agent never sees the spec, so it no longer claims to compare against it
+- The spec exists once, at `specPath`: a repair review's spec lens no longer reads a copy tracked on
+  the branch, and implement, fix and repair agents never edit, copy or commit the spec — a needed
+  spec change comes back as a caveat or blocked reason naming `/fd3:build-spec <spec>`
+- Baseline, merge, CI and fix prompts open with the toolchain report and the baseline inside
+  `<toolchain_report>` and `<baseline>` tags and give their instructions after, referring to the
+  tags, so the rules no longer sit behind kilobytes of embedded data
 
 ## [0.3.0] - 2026-10-12
 

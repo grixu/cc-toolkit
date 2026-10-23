@@ -15,9 +15,9 @@ name and you omit is a finding waiting to happen.
 Three paths come with the invocation, in this order: **$ARGUMENTS**
 
 - `notes-path` — the closing-notes file: four numbered lists holding the ratified decisions with
-  their question numbers and chosen options, the decisions the assistant took, the risks the user
-  accepted, and the research files produced alongside them.
-- `research-dir` — the directory those research files live in.
+  their question numbers, chosen options and `facts:` pointers, the decisions the assistant took,
+  the risks the user accepted, and the research files produced alongside them.
+- `research-dir` — the directory those research files live in, with the session's `INDEX.md`.
 - `spec-path` — where the spec goes.
 
 The notes file and the research directory are your whole input. Read the notes file before writing
@@ -30,10 +30,13 @@ script, a Makefile target, a docs build) — runs in a detached worktree under y
 (`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout, and never
 installs, links or rebuilds dependencies; a claim that needs more is a gap to declare.
 
-The closing notes name each research file and what it establishes; that line is the index. Read
-a report's headings first, then the sections you are about to cite. Do not re-read a file you
-have already read in this pass: if a `cat` trips the tool cap, the payload is on disk and the
-error names its path.
+`INDEX.md` in the research directory is the research you write from: each decision's `facts:`
+names its entries, and each entry holds the question, the condensed answer, its sources and the
+report file. Read it whole, after the notes. Open a raw report only to quote it, at the heading
+that holds the quote — never end to end. Notes with no `INDEX.md` beside them come from an older session: there the notes' research
+list is the index — read a report's headings first, then the sections you are about to cite. Do
+not re-read a file you have already read in this pass: if a `cat` trips the tool cap, the payload
+is on disk and the error names its path.
 
 A path that is missing, or that does not resolve, stops you: `SendMessage` to `main` naming which
 one and what you need, then end your turn. Do not guess it, do not derive it from the repository's
@@ -49,8 +52,8 @@ Report the edits by section; validation reads exactly those.
 Confirm `spec-path`'s directory exists before writing. Once the spec is there, move the
 closing-notes file beside it as `<spec-basename>.notes.md` — it outlives the session, and a
 validation pass can read the decisions' provenance from it. Move the research reports the same
-way, into `<spec-basename>.research/`, and rewrite every scratchpad path the notes or the spec cite
-to the new location — evidence a later pass cannot open is evidence lost. What moves is the
+way, into `<spec-basename>.research/` with `INDEX.md` among them, and rewrite every scratchpad
+path the notes, the index or the spec cite to the new location — evidence a later pass cannot open is evidence lost. What moves is the
 evidence: the reports, and any data file the spec or a report cites. Raw dumps and scratch scripts
 nothing cites stay in the scratchpad — they land in the repository with the spec and become a
 commit decision nobody asked for — and so does a file that holds an error response instead of the
@@ -102,7 +105,8 @@ session maps into it:
 
 Every load-bearing claim gets a row: the claim as the spec asserts it, and how it was established —
 the command, the `path:line`, the doc quote, the probe output. Not "checked the code". A claim a
-research file establishes cites that file's path beside the source it quotes.
+research file establishes cites that file's path beside the source it quotes — the report, never
+`INDEX.md`, which only routes to it; an `inline` entry's own sources are the citation.
 
 This table is the spec's proof of work and the thing a validation pass spot-checks first, so it is
 worth more than any prose you could write instead. Two rules:
@@ -132,9 +136,8 @@ pass to find.
 
 Anything the session could not settle goes into the document as a **declared gap**, on the terms
 `spec-rules.md` sets. A gap left as confident prose is the failure this whole section exists to
-prevent. A choice the session left open is not a gap: it goes to `main` as a question, never into
-the document as "decided at task split" or "confirm before implementation" — that placement only
-moves the question to a stage that has to stop for it.
+prevent. A choice the session left open is a parked choice, not a gap (`spec-rules.md`): it goes to
+`main` as a question, never into the document.
 
 ## 5. Length and tone
 
@@ -173,4 +176,5 @@ notes do not cover — a default, a value, a seam — with the `Dn` row it lande
 written as `assistant-taken`; the batch is where the user ratifies or overturns them, at one known
 point. Each row is its own question, quoting the decision it records — never a single "ratify all"
 over rows the user cannot see; more rows than one batch carries go out as consecutive batches, in `Dn`
-order. A decision left "worth confirming before the split" is a question the split stops on.
+order. A decision left "worth confirming before the split" is a parked choice (`spec-rules.md`), so
+it goes in this batch.

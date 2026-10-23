@@ -20,6 +20,9 @@ the skills and the template, and when they and this file disagree, the skills an
   the template, a task file in `task-template.md`, and what a validation pass returns in
   `validation-report.md`. A skill points at a shared shape; it never inlines one. An artifact
   with a single writer — the split report, the closing notes — is shaped where it is written.
+- **Build-spec stages** (`references/build-spec-stages.md`) — what `/fd3:build-spec` runs after the
+  closing summary is confirmed, and what a re-entry runs; the command body stays short and reads it
+  at that point.
 - **Closing summary** — grill-topic's final artifact: every settled decision, plus the decisions the
   user never answered directly. The user confirming it is the gate between grilling and writing.
 
@@ -45,9 +48,7 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Declared gap** — something the spec could not settle, stated as such with an **owner** (who
   resolves it; the spec's own team by default) and a **placement** (the gate it blocks, the ticket
   number, or the verification substitute). A declared gap passes validation; an undeclared one is a
-  finding. Only a fact or an outside action can be a gap: a choice the spec's own team could make
-  today, parked for the split or the implementation, is an undecided either/or — the stage it is
-  parked on can only stop and ask it.
+  finding. A parked choice is not one: `spec-rules.md` holds that rule.
 - **Precedence declaration** — the header statement of what this spec supersedes and who wins on
   disagreement, followed by the enumerated reversals.
 - **Silent reversal** — a decision a superseded document made, changed here, and not marked as
@@ -70,6 +71,9 @@ the skills and the template, and when they and this file disagree, the skills an
   report runs long), documentation and prior art via `fd3:researcher`, the live system via
   `general-purpose` running the CLI the answer needs. Live
   state is authoritative over both code and documentation, and it is the only place drift shows.
+- **Research index** (`research/INDEX.md`) — grill-topic's digest of every lookup: an `I<n>` entry
+  per question with the condensed answer, its sources and the report file. Decisions cite entries
+  (`facts: I3`), write-spec reads it to find the reports; it routes, and evidence never cites it.
 - **Evidence record** — the spec's `Claim | How it was verified` table (template section 12). The
   spec's proof of work; a claim that rests on inference must say so.
 - **Verification kinds** — probes (runnable on demand), triggered (exercised by using the feature),
@@ -102,6 +106,8 @@ the skills and the template, and when they and this file disagree, the skills an
   threshold is skill policy: `write-spec` puts a landing unit that plausibly exceeds it to the user
   as a subdivision question, `split-to-tasks` only warns; it never appears in the spec.
 - **Where a split's knowledge lands** — the implementation orchestrator reads task frontmatter
-  only, so anything it must act on is a field; the implementation agent reads the whole task
-  file, so anything that changes what *this* task's agent does is that task's `## Note`; the
-  human reads disk, so branch-level and run-level facts go in a file beside the spec.
+  and the split report's `## Branches` / `## Still owed` sections, so anything it must act on per
+  task is a field and anything per branch (draft pull request, retarget, merge order) is that
+  branch's section of `<spec>.split.md`, written once; the implementation agent reads the whole
+  task file, so anything that changes what *this* task's agent does is that task's `## Note`, and
+  nothing else is.

@@ -15,7 +15,11 @@ Task files are the state store here. Their frontmatter statuses — `todo`, `in-
 happens in the files, never only in conversation. The spec stays read-only for this run and
 every agent in it: a defect found in a task or the spec mid-run is a reason to stop and say so,
 never something to fix in passing. After the report, a correction the user asks for is theirs
-to have.
+to have — except a change to the spec. The spec exists once, at the path step 1 resolves, and
+changes only through `/fd3:build-spec <spec path>`, which re-validates what it changes. A
+discrepancy between the spec and the code, the tasks or a decision — found by you, an agent, a
+review or a repair — is a HIL item naming that route: never an edit you make to "align the spec
+with the as-built", and never a repair instruction.
 
 ## Terms
 
@@ -33,10 +37,9 @@ to have.
 
 ## Workflow
 
-Post this checklist in full — marks updated, never compressed to a line and never summarised — in
-the same reply as every user interaction (the step-2 question batch, each report round) and at the
-close. Step 1 needs no announcement: start it with a tool call. A reply that only posts the
-checklist ends the turn with nothing done:
+Show this checklist, marks updated and in full, at two points only: in the reply that carries a
+question batch (step 2's, each report round's) and in the close (step 5). Nowhere else — every
+other step starts with its tool call, not with the list:
 
 ```
 - [ ] 1. Read the graph: parse task frontmatter, resolve repositories, check integrity
@@ -48,28 +51,38 @@ checklist ends the turn with nothing done:
 
 ### 1. Read the graph
 
-Parse the YAML frontmatter of every task file in the directory: slug (the filename without its
-ordinal prefix and extension), name, repository, branch, branch-base, phase, depends-on, status,
-tickets. The spec is not read — the task files are the whole input.
+Parse the directory with `node ${CLAUDE_PLUGIN_ROOT}/scripts/task-graph.mjs <tasks dir>` — never a
+parser of your own. It prints one JSON object: `tasks` (every frontmatter field per task, slug and
+ordinal included), `launch` (step 3's `tasks` argument, `baseBranch` carrying the raw `branch-base`
+or `null`), `specPaths` (each resolved `spec:` pointer and whether it exists) and `problems`, each
+with a `kind`, the slugs it names and a detail line; it exits 2 when there are problems. Nothing it
+prints is written to disk: rerun it whenever the files change. The spec is not read — the task
+files and the split report are the whole input.
 
 Then make the graph launchable:
 
-- **Resolve the spec path.** Each task's `spec:` pointer is relative to its own file — usually
-  `../SPEC.md`, one directory above the tasks directory. Resolve it to an absolute path and check
-  the file exists; the spec itself stays unread — implementation agents read it, this step only
-  guarantees the path is real. When the resolved path does not exist (or tasks point at different
-  files), the spec location joins the step-2 batch.
-- **Resolve repositories to absolute paths.** A `repository:` value that is not an existing
-  directory is a missing input, not something to search for: it joins the step-2 batch, naming
-  the tasks it blocks.
+- **Resolve the spec path.** `specPaths` holds each task's `spec:` pointer resolved against its
+  own file; the spec itself stays unread — implementation agents read it, this step only
+  guarantees the path is real. A `spec` problem — a path that does not exist, or tasks pointing at
+  different files — puts the spec location in the step-2 batch.
+- **Read the split report's branch facts.** `<spec-basename>.split.md` beside the spec is the
+  split's report, not the spec: read its `## Branches` section (per-branch landing facts — draft
+  pull requests, retargets, merge order, a branch reuse the user already answered) and its
+  `## Still owed` section. A report from an older split has no such headings — read its branch
+  creation order and stack chain instead. A branch call the report settles is not asked again in
+  step 2, and step 5's pull-request chain carries its facts. No report, or no branch facts in it,
+  leaves the task files as the whole input.
+- **Resolve repositories to absolute paths.** A `repository` problem — a value that is not an
+  existing absolute directory — is a missing input, not something to search for: it joins the
+  step-2 batch, naming the tasks it blocks.
 - **Sync with origin.** In every resolved repository run `git fetch origin` — mandatory, stale
   local refs poison every branch cut from them. Record the default branch and its
   `origin/<default>` ref; note which branch the checkout currently sits on and whether that
   branch carries commits beyond `origin/<default>`. A repository parked on a non-default branch,
   or a base candidate behind `origin/<default>`, joins the step-2 batch.
 - **Resolve each branch's stack base.** Read it from the tasks' `branch-base:` field — the split
-  records the same value on every task of a branch, and a disagreement inside one branch joins
-  the step-2 batch. Only when the field is absent (tasks split before it existed), derive it:
+  records the same value on every task of a branch, and a disagreement inside one branch (a
+  `branch-base` problem) joins the step-2 batch. Only when the field is absent (tasks split before it existed), derive it:
   order the repository's distinct `branch:` values by their tasks' rollout phase (the numeric
   prefix of `phase:`; `cleanup` sorts after every numbered phase), the first stacking on the
   repository's base ref (`baseBranch: null` — resolved to the `startRef` confirmed in step 2),
@@ -94,15 +107,17 @@ Then make the graph launchable:
   resolves nowhere joins the step-2 batch. Only here can the two be told apart — the workflow sees
   the task files alone, so it falls back to the repository's default ref and reports the lost
   stacking after the run, when the work is already built on the wrong foundation.
-- **Check integrity**: no dependency cycles, every `depends-on` edge points at a task that
-  exists **and carries a lower ordinal** — the merge planning relies on the file order being
-  topological — and every status is one of the six. A broken graph stops the run — recommend
-  re-running `fd3:split-to-tasks` rather than patching by hand.
+- **Check integrity**: the script checks for dependency cycles, that every `depends-on` edge
+  points at a task that exists **and carries a lower ordinal** — the merge planning relies on the
+  file order being topological — that every status is one of the six, and that the frontmatter
+  reads. A problem of any kind other than `spec`, `repository` or `branch-base` is a broken graph
+  and stops the run — recommend re-running `fd3:split-to-tasks` rather than patching by hand.
 - **Find the confirmations a task asks for.** A task whose `## Note` asks for a human's
   confirmation or approval before its work starts — a protected path, a consent the repository's
   instructions require — would stop its agent mid-run, since the workflow never waits for a human.
   Read each task's `## Note` for that alone; every such ask joins the step-2 batch, naming the
-  task. An approval the pull request's review gives is not one: it gates landing, not writing.
+  task. An approval the pull request's review gives is not one: it gates landing, not writing. A
+  `Consent:` line already in the Note settles its ask — an earlier invocation recorded it.
 - **Classify what a resumed run inherits**: `done` is skipped; `implemented` and `merged` both
   re-enter the first merge round — whether a branch already reached the target is git's knowledge,
   and an already-merged branch no-ops there, which is what re-records the unit validation runs on,
@@ -115,10 +130,11 @@ Then make the graph launchable:
 One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`:
 
 - whether to review each branch. Review is the `code-review` plugin's headless lenses — one
-  agent per lens `cr-prepare` makes active, seven to nine, after the branch's scoped CI passes —
-  then a delta review of whatever the automatic fixes changed. It costs roughly a quarter to two fifths of the run, and a review
-  bot on the pull request finds different things, not the same ones: `no` is a valid answer but a
-  real trade. Offer three answers: `yes` — the fixer applies every fixable finding, security fixes
+  agent per lens `cr-prepare` makes active, seven to nine (one agent for all of them on a change of
+  three judged files or fewer), after the branch's full CI gate passes —
+  then a delta review of whatever the automatic fixes changed. It costs roughly three fifths to
+  three quarters of the workflow's spend, mostly a fixed cost per branch, and a review bot on the
+  pull request finds different things, not the same ones: `no` is a valid answer but a real trade. Offer three answers: `yes` — the fixer applies every fixable finding, security fixes
   (one commit each) and mechanically safe boy-scout fixes included, and what it cannot fix waits in the end-of-run
   report without holding the branch; `gated` — security fixes, boy-scout findings, findings the
   fixer left unfixed and anything the delta review finds hold their branch at `merged` until the
@@ -144,21 +160,30 @@ One batch, following `${CLAUDE_SKILL_DIR}/../../references/question-batching.md`
   unchanged rather than nulling it, so the workflow raises its stack-base item and the run's own
   report carries what was consented to; nulled, those tasks would read as genuine roots and
   nothing would record the anomaly;
-- each confirmation a task's `## Note` asks for, from step 1. An answer that withholds it takes
-  the task out of this launch as `blocked`, an item in the report rather than a stopped run;
+- each confirmation a task's `## Note` asks for, from step 1. A yes is written into that task file
+  before launch: append the line `Consent: <the user's answer, verbatim>` to its `## Note`. The
+  task file is what its implementing agent reads, so a consent recorded only in this batch or
+  `implement-answers.md` never reaches it and the agent stops on the ask anyway. An answer that
+  withholds it takes the task out of this launch as `blocked`, an item in the report rather than a
+  stopped run;
 - confirmation of scope when the directory mixes done and pending work.
 
 Everything else — wave composition, branch names, merge order — the task files already decided;
 report it, do not ask.
 
 Record the answers in `implement-answers.md` next to the tasks directory, never inside it where it
-would read as a task file — the start ref per repository, the review choice, the commit choice, and
-each decision a later report round settles. A later
-invocation over the same directory reads that file first and asks only what it does not settle or
-what has changed since: a new repository, a base that moved, a stale `in-progress`.
+would read as a task file — the start ref per repository, the review choice, the commit choice,
+each consent granted (with its task), each decision a later report round settles, each branch's
+repair count (`repair-launch.md`), and the last report's path (step 4). A later invocation over the same directory reads that file first and asks
+only what it does not settle or what has changed since: a new repository, a base that moved, a
+stale `in-progress`.
 
-Committing the spec and the tasks directory before launch is the user's call, and it is a change
-to the repository like any other: whatever that repository derives from the tree you touched —
+Committing the spec and the tasks directory before launch is the user's call, and the commit
+happens where they already live — the repository and branch the spec sits in. Never copy the spec
+onto a target or task branch to commit it there: every agent reads it at `specPath`, and a second
+copy diverges at the first amendment with nothing saying which one a reader got. When the spec's
+checkout is itself parked on a target branch, the option says the commit puts the spec into that
+branch's pull request. The commit is a change to the repository like any other: whatever that repository derives from the tree you touched —
 a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
 that you did not. A stale generated file fails validation on every branch of the run at once,
 and reads there as the branches' own defect. The recommendation is the spec and the tasks
@@ -196,6 +221,8 @@ nor the user again.
 `knownBases` lists every `branch-base` no task builds that step 1 resolved to an existing branch, as
 `<repository path>:<branch>`; the workflow raises a `graph` item only for the others, so a confirmed
 root is not put to the user again on every launch.
+`tasks` is the script's `launch` array, with step 1's root normalisation applied (a root base
+becomes `null`) and any task file step 2 corrected re-parsed.
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
 repository's `startRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
@@ -209,7 +236,8 @@ main checkout rather than discover the refusal. Merges and fixes for that branch
 the checkout, but its validation does not: the workflow grades it in a detached worktree beside
 the repository, so the verdict describes the branch's commit rather than whatever else the user
 has open in that tree. On a relaunch, pass `reportPath` — the `<output-file>`
-path from the previous run's completion notification. The workflow reads that file's toolchain and
+path from the previous run's completion notification, or from the `Last report:` line in
+`implement-answers.md` when that notification is not in this conversation. The workflow reads that file's toolchain and
 baseline knowledge with one cheap agent, so the run skips a re-scout and a re-baseline of every
 repository it already knows. Never transcribe that knowledge into the call yourself: it is tens of
 kilobytes of prose, and a command list that differs by a word from the one the baseline measured
@@ -220,7 +248,12 @@ dispatch implementation agents yourself.
 ### 4. Work the report
 
 The completion notification truncates the result — read the full report from the notification's
-`<output-file>` path before relaying anything. The workflow returns per-task statuses,
+`<output-file>` path before relaying anything. Record that path in `implement-answers.md` as
+`Last report: <path> (<implement or repair>, <date>)` — one line per run mode, each
+replacing its previous one — so the next launch has its `reportPath` even after `/clear` or in a
+new session. A later invocation passes the implement line when its file still exists: a
+repair report holds toolchain knowledge only for the repositories it repaired, so it is the
+fallback. A path that no longer exists is omitted, and the workflow re-scouts. The workflow returns per-task statuses,
 per-branch validation outcomes (with each branch's review findings and the path of its review
 `cr-report.md`), agent `caveats`, the HIL
 list, the tasks left unreachable behind blockers, and its `toolchain` and `baseline` knowledge.
@@ -229,6 +262,8 @@ report's own `tasks[]` tally, never hand-counted — with one distinction the re
 draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
 failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
 Relay each branch's `skipped` commands with its outcome: a check that never ran is not a pass.
+A branch whose review reads `notApplicable` had nothing a lens could judge — every changed file is
+one review skips — so relay it as "review not applicable" with that line, never as a clean review.
 A check you run yourself never stands in for the gate: a `no-verdict` or `failed-final` branch is
 relaunched or repaired, never set to `done` by hand.
 `graph` items are the other kind that is information rather than work — one per `branch-base` that
@@ -271,68 +306,38 @@ Put to the user only what needs a human: an operational task is theirs to execut
 file's steps as a script to follow; mark `done` only when they confirm), and a blocker or a
 judgment conflict needs their call on how to proceed. Every such decision of one report goes in one
 batch — never one question per turn. A `ci` item is not a question: diagnose it — read-only, in
-the branch's worktree — and send it to `repair-run` with the diagnosis verbatim in the
+the branch's worktree — and send it to a repair run with the diagnosis verbatim in the
 `instructions`, sparing the repair agent a re-investigation. It becomes a question only when the
 diagnosis shows the fix must change behaviour, the case the fixer already refused. Diagnose by
 **running the failing check** in that worktree and reading what it says. Grepping the source for
 what the report's message suggests names a plausible cause, not the cause: the check is the only
 thing that knows which of them is true, and a repair composed from the plausible one costs a full
 round to disprove. A failure the branch did not cause — the baseline already failed that check, or
-it sits in files no task on the branch touched — is no repair's to fix: a repair-run grades the
+it sits in files no task on the branch touched — is no repair's to fix: a repair run grades the
 same check and fails it again. It is a question (fix it as its own decision, or accept it as a known
 failure), asked before any repair launches on that branch.
 
 What the loop does next is never a question. Relaunching after a decision, rerunning a check that
 died on a transient failure, launching the repair a decision implies, updating the handoff file —
 do it and say what you did. When the user reports a human step done, check it where it can be
-checked — the task file's verification, the live state — and carry on. The answers split into two
-lanes:
+checked — the task file's verification, the live state — and carry on. A spec discrepancy — a
+`spec` finding, a caveat that contradicts the spec, an as-built deviation the user wants kept — is
+put to the user as a HIL item whose route is `/fd3:build-spec <spec path>`: keep the code as built
+and amend the spec there, or change the code to match the spec through the lanes below. Neither
+you nor a repair agent edits the spec, and no repair `instructions` line asks for it. The answers
+split into two lanes:
 
 - **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
   the same way; statuses make the rerun skip everything finished.
 - **Decisions that change existing branches** — compose them into `repairs` and launch the
-  repair workflow; do not edit worktrees yourself:
-
-  ```
-  Workflow({
-    scriptPath: "${CLAUDE_SKILL_DIR}/../../workflows/repair-run.js",
-    args: {
-      repairs: [{ repo, branch, worktree, base, instructions: [<the user's decisions for this
-                 branch, quoted verbatim>], taskFiles: [<task files to flip to done on pass>] }, ...],
-      repos: <as at launch>,
-      specPath: <as at launch>,
-      review: <as at launch>,
-      decisions: <as at the latest launch>,
-      reportPath: <the previous report's `<output-file>` path>,
-      maxFixRounds: 3
-    }
-  })
-  ```
-
-  `base` is the branch's stack base (or the repo's `diffBase`). `reportPath` is the previous
-  report's output file; the workflow reads its toolchain and baseline knowledge itself, which is
-  what spares a full re-scout plus a full baseline pipeline on every repository in the run. Pass
-  the path, never the knowledge. Repair agents receive the decision as their sole
-  authority and never read the spec.
-
-  A repair reopens its branch. Before launch, set every `done` task on a repaired branch back to
-  `merged` and list it in that branch's `taskFiles` — the tasks were marked done on a tree the
-  repair is about to change, and only the repair's own final gate may mark them again. Every
-  branch stacked on a repaired branch, transitively, joins `repairs` too, with `instructions: []`
-  and its own done tasks reset the same way: it carries the repaired base and owes it a CI run,
-  which a merge-up done by hand never gets. With
-  review on, the workflow reviews the repair's own commits after its CI passes; those findings
-  come back as `review` items for the user, never to a fixer, and hold the branch only under
-  `gated`.
-
-  An `instructions` line says what to change, never asks for validation. "Then run the tests and
-  confirm they pass", "verify the build is green" — the workflow runs CI itself, after the agent
-  returns, and an agent that runs it too puts a second pipeline on a machine that tolerates one.
+  repair workflow; do not edit worktrees yourself. Read `${CLAUDE_SKILL_DIR}/repair-launch.md`
+  before composing the launch: it holds the call, the reset and cascade it needs, and what an
+  `instructions` line may say.
 
 One carve-out from the second lane: a purely mechanical git operation — merging an existing
 task branch into its target, reverting a named commit — may be done by this skill directly when
-the decision deliberately leaves the branch incomplete, because a repair-run would fail its own
-CI on that intended state. Anything that touches file content still goes through `repair-run`.
+the decision deliberately leaves the branch incomplete, because a repair run would fail its own
+CI on that intended state. Anything that touches file content still goes through a repair run.
 
 Never run two workflows at once — validation tolerates exactly one build/lint/test pipeline on
 the machine. Repairs first, then the implement relaunch. While a workflow runs, its worktrees and
@@ -347,7 +352,7 @@ open `review` items exist nowhere else.
 When the run parks on human work — HIL items that need days, not minutes — write an
 ordered handoff file (`HIL_ACTIONS.md` next to the tasks directory): the human steps in order,
 each pointing at its task file and what it unblocks, plus where the branches and worktrees
-live, followed by *Decisions taken for you* and the open `review` items as step 5 lists them. A
+live, followed by *Decisions taken for you* and the open `review` items as the close lists them. A
 pause that survives only in this conversation is state lost.
 
 Every task or branch you mention — in a report, in `HIL_ACTIONS.md`, in a question — leads with the
@@ -356,35 +361,6 @@ parentheses after it, never alone: the user reads the report, not the split.
 
 ### 5. Propose, never push
 
-When every repository-bearing task is `done`, or the loop ends short of that, close with one
-end-of-run report and one question batch — everything the run deferred lands here, so nothing
-earlier had to stop for it. A loop that ended short proposes only the branches whose tasks are all
-`done` and asks nothing about the rest; their state is in the report. The report
-holds, in this order: one table — repository, branch, its stack base,
-its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
-citing the tickets; the still-open operational tasks — they need the branches landed first, so
-they never gate this proposal; *Decisions taken for you*, each with how to revert it; and the
-`review` items left open, numbered, each with its `cr-report.md` path. Stacked branches make a pull-request chain: each pull
-request's base is its branch's stack base, and after one lands its successor is retargeted onto
-the default branch — but only when the predecessor landed as a merge commit. After a squash
-merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget
-shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
-Say that in the proposal. The batch then asks two things: whether to push the branches and open
-the pull requests, and which open `review` items, by number, go to a repair before that. Recommend
-per item on its merit and offer one "all fixable" option; list a branch's boy-scout findings — the
-report's separate list, pre-existing code in a touched file — on their own line, recommended to
-leave. A decision taken for the user that they want reverted is named the same way. Only
-after explicit consent: push, `gh pr create` per branch (`--base` set to the stack base) with a
-description naming the tasks, the spec and the branch's element codes. When the repository's own
-rules reserve pushing to a human — its `AGENTS.md`, `CLAUDE.md` or contributing guide says so —
-the push is not a question: print the exact `git push` and `gh pr create` commands instead.
-The batch also asks about cleanup, recommending it: remove the `.worktrees` directories and
-the merged `task/<slug>` branches now, or keep them and print the commands that remove them. A
-`task/<slug>` branch with commits its target branch does not contain is never removed, whatever
-the answer — it is unmerged work, and the report names it. Declining to publish while wanting a
-clean repository is a normal combination. If push consent does not come, leave every target
-branch local. The worktree paths are
-in the table whatever the user decides: a branch whose worktree nobody can name is a branch the
-user cannot open, and the run's own directories are not guessable. When the tasks directory is
-untracked, say that too: it is the only copy of the
-run's state store, one `git clean -fd` away from gone.
+When every repository-bearing task is `done`, or the loop ends short of that, read
+`${CLAUDE_SKILL_DIR}/close.md` and close the run as it says: one end-of-run report and one question
+batch — push and pull requests, repairs of open `review` items, cleanup.
