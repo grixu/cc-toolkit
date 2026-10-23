@@ -33,9 +33,13 @@ export const finding = (over = {}) => ({ severity: 'high', family: 'simplicity',
 // The scripts' own review-finding line, so a test can look a finding up in a prompt or a HIL reason.
 export const line = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
 
-export const ciPass = (prompt, opts) => {
+// The commit every CI runner reports grading; fixers in the defaults report a different toSha, so a
+// fix round always moves HEAD past it.
+export const HEAD = 'head000'
+
+export const ciPass =(prompt, opts) => {
   const branch = /branch "([^"]+)"/.exec(prompt)[1]
-  return { passed: true, failures: [], preExisting: ['src/old.ts:1 TS2322'], branch, dirty: '', marked: /set `status: done`/.test(prompt) }
+  return { passed: true, failures: [], preExisting: ['src/old.ts:1 TS2322'], branch, dirty: '', head: HEAD, marked: /set `status: done`/.test(prompt) }
 }
 export const ciFail = (failures) => (prompt) => ({ ...ciPass(prompt), passed: false, failures, marked: false })
 
@@ -79,6 +83,7 @@ export const implementDefaults = () => [
   ['cr-merge:', crMerged()],
   [/^fix-/, { summary: 'fixed', fromSha: 'aaa111', toSha: 'bbb222', skipped: [] }],
   ['unmark:', 'ok'],
+  ['mark:', { marked: true }],
 ]
 
 export const repair = (branch, over = {}) => ({
@@ -114,4 +119,5 @@ export const repairDefaults = () => [
   ['cr-merge:', crMerged()],
   ['fix-ci:', { summary: 'fixed', fromSha: 'aaa111', toSha: 'bbb222' }],
   ['unmark:', 'ok'],
+  ['mark:', { marked: true }],
 ]

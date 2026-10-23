@@ -5,7 +5,7 @@ export const meta = {
   phases: [
     { title: 'Recon', detail: 'only for repositories whose toolchain or baseline knowledge did not arrive in args' },
     { title: 'Repair', detail: 'one agent per branch, the HIL decision applied verbatim; a stacked branch after its base' },
-    { title: 'Validate', detail: 'scoped CI with fix rounds, a review of the repair delta, then the full gate, one branch at a time' },
+    { title: 'Validate', detail: 'the full CI gate with scoped fix rounds, a review of the repair delta, and a second full run only when HEAD moved, one branch at a time' },
   ],
 }
 
@@ -426,17 +426,24 @@ await baselineReady
 
 const CI_RESULT = {
   type: 'object',
-  required: ['passed', 'failures', 'branch', 'dirty'],
+  required: ['passed', 'failures', 'branch', 'dirty', 'head'],
   properties: {
     passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline and incomplete is empty' },
     incomplete: { type: 'array', items: { type: 'string' }, description: 'commands started but without an exit line when you returned, each with the last log line it reached — never under failures, never counted as passed' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
     branch: { type: 'string', description: 'the branch name the prompt says to return when HEAD matches it; otherwise the branch actually checked out, or the short HEAD sha when detached' },
     dirty: { type: 'string', description: '`git -C <worktree> status --porcelain` after the last command, verbatim; an empty string when the tree is clean' },
+    head: { type: 'string', description: '`git -C <worktree> rev-parse HEAD` — the commit this verdict grades' },
     preExisting: { type: 'array', items: { type: 'string' }, description: 'failures that match the baseline of the clean base — informational, never fixed on this branch' },
     skipped: { type: 'array', items: { type: 'string' }, description: 'commands not run, each with the reason — a skip is never reported as passed' },
-    marked: { type: 'boolean', description: 'the task files were set to done; asked for on a final gate only' },
+    marked: { type: 'boolean', description: 'the task files were set to done; asked for only when nothing after this run can withhold the mark' },
   },
+}
+
+const MARK_RESULT = {
+  type: 'object',
+  required: ['marked'],
+  properties: { marked: { type: 'boolean', description: 'every listed task file now reads `status: done`' } },
 }
 
 // A branch checked out in the repository itself has no worktree of its own, and that checkout is
@@ -482,7 +489,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     `\`git -C ${tree} …\` — because the shell's working directory can reset between commands, and`,
     `a git command that silently runs in another checkout describes that checkout instead. Confirm`,
     `what you are about to grade: \`git -C ${tree} rev-parse HEAD\` must equal`,
-    `\`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
+    `\`git -C ${unit.repo} rev-parse ${unit.branch}\`; return the first as head either way. When they match,`,
     `return branch "${unit.branch}". When they do not, run nothing: return the branch you actually`,
     `found (or the short HEAD sha when detached) as branch, with passed=false and the mismatch in`,
     `failures. Every command runs from that worktree: each command's cwd in <toolchain_report> is relative`,
@@ -496,7 +503,7 @@ const ciPrompt = (unit, mode, markFiles) => {
         `\nbase, never diff the branch against itself — and use each command's scoped form from` +
         `\n<toolchain_report> on those paths, quoting every path you pass to a shell (unquoted brackets` +
         `\nand globs break zsh); run a command in full only when <toolchain_report> marks it not scopeable.`
-      : `Run every command in full — this is the branch's final gate before it is handed over.`,
+      : `Run every command in full — this is the branch's full gate.`,
     ``,
     `Skip only what <toolchain_report> lists as not runnable here. A command <baseline> shows failing`,
     `still runs, scoped as above where <toolchain_report> gives it a scoped form: a branch can add new`,
@@ -805,7 +812,7 @@ const porcelainPath = (line) => {
   const renamed = p.indexOf(' -> ')
   return (renamed === -1 ? p : p.slice(renamed + 4)).replace(/^"|"$/g, '')
 }
-// The final gate flips this branch's task files to done itself, so their own dirtiness is expected
+// A full CI run flips this branch's task files to done itself, so their own dirtiness is expected
 // wherever the tasks directory happens to live. So is whatever the commands write into a clean tree
 // — the baseline recorded it — and voiding a verdict over a cache file voided every verdict in such
 // a repository. A new untracked file cannot turn a tracked check green on its own; a tracked edit can.
@@ -854,6 +861,18 @@ const unmark = (files, label) =>
   )
 
 const unfinished = (ci) => (ci && ci.incomplete) || []
+
+// A full verdict that still describes the branch's HEAD only lacks the marks; re-running the whole
+// pipeline to flip frontmatter was most of a unit's serial CI time.
+const markDone = async (unit, tag) => {
+  const r = await tryTwice(
+    `Set \`status: done\` in the frontmatter of these task files, changing nothing else, and commit nothing:\n` +
+      unit.taskFiles.map((f) => `- ${f}`).join('\n') +
+      `\n\nReturn marked=true once every listed file reads \`status: done\`.`,
+    { label: `mark:${tag}`, phase: 'Validate', schema: MARK_RESULT, model: 'haiku', effort: 'low' },
+  )
+  return !!(r && r.marked)
+}
 
 const runCi = async (unit, mode, markFiles, label) => {
   let ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
@@ -959,7 +978,13 @@ for (const unit of units) {
   }
 
   await rescoutIfTouched(unit, tag)
-  let { ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}`)
+  const hasFiles = !!(unit.taskFiles && unit.taskFiles.length > 0)
+  const reviewed = review && unit.instructions.length > 0
+  // The full gate runs first and is the verdict; it runs again at the end only when a fix round
+  // moved HEAD past the commit it graded. Without a review nothing after it can withhold the marks.
+  let { ci, fault } = await runCi(unit, 'full', hasFiles && !reviewed, `ci:${tag}`)
+  const fullCi = ci
+  const fullHead = ci && !fault ? (ci.head || '').trim() || null : null
   let stalled = 0
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
@@ -1035,36 +1060,42 @@ for (const unit of units) {
     }
   }
 
-  // The full command list is the branch's final gate — repairs go out only fully validated.
-  const markFiles = !!(unit.taskFiles && unit.taskFiles.length > 0) && !reviewDead && !reviewHeld
-  const { ci: finalCi, fault: finalFault } = await runCi(unit, 'full', markFiles, `ci:${tag}:final`)
-  if (!finalCi || finalFault) {
-    summary.ci = 'no-verdict'
-    hil.push({
-      slug: null,
-      kind: 'no-verdict',
-      stage: 'ci-final',
-      reason: finalFault
-        ? `${unit.repo} ${unit.branch}: scoped CI passed but the full-gate agent ${finalFault}; its verdict was discarded and the branch has no final verdict.`
-        : `${unit.repo} ${unit.branch}: scoped CI passed but the full-gate agent returned no result after a retry; the branch has no final verdict.`,
-    })
-    continue
-  }
-  summary.preExisting = (finalCi.preExisting || []).length
-  summary.skipped = finalCi.skipped || []
-  if (!finalCi.passed) {
-    summary.ci = 'failed-final'
-    hil.push({
-      slug: null,
-      kind: 'ci',
-      reason: `${unit.repo} ${unit.branch}: the full run after the fix rounds failed: ${finalCi.failures.join('; ')}`,
-    })
-    continue
+  // Repairs go out only fully validated: a verdict left by a scoped fix-round run, or a full run
+  // that named no commit, needs the full list again.
+  const markFiles = hasFiles && !reviewDead && !reviewHeld
+  const finalNeeded = ci !== fullCi || !fullHead
+  let finalCi = ci
+  if (finalNeeded) {
+    let finalFault
+    ;({ ci: finalCi, fault: finalFault } = await runCi(unit, 'full', markFiles, `ci:${tag}:final`))
+    if (!finalCi || finalFault) {
+      summary.ci = 'no-verdict'
+      hil.push({
+        slug: null,
+        kind: 'no-verdict',
+        stage: 'ci-final',
+        reason: finalFault
+          ? `${unit.repo} ${unit.branch}: CI passed but the final full-gate agent ${finalFault}; its verdict was discarded and the branch has no final verdict.`
+          : `${unit.repo} ${unit.branch}: CI passed but the final full-gate agent returned no result after a retry; the branch has no final verdict.`,
+      })
+      continue
+    }
+    summary.preExisting = (finalCi.preExisting || []).length
+    summary.skipped = finalCi.skipped || []
+    if (!finalCi.passed) {
+      summary.ci = 'failed-final'
+      hil.push({
+        slug: null,
+        kind: 'ci',
+        reason: `${unit.repo} ${unit.branch}: the full run after the fix rounds failed: ${finalCi.failures.join('; ')}`,
+      })
+      continue
+    }
   }
   summary.ci = 'passed'
 
-  // The final gate marks the files itself: it is already in this unit holding the verdict, where
-  // a separate agent per branch spent its whole budget booting to edit one frontmatter line.
+  // A final run marks the files itself; a first full verdict marks them only when no review follows
+  // it, so when no final run was needed one cheap agent marks them instead.
   if (reviewDead) {
     hil.push({
       slug: null,
@@ -1074,13 +1105,14 @@ for (const unit of units) {
     })
     continue
   }
-  if (markFiles && !finalCi.marked) {
+  const marked = !markFiles || finalCi.marked || (!finalNeeded && (await markDone(unit, tag)))
+  if (!marked) {
     // The files are the state store; in-memory state must never outrun them.
     hil.push({
       slug: null,
       kind: 'no-verdict',
       stage: 'done-marking',
-      reason: `${unit.repo} ${unit.branch}: the full gate passed but did not confirm marking the task files; they keep their previous status — a relaunch re-validates cheaply and finishes the marking.`,
+      reason: `${unit.repo} ${unit.branch}: the full gate passed but the task files were not confirmed marked; they keep their previous status — a relaunch re-validates cheaply and finishes the marking.`,
     })
   }
 }

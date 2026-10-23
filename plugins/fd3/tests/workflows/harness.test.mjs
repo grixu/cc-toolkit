@@ -30,7 +30,7 @@ test('calls record label, phases, options, schema name and prompt', async () => 
   assert.equal(ci.model, 'haiku')
   assert.match(ci.prompt, /^Do only the step/)
   assert.equal(ci.result.passed, true)
-  assert.throws(() => r.call('ci:'), /expected one call for ci:/)
+  assert.throws(() => r.call('wave'), /expected one call for wave/)
 })
 
 test('seq answers the nth call with the nth reply and repeats the last', () => {

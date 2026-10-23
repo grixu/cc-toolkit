@@ -22,7 +22,7 @@ const implementRun = () =>
       ['ci:app:feat-a#2', ciPass],
       ['ci:app:feat-a:final', ciPass],
       ['ci:app:feat-a', ciFail(['boom'])],
-      ['ci:app:feat-b:final', seq((p) => ({ ...ciPass(p), passed: false, incomplete: ['pnpm test'], marked: true }), ciPass)],
+      ['ci:app:feat-b', seq((p) => ({ ...ciPass(p), passed: false, incomplete: ['pnpm test'], marked: true }), ciPass)],
       ...implementDefaults(),
     ],
   )
@@ -36,7 +36,7 @@ const repairRun = () =>
       ['ci:app:feat-a#2', ciPass],
       ['ci:app:feat-a:final', ciPass],
       ['ci:app:feat-a', ciFail(['boom'])],
-      ['ci:app:feat-b:final', seq((p) => ({ ...ciPass(p), passed: false, incomplete: ['pnpm test'], marked: true }), ciPass)],
+      ['ci:app:feat-b', seq((p) => ({ ...ciPass(p), passed: false, incomplete: ['pnpm test'], marked: true }), ciPass)],
       ...repairDefaults(),
     ],
   )
@@ -72,8 +72,8 @@ for (const [name, runIt] of [['implement-run', implementRun], ['repair-run', rep
     const kinds = new Set(r.labels.map(kind))
     const expected =
       name === 'implement-run'
-        ? ['handover', 'scout', 'baseline', 'mark-blocked', 'wave', 'merge', 'toolchain-touch', 'refresh', 'ci', 'fix-ci', 'cr-prep', 'cr', 'cr-merge', 'fix-cr', 'unmark']
-        : ['handover', 'scout', 'baseline', 'repair', 'refresh', 'toolchain-touch', 'ci', 'fix-ci', 'cr-prep', 'cr', 'cr-merge', 'unmark']
+        ? ['handover', 'scout', 'baseline', 'mark-blocked', 'wave', 'merge', 'toolchain-touch', 'refresh', 'ci', 'fix-ci', 'cr-prep', 'cr', 'cr-merge', 'fix-cr', 'unmark', 'mark']
+        : ['handover', 'scout', 'baseline', 'repair', 'refresh', 'toolchain-touch', 'ci', 'fix-ci', 'cr-prep', 'cr', 'cr-merge', 'unmark', 'mark']
     for (const k of expected) assert.ok(kinds.has(k), `no ${k} call in ${[...kinds].join(', ')}`)
   })
 
@@ -125,7 +125,7 @@ for (const [name, runIt] of [['implement-run', implementRun], ['repair-run', rep
 
   test(`${name}: model and effort choices per agent kind`, async () => {
     const r = await runIt()
-    const cheap = { handover: 'low', 'mark-blocked': 'low', unmark: 'low', 'toolchain-touch': 'low', baseline: 'high', ci: 'high' }
+    const cheap = { handover: 'low', 'mark-blocked': 'low', unmark: 'low', mark: 'low', 'toolchain-touch': 'low', baseline: 'high', ci: 'high' }
     for (const c of r.calls) {
       const k = kind(c.label)
       if (k in cheap) assert.deepEqual([c.model, c.effort], ['haiku', cheap[k]], c.label)
@@ -196,7 +196,7 @@ test('every fixer is told to read the Consent lines of its own branch task files
     assert.equal(m[1], '- /r/app/tasks/t1.md\n', label)
     assert.match(impl.call(label).prompt, /Never undo what one grants/)
   }
-  const final = await runWorkflow('implement-run.js', implementArgs({ review: false }), [['ci:app:feat-x:final#2', ciPass], ['ci:app:feat-x:final', ciFail(['stale index'])], ...implementDefaults()])
+  const final = await runWorkflow('implement-run.js', implementArgs({ review: false }), [['ci:app:feat-x:final#2', ciPass], ['ci:app:feat-x:final', ciFail(['stale index'])], ['ci:app:feat-x#2', ciPass], ['ci:app:feat-x', ciFail(['boom'])], ...implementDefaults()])
   assert.equal(consent.exec(final.call('fix-final:app:feat-x').prompt)[1], '- /r/app/tasks/t1.md\n- /r/app/tasks/t2.md\n')
 
   const rep = await repairRun()

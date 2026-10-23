@@ -5,7 +5,7 @@ import { REPO, TOOLCHAIN, repair, repairArgs, repairDefaults, finding, line, ciP
 
 const run = (args, rules = [], options) => runWorkflow('repair-run.js', args, [...rules, ...repairDefaults()], options)
 
-test('repair, then scoped CI, a review of the repair delta and the final gate', async () => {
+test('repair, then the full gate, a review of the repair delta, and a marking agent', async () => {
   const r = await run(repairArgs())
   assert.deepEqual(r.labels, [
     'repair:app:feat-x',
@@ -16,13 +16,15 @@ test('repair, then scoped CI, a review of the repair delta and the final gate', 
     'cr:app:feat-x:repair:security',
     'cr:app:feat-x:repair:spec',
     'cr-merge:app:feat-x:repair',
-    'ci:app:feat-x:final',
+    'mark:app:feat-x',
   ])
   assert.deepEqual(r.phases, ['Recon', 'Repair', 'Validate'])
   assert.equal(r.call('repair:app:feat-x').schema, 'REPAIR_RESULT')
   // The delta review starts at the commit the repair agent reported, so it reads the repair alone.
   assert.match(r.call('cr-prep:app:feat-x:repair').prompt, /--base rep000 /)
-  assert.match(r.call('ci:app:feat-x:final').prompt, /- \/r\/app\/tasks\/feat-x\.md/)
+  assert.match(r.call('ci:app:feat-x').prompt, /Run every command in full/)
+  assert.doesNotMatch(r.call('ci:app:feat-x').prompt, /set `status: done`/)
+  assert.match(r.call('mark:app:feat-x').prompt, /- \/r\/app\/tasks\/feat-x\.md/)
   assert.deepEqual(r.result.branches, [
     {
       repo: REPO,
@@ -62,13 +64,13 @@ test('review findings go to a human, never to a fixer; boy-scout findings are li
   assert.ok(reasons[0].includes(line(serious)) && reasons[1].includes(line(move)))
   assert.match(reasons[0], /left for the end-of-run decision; the branch is not held on it$/)
   // Only a gated review keeps the task files from being marked done.
-  assert.match(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+  assert.ok(r.has('mark:app:feat-x'))
 })
 
 test('gated review holds the task files on open findings', async () => {
   const r = await run(repairArgs({ review: 'gated' }), [['cr-merge:app:feat-x:repair', crMerged([finding()])]])
   assert.match(r.result.hil[0].reason, /the task files keep their status until a repair settles it$/)
-  assert.doesNotMatch(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+  assert.ok(!r.has('mark:'))
   assert.equal(r.result.branches[0].ci, 'passed')
 })
 
@@ -107,16 +109,16 @@ test('a successor with empty instructions is carried onto its repaired base and 
     'cr:app:feat-a:repair:security',
     'cr:app:feat-a:repair:spec',
     'cr-merge:app:feat-a:repair',
-    'ci:app:feat-a:final',
+    'mark:app:feat-a',
     'refresh:app:feat-b',
     'toolchain-touch:app:feat-b',
     'ci:app:feat-b',
-    'ci:app:feat-b:final',
   ])
   assert.doesNotMatch(r.call('refresh:app:feat-b:pre-repair').prompt, /merge-tree/)
   // A carried branch has no repair commit of its own, so no review base is asked for.
   assert.doesNotMatch(r.call('refresh:app:feat-b').prompt, /merge-tree/)
-  assert.match(r.call('ci:app:feat-b').prompt, /git diff --name-only feat\/a\.\.\.HEAD/)
+  // Nothing reviews a carried branch, so its one full run marks its task files itself.
+  assert.match(r.call('ci:app:feat-b').prompt, /set `status: done`/)
   assert.deepEqual(r.result.branches.map((b) => [b.branch, b.ci]), [['feat/a', 'passed'], ['feat/b', 'passed']])
   assert.deepEqual(r.result.hil, [])
 })
@@ -181,6 +183,9 @@ test('CI failure after a repair gets fix rounds; a round committing nothing stop
 test('CI failure then pass after a fix round', async () => {
   const r = await run(repairArgs({ review: false }), [['ci:app:feat-x:final', ciPass], ['ci:app:feat-x', seq(ciFail(['boom']), ciPass)]])
   assert.deepEqual(r.callsMatching(/^(ci|fix)/).map((c) => c.label), ['ci:app:feat-x', 'fix-ci:app:feat-x#1', 'ci:app:feat-x#2', 'ci:app:feat-x:final'])
+  // The fix round is verified scoped; the full list runs again on the commit the fix made.
+  assert.match(r.call('ci:app:feat-x#2').prompt, /git diff --name-only origin\/main\.\.\.HEAD/)
+  assert.match(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
   assert.match(r.call('fix-ci:app:feat-x#1').prompt, /Decisions a human made on this task graph[^\n]*\n- rename foo to bar on feat\/x/)
   assert.equal(r.result.branches[0].fixRounds, 1)
 })
@@ -194,14 +199,14 @@ test('CI incomplete is re-dispatched once and then has no verdict', async () => 
 
 test('a review that did not run leaves the task files unmarked', async () => {
   const r = await run(repairArgs(), [['cr-prep:', { status: 'error', invoked: true, files: 0, reason: 'bad base' }]])
-  assert.doesNotMatch(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+  assert.ok(!r.has('mark:') && !r.has('ci:app:feat-x:final'))
   assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /cr-prepare failed: bad base/)
 })
 
 test('a repair that committed nothing has no review verdict and leaves the task files unmarked', async () => {
   const r = await run(repairArgs(), [['cr-prep:', { status: 'empty', invoked: true, files: 0, skipped: 0 }]])
   assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /reported the decision applied but committed nothing since /)
-  assert.doesNotMatch(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+  assert.ok(!r.has('mark:'))
 })
 
 test('an empty repair delta against an alternate base stays a dead review', async () => {
@@ -220,9 +225,29 @@ test('a repair with no starting commit has no review verdict', async () => {
   assert.match(r.result.hil.find((h) => h.stage === 'review').reason, /did not report its starting commit/)
 })
 
+test('review off: the first full run is the gate and marks the task files itself', async () => {
+  const r = await run(repairArgs({ review: false }))
+  assert.deepEqual(r.callsMatching(/^(ci|mark)/).map((c) => c.label), ['ci:app:feat-x'])
+  assert.match(r.call('ci:app:feat-x').prompt, /set `status: done`/)
+  assert.deepEqual(r.result.hil, [])
+})
+
+test('a full verdict that names no commit runs the final gate', async () => {
+  const r = await run(repairArgs(), [['ci:app:feat-x:final', ciPass], ['ci:app:feat-x', (p) => ({ ...ciPass(p), head: ' ' })]])
+  assert.ok(r.has('ci:app:feat-x:final'))
+  assert.ok(!r.has('mark:'))
+})
+
+test('a marking agent that does not confirm is a done-marking item', async () => {
+  const r = await run(repairArgs(), [['mark:', { marked: false }]])
+  assert.equal(r.result.hil[0].stage, 'done-marking')
+  assert.equal(r.result.branches[0].ci, 'passed')
+})
+
 test('a branch without task files is validated but never marked', async () => {
   const r = await run(repairArgs({ repairs: [repair('feat/x', { taskFiles: [] })] }))
-  assert.doesNotMatch(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+  assert.doesNotMatch(r.call('ci:app:feat-x').prompt, /set `status: done`/)
+  assert.ok(!r.has('mark:') && !r.has('ci:app:feat-x:final'))
   assert.deepEqual(r.result.hil, [])
 })
 

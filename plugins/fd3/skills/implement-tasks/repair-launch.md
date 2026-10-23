@@ -26,7 +26,7 @@ authority and never read the spec.
 
 A repair reopens its branch. Before launch, set every `done` task on a repaired branch back to
 `merged` and list it in that branch's `taskFiles` — the tasks were marked done on a tree the
-repair is about to change, and only the repair's own final gate may mark them again. Every
+repair is about to change, and only the repair's own validation may mark them again. Every
 branch stacked on a repaired branch, transitively, joins `repairs` too, with `instructions: []`
 and its own done tasks reset the same way: it carries the repaired base and owes it a CI run,
 which a merge-up done by hand never gets. With

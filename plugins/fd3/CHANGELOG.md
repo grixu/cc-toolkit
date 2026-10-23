@@ -115,6 +115,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   grants exactly what it names — it no longer stops on a protected path the user already allowed
 - CI and review fixers read the `Consent:` lines of their branch's task files too, so a fix round no
   longer reverts a consented change or skips its failure as awaiting an approval already given
+- Each branch's CI verdict is the full gate, run first; fix rounds still verify scoped, and the full
+  gate runs again at the end only when a fix moved HEAD past the commit it graded (CI results now
+  carry `head`). A branch whose first full verdict still stands gets its task files marked by one
+  cheap agent, or by that run itself when no review follows it
 
 ### Fixed
 

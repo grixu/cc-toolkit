@@ -6,7 +6,7 @@ import { REPO, SPEC, TOOLCHAIN, BASELINE, task, implementArgs, implementDefaults
 const run = (args, rules = []) => runWorkflow('implement-run.js', args, [...rules, ...implementDefaults()])
 const status = (r) => Object.fromEntries(r.result.tasks.map((t) => [t.slug, t.status]))
 
-test('happy path: two waves, merge, scoped CI, review with a fix, delta review, final gate, done', async () => {
+test('happy path: two waves, merge, full CI, review with a fix, delta review, final gate, done', async () => {
   const f = finding()
   const r = await run(implementArgs(), [['cr-merge:app:feat-x:review', crMerged([f])]])
 
@@ -55,10 +55,46 @@ test('happy path: two waves, merge, scoped CI, review with a fix, delta review, 
   // The delta review is measured from the fixer's starting commit, so it reads only the fixes.
   assert.match(r.call('cr-prep:app:feat-x:delta').prompt, /--base aaa111 /)
   assert.match(r.call('cr-prep:app:feat-x:review').prompt, /--base origin\/main /)
-  assert.match(r.call('ci:app:feat-x').prompt, /git diff --name-only origin\/main\.\.\.HEAD/)
+  // The first run is the full gate; it runs again only because fix-cr moved HEAD.
+  assert.match(r.call('ci:app:feat-x').prompt, /Run every command in full/)
+  assert.match(r.call('ci:app:feat-x').prompt, /return the first as head either way/)
   assert.match(r.call('ci:app:feat-x:final').prompt, /Run every command in full/)
   assert.match(r.call('ci:app:feat-x:final').prompt, /- \/r\/app\/tasks\/t1\.md\n- \/r\/app\/tasks\/t2\.md/)
   assert.doesNotMatch(r.call('ci:app:feat-x').prompt, /set `status: done`/)
+})
+
+test('a review whose fixer committed nothing keeps the first full verdict, and one cheap agent marks', async () => {
+  const r = await run(implementArgs(), [
+    ['cr-merge:app:feat-x:review', crMerged([finding()])],
+    ['fix-cr:', { summary: 'none', fromSha: 'head000', toSha: 'head000', skipped: [] }],
+  ])
+  assert.ok(!r.has('ci:app:feat-x:final'))
+  const mark = r.call('mark:app:feat-x')
+  assert.deepEqual([mark.schema, mark.model, mark.effort], ['MARK_RESULT', 'haiku', 'low'])
+  assert.match(mark.prompt, /Set `status: done`[^\n]*\n- \/r\/app\/tasks\/t1\.md\n- \/r\/app\/tasks\/t2\.md/)
+  assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
+})
+
+test('a review with no findings needs no second full run', async () => {
+  const r = await run(implementArgs())
+  assert.deepEqual(r.callsMatching(/^ci:/).map((c) => c.label), ['ci:app:feat-x'])
+  assert.ok(r.has('mark:app:feat-x'))
+  assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
+})
+
+test('a full verdict that names no commit, or a fixer that reports none, runs the final gate', async () => {
+  const noHead = await run(implementArgs(), [['ci:app:feat-x:final', ciPass], ['ci:app:feat-x', (p) => ({ ...ciPass(p), head: '' })]])
+  assert.ok(noHead.has('ci:app:feat-x:final'))
+  assert.ok(!noHead.has('mark:'))
+
+  const deadFixer = await run(implementArgs(), [['cr-merge:app:feat-x:review', crMerged([finding()])], ['fix-cr:', null]])
+  assert.ok(deadFixer.has('ci:app:feat-x:final'))
+})
+
+test('a marking agent that does not confirm leaves the tasks merged', async () => {
+  const r = await run(implementArgs(), [['mark:', { marked: false }]])
+  assert.equal(r.result.hil[0].stage, 'done-marking')
+  assert.deepEqual(status(r), { t1: 'merged', t2: 'merged' })
 })
 
 test('args may arrive JSON-encoded', async () => {
@@ -93,10 +129,11 @@ test('an implementation agent dead twice blocks the task as no-verdict', async (
   assert.deepEqual(r.result.unreachable, ['t2'])
 })
 
-test('review false runs no review agent and marks done on the final gate', async () => {
+test('review false runs no review agent; its one full run is the gate and marks done', async () => {
   const r = await run(implementArgs({ review: false }))
   assert.ok(!r.has('cr-prep:') && !r.has('cr:') && !r.has('cr-merge:'))
-  assert.equal(r.call('ci:app:feat-x:final').result.marked, true)
+  assert.deepEqual(r.callsMatching(/^(ci|mark)/).map((c) => c.label), ['ci:app:feat-x'])
+  assert.equal(r.call('ci:app:feat-x').result.marked, true)
   assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
   assert.equal(r.result.branches[0].review, undefined)
 })
@@ -127,7 +164,7 @@ test('all files skipped and no spec lens: review not applicable, branch done', a
   assert.match(r.result.branches[0].review.notApplicable, /^review not applicable: every changed file against origin\/main \(3\) is skipped by review$/)
   assert.deepEqual(r.result.hil, [])
   assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
-  assert.equal(r.call('ci:app:feat-x:final').result.marked, true)
+  assert.equal(r.call('mark:app:feat-x').result.marked, true)
 })
 
 test('a diff with no file (empty, skipped 0) has no review verdict: branch stays merged', async () => {
@@ -136,7 +173,7 @@ test('a diff with no file (empty, skipped 0) has no review verdict: branch stays
   const h = r.result.hil.find((x) => x.stage === 'review')
   assert.equal(h.kind, 'no-verdict')
   assert.match(h.reason, /the change against origin\/main is empty/)
-  assert.doesNotMatch(r.call('ci:app:feat-x:final').prompt, /set `status: done`/)
+  assert.ok(!r.has('mark:'))
 })
 
 test('an alternate base from cr-prepare goes to a human: branch stays merged', async () => {
@@ -181,11 +218,11 @@ test('CI incomplete then finished on the re-dispatch carries on normally', async
   assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
 })
 
-test('final gate incomplete after marking: the marks are taken back, then no verdict', async () => {
+test('full gate incomplete after marking: the marks are taken back, then no verdict', async () => {
   const markedButUnfinished = (p) => ({ ...ciPass(p), passed: false, incomplete: ['pnpm test'], marked: true })
-  const r = await run(implementArgs({ review: false }), [['ci:app:feat-x:final', markedButUnfinished]])
+  const r = await run(implementArgs({ review: false }), [['ci:app:feat-x', markedButUnfinished]])
   const unmark = r.callsMatching('unmark:')
-  assert.deepEqual(unmark.map((c) => c.label), ['unmark:ci:app:feat-x:final', 'unmark:ci:app:feat-x:final'])
+  assert.deepEqual(unmark.map((c) => c.label), ['unmark:ci:app:feat-x', 'unmark:ci:app:feat-x'])
   assert.match(unmark[0].prompt, /Set `status: merged`/)
   assert.equal(r.result.branches[0].ci, 'no-verdict')
   assert.deepEqual(status(r), { t1: 'merged', t2: 'merged' })
@@ -198,6 +235,9 @@ test('CI failure: one fix round, then pass', async () => {
     ['ci:app:feat-x', ciFail(['pnpm test: a.test.ts expected 1 got 2'])],
   ])
   assert.deepEqual(r.callsMatching(/^(ci|fix)/).map((c) => c.label), ['ci:app:feat-x', 'fix-ci:app:feat-x#1', 'ci:app:feat-x#2', 'ci:app:feat-x:final'])
+  // A fix round is verified scoped; the full list runs again because the fix moved HEAD.
+  assert.match(r.call('ci:app:feat-x#2').prompt, /git diff --name-only origin\/main\.\.\.HEAD/)
+  assert.match(r.call('ci:app:feat-x:final').prompt, /Run every command in full/)
   const fix = r.call('fix-ci:app:feat-x#1')
   assert.equal(fix.schema, 'FIX_RESULT')
   assert.match(fix.prompt, /Fix CI problems on branch feat\/x/)
@@ -236,10 +276,15 @@ test('a fix round that commits nothing stops with "committed nothing"', async ()
 })
 
 test('final gate failure gets one fix round, then passes', async () => {
-  const r = await run(implementArgs({ review: false }), [['ci:app:feat-x:final#2', ciPass], ['ci:app:feat-x:final', ciFail(['stale index'])]])
+  const r = await run(implementArgs({ review: false }), [
+    ['ci:app:feat-x:final#2', ciPass],
+    ['ci:app:feat-x:final', ciFail(['stale index'])],
+    ['ci:app:feat-x#2', ciPass],
+    ['ci:app:feat-x', ciFail(['boom'])],
+  ])
   assert.ok(r.has('fix-final:app:feat-x'))
   assert.match(r.call('fix-final:app:feat-x').prompt, /Fix final-gate CI problems/)
-  assert.equal(r.result.branches[0].fixRounds, 1)
+  assert.equal(r.result.branches[0].fixRounds, 2)
   assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
 })
 
@@ -304,7 +349,8 @@ test('done dependencies count as satisfied without a wave', async () => {
 
 test('stacked units: the stacked branch waits for its base, is refreshed and diffed against it', async () => {
   const args = implementArgs({ tasks: [task('t1', { branch: 'feat/a' }), task('t2', { branch: 'feat/b', baseBranch: 'feat/a' })] })
-  const r = await run(args)
+  const r = await run(args, [['ci:app:feat-b#2', ciPass], ['ci:app:feat-b:final', ciPass], ['ci:app:feat-b', ciFail(['boom'])]])
+  assert.match(r.call('ci:app:feat-b#2').prompt, /git diff --name-only feat\/a\.\.\.HEAD/)
   assert.deepEqual(r.logs, ['Wave 1: t1', 'Wave 2: t2'])
   assert.match(r.call('wave2:t2').prompt, /first of these\n {3}refs that exists[^\n]*\n {3}feat\/b, then feat\/a, then origin\/main\./)
   assert.match(r.call('merge2:app').prompt, /- target feat\/b \(stacks on feat\/a, worktree \/r\/app\.worktrees\/feat-b\):/)
@@ -312,8 +358,7 @@ test('stacked units: the stacked branch waits for its base, is refreshed and dif
   assert.ok(!r.has('refresh:app:feat-a'))
   const refresh = r.call('refresh:app:feat-b')
   assert.equal(refresh.schema, 'REFRESH_RESULT')
-  assert.ok(r.labels.indexOf('ci:app:feat-a:final') < r.labels.indexOf('refresh:app:feat-b'))
-  assert.match(r.call('ci:app:feat-b').prompt, /git diff --name-only feat\/a\.\.\.HEAD/)
+  assert.ok(r.labels.indexOf('mark:app:feat-a') > 0 && r.labels.indexOf('mark:app:feat-a') < r.labels.indexOf('refresh:app:feat-b'))
   assert.match(r.call('cr-prep:app:feat-b:review').prompt, /--base feat\/a /)
   assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
 })
@@ -345,7 +390,7 @@ test('a merge conflict goes to a human and keeps the task out of validation', as
   ])
   assert.deepEqual(status(r), { t1: 'done', t2: 'implemented' })
   assert.deepEqual(r.result.hil, [{ slug: 't2', kind: 'merge-conflict', reason: '/r/app feat/x: both edit config' }])
-  assert.match(r.call('ci:app:feat-x:final').prompt, /- \/r\/app\/tasks\/t1\.md\n(?!- \/r\/app\/tasks\/t2)/)
+  assert.match(r.call('ci:app:feat-x').prompt, /- \/r\/app\/tasks\/t1\.md\n(?!- \/r\/app\/tasks\/t2)/)
 })
 
 test('a task the merge agent left without a verdict becomes a merge item, not an endless loop', async () => {
@@ -398,8 +443,9 @@ test('a baseline command without a verdict is a caveat and runs in full on the b
   assert.match(r.call('ci:app:feat-x').prompt, /- pnpm test: NO VERDICT on the clean base/)
 })
 
-test('the final gate passing without confirming the marks leaves the tasks merged', async () => {
-  const r = await run(implementArgs({ review: false }), [['ci:app:feat-x:final', (p) => ({ ...ciPass(p), marked: false })]])
+test('a full gate passing without confirming the marks gets one marking agent, then leaves the tasks merged', async () => {
+  const r = await run(implementArgs({ review: false }), [['ci:app:feat-x', (p) => ({ ...ciPass(p), marked: false })], ['mark:', { marked: false }]])
+  assert.ok(r.has('mark:app:feat-x'))
   assert.equal(r.result.hil[0].stage, 'done-marking')
   assert.deepEqual(status(r), { t1: 'merged', t2: 'merged' })
 })

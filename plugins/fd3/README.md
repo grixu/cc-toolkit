@@ -153,7 +153,8 @@ in the background.
   typecheck, lint, test), and the full set runs once on the untouched base so that failures already
   there are not blamed on your branch. A branch that changes how the repository is checked (a
   manifest, a CI workflow, a lint or test config) is examined again on its own tree. Each branch then
-  runs the checks scoped to its changes, gets up to three fix rounds, and finishes with one full run.
+  runs the full set once, gets up to three fix rounds (each checked against its changes only), and
+  runs the full set again at the end only when a fix moved the branch after that first run.
 - Review (optional). After the checks pass, the `code-review` plugin reviews the branch with one
   agent per active lens, seven to nine. High and medium findings rated safe or structural, security
   included (each security fix in its own commit), findings in code the branch did not touch when
