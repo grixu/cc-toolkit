@@ -13,6 +13,18 @@ on:
       - 'package.json'
 
 jobs:
+  # Model-free: the workflow scripts against scripted agents, no token and no dependencies.
+  workflow-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # A glob, not the directory: Node 22's --test does not accept a directory argument.
+      - name: Run workflow script tests
+        run: node --test 'plugins/fd3/tests/workflows/*.test.mjs'
+
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 60
