@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   skill with rounds
 - `implement-tasks` appends a granted confirmation to the task's `## Note` as a `Consent:` line
   before launch, so the implementing agent reads it
+- the spec exists once: `split-to-tasks` writes no task that commits or copies it onto a work
+  branch, `implement-tasks` commits it only where it already lives, and a spec discrepancy found
+  during implementation or repair is a HIL item routed to `/fd3:build-spec`, never an orchestrator
+  edit or a repair instruction
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by

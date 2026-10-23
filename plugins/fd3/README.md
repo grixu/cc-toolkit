@@ -209,7 +209,10 @@ Branches: one `task/<slug>` per task, plus the target branches named in the task
 
 - Push or open pull requests without your explicit yes.
 - Change the spec during the split or the implementation. A defect found there stops the step and
-  is reported.
+  is reported; a mismatch between the spec and what was built is put to you with
+  `/fd3:build-spec <spec>` as the route that amends the spec.
+- Copy the spec onto a work branch. The spec exists once, where `build-spec` wrote it, and every
+  agent reads it there.
 - Run two workflows at once. Only one `implement-run` or `repair-run` runs at a time, so only one
   build, lint and test pipeline runs on the machine.
 - Mark a branch `done` when its review did not run, or when a `gated` review left findings for you.

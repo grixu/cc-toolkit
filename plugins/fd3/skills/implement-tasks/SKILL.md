@@ -15,7 +15,11 @@ Task files are the state store here. Their frontmatter statuses — `todo`, `in-
 happens in the files, never only in conversation. The spec stays read-only for this run and
 every agent in it: a defect found in a task or the spec mid-run is a reason to stop and say so,
 never something to fix in passing. After the report, a correction the user asks for is theirs
-to have.
+to have — except a change to the spec. The spec exists once, at the path step 1 resolves, and
+changes only through `/fd3:build-spec <spec path>`, which re-validates what it changes. A
+discrepancy between the spec and the code, the tasks or a decision — found by you, an agent, a
+review or a repair — is a HIL item naming that route: never an edit you make to "align the spec
+with the as-built", and never a repair instruction.
 
 ## Terms
 
@@ -162,8 +166,12 @@ each consent granted (with its task), and each decision a later report round set
 invocation over the same directory reads that file first and asks only what it does not settle or
 what has changed since: a new repository, a base that moved, a stale `in-progress`.
 
-Committing the spec and the tasks directory before launch is the user's call, and it is a change
-to the repository like any other: whatever that repository derives from the tree you touched —
+Committing the spec and the tasks directory before launch is the user's call, and the commit
+happens where they already live — the repository and branch the spec sits in. Never copy the spec
+onto a target or task branch to commit it there: every agent reads it at `specPath`, and a second
+copy diverges at the first amendment with nothing saying which one a reader got. When the spec's
+checkout is itself parked on a target branch, the option says the commit puts the spec into that
+branch's pull request. The commit is a change to the repository like any other: whatever that repository derives from the tree you touched —
 a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
 that you did not. A stale generated file fails validation on every branch of the run at once,
 and reads there as the branches' own defect. The recommendation is the spec and the tasks
@@ -290,8 +298,12 @@ failure), asked before any repair launches on that branch.
 What the loop does next is never a question. Relaunching after a decision, rerunning a check that
 died on a transient failure, launching the repair a decision implies, updating the handoff file —
 do it and say what you did. When the user reports a human step done, check it where it can be
-checked — the task file's verification, the live state — and carry on. The answers split into two
-lanes:
+checked — the task file's verification, the live state — and carry on. A spec discrepancy — a
+`spec` finding, a caveat that contradicts the spec, an as-built deviation the user wants kept — is
+put to the user as a HIL item whose route is `/fd3:build-spec <spec path>`: keep the code as built
+and amend the spec there, or change the code to match the spec through the lanes below. Neither
+you nor a repair agent edits the spec, and no repair `instructions` line asks for it. The answers
+split into two lanes:
 
 - **Decisions that unblock tasks** — update the affected task files and relaunch `implement-run`
   the same way; statuses make the rerun skip everything finished.

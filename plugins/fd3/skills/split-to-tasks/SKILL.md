@@ -177,6 +177,13 @@ gets fixed there twice.
 Tickets never drive the split. Attach the spec's ticket identifiers to the tasks they describe, so
 pull requests and commit messages can cite them.
 
+The spec is never a task's payload. No task, and no step inside one, commits, copies or moves the
+spec onto a work branch: the spec exists once, at the path this split read, every implementing
+agent reads it there, and a branch copy diverges from it at the first amendment. Committing the
+spec where it lives is a question the implementation stage asks before launch. A work item the
+spec lists for registering or publishing the spec itself gets no task: record it in the report
+under what the user still owes, and it counts as covered there.
+
 ### 3. Group onto branches
 
 Per repository, walk the spec's rollout table: the consecutive phases up to and including a gate
