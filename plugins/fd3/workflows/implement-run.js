@@ -648,6 +648,22 @@ const reservations = [
   .filter(Boolean)
   .join('\n\n')
 
+const taskFilesOf = (unit) => unit.tasks.map((slug) => tasks.find((t) => t.slug === slug).file)
+// The skill records a granted confirmation only in the task file, which this script cannot read; a
+// fixer that never sees it reverts the consented change or skips its failure as awaiting approval.
+const consentNote = (files) =>
+  files.length === 0
+    ? ''
+    : [
+        `Before your first edit, read every line starting \`Consent:\` in the \`## Note\` of this branch's task files:`,
+        ...files.map((f) => `- ${f}`),
+        `Each is the user's own decision, recorded verbatim, and grants exactly what it names — editing a`,
+        `protected path it names, an action it approves. Never undo what one grants, and never skip a`,
+        `problem as awaiting a human's approval that one already gives; anything beyond what it names`,
+        `still stops you.`,
+      ].join('\n')
+const fixerReservations = (unit) => [reservations, consentNote(taskFilesOf(unit))].filter(Boolean).join('\n\n')
+
 // ---- Validate: one branch at a time, so at most one build/lint/test pipeline runs at once
 
 phase('Validate')
@@ -846,7 +862,7 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
     ``,
     ...problems.map((p) => `- ${p}`),
     ``,
-    ...(reservations ? [reservations, ``] : []),
+    ...(fixerReservations(unit) ? [fixerReservations(unit), ``] : []),
     ...(preExisting.length > 0
       ? [`Already failing on the clean base — never this branch's to fix, even where a listed problem points at it:`, ...preExisting.map((p) => `- ${p}`), ``]
       : []),
@@ -1118,7 +1134,7 @@ const unmark = (files, label) =>
 const unfinished = (ci) => (ci && ci.incomplete) || []
 
 const runCi = async (unit, mode, markFiles, label) => {
-  const files = unit.tasks.map((slug) => tasks.find((t) => t.slug === slug).file)
+  const files = taskFilesOf(unit)
   let ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
   // An unfinished command is neither verdict: one more runner gets the chance to wait it out, and
   // a second one that cannot is a missing verdict, never a failure for the fix rounds to chase.

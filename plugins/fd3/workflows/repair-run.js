@@ -539,6 +539,21 @@ const reservationsFor = (unit) => {
     : ''
 }
 
+// The skill records a granted confirmation only in the task file, which this script cannot read; a
+// fixer that never sees it reverts the consented change or skips its failure as awaiting approval.
+const consentNote = (files) =>
+  files.length === 0
+    ? ''
+    : [
+        `Before your first edit, read every line starting \`Consent:\` in the \`## Note\` of this branch's task files:`,
+        ...files.map((f) => `- ${f}`),
+        `Each is the user's own decision, recorded verbatim, and grants exactly what it names — editing a`,
+        `protected path it names, an action it approves. Never undo what one grants, and never skip a`,
+        `problem as awaiting a human's approval that one already gives; anything beyond what it names`,
+        `still stops you.`,
+      ].join('\n')
+const fixerReservations = (unit) => [reservationsFor(unit), consentNote(unit.taskFiles || [])].filter(Boolean).join('\n\n')
+
 const FIX_RESULT = {
   type: 'object',
   required: ['summary', 'fromSha', 'toSha'],
@@ -564,7 +579,7 @@ const fixPrompt = (unit, problems, preExisting = []) =>
     ...(preExisting.length > 0
       ? [`Already failing on the clean base — never this branch's to fix, even where a listed problem points at it:`, ...preExisting.map((p) => `- ${p}`), ``]
       : []),
-    ...(reservationsFor(unit) ? [reservationsFor(unit), ``] : []),
+    ...(fixerReservations(unit) ? [fixerReservations(unit), ``] : []),
     `Fix only what is listed — no refactoring, no drive-by changes, and never touch problems`,
     `that pre-date this branch. A listed problem that cannot be fixed without an action a human`,
     `must take or approve — anything that touches production, anything irreversible, any secret`,

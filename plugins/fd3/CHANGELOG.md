@@ -113,6 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The review question counts seven to nine lenses, with the code-review `correctness` lens
 - An implementing agent reads the task's `## Note` as part of the task, and a `Consent:` line there
   grants exactly what it names — it no longer stops on a protected path the user already allowed
+- CI and review fixers read the `Consent:` lines of their branch's task files too, so a fix round no
+  longer reverts a consented change or skips its failure as awaiting an approval already given
 
 ### Fixed
 

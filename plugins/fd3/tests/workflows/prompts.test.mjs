@@ -186,3 +186,21 @@ test('toolchain fixture reaches the scoped CI prompt verbatim', async () => {
   const r = await implementRun()
   assert.ok(r.call('ci:app:feat-a').prompt.includes(`<toolchain_report>\n${TOOLCHAIN}\n</toolchain_report>`))
 })
+
+test('every fixer is told to read the Consent lines of its own branch task files', async () => {
+  const consent = /read every line starting `Consent:` in the `## Note` of this branch's task files:\n((?:- \S+\n)+)/
+  const impl = await implementRun()
+  for (const label of ['fix-ci:app:feat-a#1', 'fix-cr:app:feat-a']) {
+    const m = consent.exec(impl.call(label).prompt)
+    assert.ok(m, label)
+    assert.equal(m[1], '- /r/app/tasks/t1.md\n', label)
+    assert.match(impl.call(label).prompt, /Never undo what one grants/)
+  }
+  const final = await runWorkflow('implement-run.js', implementArgs({ review: false }), [['ci:app:feat-x:final#2', ciPass], ['ci:app:feat-x:final', ciFail(['stale index'])], ...implementDefaults()])
+  assert.equal(consent.exec(final.call('fix-final:app:feat-x').prompt)[1], '- /r/app/tasks/t1.md\n- /r/app/tasks/t2.md\n')
+
+  const rep = await repairRun()
+  assert.equal(consent.exec(rep.call('fix-ci:app:feat-a#1').prompt)[1], '- /r/app/tasks/feat-a.md\n')
+  const noFiles = await runWorkflow('repair-run.js', repairArgs({ review: false, repairs: [repair('feat/x', { taskFiles: [] })] }), [['ci:app:feat-x:final', ciPass], ['ci:app:feat-x', seq(ciFail(['boom']), ciPass)], ...repairDefaults()])
+  assert.doesNotMatch(noFiles.call('fix-ci:app:feat-x#1').prompt, /Consent:/)
+})
