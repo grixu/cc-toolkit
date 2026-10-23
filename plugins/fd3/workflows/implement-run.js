@@ -1789,7 +1789,8 @@ for (const unit of units) {
 
   // A verdict left by a scoped fix-round run, or a HEAD a fixer moved, needs the full list again.
   const markFiles = hasFiles && !reviewDead && !reviewHeld
-  const finalNeeded = ci !== fullCi || !fullHead || head !== fullHead
+  // Without a review nothing commits after the first full run, which already marked the files.
+  const finalNeeded = ci !== fullCi || (reviewed && (!fullHead || head !== fullHead))
   let finalCi = ci
   if (finalNeeded) {
     let finalFault

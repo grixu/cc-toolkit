@@ -494,3 +494,10 @@ test('the spec path is passed to cr-prepare as given, never a branch copy', asyn
     assert.doesNotMatch(c.prompt, /cat-file|git show [^\n]*spec/)
   }
 })
+
+test('an unreviewed branch whose first full run named no head is not gated a second time', async () => {
+  const r = await run(implementArgs({ review: false }), [[/^ci:/, (p, o) => ({ ...ciPass(p, o), head: '' })]])
+  assert.ok(!r.has('ci:app:feat-x:final'))
+  assert.match(r.call('ci:app:feat-x').prompt, /set `status: done`/)
+  assert.deepEqual(status(r), { t1: 'done', t2: 'done' })
+})
