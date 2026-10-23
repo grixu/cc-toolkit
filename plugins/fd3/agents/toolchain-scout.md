@@ -91,7 +91,11 @@ caller runs these commands in git worktrees, which share nothing installed — `
 friends exist per-worktree, so "already installed" is only ever true of the checkout you
 inspected. A command that writes a scratch artifact to compare against (a regenerated schema, a
 diff target) must end by removing it — the caller runs your commands verbatim in many worktrees,
-and a leftover shows up as untracked litter in every one of them. Drop the `Doubts` section when
+and a leftover shows up as untracked litter in every one of them. An environment a command
+creates — a virtualenv, a tool cache — lives outside the worktree (`uv run --no-project`,
+`UV_PROJECT_ENVIRONMENT=<tmp dir>`) or is removed by the same command, and a check over the whole
+tree (a linter or formatter run on `.`) is ordered before any command that writes into it: a
+`.venv` left inside is thousands of files the linter then fails on. Drop the `Doubts` section when
 there are none; never resolve a doubt by guessing.
 
 The scoped form comes from the same sources as the command itself — the orchestrator's filter

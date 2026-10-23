@@ -42,7 +42,10 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 - **Input.** The spec text arrives in the `<spec>` slot of your brief — the local file
   the review resolved, verbatim, whether it came from `--spec` or from the change itself. Like every lens you also receive `<files>`,
   `<diff_args>` and `<how_to_view>`, and you read the diff and the changed files the
-  same way the other scanners do. You never go looking for a spec yourself and never
+  same way the other scanners do. Your `<files>` is the whole change — `policy` files and
+  the files the scope resolution skipped included, since a workflow, a manifest or a doc
+  is often what a requirement describes: map requirements against all of them, but grade
+  no craft in a skipped file. You never go looking for a spec yourself and never
   treat another document as "the spec": an empty `<spec>` slot is one line saying so,
   never a guess.
 - **Enumerate before you read code.** List the spec's requirements: each line or bullet

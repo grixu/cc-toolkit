@@ -35,34 +35,41 @@ Use it when a GitHub Actions run, job or check has failed. Pass a run, job, PR o
 
 It reads the failed logs and the workflow file, finds the change that caused the failure, reproduces it locally, fixes it, and runs the same command again to confirm the fix. It makes one commit per root cause and asks before pushing.
 
-- A transient failure (lost runner, network timeout, rate limit) or a flaky test gets one rerun instead of a code change.
+- A transient failure (lost runner, network timeout, rate limit) or a flaky test gets one rerun instead of a code change. A test whose subject the branch changes counts as flaky only after it passes locally twice; a rerun without a local run is reported as an unverified flake.
 - An environment problem (missing secret, expired credential, permission, billing) is reported for an admin, not patched.
 - It works only in a local clone of the failing repository, and asks before switching to the run's branch.
-- It asks you before it skips, loosens or removes a check.
+- It asks you before it skips, loosens or removes a check. Aligning an assertion with a documented contract is a fix, and the commit quotes the contract line.
+- It never merges or rebases the base into the branch, resolves conflicts, force-pushes or edits the pull request unless you name that action.
+
+When the cause is already fixed on the branch but no new run will come (a path filter, a deploy workflow), it reports `nothing-to-fix` and names the `gh workflow run` command for you; it never dispatches a deploy itself.
 
 Output: a `ci-fix result` block with the status (`fixed`, `rerun`, `nothing-to-fix`, `not-fixable` or `blocked`), the cause, the commits, how the fix was verified, whether it was pushed, and what is left for you.
 
 ### pr-shepherd: drive a pull request to green
 
-Use it when your branch has an open pull request and you want CI fixed and review comments handled without watching it.
+Use it when your branch has an open pull request and you want CI fixed and review comments handled without watching it. Pass several pull request numbers to shepherd a stack:
 
 ```
 /dev-kit:pr-shepherd
+/dev-kit:pr-shepherd 101 102 103
 ```
 
-Running it authorizes commits and pushes to the pull request's branch. It starts a self-paced `/loop`, and each round does the following:
+Running it authorizes commits and pushes to the pull request's branch, and counts as the per-branch push consent a repository rule reserving `git push` for humans asks for. Outside the stack merges below, it never merges or rebases the base into the branch, resolves conflicts, force-pushes, or closes, reopens or edits the pull request unless a later message of yours names that action. It starts a self-paced `/loop`, and each round does the following:
 
-- It hands red checks to `ci-fix`, which may push without asking.
+- It hands every red check to `ci-fix`, which may push without asking; it never fixes or reruns CI itself. A red check that is not required gets one `ci-fix` run; if it stays red, the report lists it for you instead of holding the loop.
 - It judges each open review comment on its merits. For a comment it agrees with, it makes the change, commits and pushes it, replies `Fixed in <sha>`, and resolves the thread.
 - It answers a comment it disagrees with, or a question, with evidence and an @-mention of the author. It resolves bot threads after replying and leaves human threads for the reviewer to resolve.
+- A comment whose fix is a trade-off only you can make (security posture, scope) gets one reply listing the options and their cost; the thread stays open for you, and the report lists it.
+- In a stack, each pull request gets its own worktree. A fix lands on the lowest branch that owns the code and reaches the branches above it by a plain merge of each base into its child, never a rebase; it never merges the default branch in.
 - It waits 5 minutes while checks run, and 30, then 60 minutes while it waits for reviewers.
 
 It never asks you anything mid-run. It stops and reports when any of these happens:
 
-- Every check is green and no review thread is open (success).
-- The branch has no open pull request, has merge conflicts, uncommitted changes or unpushed commits, or has diverged from the remote.
-- `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix attempts.
-- CI is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals, or cannot be replied to.
+- Every required check is green and no review thread is open (success).
+- The branch has no open pull request, uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
+- GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files; it never resolves the conflict, and running it again before you do stops the same way.
+- `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix or rerun cycles, whichever step made them.
+- Every required check is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals or its reply on a decision, or cannot be replied to.
 - It has run 48 rounds.
 
 Output: a final report listing the commits pushed, the threads fixed, answered or rebutted (with links), and everything left for you.
@@ -77,11 +84,11 @@ Use it before you merge a dependency bump, including Renovate and Dependabot pul
 /dev-kit:dep-upgrade-check https://github.com/owner/repo/pull/42
 ```
 
-It starts from the version your lockfile resolves today and lists every change up to the target from release notes, changelogs, migration guides and package metadata (`exports`, `engines`, peer dependencies). It then checks each change against the places your code uses the package. It works with pnpm, npm, yarn, Python, Go, PHP and Rust projects. For a pull request, it also reads the pull request's CI result.
+It starts from the version your lockfile resolves today and lists every change up to the target from release notes, changelogs, migration guides and package metadata (`exports`, `engines`, peer dependencies). For a pull request, it also checks whether the lockfile now holds old and new copies of the package side by side. It then checks each change against the places your code uses the package. It works with pnpm, npm, yarn, Python, Go, PHP and Rust projects, container images and GitHub Actions. For a pull request, it also reads the pull request's CI result; a runner failure in a setup or cleanup step after the tests passed counts as neither for nor against the upgrade, and it suggests a rerun.
 
-The check is read-only: it changes no manifest, lockfile or source file. When the result is not `safe`, or questions remain open, it offers to install and build the upgrade in a throwaway git worktree, and runs that build only if you agree.
+The check is read-only: it changes no manifest, lockfile or source file. When the result is not `safe`, or questions remain open, it offers to install and build the upgrade in a throwaway git worktree, and runs that build only if you agree. Anything else that downloads and runs third-party code, such as pulling and running a container image, is offered the same way.
 
-Output: a verdict (`safe`, `safe with changes` or `breaking`), a table of affected changes with `file:line` locations and the fix for each, the open unknowns, and the sources it used. If you then ask it to apply the upgrade, it applies the fixes from the table and runs your checks.
+Output: a verdict (`safe`, `safe with changes` or `breaking`; marked `provisional`, at the worst value still possible, while an open question could change it), a table of affected changes with `file:line` locations and the fix for each, the open unknowns, and the sources it used. If you then ask it to apply the upgrade, it applies the fixes from the table and runs your checks: in your working tree for a package and version, or for a pull request on its branch in a separate worktree, committed locally and pushed only when you say so. It warns that Renovate and Dependabot drop commits that are not theirs when they rebase, and names the bot setting that would make the commit unnecessary.
 
 ### pr-open: push the branch and open a pull request
 
@@ -95,15 +102,16 @@ Use it when your commits are ready for review. Add `draft` for a draft pull requ
 It pushes the current branch and fills the repository's pull request template. It looks for the template in the repository root, `docs/`, `.github/`, a `PULL_REQUEST_TEMPLATE/` directory, or the owner's `.github` repository, and uses a short default when none exists.
 
 - Every claim in the description comes from the diff, the commits, a linked issue, or a command run in the session.
+- The description stays around 250 words, with long logs folded into a `<details>` block, and links the specs and ADRs the branch adds or its commits name under **Go deeper**.
 - It ticks a checkbox only when it has evidence that the item is true.
 - It writes a Conventional Commits title when the base branch's history uses that style.
 - It assigns the pull request to you.
-- When your branch builds on another open pull request's branch, it targets that branch.
-- When a pull request already exists, it pushes and offers to rewrite the description.
+- When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
+- When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line.
 
-It never commits. It stops on the default branch or a detached HEAD, and asks what to do when there are uncommitted changes.
+When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
-Output: the pull request URL, its base branch, the template it used, and the sections and checkboxes left for you to complete.
+Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, and a one-line suggestion to run `pr-shepherd` next.
 
 ## Permissions
 
@@ -112,8 +120,8 @@ Each skill pre-approves only some of the commands it runs. Anything else asks fo
 | Skill | Pre-approved | Still asks |
 |---|---|---|
 | `ci-fix` | File edits; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checks from third-party apps); your test, lint and build commands |
-| `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
-| `dep-upgrade-check` | `gh repo view`; `gh pr view`, `diff`, `checks`; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; firecrawl search and scrape; context7 | `gh api` (changelog files, commit ranges); lookups for npm, yarn, Python, Go, PHP and Rust; the optional worktree build |
+| `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `merge`, `worktree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
+| `dep-upgrade-check` | `gh repo view`; `gh pr view`, `diff`, `checks`; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; firecrawl search and scrape; context7 | `gh api` (changelog files, commit ranges); lookups for npm, yarn, Python, Go, PHP, Rust, container images and GitHub Actions; the optional worktree build |
 | `pr-open` | Nothing | Every `git` and `gh` command |
 
 An unattended `pr-shepherd` loop pauses at the first permission prompt. Before you start it, allow your repository's check commands in `.claude/settings.json`, for example `"Bash(pnpm test *)"`.
@@ -121,5 +129,5 @@ An unattended `pr-shepherd` loop pauses at the first permission prompt. Before y
 ## Advanced
 
 - `ci-fix` accepts the extra argument `push-authorized`. It then pushes without asking and ends with status `blocked` wherever it would otherwise ask you. `pr-shepherd` calls it this way.
-- `pr-shepherd` accepts an `iteration` argument. The loop passes it; you do not need to.
+- `pr-shepherd` accepts an `iteration` argument after any pull request numbers. The loop passes it; you do not need to.
 - `skills/dep-upgrade-check/bot-prs.md` and `ecosystems.md` are reference files the skill reads, not commands.

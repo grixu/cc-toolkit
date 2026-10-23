@@ -34,8 +34,9 @@ printf '{ "name": "orders", "version": "1.2.0" }\n' > "$skipped/package.json"
 git -C "$skipped" add -A
 commit "$skipped" 'docs: release notes for 1.2'
 
-# eval-23: a checkout on main plus an origin holding PR #7's head under refs/pull/7/head, and a
-# gh stand-in that answers `gh pr view` for it. The checkout must stay on main, untouched.
+# evals 23-24: a checkout on main plus an origin holding one head under refs/pull/7/head and
+# refs/pull/8/head, and a gh stand-in: PR #7 is the gh user's own, PR #8 someone else's.
+# The checkout must stay on main, untouched.
 pr=.sandbox/pr
 origin="$(pwd)/.sandbox/pr-origin.git"
 mkdir -p "$pr/src"
@@ -51,17 +52,27 @@ cp fixtures/correctness/order-sync.ts "$pr/src/order-sync.ts"
 git -C "$pr" add -A
 commit "$pr" 'feat: sync orders to the ledger'
 head="$(git -C "$pr" rev-parse HEAD)"
-git -C "$pr" push -q origin "HEAD:refs/pull/7/head"
+git -C "$pr" push -q origin "HEAD:refs/pull/7/head" "HEAD:refs/pull/8/head"
 git -C "$pr" switch -q main
 git -C "$pr" branch -q -D pr-7
 
 mkdir -p .sandbox/bin
 cat > .sandbox/bin/gh <<EOF
 #!/usr/bin/env bash
-# Stand-in for gh: answers \`gh pr view 7\` for the eval-23 sandbox and records every call.
+# Stand-in for gh: answers \`gh pr view 7|8\` and \`gh api user\` for the evals 23-24 sandbox
+# and records every call.
 echo "\$*" >> "$(pwd)/.sandbox/gh-calls.log"
-if [ "\$1 \$2 \$3" = "pr view 7" ]; then
-  printf '%s\n' '{"number":7,"url":"https://github.com/example/orders/pull/7","state":"OPEN","title":"Sync orders to the ledger","baseRefName":"main","headRefName":"feat/order-sync","headRefOid":"$head","isCrossRepository":false,"maintainerCanModify":true}'
+if [ "\$1 \$2" = "api user" ]; then
+  echo eval-user
+  exit 0
+fi
+if [ "\$1 \$2" = "pr view" ]; then
+  case "\$3" in
+    7) author=eval-user ;;
+    8) author=colleague ;;
+    *) echo "gh stand-in: no PR \$3" >&2; exit 1 ;;
+  esac
+  printf '{"number":%s,"url":"https://github.com/example/orders/pull/%s","state":"OPEN","title":"Sync orders to the ledger","author":{"login":"%s"},"baseRefName":"main","headRefName":"feat/order-sync","headRefOid":"$head","isCrossRepository":false,"maintainerCanModify":true}\n' "\$3" "\$3" "\$author"
   exit 0
 fi
 echo "gh stand-in: unsupported call: \$*" >&2

@@ -28,6 +28,8 @@ export const meta = {
 //                 security, boy-scout, unfixed and fix-review findings for a human; false skips review
 //   decisions     (optional) [string] — the user's standing decisions on this task graph from earlier
 //                 report rounds, verbatim; review and fix agents treat a finding against one as reserved
+//   knownBases    (optional) ["<repository path>:<branch>"] — branch-bases no task builds that the
+//                 skill already resolved to an existing branch; they raise no graph item
 //   maxFixRounds  CI fix attempts per branch before giving up
 //   reportPath    (optional) absolute path of a previous run's report file; one cheap agent reads
 //                 its toolchain and baseline knowledge, so a relaunch skips the re-scout and the
@@ -83,6 +85,14 @@ const STEP_GUARD =
   'Do only the step this prompt describes. Invoke no skill or slash command unless this prompt names it ' +
   'or the task file it points you to directs this step to use it, whatever the relayed user request says: ' +
   'that request belongs to the session that launched this workflow.\n\n'
+// A runner whose shell timed out on a long build used to background it and return: the unfinished
+// build then read as a failure, fed fix rounds that had nothing to fix, or was skipped as broken.
+const waitRule = (unfinished) =>
+  'A command is finished only when its exit line exists. When one may outlast your shell timeout, ' +
+  'start it in the background with its status written to a file — `( <command> > <log> 2>&1; echo "exit $?" > <log>.exit ) &` — ' +
+  'and wait for that file with `until [ -s <log>.exit ]; do sleep 15; done`, repeating the wait as often as it times out. ' +
+  `Never return while a command you started has no exit line; if you must stop before one finishes, ${unfinished}. ` +
+  'An unfinished command is never a failure and never a pass.'
 // The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
 // takes their uncommitted and untracked work with it.
 const checkoutRule = (repo) =>
@@ -109,6 +119,7 @@ const BASELINE_COMMANDS = {
     properties: {
       command: { type: 'string' },
       passed: { type: 'boolean' },
+      completed: { type: 'boolean', description: 'false when the command had no exit line when you returned; passed is then false and failures says how far it got' },
       failures: { type: 'array', items: { type: 'string' }, description: 'the load-bearing output lines, one entry per distinct problem; only when passed is false' },
     },
   },
@@ -165,6 +176,8 @@ if (input.reportPath && repositories.some((repo) => !toolchain.get(repo))) {
       `baseline command list with its dirty paths. Omit a repository the report does not carry. Never summarise, reformat`,
       `or reconstruct a toolchain report: the baseline is matched against it by command string, so a`,
       `command list that differs from the one the baseline measured is worse than no baseline.`,
+      `A command whose recorded failure says it did not finish — still running, backgrounded, no`,
+      `exit line — is returned with completed=false.`,
     ].join('\n'),
     { label: 'handover', phase: 'Recon', schema: HANDOVER_RESULT, model: 'haiku', effort: 'low' },
   )
@@ -212,7 +225,7 @@ const baselinePrompt = (repo) =>
     `   the worktree, never inside it. Read pass or fail from that exit line alone, and the log only`,
     `   for the lines a failure needs; never pipe a command into \`tail\`, \`head\` or \`grep\`, whose`,
     `   status then replaces the command's. Record, per command, whether it exited 0, and for each`,
-    `   failure the output lines that matter.`,
+    `   failure the output lines that matter. ${waitRule('record it with completed=false and the last log line it reached')}`,
     `4. When the last command has run, run \`git status --porcelain\` in that worktree and return every`,
     `   path it lists under dirty: what the commands themselves write into a clean tree.`,
     ``,
@@ -232,8 +245,11 @@ const baselineReady = (async () => {
       model: 'haiku',
       effort: 'high',
     })
-    if (report) baseline.set(repo, report)
-    else hil.push({ slug: null, kind: 'no-verdict', stage: 'baseline', reason: `${repo}: the baseline agent returned no result after a retry; failures cannot be told apart from pre-existing ones this run.` })
+    if (report) {
+      baseline.set(repo, report)
+      const unfinished = report.commands.filter((c) => c.completed === false).map((c) => c.command)
+      if (unfinished.length > 0) caveats.push(`${repo}: the baseline left ${unfinished.join('; ')} without a verdict; CI runs it in full on every branch`)
+    } else hil.push({ slug: null, kind: 'no-verdict', stage: 'baseline', reason: `${repo}: the baseline agent returned no result after a retry; failures cannot be told apart from pre-existing ones this run.` })
   }
 })().catch((err) => {
   // Nothing awaits this until Validate, phases away, so an escaping rejection would take the
@@ -257,9 +273,11 @@ const baselineText = (repo) => {
   const b = baseline.get(repo)
   if (!b) return 'No baseline is available for this repository — treat every failure as introduced by the branch.'
   const lines = b.commands.map((c) =>
-    c.passed
-      ? `- ${c.command}: passed`
-      : `- ${c.command}: FAILED on the clean base:\n` + (c.failures || []).map((f) => `    ${f}`).join('\n'),
+    c.completed === false
+      ? `- ${c.command}: NO VERDICT on the clean base (it did not finish) — run it in full on this branch; never skip it`
+      : c.passed
+        ? `- ${c.command}: passed`
+        : `- ${c.command}: FAILED on the clean base:\n` + (c.failures || []).map((f) => `    ${f}`).join('\n'),
   )
   return `Baseline on the clean base (${startRef(repo)}):\n${lines.join('\n')}`
 }
@@ -436,6 +454,13 @@ const mergePrompt = (repo, repoTasks) => {
     `line on what you chose; a resolved conflict is exactly where a later review should look.`,
     `When a conflict needs a judgment call, abort that merge (git merge --abort), record the task`,
     `under conflicts, and continue with the rest.`,
+    `A conflict in a generated file — one the toolchain report below regenerates (a schema, an`,
+    `OpenAPI document, a client, an index) — is resolved by re-running its generator on the merged`,
+    `sources and committing the result, never by editing the conflict markers.`,
+    ``,
+    `Toolchain report for this repository:`,
+    ``,
+    toolchain.get(repo) || '(none — no generator is known; treat a generated file like any other)',
     ``,
     ...(parked(repo) ? [checkoutRule(repo), ``] : []),
     `Return every target branch you touched with its worktree path, the slugs of the tasks now`,
@@ -468,7 +493,7 @@ for (const t of tasks) {
   if (!t.baseBranch || t.repository === 'none') continue
   if (tasks.some((x) => x.repository === t.repository && x.branch === t.baseBranch)) continue
   const key = `${t.repository}:${t.baseBranch}`
-  if (danglingBases.has(key)) continue
+  if (danglingBases.has(key) || (input.knownBases || []).includes(key)) continue
   danglingBases.add(key)
   const affected = tasks.filter((x) => x.repository === t.repository && x.baseBranch === t.baseBranch).map((x) => x.slug)
   hil.push({ slug: null, kind: 'graph', reason: `branch-base \`${t.baseBranch}\` names a branch no task in ${t.repository} builds, so ${affected.join(', ')} start from it if it already exists and as stack roots if it does not. Confirm the base exists, or fix the branch-base.` })
@@ -623,7 +648,8 @@ const CI_RESULT = {
   type: 'object',
   required: ['passed', 'failures', 'branch', 'dirty'],
   properties: {
-    passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline' },
+    passed: { type: 'boolean', description: 'true when nothing fails beyond the baseline and incomplete is empty' },
+    incomplete: { type: 'array', items: { type: 'string' }, description: 'commands started but without an exit line when you returned, each with the last log line it reached — never under failures, never counted as passed' },
     failures: { type: 'array', items: { type: 'string' }, description: 'one entry per newly failing command, with the load-bearing output lines' },
     branch: { type: 'string', description: 'the branch name the prompt says to return when HEAD matches it; otherwise the branch actually checked out, or the short HEAD sha when detached' },
     dirty: { type: 'string', description: '`git -C <worktree> status --porcelain` after the last command, verbatim; an empty string when the tree is clean' },
@@ -676,7 +702,9 @@ const CR_MERGE_RESULT = {
   properties: {
     invoked: { type: 'boolean', description: 'the code-review:cr-merge skill was invoked through the Skill tool' },
     status: { enum: ['merged', 'incomplete', 'error'] },
-    report: { type: 'string', description: 'absolute path of report.md' },
+    report: { type: 'string', description: 'absolute path of cr-report.md' },
+    unowned: { type: 'array', items: { type: 'string' }, description: 'the `unowned:` lines, verbatim: real problems no rule covers' },
+    securityReview: { type: 'string', description: 'the `security-review:` line, verbatim; empty when it reads none' },
     missing: { type: 'array', items: { type: 'string' }, description: 'lenses that did not report; only when status is incomplete' },
     findings: {
       type: 'array',
@@ -730,7 +758,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     `beside the worktree, never inside it — read pass or fail from that exit line alone, and read`,
     `the log only for the lines a failure needs. Never pipe a command into \`tail\`, \`head\` or`,
     `\`grep\`: the pipe's status replaces the command's, and a failing suite then reads as whatever`,
-    `its output happens to show.`,
+    `its output happens to show. ${waitRule('list it under incomplete with the last log line it reached')}`,
     ``,
     ...treeSetup(unit),
     `\`cd ${tree}\` before anything else, and name the tree in every git command you run —`,
@@ -761,6 +789,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     ``,
     `Skip everything the report lists as not runnable here, and skip a command the baseline`,
     `shows failing before it produces a verdict — re-proving a baseline failure is wasted time.`,
+    `A command the baseline shows with NO VERDICT is run in full here, never skipped.`,
     `Every skip goes under skipped with its reason; a skip is never reported as passed. A failure`,
     `whose location and message match the baseline is pre-existing: return it under preExisting,`,
     `never under failures, and do not count it against the branch.`,
@@ -770,13 +799,13 @@ const ciPrompt = (unit, mode, markFiles) => {
     `the failure and leave it. A verdict is only worth what the tree it ran on was, so when the`,
     `last command has run, run \`git -C ${tree} status --porcelain\` and return its output`,
     `verbatim as dirty.`,
-    `Return passed=true only when every runnable command exits 0 or fails only on baseline`,
-    `entries; otherwise return each newly failing command with the output lines that matter.`,
+    `Return passed=true only when incomplete is empty and every runnable command exits 0 or fails`,
+    `only on baseline entries; otherwise return each newly failing command with the output lines that matter.`,
     ...(markFiles
       ? [
           ``,
-          `One thing beyond the commands. When — and only when — you return passed=true and dirty`,
-          `lists nothing but these task files, set \`status: done\` in their frontmatter, changing`,
+          `One thing beyond the commands. When — and only when — you return passed=true, incomplete`,
+          `is empty and dirty lists nothing but these task files, set \`status: done\` in their frontmatter, changing`,
           `nothing else in them, and return marked=true:`,
           ...unit.tasks.map((slug) => `- ${tasks.find((t) => t.slug === slug).file}`),
           `They are this run's state store, and the no-fixing rule above is about the code, not`,
@@ -824,20 +853,27 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
     `Commit the fixes with a conventional-commit message, staging the files you changed by name —`,
     `never \`git add -A\`: the tree also holds what the validation commands wrote. To verify a fix`,
     `you may re-run the exact commands that failed, scoped to the files they failed on — never a`,
-    `whole suite; the full validation runs after you.`,
+    `whole suite; the full validation runs after you. ${waitRule('say so under caveats')}`,
+    `A listed failure that does not reproduce when you re-run it is not yours to fix: commit nothing`,
+    `for it and say so under caveats, with the exit line you saw.`,
     ``,
     `Return a two-sentence summary. Under caveats, return every problem you skipped with the`,
     `reason, any judgment call that went beyond the listed problems, and any change that touches`,
     `a decision recorded in the spec.`,
     `A caveat says something the parent could not otherwise know. Following this prompt is not a`,
     `caveat.`,
+    `Make every edit with the Edit tool — never \`sed -i\`, a Python or heredoc rewrite, or any`,
+    `script that rewrites a file: a scripted rewrite changes lines nobody asked for, and the review`,
+    `that follows reads them as new code.`,
     ...(source === 'code-review'
       ? [
           `Under skipped, also copy verbatim every listed problem you left unfixed, whatever the reason.`,
           ``,
-          `Make every edit with the Edit tool — never \`sed -i\`, a Python or heredoc rewrite, or any`,
-          `script that rewrites a file: a scripted rewrite changes lines no finding named, and the delta`,
-          `review then reads them as new code. Commit each \`security\` finding's fix on its own, naming`,
+          `A name you add says what the code does, not where it sends it, and reuses no name the module`,
+          `already exports. A value two modules need moves to a module both already import (constants,`,
+          `config) — never import it from a repository, an adapter or an app-composition file: each`,
+          `such fix came back as the next review's dependency-direction finding.`,
+          `Commit each \`security\` finding's fix on its own, naming`,
           `its rule in the message, so one can be reverted without the rest; the other fixes share a commit.`,
           `Every commit message names the findings it fixes, by rule and location: that is how the delta`,
           `review knows the change is a fix round, which it judges as it stands rather than undoing.`,
@@ -885,7 +921,9 @@ const crMergePrompt = (dir) =>
     `risk class and the fix. A comment verdict's severity is \`comment\`; a line carrying the`,
     `\`boy-scout\` token sets boyScout=true, and a security finding whose fix changes who may reach`,
     `what — a permission, a role, a policy, an auth check's scope — sets access=true. A finding whose`,
-    `fix would change behaviour the spec states — the line says so — sets specBound=true. Return invoked=true; when`,
+    `fix would change behaviour the spec states — the line says so — sets specBound=true. Copy every`,
+    `\`unowned:\` line verbatim as one entry under unowned, and the \`security-review:\` line's text`,
+    `as securityReview, empty when either reads none. Return invoked=true; when`,
     `the Skill tool is not available to you, return invoked=false, status "error" and no findings.`,
     ...(reservations
       ? [
@@ -935,7 +973,17 @@ const runReview = async (unit, base, pass, tag) => {
         : 'failed'
     return { dir, dead: `cr-merge ${why}` }
   }
-  return { dir, report: merged.report, files: prep.files || 0, lenses: lenses.length, findings: merged.findings }
+  return {
+    dir,
+    report: merged.report || `${dir}/cr-report.md`,
+    files: prep.files || 0,
+    lenses: lenses.length,
+    findings: merged.findings,
+    notices: [
+      ...(merged.unowned || []).map((u) => `${u} — a real problem no review rule covers`),
+      ...(merged.securityReview ? [`run /security-review: ${merged.securityReview}`] : []),
+    ],
+  }
 }
 
 // A spec finding is work the spec never asked for, and a report-only one has no fix to apply — both
@@ -953,14 +1001,18 @@ const fixable = (f) =>
   (gated
     ? f.risk !== 'report-only' && f.family !== 'security' && f.family !== 'spec' && !f.boyScout
     : f.risk !== 'report-only' && f.family !== 'spec' && (!f.boyScout || f.risk === 'safe') && !f.access)
+const isKeep = (f) => f.severity === 'comment' && /\bKEEP\b/.test(f.rule)
+// A comment move is structural, so it is never applied unasked; with no severity it would
+// otherwise fall to the report list nobody acts on.
+const needsHuman = (f) => serious(f) || (f.severity === 'comment' && f.risk === 'structural')
 const sortFindings = (findings) => {
-  const live = findings.filter((f) => !f.reserved)
+  const live = findings.filter((f) => !f.reserved && !isKeep(f))
   const applied = live.filter(
     (f) => (serious(f) && fixable(f)) || (f.severity === 'comment' && f.risk === 'safe' && !(gated && f.boyScout)),
   )
-  const forHuman = live.filter((f) => !applied.includes(f) && serious(f))
+  const forHuman = live.filter((f) => !applied.includes(f) && needsHuman(f))
   const reported = live.filter((f) => !applied.includes(f) && !forHuman.includes(f))
-  return { applied, forHuman, reported, reserved: findings.length - live.length }
+  return { applied, forHuman, reported, reserved: findings.filter((f) => f.reserved).length }
 }
 const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.severity}): ${f.fix}`
 const heldNote = gated
@@ -986,20 +1038,28 @@ const strayChanges = (dirty, worktree, repo) => {
   const toolDirt = new Set((baseline.get(repo) && baseline.get(repo).dirty) || [])
   const tracked = []
   const untracked = []
+  const prose = []
   for (const line of (dirty || '').split('\n')) {
     if (!line.trim()) continue
+    // A runner that returned prose here never captured the status, so no path in it is real.
+    if (!/^[ MTADRCU?!]{2} /.test(line)) {
+      prose.push(line.trim())
+      continue
+    }
     const p = porcelainPath(line)
     if (!p || taskFilePaths.has(`${worktree}/${p}`) || toolDirt.has(p)) continue
     ;(line.startsWith('??') ? untracked : tracked).push(p)
   }
-  return { tracked, untracked }
+  return { tracked, untracked, prose }
 }
 
 const ciFault = (ci, unit) => {
   const ran = (ci.branch || '').trim()
   if (ran && ran !== unit.branch) return `ran in a checkout on ${ran} instead of ${unit.branch}`
   if (!ran) return `could not name the branch it ran on`
-  const stray = strayChanges(ci.dirty, validationTree(unit), unit.repo).tracked
+  const changes = strayChanges(ci.dirty, validationTree(unit), unit.repo)
+  if (changes.prose.length > 0) return `did not capture \`git status --porcelain\` (dirty reads "${changes.prose[0].slice(0, 120)}")`
+  const stray = changes.tracked
   if (stray.length > 0) {
     const shown = stray.slice(0, 5).join(', ')
     return `left ${stray.length} uncommitted change(s) in the worktree (${shown}${stray.length > 5 ? ', …' : ''}), so its verdict describes a tree no commit holds`
@@ -1016,15 +1076,25 @@ const unmark = (files, label) =>
     { label: `unmark:${label}`, phase: 'Validate', model: 'haiku', effort: 'low' },
   )
 
+const unfinished = (ci) => (ci && ci.incomplete) || []
+
 const runCi = async (unit, mode, markFiles, label) => {
-  const ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  const files = unit.tasks.map((slug) => tasks.find((t) => t.slug === slug).file)
+  let ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  // An unfinished command is neither verdict: one more runner gets the chance to wait it out, and
+  // a second one that cannot is a missing verdict, never a failure for the fix rounds to chase.
+  if (unfinished(ci).length > 0) {
+    if (ci.marked) await unmark(files, label)
+    caveats.push(`${unit.branch} ${label}: the runner returned before ${unfinished(ci).join('; ')} finished; re-dispatched once`)
+    ci = await tryTwice(ciPrompt(unit, mode, markFiles), { label: `${label}:unfinished`, phase: 'Validate', schema: CI_RESULT, ...mechanical })
+  }
   if (!ci) return { ci: null, fault: null }
-  const fault = ciFault(ci, unit)
+  const fault = unfinished(ci).length > 0 ? `returned while ${unfinished(ci).join('; ')} had no exit line` : ciFault(ci, unit)
   const untracked = strayChanges(ci.dirty, validationTree(unit), unit.repo).untracked
   if (!fault && untracked.length > 0) {
     caveats.push(`${unit.branch} ${label}: the run left new untracked files (${untracked.slice(0, 5).join(', ')}${untracked.length > 5 ? ', …' : ''}); the verdict stands, but a snapshot or fixture written there was never checked`)
   }
-  if (fault && ci.marked) await unmark(unit.tasks.map((slug) => tasks.find((t) => t.slug === slug).file), label)
+  if (fault && ci.marked) await unmark(files, label)
   return { ci, fault }
 }
 
@@ -1127,6 +1197,7 @@ for (const unit of units) {
 
   await rescoutIfTouched(unit, tag)
   let { ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}`)
+  let stalled = 0
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
     const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI', ci.preExisting || []), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
@@ -1135,6 +1206,7 @@ for (const unit of units) {
     // pipeline on it and spends the budget on failures no fixer here will touch.
     if (fix && fix.fromSha && fix.fromSha === fix.toSha) {
       caveats.push(`${unit.branch} fix-ci round ${summary.fixRounds} committed nothing; the remaining failures go to a human`)
+      stalled = summary.fixRounds
       break
     }
     ;({ ci, fault } = await runCi(unit, 'scoped', false, `ci:${tag}#${summary.fixRounds + 1}`))
@@ -1158,7 +1230,9 @@ for (const unit of units) {
     hil.push({
       slug: null,
       kind: 'ci',
-      reason: `${unit.repo} ${unit.branch}: CI still failing after ${summary.fixRounds} fix rounds: ${ci.failures.join('; ')}`,
+      reason: stalled
+        ? `${unit.repo} ${unit.branch}: CI failing; fix round ${stalled} committed nothing, so the last verdict stands: ${ci.failures.join('; ')}`
+        : `${unit.repo} ${unit.branch}: CI still failing after ${summary.fixRounds} fix rounds: ${ci.failures.join('; ')}`,
     })
     continue
   }
@@ -1173,6 +1247,7 @@ for (const unit of units) {
       reviewDead = `the review did not run: ${first.dead}`
     } else {
       const sorted = sortFindings(first.findings)
+      const notices = [...first.notices]
       summary.reviewFindings = first.findings.length
       summary.findings = [...sorted.applied, ...sorted.forHuman, ...sorted.reported].map(findingLine)
       Object.assign(summary.review, { applied: sorted.applied.length, forHuman: sorted.forHuman.length, reported: sorted.reported.length, reserved: sorted.reserved })
@@ -1203,13 +1278,15 @@ for (const unit of units) {
             const open = [...d.applied, ...d.forHuman]
             summary.review.delta.findings = open.length
             sorted.forHuman.push(...open)
+            notices.push(...(delta.notices || []))
           }
         }
       }
       for (const f of sorted.forHuman) {
         hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${findingLine(f)} — ${heldNote}` })
       }
-      reviewHeld = reviewHeld || (gated && sorted.forHuman.length > 0)
+      for (const n of notices) hil.push({ slug: null, kind: 'review', reason: `${unit.repo} ${unit.branch}: ${n} — ${heldNote}` })
+      reviewHeld = reviewHeld || (gated && sorted.forHuman.length + notices.length > 0)
     }
   }
 

@@ -13,7 +13,7 @@ Two artifacts carry the analysis: the **usage surface** (every way the codebase 
 
 Input: `$ARGUMENTS`. With nothing given, ask for a package and target version or a PR link.
 
-The commands below are pnpm/npm defaults. For a Python, Go, PHP, or Rust dependency, or a JS repo on npm or yarn, read [`ecosystems.md`](ecosystems.md) for the equivalents; every step stays the same.
+The commands below are pnpm/npm defaults. For a Python, Go, PHP, or Rust dependency, a container image, a GitHub Action, or a JS repo on npm or yarn, read [`ecosystems.md`](ecosystems.md) for the equivalents; every step stays the same.
 
 ## 1. Pin the range
 
@@ -38,9 +38,9 @@ Find the source repository with `pnpm view <pkg>@<target> repository --json` (a 
 3. **Documentation**: the migration or upgrade guide for every major boundary crossed, found with firecrawl or context7. Release notes for a major often only link to this guide, and the guide holds the breaking list.
 4. **Fallback when a version has neither releases nor changelog**: the registry diff, `npm diff --diff=<pkg>@<current> --diff=<pkg>@<target> '*.d.ts' package.json` (read-only, no pnpm equivalent), plus the commit range `gh api "repos/<owner>/<repo>/compare/<currentTag>...<targetTag>" --jq '.commits[].commit.message'` scanned for `BREAKING`, `!:`, `remove`, `drop`, `rename`, `deprecate`.
 
-Independently of the notes, diff the package metadata between both ends, since this is where silent breaks hide: `pnpm view <pkg>@<v> engines peerDependencies exports type main types bin --json` for `v` = current and target. A dropped subpath in `exports`, a switch to `"type": "module"`, a raised `engines.node`, or a new required peer breaks consumers without any API change. The reverse direction counts too: every installed package that declares this one as a peer (a plugin, an adapter) must admit the target in its `peerDependencies`, or it needs its own upgrade, which the report names.
+Independently of the notes, diff the package metadata between both ends, since this is where silent breaks hide: `pnpm view <pkg>@<v> engines peerDependencies exports type main types bin --json` for `v` = current and target. A dropped subpath in `exports`, a switch to `"type": "module"`, a raised `engines.node`, or a new required peer breaks consumers without any API change. The reverse direction counts too: every installed package that declares this one as a peer (a plugin, an adapter) must admit the target in its `peerDependencies`, or it needs its own upgrade, which the report names. For a PR input, also resolve the package on the PR head's lockfile (`git fetch origin pull/<number>/head`, then `git show FETCH_HEAD:pnpm-lock.yaml`, or `pnpm why -r <pkg>` in the step-4 worktree): when old and new copies coexist and the package's classes or nominal types cross package boundaries (`instanceof`, TypeScript private members), record a `split resolution` entry whose fix is a targeted `pnpm update -r <pkg>` or a dedupe.
 
-Record each entry as `version | kind | change | source URL`, where kind is one of: breaking, removal, deprecation, changed default, behavior change, new peer or engine requirement, type change, codemod available. Crossing several majors, walk each major boundary in order and keep its migration guide's items under that major; a later major can re-break what an earlier one deprecated. For a `0.x` package treat every minor bump as a major. For a pre-release target, notes are often missing: fall back to the compare range and the registry diff, and flag in the report that the API can still move before the stable release.
+Record each entry as `version | kind | change | source URL`, where kind is one of: breaking, removal, deprecation, changed default, behavior change, new peer or engine requirement, type change, split resolution, codemod available. Crossing several majors, walk each major boundary in order and keep its migration guide's items under that major; a later major can re-break what an earlier one deprecated. For a `0.x` package treat every minor bump as a major. For a pre-release target, notes are often missing: fall back to the compare range and the registry diff, and flag in the report that the API can still move before the stable release.
 
 **Several units** (a grouped PR, or the user names several packages): units that share a source repository and version bump share one ledger. Give majors and minors the full ledger; a patch unit gets a scan of its notes for the kinds above. With three or more units needing a full ledger, dispatch one subagent per unit in a single message, without a `name`, each carrying its `package: current → target`, the projects it covers, and steps 2–3 of this skill; each returns its ledger rows already marked against the usage surface.
 
@@ -57,7 +57,7 @@ Enumerate every way the codebase touches the package, in every project the unit 
 - side-effect imports and global registrations, and environment variables the package reads;
 - the runtime the project runs on (`.nvmrc`, `.node-version`, `engines`, the CI setup step, the Dockerfile base image) and the installed versions of the target's peers, for the engine and peer entries.
 
-When the repository is indexed in a code graph (for example the codebase-memory MCP), query it for imports and callers first; otherwise use text search over the source. Record each site as `file:line`.
+When the repository is indexed in a code graph (for example the codebase-memory MCP), query it for imports and callers first; otherwise use text search over the source. A zero-hit graph query is not absence: confirm "not used" with one text search before marking an entry not affected. Record each site as `file:line`.
 
 Then intersect: for each ledger entry, check whether any usage-surface site touches it. An entry is **affected** (a site uses the changed thing), **not affected** (the change is outside the surface), or **unknown** (runtime behavior or a changed default that static reading cannot settle).
 
@@ -65,9 +65,9 @@ Done when every ledger entry carries one of the three marks, and every affected 
 
 ## 4. Gather cheap empirical evidence
 
-For a PR input, read its CI result: `gh pr checks <url> --json name,bucket,link`. A failing check on a bot PR is direct evidence; read its log before concluding.
+For a PR input, read its CI result: `gh pr checks <url> --json name,bucket,link`. A failing check on a bot PR is direct evidence; read its log (`gh run view <run-id> --log-failed`) before concluding. When `--log-failed` is empty or answers 403/404, read `gh api repos/OWNER/REPO/actions/jobs/<job-id>/logs`, then the step conclusions (`gh api repos/OWNER/REPO/actions/jobs/<job-id> --jq '.steps[]|{name,conclusion}'`) and `gh api repos/OWNER/REPO/check-runs/<job-id>/annotations`, before concluding anything. A failure in a setup or post step after the test/build step succeeded is runner infrastructure, not evidence for or against the upgrade; say so and suggest `gh run rerun <id> --failed`.
 
-A local build against the target is offered, not run by default: it downloads packages and runs their install scripts. Offer it when the verdict is not `safe` or when unknowns remain. On consent, run it in a throwaway worktree so the user's working tree and lockfile stay untouched:
+Anything that downloads and executes third-party code (package installs, `docker pull` or `docker run`, release binaries) is offered, not run by default. That includes a local build against the target: it downloads packages and runs their install scripts. Offer it when the verdict is not `safe` or when unknowns remain. On consent, run it in a throwaway worktree so the user's working tree and lockfile stay untouched:
 
 1. `git worktree add --detach <tmpdir> <ref>`, where the ref is the PR head for a PR (`git fetch origin pull/<number>/head`, then `FETCH_HEAD`; its lockfile already carries the upgrade) or the current `HEAD` otherwise.
 2. In the worktree, install the way the repository's CI does, and for a non-PR input add the target (`pnpm add <pkg>@<target> --filter <project>`).
@@ -84,6 +84,8 @@ Lead with the verdict and one sentence of reasoning:
 - **safe with changes**: affected entries exist, each with a known, bounded fix (a rename, a config key, a codemod, a peer bump).
 - **breaking**: an affected entry has no drop-in fix, the runtime or engine floor is above what the project runs, or the fix spans a redesign.
 
+While a load-bearing unknown remains, give the worst verdict it could resolve to, mark it `provisional`, name the unknown, and make the step-4 offer in the same message.
+
 Then:
 
 | Change (version) | Where used | Impact | Required fix |
@@ -95,4 +97,7 @@ Then:
 - **Sources**: the release, changelog, and guide URLs the ledger used.
 - **Evidence run**: CI and worktree results, or the offer to run them.
 
-Split the table by unit when a PR or monorepo carries several. When the user asks to apply the upgrade, apply the fixes from the table, then run the step-4 checks in the working tree.
+Split the table by unit when a PR or monorepo carries several. When the user asks to apply the upgrade:
+
+- **Package + version input**: apply the fixes from the table in the working tree, then run the step-4 checks there.
+- **PR input**: apply them on the PR's head branch in a worktree outside the user's checkout (the session scratchpad when there is one; `git fetch origin <headRefName>`, then `git worktree add <dir> <headRefName>`). Commit there, staging by explicit file path, run the step-4 checks there, and push only on the user's explicit go-ahead. Say that Renovate and Dependabot rebase their branches and drop commits that are not theirs, and name the bot setting that removes the need for the commit when one exists (for example Renovate `postUpdateOptions: ["pnpmDedupe"]`).

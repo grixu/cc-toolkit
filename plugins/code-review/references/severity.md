@@ -4,7 +4,7 @@ Every finding that reports as `family` · rule · severity carries one **family*
 **rule**, and one **severity**, all three **verbatim** from this table — never a code
 number, never a paraphrase invented this run. Two reviews of the same code name the
 same `family` · rule every time. Twelve families report in that shape: the eleven below
-with **52 fixed rows**, plus `standards`, whose rules are the project's own and are
+with **55 fixed rows**, plus `standards`, whose rules are the project's own and are
 graded by the mapping at the end of this file.
 
 Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
@@ -29,7 +29,8 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `module`      | misplaced-logic     | feature-specific branch/constant/type added to a module imported by ≥2 unrelated features | medium |
 | `module`      | canonical-helper    | a new helper duplicating an exported helper elsewhere in the repo | high |
 | `module`      | pass-through        | a function/class/wrapper the change adds that forwards unchanged, has one caller or one case, and removes no branch/mode/layer (absorbs middle-man, needless-indirection, relocate-not-reduce) | medium |
-| `objects`     | full-construction   | a half-initialized object, or leaked representation callers couple to | high |
+| `objects`     | full-construction   | a half-initialized object the caller must finish before it is usable | high |
+| `objects`     | exposed-representation | a public mutable field or a getter exposing the internal layout, so callers couple to the representation | medium |
 | `objects`     | lazy-init           | an expensive-and-maybe-unneeded value computed eagerly | medium |
 | `objects`     | leaky-collection    | a getter returning the raw internal mutable collection | high |
 | `objects`     | feature-envy        | a method reading/computing over another object's fields more than its own | medium |
@@ -38,10 +39,12 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `patterns`    | composition         | inheritance that already causes duplication/coupling delegation would remove | medium |
 | `patterns`    | polymorphism        | the same type-discriminant `if`/`switch` repeated in ≥2 places | medium |
 | `patterns`    | execute-around      | a paired setup/teardown left to callers, already duplicated or forgotten | medium |
-| `simplicity`  | over-complex        | duplication that collapses into one shape (near-identical functions → one parameter, a copy-pasted block → one extraction) | high |
-| `simplicity`  | verbose             | a single piece of code longer or more nested than its idea needs (an `if/else` chain that is a lookup, a loop that is a `map`) | nit |
+| `simplicity`  | over-complex        | duplicated logic that collapses into one shape (near-identical functions → one parameter, a copy-pasted block → one extraction) | high |
+| `simplicity`  | shallow-duplication | duplication with no logic to drift (near-identical test cases or fixtures, a repeated one-line expression, a restated declaration) | medium |
+| `simplicity`  | verbose             | a single piece of code, nothing repeated, longer or more nested than its idea needs (an `if/else` chain that is a lookup, a loop that is a `map`) | nit |
 | `simplicity`  | needless-cast       | a type cast the value's type already guarantees | high |
-| `simplicity`  | dead-code           | code that can never run or whose result is never used (an unreachable branch, an unread binding) | high |
+| `simplicity`  | dead-code           | code that can never run or whose result is never used (an unreachable branch, an unread binding, a function nothing calls) | high |
+| `simplicity`  | dead-code-surface   | surface nothing consumes (an unused export or return field, a redundant fallback or conjunct) | medium |
 | `security`    | secret-in-source    | credential/private key/password-bearing string as a literal, or a secret written to a log/exception | high |
 | `security`    | injection-sink      | externally-influenced data reaching SQL/command/path/HTML/eval/deserialization by concatenation | high |
 | `security`    | missing-access-check | handler reading/mutating a resource with no authn/authz guard, or request-supplied id with no ownership/tenant predicate | high |
@@ -68,9 +71,9 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 ## What each severity means
 
 - **high** — a wrong structural decision, real waste, or a real exposure: collapsible
-  duplication (`over-complex`), a function doing too much (`composed-method`), an
+  duplicated logic (`over-complex`), a function doing too much (`composed-method`), an
   OOP/functional break that misplaces code (`style-mix`), a query that secretly mutates
-  (`command-query`), a half-formed object or leaked representation
+  (`command-query`), a half-formed object or a leaked internal collection
   (`full-construction`, `leaky-collection`), a cast that masks a stale type
   (`needless-cast`), dead or unreachable code (`dead-code`), an import that closes a
   cycle or inverts the layering (`dependency-direction`), a helper the repo already
@@ -87,7 +90,9 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
   that claims more than its assertions check, `guard-clause` nesting, an unexplained
-  `magic-literal`, a mechanism `intent-name`, eager `lazy-init`, pointless
+  `magic-literal`, a mechanism `intent-name`, eager `lazy-init`, copies with no logic to
+  drift (`shallow-duplication`), surface nothing consumes (`dead-code-surface`), an exposed
+  data layout (`exposed-representation`), pointless
   indirection (`barrel`, `pass-through`), feature logic leaking into a shared module
   (`misplaced-logic`), a method living on the wrong object (`feature-envy`), values
   that always travel together (`data-clump`), a caller coupled to other objects'

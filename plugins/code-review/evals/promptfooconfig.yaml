@@ -875,6 +875,20 @@ tests:
     vars:
       checkout: plugins/code-review/evals/.sandbox/pr
       gh: plugins/code-review/evals/.sandbox/bin/gh
+      pr: 7
+      mode: own
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-scope.mjs
+
+  - description: 'eval-24 pr-reviewer (start-cr Step 1 with --pr on someone else''s PR)'
+    prompts: [pr-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/pr
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      pr: 8
+      mode: reviewer
     options: { allow_all_tools: true }
     assert:
       - type: javascript

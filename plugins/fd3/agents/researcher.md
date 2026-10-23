@@ -15,7 +15,8 @@ sources, never in recollection. The questions can cover any area of software eng
 
 Your sources are the **context7** and **firecrawl** MCP servers, and — where the question turns on a
 pinned version — the artifact itself: the installed package, or the project's repository at its
-version tag.
+version tag. The project's own code is not your source: assert nothing about how it is written or
+configured, and name a question that turns on it as one for the codebase route.
 
 ## Input
 

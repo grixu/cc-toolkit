@@ -13,15 +13,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   swallowed errors, races on shared state and broken call contracts, never graded `nit`. Its fixes
   walk structurally, and one that collides with a spec line or an existing test is report-only
 - `/start-cr --pr <number>` reviews a GitHub pull request's head against its base, in a detached
-  worktree when the checkout is elsewhere, without switching the user's checkout
-- `/start-cr` closes with one commit question — by family with each security fix alone, one
-  commit, or none — and with `--pr` offers to push to the PR branch
+  worktree when the checkout is elsewhere, without switching the user's checkout. On someone
+  else's pull request it runs in reviewer mode: no apply phase, findings anchored to head-side
+  diff hunks, an English draft labelled with Conventional Comments, and one question — post it as
+  a single `COMMENT` review through `gh api`, or keep the draft
+- `/start-cr` asks the commit mode together with the apply menu — each family committed as it
+  lands with each security fix alone, fixups into the branch commits that introduced the lines,
+  one commit, or none — and with `--pr` offers to push to the PR branch
 - A `policy` file kind — access policies, RBAC manifests, `CODEOWNERS` and CI workflows — judged by
   the security lens alone for access widening and exposure
 - `simplicity` · `verbose` (nit) for a single site longer than its idea, and `performance` ·
   `missing-index` for a new query on an unindexed column
+- Three `medium` rows for findings that were graded `high` with nothing to drift or break:
+  `simplicity` · `shallow-duplication` (near-identical test cases, a repeated one-line expression,
+  a restated declaration), `simplicity` · `dead-code-surface` (an unused export or return field, a
+  redundant fallback or conjunct) and `objects` · `exposed-representation` (a public mutable field
+  or a getter exposing the layout). The master table grows from 52 to 55 rows
+- `cr-merge` returns an `unowned` list — each `Not flagged` bullet that is a real problem with no
+  rule — and a `security-review` line carrying the `Skipped` line's `/security-review` pointer, so
+  a headless caller sees both without opening the report
 - Evals 21–23: correctness recall with a HANDOFF-family check, `cr-prepare` on an all-skipped
   commit, and `--pr` scope resolution against a sandbox origin and a `gh` stand-in
+- Eval-24: `--pr` on a pull request someone else authored resolves the same scope in reviewer
+  mode; eval-23 now also checks the `gh` user lookup and its own-PR mode
 
 ### Changed
 
@@ -33,6 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   family, gives duplication one owner per reach, re-checks comment fixes against R9, and
   `/start-cr` checks every grade against the severity table before it renders
 - `simplicity` · `over-complex` now covers duplication only
+- The merge keys duplication's owner on whether a copy is exported, so cross-file copies with no
+  exported one are `over-complex`; a fix that imports a shared value from a repository, adapter or
+  test helper is fixed before it is offered; a `magic-literal` constant a second module imports is
+  structural; a comment rewrite of text a spec line quotes is report-only
+- A suggested comment fix checks every claim it keeps, not only the clause it changed, and fits the
+  file's print width; a name any fix proposes passes `intent-name` and `role-name` and reuses no
+  exported name; a fix that is one move is one finding listing every site; a fix round's own
+  comments are re-judged for R9 and width only, and a candidate a merge cleared is not raised again
 - Lens calibration from run audits: R11 and the note-prefix preamble yield to a sanctioned
   convention; `magic-literal` clears test data and named config defaults; `ordering` is N/A for
   HCL; `canonical-helper` catches inline re-implementations and never loosens validation; a status
@@ -40,9 +62,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spec says a later step uses; security clears a candidate only on a mitigation it read; the spec
   lens leaves requirements another branch owns and departures already approved; a fix round's
   edits are never reversed
+- Comments lens: a sanctioned note prefix is never a finding, but the text after it is judged by
+  every rule and the project's own limits for that shape; a term the code or the spec uses is not
+  an R9 contradiction; a tag that recurs across the repository is a project marker, never removed
+- Readability lens: a `magic-literal` shared across modules lives in a module both sides may
+  import, never a repository, adapter or test helper; bot-managed version pins are self-evident;
+  a test title's mechanism clause a mock cannot check is `test-fidelity`; test helpers one position
+  off are within `ordering`'s "roughly"; moving code is never an `openness` fix
+- Naming lens: `intent-name` flags a name the code makes untrue, even one the change left in
+  place, and clears pure consistency differences; a name or placement a spec may prescribe goes to
+  `CANDIDATES`; `canonical-helper` compares what both helpers return too, never leaves the call
+  repeated, and hands an overlapping class to `over-complex`
+- Objects lens: an exported mutable collection a module enforces an invariant with is
+  `leaky-collection`; a two-variant flag or union is a stable enum, cleared without a candidate
+- Simplicity lens: a collapse keeps what every implementation of the same port receives;
+  bot-synced copies are not duplication; a cast a missing type guard forces is `needless-cast`; a
+  list entry an earlier filter removes is `dead-code`
+- Security lens: a grant surviving a concurrent revoke goes to `correctness` · state-race;
+  malformed input that only breaks the sender's own request is `correctness`, not
+  `unvalidated-boundary`; intent comes only from the spec or the conventions note
+- Performance lens: a loop that isolates each item's failure is sequential by contract, a
+  candidate naming what a batch would lose; `blocking-in-async` covers synchronous calls with an
+  async counterpart, not in-memory CPU work
+- The spec lens receives the whole change — `policy` files and skipped files included — so a CI
+  workflow or a manifest a spec describes is mapped; `cr-prepare` returns `ready` for an
+  all-skipped change when a spec is active, with `spec` the only active lens
+- Dockerfiles, Helm charts and compose files are named as `iac`, and `objects & patterns` is
+  inactive when every file it would read is `iac`: both its families are N/A there
 - The performance subset leaves out test-support helpers and `*.config.*` modules
-- The spec offer considers Markdown only, prefers a SPEC over an ADR, and looks at the base when
-  the diff carries none; each structural fix gets its own yes; the approved list is ticked off
+- The spec offer considers Markdown only, prefers a SPEC over an ADR, looks at the base when
+  the diff carries none, then in the primary worktree for a split or task file naming the branch; each structural fix gets its own yes; the approved list is ticked off
   before the wrap-up
 - README rewritten for first-time readers: purpose and the difference from the bundled `/code-review`,
   requirements, namespaced `/code-review:` invocations, a sample report, the apply menu, scope and
@@ -53,6 +102,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/start-cr` points to the single-lens skills by their namespaced names, `/code-review:comment-review` and `/code-review:quality-review`.
 - `cr-prepare` returns `empty`, not `ready`, when every changed file is skipped, and never hands an
   active lens an empty file list
+- `cr-merge` writes its report to `cr-report.md`: Claude Code's `Write` tool refuses a sub-agent
+  file named `REPORT*.md`. A failed report write returns `report: none (<reason>)` and never turns
+  a finished merge into `status: error`
 
 ## [0.4.0] - 2026-10-03
 

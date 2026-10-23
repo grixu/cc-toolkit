@@ -9,7 +9,8 @@ description: >-
   the one the diff itself carries. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
-  With `--pr <number>` it reviews a GitHub pull request's head against its base.
+  With `--pr <number>` it reviews a GitHub pull request's head against its base; on
+  someone else's pull request it drafts review comments instead of applying fixes.
 allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
@@ -24,7 +25,8 @@ and only for what the user picks.
 
 This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
-user choice: the five craft Lenses, `correctness` and `security` always run, `performance` runs
+user choice: the five craft Lenses, `correctness` and `security` always run (`objects & patterns`
+except over infrastructure code alone), `performance` runs
 when executable source is in scope, `spec` when a spec file is named. For a partial
 review the user invokes `/code-review:comment-review` or `/code-review:quality-review` directly.
 
@@ -54,7 +56,8 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   `--pr` takes no paths and no `--base` (the PR defines both); `--spec` still works.
 
   ```bash
-  gh pr view <number> --json number,title,url,state,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,maintainerCanModify
+  gh pr view <number> --json number,title,url,state,author,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,maintainerCanModify
+  gh api user --jq .login
   git fetch origin <baseRefName>
   git fetch origin pull/<number>/head
   ```
@@ -72,6 +75,11 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   A `count` of zero on an open PR means the fetch or the base is wrong, not that the PR
   is clean: say which and stop. Name the PR (number, title, `head → base`) in the
   report's scope line.
+
+  When `author.login` differs from the login `gh api user` returned, the PR is someone
+  else's and the run is in **reviewer mode** (see the section after Step 7): say so in one
+  line now. The author decides what lands on their branch, so the review drafts comments
+  for them instead of editing anything.
 - **No path arguments** → review the current branch diff. Detect what exists with
   the bundled script, which resolves the base defensively (`@{upstream}`, then
   `origin/main`, `origin/master`, `main`, `master`) and covers committed,
@@ -125,7 +133,13 @@ one decision, a spec states what the change must do — then the one the other f
 under, then the most recently changed. More than two options is a menu, not an offer.
 When the diff carries none, look once at the base too: a spec usually lands before its
 implementation, so `git ls-files '*SPEC*.md' 'specs/**/*.md'` and offer the one whose
-directory or name matches the branch name's last segment, when exactly one does. On acceptance, treat it exactly as a passed
+directory or name matches the branch name's last segment, when exactly one does. When neither
+finds one, look once in the primary worktree — the first `worktree` entry of
+`git worktree list --porcelain`, where a spec workflow often leaves its files untracked or on a
+sibling branch: among its `SPEC.split.md` and `tasks/*.md` files, tracked or not
+(`git -C <primary> ls-files --cached --others --exclude-standard`), find the ones that name the
+current branch (`git branch --show-current`) and offer the `SPEC.md` beside them, when exactly
+one does. On acceptance, treat it exactly as a passed
 `--spec` — Read it now — and note in the Tally that the spec Lens was activated from the
 diff rather than from the flag. Do not make this offer twice, and never activate the
 Lens without the user saying yes.
@@ -135,7 +149,8 @@ about a skipped dependency manifest that is the substance of the change — is i
 `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. Read it and apply it to the resolved
 list. Then classify every surviving file by that file's `## File kinds` section —
 `source`, `test`, `iac`, or `policy` — and record the kind beside each path: Step 2b gates the
-`performance` Lens on the `source` subset and sends `policy` files to `security` alone, and the
+`performance` Lens on the `source` subset, sends `policy` files to `security` and `spec` alone and
+skipped files to `spec` alone, and the
 `comments` Scanner's test-file bar (R11) keys off the same classification.
 
 ## Step 2 — Read project conventions and standards (once)
@@ -230,8 +245,8 @@ before the dispatch and fill every slot of the brief it defines. Its paths are r
 `${CLAUDE_PLUGIN_ROOT}/references/rules/<lens>.md` in its `<rules_file>` slot.
 
 The `<output_contract>` slot is **copied, never summarized**: the header line, the Lens's own
-numbered entry, the finding shapes, the severity paragraph, the FINDINGS-only and duplication
-paragraphs, and the three side-channels, verbatim from the file. Briefs that paraphrased it lost
+numbered entry, the finding shapes, the severity paragraph, the proposed-name, FINDINGS-only,
+duplication and fix-round paragraphs, and the three side-channels, verbatim from the file. Briefs that paraphrased it lost
 the finding's path slot, the `files judged` header and the closed HANDOFF families, and their
 Scanners graded below the table. Paste the same contract text into every brief; only the Lens
 entry differs.
@@ -258,7 +273,8 @@ Render the review with **exactly** the skeleton in the **Report** half of
 follows the skeleton there — same structure between runs, nothing added.
 
 **`Tally` ends the report text, not the turn.** Go straight into Step 6's
-`AskUserQuestion` — same turn, no pause, nothing between it and the tally. A turn that
+`AskUserQuestion` — or, in reviewer mode, into its draft and closing question — same turn,
+no pause, nothing between it and the tally. A turn that
 ends on the report leaves the run stalled with the findings unactionable until the user
 prods it, and the report then costs a second render to get back on screen. The closure
 cues in the skeleton's rules (`closes with Tally`, `the skeleton is the whole report`) bound
@@ -306,12 +322,28 @@ must stay honest when findings don't spread across them:
 - A before/after **preview** diff belongs in an `AskUserQuestion` option, never in the
   report body — Step 5 stays clause-only.
 
+**Ask the commit mode in the same call.** The same `AskUserQuestion` carries a second,
+single-select question — how the fixes get committed — so the apply phase can commit as it
+goes instead of rebuilding history afterwards:
+
+- **Commit each family as it lands (Recommended)** — one commit per finding family the
+  fixes come from (`comments`, each craft family, `security`, `correctness`…), each
+  `security` fix in a commit of its own so it can be reverted or reviewed alone;
+- **Fixup into the commit that introduced the line** — offered only when the branch has its
+  own commits above the base (`git rev-list --count <base>..HEAD` above zero): each fix
+  becomes a `git commit --fixup=<sha>` of the branch commit `git blame` names for the line
+  it edits;
+- **One commit** — every applied fix together, at the end;
+- **Leave uncommitted** — the edits stay in the working tree for the user.
+
+`Report only` alone makes the second answer moot; ignore it then.
+
 **Put the review on disk before the apply phase starts.** The apply walk is the longest stretch
 of the run and the one most likely to be compacted; when that happens mid-walk, the report and
 the user's answer are gone, and a run that had to reconstruct its approved list by parsing its
 own transcript spent that effort for nothing. Write the rendered report to a file in the session
 scratchpad before the menu, and the user's selection — each approved finding with its file, site
-and exact fix — under it as soon as the answer arrives. Read it back rather than recalling it,
+and exact fix, and the commit mode — under it as soon as the answer arrives. Read it back rather than recalling it,
 and say where it is in the wrap-up.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
@@ -372,6 +404,16 @@ nothing beyond the listed fixes, and **do not run build/tests** (you run them on
 applied per file and what it skipped, with the reason. Run the editors to completion
 first, then walk the structural fixes.
 
+**Commit as the fixes land, in the mode the user chose.** Apply family by family and commit
+each family's edits before the next family touches the same files, so `git add <paths>`
+always captures one family and never another's half — splitting one file's mixed edits by
+hunk afterwards is the work this ordering avoids. The safe batch follows the same order:
+its editors (or your inline edits) take one family at a time, and families whose edits share
+no file may run together. In fixup mode, commit each fix as it
+lands, blaming the line before the edit; a fix on a line no branch commit introduced (base
+code, a boy-scout fix) gets a commit of its own. A fix that has to touch a file another
+family's commit is still pending on waits until that commit is made.
+
 **Walk the structural fixes yourself, one at a time — never fan these out.** They
 move code, must be sequenced, and are verified by build/tests, so they stay under
 your control even when the safe batch is parallelized. **Each one gets its own yes**:
@@ -391,16 +433,13 @@ what each editor applied or skipped into the wrap-up, and when a `secret-in-sour
 fix landed, say plainly that the secret still needs rotating and that is the user's
 step.
 
-## Step 7 — Commit (one question)
+## Step 7 — Commit
 
-When at least one fix landed, close with **one** `AskUserQuestion` about committing them —
-the same turn as the wrap-up, never left for the user to ask:
-
-- **Commit by family (Recommended)** — one commit per finding family the fixes came from
-  (`comments`, each craft family, `security`, `correctness`…), each `security` fix in a
-  commit of its own so it can be reverted or reviewed alone;
-- **One commit** — every applied fix together;
-- **Leave uncommitted** — the edits stay in the working tree for the user.
+The commit mode was answered with the menu in Step 6; this step never asks it again. Family and
+fixup commits were made as the fixes landed. With **One commit**, make it now, after the
+build/tests run. Either way the wrap-up lists the commits made (`git log --oneline
+<first>^..HEAD`); in fixup mode it adds that folding them in is the user's step —
+`git rebase -i --autosquash <base>` — never one the review runs.
 
 Stage only the files the apply phase edited, by path — `git add <paths>`, never `-A` or `.`
 — so the user's own uncommitted work and the review's scratchpad file stay out. Match the
@@ -417,6 +456,37 @@ the head repository by URL —
 repository's own branch of that name. A cross-repository PR without `maintainerCanModify` gets no
 offer: say the branch is not writable from here and leave the commits in the worktree. Either way, name the
 worktree's path and how to remove it (`git worktree remove <path>`) when the review made one.
+
+## Reviewer mode — someone else's pull request
+
+When Step 1 found that the PR's author is not the `gh` user, Steps 6 and 7 do not run:
+nothing is edited, committed or pushed, and the worktree serves only for reading. Steps 1–5
+run as usual, with two changes to the report:
+
+- **Every bullet anchors to the head side of a diff hunk.** Its `L<lines>` are head-side line
+  numbers inside one hunk of `git diff <diff_args> -- <path>` (read the `@@ … +start,count @@`
+  headers), because GitHub accepts an inline comment only there. A finding whose lines fall
+  outside every hunk says `file-level` in place of `L<lines>`; never move it to a nearby
+  line that is in a hunk.
+- **The draft is in English**, whatever language the conversation uses, and each comment
+  opens with a Conventional Comments label taken from the finding: `high` → `issue:`,
+  `medium` → `suggestion:`, `nit` → `nitpick:`; a comment verdict R9 → `issue:`, any other
+  comment verdict → `suggestion:`. The label never softens or raises the graded severity.
+
+After the report, write the draft to a file in the session scratchpad as the request body of
+`POST repos/<owner>/<repo>/pulls/<number>/reviews` (owner and repo from the PR's `url`):
+`commit_id` set to `headRefOid`, `event` set to `COMMENT`, one `comments` entry per anchored
+bullet (`path`, `line`, `side: RIGHT`, and `start_line` with `start_side: RIGHT` for a range,
+`body` the labelled comment with its fix clause), and a `body` holding the headline plus every
+`file-level` finding under its file path — the endpoint takes no file-level comment, so the
+review body carries them. Then, in the same turn, close with **one** `AskUserQuestion`:
+
+- **Post as a COMMENT review** — `gh api repos/<owner>/<repo>/pulls/<number>/reviews --method
+  POST --input <draft file>`, then report the review's URL from the response;
+- **Keep the draft** — name the draft file and post nothing.
+
+The review never approves, never requests changes, and posts only on that answer. Name the
+worktree the review made and how to remove it (`git worktree remove <path>`).
 
 <review_tone>
 Say in one sentence what you are about to do before the first tool call. While the

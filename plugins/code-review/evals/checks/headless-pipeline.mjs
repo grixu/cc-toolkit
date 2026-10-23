@@ -38,8 +38,8 @@ export default (output, context) => {
     }
   }
 
-  const report = path.join(ctx, 'report.md');
-  check(fs.existsSync(report) && /Reconciliation/.test(fs.readFileSync(report, 'utf8')), 'cr-merge wrote no report.md with a Reconciliation line');
+  const report = path.join(ctx, 'cr-report.md');
+  check(fs.existsSync(report) && /Reconciliation/.test(fs.readFileSync(report, 'utf8')), 'cr-merge wrote no cr-report.md with a Reconciliation line');
   check(/status: merged/.test(output), 'cr-merge did not return status: merged');
   check(FINDING.test(output), 'no finding line in the fixed `severity · family · rule · path:L · class — fix` shape');
   check(/^- high · security · /m.test(output), 'the planted security finding did not come through the merge');

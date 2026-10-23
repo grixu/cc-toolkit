@@ -94,8 +94,10 @@ round-trip by the collection's size, and that size is decided by data, not by co
 - **Calibration → not a finding**: a loop over a literal or an enum — bounded by the
   source, not by data; a call the client memoises or caches (read the wrapper before
   claiming a round-trip); a loop that must be sequential by contract (each call feeds
-  the next, or the provider rate-limits) — that is a `CANDIDATE`, the doubt being
-  whether a batch preserves the contract; a client with no batch form at all — name
+  the next, the provider rate-limits, or the body isolates each item's failure — a
+  per-iteration `try/catch`, `allSettled`) — that is a `CANDIDATE`, the doubt being
+  whether a batch preserves the contract, and it names the isolation a batch would lose;
+  a client with no batch form at all — name
   what you looked for and mark `(verify)`.
 
 #### `unbounded-fetch` — a read over growing data with no bound
@@ -123,7 +125,7 @@ endpoint the missing bound is also a missing page parameter.
 
 #### `blocking-in-async` — a synchronous block on an event-loop path
 
-On a single-threaded event loop, one synchronous I/O or CPU call stalls every other
+On a single-threaded event loop, one synchronous blocking call stalls every other
 request until it returns; the async counterpart lives in the same library.
 
 - **Flag** a synchronous blocking call on a request-serving or event-loop path — a
@@ -140,8 +142,9 @@ request until it returns; the async counterpart lives in the same library.
 - **Calibration → not a finding**: startup/config load (module top level, `main()`
   before the server listens); CLI scripts and one-shot tools; code that runs in a
   worker thread or process (`worker_threads`, `multiprocessing`) where blocking is
-  the design; a synchronous call on a small in-memory value (`JSON.parse` of a
-  request body, a regex) — blocking means I/O or data-sized CPU work, not any
+  the design; any in-memory computation (`JSON.parse` of a request body, a regex, a
+  nested scan of two collections) — blocking means a synchronous I/O call or a
+  synchronous library call with an async counterpart, not CPU work and not any
   synchronous statement. **N/A** outside Node and Python asyncio: WSGI views, Go,
   Java, Rust, PHP, Ruby, and threaded runtimes have no single loop to block — clear
   the rule in one line.

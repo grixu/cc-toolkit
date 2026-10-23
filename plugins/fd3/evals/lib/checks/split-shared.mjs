@@ -107,10 +107,12 @@ export function checkBoundaries(c, tasks, { precedesDb = null, report = '' } = {
       // A later phase orders landing, not writing: an edge, a stack onto a phase-1 branch or a recorded merge order all hold it back.
       const phase1Branches = tasks.filter((o) => !/2/.test(String(o.fm && o.fm.phase))).map((o) => o.fm && o.fm.branch).filter(Boolean);
       const stacked = Boolean(t.fm['branch-base']) && phase1Branches.includes(t.fm['branch-base']);
-      const MERGE_HOLD = /merge order|(do not|never|must not) merge|merges? (only )?after/i;
+      const MERGE_HOLD = /merge order|(do not|never|must not) merge|merges?\b[^.\n]{0,30}\bafter/i;
       // The skill states the merge order in the split report's chain; a task note may repeat it.
-      const namesThisBranch = (line) => (Boolean(t.fm.branch) && line.includes(t.fm.branch)) || /phase[ -]?2 branch/i.test(line);
-      const reportHold = (report || '').split('\n').some((line) => namesThisBranch(line) && MERGE_HOLD.test(line));
+      const ids = [t.fm.branch, t.slug, t.fm.name, t.file.replace(/\.md$/, '').replace(/^\d+-/, '')].filter(Boolean);
+      const namesThisBranch = (line) => ids.some((id) => line.includes(id)) || /phase[ -]?2 branch/i.test(line);
+      // A report bullet wraps across lines, so judge it whole.
+      const reportHold = (report || '').split(/\n(?=\s*(?:[-*] |\d+\. |$))/m).some((item) => namesThisBranch(item) && MERGE_HOLD.test(item));
       const mergeOrder = MERGE_HOLD.test(t.body || '') || reportHold;
       c.check(
         (Array.isArray(deps) && deps.length > 0) || stacked || mergeOrder,

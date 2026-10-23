@@ -160,7 +160,10 @@ in the background.
   their fix is rated safe, and `comment` findings rated safe are fixed automatically, and the fixes
   are reviewed again. Spec findings, security fixes that change who may reach what, fixes that would
   change behaviour the spec states, findings rated report-only, and anything the fixer left unfixed
-  wait for you in the final report; they do not stop the branch. Decisions you took on an earlier
+  wait for you in the final report; they do not stop the branch. So do a real problem no review
+  rule covers, a structural comment verdict (a comment MOVE), and a pointer to run
+  `/security-review` on files the review skipped — that one is yours to run or dismiss, never a
+  repair's. Decisions you took on an earlier
   report are passed to every reviewer and fixer, so a finding that would undo one is set aside. Answer `gated` instead of `yes` to have security fixes and findings
   in untouched code held for you, with the branch kept at `merged` until you settle them. `nit`
   findings, the lowest severity, are reported and never applied.
@@ -193,7 +196,7 @@ commits its target lacks is never removed.
 | `tasks/NNNN-<slug>.md` | split-to-tasks | One file per task, next to the spec unless you name another directory. Its `status:` field is the run's state; keep the directory until the run is over. |
 | `<spec>.split.md` | split-to-tasks | The task table, the branch order per repository, and the coverage check. |
 | `<repo>.worktrees/<name>/` | implement | The worktrees, created beside the repository, not inside it. |
-| `<repo>.worktrees/.review/` | implement | The code-review working files and a `report.md` per branch and pass. |
+| `<repo>.worktrees/.review/` | implement | The code-review working files and a `cr-report.md` per branch and pass. |
 | `HIL_ACTIONS.md` | implement | The human steps in order, next to the tasks directory, for a run that waits days on people. |
 | `implement-answers.md` | implement | The answers to implement's first question batch and the decisions later report rounds settled, next to the tasks directory. |
 

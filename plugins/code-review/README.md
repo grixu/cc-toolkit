@@ -9,7 +9,7 @@ a short menu asks which fixes to apply. Nothing is edited until you choose.
 A single "review this" prompt reads the change once, from one angle, and decides on the fly what
 counts as a problem. This plugin instead:
 
-- runs one reviewer per lens in parallel, each with its own written rule set (52 named rules plus
+- runs one reviewer per lens in parallel, each with its own written rule set (55 named rules plus
   12 comment rules), so every finding names its rule and runs are comparable;
 - merges the findings centrally: duplicates collapse, and severities follow one fixed table;
 - reads your project's conventions first, so a documented house style is not reported as a
@@ -57,19 +57,23 @@ run again against that base.
 
 With `--pr <number>` it reviews a GitHub pull request's head against the PR's base, using `gh`.
 When your checkout is not at the PR's head, it reviews and applies fixes in a detached worktree
-next to the repository, and your checkout is never switched.
+next to the repository, and your checkout is never switched. When someone else authored the pull
+request, it applies nothing: every finding is anchored to a line of the diff, a draft review in
+English labels each one with a [Conventional Comments](https://conventionalcomments.org/) label
+(`issue:`, `suggestion:`, `nitpick:`), and one question asks whether to post the draft as a single
+comment review or keep it.
 
 ## The lenses
 
-You do not pick lenses; the change decides. Seven run every time, two depend on the input, and the
-report's tally lists any lens that did not run and why.
+You do not pick lenses; the change decides. Seven run on any change of code, two depend on the
+input, and the report's tally lists any lens that did not run and why.
 
 | Lens | Runs | Looks for |
 |---|---|---|
 | comments | always | Comments that narrate the code, cite tickets or other files, contradict the code, or are missing where a decision needs explaining. |
 | readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that do not check what their name claims. |
 | naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has, wrappers that only forward a call. |
-| objects & patterns | always | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
+| objects & patterns | always, except on a change of infrastructure code only | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
 | simplicity & types | always | Duplication that collapses into one shape, code longer than its idea, needless casts, dead code. |
 | correctness | always | Conditions that pick the wrong branch, cases nothing handles, off-by-one bounds, swallowed errors, races on shared state, calls that break their callee's contract. |
 | security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, exposed infrastructure, widened access, including in access policies, RBAC, `CODEOWNERS` and CI workflows. |
@@ -84,7 +88,8 @@ When the change itself contains a spec-shaped Markdown file (under `specs/`, `sp
 or `tasks/`, or named `*SPEC*.md`, `*ADR*.md`, `*.spec.md` or `*-plan.md`) and you passed no
 `--spec`, the review offers to check the change against it, preferring a spec over an ADR. When the
 change carries none, it looks for a `SPEC.md` already in the repository that matches the branch's
-name. `--spec` takes a local file only. For a URL or a
+name, then in the main worktree for a `SPEC.split.md` or task file that names the branch, and
+offers the `SPEC.md` beside it. `--spec` takes a local file only. For a URL or a
 ticket id, the review asks for a local path; it never fetches one.
 
 ## What you get
@@ -144,9 +149,11 @@ Spec findings describe work to do, so they are report-only, with one exception: 
 and tests run once, and the wrap-up lists any approved fix that was skipped or could not be applied
 as approved. When a fix removes a secret from the source, rotating that secret is still your job.
 
-Last, one question offers to commit what landed: one commit per finding family (each security fix
-in a commit of its own), one commit for everything, or nothing. With `--pr` it then offers to push
-the commits to the pull request's branch, when that branch is writable from here.
+The same menu asks how to commit what lands: one commit per finding family, made as each family
+lands (each security fix in a commit of its own); fixup commits onto the branch commits that
+introduced the edited lines, when the branch has commits of its own; one commit for everything; or
+nothing. With `--pr` it then offers to push the commits to the pull request's branch, when that
+branch is writable from here.
 
 Before applying anything, the review saves the report and your selection to the session's scratch
 directory, so a long apply walk survives a context compaction.
@@ -194,14 +201,17 @@ specific one wins, and the report names the conflict on its `Conventions` line.
 ## What it reviews and what it skips
 
 Reviewed: source files with the extensions `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .rs .java
-.kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus Terraform and other infrastructure-as-code.
-Tests and infrastructure code get every lens except performance. Access policies (`*.rego`,
+.kt .swift .c .cpp .h .rb .php .vue .scala .cs .sh`, plus Terraform, Dockerfiles, Helm charts,
+compose files and other infrastructure-as-code. Tests get every lens except performance;
+infrastructure code also skips objects & patterns. Access policies (`*.rego`,
 `*.cedar`, Cerbos and Kubernetes RBAC manifests, IAM policy files), `CODEOWNERS` and CI workflow
 files are reviewed by the security lens only.
 
 Skipped, and listed on the report's `Skipped` line: JSON, lockfiles, generated or minified files,
 Markdown and other docs, `.txt`, other static config (`.yaml`, `.toml`, `.ini`, `.env`), and
-license headers.
+license headers. The spec lens is the exception: with a spec given, it maps the spec against every
+changed file, skipped and policy files included, because a workflow or a manifest is often what a
+spec line describes.
 
 Limits:
 
@@ -212,8 +222,8 @@ Limits:
   back marked `(verify)`.
 - The rules are written for imperative and object-oriented code, mostly JavaScript and TypeScript.
   A rule with no counterpart in a language is cleared, not forced: wasted-render applies only to
-  `.tsx` and `.jsx`, blocking-in-async only to Node and Python asyncio, and Terraform skips the
-  module, object, test and cast rules.
+  `.tsx` and `.jsx`, blocking-in-async only to Node and Python asyncio, and infrastructure code
+  skips the module, object, pattern, test and cast rules.
 
 ## Internal parts
 
@@ -225,7 +235,7 @@ the `fd3` plugin's implementation workflows, and not meant for you to run.
 |---|---|---|
 | `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path>]` | `scope.json`, `conventions.md`, `standards.md` |
 | `code-review:cr-scan` | `--lens <lens> --context <dir>`, one agent per active lens | `<lens>.md` |
-| `code-review:cr-merge` | `--context <dir>` | `report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only` |
+| `code-review:cr-merge` | `--context <dir>` | `cr-report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only`, plus the real problems no rule names and the files left to `/security-review` |
 
 They review committed changes only, never edit the checkout, and never ask anything. An empty
 change or a lens that did not report comes back as a status (`empty`, `incomplete`), never as a

@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `dep-upgrade-check`: a `split resolution` ledger kind for a PR head lockfile holding old and new copies whose classes or nominal types cross package boundaries, fixed by a targeted `pnpm update -r <pkg>` or a dedupe
+- `dep-upgrade-check`: while a load-bearing unknown remains, the verdict is the worst it could resolve to, marked `provisional`, with the unknown named and the local build offered in the same message
+- `pr-shepherd`: stacks: several PR numbers run per PR in its own worktree; a fix lands on the lowest owning branch and reaches the others by a plain base-into-child merge, never a rebase and never from the default branch; a thread another PR in the stack fixes is answered with that commit
+- `pr-shepherd`: a `decision` verdict for a comment whose fix is a trade-off only the owner can make: one reply with the options and their cost, the thread left unresolved and handed over in the report
+
 ### Changed
+- `dep-upgrade-check`: a zero-hit code-graph query is confirmed with one text search before an entry is marked not affected
+- `dep-upgrade-check`: anything that downloads and executes third-party code (installs, `docker pull`/`run`, binaries) is offered, not run; `ecosystems.md` gains container image and GitHub Actions rows
+- `dep-upgrade-check`: applying the fixes for a PR input happens on the PR's head branch in a separate worktree, committed locally and pushed only on the user's go-ahead, with a warning that dependency bots drop foreign commits and the bot setting that removes the need
+- `dep-upgrade-check`: a CI failure in a setup or post step after the test/build step succeeded is reported as runner infrastructure with a rerun suggestion, not as evidence about the upgrade
+- `pr-open`: the report ends with a one-line suggestion of `/dev-kit:pr-shepherd`, never invoked
+- `pr-open`: the body aims for about 250 words outside dependency and checklist sections, with 6–8 one-sentence change bullets at most and long logs in `<details>`; specs and ADRs the diff adds or commits name get a **Go deeper** link, also under a repository template
+- `pr-open`: a branch behind its base is reported with the commit count and the `git merge-tree` conflict state and opened as is; the skill never merges, rebases or commits to sync it
+- `pr-open`: for an existing PR it pushes and reports URL, base and push result; it rewrites the description only when the request asks, and otherwise offers it in one report line instead of asking
+- `pr-open`: the existing-PR check runs before the base is chosen, the stacked-base scan skips the current branch, and a second open-PR parent the chosen base does not contain is named in the report and the body's dependency section
+- `ci-fix`: `nothing-to-fix` also covers a cause already fixed on the branch head that no newer run will replace; `next` names the `workflow_dispatch` command, and a deploy workflow is never dispatched
+- `ci-fix`: changing an assertion to match the documented contract is a fix whose commit quotes the contract line; accepting output the contract does not name is loosening, so `blocked` under `push-authorized`
+- `ci-fix`: a flaky-test call needs a relatedness check against the branch diff; a test whose subject the branch touches is not flaky until it passes locally twice, and a rerun without a local run is reported as an unverified flake
+- `ci-fix`: under `push-authorized` the result block is printed before control returns to the caller, even within the same turn
+- `pr-shepherd`: every red check goes through `ci-fix`, never a direct fix or rerun; the fix cap counts every fix or rerun cycle on a check; a red non-required check gets one `ci-fix` run, then is reported to the user instead of passing silently
+- `pr-shepherd`: a `CONFLICTING` PR is taken as GitHub reports it, never closed, reopened, retargeted or edited; the loop skips CI, still handles review threads and pushes, then stops naming the conflicting files
+- `pr-shepherd`: the per-iteration state fetch leaves out comment and review bodies, which step 3 reads trimmed; the branch is compared with `origin/<headRefName>`, so a branch without an upstream no longer fails step 1
+- `ci-fix`, `dep-upgrade-check`: when `--log-failed` is empty or answers 403/404, read the job log through the API, the step conclusions and the check-run annotations before concluding anything
+- `pr-shepherd`, `ci-fix`: stage by explicit file path, never a directory, `-A` or `-a`; untracked files never block `pr-shepherd` and are never staged. `pr-open` asks only about tracked changes and lists untracked paths as not in the PR
+- `pr-shepherd`, `ci-fix`, `pr-open`: the push authorization excludes merging or rebasing the base, resolving conflicts, force-pushing and changing the PR unless a later message names the action, and counts as the per-branch consent a repository rule reserving `git push` for humans asks for
 - README rewritten for first-time users: requirements, per-skill examples, outputs and stop rules, and a per-skill table of pre-approved commands that corrects the earlier claim that `ci-fix` and `pr-shepherd` pre-approve every `git` and `gh` command they run
 
 ## [0.1.0] - 2026-09-25

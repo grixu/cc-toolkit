@@ -33,11 +33,10 @@ to have.
 
 ## Workflow
 
-Open your first reply with this checklist, before any tool call — a run that then stops on an
-unresolvable path has cost one message — and make the first tool call in that same reply. A reply
-that only announces the checklist, or only posts it, ends the turn with nothing done. Post it again
-in full — marks updated, never compressed to a line and never summarised — before every user
-interaction (the question batch, each report round) and at the close:
+Post this checklist in full — marks updated, never compressed to a line and never summarised — in
+the same reply as every user interaction (the step-2 question batch, each report round) and at the
+close. Step 1 needs no announcement: start it with a tool call. A reply that only posts the
+checklist ends the turn with nothing done:
 
 ```
 - [ ] 1. Read the graph: parse task frontmatter, resolve repositories, check integrity
@@ -183,6 +182,7 @@ Workflow({
              parkedBranch: "<only when a target branch is the repository's current checkout>" }, ... },
     review: <true, "gated" or false — the step-2 answer>,
     decisions: [<on a relaunch: every decision earlier report rounds settled, verbatim>],
+    knownBases: ["<repository path>:<branch>", ...],
     maxFixRounds: 3,
     reportPath: <on a relaunch: the previous report's `<output-file>` path — omit on a first launch>
   }
@@ -193,6 +193,9 @@ Workflow({
 and repair instructions, verbatim, as `implement-answers.md` records them; a first launch omits it.
 Review and fix agents read them as settled, so a finding that would undo one reaches neither a fixer
 nor the user again.
+`knownBases` lists every `branch-base` no task builds that step 1 resolved to an existing branch, as
+`<repository path>:<branch>`; the workflow raises a `graph` item only for the others, so a confirmed
+root is not put to the user again on every launch.
 `file` and `repository` are absolute paths (`repository: "none"` for operational tasks);
 `dependsOn` carries bare slugs; `baseBranch` is the stack base from step 1, `null` for the
 repository's `startRef` — the ref the user confirmed in step 2, fetched fresh in step 1.
@@ -219,13 +222,15 @@ dispatch implementation agents yourself.
 The completion notification truncates the result — read the full report from the notification's
 `<output-file>` path before relaying anything. The workflow returns per-task statuses,
 per-branch validation outcomes (with each branch's review findings and the path of its review
-`report.md`), agent `caveats`, the HIL
+`cr-report.md`), agent `caveats`, the HIL
 list, the tasks left unreachable behind blockers, and its `toolchain` and `baseline` knowledge.
 Relay it faithfully — a failed CI stays failed in the telling, and any totals you state are the
 report's own `tasks[]` tally, never hand-counted — with one distinction the report already
 draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
 failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
 Relay each branch's `skipped` commands with its outcome: a check that never ran is not a pass.
+A check you run yourself never stands in for the gate: a `no-verdict` or `failed-final` branch is
+relaunched or repaired, never set to `done` by hand.
 `graph` items are the other kind that is information rather than work — one per `branch-base` that
 named a branch no task builds, naming the tasks it carries. The workflow sees the task files alone,
 so step 1's resolution says what each one means: a base that resolved is the pre-existing branch the
@@ -240,12 +245,16 @@ finding whose fix changes who may reach what, a finding whose fix would change b
 states, a report-only
 one, a boy-scout finding whose fix is not mechanically safe, a finding the fixer left unfixed, or
 anything the delta review found in the fixes it did apply; under `gated`, also every `security`
-fix and every boy-scout finding. Without `gated` the item holds nothing: its branch is `done`, and
+fix and every boy-scout finding. Three notices ride the same kind and hold a `gated` branch the same
+way: a real problem no review rule covers (settled like a finding: a repair, or dismissed), a
+structural comment verdict such as a MOVE (applied by a repair, or dismissed), and a
+`run /security-review` pointer — a command for the user to run on the files the review skipped,
+never something a repair fixes; it is settled when the user has run it or dismisses it. Without `gated` the item holds nothing: its branch is `done`, and
 the item waits in the end-of-run decision list (step 5), never as a question of its own. Under
 `gated` the branch passed CI and stays `merged` until the item is settled: a finding the user wants
 fixed goes to a repair; one the user dismisses needs no work, and when every `review` item of a
-branch is dismissed, set that branch's tasks to `done` yourself — CI already passed on the commit
-they sit on. Give the `report.md` path with the findings: the one-line form in the HIL list drops
+branch is settled without a repair — dismissed, or a `/security-review` pointer the user ran — set that branch's tasks to `done` yourself — CI already passed on the commit
+they sit on. Give the `cr-report.md` path with the findings: the one-line form in the HIL list drops
 the evidence.
 
 Caveats are triaged, not relayed wholesale, and triage is not a question. One that names a
@@ -308,7 +317,10 @@ lanes:
 
   A repair reopens its branch. Before launch, set every `done` task on a repaired branch back to
   `merged` and list it in that branch's `taskFiles` — the tasks were marked done on a tree the
-  repair is about to change, and only the repair's own final gate may mark them again. With
+  repair is about to change, and only the repair's own final gate may mark them again. Every
+  branch stacked on a repaired branch, transitively, joins `repairs` too, with `instructions: []`
+  and its own done tasks reset the same way: it carries the repaired base and owes it a CI run,
+  which a merge-up done by hand never gets. With
   review on, the workflow reviews the repair's own commits after its CI passes; those findings
   come back as `review` items for the user, never to a fixer, and hold the branch only under
   `gated`.
@@ -338,6 +350,10 @@ each pointing at its task file and what it unblocks, plus where the branches and
 live, followed by *Decisions taken for you* and the open `review` items as step 5 lists them. A
 pause that survives only in this conversation is state lost.
 
+Every task or branch you mention — in a report, in `HIL_ACTIONS.md`, in a question — leads with the
+task's `name:` or a short description of the branch; a split code or ordinal (`m1`, `C1`) goes in
+parentheses after it, never alone: the user reads the report, not the split.
+
 ### 5. Propose, never push
 
 When every repository-bearing task is `done`, or the loop ends short of that, close with one
@@ -348,14 +364,16 @@ holds, in this order: one table — repository, branch, its stack base,
 its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
 citing the tickets; the still-open operational tasks — they need the branches landed first, so
 they never gate this proposal; *Decisions taken for you*, each with how to revert it; and the
-`review` items left open, numbered, each with its `report.md` path. Stacked branches make a pull-request chain: each pull
+`review` items left open, numbered, each with its `cr-report.md` path. Stacked branches make a pull-request chain: each pull
 request's base is its branch's stack base, and after one lands its successor is retargeted onto
 the default branch — but only when the predecessor landed as a merge commit. After a squash
 merge the predecessor's branch is no longer an ancestor of the default, so a bare retarget
 shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
 Say that in the proposal. The batch then asks two things: whether to push the branches and open
-the pull requests, and which open `review` items, by number, go to a repair before that — none is
-the default, and a decision taken for the user that they want reverted is named the same way. Only
+the pull requests, and which open `review` items, by number, go to a repair before that. Recommend
+per item on its merit and offer one "all fixable" option; list a branch's boy-scout findings — the
+report's separate list, pre-existing code in a touched file — on their own line, recommended to
+leave. A decision taken for the user that they want reverted is named the same way. Only
 after explicit consent: push, `gh pr create` per branch (`--base` set to the stack base) with a
 description naming the tasks, the spec and the branch's element codes. When the repository's own
 rules reserve pushing to a human — its `AGENTS.md`, `CLAUDE.md` or contributing guide says so —

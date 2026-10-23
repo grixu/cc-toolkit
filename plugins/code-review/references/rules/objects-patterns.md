@@ -24,8 +24,8 @@ three. The orchestrator re-grades centrally against the master table, so your se
 is a first pass.
 
 ## Contents
-- `objects` — full-construction, lazy-init, leaky-collection, feature-envy, data-clump,
-  message-chain
+- `objects` — full-construction, exposed-representation, lazy-init, leaky-collection,
+  feature-envy, data-clump, message-chain
 - `patterns` — composition, polymorphism, execute-around
 
 Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
@@ -35,7 +35,8 @@ already exists in the code.
 
 | family | rule | what it catches | severity |
 |--------|------|-----------------|----------|
-| `objects`     | full-construction   | a half-initialized object, or leaked representation callers couple to | high |
+| `objects`     | full-construction   | a half-initialized object the caller must finish before it is usable | high |
+| `objects`     | exposed-representation | a public mutable field or a getter exposing the internal layout, so callers couple to the representation | medium |
 | `objects`     | lazy-init           | an expensive-and-maybe-unneeded value computed eagerly | medium |
 | `objects`     | leaky-collection    | a getter returning the raw internal mutable collection | high |
 | `objects`     | feature-envy        | a method reading/computing over another object's fields more than its own | medium |
@@ -47,29 +48,41 @@ already exists in the code.
 
 ### `objects` family
 
-#### `full-construction` — construct fully-formed objects, hide the representation
+#### `full-construction` — construct fully-formed objects
 
 Provide constructors/factories that return **well-formed instances**: all required
 parameters upfront, defaults set inside the constructor, so callers never receive a
-half-initialized object to finish wiring. And get the public interface right *before*
-the representation — keep the data layout hidden so it can change without touching
-callers.
+half-initialized object to finish wiring.
 
 - **Flag** when:
   - a constructor/factory returns an object the caller must finish (call `.init()`,
     set fields in a required order) before it is usable;
   - telescoping `setX`/`setY` stand in for parameters that should be constructor
-    arguments;
-  - a public mutable field or a getter exposes the internal layout, so callers
-    couple to the representation and it can't change freely.
+    arguments.
 - **Suggested fix**: pass all required params upfront, set defaults in the
-  constructor, return a complete instance; hide the data layout behind a small
-  intention-revealing interface.
+  constructor, return a complete instance.
 - **Calibration → not a finding**: a legitimate builder/step-builder that ends in a
   `build()` producing a complete object; optional configuration via setters *after* a
   valid default construction; framework-mandated lifecycle (`ngOnInit`, a React
   effect) where deferred setup is the platform contract. Flag the object that is a
-  footgun before it is finished, not deliberate staged construction.
+  footgun before it is finished, not deliberate staged construction. An object that is
+  complete but shows its layout is `exposed-representation`.
+
+#### `exposed-representation` — hide the data layout
+
+Get the public interface right *before* the representation: keep the data layout hidden
+so it can change without touching callers. A complete object whose fields callers read
+and write directly is usable today, but every caller now depends on its layout.
+
+- **Flag** a public mutable field, or a getter that hands out the internal layout, that
+  callers read or write in place of an intention-revealing method — so the
+  representation can no longer change freely.
+- **Suggested fix**: make the field private or read-only and give callers the small
+  method they actually need.
+- **Calibration → not a finding**: a plain data record, DTO or value type whose fields
+  *are* its contract; a read-only field; a framework that binds fields by convention (an
+  ORM entity, a Vue/Angular component input). A getter returning the raw internal
+  collection is `leaky-collection` — most-specific wins.
 
 #### `lazy-init` — defer the expensive-and-maybe-unneeded
 
@@ -94,17 +107,22 @@ A getter that hands back the object's actual internal collection lets any caller
 mutate its state from the outside, behind its back. Return something the caller can't
 use to corrupt you.
 
-- **Flag** a getter/property that returns the real internal mutable array/map/set
-  (not a copy or read-only view) — `getItems() { return this.items }` where `items`
-  is the object's own mutable field.
+- **Flag** when:
+  - a getter/property returns the real internal mutable array/map/set (not a copy or
+    read-only view) — `getItems() { return this.items }` where `items` is the object's
+    own mutable field;
+  - a module exports a mutable module-level collection it enforces an invariant with
+    (an allowlist, a permission set), so any importer can `.add()` to it and widen
+    what the module allows.
 - **Suggested fix**: return a copy, an immutable/read-only view, or expose
   domain-specific `add`/`remove`/iterate methods so all mutation goes through the
-  object.
+  object; type an exported collection `ReadonlySet`/`ReadonlyArray` (or freeze it).
 - **Calibration → not a finding**: returning a freshly-built collection the object
   does not retain; an already-immutable/readonly type (`ReadonlyArray`, a frozen
   object); a deliberate, documented shared buffer for performance; value-type
-  collections in languages that copy on assignment. Flag the *aliased internal
-  mutable* collection, not every collection return.
+  collections in languages that copy on assignment; an exported display or option list
+  nothing enforces anything with. Flag the *aliased internal mutable* collection, not
+  every collection return.
 
 #### `feature-envy` — a method belongs with the data it reads
 
@@ -192,7 +210,9 @@ object, not an edit to N conditionals.
   interface; each absorbs its branch.
 - **Calibration → not a finding**: a single, localized switch that lives in exactly
   one place — a factory/dispatcher is the *right* home for one switch; conditionals
-  over values that aren't a type discriminant; small, stable enums unlikely to grow;
+  over values that aren't a type discriminant; small, stable enums unlikely to grow —
+  a two-variant flag or union (`allOf`/`anyOf`, single/multiple, member/invitation) is
+  one until a third variant exists, so clear it rather than filing a candidate;
   a status or lifecycle enum where each behaviour switches on it once (the label, the
   allowed transitions, the badge colour) — each switch answers a different question,
   so there is nothing duplicated to absorb. One switch is fine — flag the *duplicated*
