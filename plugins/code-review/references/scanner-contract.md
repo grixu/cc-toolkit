@@ -25,7 +25,7 @@ Send each Scanner a brief in this shape, filling every slot:
   </how_to_view>
   <conventions><!-- the conventions note, including any N/A families or rules --></conventions>
   <standards><!-- the CODING_STANDARDS pair's text, or this Lens's slice of it; "none" when the root has neither file --></standards>
-  <spec><!-- `spec` and `correctness` Lenses only: the --spec path and its full text; omit the slot for every other Lens, and for these two when no spec is active --></spec>
+  <spec><!-- `spec` and `correctness` Lenses only: the --spec path and its full text, plus the spec-focus codes when the caller recorded any; omit the slot for every other Lens, and for these two when no spec is active --></spec>
   <scope_split>
     primary = the problem is in code this change added or modified, or structure
     the change introduced or made worse.

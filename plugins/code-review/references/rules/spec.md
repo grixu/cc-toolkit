@@ -48,6 +48,16 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   no craft in a skipped file. You never go looking for a spec yourself and never
   treat another document as "the spec": an empty `<spec>` slot is one line saying so,
   never a guess.
+- **A spec focus narrows what you enumerate.** When the `<spec>` slot carries focus codes
+  (element codes like `DB-1`, decision ids), locate each code's element or decision in the spec
+  and read those first; read the rest of the spec only for material a focused element references
+  (a term, a schema, a decision it cites) or that the diff clearly touches. The requirements you
+  enumerate and count are the focused elements' own; material read outside the focus is context,
+  never a source of `missing-requirement` or `partial-requirement`. `scope-creep` is judged
+  against the focus too: behaviour no focused requirement asks for is unasked here even when
+  another part of the spec describes it — the clause then names that spec line, so the merge sees
+  the work belongs elsewhere. A code you cannot find in the spec is one prose line naming it; when
+  none of the codes resolves, say so and enumerate the whole spec as with no focus.
 - **Enumerate before you read code.** List the spec's requirements: each line or bullet
   that states a behaviour the code must have ("returns 404 when…", "retries three
   times", "the export includes a `created_at` column") is one requirement, numbered in
@@ -73,7 +83,8 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   still a file path.
 - **Requirements met are one prose line, never findings.** Close your output with
   `N of M requirements met` (M counts the enumerated requirements the spec did not
-  exclude); never list a met requirement in the finding shape.
+  exclude), followed by `(focus: <codes>)` when a focus narrowed them; never list a met
+  requirement in the finding shape.
 - **Three channels.** A claim about runtime behaviour you cannot settle by reading (a
   timeout fires, a retry happens, an ordering holds under load) is `(verify)`; you
   never run the code. When you cannot tell whether a requirement is partly implemented

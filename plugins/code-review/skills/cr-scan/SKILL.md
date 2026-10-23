@@ -38,7 +38,7 @@ The contract's brief arrives as files, not as a message. Assemble it slot by slo
 | `<how_to_view>` | tracked → `git -C <checkout> diff <diff_args> -- <path>`; untracked → read `<checkout>/<path>` |
 | `<conventions>` | `conventions.md`, verbatim |
 | `<standards>` | your lens's section of `standards.md`, or all of it when it has no sections |
-| `<spec>` | `spec` and `correctness` lenses only: the file `scope.json` names, read in full; omitted when it is `null` |
+| `<spec>` | `spec` and `correctness` lenses only: the file `scope.json` names, read in full — or, when `spec_focus` lists codes, the focus list with the file read as your rules file's spec-focus paragraph says; omitted when `spec` is `null` |
 
 `<checkout>` is `scope.json`'s `checkout`; every path in `files` is relative to it. A lens listed
 under `lenses.inactive` is not judged: write its output file with the header alone, ending

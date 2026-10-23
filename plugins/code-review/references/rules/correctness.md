@@ -61,6 +61,10 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   have chosen otherwise. When the `<spec>` slot is filled and the code's behaviour
   differs from a spec line, that is a `spec` · wrong-implementation — `HANDOFF` it,
   not a correctness finding.
+- **A spec focus says which part of the spec is intent.** When the `<spec>` slot carries
+  focus codes (element codes like `DB-1`, decision ids), read those elements and decisions
+  first and judge the change's intended behaviour against them; read the rest of the spec
+  only for material they reference or that the diff clearly touches.
 - **Readability is not correctness.** A tangled but correct condition belongs to the
   craft lenses; send it as a `HANDOFF` if you notice it, and judge only whether it is
   right.

@@ -41,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and gets its own closing block in the listed order, an `error` block for a lens it could not
   complete. The caller trades lens isolation for one bootstrap instead of one per lens; eval-25
   runs the headless pipeline with one list-form `cr-scan`
+- `cr-prepare --spec-focus "<codes>"`, with `--spec` only, records spec element codes and decision
+  ids as `spec_focus` in `scope.json`. The `spec` and `correctness` lenses read those elements
+  first and the rest of the spec only where they point or the diff reaches; the `spec` lens
+  enumerates, counts and judges `scope-creep` against the focus
 
 ### Changed
 
