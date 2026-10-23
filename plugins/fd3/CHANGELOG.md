@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- a spec changes after its verdict only through `/fd3:build-spec <spec>` re-entry, which applies a
+  change the user brings through the notes and `write-spec` before validating; the spec stays at the
+  path build-spec wrote and is never moved or copied; the re-entry focus list comes from the spec's
+  own verdict line, not `git log`, so an untracked spec re-enters the same way
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by
