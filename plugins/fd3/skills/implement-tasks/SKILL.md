@@ -37,10 +37,9 @@ with the as-built", and never a repair instruction.
 
 ## Workflow
 
-Post this checklist in full — marks updated, never compressed to a line and never summarised — in
-the same reply as every user interaction (the step-2 question batch, each report round) and at the
-close. Step 1 needs no announcement: start it with a tool call. A reply that only posts the
-checklist ends the turn with nothing done:
+Show this checklist, marks updated and in full, at two points only: in the reply that carries a
+question batch (step 2's, each report round's) and in the close (step 5). Nowhere else — every
+other step starts with its tool call, not with the list:
 
 ```
 - [ ] 1. Read the graph: parse task frontmatter, resolve repositories, check integrity

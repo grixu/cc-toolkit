@@ -68,10 +68,9 @@ repairing goes through the route above, and the split stops.
 
 ## Workflow
 
-Post this checklist in full — marks updated, never compressed to a line and never summarised — in
-the same reply as every user interaction (the question batch, the report) and at the close. Step 1
-needs no announcement: start it with a tool call. A reply that only posts the checklist ends the
-turn with nothing done:
+Show this checklist, marks updated and in full, at two points only: in the reply that carries a
+question batch (step 6's, a follow-up's) and in the closing report. Nowhere else — every other step
+starts with its tool call, not with the list:
 
 ```
 - [ ] 1. Enumerate: work items, element codes, phases and gates, ownership, tickets

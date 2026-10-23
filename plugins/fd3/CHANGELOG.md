@@ -65,7 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - a CI runner's `dirty` field that is prose, not porcelain, is a missed status, not tree edits
 - the toolchain scout keeps virtualenvs and caches out of the worktree
 - a repair review reads the branch's own copy of the spec
-- the checklist rides on each question batch and the close instead of the first reply
+- the checklist rides on each question batch and the close only, never on the first reply or any
+  other step
 - `build-spec` validates the capped third pass's own body edits and relays write-spec questions in
   their own wording; `write-spec` runs probes in a detached worktree; the researcher asserts nothing
   about the project's own code; `grill-topic` blocks a question on a running lookup that covers its
