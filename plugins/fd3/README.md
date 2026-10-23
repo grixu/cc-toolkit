@@ -156,7 +156,9 @@ in the background.
   runs the full set once, gets up to three fix rounds (each checked against its changes only), and
   runs the full set again at the end only when a fix moved the branch after that first run.
 - Review (optional). After the checks pass, the `code-review` plugin reviews the branch with one
-  agent per active lens, seven to nine. High and medium findings rated safe or structural, security
+  agent per active lens, seven to nine — or, when the change has at most three judged files, one
+  agent running every active lens in turn. A repair's review is narrower: one agent checks the
+  repair against the decisions it applied, and only the `correctness` and `security` lenses run. High and medium findings rated safe or structural, security
   included (each security fix in its own commit), findings in code the branch did not touch when
   their fix is rated safe, and `comment` findings rated safe are fixed automatically, and the fixes
   are reviewed again. Spec findings, security fixes that change who may reach what, fixes that would
