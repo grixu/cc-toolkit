@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `validate-spec` lists what goes to the user in one place (a user-held fact, a parked choice, a
   repair choice, the owner of a claim that would end `blocked`); `deferred` now names only the
   claim status, and a choice handed to a later stage is a "parked choice" in `spec-rules.md` too
+- `build-spec` stages 2 and 3 move to `references/build-spec-stages.md`, read when the user confirms
+  or a re-entry starts, so they stay out of the grilling context; stage 3 is an ordered list of what
+  to do after each validation return, with the same rules
 - the review report is `cr-report.md`: Claude Code refuses a sub-agent's write to `report*.md`
 - a repair review drops KEEP lines and lists boy-scout findings apart from open work; the close
   recommends per review item with an "all fixable" option and names tasks by `name:`, never by
