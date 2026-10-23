@@ -355,3 +355,8 @@ test('handover from a report path replaces the scout', async () => {
   assert.ok(r.has('baseline:app'))
   assert.equal(r.result.toolchain[REPO], TOOLCHAIN)
 })
+
+test('the conformance check is told which commits are CI fixes, not the repair', async () => {
+  const r = await run(repairArgs(), [['ci:app:feat-x', seq(ciFail(['boom']), ciPass)]])
+  assert.match(r.call('conformance:app:feat-x').prompt, /CI fixes made on this branch after the repair \(aaa111\.\.bbb222\)\. They\nmade the repaired branch pass its gate: never report their hunks as unasked\./)
+})

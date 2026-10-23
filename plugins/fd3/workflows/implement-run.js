@@ -1398,7 +1398,7 @@ const CONFORMANCE_RESULT = {
 
 // CI proves a repair builds and the lenses that it is sound; only a reader holding the decisions
 // can say whether it did what was decided and nothing else.
-const conformancePrompt = (unit, base) =>
+const conformancePrompt = (unit, base, ciFixes) =>
   [
     `Check one repair against the decisions it was made to apply: the branch ${unit.branch} of the`,
     `repository ${unit.repo}.`,
@@ -1409,6 +1409,9 @@ const conformancePrompt = (unit, base) =>
     `The repair is \`git -C ${unit.worktree} diff ${base}..HEAD\`: read all of it. Read the code around`,
     `a hunk in the worktree ${unit.worktree} only where the hunk needs it. Do not read the spec. Judge conformance alone — whether the diff does what the`,
     `decisions ask and nothing else; style, naming, tests and design quality are another reviewer's.`,
+    `The range also holds commits the repair agent did not write — a merge of the base branch and its`,
+    `CI fixes, and the CI fixes made on this branch after the repair${ciFixes.length > 0 ? ` (${ciFixes.join(', ')})` : ''}. They`,
+    `made the repaired branch pass its gate: never report their hunks as unasked.`,
     ``,
     `Report each place where:`,
     `- unasked: a hunk no decision above asks for. A change a decision needs in order to work — an`,
@@ -1634,7 +1637,7 @@ const reviewImplemented = async (unit, tag, summary) => {
 
 // A repair is new code written to a human's one-line decision; CI proves it builds, never that it
 // did only what was decided — the review reads the repair's own commits, and a human reads that.
-const reviewRepaired = async (unit, tag, summary, reviewFrom) => {
+const reviewRepaired = async (unit, tag, summary, reviewFrom, ciFixes) => {
   let dead = null
   let held = false
   const outcome = {}
@@ -1651,7 +1654,7 @@ const reviewRepaired = async (unit, tag, summary, reviewFrom) => {
       dead = `the review of the repair did not run: ${delta.dead}`
     } else {
       if (delta.notApplicable) summary.review.notApplicable = delta.notApplicable
-      const conformance = await tryTwice(conformancePrompt(unit, reviewFrom), { label: `conformance:${tag}`, phase: 'Validate', schema: CONFORMANCE_RESULT })
+      const conformance = await tryTwice(conformancePrompt(unit, reviewFrom, ciFixes), { label: `conformance:${tag}`, phase: 'Validate', schema: CONFORMANCE_RESULT })
       if (!conformance || !conformance.checked) {
         dead = `the decision-conformance check ${conformance ? 'did not read the repair' : 'returned no result after a retry'}`
       } else {
@@ -1737,11 +1740,13 @@ for (const unit of units) {
   const fullHead = ci && !fault ? (ci.head || '').trim() || null : null
   // After a passing full verdict only the review fixer commits; a sha it did not report counts as moved.
   let head = fullHead
+  const ciFixes = []
   let stalled = 0
   while (ci && !fault && !ci.passed && summary.fixRounds < maxFixRounds) {
     summary.fixRounds += 1
     const fix = await tryTwice(fixPrompt(unit, ci.failures, 'CI', ci.preExisting || []), { label: `fix-ci:${tag}#${summary.fixRounds}`, phase: 'Validate', schema: FIX_RESULT })
     if (fix && fix.caveats) caveats.push(...fix.caveats.map((c) => `${unit.branch} fix-ci: ${c}`))
+    if (fix && fix.fromSha && fix.toSha && fix.fromSha !== fix.toSha) ciFixes.push(`${fix.fromSha}..${fix.toSha}`)
     // A round that committed nothing left the tree CI just graded: another round re-runs the same
     // pipeline on it and spends the budget on failures no fixer here will touch.
     if (fix && fix.fromSha && fix.fromSha === fix.toSha) {
@@ -1781,7 +1786,7 @@ for (const unit of units) {
   let reviewDead = null // why the review has no verdict for this branch
   let reviewHeld = false // findings wait for a human; only a gated review holds a branch on them
   if (reviewed) {
-    const outcome = repairMode ? await reviewRepaired(unit, tag, summary, reviewFrom) : await reviewImplemented(unit, tag, summary)
+    const outcome = repairMode ? await reviewRepaired(unit, tag, summary, reviewFrom, ciFixes) : await reviewImplemented(unit, tag, summary)
     reviewDead = outcome.dead
     reviewHeld = outcome.held
     if ('head' in outcome) head = outcome.head
