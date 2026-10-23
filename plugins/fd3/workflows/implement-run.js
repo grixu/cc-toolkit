@@ -209,16 +209,20 @@ if (missingToolchain.length > 0) {
 
 const baselinePrompt = (repo) =>
   [
+    `<toolchain_report>`,
+    toolchain.get(repo),
+    `</toolchain_report>`,
+    ``,
     `Establish the validation baseline of the repository ${repo} on its clean base.`,
     ``,
     `1. Create a worktree at ${worktreePath(repo, 'baseline')} from ${startRef(repo)}`,
     `   (git worktree add --detach <path> <ref>) unless it already exists — then reuse it as is.`,
     `   Detached, because the ref may be a branch already checked out elsewhere, which git refuses`,
     `   a second worktree for.`,
-    `2. Run every runnable validation command from the toolchain report below, in the reported`,
-    `   order, sequentially — never in parallel. Each command's cwd in the report is relative to`,
-    `   the repository root: resolve it inside that worktree, never against ${repo}. Skip what the`,
-    `   report lists as not runnable here, recording each skip under skipped with its reason — a`,
+    `2. Run every runnable validation command from <toolchain_report>, in the reported`,
+    `   order, sequentially — never in parallel. Each command's cwd in <toolchain_report> is relative to`,
+    `   the repository root: resolve it inside that worktree, never against ${repo}. Skip what`,
+    `   <toolchain_report> lists as not runnable here, recording each skip under skipped with its reason — a`,
     `   skip is never recorded as passed.`,
     `3. Fix nothing, change nothing. Run each command once, as`,
     `   \`<command> > ${worktreePath(repo, 'baseline')}.log 2>&1; echo "exit $?"\` — the log sits beside`,
@@ -228,8 +232,6 @@ const baselinePrompt = (repo) =>
     `   failure the output lines that matter. ${waitRule('record it with completed=false and the last log line it reached')}`,
     `4. When the last command has run, run \`git status --porcelain\` in that worktree and return every`,
     `   path it lists under dirty: what the commands themselves write into a clean tree.`,
-    ``,
-    toolchain.get(repo),
   ].join('\n')
 
 // What already fails on the clean base is noise this run must not fight or report as its own.
@@ -264,8 +266,8 @@ const ownToolchainNote = (unit) =>
     ? []
     : [
         ``,
-        `This branch's toolchain report was detected on the branch itself, so a command it names that`,
-        `the baseline above lacks has no baseline. When such a command fails, run it once in the clean`,
+        `The report in <toolchain_report> was detected on the branch itself, so a command it names that`,
+        `<baseline> lacks has no baseline. When such a command fails, run it once in the clean`,
         `base worktree ${worktreePath(unit.repo, 'baseline')}: a failure that occurs there too is pre-existing.`,
       ]
 
@@ -438,6 +440,10 @@ const mergePrompt = (repo, repoTasks) => {
     )
     .join('\n')
   return [
+    `<toolchain_report>`,
+    toolchain.get(repo) || '(none — no generator is known; treat a generated file like any other)',
+    `</toolchain_report>`,
+    ``,
     `Merge implemented task branches in the repository ${repo} into their target branches.`,
     ``,
     `Work the targets in the listed order — later targets stack on earlier ones:`,
@@ -462,13 +468,9 @@ const mergePrompt = (repo, repoTasks) => {
     `line on what you chose; a resolved conflict is exactly where a later review should look.`,
     `When a conflict needs a judgment call, abort that merge (git merge --abort), record the task`,
     `under conflicts, and continue with the rest.`,
-    `A conflict in a generated file — one the toolchain report below regenerates (a schema, an`,
+    `A conflict in a generated file — one <toolchain_report> regenerates (a schema, an`,
     `OpenAPI document, a client, an index) — is resolved by re-running its generator on the merged`,
     `sources and committing the result, never by editing the conflict markers.`,
-    ``,
-    `Toolchain report for this repository:`,
-    ``,
-    toolchain.get(repo) || '(none — no generator is known; treat a generated file like any other)',
     ``,
     ...(parked(repo) ? [checkoutRule(repo), ``] : []),
     `Return every target branch you touched with its worktree path, the slugs of the tasks now`,
@@ -764,8 +766,16 @@ const treeSetup = (unit) => {
 const ciPrompt = (unit, mode, markFiles) => {
   const tree = validationTree(unit)
   return [
+    `<toolchain_report>`,
+    toolchainFor(unit),
+    `</toolchain_report>`,
+    ``,
+    `<baseline>`,
+    baselineText(unit.repo),
+    `</baseline>`,
+    ``,
     `Run the validation commands for the repository ${unit.repo}, branch ${unit.branch},`,
-    `in the worktree ${tree}. Run them in the reported order, sequentially — never in`,
+    `in the worktree ${tree}. Run them in the order <toolchain_report> gives, sequentially — never in`,
     `parallel. Run each one as \`<command> > ${tree}.ci.log 2>&1; echo "exit $?"\` — the log sits`,
     `beside the worktree, never inside it — read pass or fail from that exit line alone, and read`,
     `the log only for the lines a failure needs. Never pipe a command into \`tail\`, \`head\` or`,
@@ -780,33 +790,27 @@ const ciPrompt = (unit, mode, markFiles) => {
     `\`git -C ${unit.repo} rev-parse ${unit.branch}\`. When they match,`,
     `return branch "${unit.branch}". When they do not, run nothing: return the branch you actually`,
     `found (or the short HEAD sha when detached) as branch, with passed=false and the mismatch in`,
-    `failures. Every command runs from that worktree: each command's cwd in the report is relative`,
+    `failures. Every command runs from that worktree: each command's cwd in <toolchain_report> is relative`,
     `to the repository root, so resolve it there — never against ${unit.repo}, which is a`,
     `different checkout on a different branch.`,
-    ``,
-    `Toolchain report for this repository:`,
-    ``,
-    toolchainFor(unit),
-    ``,
-    baselineText(unit.repo),
     ...ownToolchainNote(unit),
     ``,
     mode === 'scoped'
       ? `Scope the run to this branch's changes: list them with` +
         `\n\`git diff --name-only ${unit.base}...HEAD\` — ${unit.base} is the base, never diff the` +
-        `\nbranch against itself — and use each command's scoped form from the report on those` +
+        `\nbranch against itself — and use each command's scoped form from <toolchain_report> on those` +
         `\npaths, quoting every path you pass to a shell (unquoted brackets and globs break zsh);` +
-        `\nrun a command in full only when the report marks it not scopeable.`
+        `\nrun a command in full only when <toolchain_report> marks it not scopeable.`
       : `Run every command in full — this is the branch's final gate before it is handed over.`,
     ``,
-    `Skip only what the report lists as not runnable here. A command the baseline shows failing`,
-    `still runs, scoped as above where the report gives it a scoped form: a branch can add new`,
-    `failures to a command that was already red, and only this run can see them. A command the`,
-    `baseline shows with NO VERDICT is run in full here, never skipped.`,
+    `Skip only what <toolchain_report> lists as not runnable here. A command <baseline> shows failing`,
+    `still runs, scoped as above where <toolchain_report> gives it a scoped form: a branch can add new`,
+    `failures to a command that was already red, and only this run can see them. A command`,
+    `<baseline> shows with NO VERDICT is run in full here, never skipped.`,
     `Every skip goes under skipped with its reason; a skip is never reported as passed. A failure`,
-    `whose location and message match the baseline is pre-existing: return it under preExisting,`,
+    `whose location and message match <baseline> is pre-existing: return it under preExisting,`,
     `never under failures, and do not count it against the branch. Every other failure of that`,
-    `command — a location or a message the baseline does not list — is new and goes under failures.`,
+    `command — a location or a message <baseline> does not list — is new and goes under failures.`,
     ``,
     `Do not fix anything. Editing a source file, applying a formatter, and regenerating a derived`,
     `artifact a command compares against — an index, a schema, a lockfile — are all fixing: report`,
@@ -814,7 +818,7 @@ const ciPrompt = (unit, mode, markFiles) => {
     `last command has run, run \`git -C ${tree} status --porcelain\` and return its output`,
     `verbatim as dirty.`,
     `Return passed=true only when incomplete is empty and every runnable command exits 0 or fails`,
-    `only on baseline entries; otherwise return each newly failing command with the output lines that matter.`,
+    `only on <baseline> entries; otherwise return each newly failing command with the output lines that matter.`,
     ...(markFiles
       ? [
           ``,
@@ -833,6 +837,10 @@ const ciPrompt = (unit, mode, markFiles) => {
 
 const fixPrompt = (unit, problems, source, preExisting = []) =>
   [
+    `<toolchain_report>`,
+    toolchainFor(unit),
+    `</toolchain_report>`,
+    ``,
     `Fix ${source} problems on branch ${unit.branch} in the worktree ${unit.worktree}`,
     `(repository ${unit.repo}). Problems:`,
     ``,
@@ -859,10 +867,8 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
     `route by which the spec changes.`,
     ``,
     ...(unit.worktree === unit.repo ? [checkoutRule(unit.repo), ``] : []),
-    `Toolchain report for this repository — when a fix changes something a listed command`,
-    `derives an artifact from, regenerate that artifact the way the report says:`,
-    ``,
-    toolchainFor(unit),
+    `When a fix changes something a command in <toolchain_report> derives an artifact from,`,
+    `regenerate that artifact the way the report says.`,
     ``,
     `Before your first edit, run \`git rev-parse HEAD\` in the worktree and return it as fromSha.`,
     `After your last commit, run it again and return that as toSha — equal to fromSha when you`,

@@ -114,6 +114,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The spec exists once, at `specPath`: a repair review's spec lens no longer reads a copy tracked on
   the branch, and implement, fix and repair agents never edit, copy or commit the spec — a needed
   spec change comes back as a caveat or blocked reason naming `/fd3:build-spec <spec>`
+- Baseline, merge, CI and fix prompts open with the toolchain report and the baseline inside
+  `<toolchain_report>` and `<baseline>` tags and give their instructions after, referring to the
+  tags, so the rules no longer sit behind kilobytes of embedded data
 
 ## [0.3.0] - 2026-10-12
 
