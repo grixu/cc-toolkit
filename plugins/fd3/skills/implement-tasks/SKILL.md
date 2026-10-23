@@ -262,6 +262,8 @@ report's own `tasks[]` tally, never hand-counted — with one distinction the re
 draws: `no-verdict` items are absence of evidence (an agent died twice on a transient API
 failure), never failures. Relay them as "no verdict" and simply include them in the relaunch.
 Relay each branch's `skipped` commands with its outcome: a check that never ran is not a pass.
+A branch whose review reads `notApplicable` had nothing a lens could judge — every changed file is
+one review skips — so relay it as "review not applicable" with that line, never as a clean review.
 A check you run yourself never stands in for the gate: a `no-verdict` or `failed-final` branch is
 relaunched or repaired, never set to `done` by hand.
 `graph` items are the other kind that is information rather than work — one per `branch-base` that
