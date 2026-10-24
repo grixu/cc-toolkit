@@ -1,6 +1,17 @@
 import * as h from '../helpers.mjs';
 import * as s from './split-shared.mjs';
 
+// release-team's approval gates the pull request, not the writing: a note asking the implementer
+// to confirm first stops the unattended implement run on that task.
+const PENDING_ASK = /\b(confirm|get (an? )?approv\w*|wait for (an? )?approv\w*|ask (the user|release team))\b[^.]*\bbefore (editing|writing|starting|implementing|touching|changing)\b/i;
+
+export function checkNoPendingAsk(c, tasks) {
+  for (const t of tasks) {
+    const note = h.normalizeProse((t.body.split(/^## Note\s*$/m)[1] || '').split(/^## /m)[0]);
+    c.check(h.affirmedMatches(note, PENDING_ASK).length === 0, `${t.file}: its ## Note asks for a confirmation before the work starts`);
+  }
+}
+
 // CI-1 edits `.github/workflows/`, which repo-a's CODEOWNERS gives to release-team. It is a
 // delivery task like any other, on a branch of its own, so one external approval cannot hold
 // the rest of the phase-1 landing unit.
@@ -25,13 +36,7 @@ export default (output) => {
     c.check(sharing.length === 0, `${ci.file}: the protected-path task shares its branch with ${sharing.map((t) => t.file).join(', ')}`);
   }
 
-  // release-team's approval gates the pull request, not the writing: a note asking the implementer
-  // to confirm first stops the unattended implement run on that task.
-  const PENDING_ASK = /\b(confirm|get (an? )?approv\w*|wait for (an? )?approv\w*|ask (the user|release-team))\b[^.\n]*\bbefore (editing|writing|starting|implementing|touching|changing)\b/i;
-  for (const t of tasks) {
-    const note = (t.body.split(/^## Note\s*$/m)[1] || '').split(/^## /m)[0];
-    c.check(!PENDING_ASK.test(note), `${t.file}: its ## Note asks for a confirmation before the work starts`);
-  }
+  checkNoPendingAsk(c, tasks);
 
   const SPLIT_REPORT = 'spec/protected-path-spec.split.md';
   const diff = h.diffSandbox('split-protected-path', 'protected-path-rollout-spec');

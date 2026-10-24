@@ -1,6 +1,12 @@
 import * as h from '../helpers.mjs';
 import * as s from './split-shared.mjs';
 
+export function checkGapNote(c, file, rawNote) {
+  const note = h.normalizeProse(rawNote);
+  c.check(/platform team/i.test(note), `${file}: the ## Note does not name the gap's owner (platform team)`);
+  c.check(/phase 2|ceiling|rate ?limit/i.test(note), `${file}: the ## Note does not say what the gap is or where it lands`);
+}
+
 // The spec's verdict line carries one deferred claim — a gap the spec itself declares with an
 // owner and a placement. The split proceeds and tracks the gap as an operational task.
 export default (output) => {
@@ -17,9 +23,7 @@ export default (output) => {
   if (c.check(operational.length === 1, `expected exactly 1 operational task, found ${operational.length}`)) {
     const gap = operational[0];
     c.check(s.elementsOf(gap).length === 0, `${gap.file}: the gap task carries an element code it does not build`);
-    const note = h.section(gap.body, 'Note') || '';
-    c.check(/platform team/i.test(note), `${gap.file}: the ## Note does not name the gap's owner (platform team)`);
-    c.check(/phase 2|ceiling|rate[-\s]?limit/i.test(note), `${gap.file}: the ## Note does not say what the gap is or where it lands`);
+    checkGapNote(c, gap.file, h.section(gap.body, 'Note') || '');
   }
 
   // The run did not stop on the deferred claim: the files and the report exist.

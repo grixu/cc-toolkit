@@ -68,3 +68,34 @@ test('split hold: a split written without merge-after fails the field and the cr
   assert.ok(f.some((x) => /0005-checkout-settlement-flag\.md: .* held behind feat\/payment-status-panel by no/.test(x)), f.join('\n'));
   assert.ok(f.some((x) => /0006-payment-status-live-endpoint\.md: .* held behind feat\/checkout-settlement-write by no/.test(x)), f.join('\n'));
 });
+
+const note = (file) => h.section(h.readTasksDir(path.join(FIXTURES, 'notes')).find((t) => t.file === file).body, 'Note');
+
+// 828326cf wrote "phase-2 *deploy*" and b5432f4b wrapped "platform\nteam" across a line: both Notes
+// carry the facts the literal regexes missed.
+test('declared-gap note: a hyphenated phase and a wrapped owner still count', async () => {
+  const { checkGapNote } = await import('./checks/split-declared-gap.mjs');
+  for (const file of ['split-declared-gap-828326cf.md', 'split-declared-gap-b5432f4b.md']) {
+    assert.deepEqual(failures((c) => checkGapNote(c, file, note(file))), [], file);
+  }
+});
+
+test('declared-gap note: a note without owner or placement fails', async () => {
+  const { checkGapNote } = await import('./checks/split-declared-gap.mjs');
+  const f = failures((c) => checkGapNote(c, 'x.md', 'No pull request exists for this task: the work is a measurement by hand.'));
+  assert.equal(f.length, 2, f.join('\n'));
+});
+
+// 8b38fd14's CI-1 Note says the approval is "nothing to confirm before writing the code".
+test('protected-path note: a negated confirmation is not an ask, an affirmed one is', async () => {
+  const { checkNoPendingAsk } = await import('./checks/split-protected-path.mjs');
+  assert.deepEqual(failures((c) => checkNoPendingAsk(c, tasksOf('split-protected-path-8b38fd14'))), []);
+  const ask = (text) => failures((c) => checkNoPendingAsk(c, [{ file: 'x.md', body: `## Goal\n\n## Note\n\n${text}\n` }]));
+  assert.equal(ask('Confirm with release-team\nbefore editing the workflow.').length, 1);
+  assert.equal(ask('Do not start until you get approval from release-team before touching `.github/`.').length, 1);
+  assert.equal(ask('There is no need to confirm before editing: the review is the approval.').length, 0);
+});
+
+test('normalizeProse joins wraps, hyphens and emphasis', () => {
+  assert.equal(h.normalizeProse('the **platform**\n  team holds the phase-2 rate-limit'), 'the platform team holds the phase 2 rate limit');
+});

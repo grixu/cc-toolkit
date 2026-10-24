@@ -114,6 +114,29 @@ export function readTasksDir(dir) {
     });
 }
 
+// A literal phrase regex fails on a hard line wrap, a hyphenated compound (`phase-2`) or emphasis
+// inside the phrase; match prose only after this.
+export function normalizeProse(text) {
+  return String(text || '')
+    .replace(/[*_`]/g, '')
+    .replace(/(\w)[-‐-—](?=\w)/g, '$1 ')
+    .replace(/\s+/g, ' ');
+}
+
+const NEGATOR = /\b(?:no|not|nothing|never|without|none)\b|n't\b/i;
+
+// Negated when one of the three words before the match, inside its clause, negates it: "nothing to
+// confirm before writing" is the rule being followed, "confirm before writing" the rule broken.
+export function negatedAt(text, index) {
+  const clause = text.slice(0, index).split(/[.;:!?\n]/).pop();
+  return NEGATOR.test(clause.trim().split(/\s+/).slice(-3).join(' '));
+}
+
+export function affirmedMatches(text, re) {
+  const global = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+  return [...String(text || '').matchAll(global)].filter((m) => !negatedAt(text, m.index));
+}
+
 export function headings(markdown) {
   return (markdown.match(/^#{1,6}\s.*$/gm) || []).map((h) => h.trim());
 }
