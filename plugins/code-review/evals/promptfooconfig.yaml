@@ -111,10 +111,17 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: 'DD_ARCH.md §3.2', verdict: [REMOVE, REWRITE, MOVE], rule: R4 }
+      # the rationale survives, so the verdict rewrites rather than removes
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'DD_PLAN.md T4.1', verdict: [REWRITE, MOVE], rule: R4 }
+      - type: javascript
+        value: file://checks/report.mjs:replacementsOmit
+        config: { quote: 'DD_PLAN.md T4.1', tokens: [DD_PLAN, T4.1] }
       - type: llm-rubric
         value: >-
-          Flags the `DD_PLAN.md T4.1` comment under R4 — keeps the "hard-stop is
-          intentional" rationale but drops the internal-doc reference.
+          The replacement the report proposes for the `DD_PLAN.md T4.1` comment keeps
+          its rationale: the per-env hard-stop on `host_filters` is deliberate.
       # R4 external-pinned-spec exception
       - type: javascript
         value: file://checks/report.mjs:commentKept
@@ -173,11 +180,14 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: "conditional UPDATE can't distinguish", file: dlq-codes.ts, verdict: REMOVE }
-      - type: llm-rubric
-        value: >-
-          For the `// we swallow the duplicate …` comment on `DLQ_DUPLICATE_DROPPED` the
-          verdict is MOVE — the rationale exists only at the declaration, and the fix names
-          the handler method (`handle` / its duplicate branch) as the destination.
+      # the rationale lives only at the declaration, so it moves rather than goes
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'we swallow the duplicate', verdict: MOVE }
+      # the destination is the handler method
+      - type: javascript
+        value: file://checks/report.mjs:commentFix
+        config: { quote: 'we swallow the duplicate', pattern: '\bhandle\b' }
       # a value-meaning note stays on the value (R12 contrast)
       - type: javascript
         value: file://checks/report.mjs:commentKept
@@ -213,14 +223,13 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:replacementsOmit
         config: { quote: '§4.1 caps a single charge', tokens: ['§4.1', '4.1'] }
-      - type: llm-rubric
-        value: >-
-          Flags `// R7: charge in source order — the ledger rejects out-of-order sequence
-          numbers` as R4 REWRITE, keeping the ordering rationale.
-      - type: llm-rubric
-        value: >-
-          The suggested fix for the `R7` comment does NOT contain the token `R7` but keeps
-          the ordering meaning ("source order" / "out-of-order").
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'R7: charge in source order', verdict: REWRITE, rule: R4 }
+      # the `R7` token itself is the suite-wide replacementsOmit below
+      - type: javascript
+        value: file://checks/report.mjs:commentFix
+        config: { quote: 'R7: charge in source order', in: replacement, pattern: 'out-of-order|source order|sequence' }
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: 'Implements AC-3 and AC-4', verdict: REMOVE, rule: R4 }
