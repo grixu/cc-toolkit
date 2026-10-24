@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ids as `spec_focus` in `scope.json`. The `spec` and `correctness` lenses read those elements
   first and the rest of the spec only where they point or the diff reaches; the `spec` lens
   enumerates, counts and judges `scope-creep` against the focus
+- A `scanner` agent (`code-review:scanner`) that runs `cr-scan` with only `Skill`, `Read`, `Grep`,
+  `Glob`, `Bash` and `Write`, and without `CLAUDE.md`, so `conventions.md` is the one house style a
+  lens judges by
 
 ### Changed
 
