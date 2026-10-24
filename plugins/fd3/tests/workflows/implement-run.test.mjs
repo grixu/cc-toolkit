@@ -189,6 +189,12 @@ test('a lens that judged nothing of a non-empty change makes the review dead', a
   assert.deepEqual(status(r), { t1: 'merged', t2: 'merged' })
 })
 
+test('a lens that judged part of its files merges and reaches a human as a notice', async () => {
+  const r = await run(implementArgs(), [['cr:app:feat-x:review:security', { status: 'scanned', invoked: true, filesJudged: 1, filesTotal: 2 }]])
+  assert.ok(r.has('cr-merge:'))
+  assert.ok(r.result.hil.some((h) => h.kind === 'review' && /lens security judged 1 of 2 files/.test(h.reason)))
+})
+
 test('cr-prep is told to focus the review on the elements and decisions of the branch tasks', async () => {
   const r = await run(implementArgs(), [['cr-merge:app:feat-x:review', crMerged([finding()])]])
   const focus = /read the `elements:` and `decisions:` frontmatter lists of these task files:\n((?:- \S+\n)+)Append `--spec-focus "<codes>"` to the arguments above[^]*When every list is empty, append nothing\./
@@ -210,6 +216,27 @@ test('a change of at most three judged files gets one scan agent for every lens'
 test('four judged files keep one scan agent per lens', async () => {
   const r = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security'], 4)]])
   assert.deepEqual(r.callsMatching(/^cr:.*:review:/).map((c) => c.label), ['cr:app:feat-x:review:simplicity', 'cr:app:feat-x:review:security'])
+})
+
+test('every scan runs as the code-review scanner agent, prepare and merge do not', async () => {
+  const wide = await run(implementArgs(), [])
+  const list = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security'], 2)]])
+  for (const r of [wide, list]) {
+    const scans = r.callsMatching(/^cr:/)
+    assert.ok(scans.length > 0)
+    for (const c of scans) assert.equal(c.agentType, 'code-review:scanner', c.label)
+    for (const c of r.callsMatching(/^cr-(prep|merge):/)) assert.equal(c.agentType, null, c.label)
+  }
+  assert.ok(list.has('cr:app:feat-x:review:all'))
+  assert.equal(list.call('cr:app:feat-x:review:all').model, null)
+})
+
+test('craft lens scans run on sonnet, the others on the session model', async () => {
+  const r = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity-types', 'naming-module', 'security', 'correctness'], 5)]])
+  assert.equal(r.call('cr:app:feat-x:review:simplicity-types').model, 'sonnet')
+  assert.equal(r.call('cr:app:feat-x:review:naming-module').model, 'sonnet')
+  assert.equal(r.call('cr:app:feat-x:review:security').model, null)
+  assert.equal(r.call('cr:app:feat-x:review:correctness').model, null)
 })
 
 test('a lens the single scanner leaves out, or that judged nothing, makes the review dead', async () => {

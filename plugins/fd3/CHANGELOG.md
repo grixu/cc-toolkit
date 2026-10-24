@@ -185,6 +185,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Baseline, merge, CI and fix prompts open with the toolchain report and the baseline inside
   `<toolchain_report>` and `<baseline>` tags and give their instructions after, referring to the
   tags, so the rules no longer sit behind kilobytes of embedded data
+- A review lens that judged only part of its files reaches the HIL list as a notice naming its
+  `K of M`; only a lens that judged none was caught before
+- The review fixer fixes every site a finding names, pre-branch copies included: the merge's
+  duplication sweep lists every copy, and "never touch problems that pre-date this branch" told
+  the fixer to leave them, which it overrode on its own
+- Review scans run as the `code-review:scanner` agent — no `Edit`, `Agent`, web or MCP tools, no
+  `CLAUDE.md` beside the conventions note — and so need a code-review release that ships it
+- Review scans of the four craft lenses run on Sonnet, as `/start-cr`'s do; a lens-list scan and
+  every other lens keep the session's model
 
 ## [0.3.0] - 2026-10-12
 

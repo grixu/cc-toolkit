@@ -1132,6 +1132,9 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
             ? [`Each listed problem sits in the repair's own change; a fix that reaches beyond it is skipped.`]
             : [
                 ``,
+                `A site a listed problem names by location is part of it even where it pre-dates this branch: a`,
+                `duplication finding lists every copy, and fixing it means fixing each copy it names — never a`,
+                `copy it does not name.`,
                 `A name you add says what the code does, not where it sends it, and reuses no name the module`,
                 `already exports. A value two modules need moves to a module both already import (constants,`,
                 `config) — never import it from a repository, an adapter or an app-composition file: each`,
@@ -1221,21 +1224,39 @@ const scanAllPrompt = (lenses, dir) =>
 // this small outweighs each lens's own judging, so one agent runs every lens.
 const SINGLE_SCAN_MAX_FILES = 3
 
-const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
+// The scanner agent carries the lens's narrowed tool set and loads no CLAUDE.md, so the conventions
+// note cr-prepare wrote is the only house style a lens judges by.
+const SCANNER = 'code-review:scanner'
+// On the craft recall and calibration fixtures Sonnet matched Opus at about half the cost; the
+// other lenses were not measured, so they keep the session's model.
+const CRAFT_LENSES = ['readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types']
+const scanModel = (lens) => (CRAFT_LENSES.includes(lens) ? { model: 'sonnet' } : {})
 
-// Returns the lenses that did not report; a lens the single scanner left out of its list is one.
+const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
+// A lens that read some of its files still reported, but its silence on the rest is not a verdict.
+const lensPartial = (r) => r.status === 'scanned' && r.filesJudged > 0 && r.filesJudged < r.filesTotal
+
+// Returns the lenses that did not report — a lens the single scanner left out of its list is one —
+// and those that judged only part of their files.
 const scanLenses = async (lenses, dir, files, tag, pass) => {
+  let results
   if (lenses.length > 1 && files <= SINGLE_SCAN_MAX_FILES) {
-    const r = await tryTwice(scanAllPrompt(lenses, dir), { label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
+    const r = await tryTwice(scanAllPrompt(lenses, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
     const reported = new Map((r && r.invoked ? r.lenses || [] : []).map((e) => [norm(e.lens), { ...e, invoked: true }]))
-    return lenses.filter((l) => lensDead(reported.get(l)))
+    results = lenses.map((l) => reported.get(l))
+  } else {
+    results = await parallel(
+      lenses.map((lens) => () =>
+        tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, ...scanModel(lens), label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+      ),
+    )
   }
-  const scans = await parallel(
-    lenses.map((lens) => () =>
-      tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
-    ),
-  )
-  return lenses.filter((_, i) => lensDead(scans[i]))
+  const dead = lenses.filter((_, i) => lensDead(results[i]))
+  const partial = lenses
+    .map((lens, i) => ({ lens, r: results[i] }))
+    .filter(({ r }) => !lensDead(r) && lensPartial(r))
+    .map(({ lens, r }) => `lens ${lens} judged ${r.filesJudged} of ${r.filesTotal} files`)
+  return { dead, partial }
 }
 
 const crMergePrompt = (dir, unit) =>
@@ -1306,8 +1327,8 @@ const runReview = async (unit, base, pass, tag, only) => {
   if (lenses.length === 0 || (!(prep.files > 0) && !specOnly)) {
     return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
   }
-  const deadLenses = await scanLenses(lenses, dir, prep.files || 0, tag, pass)
-  if (deadLenses.length > 0) return { dir, dead: `lens ${deadLenses.join(', ')} did not report` }
+  const scan = await scanLenses(lenses, dir, prep.files || 0, tag, pass)
+  if (scan.dead.length > 0) return { dir, dead: `lens ${scan.dead.join(', ')} did not report` }
   const merged = await tryTwice(crMergePrompt(dir, unit), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {
     const why = !merged
@@ -1324,6 +1345,7 @@ const runReview = async (unit, base, pass, tag, only) => {
     lenses: lenses.length,
     findings: merged.findings,
     notices: [
+      ...scan.partial,
       ...(merged.unowned || []).map((u) => `${u} — a real problem no review rule covers`),
       ...(merged.securityReview ? [`run /security-review: ${merged.securityReview}`] : []),
     ],

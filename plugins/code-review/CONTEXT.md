@@ -11,7 +11,7 @@ The plugin's command (`commands/start-cr.md`) — explicitly invoked, never auto
 _Avoid_: runner, coordinator, code-review (that is the plugin, not the command)
 
 **Scanner**:
-One parallel review subagent running exactly one Lens.
+One parallel review subagent running exactly one Lens — the `code-review:scanner` agent running the `cr-scan` skill over a context directory.
 _Avoid_: role, reviewer, worker
 
 **Lens**:

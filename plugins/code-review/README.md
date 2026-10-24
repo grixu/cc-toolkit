@@ -229,7 +229,9 @@ Limits:
 
 Three skills split `/code-review:start-cr` into steps for automated workflows, which cannot answer
 questions or start sub-agents of their own. They are internal: hidden from the `/` menu, called by
-the `fd3` plugin's implementation workflows, and not meant for you to run.
+the `fd3` plugin's implementation workflows, and not meant for you to run. `/code-review:start-cr`
+uses `cr-scan` too: it writes the same context directory itself and runs each lens as the
+`code-review:scanner` agent, which has only the tools a lens needs and loads no `CLAUDE.md`.
 
 | Skill | Arguments | Writes |
 |---|---|---|

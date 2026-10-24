@@ -44,8 +44,7 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   `--base <branch>`.
 - **`--spec <path>`** → the spec the `spec` Lens reviews the change against. It works
   in path mode and in diff mode alike. When the value is a **readable local file**,
-  Read it now and keep its path and full text for Step 2b and the `<spec>` brief
-  slot. Anything else — a URL, a ticket id, a path that does not exist or cannot be
+  Read it now and keep its path for Step 2b and the context directory's `spec`. Anything else — a URL, a ticket id, a path that does not exist or cannot be
   read — is not a spec: tell the user what you received and ask for a local path,
   **never guess silently**, never fetch, never substitute a file you think they
   meant. Until a usable path arrives (or the user drops `--spec`) the `spec` Lens is
@@ -157,8 +156,8 @@ skipped files to `spec` alone, and the
 
 Settle the conventions note and the standards slot by the first half of
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md` — read it now; the mechanical read it works
-from is in `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. One note, written once, byte-identical in
-every brief.
+from is in `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. One note, written once, and every Scanner
+reads that same file.
 
 ## Step 2b — Resolve the active lens set
 
@@ -166,10 +165,39 @@ Decide the set once, from the input and never from a preference, by the second h
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`. Record **N**, each active Lens's own
 `<files>`, and every inactive Lens with its reason.
 
+**Write the context directory.** The Scanners read the review's setup from files, never from a
+brief you compose: eight retyped briefs paraphrased the contract, dropped its clauses, and took
+two minutes of output before the first Scanner started. Make a fresh directory in the session
+scratchpad (`mktemp -d` when there is none) and write into it, with the `Write` tool, the three
+files `${CLAUDE_PLUGIN_ROOT}/skills/cr-prepare/SKILL.md` describes under **Write the context
+directory**, in exactly that shape:
+
+- `conventions.md` — the Step 2 note; `standards.md` — the standards slot, or `none`;
+- `scope.json` — `checkout` the absolute path of the checkout under review (the PR worktree with
+  `--pr`), `base` and `diff_args` from the script, `files` with each judged file's `status`, `kind` and
+  `untracked`, `skipped` with its reasons, `spec` the absolute spec path or `null`, `spec_focus`
+  `null`, and `lenses` with every Lens once — active with its own `files`, inactive with its
+  reason — named by its rules file's basename (`readability-tests`, `naming-module`, …).
+
+A review of named paths has no diff: write `diff_args` as `null` and `base` as `null`, and each
+file's `status` as `A`. Read nothing back; the Scanners and Step 4 do.
+
 ## Step 3 — Dispatch N Scanners in parallel
 
 Emit all N Scanner calls — **one per active Lens** — with the `Agent` tool in a
-**single message**. Batching them in one message is what makes them run concurrently,
+**single message**, each with `subagent_type: "code-review:scanner"` and this prompt, the lens
+and the directory being the only parts that differ:
+
+```
+Invoke the `code-review:cr-scan` skill with `--lens <lens> --context <the context directory>`.
+Return its closing block verbatim, and nothing else.
+```
+
+The `scanner` agent has only the tools a Scanner needs and loads no `CLAUDE.md`, so the
+conventions note is the one house style it judges by. Pass `model: "sonnet"` for the four craft
+Lenses — `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types` — and no
+`model` for the rest: on the craft recall and calibration fixtures Sonnet scored as well as the
+session's Opus at about half the cost, and nothing has measured it on the other five. Batching them in one message is what makes them run concurrently,
 and a concurrent fan-out **runs in the background**: N agents cannot each block and
 return inline at once, so the harness backgrounds them — this holds **even if you pass
 `run_in_background: false`**, because the flag cannot make a concurrent fan-out
@@ -188,12 +216,13 @@ mailbox, where its findings come back only if you ask for them and it answers �
 that has failed outright in practice, leaving an orchestrator with every Scanner signalling
 `{"type":"idle_notification","idleReason":"available"}` and no findings to merge, and that
 costs a round trip per lens even when it does work. An **unnamed** agent needs no asking:
-its full output arrives on its own in the `<result>` block of its `<task-notification>`.
+its closing block arrives on its own in the `<result>` block of its `<task-notification>`.
 You give up nothing by leaving them unnamed — there is nothing you need to say to a Scanner
-once it has its brief.
+once it has its prompt.
 
-**Collect from the `<task-notification>`.** Each Scanner's completion notification carries
-its findings verbatim inside `<result>` — that is the delivery, and it arrives on its own:
+**Collect from the `<task-notification>` and the lens file.** Each Scanner's completion
+notification carries its `cr-scan` closing block inside `<result>`, and its findings sit in
+`<context>/<lens>.md` — the notification says the lens finished, the file is what you merge:
 
 1. **Wait for N `<result>` blocks — do not chase them.** An unnamed Scanner delivers
    unprompted, and `SendMessage` could not make you wait anyway: it returns an immediate
@@ -211,12 +240,11 @@ its findings verbatim inside `<result>` — that is the delivery, and it arrives
    then fired into the report and the apply phase. And **never `TaskStop` a Scanner**: elapsed
    time is not a state you can observe, the "stalled" one was mid-`Read` with 27 tool calls
    behind it, and killing it cost the review its whole security lens.
-2. **Fail closed on an empty `<result>`, not on silence.** The failure to catch is a
-   notification whose `<result>` is missing, empty, or truncated mid-block — that Scanner
-   has **not** reported. A `<result>` that presents itself as an **amendment, a correction, or
-   a partial list** counts as truncated too, whatever it contains: the Scanner's own full
-   findings are somewhere you cannot see, so re-dispatch that Lens rather than merge the
-   fragment. Re-dispatch that one Lens as a fresh **unnamed** `Agent` and
+2. **Fail closed on a lens that did not deliver, not on silence.** The failure to catch is a
+   closing block that is missing or reads `status: error`, or a `<lens>.md` that is missing, has
+   no `Lens:` header, or presents itself as an **amendment, a correction, or a partial list** —
+   that Scanner has **not** reported, whatever the file holds. Re-dispatch that one Lens as a
+   fresh **unnamed** `code-review:scanner` and
    collect its `<task-notification>` the same way — this holds for every active Lens,
    `security`, `performance` and `spec` included. Never quietly review that lens yourself
    and pass the result off as a full N-lens review. If the re-dispatch also comes back empty,
@@ -225,7 +253,7 @@ its findings verbatim inside `<result>` — that is the delivery, and it arrives
    however reasonable it looks as the recommended option. A single-pass or missing-lens review is a **labelled, user-acknowledged
    degradation**, never the silent default — that silent fallback is exactly how a single
    perspective's false positive reaches the report unchecked.
-3. **Merge only once all N have delivered a `<result>`.** Merging early loses findings.
+3. **Merge only once all N have delivered.** Merging early loses findings.
 
 While the Scanners run, do work that doesn't depend on them — **pre-read the diff and the
 changed files** so you can re-grade and locate sites the moment findings land. While you
@@ -236,24 +264,18 @@ gives the head count). A file the change grows past **~1000 total lines** with n
 decomposition in the same change gets its **own bullet in `Not flagged`** — a real
 problem with no rule to land on, never compressed into the one-line list.
 
-### The Scanner brief
+### What a Scanner returns
 
-The brief each Scanner receives, the nine Lenses and their output contracts, and the three
-side-channels are in `${CLAUDE_PLUGIN_ROOT}/references/scanner-contract.md` — read it completely
-before the dispatch and fill every slot of the brief it defines. Its paths are relative to
-`${CLAUDE_PLUGIN_ROOT}/references/`: a brief carries the absolute
-`${CLAUDE_PLUGIN_ROOT}/references/rules/<lens>.md` in its `<rules_file>` slot.
-
-The `<output_contract>` slot is **copied, never summarized**: the header line, the Lens's own
-numbered entry, the finding shapes, the severity paragraph, the proposed-name, FINDINGS-only,
-duplication and fix-round paragraphs, and the three side-channels, verbatim from the file. Briefs that paraphrased it lost
-the finding's path slot, the `files judged` header and the closed HANDOFF families, and their
-Scanners graded below the table. Paste the same contract text into every brief; only the Lens
-entry differs.
+`cr-scan` assembles each Scanner's brief from the context directory and its own lens's rules, and
+writes its output in the shape `${CLAUDE_PLUGIN_ROOT}/references/scanner-contract.md` defines —
+the `Lens:` header line, the findings or verdicts, and the three side-channels. Read that contract's
+**Three side-channels** before you merge: it is what each channel means. You never compose,
+summarize or forward the contract yourself.
 
 ## Step 4 — Merge and re-grade
 
-Merge the N outputs by the **Merge and re-grade** half of
+Read each active Lens's `<context>/<lens>.md` with the `Read` tool, one call per file, and merge
+the N outputs by the **Merge and re-grade** half of
 `${CLAUDE_PLUGIN_ROOT}/references/merge-contract.md` — read it now if you have not. Every rule
 there binds this step: dedup, convergence, routing every `HANDOFF` and candidate, the published
 `Reconciliation` line, `(verify)` resolution, re-grading against the severity table, and judging
@@ -368,7 +390,7 @@ its reason, and claims nothing the tree does not carry.
 the user picked from the menu — the missing spec a correctness bucket offered, say — and the
 review's own scratchpad file above, which lives outside the repository. Every change to a file already on disk goes through `Edit`, so a
 targeted fix can never turn into a wholesale rewrite of a file the review only read
-in part. This is the Orchestrator's alone: a Scanner still writes nothing at all.
+in part. This is the Orchestrator's alone: a Scanner writes only its own lens file.
 
 **Scanner line numbers are estimates, not ground truth.** A finding's `path:line`
 is where the Scanner *thought* the code sat; before each edit, Read the file and

@@ -45,9 +45,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ids as `spec_focus` in `scope.json`. The `spec` and `correctness` lenses read those elements
   first and the rest of the spec only where they point or the diff reaches; the `spec` lens
   enumerates, counts and judges `scope-creep` against the focus
+- A `scanner` agent (`code-review:scanner`) that runs `cr-scan` with only `Skill`, `Read`, `Grep`,
+  `Glob`, `Bash` and `Write`, and without `CLAUDE.md`, so `conventions.md` is the one house style a
+  lens judges by
 
 ### Changed
 
+- `/start-cr` writes its scope, conventions and standards to a context directory and runs each
+  lens as `code-review:scanner` with a two-line prompt invoking `cr-scan`, then merges the lens
+  files. Its briefs had paraphrased the contract in every run, losing clauses, and cost 13–31k
+  output tokens and up to three minutes before the last Scanner started
+- `/start-cr` runs the four craft lenses (`readability-tests`, `naming-module`, `objects-patterns`,
+  `simplicity-types`) on Sonnet; on eval-5…9, three repeats each, Sonnet 5.5 passed 13 of 15
+  against Opus 5.5's 12 of 15 at 55% of the cost. The other five lenses keep the session's model
 - Scanner findings carry their own `path:L<lines>`; every Scanner opens with a
   `files judged: N of M` header; KEEP verdicts are counted, not listed; a HANDOFF names one of the
   fixed families; suggested comment fixes obey every comment rule; `/start-cr` copies the contract
@@ -114,6 +124,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cr-merge` writes its report to `cr-report.md`: Claude Code's `Write` tool refuses a sub-agent
   file named `REPORT*.md`. A failed report write returns `report: none (<reason>)` and never turns
   a finished merge into `status: error`
+- The headless skills read their files with the `Read` tool, one call per file: a `cat` chain with
+  an `echo =====` separator aborted under zsh in 59 of 70 scans of one run, and its joined output
+  was truncated before the last rules
+- The `Reconciliation` line counts every `Not flagged` entry: a new `L passed on` count holds the
+  look-alikes, reasoned KEEPs and file-growth bullet that come from no channel, so `D + P + L`
+  can match the block. A deduped primary finding is silent and no longer counted as dropped, and
+  every channel entry cleared in `Not flagged` gets its own entry, since one shared entry cannot
+  satisfy both sums
+- Dedup re-grades the overlapping findings against the table before it picks the survivor, and
+  keeps the one whose row grades highest: keeping the higher severity on a lower-graded rule was
+  undone by the re-grade that follows
+- Every `test-fidelity` fix is structural, and no fix that changes a signature, edits a second
+  file or creates a module is Safe: runs routed test deletions three different ways and applied
+  cross-file changes from the Safe bucket
+- A `cr-scan` lens list marks each lens file's header with ` · shared run: <list>`, and the merge
+  no longer counts agreement between lenses from one shared run as convergence
+- A lens that judged only part of its files (`files judged: K of M`, `K < M`) is named with its
+  count in the `Tally` and in `cr-merge`'s `lenses:` line instead of passing as a full lens
+- The Scanner contract covers a review of named paths: with `diff_args` `none` a Scanner reads each
+  file whole and every finding is primary, where it was told only how to read a diff
+- A fix that adds an import is never Safe, and its new edge is held to the `module` rules before
+  it is offered: review fixes that imported from a test helper produced most of the next delta
+  review's findings
 
 ## [0.4.0] - 2026-10-03
 

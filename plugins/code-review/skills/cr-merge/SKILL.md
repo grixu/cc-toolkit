@@ -20,6 +20,11 @@ ask, and nothing you do edits the checkout.
 A missing `--context`, or a directory without `scope.json`, ends the run with `status: error` and
 the reason. Those two are the only `error` cases: nothing after them changes `status`.
 
+Read every file this skill names — the contract, `severity.md`, `scope.json`, `conventions.md`,
+each lens file — with the `Read` tool, one call per file. A `cat` chain through `Bash` is no
+substitute: under zsh a separator such as `echo =====` aborts the whole chain, and joined output
+past a size is truncated, so a lens file read that way loses its last entries. `Bash` is for `git`.
+
 ## 1. Check that every lens delivered
 
 `scope.json`'s `lenses.active` names the lenses that had to run. Each needs `<lens>.md` in the
@@ -50,7 +55,7 @@ included, in the report's order:
 ```
 status: merged | incomplete | error
 report: <context>/cr-report.md | none (<reason>)
-lenses: <L> of 9 (skipped: <lens — reason; …>)
+lenses: <L> of 9 (skipped: <lens — reason; …>; partial: <lens — K of M files; …>)
 findings:
 - <severity> · <family> · <rule> · <path>:L<lines> · <safe | structural | report-only> — <the fix, as a clause>
 - comments · R<n> · <VERDICT> · <path>:L<line> · <safe | structural | report-only> — <the fix>

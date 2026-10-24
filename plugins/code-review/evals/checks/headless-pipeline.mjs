@@ -6,6 +6,32 @@ import { strayHandoffFamilies } from './handoff-families.mjs';
 
 const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'correctness', 'security', 'performance', 'spec'];
 const FINDING = /^- (high|medium|nit) · [\w-]+ · [\w-]+ · \S+:L\d+(?:-\d+)? · (safe|structural|report-only)\b.* — /m;
+const RECONCILIATION = /^Reconciliation: (\d+) handoffs \+ (\d+) candidates → (\d+) merged · (\d+) own bullet · (\d+) boy-scout · (\d+) Not flagged; (\d+) primary dropped · (\d+) passed on\s*$/m;
+
+// The one-line form separates entries with `;`, the long form gives each a bullet.
+const notFlaggedEntries = (report) => {
+  const m = report.match(/^\*\*Not flagged:\*\*(.*)$/m);
+  if (!m) return 0;
+  if (m[1].trim()) return m[1].split(';').filter((e) => e.trim()).length;
+  const after = report.slice(m.index + m[0].length).split('\n').slice(1);
+  let n = 0;
+  for (const line of after) {
+    if (/^- /.test(line)) n++;
+    else if (line.trim() && !/^\s/.test(line)) break;
+  }
+  return n;
+};
+
+const reconciliationFailures = (report) => {
+  const m = report.match(RECONCILIATION);
+  if (!m) return ['the Reconciliation line does not have the template shape'];
+  const [n, mc, a, b, c, d, p, l] = m.slice(1).map(Number);
+  const out = [];
+  if (a + b + c + d !== n + mc) out.push(`Reconciliation routes ${a + b + c + d} of ${n + mc} channel entries`);
+  const entries = notFlaggedEntries(report);
+  if (d + p + l !== entries) out.push(`Reconciliation counts ${d + p + l} Not flagged entries, the block holds ${entries}`);
+  return out;
+};
 
 export default (output, context) => {
   const { checkout, context: dir } = context.vars;
@@ -33,6 +59,8 @@ export default (output, context) => {
       if (!check(fs.existsSync(p), `cr-scan left no ${lens}.md`)) continue;
       const text = fs.readFileSync(p, 'utf8');
       check(/^Lens: .* · files judged: [1-9]\d* of \d+/m.test(text), `${lens}.md has no Lens header with a non-zero files-judged count`);
+      const shared = /^Lens: .* · shared run: \S+/m.test(text);
+      check(shared === Boolean(context.vars.list), `${lens}.md ${shared ? 'claims' : 'lacks'} a shared-run header suffix`);
       const stray = strayHandoffFamilies(text);
       check(stray.length === 0, `${lens}.md hands off to families outside severity.md: ${stray.join(', ')}`);
     }
@@ -46,7 +74,9 @@ export default (output, context) => {
   }
 
   const report = path.join(ctx, 'cr-report.md');
-  check(fs.existsSync(report) && /Reconciliation/.test(fs.readFileSync(report, 'utf8')), 'cr-merge wrote no cr-report.md with a Reconciliation line');
+  if (check(fs.existsSync(report), 'cr-merge wrote no cr-report.md')) {
+    for (const f of reconciliationFailures(fs.readFileSync(report, 'utf8'))) check(false, f);
+  }
   check(/status: merged/.test(output), 'cr-merge did not return status: merged');
   check(FINDING.test(output), 'no finding line in the fixed `severity · family · rule · path:L · class — fix` shape');
   check(/^- high · security · /m.test(output), 'the planted security finding did not come through the merge');

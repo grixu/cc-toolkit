@@ -14,14 +14,18 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   as the dispatcher collected it, not merely a notification that fired; a lens you could not collect is a
   labelled degradation you already surfaced to the user, never a silent gap in the merge.
   An output whose header reads `files judged: 0 of <M>` with `M` above zero has not reviewed
-  anything: it is a lens that did not deliver, however clean its findings list looks.
+  anything: it is a lens that did not deliver, however clean its findings list looks. One that
+  reads `files judged: <K> of <M>` with `K` below `M` delivered in part: merge it, and name the
+  lens with its `K of M` in the `Tally`'s lens clause, so a lens that skipped files never reads
+  as one that judged them all.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses, and across **all twelve families**, craft and `correctness` /
-  `security` / `performance` / `spec` / `standards` alike — keep the **most-specific** one and drop
-  the rest. When the overlap
-  spans two severities (a `high` symptom folding into a lower-severity root cause, or the
-  reverse), the surviving bullet keeps the **highest** severity of the overlap — deduping
-  must never quietly demote a `high` under a `medium`.
+  `security` / `performance` / `spec` / `standards` alike — re-grade each against the table
+  first (see *Re-grade* below), then keep the one whose rule's row grades highest, the
+  **most-specific** among equals, and drop the rest. Choosing the survivor before re-grading
+  lets the table demote it afterwards: a `high` symptom folded under a root cause whose row
+  says `medium` quietly ships as `medium`. A finding that keeps its own row's severity is the
+  only one the table will not rewrite, so the survivor's rule must carry the grade.
 - **Duplication has one owner per reach, keyed on whether a copy is exported.** Code repeated
   inside one file, or across files where no copy is exported, is `simplicity` · over-complex;
   a helper or inline code the change adds that repeats one exported elsewhere is `module` ·
@@ -36,7 +40,9 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   no way to coordinate. Treat a finding several lenses reached (directly or via
   `HANDOFF`) as **confirmed**: it leads its file, and it is a candidate for the
   headline. Convergence raises confidence and ordering, **never severity** — that stays
-  verbatim from the table.
+  verbatim from the table. Lens outputs whose headers carry the same `shared run:` suffix came
+  from one reader judging them in turn: dedup them as usual, but their agreement is one reading,
+  not several, and confirms nothing.
 - **Route every `HANDOFF` and every `CANDIDATES` entry to a visible home.** Assign a
   `HANDOFF` its correct family and rule; decide a candidate against its rule's
   calibration. A `HANDOFF` whose family is not one of the fixed labels in `severity.md` is
@@ -52,13 +58,14 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
 - **A primary finding is reconciled too.** The channels are not the only thing that goes
   missing: a Scanner's own `FINDINGS` entry can fall out of the merge between collecting and
   rendering, and nothing downstream notices. Count what you received per Scanner, and give every
-  primary finding that does not reach a report bullet — deduped into another, demoted, or
-  rejected — its own `Not flagged` entry with the reason. Dedup is the one silent case allowed,
-  and only because the surviving bullet carries it.
+  primary finding that does not reach a report bullet — demoted or rejected — its own `Not
+  flagged` entry with the reason. A primary finding deduped into another is the one silent case:
+  the surviving bullet carries it, so it gets no `Not flagged` entry and is not counted as dropped.
 - **Publish that check as one counted line above the report** — `Reconciliation: N
   handoffs + M candidates → A merged · B own bullet · C boy-scout · D Not flagged; P primary
-  dropped` — where `A + B + C + D` equals `N + M`, and `P` counts the primary findings that got
-  no bullet. The arithmetic is what makes the check real: a
+  dropped · L passed on` — where `A + B + C + D` equals `N + M`, `P` counts the primary findings
+  that got a `Not flagged` entry, and `L` counts every other `Not flagged` entry: a look-alike a
+  Scanner cleared in prose, a KEEP that needed its reason, the file-growth bullet. The arithmetic is what makes the check real: a
   run that states "every handoff routed" without it has asserted rather than reconciled,
   and loses the entry nothing else corroborates. When the sums disagree, an entry is
   unrouted — find it, never adjust a number to close the gap.
@@ -69,8 +76,11 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   flagged`. Runs whose arithmetic was right have still printed `0 boy-scout` over a Boy-scout
   block holding three routed handoffs, and counted six entries as `merged` into a bullet that
   was never rendered. Before publishing, count the rendered blocks: `C` equals the Boy-scout
-  entries that came from a channel, and `D + P` equals the entries in `Not flagged`. A count
-  that does not match the block it names is the bug, not the block.
+  entries that came from a channel, and `D + P + L` equals the entries in `Not flagged`. Every
+  channel entry cleared there gets its own `Not flagged` entry, even when several Scanners reached
+  the same code for the same reason — one shared entry cannot satisfy both sums — and none is
+  counted as `merged` to make a sum close. A count that does not match the block it names is the bug, not
+  the block.
 - **Resolve every `(verify)` finding**: read the code and confirm or refute it. A
   confirmed finding drops the marker and proceeds; a refuted one is a **Scanner false
   positive** — drop it and note it under `Not flagged`. An unresolved `(verify)` finding
@@ -136,7 +146,8 @@ the fix* is `report-only` too, with its one-line reason.
   `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
   `full-construction` / `exposed-representation` / `leaky-collection` reshaping, the
   `patterns` refactors (`composition`, `polymorphism`, `execute-around`), `over-complex`
-  and `shallow-duplication` unifications, `test-structure` restructuring, `dead-code-surface`
+  and `shallow-duplication` unifications, `test-structure` restructuring, every `test-fidelity`
+  fix — deleting, merging or rewriting a test changes what the suite covers — `dead-code-surface`
   that removes an export or a return field, a `magic-literal` name a second module
   imports (where it lives decides an import edge), and `dead-code` removal of a branch that
   looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
@@ -157,7 +168,13 @@ the fix* is `report-only` too, with its one-line reason.
 **Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
 edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
 moves or restructures code, or removes a branch that looks reachable → structural. A
-`standards` finding is an unlisted rule and routes the same way.
+`standards` finding is an unlisted rule and routes the same way. **Whatever its rule, a fix
+that changes a signature, edits a second file, creates a new module, or adds an import is never
+Safe**: its callers and importers are what the eyeball check cannot see — runs that classed a
+narrowed parameter list, a merged type and a new shared test module as Safe applied them unseen,
+and a Safe import from a test helper came back as the next review's `dependency-direction`
+finding. Before offering a fix that adds an import, hold the new edge to the `module` rules as
+if the change had made it.
 
 **Security is never a Safe fix.** However small the edit looks — a bound parameter, a
 removed literal — it changes behaviour at a boundary, so a `security` finding always
@@ -187,7 +204,7 @@ comment verdicts **together**. Render with **exactly this template**, in this
 order — keep the structure identical between runs:
 
 ```markdown
-Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged; <P> primary dropped
+Reconciliation: <N> handoffs + <M> candidates → <A> merged · <B> own bullet · <C> boy-scout · <D> Not flagged; <P> primary dropped · <L> passed on
 
 ## Code review — <scope>
 
@@ -207,13 +224,13 @@ each when one is a real problem with no rule to land on; omit when empty>
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
 
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 9 (skipped: <lens> — <reason>). Spec: R of T requirements met. Skipped: <files + reason>.
+**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 9 (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files). Spec: R of T requirements met. Skipped: <files + reason>.
 ```
 
 A filled-in report reads like this:
 
 <example>
-Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped
+Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped · 0 passed on
 
 ## Code review — committed (base → HEAD), 3 files
 
@@ -281,7 +298,7 @@ Rules for filling it in:
   `HANDOFF` and dropped primary finding the merge cleared — one line when they are all genuine
   non-findings, a short bullet each when one of them is a *real* problem that merely has no rule
   to land on. **Its entries stay countable**: separated by `;` on the one-line form, one bullet
-  each otherwise, because the `Reconciliation` line's last two numbers are checked against them. A real problem keeps its own bullet rather than being compressed into a
+  each otherwise, because the `Reconciliation` line's `D`, `P` and `L` are checked against them. A real problem keeps its own bullet rather than being compressed into a
   subordinate clause; that compression is how something worth acting on disappears. Drop
   the block if empty. A headless merge (`cr-merge`) also returns each such real-problem bullet
   verbatim in its `unowned` list, and the `Skipped` line's `/security-review` pointer in its
@@ -302,7 +319,8 @@ Rules for filling it in:
   empty).
 - **The `Tally` names the lenses.** `Lenses: L of 9` always, with each skipped Lens
   and its lens-set reason in the parenthesis (`skipped: performance — no executable
-  code; spec — no spec named`); drop the parenthesis when all nine ran. When a spec was
+  code; spec — no spec named`), and each lens that judged only part of its files after them
+  (`partial: security — 3 of 5 files`); drop the parenthesis when all nine ran in full. When a spec was
   given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
   met`; omit that clause otherwise.
 
