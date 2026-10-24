@@ -111,16 +111,16 @@ export function noFinding(output, { config: c = {} } = {}) {
   return hits.length ? result(false, `raised ${describe(c)}: ${hits.map((f) => f.text.slice(0, 140)).join(' || ')}`) : result(true, `no finding ${describe(c)}`);
 }
 
-// Every finding uses the fixed vocabulary: a family from the allowed set, a rule row severity.md
-// lists for that family (standards slugs are the project's own), and an allowed severity. A
-// severity slot outside the table anywhere in the output fails too.
+// Every finding uses the fixed vocabulary: an allowed severity, and when asked a family from the
+// allowed set and a rule row severity.md lists for that family (standards slugs are the project's
+// own). A severity slot outside the table anywhere in the output fails too.
 export function findingsVocabulary(output, { config: c = {} } = {}) {
   const severities = c.severities ?? ['high', 'medium', 'nit'];
   const bad = [];
   for (const f of findings(output)) {
     if (c.families && !c.families.includes(f.family)) bad.push(`family ${f.family}`);
     if (!severities.includes(f.severity)) bad.push(`severity ${f.severity} on ${f.family} · ${f.rule}`);
-    if (f.family !== 'standards' && !TABLE[f.family]?.has(f.rule)) bad.push(`rule ${f.family} · ${f.rule} is not in severity.md`);
+    if (c.rules && f.family !== 'standards' && !TABLE[f.family]?.has(f.rule)) bad.push(`rule ${f.family} · ${f.rule} is not in severity.md`);
   }
   for (const m of output.matchAll(/·\s*(low|critical|minor|major|info|blocker)\s*·/gi)) bad.push(`invented severity "${m[1]}"`);
   return bad.length ? result(false, bad.join('; ')) : result(true, 'every finding uses the fixed family, rule and severity vocabulary');

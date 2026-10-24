@@ -280,26 +280,20 @@ tests:
       # "skill actually ran" proxy: the report uses the skill's own family vocabulary.
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
-      - type: llm-rubric
-        value: >-
-          Flags the local `placedIso` in `buildReceipt` — computed from `order.placedAt`
-          but never read and never returned — under the `simplicity` family, rule
-          `dead-code`.
-      - type: llm-rubric
-        value: >-
-          That `dead-code` finding is graded severity **high**. It is not downgraded to
-          `medium` or `nit` on the grounds that the file is otherwise small, tidy, or
-          correct.
-      - type: llm-rubric
-        value: >-
-          Every severity in the report is exactly one of `high`, `medium`, or `nit` — the
-          word "low", a numeric score, or an invented severity word appears nowhere.
-      - type: llm-rubric
-        value: >-
-          If the report flags `openness` (blocks jammed together with no blank line) at
-          more than one site, those sites are collapsed into a SINGLE bullet listing the
-          lines together (e.g. "L20, L34, L51") rather than repeated as one bullet per
-          site.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: dead-code, mentions: placedIso }
+      # not downgraded because the file is otherwise small, tidy or correct
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: dead-code, mentions: placedIso, severity: high }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { severities: [high, medium, nit] }
+      # one rule breaking at several sites is one bullet listing the lines
+      - type: javascript
+        value: file://checks/report.mjs:collapsedRepeats
+        config: { rule: openness }
       - type: llm-rubric
         value: >-
           The report carries an explicit `**Headline:**` line, and it does NOT call the
@@ -338,10 +332,10 @@ tests:
           Flags the bare `86400 * 30` in `findOverdueInvoices` as `readability` ·
           `magic-literal`, severity **medium**, proposing a name for the 30-day overdue
           window.
-      - type: llm-rubric
-        value: >-
-          Flags the local `currencyMap` in `groupByCurrency` as `naming` · `role-name`,
-          severity **nit** — the name carries the type (`Map`) instead of the role.
+      # the name carries the type (`Map`), not the role
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: naming, rule: role-name, mentions: currencyMap, severity: nit }
       - type: llm-rubric
         value: >-
           All three problems above are present in the report. Missing any one of them
@@ -356,30 +350,26 @@ tests:
       # This fixture is deliberately clean, so a family tag may be absent from a collapsed
       # report. Use the skeleton's tally line as the "skill actually ran" proxy instead.
       - type: regex
-        value: '[Tt]ally'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `JSON.parse(raw) as Config` in `parseConfig` as `needless-cast` —
-          narrowing an `unknown` boundary is the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `default:` branch of the `switch` in `area` as `dead-code` —
-          an intentionally exhaustive default kept as a defensive assertion is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the arithmetic in `median` (`Math.floor(sorted.length / 2)`,
-          `% 2 === 1`, `sorted[middle - 1]`) as `magic-literal` — these are
-          self-evidently themselves, not domain constants.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `items.length > 0` in `hasResults` as `explaining-variable` — the
-          expression is already idiomatic and plain.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the two-branch conditional in `describeStock` as `guard-clause` —
-          both arms do real, comparable work, which the rule documents as a legitimate
-          `if/else` rather than a guard plus body.
+        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+      # narrowing an `unknown` boundary is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: needless-cast, mentions: ['JSON\.parse', parseConfig, 'as Config'] }
+      # an exhaustive default kept as a defensive assertion
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: dead-code, mentions: [default, area] }
+      # arithmetic that is self-evidently itself
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: magic-literal, mentions: [median, 'Math\.floor', '% 2', middle] }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: explaining-variable, mentions: [hasResults, 'items\.length'] }
+      # both arms do comparable work: a legitimate if/else
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: guard-clause, mentions: describeStock }
       - type: llm-rubric
         value: >-
           The overall verdict is clean: the report has no high or medium findings. Any
@@ -436,33 +426,27 @@ tests:
     assert:
       # Deliberately clean fixture — proxy on the skeleton's tally line, as in eval-7.
       - type: regex
-        value: '[Tt]ally'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `OrderDtoMapper.toDto` as `feature-envy` — a DTO mapper reads
-          another object's fields because that is its job (the rule's documented
-          exception).
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `new OrderQuery().where(...).where(...).limit(...).build()`
-          chains in `OrdersController.list` / `find` as `message-chain` — a fluent builder
-          / `this`-returning chain is the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `PaymentGateway.chargeOrder` as `pass-through` — it adapts the
-          call (translates `Order` into Stripe's `{ amount, currency }` shape and lowers the
-          currency) at a real boundary, which the rule documents as a facade, not a
-          forwarder.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `import type` pair between `quality-calibration-2.ts` and
-          `quality-calibration-2.types.ts` as `dependency-direction` — erased, type-only
-          imports are the rule's documented exception, even though they form a cycle.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the repeated `(req: Request, res: Response)` signatures of
-          `OrdersController.get`, `list`, `charge` as `data-clump` — a framework-fixed
-          signature is the rule's documented exception.
+        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+      # a DTO mapper reads another object because that is its job
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: feature-envy, mentions: [toDto, OrderDtoMapper] }
+      # a fluent, this-returning builder
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: message-chain, mentions: [OrderQuery, 'where\(', 'build\(', list, find] }
+      # it adapts the call at a real boundary: a facade
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: pass-through, mentions: [chargeOrder, PaymentGateway] }
+      # the fixture has one cross-file import pair, erased and type-only
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: dependency-direction }
+      # a framework-fixed signature
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: data-clump, mentions: ['req', Request, 'res\b'] }
       - type: llm-rubric
         value: >-
           The overall verdict is clean: the report has no high or medium findings. Any
