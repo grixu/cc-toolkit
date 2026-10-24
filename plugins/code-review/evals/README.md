@@ -28,9 +28,11 @@ evals/
   prompts/headless-list.txt # the headless track with one cr-scan over a lens list — eval-25
   prompts/correctness.txt  # scanner brief — correctness lens
   prompts/pr-scope.txt     # start-cr Step 1 for --pr, with a gh stand-in — eval-23
+  prompts/start-cr-merge.txt # start-cr Steps 4–7 over lens files already on disk — eval-26
   checks/report.mjs        # code asserts over the final message: finding bullets, comment verdicts, the quality skeleton
+  checks/menu-and-commits.mjs # eval-26: the apply menu and commit question from the tool calls, the commits from git
   checks/                  # the other checks read files on disk (headless, pr, HANDOFF families)
-  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22, 23 and 24 run in, and the gh stand-in
+  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22, 23, 24 and 26 run in, eval-26's context dir, and the gh stand-in
 ```
 
 The headless skills review committed changes only, so eval-20 runs against a git
@@ -73,10 +75,11 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-23 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 7` reviews the PR head in a detached worktree against `origin/main`; the user's checkout stays on `main`, untouched; the gh user authored it, so `mode: own` | 1 / 0 |
 | eval-24 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 8`, the same head authored by someone else, gives the eval-23 scope with `mode: reviewer` | 1 / 0 |
 | eval-25 | headless | `.sandbox/headless` | one `cr-scan --lens a,b,…` over every active lens writes each `<lens>.md` and one closing block per lens, and `cr-merge` merges them as in eval-20 | 1 / 0 |
+| eval-26 | start-cr | `.sandbox/mailer` + `.sandbox/mailer-ctx` (`campaign-mailer/DEFECTS.md`) | start-cr Steps 4–7 over written lens files: the menu keeps four slots with the rule-less missing unsubscribe link as its own option and boy-scout dropped, the report is on disk before the menu, the commit-mode question rides along, and the `first_option` answers leave the commits that mode implies, none saying "address review" and none taking the user's untracked file | 10 / 0 |
 
 ### Grading
 
-Code first: 187 of the 194 asserts are `regex`, `not-regex` or `javascript`. Most read the
+Code first: 197 of the 204 asserts are `regex`, `not-regex` or `javascript`. Most read the
 final message through `checks/report.mjs`. It parses the fixed shapes the skills prescribe:
 `` `family` · rule · severity · L… `` findings, ``L… · `quote` — **VERDICT** (R#)`` comment
 verdicts, and the Conventions / Headline / `###` path / Tally skeleton. It grades only the
@@ -111,6 +114,17 @@ only in the brief's exact bullet shape, write nothing. What they measure is the 
 file plus the brief contract; the dispatch/merge mechanics of `start-cr.md` are out of
 reach here. The prompts avoid the `quality-review`/`comment-review` trigger words so
 those skills do not fire on top of the brief.
+
+### start-cr track
+
+eval-23 and eval-24 run `start-cr.md` Step 1 from a prompt that names the step. eval-26 starts
+it at Step 4 the same way: `reset-sandbox.sh` writes the context directory Step 2b would have
+written, plus the `<lens>.md` file each of the eight active Scanners would have left, so the run
+merges, reports, asks and commits with no Scanner dispatched. `first_option` answers the menu with
+its first option, so the run's own ordering decides which bucket gets applied; the checks map
+that option to its files and to the commit mode it picked, and grade the commits against both.
+The branch has commits above its base, so the "Fixup only when the branch has commits" half of
+the commit-mode check cannot fail here; it guards a future sandbox without them.
 
 The standards test rides the quality track (`standards.txt` opens with the
 `quality review` trigger) and tells the skill to treat `fixtures/standards/` as the

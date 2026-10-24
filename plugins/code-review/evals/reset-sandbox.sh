@@ -80,4 +80,58 @@ exit 1
 EOF
 chmod +x .sandbox/bin/gh
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr"
+# eval-26: a branch whose review already ran through Step 3. The context directory holds the
+# scope.json Step 2b writes and every active lens's file, so start-cr starts at the merge with no
+# Scanner. An untracked file stands for the user's own work, which no commit may pick up.
+mailer=.sandbox/mailer
+mailer_ctx="$(pwd)/.sandbox/mailer-ctx"
+src=fixtures/campaign-mailer
+mkdir -p "$mailer" "$mailer_ctx"
+git -C "$mailer" init -q -b main
+cp -R "$src/base/." "$mailer/"
+git -C "$mailer" add -A
+commit "$mailer" 'feat: render and schedule newsletters'
+mailer_base="$(git -C "$mailer" rev-parse HEAD)"
+git -C "$mailer" switch -q -c feat/weekly-digest
+for f in schedule throttle recipients sender; do cp "$src/head/src/campaigns/$f.ts" "$mailer/src/campaigns/"; done
+git -C "$mailer" add -A
+commit "$mailer" 'feat: schedule campaigns and filter their recipients'
+cp "$src/head/src/campaigns/audience.ts" "$src/head/src/campaigns/dispatch.ts" "$mailer/src/campaigns/"
+cp "$src/head/src/templates/digest.ts" "$mailer/src/templates/"
+git -C "$mailer" add -A
+commit "$mailer" 'feat: plan the weekly digest'
+git -C "$mailer" rev-parse HEAD > .sandbox/mailer.head
+printf 'ask ops whether the Monday send window moves in December\n' > "$mailer/scratch-notes.txt"
+
+cp "$src"/lenses/*.md "$mailer_ctx/"
+printf 'No project convention files: no CODING_STANDARDS.md, CLAUDE.md, AGENTS.md, CONTRIBUTING.md, .cursor/rules or .claude/rules at the repository root or along the reviewed paths.\n' > "$mailer_ctx/conventions.md"
+printf 'none\n' > "$mailer_ctx/standards.md"
+judged='"src/campaigns/audience.ts", "src/campaigns/dispatch.ts", "src/campaigns/recipients.ts", "src/campaigns/schedule.ts", "src/campaigns/sender.ts", "src/campaigns/throttle.ts", "src/templates/digest.ts"'
+lens() { printf '      { "lens": "%s", "files": [%s] }' "$1" "$judged"; }
+cat > "$mailer_ctx/scope.json" <<EOF
+{
+  "checkout": "$(pwd)/$mailer",
+  "base": "$mailer_base",
+  "diff_args": ["$mailer_base..HEAD"],
+  "files": [
+    { "path": "src/campaigns/audience.ts", "status": "M", "kind": "source", "untracked": false },
+    { "path": "src/campaigns/dispatch.ts", "status": "A", "kind": "source", "untracked": false },
+    { "path": "src/campaigns/recipients.ts", "status": "A", "kind": "source", "untracked": false },
+    { "path": "src/campaigns/schedule.ts", "status": "A", "kind": "source", "untracked": false },
+    { "path": "src/campaigns/sender.ts", "status": "A", "kind": "source", "untracked": false },
+    { "path": "src/campaigns/throttle.ts", "status": "A", "kind": "source", "untracked": false },
+    { "path": "src/templates/digest.ts", "status": "A", "kind": "source", "untracked": false }
+  ],
+  "skipped": [],
+  "spec": null,
+  "spec_focus": null,
+  "lenses": {
+    "active": [
+$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security; do lens "$l"; printf ',\n'; done; lens performance)
+    ],
+    "inactive": [{ "lens": "spec", "reason": "no spec named" }]
+  }
+}
+EOF
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer"

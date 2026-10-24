@@ -38,6 +38,9 @@ prompts:
   # start-cr's Step 1 for --pr, against a sandbox origin and a gh stand-in.
   - id: file://prompts/pr-scope.txt
     label: pr-track
+  # start-cr from Step 4 over lens files already on disk: merge, report, menu, apply, commit.
+  - id: file://prompts/start-cr-merge.txt
+    label: start-cr-merge-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -938,3 +941,48 @@ tests:
     assert:
       - type: javascript
         value: file://checks/headless-pipeline.mjs
+
+  - description: 'eval-26 start-cr-menu-and-commits (start-cr Steps 4–7 from written lens files)'
+    prompts: [start-cr-merge-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/mailer
+      context: plugins/code-review/evals/.sandbox/mailer-ctx
+      head: plugins/code-review/evals/.sandbox/mailer.head
+      branch: feat/weekly-digest
+      ruleless: unsubscribe
+      userFiles: [scratch-notes.txt]
+      # The first option of each question is the answer; which bucket that is, the run decides.
+      buckets:
+        - { match: unsubscribe, files: [src/templates/digest.ts] }
+        - { match: report only, files: [] }
+        - { match: safe, files: [src/campaigns/schedule.ts, src/campaigns/throttle.ts] }
+        - { match: structural|walk, files: [src/campaigns/recipients.ts, src/campaigns/sender.ts] }
+      families:
+        src/templates/digest.ts: correctness
+        src/campaigns/schedule.ts: comments
+        src/campaigns/throttle.ts: readability
+        src/campaigns/recipients.ts: simplicity
+        src/campaigns/sender.ts: objects
+        src/campaigns/audience.ts: naming
+    options: { max_budget_usd: 8, allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:menuSlots
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:rulelessOption
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:boyScoutDropped
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:reportBeforeMenu
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:selectionOnDisk
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:commitModeQuestion
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:onlySelectedApplied
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:commitsMatchMode
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:commitMessages
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:userFilesUntouched

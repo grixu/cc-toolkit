@@ -1,0 +1,10 @@
+Act as the orchestrator of the code-review plugin's `start-cr` command. Read
+`plugins/code-review/commands/start-cr.md` completely. It was invoked with no arguments in the git
+checkout {{checkout}} — that directory is the repository the command was invoked in, and the
+plugin root (`${CLAUDE_PLUGIN_ROOT}`) is `plugins/code-review`.
+
+Steps 1 to 3 have already run. The user chose the committed scope, Step 2b wrote the context
+directory {{context}} (`scope.json`, `conventions.md`, `standards.md`), and every active Scanner
+has delivered: each closing block reported `status: scanned`, and each lens's findings are in
+`{{context}}/<lens>.md`. Do not redo those steps and dispatch no Scanner. Carry out the command
+from Step 4 to the end of Step 7.
