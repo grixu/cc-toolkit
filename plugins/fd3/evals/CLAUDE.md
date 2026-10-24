@@ -96,9 +96,25 @@ None of the group is in the CI smoke filter.
 - Assert on artifacts on disk via `lib/helpers.mjs` (`diffSandbox`, `readTasks`,
   `readSandboxFile`), never on skill telemetry — `skill-used` /
   `metadata.skillCalls` stay empty for plugin skills.
+- Grade facts from structured artifacts — frontmatter fields (`merge-after`,
+  `branch-base`, `depends-on`), the report table, the question ledger — never from
+  prose sentences. Where prose is unavoidable (a task `## Note`), match on
+  `h.normalizeProse(text)` (wraps, hyphens and emphasis joined) and skip a match
+  negated just before it; four rounds of wording fixes to one regex preceded this rule.
+- The output is the run's final message only; earlier assistant messages are not
+  exposed. A check's second argument carries
+  `context.providerResponse.metadata.toolCalls` — every tool call, sub-agents' included,
+  as `{ name, input, output, is_error }` — so read tool use and tool errors from there
+  (`h.askedThroughTool`, `h.questionToolFailed`, `h.searchesFor`), and earlier state
+  from files on disk.
 - `llm-rubric` only for qualities determinism cannot capture, always through the
-  `defaultTest` SDK grader. Keep its `append_system_prompt`: without the JSON-only
+  `defaultTest` SDK grader, and one dimension per rubric — a rubric judging four facts
+  fails without saying which. Keep its `append_system_prompt`: without the JSON-only
   pin the grader intermittently wraps verdicts in prose and promptfoo cannot parse.
+- Checks have model-free tests in `lib/checks.test.mjs` (run by the CI
+  `workflow-scripts` job): `node --test 'plugins/fd3/evals/lib/*.test.mjs'`. A check
+  fix lands with the real text it misjudged, anonymised under `lib/__fixtures__/`, and
+  a text it must keep failing.
 
 ## Fixtures and DEFECTS.md
 
@@ -123,7 +139,12 @@ Fix the fixture or the assert, never lower the bar. Distinguish three cases:
    the saved run artifacts before spending another live run: import the check with
    `node --input-type=module` and feed it the output from `latest.json` plus the
    leftover sandbox (precedent: an appended evidence note quoting the old stale
-   citation tripped a whole-file regex; the check now scopes to the pre-append body).
+   citation tripped a whole-file regex; the check now scopes to the pre-append body),
+   then add that text to `lib/checks.test.mjs`.
+
+A pass deserves the same suspicion: a check that any numbered lines satisfied passed a
+lookup update as a grilling round, and one that counted verdict lines passed a run whose
+questions never reached the user.
 
 ## Budgets
 
