@@ -192,6 +192,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the fixer to leave them, which it overrode on its own
 - Review scans run as the `code-review:scanner` agent — no `Edit`, `Agent`, web or MCP tools, no
   `CLAUDE.md` beside the conventions note — and so need a code-review release that ships it
+- Review scans of the four craft lenses run on Sonnet, as `/start-cr`'s do; a lens-list scan and
+  every other lens keep the session's model
 
 ## [0.3.0] - 2026-10-12
 

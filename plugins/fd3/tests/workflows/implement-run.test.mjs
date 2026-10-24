@@ -228,6 +228,15 @@ test('every scan runs as the code-review scanner agent, prepare and merge do not
     for (const c of r.callsMatching(/^cr-(prep|merge):/)) assert.equal(c.agentType, null, c.label)
   }
   assert.ok(list.has('cr:app:feat-x:review:all'))
+  assert.equal(list.call('cr:app:feat-x:review:all').model, null)
+})
+
+test('craft lens scans run on sonnet, the others on the session model', async () => {
+  const r = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity-types', 'naming-module', 'security', 'correctness'], 5)]])
+  assert.equal(r.call('cr:app:feat-x:review:simplicity-types').model, 'sonnet')
+  assert.equal(r.call('cr:app:feat-x:review:naming-module').model, 'sonnet')
+  assert.equal(r.call('cr:app:feat-x:review:security').model, null)
+  assert.equal(r.call('cr:app:feat-x:review:correctness').model, null)
 })
 
 test('a lens the single scanner leaves out, or that judged nothing, makes the review dead', async () => {
