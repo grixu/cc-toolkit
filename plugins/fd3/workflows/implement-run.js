@@ -1224,6 +1224,10 @@ const scanAllPrompt = (lenses, dir) =>
 // this small outweighs each lens's own judging, so one agent runs every lens.
 const SINGLE_SCAN_MAX_FILES = 3
 
+// The scanner agent carries the lens's narrowed tool set and loads no CLAUDE.md, so the conventions
+// note cr-prepare wrote is the only house style a lens judges by.
+const SCANNER = 'code-review:scanner'
+
 const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
 // A lens that read some of its files still reported, but its silence on the rest is not a verdict.
 const lensPartial = (r) => r.status === 'scanned' && r.filesJudged > 0 && r.filesJudged < r.filesTotal
@@ -1233,13 +1237,13 @@ const lensPartial = (r) => r.status === 'scanned' && r.filesJudged > 0 && r.file
 const scanLenses = async (lenses, dir, files, tag, pass) => {
   let results
   if (lenses.length > 1 && files <= SINGLE_SCAN_MAX_FILES) {
-    const r = await tryTwice(scanAllPrompt(lenses, dir), { label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
+    const r = await tryTwice(scanAllPrompt(lenses, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
     const reported = new Map((r && r.invoked ? r.lenses || [] : []).map((e) => [norm(e.lens), { ...e, invoked: true }]))
     results = lenses.map((l) => reported.get(l))
   } else {
     results = await parallel(
       lenses.map((lens) => () =>
-        tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+        tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
       ),
     )
   }

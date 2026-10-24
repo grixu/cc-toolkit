@@ -190,6 +190,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The review fixer fixes every site a finding names, pre-branch copies included: the merge's
   duplication sweep lists every copy, and "never touch problems that pre-date this branch" told
   the fixer to leave them, which it overrode on its own
+- Review scans run as the `code-review:scanner` agent — no `Edit`, `Agent`, web or MCP tools, no
+  `CLAUDE.md` beside the conventions note — and so need a code-review release that ships it
 
 ## [0.3.0] - 2026-10-12
 

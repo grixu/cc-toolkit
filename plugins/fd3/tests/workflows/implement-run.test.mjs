@@ -218,6 +218,18 @@ test('four judged files keep one scan agent per lens', async () => {
   assert.deepEqual(r.callsMatching(/^cr:.*:review:/).map((c) => c.label), ['cr:app:feat-x:review:simplicity', 'cr:app:feat-x:review:security'])
 })
 
+test('every scan runs as the code-review scanner agent, prepare and merge do not', async () => {
+  const wide = await run(implementArgs(), [])
+  const list = await run(implementArgs(), [['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security'], 2)]])
+  for (const r of [wide, list]) {
+    const scans = r.callsMatching(/^cr:/)
+    assert.ok(scans.length > 0)
+    for (const c of scans) assert.equal(c.agentType, 'code-review:scanner', c.label)
+    for (const c of r.callsMatching(/^cr-(prep|merge):/)) assert.equal(c.agentType, null, c.label)
+  }
+  assert.ok(list.has('cr:app:feat-x:review:all'))
+})
+
 test('a lens the single scanner leaves out, or that judged nothing, makes the review dead', async () => {
   const small = ['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security', 'spec'], 2)]
   const missing = await run(implementArgs(), [small, ['cr:app:feat-x:review:all', { invoked: true, lenses: [{ lens: 'simplicity', status: 'scanned', filesJudged: 2, filesTotal: 2 }, { lens: '`Spec`', status: 'scanned', filesJudged: 2, filesTotal: 2 }] }]])
