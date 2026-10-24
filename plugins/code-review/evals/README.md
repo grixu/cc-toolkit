@@ -106,14 +106,17 @@ All commands run from the **repo root** (so the Agent SDK resolves from the root
 ```bash
 pnpm install
 
-# this suite (full)
+# this suite (full): resets .sandbox/, runs, archives the results
 pnpm eval:code-review
 
-# every plugin's eval suite (plugins/*/evals/*)
-pnpm eval
+# focus tests while iterating: the first argument is a --filter-pattern regex
+pnpm eval:code-review -- eval-3
 
-# forward args to promptfoo, e.g. focus one test while iterating
-pnpm eval -- --filter-pattern eval-3
+# k sequential trials, .sandbox/ rebuilt before each, for a pass rate instead of one verdict
+pnpm eval:code-review -- "eval-5|eval-9" --trials 3
+
+# every plugin's eval suite (plugins/*/evals/*), once each
+pnpm eval
 
 # structural check (free)
 ./node_modules/.bin/promptfoo validate config -c plugins/code-review/evals/promptfooconfig.yaml
@@ -122,9 +125,17 @@ pnpm eval -- --filter-pattern eval-3
 ./node_modules/.bin/promptfoo view
 ```
 
-`scripts/run-evals.sh` (wired to `pnpm eval`) discovers every
-`plugins/<name>/evals/promptfooconfig.yaml`, runs each, and writes
-`/tmp/eval-<name>.json`.
+`pnpm eval:code-review` is `scripts/run-evals.sh code-review`. Every run lands in
+`.results/runs/<UTC>-<sha>[-dirty]/`: one `trial-<i>.json` per trial, `meta.json`
+(git SHA and dirty flag, config, filter, configured target and grader models, promptfoo
+/ SDK / Claude Code versions, start and end time) and `summary.json`, which
+`scripts/eval-summary.mjs` also prints at the end of the run — per test passes/trials,
+pass rate with a 95% Wilson interval, pass^k, failures vs errors, mean cost, p50/p95
+latency, and the model the response metadata says answered. `.results/latest.json` is
+the last trial. promptfoo's own `--repeat` is rejected: its copies run concurrently in
+the one `.sandbox/` the run reset. Run-all mode (`pnpm eval`) discovers every
+`plugins/<name>/evals/promptfooconfig.yaml`, runs each once, and writes
+`/tmp/eval-<name>.json` without the archive.
 
 ## Notes & knobs
 
@@ -179,7 +190,7 @@ pnpm eval -- --filter-pattern eval-3
   rules, severities — are correct in every run.
 
   So treat eval-5's skeleton assertions as **indicative, not a pass/fail gate**, unless
-  you add `repeat: 3` and compare rates. Skeleton adherence in `quality-review` is a
+  you run `--trials 3` and compare rates. Skeleton adherence in `quality-review` is a
   known open weakness: the Opus 5 prompt pass removed fenced code blocks from the report
   reliably, but did not make the header/preamble structure deterministic.
 
@@ -192,8 +203,9 @@ pnpm eval -- --filter-pattern eval-3
     "letter+number ⇒ spec-id" shortcut and failed while opus passed — but after the
     Opus 5 prompt pass sonnet passes it too. Kept strict: it now guards the behaviour
     rather than marking the model.
-- **Flaky verdicts.** A borderline verdict can flip run-to-run; add `repeat: 2`/`3`
-  (or `defaultTest.options`) if you want a stable gate.
+- **Flaky verdicts.** A borderline verdict can flip run-to-run; run `--trials 3` and
+  read the pass rate and pass^k from the summary if you want a stable gate. Not
+  promptfoo's `repeat`: its copies share the one reset sandbox.
 - **Grader.** llm-rubric grades on the subscription via a single-turn agent
   (slow-ish). Its `append_system_prompt` pins a JSON-only reply: without it the grader
   occasionally wraps the verdict in prose and promptfoo cannot extract the JSON. For a

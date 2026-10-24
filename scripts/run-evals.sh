@@ -8,12 +8,22 @@
 #                                          # smoke group via --filter-pattern
 #   scripts/run-evals.sh fd3 e2e           # e2e chain → promptfooconfig.e2e.yaml (serial)
 #   scripts/run-evals.sh fd3 researcher    # researcher group → promptfooconfig.network.yaml
+#   scripts/run-evals.sh fd3 split-baseline --trials 3
+#                                          # 3 sequential trials, sandboxes reset before each
+#   pnpm eval:code-review -- eval-20       # same runner for code-review (plugin mode)
+#   node scripts/eval-summary.mjs plugins/fd3/evals/.results/runs/<run>
+#                                          # re-print a run's summary
 #
 # In plugin mode a pattern starting with "e2e" selects the e2e config (shared sandbox,
-# maxConcurrency 1 forced by the config — never run it with --repeat) and one starting
-# with "researcher" selects the network config; anything else filters the default config.
-# Results always land in plugins/<name>/evals/.results/latest.json — agent tests take
-# minutes each, so triage reads the exported JSON instead of re-running.
+# maxConcurrency 1 forced by the config) and one starting with "researcher" selects the
+# network config; anything else filters the default config. --trials <k> runs the selected
+# config k times, one after another, resetting every sandbox before each trial; --repeat is
+# rejected because its copies share one sandbox. Each run is archived in
+# plugins/<name>/evals/.results/runs/<UTC>-<sha>[-dirty]/ (trial-<i>.json, meta.json with
+# SHA, config, models and tool versions, summary.json from eval-summary.mjs), and
+# .results/latest.json is the last trial's output — agent tests take minutes each, so
+# triage reads the exported JSON instead of re-running. Run-all mode does none of this: it
+# runs each suite once and writes /tmp/eval-<name>.json.
 #
 # Deps (promptfoo + @anthropic-ai/claude-agent-sdk) are resolved from the root
 # node_modules, so this must run from the repo root (it cd's there itself).

@@ -19,10 +19,22 @@ and regenerated.
 - Always run via `scripts/run-evals.sh fd3 [pattern]` from the repo root — it resets
   every sandbox first and picks the config by pattern prefix: `e2e*` → serial config,
   `researcher*` → network config, anything else filters the default config.
-- Never run the e2e chain with `--repeat`: the three steps share `.sandbox/e2e-chain`
-  and depend on listed order.
-- Scenarios take minutes each. Triage from `plugins/fd3/evals/.results/latest.json`
-  (overwritten on every invocation) — never re-run just to read a result.
+- For variance, use `--trials <k>`: k sequential runs of the selected config, every
+  sandbox reset before each trial. The runner rejects promptfoo's `--repeat` — its
+  copies run concurrently in the one sandbox the run reset, and eight runs saw or
+  deleted each other's writes. The same holds for `repeat` set in a config.
+- The e2e chain under `--trials` stays safe: each trial replays write→validate→split
+  serially (`maxConcurrency: 1`) from a fresh `.sandbox/e2e-chain`. Never run two
+  invocations of the runner at once — they share `.sandbox/`, and the second one's
+  reset wipes the first one's chain mid-run.
+- Every run is archived in `.results/runs/<UTC>-<sha>[-dirty]/`: `trial-<i>.json`,
+  `meta.json` (SHA, config, filter, configured target/grader model, tool versions)
+  and `summary.json` (per test: passes/trials, Wilson 95% interval, pass^k,
+  failures vs errors, cost, latency, actual model), printed at the end of the run;
+  re-print one with `node scripts/eval-summary.mjs <run-dir>`.
+- Scenarios take minutes each. Triage from the run dir, or from
+  `plugins/fd3/evals/.results/latest.json` (the last trial of the last run) — never
+  re-run just to read a result.
 
 ## Naming
 

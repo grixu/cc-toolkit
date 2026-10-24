@@ -1,7 +1,7 @@
 name: fd3 evals (smoke)
 
 # The smoke group only — one scenario per skill plus the command gate (plan section 5).
-# The e2e chain, --repeat variance runs and the network-dependent researcher tests
+# The e2e chain, --trials variance runs and the network-dependent researcher tests
 # stay local-only.
 on:
   pull_request:
