@@ -18,8 +18,9 @@ Send each Scanner a brief in this shape, filling every slot:
   <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness</lens>
   <rules_file>rules/<lens>.md</rules_file>
   <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security`, the full resolved list plus every skipped file for `spec`, the resolved list minus `policy` files for every other Lens --></files>
-  <diff_args><!-- from the scope resolution --></diff_args>
+  <diff_args><!-- from the scope resolution; "none" when the user named paths --></diff_args>
   <how_to_view>
+    diff_args "none" → read the file whole; every line is under review
     tracked → `git diff <diff_args> -- <path>`
     untracked → read the file directly; every line is added
   </how_to_view>
@@ -33,6 +34,8 @@ Send each Scanner a brief in this shape, filling every slot:
     optional, kept strictly separate, never mixed into the primary findings.
     A fully added file (status `A`) has no boy-scout findings: the whole file is code
     the change introduced, so every finding in it is primary.
+    With diff_args "none" there is no change to measure against: every file is under
+    review whole, and every finding is primary.
   </scope_split>
   <output_contract><!-- the contract for this Lens, below --></output_contract>
 </scanner_brief>

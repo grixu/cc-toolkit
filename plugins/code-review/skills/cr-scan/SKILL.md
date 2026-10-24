@@ -40,8 +40,8 @@ The contract's brief arrives as files, not as a message. Assemble it slot by slo
 | `<lens>` | the lens you are judging, one name from `--lens` — the rules file's basename (`readability-tests` is the contract's `readability & tests`) |
 | `<rules_file>` | `${CLAUDE_PLUGIN_ROOT}/references/rules/<lens>.md` — read it completely |
 | `<files>` | this lens's `files` under `lenses.active` in `scope.json` |
-| `<diff_args>` | `diff_args` in `scope.json` |
-| `<how_to_view>` | tracked → `git -C <checkout> diff <diff_args> -- <path>`; untracked → read `<checkout>/<path>` |
+| `<diff_args>` | `diff_args` in `scope.json`; `null` there is the contract's `none` |
+| `<how_to_view>` | `diff_args` `null` → read `<checkout>/<path>` whole; tracked → `git -C <checkout> diff <diff_args> -- <path>`; untracked → read `<checkout>/<path>` |
 | `<conventions>` | `conventions.md`, verbatim |
 | `<standards>` | your lens's section of `standards.md`, or all of it when it has no sections |
 | `<spec>` | `spec` and `correctness` lenses only: the file `scope.json` names, read in full — or, when `spec_focus` lists codes, the focus list with the file read as your rules file's spec-focus paragraph says; omitted when `spec` is `null` |

@@ -132,6 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer counts agreement between lenses from one shared run as convergence
 - A lens that judged only part of its files (`files judged: K of M`, `K < M`) is named with its
   count in the `Tally` and in `cr-merge`'s `lenses:` line instead of passing as a full lens
+- The Scanner contract covers a review of named paths: with `diff_args` `none` a Scanner reads each
+  file whole and every finding is primary, where it was told only how to read a diff
 
 ## [0.4.0] - 2026-10-03
 
