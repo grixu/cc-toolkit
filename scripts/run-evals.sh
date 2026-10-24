@@ -59,6 +59,58 @@ reset_sandbox() {
   done
 }
 
+# Writes <run dir>/meta.json from the META_* env vars and the extra promptfoo args. The models are the ones the config
+# pins (null when it leaves the CLI default); the ones that actually answered are in each
+# trial's response metadata.
+write_meta() {
+  node --input-type=module - "$@" <<'JS'
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+
+const env = process.env;
+const pkgVersion = (name) => {
+  try {
+    return JSON.parse(fs.readFileSync(`node_modules/${name}/package.json`, 'utf8'));
+  } catch {
+    return null;
+  }
+};
+const promptfoo = pkgVersion('promptfoo');
+const sdk = pkgVersion('@anthropic-ai/claude-agent-sdk');
+
+let target = null;
+let grader = null;
+try {
+  // js-yaml is promptfoo's dependency, reachable only from its real (pnpm store) path.
+  const yaml = createRequire(fs.realpathSync('node_modules/promptfoo/package.json'))('js-yaml');
+  const config = yaml.load(fs.readFileSync(env.META_CONFIG, 'utf8'));
+  target = (config.providers ?? []).map((p) => (typeof p === 'object' ? p.config?.model ?? null : null));
+  const g = config.defaultTest?.options?.provider;
+  grader = g === undefined ? null : typeof g === 'string' ? g : g.config?.model ?? null;
+} catch (err) {
+  console.error(`meta.json: could not read models from ${env.META_CONFIG}: ${err.message}`);
+}
+
+const meta = {
+  git_sha: env.META_SHA,
+  git_dirty: env.META_DIRTY === 'true',
+  config: env.META_CONFIG,
+  filter_pattern: env.META_PATTERN || null,
+  extra_args: process.argv.slice(2),
+  trials: Number(env.META_TRIALS),
+  trial_exit_codes: env.META_EXIT_CODES ? env.META_EXIT_CODES.split(' ').map(Number) : [],
+  configured_target_model: target,
+  configured_grader_model: grader,
+  promptfoo_version: promptfoo?.version ?? null,
+  claude_agent_sdk_version: sdk?.version ?? null,
+  claude_code_version: sdk?.claudeCodeVersion ?? null,
+  started_at: env.META_STARTED,
+  ended_at: env.META_ENDED || null,
+};
+fs.writeFileSync(`${env.META_RUN_DIR}/meta.json`, `${JSON.stringify(meta, null, 2)}\n`);
+JS
+}
+
 # Plugin mode: first arg names a plugin with an evals dir.
 if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   plugin="$1"
@@ -98,14 +150,36 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
     filter=(--filter-pattern "$pattern")
   fi
 
+  results_dir="${evals_dir}/.results"
+  dirty=false
+  [ -n "$(git status --porcelain 2>/dev/null)" ] && dirty=true
+  sha="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+  run_dir="${results_dir}/runs/$(date -u +%Y%m%dT%H%M%SZ)-${sha:0:7}"
+  [ "$dirty" = true ] && run_dir+="-dirty"
+  mkdir -p "$run_dir"
+  started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  export META_RUN_DIR="$run_dir" META_SHA="$sha" META_DIRTY="$dirty" META_CONFIG="$cfg" \
+    META_PATTERN="${pattern:-}" META_TRIALS="$trials" META_STARTED="$started"
+  # Written up front too, so an interrupted run still says what it was.
+  write_meta "$@"
+
   status=0
+  exit_codes=()
   for ((i = 1; i <= trials; i++)); do
     [ "$trials" -gt 1 ] && echo "--- trial ${i}/${trials}"
     reset_sandbox "$evals_dir"
     rc=0
-    run_suite "$plugin" "$cfg" "${evals_dir}/.results/latest.json" ${filter[@]+"${filter[@]}"} "$@" || rc=$?
+    run_suite "$plugin" "$cfg" "${run_dir}/trial-${i}.json" ${filter[@]+"${filter[@]}"} "$@" || rc=$?
+    exit_codes+=("$rc")
     [ "$status" -eq 0 ] && status=$rc
+    # A trial that crashed before exporting must not leave the previous run's file to triage.
+    rm -f "${results_dir}/latest.json"
+    if [ -f "${run_dir}/trial-${i}.json" ]; then
+      cp "${run_dir}/trial-${i}.json" "${results_dir}/latest.json"
+    fi
   done
+  META_EXIT_CODES="${exit_codes[*]}" META_ENDED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" write_meta "$@"
+  echo "==> results archived in ${run_dir}"
   exit "$status"
 fi
 
