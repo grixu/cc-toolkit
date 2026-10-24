@@ -106,7 +106,7 @@ tests:
           registration -----` as R5 REMOVE (a descriptive title does not redeem the fence).
       - type: llm-rubric
         value: >-
-          Flags `# ----- Metric namespace allowlist -----` as R5 REMOVE.
+          Flags `# ----- Metric namespaces -----` as R5 REMOVE.
       - type: llm-rubric
         value: >-
           Flags the `account scoping lives in DD_ARCH.md §3.2` comment under R4
@@ -117,12 +117,14 @@ tests:
           intentional" rationale but drops the internal-doc reference.
       - type: llm-rubric
         value: >-
-          Keeps `# Retry-After handling per RFC 9110 §10.2.4` (R4 external-pinned-spec
-          exception) — it is not flagged for removal.
+          Keeps `# Retry-After may also be an HTTP-date (RFC 9110 §10.2.3); the client
+          parses only seconds` (R4 external-pinned-spec exception) — it is not flagged for
+          removal.
       - type: llm-rubric
         value: >-
-          Keeps the metric-allowlist WHY rationale ("only gcp.* and custom.app.* are
-          billed … so an accidental high-cardinality metric can't blow the bill").
+          Keeps the metric-namespace WHY rationale ("gke and cloudsql emit a series per
+          pod and per query … one accidental high-cardinality metric there could blow the
+          bill").
 
   # ----------------------------------------------------------------------------
   - description: 'eval-1 file-refs-and-diagram (scheduler.ts)'

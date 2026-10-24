@@ -15,23 +15,27 @@ resource "datadog_integration_gcp_sts" "main" {
 
   # the per-env hard-stop on host_filters is intentional (DD_PLAN.md T4.1)
   automute = true
-}
 
-# ----- Metric namespace allowlist -----
-resource "datadog_metric_metadata" "billed" {
-  # only gcp.* and custom.app.* are billed under our contract — everything else is
-  # dropped here so an accidental high-cardinality metric can't blow the bill
-  metric = "gcp.gce.instance"
+  # ----- Metric namespaces -----
+  # gke and cloudsql emit a series per pod and per query, so both namespaces stay off —
+  # one accidental high-cardinality metric there could blow the bill
+  metric_namespace_configs = [
+    { id = "gke", disabled = true },
+    { id = "cloudsql", disabled = true },
+  ]
 }
 
 resource "datadog_synthetics_test" "refund_probe" {
   request_definition {
     method = "POST"
     url    = "https://api.example.com/refund"
+  }
 
-    # Retry-After handling per RFC 9110 §10.2.4
-    retry {
-      count = 2
-    }
+  # Retry-After may also be an HTTP-date (RFC 9110 §10.2.3); the client parses only seconds
+  assertion {
+    type     = "header"
+    property = "retry-after"
+    operator = "matches"
+    target   = "^[0-9]+$"
   }
 }
