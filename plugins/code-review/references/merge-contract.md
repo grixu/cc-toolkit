@@ -141,7 +141,8 @@ the fix* is `report-only` too, with its one-line reason.
   `ordering`, `composed-method` extraction, `command-query` splits, `style-mix` /
   `full-construction` / `exposed-representation` / `leaky-collection` reshaping, the
   `patterns` refactors (`composition`, `polymorphism`, `execute-around`), `over-complex`
-  and `shallow-duplication` unifications, `test-structure` restructuring, `dead-code-surface`
+  and `shallow-duplication` unifications, `test-structure` restructuring, every `test-fidelity`
+  fix — deleting, merging or rewriting a test changes what the suite covers — `dead-code-surface`
   that removes an export or a return field, a `magic-literal` name a second module
   imports (where it lives decides an import edge), and `dead-code` removal of a branch that
   looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
@@ -162,7 +163,10 @@ the fix* is `report-only` too, with its one-line reason.
 **Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
 edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
 moves or restructures code, or removes a branch that looks reachable → structural. A
-`standards` finding is an unlisted rule and routes the same way.
+`standards` finding is an unlisted rule and routes the same way. **Whatever its rule, a fix
+that changes a signature, edits a second file, or creates a new module is never Safe**: its
+callers and importers are what the eyeball check cannot see — runs that classed a narrowed
+parameter list, a merged type and a new shared test module as Safe applied them unseen.
 
 **Security is never a Safe fix.** However small the edit looks — a bound parameter, a
 removed literal — it changes behaviour at a boundary, so a `security` finding always

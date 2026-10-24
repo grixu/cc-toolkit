@@ -125,6 +125,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dedup re-grades the overlapping findings against the table before it picks the survivor, and
   keeps the one whose row grades highest: keeping the higher severity on a lower-graded rule was
   undone by the re-grade that follows
+- Every `test-fidelity` fix is structural, and no fix that changes a signature, edits a second
+  file or creates a module is Safe: runs routed test deletions three different ways and applied
+  cross-file changes from the Safe bucket
 
 ## [0.4.0] - 2026-10-03
 
