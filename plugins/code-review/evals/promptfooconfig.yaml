@@ -44,7 +44,7 @@ providers:
     label: code-review
     config:
       apiKeyRequired: false # use the local Claude Code subscription, no API key for the target
-      model: claude-sonnet-4-6 # override per run; a capable model is needed for evals 3/4 to pass
+      model: claude-opus-5-5 # the model users run; a capable model is needed for evals 3/4 to pass
       permission_mode: bypassPermissions # the skill's Read/Grep/Bash run unattended
       allow_dangerously_skip_permissions: true # required alongside bypassPermissions
       working_dir: ../../.. # repo root, so the plugin path and {{file}} paths resolve
@@ -71,8 +71,13 @@ defaultTest:
       id: anthropic:claude-agent-sdk
       config:
         apiKeyRequired: false
-        model: claude-sonnet-4-6
+        model: claude-opus-5-5
         max_turns: 1
+        # Without the JSON-only pin the grader occasionally wraps the verdict in prose and
+        # promptfoo cannot extract the JSON.
+        append_system_prompt: >-
+          You are being used as an automated grader. Reply with ONLY the JSON object the
+          grading instructions ask for — no prose before or after it, no code fences.
 
 tests:
   # ============================================================================

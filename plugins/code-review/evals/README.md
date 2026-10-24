@@ -128,10 +128,11 @@ pnpm eval -- --filter-pattern eval-3
 
 ## Notes & knobs
 
-- **Model.** Default target/grader is `claude-sonnet-4-6` (cheap iteration); set a
-  stronger target in `promptfooconfig.yaml` (`providers[0].config.model`) for a
-  regression gate. `claude-opus-5` works as a target and logs a harmless "Using unknown
-  model for Claude Agent SDK" warning.
+- **Model.** Target and grader are pinned to `claude-opus-5-5`, the model the plugin
+  is used with, so a score measures what users run (`providers[0].config.model` and
+  `defaultTest.options.provider.config.model`). promptfoo 0.123.1 does not list that
+  id and logs a harmless "Using unknown model for Claude Agent SDK" warning. Every
+  score below was measured on the model its row names, not on this pin.
 
 - **Measured scores** (assertion-level; promptfoo's headline count is test-level and
   fails a whole test on one assertion). Measured 2026-07-26:
@@ -194,7 +195,9 @@ pnpm eval -- --filter-pattern eval-3
 - **Flaky verdicts.** A borderline verdict can flip run-to-run; add `repeat: 2`/`3`
   (or `defaultTest.options`) if you want a stable gate.
 - **Grader.** llm-rubric grades on the subscription via a single-turn agent
-  (slow-ish). For a faster/cheaper grader, set `ANTHROPIC_API_KEY` and change
+  (slow-ish). Its `append_system_prompt` pins a JSON-only reply: without it the grader
+  occasionally wraps the verdict in prose and promptfoo cannot extract the JSON. For a
+  faster/cheaper grader, set `ANTHROPIC_API_KEY` and change
   `defaultTest.options.provider` to `anthropic:messages:claude-opus-4-8`.
 - **Plugin path and skill trigger (SDK 0.3.252 / promptfoo 0.122.2, 2026-09-02).**
   Two things changed under a fresh `pnpm install` and both silently zeroed the quality

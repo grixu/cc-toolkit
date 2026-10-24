@@ -8,6 +8,7 @@ providers:
   - id: anthropic:claude-agent-sdk
     config:
       apiKeyRequired: false
+      model: claude-opus-5-5
       setting_sources: []
       max_budget_usd: 2.0
       max_turns: 60
