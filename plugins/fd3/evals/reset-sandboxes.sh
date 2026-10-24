@@ -30,6 +30,7 @@ MAPPINGS=(
   "grill-no-topic:retry-topic:."
   "grill-numbered-questions:retry-topic:."
   "grill-session-files:retry-topic:."
+  "grill-verified-claims:retention-comment-audits:."
   "build-spec-gate:retry-topic:."
   "build-spec-reentry:rollout-spec:repo-a repo-b"
   "e2e-chain:grilling-summary:."

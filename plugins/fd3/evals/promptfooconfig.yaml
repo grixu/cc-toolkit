@@ -208,6 +208,16 @@ tests:
       - type: javascript
         value: file://lib/checks/grill-session-files.mjs
 
+  # Capability eval: real grills stated unchecked facts in 7/7 runs although the rule exists, so a
+  # failure here is the expected signal until the skill closes it. No question tool, so the run
+  # ends on round 1 as text.
+  - description: grill-verified-claims
+    vars: { query: file://prompts/grill-verified-claims.txt }
+    options: { working_dir: .sandbox/grill-verified-claims, max_budget_usd: 5.0, disallowed_tools: [AskUserQuestion] }
+    assert:
+      - type: javascript
+        value: file://lib/checks/grill-verified-claims.mjs
+
   # ---- build-spec command (gate smoke) ----
   # 5.0 like the P1 group: first_option auto-answers whole grilling rounds, so this run
   # is long by design and a 2.0 cut-off kills the SDK process mid-flight (hard exit 1).

@@ -1,0 +1,7 @@
+[
+  { "name": "id", "type": "STRING", "mode": "REQUIRED" },
+  { "name": "site", "type": "STRING", "mode": "REQUIRED" },
+  { "name": "score", "type": "INTEGER", "mode": "REQUIRED" },
+  { "name": "findings", "type": "JSON", "mode": "NULLABLE" },
+  { "name": "created_at", "type": "TIMESTAMP", "mode": "REQUIRED" }
+]

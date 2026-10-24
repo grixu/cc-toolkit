@@ -180,3 +180,38 @@ test('round shape: an option without its letter, a label nobody asks, a hole and
   assert.deepEqual(shape(`Open from earlier rounds: none. Blocked by the lookup: 4 (timeouts).\n\n${hole}`), []);
   assert.match(shape(`${round}\nShall I also look at the logs?`).join('\n'), /goes on past the round/);
 });
+
+const verifiedRound = `Two findings before the questions:
+
+- The comment at \`infra/results.tf:13\` says reads only look back 30 days. The code says otherwise:
+  \`getAuditResult\` (\`src/store.ts:14-26\`) reads by id within a day of the link's creation time, at any age.
+
+**1. What should happen to audit results as they age?**
+- **a) Remove the partition expiry** — results stay readable through every old link. **Recommended**: the only read is by id, so storage is the whole cost.
+- **b) Raise the expiry to 400 days** — links older than that still break.
+
+**2. Should the monthly summary re-run audits?**
+- **a) No** — **Recommended**: a re-run does not fix links already sent.
+- **b) Yes** — every summary links to a fresh result.
+
+Answer as: 1, 2`;
+
+test('verified claims: a round that checks the comment against the read path passes', async () => {
+  const { claimFailures } = await import('./checks/grill-verified-claims.mjs');
+  assert.deepEqual(claimFailures(verifiedRound), []);
+});
+
+test('verified claims: the comment repeated as fact, a missing no-expiry option, or a stray citation fails', async () => {
+  const { claimFailures } = await import('./checks/grill-verified-claims.mjs');
+  const finding = /- The comment[\s\S]*?any age\.\n/;
+  const asFact = verifiedRound.replace(finding, '- Reads only look back 30 days, so a 31-day expiry should never bite.\n');
+  assert.match(claimFailures(asFact).join('\n'), /asserts a 30-day read window/);
+  const wrapped = verifiedRound.replace(finding, '- Since queries use a 30-day\n  window, older results are never read.\n');
+  assert.match(claimFailures(wrapped).join('\n'), /asserts a 30-day read window/);
+  const negated = verifiedRound.replace(finding, '- There is no 30-day window in the reads.\n');
+  assert.deepEqual(claimFailures(negated), []);
+  const noDrop = verifiedRound.replace('Remove the partition expiry', 'Raise the expiry to 90 days');
+  assert.match(claimFailures(noDrop).join('\n'), /no option or finding drops the partition expiry/);
+  assert.match(claimFailures(verifiedRound.replace('src/store.ts:14-26', 'src/store.ts:3')).join('\n'), /store\.ts:3 does not point at the read query/);
+  assert.match(claimFailures('Looking into the retention now.').join('\n'), /asks no numbered question/);
+});
