@@ -679,23 +679,31 @@ tests:
     assert:
       - type: regex
         value: '`standards`'
-      - type: llm-rubric
-        value: >-
-          Flags `activeAccount` (a boolean-returning function without an `is`/`has`/`can`
-          prefix) as `standards`, severity **high**, quoting the MUST rule
-          ("Boolean-returning functions MUST be named with an `is`, `has`, or `can`
-          prefix.") and citing `CODING_STANDARDS.md › Naming`; the fix renames it (e.g.
-          `isActiveAccount`).
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: activeAccount, severity: high }
+      # the MUST rule quoted verbatim, with its file › section
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: activeAccount, all: ['Boolean-returning functions MUST be named with an `is`, `has`, or `can` prefix', 'CODING_STANDARDS\.md`? › Naming'] }
+      # the fix renames it with the prefix
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: activeAccount, fix: '\b(is|has|can)[A-Z]\w*' }
       # `.local` relaxes the SHOULD rule, and `.local` wins per statement
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { family: standards, mentions: ['return type'] }
-      - type: llm-rubric
-        value: >-
-          Flags the `||` default in `creditLimitMinor` (`account.creditLimitMinor ||
-          DEFAULT_CREDIT_LIMIT_MINOR`, which turns a legitimate `0` into the default) as
-          `standards`, severity **nit**, quoting the MAY rule from
-          `CODING_STANDARDS.local.md › Defaults` and proposing `??`.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: creditLimitMinor, severity: nit }
+      # the MAY rule quoted from the `.local` file
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: creditLimitMinor, all: ['MAY be supplied with', 'CODING_STANDARDS\.local\.md`? › Defaults'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: creditLimitMinor, fix: '\?\?' }
       # a vague line is not a quotable rule
       - type: javascript
         value: file://checks/report.mjs:noFinding
