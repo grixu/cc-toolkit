@@ -660,28 +660,23 @@ tests:
           ("Boolean-returning functions MUST be named with an `is`, `has`, or `can`
           prefix.") and citing `CODING_STANDARDS.md › Naming`; the fix renames it (e.g.
           `isActiveAccount`).
-      - type: llm-rubric
-        value: >-
-          Does NOT raise a `standards` finding for the missing explicit return types on
-          the exported functions — `CODING_STANDARDS.local.md` relaxes the SHOULD rule
-          ("Exported functions need not declare an explicit return type"), and `.local`
-          wins per statement.
+      # `.local` relaxes the SHOULD rule, and `.local` wins per statement
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: standards, mentions: ['return type'] }
       - type: llm-rubric
         value: >-
           Flags the `||` default in `creditLimitMinor` (`account.creditLimitMinor ||
           DEFAULT_CREDIT_LIMIT_MINOR`, which turns a legitimate `0` into the default) as
           `standards`, severity **nit**, quoting the MAY rule from
           `CODING_STANDARDS.local.md › Defaults` and proposing `??`.
-      - type: llm-rubric
-        value: >-
-          The vague line "Write clean code." under `CODING_STANDARDS.md › General`
-          generates NO finding of any kind.
-      - type: llm-rubric
-        value: >-
-          Every `standards` bullet in the report has the shape
-          `` `standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (<file> › <section>) → <fix> ``:
-          a kebab-case slug, a verbatim quoted rule, and a file › section citation. No
-          `standards` bullet lacks the quoted rule.
+      # a vague line is not a quotable rule
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { mentions: ['clean code'] }
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: standards, pattern: '^- `standards` · [a-z0-9]+(-[a-z0-9]+)* · (high|medium|nit) · `?[\w./-]*:?L\d+.* — "[^"]+" \(`?CODING_STANDARDS(\.local)?\.md`? › [^)]+\) → .+' }
 
   # ============================================================================
   # Regression guards — the rules and the scope boundaries added from run analysis
