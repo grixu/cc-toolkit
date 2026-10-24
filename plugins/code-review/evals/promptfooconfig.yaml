@@ -862,21 +862,27 @@ tests:
     assert:
       - type: regex
         value: '`correctness`'
-      - type: llm-rubric
-        value: >-
-          Flags `fetchAllOrders` as `correctness` · `off-by-one`, severity **high**: the loop
-          runs while `page < totalPages - 1`, so the last page is never fetched. The fix
-          loops while `page < totalPages`.
-      - type: llm-rubric
-        value: >-
-          Flags `syncOrder` as `correctness` · `swallowed-error`, severity **medium** (or
-          high): a failed `ledger.post` is caught and logged, and the function still returns
-          `{ ok: true }`, so the caller treats the failure as a success.
-      - type: llm-rubric
-        value: >-
-          Does NOT raise a finding against `labelFor`'s `default:` arm (an exhaustive
-          `never` assertion) or against `recordSync`'s catch (best-effort telemetry whose
-          comment says so); either may appear on the `Not flagged` line.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], severity: high }
+      # the wrong result: the last page is never fetched
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], all: ['last'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], fix: 'page < totalPages(?!\s*-)|<= totalPages - 1' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: swallowed-error, mentions: [syncOrder, 'ledger\.post'], severity: [medium, high] }
+      # the caller reads the failure as a success
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: swallowed-error, mentions: [syncOrder, 'ledger\.post'], all: ['ok: true'] }
+      # an exhaustive `never` assertion, and best-effort telemetry whose comment says so
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: correctness, mentions: [labelFor, recordSync], siteOnly: true }
       # a correctness finding is never `nit`
       - type: javascript
         value: file://checks/report.mjs:findingsVocabulary
