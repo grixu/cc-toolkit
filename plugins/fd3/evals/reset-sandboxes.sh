@@ -35,6 +35,7 @@ MAPPINGS=(
   "grill-verified-claims:retention-comment-audits:."
   "build-spec-gate:retry-topic:."
   "build-spec-reentry:rollout-spec:repo-a repo-b"
+  "build-spec-post-verdict-change:ratified-rollout-spec:repo-a repo-b"
   "e2e-chain:grilling-summary:."
   "researcher-output-contract:-:"
   "researcher-multiple-questions:-:"

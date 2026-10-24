@@ -299,6 +299,7 @@ test('deploy path: a workflow citation counts only inside the deploy-condition l
   assert.equal(citesCondition('payments-cd.yaml:28 sends main to prod'), false);
   assert.equal(citesCondition('the deploy workflow (`.github/workflows/payments-cd.yaml`)'), false);
 });
+
 // 0e908afc's evidence row names the workflow and quotes the test job's branch, with no line number.
 test('deploy path: a row naming the workflow and quoting its test-job condition cites it', async () => {
   const { citesCondition, verdictFailures } = await import('./checks/validate-deploy-path.mjs');
@@ -308,3 +309,34 @@ test('deploy path: a row naming the workflow and quoting its test-job condition 
   assert.equal(citesCondition('`.github/workflows/payments-cd.yaml` deploys on a merge to `main`'), false);
 });
 
+test('post-verdict change: only the main thread editing the spec counts', async () => {
+  const { mainThreadSpecEdits } = await import('./checks/build-spec-post-verdict-change.mjs');
+  const edit = { name: 'Edit', input: { file_path: '/sandbox/spec/rollout-spec.md', old_string: 'a', new_string: 'b' } };
+  assert.equal(mainThreadSpecEdits(calls(edit)).length, 1);
+  assert.equal(mainThreadSpecEdits(calls({ ...edit, parentToolUseId: 'toolu_write_spec' })).length, 0);
+  assert.equal(mainThreadSpecEdits(calls({ name: 'Edit', input: { file_path: 'spec/rollout-spec.notes.md' } })).length, 0);
+  assert.equal(mainThreadSpecEdits(calls({ name: 'Bash', input: { command: "sed -i '' 's/502/200/' spec/rollout-spec.md" } })).length, 1);
+  assert.equal(mainThreadSpecEdits(calls({ name: 'Bash', input: { command: 'wc -l spec/rollout-spec.md; grep -n Verdict spec/rollout-spec.md' } })).length, 0);
+  assert.equal(mainThreadSpecEdits(calls({ name: 'Bash', input: { command: 'cat >> spec/rollout-spec.notes.md <<EOF' } })).length, 0);
+});
+
+// 2a8b8230: passes 1 and 2 edited the body, so the loop ran a third that edited nothing.
+test('post-verdict change: a loop of passes passes; no pass, five, or an edit after the verdict fails', async () => {
+  const { passFailures } = await import('./checks/build-spec-post-verdict-change.mjs');
+  const before = fs.readFileSync(path.join(FIXTURES, '..', '..', 'fixtures', 'ratified-rollout-spec', 'spec', 'rollout-spec.md'), 'utf8');
+  const after = specSide('post-verdict-spec-2a8b8230.md');
+  assert.deepEqual(passFailures(before, after), [true, '']);
+  assert.match(passFailures(before, before)[1], /no pass read the change/);
+  const block = after.slice(after.indexOf('### Validation pass — 2026-10-25 (post-verdict re-entry, pass 3)'));
+  const five = `${after}\n${block.replaceAll('pass 3', 'pass 4')}\n${block.replaceAll('pass 3', 'pass 5')}`;
+  assert.match(passFailures(before, five)[1], /5 dated validation blocks/);
+  assert.match(passFailures(before, after.replace('## 9. Cleanup', '## 9. Cleanup\n\nTyped in after the verdict.\n'))[1], /an edit after it went unread/);
+});
+
+test('post-verdict change: the notes must gain a line recording D2 option b', async () => {
+  const { ratifiedLine } = await import('./checks/build-spec-post-verdict-change.mjs');
+  const before = '1. Q2 a — synchronous (D2).\n   - b) synchronous, but a failed write is logged';
+  assert.equal(ratifiedLine(before, `${before}\n5. Re-entry 2026-10-25 — D2 reversed: Q2 b, ratified by the user.`), true);
+  assert.equal(ratifiedLine(before, before), false);
+  assert.equal(ratifiedLine(before, `${before}\n5. A change to D3.`), false);
+});

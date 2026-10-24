@@ -250,3 +250,10 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/build-spec-reentry.mjs
+
+  - description: build-spec-post-verdict-change
+    vars: { query: file://prompts/build-spec-post-verdict-change.txt }
+    options: { working_dir: .sandbox/build-spec-post-verdict-change, max_budget_usd: 8.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/build-spec-post-verdict-change.mjs
