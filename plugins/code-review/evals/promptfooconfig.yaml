@@ -294,24 +294,18 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:collapsedRepeats
         config: { rule: openness }
-      - type: llm-rubric
-        value: >-
-          The report carries an explicit `**Headline:**` line, and it does NOT call the
-          change clean, well-structured, or cosmetic-nits-only — a high-severity finding
-          exists, so the headline names the worst problem instead.
-      - type: llm-rubric
-        value: >-
-          The report follows the skill's fixed skeleton: it opens with a `**Conventions:**`
-          line and a `**Headline:**` line, its `###` headers are FILE PATHS (not
-          "Findings", "Finding 1", or a family name), and each finding is a single
-          markdown bullet rather than a numbered or bolded entry block.
-      - type: llm-rubric
-        value: >-
-          The report body contains NO fenced code blocks and no before/after listing, and
-          no suggested fix pastes a multi-line rewritten function body. (The skill allows
-          at most a short inline expression inside backticks when a fix cannot be named
-          without one, so a single inline expression does NOT fail this assertion —
-          a fenced block or a multi-line rewrite does.)
+      # a high finding exists, so the headline must not call the change clean
+      - type: javascript
+        value: file://checks/report.mjs:headlineHonest
+        config: {}
+      - type: javascript
+        value: file://checks/report.mjs:skeletonPreamble
+      - type: javascript
+        value: file://checks/report.mjs:fileHeaders
+      - type: javascript
+        value: file://checks/report.mjs:findingBullets
+      - type: javascript
+        value: file://checks/report.mjs:noCodeBlocks
 
   # ----------------------------------------------------------------------------
   - description: 'eval-6 recall-across-families (quality-recall.ts)'
