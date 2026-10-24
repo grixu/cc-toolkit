@@ -5,20 +5,45 @@ follow them before improvising.
 
 ## Layout
 
-Three configs: `promptfooconfig.yaml` (default suite, runs concurrently),
+Four configs: `promptfooconfig.yaml` (default suite, runs concurrently),
 `promptfooconfig.e2e.yaml` (serial write→validate→split chain over one shared sandbox,
 `evaluateOptions.maxConcurrency: 1`), `promptfooconfig.network.yaml` (researcher group;
-needs `FIRECRAWL_API_KEY` and `CONTEXT7_API_KEY` in the environment). Slash-command
+needs `FIRECRAWL_API_KEY` and `CONTEXT7_API_KEY` in the environment),
+`promptfooconfig.implement.yaml` (implement group, see below). Slash-command
 prompts live in `prompts/*.txt` (a `prompts:` entry starting with `/` parses as a file
 path, hence the `{{query}}` + `file://` indirection). Assertions live in `lib/`;
 pristine scenario inputs in `fixtures/`; `.sandbox/` and `.results/` are git-ignored
 and regenerated.
 
+### Implement group
+
+`/fd3:implement` does its work inside workflow agents, whose prompts exist only once
+`implement-run.js` renders them. An agent scenario has no prompt file: its provider,
+`lib/implement-provider.mjs`, runs the real script through the model-free harness
+(`tests/workflows/harness.mjs`, scripted replies from `fixtures.mjs`), keeps the one
+call `lib/implement-scenarios.mjs` names, and runs that prompt as a single live agent
+with the call's own model, effort and schema (`output_format`), so the output is the
+agent's structured result. A model the script does not pin is the config's
+`claude-opus-5-5`; the CI runner's `haiku` therefore shows as a model mismatch in the
+summary, by design. The provider delegates to promptfoo's `anthropic:claude-agent-sdk`
+provider (`loadApiProvider`), which keeps its cost, `modelUsage` and `toolCalls`
+metadata — a YAML provider config cannot carry a run-time prompt or a hook callback.
+Agent scenarios run with background tasks enabled (`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=0`,
+overriding the runner) because the workflow's agents have `run_in_background` and
+`Monitor`, and abandoning a backgrounded build is the failure they test. The fixtures
+put the task files outside the sandbox's git root and record the task branch's head in
+`.sandbox/.origins/<scenario>/branch-head`, out of every agent's reach.
+
+`implement-ci-waits-long-command` must hold every time: its intended gate is pass^3
+(`scripts/run-evals.sh fd3 implement-ci --trials 3`). It sleeps 200 s by design.
+None of the group is in the CI smoke filter.
+
 ## Running
 
 - Always run via `scripts/run-evals.sh fd3 [pattern]` from the repo root — it resets
   every sandbox first and picks the config by pattern prefix: `e2e*` → serial config,
-  `researcher*` → network config, anything else filters the default config.
+  `researcher*` → network config, `implement*` → implement config, anything else
+  filters the default config.
 - For variance, use `--trials <k>`: k sequential runs of the selected config, every
   sandbox reset before each trial. The runner rejects promptfoo's `--repeat` — its
   copies run concurrently in the one sandbox the run reset, and eight runs saw or

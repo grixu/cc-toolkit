@@ -36,6 +36,7 @@ MAPPINGS=(
   "researcher-output-contract:-:"
   "researcher-multiple-questions:-:"
   "researcher-unanswered:-:"
+  "implement-ci-waits-long-command:long-build-app:app"
 )
 
 rm -rf .sandbox

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: fd3 implement evals — workflow agents run live on the prompts implement-run.js renders
+
+# Agent scenarios ignore this prompt: lib/implement-provider.mjs renders the workflow's own prompt
+# for the agent it names, with that agent's model, effort and schema.
+prompts:
+  - '{{query}}'
+
+providers:
+  - id: file://lib/implement-provider.mjs
+    config:
+      apiKeyRequired: false
+      # The session model; an agent the workflow script pins (the CI runner's haiku) runs on that.
+      model: claude-opus-5-5
+      setting_sources: []
+      max_budget_usd: 5.0
+      max_turns: 80
+      allow_all_tools: true
+      permission_mode: bypassPermissions
+      allow_dangerously_skip_permissions: true
+
+tests:
+  # The CI runner (haiku, effort high) on a toolchain whose last command outlives the Bash tool's
+  # 2-minute timeout. The intended gate is pass^3 (--trials 3): a gate agent must wait every time.
+  - description: implement-ci-waits-long-command
+    vars: { scenario: implement-ci-waits-long-command }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-ci-waits-long-command.mjs
