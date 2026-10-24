@@ -13,7 +13,8 @@ on:
       - 'package.json'
 
 jobs:
-  # Model-free: the workflow scripts against scripted agents, no token and no dependencies.
+  # Model-free: the workflow scripts against scripted agents and the eval checks against saved run
+  # artifacts — no token and no dependencies.
   workflow-scripts:
     runs-on: ubuntu-latest
     steps:
@@ -24,6 +25,8 @@ jobs:
       # A glob, not the directory: Node 22's --test does not accept a directory argument.
       - name: Run workflow script tests
         run: node --test 'plugins/fd3/tests/workflows/*.test.mjs'
+      - name: Run eval check tests
+        run: node --test 'plugins/fd3/evals/lib/*.test.mjs'
 
   smoke:
     runs-on: ubuntu-latest

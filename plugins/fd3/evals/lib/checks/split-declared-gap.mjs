@@ -10,7 +10,7 @@ export default (output) => {
   c.check(tasks.length === 7, `expected 7 task files (6 delivery + the declared gap), found ${tasks.length}`);
   s.checkTaskStructure(c, tasks);
   s.checkCoverage(c, tasks);
-  s.checkBoundaries(c, tasks, { report: `${h.readSandboxFile('split-declared-gap', 'spec/gap-rollout-spec.split.md') || ''}\n${output}` });
+  s.checkBoundaries(c, tasks);
   s.checkIndexCardRule(c, tasks);
 
   const operational = tasks.filter((t) => t.fm && t.fm.repository === 'none');

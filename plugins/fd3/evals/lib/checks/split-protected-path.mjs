@@ -12,7 +12,7 @@ export default (output) => {
   c.check(tasks.length === 7, `expected 7 task files (the six elements plus CI-1), found ${tasks.length}`);
   s.checkTaskStructure(c, tasks);
   s.checkCoverage(c, tasks, CODES);
-  s.checkBoundaries(c, tasks, { precedesDb: 'CI-1', report: `${h.readSandboxFile('split-protected-path', 'spec/protected-path-spec.split.md') || ''}\n${output}` });
+  s.checkBoundaries(c, tasks, { precedesDb: 'CI-1' });
   s.checkIndexCardRule(c, tasks);
 
   const ci = tasks.find((t) => s.elementsOf(t).includes('CI-1'));

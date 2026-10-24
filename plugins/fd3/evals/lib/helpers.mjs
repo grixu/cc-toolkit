@@ -96,7 +96,10 @@ function taskBody(content) {
 }
 
 export function readTasks(scenario, rel = 'spec/tasks') {
-  const dir = path.join(sandboxDir(scenario), rel);
+  return readTasksDir(path.join(sandboxDir(scenario), rel));
+}
+
+export function readTasksDir(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)

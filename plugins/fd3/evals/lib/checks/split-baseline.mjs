@@ -8,7 +8,7 @@ export default (output) => {
   c.check(tasks.length === 6, `expected exactly 6 task files in spec/tasks/, found ${tasks.length}`);
   s.checkTaskStructure(c, tasks);
   s.checkCoverage(c, tasks);
-  s.checkBoundaries(c, tasks, { report: `${h.readSandboxFile('split-baseline', 'spec/rollout-spec.split.md') || ''}\n${output}` });
+  s.checkBoundaries(c, tasks);
   s.checkIndexCardRule(c, tasks);
 
   // The report's one table, in a single header row — the column word may be abbreviated (`Repo`).
