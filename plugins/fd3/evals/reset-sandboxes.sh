@@ -38,6 +38,8 @@ MAPPINGS=(
   "researcher-unanswered:-:"
   "implement-ci-waits-long-command:long-build-app:app"
   "implement-consent-batch:consent-notes-tasks:app"
+  "implement-fix-cr-spec-bound:strict-slug-branch:app"
+  "implement-fix-cr-stays-in-consent:tf-consent-branch:app"
 )
 
 rm -rf .sandbox

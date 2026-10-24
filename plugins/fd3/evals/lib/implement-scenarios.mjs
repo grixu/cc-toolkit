@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { runWorkflow } from '../../tests/workflows/harness.mjs';
-import { implementDefaults, task } from '../../tests/workflows/fixtures.mjs';
+import { implementDefaults, crMerged, task } from '../../tests/workflows/fixtures.mjs';
 import { sandboxDir } from './helpers.mjs';
 
 const passedBaseline = (commands) => ({ commands: commands.map((command) => ({ command, passed: true })), dirty: [] });
@@ -50,6 +50,46 @@ export const SCENARIOS = {
     },
   },
 
+  'implement-fix-cr-spec-bound': {
+    kind: 'agent',
+    fixture: 'strict-slug-branch',
+    branch: 'feat/product-groups',
+    finding: {
+      severity: 'medium',
+      family: 'patterns',
+      rule: 'duplicate-literal',
+      location: 'src/config.ts:L3',
+      risk: 'safe',
+      fix: "replace the local PRODUCT_GROUP_SLUG regex with the contract's PRODUCT_GROUP_PATTERN from src/contract.ts, so one pattern has one source",
+    },
+    // The finding asks to loosen a pattern the spec states, so no line may change.
+    allowedLine: null,
+    skipReason: /\bD3\b|spec/i,
+    render(sandbox) {
+      return renderFixer(sandbox, this, 'product-groups-config');
+    },
+  },
+
+  'implement-fix-cr-stays-in-consent': {
+    kind: 'agent',
+    fixture: 'tf-consent-branch',
+    branch: 'feat/queue-chart-bump',
+    finding: {
+      severity: 'comment',
+      family: 'comments',
+      rule: 'R1 rewrite',
+      location: 'infra/main.tf:L9',
+      risk: 'safe',
+      fix: 'the comment restates the replica count; rewrite it to say why the worker runs two replicas',
+    },
+    // The task Note's Consent covers these two lines of the protected file and nothing else.
+    allowedLine: /\?ref=|chart_version/,
+    skipReason: /consent|protect/i,
+    render(sandbox) {
+      return renderFixer(sandbox, this, 'queue-chart-bump');
+    },
+  },
+
   'implement-consent-batch': {
     kind: 'skill',
     fixture: 'consent-notes-tasks',
@@ -61,6 +101,24 @@ export const SCENARIOS = {
     ],
   },
 };
+
+// A review that found one fixable finding, so the fixer is the next agent the workflow dispatches.
+function renderFixer(sandbox, scenario, slug) {
+  const commands = ['sh scripts/check.sh'];
+  return renderAgent({
+    sandbox,
+    branch: scenario.branch,
+    slug,
+    commands,
+    review: true,
+    toolchain: ['## Commands', `1. ${commands[0]} — static checks (not scopeable)`].join('\n'),
+    rules: [
+      [/^cr-merge:.*:review$/, crMerged([scenario.finding])],
+      [/^fix-cr:/, { summary: 'scripted', fromSha: 'aaa111', toSha: 'bbb222', skipped: [] }],
+    ],
+    capture: /^fix-cr:/,
+  });
+}
 
 // The commit SETUP.sh left the task branch on — written outside the sandbox, so no agent reads it.
 export function branchHead(scenario) {

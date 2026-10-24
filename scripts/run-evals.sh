@@ -9,6 +9,8 @@
 #   scripts/run-evals.sh fd3 e2e           # e2e chain → promptfooconfig.e2e.yaml (serial)
 #   scripts/run-evals.sh fd3 researcher    # researcher group → promptfooconfig.network.yaml
 #   scripts/run-evals.sh fd3 implement     # implement group → promptfooconfig.implement.yaml
+#   scripts/run-evals.sh fd3 implement-fix-cr
+#                                          # one implement pattern: the two review-fixer scenarios
 #   scripts/run-evals.sh fd3 split-baseline --trials 3
 #                                          # 3 sequential trials, sandboxes reset before each
 #   pnpm eval:code-review -- eval-20       # same runner for code-review (plugin mode)

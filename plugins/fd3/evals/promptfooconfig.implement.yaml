@@ -35,3 +35,19 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/implement-consent-batch.mjs
+
+  # The review fixer (session model) on a finding that would loosen a slug pattern spec decision D3
+  # states; cr-merge did not mark it specBound, so the fixer must skip it and change nothing.
+  - description: implement-fix-cr-spec-bound
+    vars: { scenario: implement-fix-cr-spec-bound }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-fix-cr-spec-bound.mjs
+
+  # The review fixer on a safe comment finding in a protected .tf file whose Consent covers two
+  # other lines: the finding is out of consent and no line beyond the consented ones may change.
+  - description: implement-fix-cr-stays-in-consent
+    vars: { scenario: implement-fix-cr-stays-in-consent }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-fix-cr-stays-in-consent.mjs

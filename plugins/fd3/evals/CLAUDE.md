@@ -45,6 +45,12 @@ call, read from the top-level `metadata.toolCalls`. A second hook denies any
 code-review as part of its review answer, and `first_option` took it on a live trial,
 writing the operator's real user settings.
 
+The two `implement-fix-cr-*` scenarios render the review fixer the same way, after a
+review whose scripted cr-merge result is the scenario's one `finding`. Their check reads
+the fixer's `skipped` (the finding, by location) and `caveats` (the scenario's
+`skipReason`), and diffs the worktree from the recorded branch head: any changed line
+must match the scenario's `allowedLine` (none for the spec-bound one).
+
 `implement-ci-waits-long-command` must hold every time: its intended gate is pass^3
 (`scripts/run-evals.sh fd3 implement-ci --trials 3`). It sleeps 200 s by design.
 None of the group is in the CI smoke filter.
