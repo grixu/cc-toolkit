@@ -65,7 +65,26 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   shift
   evals_dir="plugins/${plugin}/evals"
 
-  reset_sandbox "$evals_dir"
+  # promptfoo's --repeat runs every copy of a scenario against the one sandbox it was reset
+  # into, concurrently — the copies see and delete each other's writes. A trial is a whole
+  # run after its own reset.
+  trials=1
+  args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --trials) trials="${2:-}"; shift 2 || { echo "--trials needs a count" >&2; exit 2; } ;;
+      --trials=*) trials="${1#--trials=}"; shift ;;
+      --repeat|--repeat=*)
+        echo "--repeat shares one sandbox across copies of a scenario; use --trials <k> (a fresh sandbox per trial)" >&2
+        exit 2 ;;
+      *) args+=("$1"); shift ;;
+    esac
+  done
+  if ! [[ "$trials" =~ ^[1-9][0-9]*$ ]]; then
+    echo "--trials needs a positive integer, got '${trials}'" >&2
+    exit 2
+  fi
+  set -- ${args[@]+"${args[@]}"}
 
   cfg="${evals_dir}/promptfooconfig.yaml"
   filter=()
@@ -79,8 +98,15 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
     filter=(--filter-pattern "$pattern")
   fi
 
-  run_suite "$plugin" "$cfg" "${evals_dir}/.results/latest.json" "${filter[@]}" "$@"
-  exit $?
+  status=0
+  for ((i = 1; i <= trials; i++)); do
+    [ "$trials" -gt 1 ] && echo "--- trial ${i}/${trials}"
+    reset_sandbox "$evals_dir"
+    rc=0
+    run_suite "$plugin" "$cfg" "${evals_dir}/.results/latest.json" ${filter[@]+"${filter[@]}"} "$@" || rc=$?
+    [ "$status" -eq 0 ] && status=$rc
+  done
+  exit "$status"
 fi
 
 # Run-all mode: every plugin's default config (e2e/network configs stay explicit-only).
