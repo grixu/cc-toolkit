@@ -128,6 +128,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every `test-fidelity` fix is structural, and no fix that changes a signature, edits a second
   file or creates a module is Safe: runs routed test deletions three different ways and applied
   cross-file changes from the Safe bucket
+- A `cr-scan` lens list marks each lens file's header with ` · shared run: <list>`, and the merge
+  no longer counts agreement between lenses from one shared run as convergence
 
 ## [0.4.0] - 2026-10-03
 

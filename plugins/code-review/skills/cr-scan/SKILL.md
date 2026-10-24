@@ -85,8 +85,9 @@ With a list, judge each lens as if it were the only one:
   single-lens run, even when that lens is later in the list — never a finding in its file; the
   merge reconciles both.
 - **Write each lens's `<context>/<lens>.md` before you start the next one**, in the same shape, at
-  the same path, as a single-lens run of that lens. cr-merge reads those files and cannot tell how
-  they were produced.
+  the same path, as a single-lens run of that lens, with one addition: its header line ends
+  ` · shared run: <the --lens list as given>`. Lenses judged by one reader are not independent,
+  and cr-merge reads that suffix to keep their agreement from counting as convergence.
 - **A lens you cannot complete does not stop the others.** A name that is not one of the nine,
   a lens `scope.json` does not list, a rules file you cannot read, or a write that fails gets its
   own `error` block; carry on with the next lens. Never write a partial `<lens>.md` for it. A name

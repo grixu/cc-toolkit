@@ -37,7 +37,9 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   no way to coordinate. Treat a finding several lenses reached (directly or via
   `HANDOFF`) as **confirmed**: it leads its file, and it is a candidate for the
   headline. Convergence raises confidence and ordering, **never severity** — that stays
-  verbatim from the table.
+  verbatim from the table. Lens outputs whose headers carry the same `shared run:` suffix came
+  from one reader judging them in turn: dedup them as usual, but their agreement is one reading,
+  not several, and confirms nothing.
 - **Route every `HANDOFF` and every `CANDIDATES` entry to a visible home.** Assign a
   `HANDOFF` its correct family and rule; decide a candidate against its rule's
   calibration. A `HANDOFF` whose family is not one of the fixed labels in `severity.md` is
