@@ -324,25 +324,24 @@ tests:
     assert:
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
-      - type: llm-rubric
-        value: >-
-          Flags the duplication between `renderInvoiceLine` and `renderCreditNoteLine`
-          (identical bodies differing only by the literal label "INVOICE" vs
-          "CREDIT NOTE") as `simplicity` · `over-complex`, severity **high**, and the fix
-          collapses them into one function taking the label as a parameter.
-      - type: llm-rubric
-        value: >-
-          Flags the bare `86400 * 30` in `findOverdueInvoices` as `readability` ·
-          `magic-literal`, severity **medium**, proposing a name for the 30-day overdue
-          window.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: over-complex, mentions: [renderInvoiceLine, renderCreditNoteLine, 'INVOICE', 'CREDIT NOTE'], severity: high }
+      # the fix collapses both into one function taking the label
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: over-complex, mentions: [renderInvoiceLine, renderCreditNoteLine, 'INVOICE', 'CREDIT NOTE'], fix: 'label|param' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: readability, rule: magic-literal, mentions: ['86400', findOverdueInvoices], severity: medium }
+      # the fix proposes a name for the 30-day overdue window
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: readability, rule: magic-literal, mentions: ['86400', findOverdueInvoices], fix: '`\w*(overdue|window|days)\w*`' }
       # the name carries the type (`Map`), not the role
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: naming, rule: role-name, mentions: currencyMap, severity: nit }
-      - type: llm-rubric
-        value: >-
-          All three problems above are present in the report. Missing any one of them
-          fails this assertion, regardless of how well the others are described.
 
   # ----------------------------------------------------------------------------
   - description: 'eval-7 calibration-look-alikes (quality-calibration.ts)'
@@ -373,11 +372,12 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { rule: guard-clause, mentions: describeStock }
-      - type: llm-rubric
-        value: >-
-          The overall verdict is clean: the report has no high or medium findings. Any
-          look-alike the review considered and passed on is named on the "Not flagged"
-          line rather than raised as a finding.
+      - type: javascript
+        value: file://checks/report.mjs:cleanVerdict
+        config: {}
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['JSON\.parse|parseConfig|as Config', 'default|area', 'median', 'hasResults|items\.length', describeStock], min: 1 }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-8 folded-rules-recall (quality-recall-2.ts + quality-recall-2.model.ts)'
@@ -387,39 +387,37 @@ tests:
     assert:
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
-      - type: llm-rubric
-        value: >-
-          Flags the module-local `fetchInvoice` in `quality-recall-2.ts` — it forwards
-          `(repo, id)` unchanged to `repo.findById(id)` and has one caller (`collect`) —
-          as `module` · `pass-through`, severity **medium**, with a fix that inlines the
-          call at the caller and deletes the wrapper.
-      - type: llm-rubric
-        value: >-
-          Flags the file-local `renderAmount` in `quality-recall-2.ts` as `module` ·
-          `canonical-helper`, severity **high** — it duplicates the exported `formatMoney`
-          in `quality-recall-2.model.ts` (same `(amountMinor / 100).toFixed(2)` + currency
-          expression) — and the fix imports `formatMoney` instead. It is NOT filed as
-          `simplicity` · `over-complex` (that rule is for same-file duplication).
-      - type: llm-rubric
-        value: >-
-          Raises an `objects` · `feature-envy` finding, severity **medium**, on
-          `CollectionsQueue` — on ANY of `totalOf`, `priorityOf`, or `labelFor` (naming
-          one of them is enough): they compute the invoice total / days overdue from
-          `Invoice`'s own fields (`lines`, `dueAt`, `isSettled`) while `Invoice` has
-          behaviour of its own — and the fix moves that computation onto `Invoice`
-          (e.g. `total()`, `daysOverdue(now)`). A report that clears it as a
-          mapper/serializer exception fails this assertion.
-      - type: llm-rubric
-        value: >-
-          Flags `invoice.customer().account().primaryContact().email` in
-          `CollectionsQueue.recipientFor` as `objects` · `message-chain`, severity
-          **medium**, with a fix that asks `Invoice` (or `Customer`) for the answer
-          directly instead of navigating three foreign objects.
-      - type: llm-rubric
-        value: >-
-          All four problems above (`pass-through`, `canonical-helper`, `feature-envy`,
-          `message-chain`) are present in the report. Missing any one of them fails this
-          assertion, regardless of how well the others are described.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: pass-through, mentions: fetchInvoice, severity: medium }
+      # the fix inlines the call at the caller and deletes the wrapper
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: pass-through, mentions: fetchInvoice, fix: '^(?=.*inline)(?=.*(delete|remov))' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: canonical-helper, mentions: renderAmount, severity: high }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: canonical-helper, mentions: renderAmount, fix: formatMoney }
+      # `over-complex` is for same-file duplication
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: over-complex, mentions: [renderAmount, formatMoney] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: feature-envy, mentions: [totalOf, priorityOf, labelFor], severity: medium }
+      # the fix moves the computation onto `Invoice`
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: feature-envy, mentions: [totalOf, priorityOf, labelFor], fix: 'Invoice|total\(\)|daysOverdue' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: message-chain, mentions: [recipientFor, primaryContact], severity: medium }
+      # the fix asks `Invoice` or `Customer` for the answer
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: message-chain, mentions: [recipientFor, primaryContact], fix: 'Invoice|Customer' }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-9 folded-rules-calibration (quality-calibration-2.ts + quality-calibration-2.types.ts)'
@@ -450,11 +448,12 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { rule: data-clump, mentions: ['req', Request, 'res\b'] }
-      - type: llm-rubric
-        value: >-
-          The overall verdict is clean: the report has no high or medium findings. Any
-          look-alike the review considered and passed on is named on the "Not flagged"
-          line rather than raised as a finding.
+      - type: javascript
+        value: file://checks/report.mjs:cleanVerdict
+        config: {}
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['toDto|OrderDtoMapper', 'OrderQuery|builder', 'chargeOrder|PaymentGateway', 'import type|type-only', 'data-clump|\(req|req: Request|Request, Response'], min: 1 }
 
   # ============================================================================
   # Scanner track — security / performance / spec, prompts that emulate the
@@ -774,23 +773,31 @@ tests:
       # which would hide the source-vs-test classification this eval checks.
       file: plugins/code-review/evals/scope-mix
     assert:
-      - type: llm-rubric
-        value: >-
-          `build.mjs` and `legacy-report.cjs` were reviewed as source files — the report
-          judges their content (findings against them, or an explicit clean verdict naming
-          them). Neither is listed as skipped or dismissed as tooling.
-      - type: llm-rubric
-        value: >-
-          `tests-e2e/checkout.spec.ts` is treated as a test file — it is reviewed, and any
-          finding against it comes from the `tests` family (for example the interleaved
-          act/assert steps as test-structure), never dismissed for sitting outside a
-          directory named `test`.
-      - type: llm-rubric
-        value: >-
-          `.github/workflows/ci.yml` is not graded by the quality lenses: the report says it
-          is left to the security lens (a policy file) or lists it as skipped, and points
-          the reader at `/security-review` for the pipeline audit. No readability, naming
-          or other craft finding is raised against it. `notes.txt` is listed as skipped.
+      - type: javascript
+        value: file://checks/report.mjs:fileReviewed
+        config: { files: [build.mjs, legacy-report.cjs] }
+      # both are source files, never dismissed as tooling
+      - type: javascript
+        value: file://checks/report.mjs:notSkipped
+        config: { patterns: ['build\.mjs', 'legacy-report'] }
+      # a test file outside a `test` directory still gets the tests family
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, under: checkout.spec.ts }
+      - type: javascript
+        value: file://checks/report.mjs:notSkipped
+        config: { patterns: ['checkout\.spec'] }
+      # a policy file is the security lens's alone
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { under: ci.yml }
+      - type: regex
+        value: 'ci\.yml.*(security|[Ss]kipped)|([Ss]kipped|security).*ci\.yml'
+      - type: regex
+        value: '/security-review'
+      - type: javascript
+        value: file://checks/report.mjs:skippedNames
+        config: { patterns: ['notes\.txt'] }
       - type: regex
         value: '[Ss]kipped'
 

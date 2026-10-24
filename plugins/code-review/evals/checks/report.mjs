@@ -149,8 +149,13 @@ export function noCodeBlocks(output, { config: c = {} } = {}) {
 export function notFlaggedNames(output, { config: c = {} } = {}) {
   const text = textOf(output, 'notFlagged');
   if (!text.trim()) return result(false, 'no Not flagged line');
-  const missing = list(c.patterns).filter((p) => !re(p).test(text));
-  return missing.length ? result(false, `Not flagged does not name: ${missing.join(', ')}`) : result(true, 'Not flagged names every look-alike');
+  const patterns = list(c.patterns);
+  const missing = patterns.filter((p) => !re(p).test(text));
+  // `min` is for look-alikes the run may not have considered at all: naming some of them is enough.
+  const need = c.min ?? patterns.length;
+  return patterns.length - missing.length < need
+    ? result(false, `Not flagged names ${patterns.length - missing.length} of ${need} required; missing: ${missing.join(', ')}`)
+    : result(true, `Not flagged names ${patterns.length - missing.length} of ${patterns.length} look-alikes`);
 }
 
 export function skeletonPreamble(output) {
