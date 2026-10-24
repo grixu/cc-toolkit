@@ -13,5 +13,13 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "agent-engineer": {
+      "source": { "source": "github", "repo": "sarthakrastogi/agent-engineer" }
+    }
+  },
+  "enabledPlugins": {
+    "agent-engineer@agent-engineer": true
   }
 }
