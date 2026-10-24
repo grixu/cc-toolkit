@@ -128,3 +128,21 @@ test('latest round: a later ledger round or an answer nobody gave fails', () => 
   assert.deepEqual(h.latestRoundFailures(grill('round-225b31aa.md'), selfAnswered, viaTool), []);
 });
 
+// 39b47064 and c547b433: both AskUserQuestion calls came back with this error, the run ended
+// telling the user it could not reach them, and the check passed on verdict lines alone.
+const abort = { name: 'AskUserQuestion', is_error: true, output: 'Tool permission request failed: AbortError: Stream closed' };
+const answered = { name: 'AskUserQuestion', is_error: false, output: 'User has answered your questions.' };
+const calls = (...toolCalls) => ({ providerResponse: { metadata: { toolCalls } } });
+
+test('question tool: a run whose last AskUserQuestion aborted never reached the user', () => {
+  assert.equal(h.questionToolFailed(calls({ name: 'Read' }, abort, { name: 'Bash' }, abort)), true);
+  assert.equal(h.questionToolFailed(calls({ ...abort, is_error: false })), true);
+});
+
+test('question tool: an answered question, a retry that got through, or no question at all passes', () => {
+  assert.equal(h.questionToolFailed(calls(answered)), false);
+  assert.equal(h.questionToolFailed(calls(abort, answered)), false);
+  assert.equal(h.questionToolFailed(calls({ name: 'Read' })), false);
+  assert.equal(h.questionToolFailed(undefined), false);
+});
+

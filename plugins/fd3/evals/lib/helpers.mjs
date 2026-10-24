@@ -267,3 +267,10 @@ export function askedThroughTool(context) {
   return (context?.providerResponse?.metadata?.toolCalls || []).some((call) => call.name === 'AskUserQuestion');
 }
 
+// The run's last AskUserQuestion call errored: whatever it said after, the question never reached
+// the user.
+export function questionToolFailed(context) {
+  const asks = (context?.providerResponse?.metadata?.toolCalls || []).filter((call) => call.name === 'AskUserQuestion');
+  const last = asks.at(-1);
+  return Boolean(last && (last.is_error === true || /permission request failed|AbortError/i.test(JSON.stringify(last.output ?? ''))));
+}

@@ -7,8 +7,9 @@ const verdictLines = (text) => (text.match(/^Verdict: /gm) || []).length;
 
 // A finished spec handed to build-spec is a re-validation, never a new grilling: the decisions in it
 // are the user's, already made.
-export default () => {
+export default (output, context) => {
   const c = h.checker();
+  c.check(!h.questionToolFailed(context), 'the run ended on an AskUserQuestion call that errored: its questions never reached the user');
   const diff = h.diffSandbox(SCENARIO, 'rollout-spec');
 
   const ledger = diff.added.filter((f) => /question-ledger\.md$/.test(f));
