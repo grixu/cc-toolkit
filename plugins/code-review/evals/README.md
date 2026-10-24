@@ -28,7 +28,8 @@ evals/
   prompts/headless-list.txt # the headless track with one cr-scan over a lens list — eval-25
   prompts/correctness.txt  # scanner brief — correctness lens
   prompts/pr-scope.txt     # start-cr Step 1 for --pr, with a gh stand-in — eval-23
-  checks/                  # deterministic asserts that read files on disk (headless, pr, HANDOFF families)
+  checks/report.mjs        # code asserts over the final message: finding bullets, comment verdicts, the quality skeleton
+  checks/                  # the other checks read files on disk (headless, pr, HANDOFF families)
   reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22, 23 and 24 run in, and the gh stand-in
 ```
 
@@ -44,29 +45,53 @@ Each test binds to one prompt label (`comment-track`, `quality-track`,
 `security-track`, `performance-track`, `spec-track`, `standards-track`), so the
 tracks don't cross-run (promptfoo otherwise matrices every test against every prompt).
 
-| Test | Track | Fixture(s) | Focus |
-|------|-------|-----------|-------|
-| eval-0 | comment | `datadog-integration.tf` | R5 banners + R4 internal-doc refs vs external RFC |
-| eval-1 | comment | `scheduler.ts` | R4 file/doc refs, R5 banners, R1 narration, kept diagram/CVE |
-| eval-2 | comment | `dlq-codes.ts` + `dlq.handler.ts` | R12 misplaced/duplicated rationale (REMOVE vs MOVE) |
-| eval-3 | comment | `payment-validator.ts` | R4 spec-id pointers (REMOVE/REWRITE), token-stripping |
-| eval-4 | comment | `host-allowlist.ts` | R4 spec-ids embedded mid-sentence → REWRITE, keep the WHY |
-| eval-5 | quality | `quality-vocabulary.ts` | severity verbatim from the table, repeats collapsed, headline honesty |
-| eval-6 | quality | `quality-recall.ts` | recall gate — a seeded high + medium + nit across three families must all surface |
-| eval-7 | quality | `quality-calibration.ts` | noise gate — five documented look-alikes must stay non-findings |
-| eval-8 | quality | `quality-recall-2.ts` + `quality-recall-2.model.ts` | folded rules recall — `pass-through`, `canonical-helper` (cross-file), `feature-envy`, `message-chain` |
-| eval-9 | quality | `quality-calibration-2.ts` + `quality-calibration-2.types.ts` | folded rules noise — DTO mapper, fluent builder, adapting facade, type-only import cycle, `(req, res)` |
-| eval-10 | security | `security-recall.ts` | `secret-in-source`, `injection-sink` (source + sink lines), `insecure-setting`; no `nit` |
-| eval-11 | security | `security-calibration.ts` | `knex.raw('?', [x])`, `spawn` argv, `sk_test_`, env read, health endpoint stay non-findings |
-| eval-12 | performance | `performance-recall.ts` | `n-plus-one` with all four evidence items, `unbounded-fetch`; no "could be slow" |
-| eval-13 | performance | `performance-calibration.ts` | enum loop, `take`/`skip` page, module-level `readFileSync` stay non-findings |
-| eval-14 | spec | `spec/feature-spec.md` + `spec/feature-impl.ts` | one MISSING (under the spec path), one WRONG, one scope-creep, "3 of 5 requirements met" |
-| eval-15 | standards | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, MAY → nit, vague prose ignored |
-| eval-21 | correctness | `correctness/order-sync.ts` (`DEFECTS.md` beside it) | `off-by-one` + `swallowed-error`, exhaustive `never` default and best-effort catch left alone, HANDOFF families from the fixed table |
-| eval-22 | headless | `.sandbox/headless-skipped` | a docs-only commit makes `cr-prepare` return `empty` with 0 judged files and no active lens |
-| eval-23 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 7` reviews the PR head in a detached worktree against `origin/main`; the user's checkout stays on `main`, untouched; the gh user authored it, so `mode: own` |
-| eval-24 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 8`, the same head authored by someone else, gives the eval-23 scope with `mode: reviewer` |
-| eval-25 | headless | `.sandbox/headless` | one `cr-scan --lens a,b,…` over every active lens writes each `<lens>.md` and one closing block per lens, and `cr-merge` merges them as in eval-20 |
+| Test | Track | Fixture(s) | Focus | Asserts (code / rubric) |
+|------|-------|-----------|-------|-----|
+| eval-0 | comment | `datadog-integration.tf` | R5 banners + R4 internal-doc refs vs external RFC | 10 / 1 |
+| eval-1 | comment | `scheduler.ts` | R4 file/doc refs, R5 banners, R1 narration, kept diagram/CVE | 8 / 0 |
+| eval-2 | comment | `dlq-codes.ts` + `dlq.handler.ts` | R12 misplaced/duplicated rationale (REMOVE vs MOVE) | 8 / 0 |
+| eval-3 | comment | `payment-validator.ts` | R4 spec-id pointers (REMOVE/REWRITE), token-stripping | 12 / 0 |
+| eval-4 | comment | `host-allowlist.ts` | R4 spec-ids embedded mid-sentence → REWRITE, keep the WHY | 4 / 2 |
+| eval-5 | quality | `quality-vocabulary.ts` | severity verbatim from the table, repeats collapsed, headline honesty | 10 / 0 |
+| eval-6 | quality | `quality-recall.ts` | recall gate — a seeded high + medium + nit across three families must all surface | 6 / 0 |
+| eval-7 | quality | `quality-calibration.ts` | noise gate — five documented look-alikes must stay non-findings | 8 / 0 |
+| eval-8 | quality | `quality-recall-2.ts` + `quality-recall-2.model.ts` | folded rules recall — `pass-through`, `canonical-helper` (cross-file), `feature-envy`, `message-chain` | 10 / 0 |
+| eval-9 | quality | `quality-calibration-2.ts` + `quality-calibration-2.types.ts` | folded rules noise — DTO mapper, fluent builder, adapting facade, type-only import cycle, `(req, res)`; the fixture holds no real defect, so the verdict is clean | 8 / 0 |
+| eval-10 | security | `security-recall.ts` | `secret-in-source`, `injection-sink` (source + sink lines), `insecure-setting`; no `nit` | 12 / 1 |
+| eval-11 | security | `security-calibration.ts` | `knex.raw('?', [x])`, `spawn` argv, `sk_test_`, env read, health endpoint stay non-findings | 8 / 0 |
+| eval-12 | performance | `performance-recall.ts` | `n-plus-one` with all four evidence items, `unbounded-fetch`; no "could be slow" | 8 / 2 |
+| eval-13 | performance | `performance-calibration.ts` | enum loop, `take`/`skip` page, module-level `readFileSync` stay non-findings | 7 / 0 |
+| eval-14 | spec | `spec/feature-spec.md` + `spec/feature-impl.ts` | one MISSING (under the spec path), one WRONG, one scope-creep, "3 of 5 requirements met" | 13 / 0 |
+| eval-15 | standards | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, MAY → nit, vague prose ignored | 10 / 0 |
+| eval-16 | security | `iac-exposure.tf` | `iac-exposure` recall: generated key in state and on disk, plaintext default + unmarked output, `allUsers` invoker, `0.0.0.0/0` on 5432, repo-only OIDC condition; four public-by-design look-alikes stay non-findings | 10 / 0 |
+| eval-17 | security (diff) | `access-widening.diff` | `access-widening` from the `-`/`+` sides: widened scope, dropped owner predicate, lost `requireAuth`, lost `tenant_id`; the two tightening hunks stay non-findings | 7 / 0 |
+| eval-18 | security | `tenant-guard.ts` + `tenant-guard.test.ts` | a sound guard stays clean; the tests' unexercised boundary goes to `tests` · test-fidelity as a HANDOFF, never a `security` finding | 4 / 1 |
+| eval-19 | quality | `scope-mix/` | scope by file kind: `.mjs`/`.cjs` reviewed as source, an e2e spec as a test file, the CI workflow left to the security lens, `notes.txt` skipped | 9 / 0 |
+| eval-20 | headless | `.sandbox/headless` | `cr-prepare` → `cr-scan` per lens → `cr-merge`: every lens file, the merged finding shape, the Reconciliation arithmetic | 1 / 0 |
+| eval-21 | correctness | `correctness/order-sync.ts` (`DEFECTS.md` beside it) | `off-by-one` + `swallowed-error`, exhaustive `never` default and best-effort catch left alone, HANDOFF families from the fixed table | 10 / 0 |
+| eval-22 | headless | `.sandbox/headless-skipped` | a docs-only commit makes `cr-prepare` return `empty` with 0 judged files and no active lens | 1 / 0 |
+| eval-23 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 7` reviews the PR head in a detached worktree against `origin/main`; the user's checkout stays on `main`, untouched; the gh user authored it, so `mode: own` | 1 / 0 |
+| eval-24 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 8`, the same head authored by someone else, gives the eval-23 scope with `mode: reviewer` | 1 / 0 |
+| eval-25 | headless | `.sandbox/headless` | one `cr-scan --lens a,b,…` over every active lens writes each `<lens>.md` and one closing block per lens, and `cr-merge` merges them as in eval-20 | 1 / 0 |
+
+### Grading
+
+Code first: 187 of the 194 asserts are `regex`, `not-regex` or `javascript`. Most read the
+final message through `checks/report.mjs`. It parses the fixed shapes the skills prescribe:
+`` `family` · rule · severity · L… `` findings, ``L… · `quote` — **VERDICT** (R#)`` comment
+verdicts, and the Conventions / Headline / `###` path / Tally skeleton. It grades only the
+sections the contract governs, never `HANDOFF` or `CANDIDATES`. Each assert checks one
+dimension. The suite had 115 `llm-rubric` asserts and now has 7. Every code assert was run
+against the 85 saved outputs (`.results/latest.json`, the `.results/runs/` archive, the
+2026-10 A/B result files). It fails only where the saved run had a real problem, and it
+fails a copy of each passing output with the graded property broken.
+
+**The 7 remaining rubrics are unvalidated judges.** No TPR/TNR has been measured against
+human labels, so they are diagnostic, not a gate. Each one grades a meaning carried by the
+words of a fix or a clause, which code cannot read: eval-0 (the `DD_PLAN` rewrite keeps its
+rationale), eval-4 (the WHY survives each rewrite; tokens are checked against the code
+first), eval-10 (rotation is left to the user), eval-12 (the missing bound; why the read is
+unbounded), eval-18 (the tests never exercise the boundary they name).
 
 **eval-6 and eval-7 are the two halves of one gate.** eval-6 fails when the review
 under-reports; eval-7 fails when it compensates by flagging look-alikes. A prompt
@@ -146,7 +171,9 @@ the one `.sandbox/` the run reset. Run-all mode (`pnpm eval`) discovers every
   score below was measured on the model its row names, not on this pin.
 
 - **Measured scores** (assertion-level; promptfoo's headline count is test-level and
-  fails a whole test on one assertion). Measured 2026-07-26:
+  fails a whole test on one assertion). They were measured on the earlier, mostly-rubric
+  assert set, so their denominators are the old per-test counts, not the table's.
+  Measured 2026-07-26:
 
   | run | comment track | quality track |
   |-----|---------------|---------------|
@@ -189,6 +216,8 @@ the one `.sandbox/` the run reset. Run-all mode (`pnpm eval`) discovers every
   `Headline` lines and the file-path `###` headers. The findings themselves — families,
   rules, severities — are correct in every run.
 
+  The skeleton is now graded in code (`skeletonPreamble`, `fileHeaders`, `findingBullets`,
+  `noCodeBlocks`, `headlineHonest`), which removes the judge's noise but not the model's.
   So treat eval-5's skeleton assertions as **indicative, not a pass/fail gate**, unless
   you run `--trials 3` and compare rates. Skeleton adherence in `quality-review` is a
   known open weakness: the Opus 5 prompt pass removed fenced code blocks from the report
@@ -228,10 +257,10 @@ the one `.sandbox/` the run reset. Run-all mode (`pnpm eval`) discovers every
     `prompts/review.txt` (comment track) still uses the old opener and was **not**
     re-measured under this SDK — expect it to need the same treatment.
 - **`skill-used` is still not asserted.** Each test asserts (via `regex`) that the
-  report uses the skill's own taxonomy — R1–R12 on the comment track, the backticked
-  family labels on the quality/scanner tracks — since output of that shape requires
-  the rules to have been read. eval-7/9 (clean quality fixtures) proxy on the `Tally`
-  line, eval-11/13 (clean scanner fixtures) on the `Not flagged` line the brief asks
+  report uses the skill's own output shape — the comment track's full `Tally` line, the
+  backticked family labels on the quality/scanner tracks — since output of that shape
+  requires the rules to have been read. eval-7/9 (clean quality fixtures) proxy on the
+  quality `Tally` line, eval-11/13 (clean scanner fixtures) on the `Not flagged` line the brief asks
   for.
 - `setting_sources: []` keeps this repo's `CLAUDE.md`/hooks out of the run, so
   results reflect the skill, not the surrounding harness.
