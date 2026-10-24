@@ -26,6 +26,7 @@ MAPPINGS=(
   "write-missing-input-stop:empty-project:"
   "write-template-conformance:grilling-summary:."
   "write-no-invented-decisions:no-rollout-order:."
+  "write-closing-batch:unasked-choices-notes:."
   "grill-round-shape:retry-topic:."
   "grill-no-topic:retry-topic:."
   "grill-numbered-questions:retry-topic:."

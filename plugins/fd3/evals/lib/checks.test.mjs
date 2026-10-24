@@ -215,3 +215,59 @@ test('verified claims: the comment repeated as fact, a missing no-expiry option,
   assert.match(claimFailures(verifiedRound.replace('src/store.ts:14-26', 'src/store.ts:3')).join('\n'), /store\.ts:3 does not point at the read query/);
   assert.match(claimFailures('Looking into the retention now.').join('\n'), /asks no numbered question/);
 });
+
+const closingSpec = `## 3. Design decisions
+
+| # | Decision | Rationale |
+|---|---|---|
+| D1 | **A separate listener process** | Q1 b. |
+| D6 | **The listener binds port 8081** | assistant-taken — followed from Q1 b; 8080 is the API server's. |
+| D7 | **Bodies over 256 KB are rejected with 413** | assistant-taken — followed from Q4 a. |
+
+## 4. Target architecture
+
+**Declared gap:** the carrier's redelivery schedule is undocumented — owner: carrier integrations team, placement: ticket TRK-41.
+`;
+
+const closingReport = `Spec written to spec/out.md, 180 lines.
+
+## Questions
+
+1. **D6 — the listener binds port 8081.** Keep it? a) yes (recommended: 8080 is taken), b) another port.
+2. **D7 — bodies over 256 KB get 413.** Keep the limit? a) yes (recommended), b) another size.
+3. **Write ADR-0002 for the bullmq queue?** docs/CLAUDE.md asks for one per mechanism choice. a) yes (recommended), b) no.
+4. **Consent to create infra/secrets.tf**, a protected path? a) yes (recommended), b) no — the secret is created by hand.`;
+
+test('closing batch: one question per open choice and per assistant-taken row passes', async () => {
+  const { batchFailures, parkedChoices } = await import('./checks/write-closing-batch.mjs');
+  assert.deepEqual(batchFailures(closingReport, closingSpec), []);
+  assert.deepEqual(parkedChoices(closingSpec), []);
+});
+
+test('closing batch: a parked choice, a missing question, two rows in one question or a ratify-all fails', async () => {
+  const { batchFailures, parkedChoices } = await import('./checks/write-closing-batch.mjs');
+  const parked = `${closingSpec}\n### Declared gaps\n\n- G2: whether the bullmq choice gets an ADR — the team decides at task split.\n- Consent to edit the protected infra/ — owner: the user, placement: before phase 1.\n`;
+  assert.equal(parkedChoices(parked).length, 2);
+  assert.match(batchFailures(closingReport.replace(/\n4\. .*$/, ''), closingSpec).join('\n'), /consent to create the protected infra\/secrets\.tf/);
+  const bundled = closingReport.replace(/1\. .*\n2\. .*\n/, '1. **D6 and D7** — port 8081 and a 256 KB limit. a) keep both (recommended), b) change.\n');
+  assert.match(batchFailures(bundled, closingSpec).join('\n'), /question 1 puts D6, D7 to the user together/);
+  const ratifyAll = closingReport.replace(/1\. .*\n2\. .*\n/, '1. Ratify all assistant-taken rows D6–D7 (port and size limit)? a) yes (recommended).\n');
+  assert.match(batchFailures(ratifyAll, closingSpec).join('\n'), /ratifies several rows in one question/);
+  assert.match(batchFailures('Spec written. Nothing to ask.', closingSpec).join('\n'), /no numbered question batch/);
+});
+
+const specSide = (name) => fs.readFileSync(path.join(FIXTURES, 'spec-side', name), 'utf8');
+
+// 3e61f1cd asked the port as `WEBHOOK_PORT`, and its D10 question cites D8 inside the quoted row.
+test('closing batch: a port named as an env var and a row cited inside another row\'s text pass', async () => {
+  const { batchFailures, parkedChoices } = await import('./checks/write-closing-batch.mjs');
+  const report = specSide('closing-batch-report-3e61f1cd.md');
+  const spec = specSide('closing-batch-spec-3e61f1cd.md');
+  assert.deepEqual(batchFailures(report, spec), []);
+  assert.deepEqual(parkedChoices(spec), []);
+  const noPort = report.replace(/\n6\. \*\*D9:\*\*.*/, '');
+  assert.match(batchFailures(noPort, spec).join('\n'), /listener port/);
+  const bundled = report.replace('7. **D10:**', '7. **D8 and D10:**');
+  assert.match(batchFailures(bundled, spec).join('\n'), /question 7 puts D8, D10 to the user together/);
+  assert.equal(/(?:\b|_)port\b/i.test('the report and its transport support'), false);
+});

@@ -169,6 +169,13 @@ tests:
       - type: javascript
         value: file://lib/checks/write-no-invented-decisions.mjs
 
+  - description: write-closing-batch
+    vars: { query: file://prompts/write-closing-batch.txt }
+    options: { working_dir: .sandbox/write-closing-batch, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/write-closing-batch.mjs
+
   # ---- grill-topic (Priority 3 — smoke) ----
   # 8.0 for grill-round-shape/grill-numbered-questions: with first_option auto-answering
   # question-tool rounds a grilling run can go long, and a cut-off kills the SDK
