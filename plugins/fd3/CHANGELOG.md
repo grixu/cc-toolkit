@@ -187,6 +187,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tags, so the rules no longer sit behind kilobytes of embedded data
 - A review lens that judged only part of its files reaches the HIL list as a notice naming its
   `K of M`; only a lens that judged none was caught before
+- The review fixer fixes every site a finding names, pre-branch copies included: the merge's
+  duplication sweep lists every copy, and "never touch problems that pre-date this branch" told
+  the fixer to leave them, which it overrode on its own
 
 ## [0.3.0] - 2026-10-12
 

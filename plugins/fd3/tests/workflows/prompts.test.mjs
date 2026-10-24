@@ -210,6 +210,12 @@ test('toolchain fixture reaches the scoped CI prompt verbatim', async () => {
   assert.ok(r.call('ci:app:feat-a').prompt.includes(`<toolchain_report>\n${TOOLCHAIN}\n</toolchain_report>`))
 })
 
+test('the review fixer fixes every copy a finding names, pre-branch ones included; the repair fixer stays in its change', async () => {
+  const named = /A site a listed problem names by location is part of it even where it pre-dates this branch/
+  assert.match((await implementRun()).call('fix-cr:app:feat-a').prompt, named)
+  assert.doesNotMatch((await repairRun()).call('fix-review:app:feat-a').prompt, named)
+})
+
 test('every fixer is told to read the Consent lines of its own branch task files', async () => {
   const consent = /read every line starting `Consent:` in the `## Note` of this branch's task files:\n((?:- \S+\n)+)/
   const impl = await implementRun()

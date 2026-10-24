@@ -1132,6 +1132,9 @@ const fixPrompt = (unit, problems, source, preExisting = []) =>
             ? [`Each listed problem sits in the repair's own change; a fix that reaches beyond it is skipped.`]
             : [
                 ``,
+                `A site a listed problem names by location is part of it even where it pre-dates this branch: a`,
+                `duplication finding lists every copy, and fixing it means fixing each copy it names — never a`,
+                `copy it does not name.`,
                 `A name you add says what the code does, not where it sends it, and reuses no name the module`,
                 `already exports. A value two modules need moves to a module both already import (constants,`,
                 `config) — never import it from a repository, an adapter or an app-composition file: each`,
