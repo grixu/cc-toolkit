@@ -7,12 +7,6 @@ export type OrderDto = {
   placedAt: string;
 };
 
-export type OrderPage = {
-  items: OrderDto[];
-  nextCursor: string | null;
-  channel: Order['channel'];
-};
-
 export interface OrderRepo {
   query(sql: string, params: unknown[]): Promise<Order[]>;
 }
