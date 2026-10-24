@@ -28,6 +28,9 @@ cd "$(dirname "$0")/.."
 # An eval is one headless query: a subagent left running in the background reports after the
 # result, so the graded turn ends on "waiting for the fork" with nothing written.
 export CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1
+# An eval measures the plugin at the CLI's default compaction point; an operator's lowered
+# threshold leaks in through the env and compacts mid-skill.
+unset CLAUDE_AUTOCOMPACT_PCT_OVERRIDE CLAUDE_CODE_AUTO_COMPACT_WINDOW
 
 bin="./node_modules/.bin/promptfoo"
 if [ ! -x "$bin" ]; then
