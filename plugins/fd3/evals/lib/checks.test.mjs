@@ -146,3 +146,26 @@ test('question tool: an answered question, a retry that got through, or no quest
   assert.equal(h.questionToolFailed(undefined), false);
 });
 
+const shape = (text) => h.roundShapeFailures(text);
+const round = grill('round-225b31aa.md');
+
+test('round shape: rounds closed by their labels, lettered options under each question, pass', () => {
+  for (const name of ['round-225b31aa.md', 'round-e375166f.md', 'reprint-9ff1f0b7.md']) assert.deepEqual(shape(grill(name)), [], name);
+});
+
+// 155659a9 closed on "Please answer:" and lettered its sub-questions 3a/3b/3c, the same letters
+// its options carry.
+test('round shape: a round with no "Answer as:" line, or with lettered sub-questions, fails', () => {
+  const text = grill('round-155659a9.md');
+  assert.match(shape(text).join('\n'), /no round with an "Answer as:" line/);
+  assert.match(shape(text.replace('Please answer:', 'Answer as:')).join('\n'), /sub-questions 3a, 3b, 3c carry letters/);
+});
+
+test('round shape: an option without its letter, a label nobody asks, a hole and a trailing question fail', () => {
+  assert.match(shape(round.replace('- **b) Drop to 3**', '- **Drop to 3**')).join('\n'), /question 1 has a named option without its letter/);
+  assert.match(shape(round.replace('Answer as: 1, 2,', 'Answer as: 1, 2, 2.5,')).join('\n'), /names 2\.5 but no numbered question/);
+  const hole = round.replace(/\*\*4\. Should there be[\s\S]*?\n\n\*\*5\./, '**5.').replace(' 4, 5,', ' 5,');
+  assert.match(shape(hole).join('\n'), /skips question 4 without naming it/);
+  assert.deepEqual(shape(`Open from earlier rounds: none. Blocked by the lookup: 4 (timeouts).\n\n${hole}`), []);
+  assert.match(shape(`${round}\nShall I also look at the logs?`).join('\n'), /goes on past the round/);
+});

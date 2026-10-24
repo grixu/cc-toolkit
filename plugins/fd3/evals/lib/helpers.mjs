@@ -225,6 +225,43 @@ export function lastRound(output) {
 
 const topLevel = (label) => parseInt(label, 10);
 
+// The shape grill-topic gives a round: every label it closes with is a question it asks, each
+// leaf question offers lettered options `a)`, `b)`, the numbers run without a hole the round's
+// opening does not name, and the round is the last thing the message says.
+export function roundShapeFailures(output) {
+  const round = lastRound(output);
+  if (!round) return ['the message closes no round with an "Answer as:" line'];
+  const out = [];
+  const numeric = round.labels.filter((x) => /^\d/.test(x));
+  if (numeric.length < 2) out.push(`the closing "Answer as:" line names ${numeric.length} numbered question(s)`);
+  const unasked = numeric.filter((x) => !round.questionLine.has(x));
+  if (unasked.length) out.push(`"Answer as:" names ${unasked.join(', ')} but no numbered question in the round carries it`);
+  if (round.lettered.length) out.push(`sub-questions ${round.lettered.join(', ')} carry letters, which belong to options: an answer like "3 a" has two readings`);
+  if (round.tail.length > 300 || /\?/.test(round.tail)) out.push('the message goes on past the round\'s "Answer as:" line');
+
+  const asked = numeric.filter((x) => round.questionLine.has(x)).sort((a, b) => round.questionLine.get(a) - round.questionLine.get(b));
+  const starts = asked.map((x) => round.questionLine.get(x));
+  for (const [i, label] of asked.entries()) {
+    if (numeric.some((x) => x !== label && x.startsWith(`${label}.`))) continue;
+    const block = round.lines.slice(starts[i] + 1, i + 1 < starts.length ? starts[i + 1] : round.at);
+    const named = block.filter((l) => /^\s*[-*+]\s+(?:\*\*)?[a-z]\)/.test(l) || /^\s*[-*+]\s+\*\*/.test(l));
+    const lettered = named.filter((l) => /^\s*[-*+]\s+(?:\*\*)?[a-z]\)/.test(l));
+    if (lettered.length < 2) out.push(`question ${label} offers ${lettered.length} lettered option(s)`);
+    if (named.length > lettered.length) out.push(`question ${label} has a named option without its letter`);
+  }
+
+  const opening = starts.length ? round.lines.slice(0, starts[0]).filter((l) => /open from earlier|blocked|carried/i.test(l)).join('\n') : '';
+  const named = (n) =>
+    new RegExp(`\\b${n}\\b`).test(opening) ||
+    [...opening.matchAll(/(\d+)\s*[–-]\s*(\d+)/g)].some(([, a, b]) => Number(a) <= n && n <= Number(b));
+  const ints = [...new Set(numeric.map(topLevel))].sort((a, b) => a - b);
+  for (let n = ints[0]; ints.length && n < ints.at(-1); n += 1) {
+    if (!ints.includes(n) && !named(n)) out.push(`the round skips question ${n} without naming it as blocked or carried over`);
+  }
+  if (!/recommend/i.test(round.lines.slice(starts[0] ?? 0, round.at).join('\n'))) out.push('no marked recommendation among the options');
+  return out;
+}
+
 // The question ledger grill-topic keeps, as rows of { label, round, answer }; null when the run kept
 // none inside the sandbox.
 export function readLedger(scenario) {
