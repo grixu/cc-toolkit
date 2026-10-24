@@ -826,10 +826,14 @@ tests:
           Does NOT raise a finding against `labelFor`'s `default:` arm (an exhaustive
           `never` assertion) or against `recordSync`'s catch (best-effort telemetry whose
           comment says so); either may appear on the `Not flagged` line.
-      - type: llm-rubric
-        value: >-
-          Every severity is exactly `high` or `medium` — never `nit`, `low` or a number —
-          and every finding is one bullet naming its own file as `path:L<lines>`.
+      # a correctness finding is never `nit`
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { severities: [high, medium] }
+      # every finding names its own file, so the merge can regroup it
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: correctness, pattern: '^- `correctness` · [a-z]+(-[a-z]+)* · (high|medium) · `[\w./-]+:L\d+[^`]*` — .+ → .+' }
       - type: javascript
         value: file://checks/handoff-families.mjs
 
