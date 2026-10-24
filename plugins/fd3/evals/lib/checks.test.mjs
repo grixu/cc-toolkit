@@ -271,3 +271,40 @@ test('closing batch: a port named as an env var and a row cited inside another r
   assert.match(batchFailures(bundled, spec).join('\n'), /question 7 puts D8, D10 to the user together/);
   assert.equal(/(?:\b|_)port\b/i.test('the report and its transport support'), false);
 });
+
+const deployVerdict = (headline, phase1) => `## Verdict
+${headline} — the deploy path phase 1 relies on does not exist.
+
+| Phase | Ready | What holds it |
+|---|---|---|
+| 1 — four work items, cap 1 | ${phase1} | a merge to main never deploys to test |
+| 2 | no | the platform team's ceiling confirmation |
+
+## Checks
+`;
+
+test('deploy path: phase 1 held, or the document not ready, passes; phase 1 yes on a ready spec fails', async () => {
+  const { verdictFailures } = await import('./checks/validate-deploy-path.mjs');
+  assert.deepEqual(verdictFailures(deployVerdict('**not ready**', 'yes')), []);
+  assert.deepEqual(verdictFailures(deployVerdict('ready', 'no — blocked')), []);
+  assert.match(verdictFailures(deployVerdict('ready', 'yes')).join('\n'), /passes phase 1/);
+});
+
+test('deploy path: a workflow citation counts only inside the deploy-condition lines', async () => {
+  const { citesCondition } = await import('./checks/validate-deploy-path.mjs');
+  assert.equal(citesCondition('`.github/workflows/payments-cd.yaml:11` runs deploy-test only on release/test'), true);
+  assert.equal(citesCondition('see payments-cd.yaml:10-13 and :19'), true);
+  assert.equal(citesCondition('payments-cd.yaml lines 18-21: main deploys stage'), true);
+  assert.equal(citesCondition('payments-cd.yaml#L11'), true);
+  assert.equal(citesCondition('payments-cd.yaml:28 sends main to prod'), false);
+  assert.equal(citesCondition('the deploy workflow (`.github/workflows/payments-cd.yaml`)'), false);
+});
+// 0e908afc's evidence row names the workflow and quotes the test job's branch, with no line number.
+test('deploy path: a row naming the workflow and quoting its test-job condition cites it', async () => {
+  const { citesCondition, verdictFailures } = await import('./checks/validate-deploy-path.mjs');
+  assert.equal(citesCondition(specSide('deploy-path-evidence-0e908afc.md')), true);
+  assert.deepEqual(verdictFailures(specSide('deploy-path-report-0e908afc.md')), []);
+  assert.equal(citesCondition('`deploy-test` runs only on a push to `release/test`'), false);
+  assert.equal(citesCondition('`.github/workflows/payments-cd.yaml` deploys on a merge to `main`'), false);
+});
+

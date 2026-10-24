@@ -16,6 +16,7 @@ MAPPINGS=(
   "validate-declared-gap:gap-payments-spec:."
   "validate-phased-verdict:phased-payments-spec:."
   "validate-ownerless-gap:ownerless-gap-payments-spec:."
+  "validate-deploy-path:deploy-path-payments-spec:."
   "split-baseline:rollout-spec:repo-a repo-b"
   "split-declared-gap:gap-rollout-spec:repo-a repo-b"
   "split-protected-path:protected-path-rollout-spec:repo-a repo-b"

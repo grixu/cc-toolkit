@@ -74,6 +74,13 @@ tests:
       - type: javascript
         value: file://lib/checks/validate-ownerless-gap.mjs
 
+  - description: validate-deploy-path
+    vars: { query: file://prompts/validate-deploy-path.txt }
+    options: { working_dir: .sandbox/validate-deploy-path, max_budget_usd: 5.0 }
+    assert:
+      - type: javascript
+        value: file://lib/checks/validate-deploy-path.mjs
+
   # ---- split-to-tasks (Priority 1; same budget override) ----
   - description: split-baseline
     vars: { query: file://prompts/split-baseline.txt }
