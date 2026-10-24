@@ -189,6 +189,12 @@ test('a lens that judged nothing of a non-empty change makes the review dead', a
   assert.deepEqual(status(r), { t1: 'merged', t2: 'merged' })
 })
 
+test('a lens that judged part of its files merges and reaches a human as a notice', async () => {
+  const r = await run(implementArgs(), [['cr:app:feat-x:review:security', { status: 'scanned', invoked: true, filesJudged: 1, filesTotal: 2 }]])
+  assert.ok(r.has('cr-merge:'))
+  assert.ok(r.result.hil.some((h) => h.kind === 'review' && /lens security judged 1 of 2 files/.test(h.reason)))
+})
+
 test('cr-prep is told to focus the review on the elements and decisions of the branch tasks', async () => {
   const r = await run(implementArgs(), [['cr-merge:app:feat-x:review', crMerged([finding()])]])
   const focus = /read the `elements:` and `decisions:` frontmatter lists of these task files:\n((?:- \S+\n)+)Append `--spec-focus "<codes>"` to the arguments above[^]*When every list is empty, append nothing\./

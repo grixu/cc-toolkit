@@ -185,6 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Baseline, merge, CI and fix prompts open with the toolchain report and the baseline inside
   `<toolchain_report>` and `<baseline>` tags and give their instructions after, referring to the
   tags, so the rules no longer sit behind kilobytes of embedded data
+- A review lens that judged only part of its files reaches the HIL list as a notice naming its
+  `K of M`; only a lens that judged none was caught before
 
 ## [0.3.0] - 2026-10-12
 

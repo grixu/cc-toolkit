@@ -1222,20 +1222,30 @@ const scanAllPrompt = (lenses, dir) =>
 const SINGLE_SCAN_MAX_FILES = 3
 
 const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
+// A lens that read some of its files still reported, but its silence on the rest is not a verdict.
+const lensPartial = (r) => r.status === 'scanned' && r.filesJudged > 0 && r.filesJudged < r.filesTotal
 
-// Returns the lenses that did not report; a lens the single scanner left out of its list is one.
+// Returns the lenses that did not report — a lens the single scanner left out of its list is one —
+// and those that judged only part of their files.
 const scanLenses = async (lenses, dir, files, tag, pass) => {
+  let results
   if (lenses.length > 1 && files <= SINGLE_SCAN_MAX_FILES) {
     const r = await tryTwice(scanAllPrompt(lenses, dir), { label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
     const reported = new Map((r && r.invoked ? r.lenses || [] : []).map((e) => [norm(e.lens), { ...e, invoked: true }]))
-    return lenses.filter((l) => lensDead(reported.get(l)))
+    results = lenses.map((l) => reported.get(l))
+  } else {
+    results = await parallel(
+      lenses.map((lens) => () =>
+        tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+      ),
+    )
   }
-  const scans = await parallel(
-    lenses.map((lens) => () =>
-      tryTwice(scanPrompt(lens, dir), { label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
-    ),
-  )
-  return lenses.filter((_, i) => lensDead(scans[i]))
+  const dead = lenses.filter((_, i) => lensDead(results[i]))
+  const partial = lenses
+    .map((lens, i) => ({ lens, r: results[i] }))
+    .filter(({ r }) => !lensDead(r) && lensPartial(r))
+    .map(({ lens, r }) => `lens ${lens} judged ${r.filesJudged} of ${r.filesTotal} files`)
+  return { dead, partial }
 }
 
 const crMergePrompt = (dir, unit) =>
@@ -1306,8 +1316,8 @@ const runReview = async (unit, base, pass, tag, only) => {
   if (lenses.length === 0 || (!(prep.files > 0) && !specOnly)) {
     return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
   }
-  const deadLenses = await scanLenses(lenses, dir, prep.files || 0, tag, pass)
-  if (deadLenses.length > 0) return { dir, dead: `lens ${deadLenses.join(', ')} did not report` }
+  const scan = await scanLenses(lenses, dir, prep.files || 0, tag, pass)
+  if (scan.dead.length > 0) return { dir, dead: `lens ${scan.dead.join(', ')} did not report` }
   const merged = await tryTwice(crMergePrompt(dir, unit), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {
     const why = !merged
@@ -1324,6 +1334,7 @@ const runReview = async (unit, base, pass, tag, only) => {
     lenses: lenses.length,
     findings: merged.findings,
     notices: [
+      ...scan.partial,
       ...(merged.unowned || []).map((u) => `${u} — a real problem no review rule covers`),
       ...(merged.securityReview ? [`run /security-review: ${merged.securityReview}`] : []),
     ],
