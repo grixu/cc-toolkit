@@ -13,6 +13,7 @@ decisions: [<the decision ids this task is bound by, if any — pointers, never 
 repository: <absolute path of the checkout this task is implemented in; `none` for an operational task>
 branch: <target branch — shared by every task in the same landing unit; empty for an operational task>
 branch-base: <the branch's stack base — identical on every task of the branch; empty for an operational task>
+merge-after: [<branches whose pull requests merge before this branch's, beyond its stack chain and its edges — `<branch>`, or `<repository path>:<branch>` in another repository; identical on every task of the branch>]
 worktree:
 phase: <rollout phase label from the spec's phase table; `cleanup` for a cleanup-section task — it sorts after every numbered phase>
 depends-on: [<task slugs>]
@@ -59,7 +60,8 @@ round, where an already-merged branch no-ops.
 
 Any task may close with a `## Note` carrying what no other section does — a spec conflict the
 split resolved and how, a repository convention the work must respect, a standing manual step.
-It holds facts about this task's work only: how its branch lands — base, merge order, a draft pull
-request, a retarget — lives once in the split report's section for that branch.
+It holds facts about this task's work only: how its branch lands lives elsewhere — the base and the
+merge order in `branch-base:` and `merge-after:`, a draft pull request or a retarget once in the
+split report's section for that branch.
 For an operational task the note is mandatory: it says why no pull request exists and, when its
 output is a file that must land in a repository, the branch it lands on.

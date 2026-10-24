@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- a later phase's merge hold is a task frontmatter field, `merge-after: [<branch>…]` (a branch of
+  another repository as `<repository path>:<branch>`), identical on every task of a branch and
+  listing only what its stack chain and `depends-on` edges do not already hold it behind;
+  `split-to-tasks` writes the merge order there instead of in the split report or a task `## Note`,
+  `task-graph.mjs` parses and checks it (unbuilt branch, two values on one branch, landing loop) and
+  prints every branch's transitive merge order as `landing`, and `implement-tasks` orders the
+  pull-request proposal from it, falling back to the report's prose only for tasks split before the
+  field existed
+
 ## [0.4.0] - 2026-10-25
 
 ### Added

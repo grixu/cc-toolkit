@@ -54,7 +54,9 @@ other step starts with its tool call, not with the list:
 Parse the directory with `node ${CLAUDE_PLUGIN_ROOT}/scripts/task-graph.mjs <tasks dir>` — never a
 parser of your own. It prints one JSON object: `tasks` (every frontmatter field per task, slug and
 ordinal included), `launch` (step 3's `tasks` argument, `baseBranch` carrying the raw `branch-base`
-or `null`), `specPaths` (each resolved `spec:` pointer and whether it exists) and `problems`, each
+or `null`), `landing` (every branch with the branches its pull request merges after — its stack
+chain, its tasks' edges and its `merge-after` holds, followed transitively — listed in an order that
+lands each after those), `specPaths` (each resolved `spec:` pointer and whether it exists) and `problems`, each
 with a `kind`, the slugs it names and a detail line; it exits 2 when there are problems. Nothing it
 prints is written to disk: rerun it whenever the files change. The spec is not read — the task
 files and the split report are the whole input.
@@ -67,9 +69,11 @@ Then make the graph launchable:
   different files — puts the spec location in the step-2 batch.
 - **Read the split report's branch facts.** `<spec-basename>.split.md` beside the spec is the
   split's report, not the spec: read its `## Branches` section (per-branch landing facts — draft
-  pull requests, retargets, merge order, a branch reuse the user already answered) and its
-  `## Still owed` section. A report from an older split has no such headings — read its branch
-  creation order and stack chain instead. A branch call the report settles is not asked again in
+  pull requests, retargets, a branch reuse the user already answered) and its `## Still owed`
+  section. The merge order is not among them: it is `landing`, read from the tasks' `merge-after:`
+  fields. A report from an older split has no such headings — read its branch creation order and
+  stack chain instead — and tasks split before `merge-after` existed carry none, so for them the
+  report's merge-order prose is the only record of it. A branch call the report settles is not asked again in
   step 2, and step 5's pull-request chain carries its facts. No report, or no branch facts in it,
   leaves the task files as the whole input.
 - **Resolve repositories to absolute paths.** A `repository` problem — a value that is not an
@@ -110,7 +114,10 @@ Then make the graph launchable:
 - **Check integrity**: the script checks for dependency cycles, that every `depends-on` edge
   points at a task that exists **and carries a lower ordinal** — the merge planning relies on the
   file order being topological — that every status is one of the six, and that the frontmatter
-  reads. A problem of any kind other than `spec`, `repository` or `branch-base` is a broken graph
+  reads. A `merge-after` problem — a hold naming a branch no task builds, two values on one
+  branch, a landing loop — orders only the pull requests, never the work: it joins the step-2 batch
+  and leaves `landing` unsettled for the branches it names. A problem of any kind other than
+  `spec`, `repository`, `branch-base` or `merge-after` is a broken graph
   and stops the run — recommend re-running `fd3:split-to-tasks` rather than patching by hand.
 - **Find the confirmations a task asks for.** A task whose `## Note` asks for a human's
   confirmation or approval before its work starts — a protected path, a consent the repository's
