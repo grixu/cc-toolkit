@@ -488,12 +488,17 @@ tests:
         value: >-
           All three problems above (`secret-in-source`, `injection-sink`,
           `insecure-setting`) are present. Missing any one of them fails this assertion.
-      - type: llm-rubric
-        value: >-
-          Every severity in the output is exactly `high` or `medium` — never `nit`, never
-          `low`, never `critical`, never a number — and each finding is a single bullet in
-          the `` `security` · rule · severity · L<lines> — … → … `` shape with no fenced
-          code block and no rewritten function body.
+      # a security finding is never `nit`
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { severities: [high, medium] }
+      # CANDIDATES and HANDOFF have their own shapes, so only the findings are held to this one
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: security, pattern: '^- `security` · [a-z]+(-[a-z]+)* · (high|medium) · `?[\w./-]*:?L\d+.* — .+ → .+' }
+      - type: javascript
+        value: file://checks/report.mjs:noCodeBlocks
+        config: { scope: findings }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-11 security-calibration (security-calibration.ts)'
@@ -504,30 +509,26 @@ tests:
       # Clean fixture — the prompt asks for a `Not flagged:` line, so proxy on it.
       - type: regex
         value: '[Nn]ot flagged'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `db.raw('SELECT … WHERE email = ?', [email])` in `findUserByEmail`
-          as `injection-sink` — a parameterized builder with a bound `?` placeholder is the
-          rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `spawn('convert', [uploadPath, …])` in `resizeUpload` as
-          `injection-sink` — `spawn` with an argv array and no shell is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `sk_test_…` literal assigned to `stripeTestKey` as
-          `secret-in-source` — an obviously fake `sk_test_` value in a fixture file is
-          the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `SENDGRID_API_KEY` environment read (into `sendgridKey`, sent
-          as a bearer header) as `secret-in-source` — an environment read is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `health` handler as `missing-access-check` — a deliberately
-          public health endpoint is the rule's documented exception.
+      # a parameterized builder with a bound `?` is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: injection-sink, mentions: [findUserByEmail, 'db\.raw', 'email = \?'] }
+      # `spawn` with an argv array and no shell is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: injection-sink, mentions: [spawn, resizeUpload] }
+      # an obviously fake `sk_test_` fixture value is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: secret-in-source, mentions: [sk_test, stripeTestKey] }
+      # an environment read is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: secret-in-source, mentions: [SENDGRID, sendgridKey] }
+      # a deliberately public health endpoint is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: missing-access-check, mentions: health }
       - type: llm-rubric
         value: >-
           The output raises NO finding in the `` `security` · rule · severity `` shape at
@@ -542,10 +543,9 @@ tests:
     assert:
       - type: regex
         value: '`performance`'
-      - type: llm-rubric
-        value: >-
-          Flags the per-order `prisma.customer.findUnique` inside the `for` loop of
-          `pendingOrdersWithCustomers` as `performance` · `n-plus-one`, severity **high**.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: n-plus-one, mentions: [findUnique, pendingOrdersWithCustomers], severity: high }
       - type: llm-rubric
         value: >-
           That `n-plus-one` finding names all four evidence items: (1) the multiplier —
@@ -580,24 +580,24 @@ tests:
     assert:
       - type: regex
         value: '[Nn]ot flagged'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `await deliver(...)` loop over `Object.values(Channel)` in
-          `broadcast` as `n-plus-one` — a loop over an enum is bounded by the source, not
-          by data (the rule's documented exception).
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `prisma.order.findMany({ take, skip, … })` in `listOrders` as
-          `unbounded-fetch` — the read is paginated with `take`/`skip`.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the module-level `readFileSync` of the settings file as
-          `blocking-in-async` — a startup/config load at module top level is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          The output raises NO finding in the `` `performance` · rule · severity `` shape;
-          every look-alike it considered is named on the `Not flagged` line.
+      # a loop over an enum is bounded by the source, not by data
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: n-plus-one, mentions: [broadcast, deliver, Channel] }
+      # the read is paginated with `take`/`skip`
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: unbounded-fetch, mentions: [listOrders, 'order\.findMany', skip] }
+      # a module-top-level config load is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: blocking-in-async, mentions: [readFileSync, settings] }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: performance }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['Channel|broadcast', 'listOrders|take|skip', readFileSync], min: 1 }
       - type: javascript
         value: "!/could be slow|may impact performance|might not scale|performance impact/i.test(output)"
 
@@ -694,10 +694,9 @@ tests:
     assert:
       - type: regex
         value: 'iac-exposure'
-      - type: llm-rubric
-        value: >-
-          Flags the generated `tls_private_key.deploy` — written to remote state and to
-          `local_file.deploy_key` on disk — as `security` · iac-exposure · high.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: iac-exposure, mentions: [tls_private_key, deploy_key, private_key_pem], severity: high }
       - type: llm-rubric
         value: >-
           Flags BOTH credential leaks in the declaration: the plaintext `default` on the
@@ -708,10 +707,10 @@ tests:
           Flags the `allUsers` invoker binding on the `internal_admin` Cloud Run service
           and the `0.0.0.0/0` source range reaching port 5432 as over-wide grants
           (`iac-exposure`, high).
-      - type: llm-rubric
-        value: >-
-          Flags the GitHub OIDC provider whose `attribute_condition` pins only
-          `attribute.repository` — any workflow or ref of that repository satisfies it.
+      # a condition pinning only the repository admits any workflow or ref of it
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, mentions: [attribute_condition, 'attribute\.repository'] }
       - type: llm-rubric
         value: >-
           Does NOT flag as findings, and names on the `Not flagged` line: the `allUsers`
@@ -737,9 +736,9 @@ tests:
           Flags the `/contracts/:id` route as `security` · access-widening · high: the
           required scope went from `contract:read:own` to `org:read` AND the
           `{ ownerId: req.user.id }` predicate was dropped from the store call.
-      - type: llm-rubric
-        value: >-
-          Flags the `/contracts/:id/export` route, which lost `requireAuth` entirely.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, all: [export, requireAuth] }
       - type: llm-rubric
         value: >-
           Flags the webhook query losing its `tenant_id` predicate as `access-widening`
@@ -756,11 +755,10 @@ tests:
     vars:
       file: plugins/code-review/evals/fixtures/tenant-guard.ts plugins/code-review/evals/fixtures/tenant-guard.test.ts
     assert:
-      - type: llm-rubric
-        value: >-
-          Raises NO `missing-access-check` finding against `tenant-guard.ts`: the
-          middleware compares the session tenant with the route tenant, and both queries
-          carry a `tenant_id` predicate bound as a parameter.
+      # the guard compares tenants and both queries bind a tenant_id predicate
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: missing-access-check }
       - type: llm-rubric
         value: >-
           Identifies that both tests claim a boundary their assertions never exercise
@@ -768,10 +766,9 @@ tests:
           routes it to the `tests` family as test-fidelity — in a HANDOFF block or named
           as belonging to the tests lens — rather than grading it as a `security` finding
           of any severity.
-      - type: llm-rubric
-        value: >-
-          No finding in the output carries the `security` family with severity `high`.
-
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, atSeverity: high }
   - description: 'eval-19 scope-classification (scope-mix/)'
     prompts: [quality-track]
     vars:

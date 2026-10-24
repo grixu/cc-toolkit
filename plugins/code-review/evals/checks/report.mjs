@@ -82,12 +82,13 @@ export function lineNumbers(text) {
 const selects = (f, c) =>
   (!c.family || f.family === c.family) &&
   (!c.rule || list(c.rule).includes(f.rule)) &&
+  (!c.atSeverity || list(c.atSeverity).includes(f.severity)) &&
   (!c.under || (f.file ?? '').endsWith(c.under)) &&
   (!c.mentions || list(c.mentions).some((p) => re(p).test(f.text))) &&
   list(c.all).every((p) => re(p).test(f.text));
 
 const describe = (c) =>
-  [c.family && `\`${c.family}\``, c.rule && list(c.rule).join('|'), c.mentions && `mentioning ${list(c.mentions).join(' | ')}`, c.under && `under ${c.under}`]
+  [c.family && `\`${c.family}\``, c.rule && list(c.rule).join('|'), c.atSeverity && list(c.atSeverity).join('|'), c.mentions && `mentioning ${list(c.mentions).join(' | ')}`, c.under && `under ${c.under}`]
     .filter(Boolean)
     .join(' · ');
 
@@ -126,11 +127,12 @@ export function findingsVocabulary(output, { config: c = {} } = {}) {
   return bad.length ? result(false, bad.join('; ')) : result(true, 'every finding uses the fixed family, rule and severity vocabulary');
 }
 
-// Every finding-like bullet the contract governs has the exact shape.
+// Every finding-like bullet the contract governs (of one family, when asked) has the exact shape.
 export function findingShape(output, { config: c = {} } = {}) {
   const shape = re(c.pattern);
+  const lead = c.family ? new RegExp(`^-\\s+\`${c.family}\``) : /^-\s+`/;
   const bad = sections(output)
-    .filter((l) => l.state === 'main' && /^-\s+`/.test(l.line))
+    .filter((l) => l.state === 'main' && lead.test(l.line))
     .filter((l) => !shape.test(l.line))
     .map((l) => l.line.slice(0, 140));
   return bad.length ? result(false, `bullets off the finding shape: ${bad.join(' || ')}`) : result(true, 'every finding bullet has the contract shape');
