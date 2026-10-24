@@ -169,9 +169,12 @@ the fix* is `report-only` too, with its one-line reason.
 edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
 moves or restructures code, or removes a branch that looks reachable → structural. A
 `standards` finding is an unlisted rule and routes the same way. **Whatever its rule, a fix
-that changes a signature, edits a second file, or creates a new module is never Safe**: its
-callers and importers are what the eyeball check cannot see — runs that classed a narrowed
-parameter list, a merged type and a new shared test module as Safe applied them unseen.
+that changes a signature, edits a second file, creates a new module, or adds an import is never
+Safe**: its callers and importers are what the eyeball check cannot see — runs that classed a
+narrowed parameter list, a merged type and a new shared test module as Safe applied them unseen,
+and a Safe import from a test helper came back as the next review's `dependency-direction`
+finding. Before offering a fix that adds an import, hold the new edge to the `module` rules as
+if the change had made it.
 
 **Security is never a Safe fix.** However small the edit looks — a bound parameter, a
 removed literal — it changes behaviour at a boundary, so a `security` finding always

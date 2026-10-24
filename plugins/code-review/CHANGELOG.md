@@ -134,6 +134,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   count in the `Tally` and in `cr-merge`'s `lenses:` line instead of passing as a full lens
 - The Scanner contract covers a review of named paths: with `diff_args` `none` a Scanner reads each
   file whole and every finding is primary, where it was told only how to read a diff
+- A fix that adds an import is never Safe, and its new edge is held to the `module` rules before
+  it is offered: review fixes that imported from a test helper produced most of the next delta
+  review's findings
 
 ## [0.4.0] - 2026-10-03
 
