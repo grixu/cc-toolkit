@@ -1,0 +1,12 @@
+Act as the orchestrator of the code-review plugin's `start-cr` command. Read
+`plugins/code-review/commands/start-cr.md` completely and carry it out for the invocation
+`--pr {{pr}}`, in the git checkout {{checkout}} — that directory is the repository the command was
+invoked in, and the plugin root (`${CLAUDE_PLUGIN_ROOT}`) is `plugins/code-review`. In this
+environment the `gh` CLI is the executable `{{gh}}`: call it by that path wherever the command
+says `gh`.
+
+Carry out Step 1. Steps 2 to 3 have already run for this invocation: the context directory
+{{context}} holds the `scope.json`, `conventions.md` and `standards.md` Step 2b writes, for the
+worktree Step 1 makes, and every active Scanner has delivered: each closing block reported
+`status: scanned`, and each lens's findings are in `{{context}}/<lens>.md`. Do not redo Steps 2
+to 3 and dispatch no Scanner. After Step 1, continue from Step 4 to the end of the run.

@@ -34,16 +34,19 @@ printf '{ "name": "orders", "version": "1.2.0" }\n' > "$skipped/package.json"
 git -C "$skipped" add -A
 commit "$skipped" 'docs: release notes for 1.2'
 
-# evals 23-24: a checkout on main plus an origin holding one head under refs/pull/7/head and
-# refs/pull/8/head, and a gh stand-in: PR #7 is the gh user's own, PR #8 someone else's.
+# evals 23-24 and 27: a checkout on main plus an origin holding PR heads under refs/pull/<n>/head,
+# and a gh stand-in. PR #7 is the gh user's own; #8 is the same head by someone else; #9, also
+# someone else's, adds a commit that changes a base file, so its diff has lines outside every hunk.
 # The checkout must stay on main, untouched.
 pr=.sandbox/pr
 origin="$(pwd)/.sandbox/pr-origin.git"
 mkdir -p "$pr/src"
 git -C "$pr" init -q -b main
 cp fixtures/quality-recall.ts "$pr/src/pricing.ts"
+cp fixtures/billing-window/base.ts "$pr/src/billing-window.ts"
 git -C "$pr" add -A
 commit "$pr" 'base'
+pr_base="$(git -C "$pr" rev-parse HEAD)"
 git clone -q --bare "$pr" "$origin"
 git -C "$pr" remote add origin "$origin"
 git -C "$pr" fetch -q origin
@@ -53,32 +56,92 @@ git -C "$pr" add -A
 commit "$pr" 'feat: sync orders to the ledger'
 head="$(git -C "$pr" rev-parse HEAD)"
 git -C "$pr" push -q origin "HEAD:refs/pull/7/head" "HEAD:refs/pull/8/head"
+cp fixtures/billing-window/head.ts "$pr/src/billing-window.ts"
+git -C "$pr" add -A
+commit "$pr" 'feat: give invoices a 45-day payment term'
+head9="$(git -C "$pr" rev-parse HEAD)"
+git -C "$pr" push -q origin "HEAD:refs/pull/9/head"
 git -C "$pr" switch -q main
 git -C "$pr" branch -q -D pr-7
 
 mkdir -p .sandbox/bin
 cat > .sandbox/bin/gh <<EOF
 #!/usr/bin/env bash
-# Stand-in for gh: answers \`gh pr view 7|8\` and \`gh api user\` for the evals 23-24 sandbox
-# and records every call.
+# Stand-in for gh: answers \`gh pr view 7|8|9\` and \`gh api user\`, takes a POST of a PR review
+# (keeping its --input body as .sandbox/gh-posted-<n>.json), answers any other GET under pulls/
+# with an empty list, and records every call.
 echo "\$*" >> "$(pwd)/.sandbox/gh-calls.log"
 if [ "\$1 \$2" = "api user" ]; then
   echo eval-user
   exit 0
 fi
 if [ "\$1 \$2" = "pr view" ]; then
+  title='Sync orders to the ledger' ref=feat/order-sync oid=$head
   case "\$3" in
     7) author=eval-user ;;
     8) author=colleague ;;
+    9) author=colleague title='Give invoices a 45-day payment term' ref=feat/payment-term oid=$head9 ;;
     *) echo "gh stand-in: no PR \$3" >&2; exit 1 ;;
   esac
-  printf '{"number":%s,"url":"https://github.com/example/orders/pull/%s","state":"OPEN","title":"Sync orders to the ledger","author":{"login":"%s"},"baseRefName":"main","headRefName":"feat/order-sync","headRefOid":"$head","isCrossRepository":false,"maintainerCanModify":true}\n' "\$3" "\$3" "\$author"
+  printf '{"number":%s,"url":"https://github.com/example/orders/pull/%s","state":"OPEN","title":"%s","author":{"login":"%s"},"baseRefName":"main","headRefName":"%s","headRefOid":"%s","isCrossRepository":false,"maintainerCanModify":true}\n' "\$3" "\$3" "\$title" "\$author" "\$ref" "\$oid"
   exit 0
+fi
+if [ "\$1" = "api" ]; then
+  path='' post='' input=''
+  shift
+  while [ \$# -gt 0 ]; do
+    case "\$1" in
+      --method|-X) [ "\$2" = POST ] && post=1; shift ;;
+      --method=POST|-XPOST) post=1 ;;
+      --input) input="\$2"; shift ;;
+      --input=*) input="\${1#--input=}" ;;
+      repos/*|/repos/*) path="\$1" ;;
+    esac
+    shift
+  done
+  n="\$(printf '%s' "\$path" | sed -n 's#.*pulls/\([0-9]*\)/reviews\$#\1#p')"
+  if [ -n "\$post" ] && [ -n "\$n" ] && [ -f "\$input" ]; then
+    cp "\$input" "$(pwd)/.sandbox/gh-posted-\$n.json"
+    printf '{"id":1,"state":"COMMENTED","html_url":"https://github.com/example/orders/pull/%s#pullrequestreview-1"}\n' "\$n"
+    exit 0
+  fi
+  case "\$path" in
+    *pulls/*) [ -z "\$post" ] && { echo '[]'; exit 0; } ;;
+  esac
 fi
 echo "gh stand-in: unsupported call: \$*" >&2
 exit 1
 EOF
 chmod +x .sandbox/bin/gh
+
+# eval-27: PR #9's review already ran through Step 3. The context directory names the detached
+# worktree Step 1 makes as the checkout, so the run goes from Step 1 straight to the merge.
+pr9_ctx="$(pwd)/.sandbox/pr9-ctx"
+mkdir -p "$pr9_ctx"
+cp fixtures/billing-window/lenses/*.md "$pr9_ctx/"
+printf 'No project convention files: no CODING_STANDARDS.md, CLAUDE.md, AGENTS.md, CONTRIBUTING.md, .cursor/rules or .claude/rules at the repository root or along the reviewed paths.\n' > "$pr9_ctx/conventions.md"
+printf 'none\n' > "$pr9_ctx/standards.md"
+pr9_lenses="$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security performance; do printf '      { "lens": "%s", "files": ["src/billing-window.ts", "src/order-sync.ts"] },\n' "$l"; done)"
+cat > "$pr9_ctx/scope.json" <<EOF
+{
+  "checkout": "$(pwd)/$pr.worktrees/cr-pr-9",
+  "base": "$pr_base",
+  "diff_args": ["$pr_base..HEAD"],
+  "files": [
+    { "path": "src/billing-window.ts", "status": "M", "kind": "source", "untracked": false },
+    { "path": "src/order-sync.ts", "status": "A", "kind": "source", "untracked": false }
+  ],
+  "skipped": [],
+  "spec": null,
+  "spec_focus": null,
+  "lenses": {
+    "active": [
+${pr9_lenses%,}
+    ],
+    "inactive": [{ "lens": "spec", "reason": "no spec named" }]
+  }
+}
+EOF
 
 # eval-26: a branch whose review already ran through Step 3. The context directory holds the
 # scope.json Step 2b writes and every active lens's file, so start-cr starts at the merge with no

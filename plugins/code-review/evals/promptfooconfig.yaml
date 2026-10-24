@@ -41,6 +41,9 @@ prompts:
   # start-cr from Step 4 over lens files already on disk: merge, report, menu, apply, commit.
   - id: file://prompts/start-cr-merge.txt
     label: start-cr-merge-track
+  # start-cr --pr on someone else's PR: Step 1, then from Step 4 over lens files already on disk.
+  - id: file://prompts/pr-draft.txt
+    label: pr-draft-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -986,3 +989,30 @@ tests:
         value: file://checks/menu-and-commits.mjs:commitMessages
       - type: javascript
         value: file://checks/menu-and-commits.mjs:userFilesUntouched
+
+  - description: 'eval-27 pr-reviewer-draft (start-cr --pr on someone else''s PR, through the draft)'
+    prompts: [pr-draft-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/pr
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      context: plugins/code-review/evals/.sandbox/pr9-ctx
+      pr: 9
+      # the R9 doc comment sits outside every hunk, so it belongs in the review body
+      outside: { file: src/billing-window.ts, quote: '30 days' }
+      high: { file: src/order-sync.ts, mentions: 'totalPages|last page|off-by-one' }
+    options: { max_budget_usd: 6, allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-draft.mjs:draftPayload
+      - type: javascript
+        value: file://checks/pr-draft.mjs:draftBeforeQuestion
+      - type: javascript
+        value: file://checks/pr-draft.mjs:commentsInHunks
+      - type: javascript
+        value: file://checks/pr-draft.mjs:outsideHunkInBody
+      - type: javascript
+        value: file://checks/pr-draft.mjs:commentLabels
+      - type: javascript
+        value: file://checks/pr-draft.mjs:postOnlyAfterAnswer
+      - type: javascript
+        value: file://checks/pr-draft.mjs:nothingEdited
