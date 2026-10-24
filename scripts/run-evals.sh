@@ -180,6 +180,7 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   done
   META_EXIT_CODES="${exit_codes[*]}" META_ENDED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" write_meta "$@"
   echo "==> results archived in ${run_dir}"
+  node scripts/eval-summary.mjs "$run_dir" || echo "!! eval-summary.mjs failed; trials are still in ${run_dir}" >&2
   exit "$status"
 fi
 
