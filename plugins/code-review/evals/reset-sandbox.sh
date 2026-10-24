@@ -197,4 +197,13 @@ $(for l in comments readability-tests naming-module objects-patterns simplicity-
 }
 EOF
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer"
+# eval-28: a checkout of its own, so a Grep for the project's tag searches these files and not the
+# fixture's DEFECTS.md, which names the verdict.
+marker=.sandbox/arch-marker
+mkdir -p "$marker"
+git -C "$marker" init -q -b main
+cp -R fixtures/arch-marker/src "$marker/"
+git -C "$marker" add -A
+commit "$marker" 'feat: order cancellation'
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker"

@@ -34,7 +34,7 @@ evals/
   checks/menu-and-commits.mjs # eval-26: the apply menu and commit question from the tool calls, the commits from git
   checks/pr-draft.mjs      # eval-27: the reviewer-mode draft, its hunks, and when the gh stand-in got a POST
   checks/                  # the other checks read files on disk (headless, pr, HANDOFF families)
-  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20 and 22–27 run in, the context dirs of evals 26–27, and the gh stand-in
+  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20 and 22–28 run in, the context dirs of evals 26–27, and the gh stand-in
 ```
 
 The headless skills review committed changes only, so eval-20 runs against a git
@@ -79,10 +79,11 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-25 | headless | `.sandbox/headless` | one `cr-scan --lens a,b,…` over every active lens writes each `<lens>.md` and one closing block per lens, and `cr-merge` merges them as in eval-20 | 1 / 0 |
 | eval-26 | start-cr | `.sandbox/mailer` + `.sandbox/mailer-ctx` (`campaign-mailer/DEFECTS.md`) | start-cr Steps 4–7 over written lens files: the menu keeps four slots with the rule-less missing unsubscribe link as its own option and boy-scout dropped, the report is on disk before the menu, the commit-mode question rides along, and the `first_option` answers leave the commits that mode implies, none saying "address review" and none taking the user's untracked file | 10 / 0 |
 | eval-27 | pr | `.sandbox/pr` + `.sandbox/pr9-ctx` + `.sandbox/bin/gh` (`billing-window/DEFECTS.md`) | `--pr 9`, someone else's, from Step 1 through the draft over written lens files: `commit_id` is the head, `event` is `COMMENT`, every inline line sits in a head-side hunk, the R9 doc comment outside every hunk goes to the review body, labels open each comment (`issue:` on the high), nothing is POSTed before the closing question's answer, and nothing is edited | 7 / 0 |
+| eval-28 | comment | `.sandbox/arch-marker/src/order-handler.ts` (`arch-marker/DEFECTS.md`) | a bracketed `ARCH` tag that opens a comment in every sibling file is the project's marker (the comments rules' "A tag vs a project marker" trap): never REMOVE, REWRITE or MOVE; an R1 narration beside it is still REMOVE | 3 / 0 |
 
 ### Grading
 
-Code first: 204 of the 211 asserts are `regex`, `not-regex` or `javascript`. Most read the
+Code first: 207 of the 214 asserts are `regex`, `not-regex` or `javascript`. Most read the
 final message through `checks/report.mjs`. It parses the fixed shapes the skills prescribe:
 `` `family` · rule · severity · L… `` findings, ``L… · `quote` — **VERDICT** (R#)`` comment
 verdicts, and the Conventions / Headline / `###` path / Tally skeleton. It grades only the

@@ -1016,3 +1016,18 @@ tests:
         value: file://checks/pr-draft.mjs:postOnlyAfterAnswer
       - type: javascript
         value: file://checks/pr-draft.mjs:nothingEdited
+
+  - description: 'eval-28 project-marker (arch-marker/src/order-handler.ts)'
+    prompts: [comment-track]
+    vars:
+      # arch-marker/DEFECTS.md: the tag recurs in every sibling, which the comments rules keep as a marker
+      file: plugins/code-review/evals/.sandbox/arch-marker/src/order-handler.ts
+    assert:
+      - type: regex
+        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'Stamp coupling' }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'check if the order has already shipped', verdict: REMOVE, rule: R1 }
