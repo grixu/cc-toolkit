@@ -2,6 +2,7 @@
 // a check once judged wrongly, and texts it must keep failing.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as h from './helpers.mjs';
@@ -99,3 +100,31 @@ test('protected-path note: a negated confirmation is not an ask, an affirmed one
 test('normalizeProse joins wraps, hyphens and emphasis', () => {
   assert.equal(h.normalizeProse('the **platform**\n  team holds the phase-2 rate-limit'), 'the platform team holds the phase 2 rate limit');
 });
+
+const grill = (name) => fs.readFileSync(path.join(FIXTURES, 'grill', name), 'utf8');
+const noTool = { providerResponse: { metadata: { toolCalls: [{ name: 'Bash' }] } } };
+
+// 225b31aa posted round 1 in message 2 and ended on a lookup update; 4137a407 ended on one that
+// re-listed numbered findings. Neither final message is the round.
+test('latest round: a lookup update after the round is not the round', () => {
+  assert.equal(h.lastRound(grill('lookup-update-225b31aa.md')), null);
+  assert.equal(h.lastRound(grill('lookup-update-4137a407.md')), null);
+  const f = h.latestRoundFailures(grill('lookup-update-225b31aa.md'), h.parseLedger(grill('ledger-225b31aa.md')), noTool);
+  assert.match(f.join('\n'), /ledger's round 1 asks .* not the latest round/);
+});
+
+test('latest round: the round itself, or a reprint of it in full, is the latest round', () => {
+  assert.deepEqual(h.latestRoundFailures(grill('round-225b31aa.md'), h.parseLedger(grill('ledger-225b31aa.md')), noTool), []);
+  assert.deepEqual(h.latestRoundFailures(grill('reprint-9ff1f0b7.md'), h.parseLedger(grill('ledger-9ff1f0b7.md')), noTool), []);
+});
+
+test('latest round: a later ledger round or an answer nobody gave fails', () => {
+  const ledger = h.parseLedger(grill('ledger-225b31aa.md'));
+  const later = [...ledger, { label: '9', round: 2, answer: 'open' }];
+  assert.match(h.latestRoundFailures(grill('round-225b31aa.md'), later, noTool).join('\n'), /round 2 asks 9/);
+  const selfAnswered = ledger.map((r, i) => (i === 0 ? { ...r, answer: 'a) Keep 5' } : r));
+  assert.match(h.latestRoundFailures(grill('round-225b31aa.md'), selfAnswered, noTool).join('\n'), /answers to 1 that no user gave/);
+  const viaTool = { providerResponse: { metadata: { toolCalls: [{ name: 'AskUserQuestion' }] } } };
+  assert.deepEqual(h.latestRoundFailures(grill('round-225b31aa.md'), selfAnswered, viaTool), []);
+});
+

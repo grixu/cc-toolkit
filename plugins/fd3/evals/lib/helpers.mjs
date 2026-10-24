@@ -187,8 +187,83 @@ export function section(output, heading) {
   return next ? rest.slice(0, next.index) : rest;
 }
 
+const ANSWER_AS = /(?:answer as|odpowiedz(?:cie)? jako|odpowied[zź] jako)\**\s*:\s*\**\s*(.*)$/i;
+const LABEL = /^(?:[A-Z]\d*|\d+(?:\.\d+)*)$/;
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// The last round in a message, read the way the user answers it: the labels its closing
+// `Answer as:` line names, and for each numeric label the line that asks it. A question line
+// carries its label after markup (`**3.1 —`, `## 2.`, `- **3.1`) or with a `.`/`)` after it, so a
+// wrapped prose line that happens to start with a number is not one.
+export function lastRound(output) {
+  const lines = String(output || '').split('\n');
+  let at = -1;
+  lines.forEach((l, i) => {
+    if (ANSWER_AS.test(l)) at = i;
+  });
+  if (at === -1) return null;
+  const named = ANSWER_AS.exec(lines[at])[1]
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[*`]/g, '')
+    .split(/,|\band\b/)
+    .map((x) => x.trim().replace(/\.$/, ''));
+  const labels = named.filter((x) => LABEL.test(x));
+  const lettered = named.filter((x) => /^\d+(?:\.\d+)*[a-z]$/.test(x));
+  const questionLine = new Map();
+  for (const label of labels.filter((x) => /^\d/.test(x))) {
+    const marked = new RegExp(`^(?:\\s|&nbsp;|[-*+]\\s)*(?:#{1,4}\\s+|\\*\\*|Q)+${escapeRe(label)}(?![\\d]|\\.\\d)`);
+    const punctuated = new RegExp(`^(?:\\s|&nbsp;|[-*+]\\s)*Q?${escapeRe(label)}[.)](?!\\d)`);
+    for (let i = at - 1; i >= 0; i -= 1) {
+      if (marked.test(lines[i]) || punctuated.test(lines[i])) {
+        questionLine.set(label, i);
+        break;
+      }
+    }
+  }
+  return { lines, at, labels, lettered, questionLine, tail: lines.slice(at + 1).join('\n').trim() };
+}
+
+const topLevel = (label) => parseInt(label, 10);
+
+// The question ledger grill-topic keeps, as rows of { label, round, answer }; null when the run kept
+// none inside the sandbox.
+export function readLedger(scenario) {
+  const file = listFiles(sandboxDir(scenario)).find((f) => /question-ledger\.md$/.test(f));
+  return file ? parseLedger(readSandboxFile(scenario, file)) : null;
+}
+
+export function parseLedger(text) {
+  const rows = String(text || '').split('\n').filter((l) => /^\|/.test(l)).map((l) => l.split('|').slice(1, -1).map((c) => c.trim()));
+  const header = rows.find((r) => r.some((c) => /^round$/i.test(c)));
+  if (!header) return [];
+  const roundCol = header.findIndex((c) => /^round$/i.test(c));
+  const answerCol = header.findIndex((c) => /answer|status|option/i.test(c));
+  return rows
+    .filter((r) => r !== header && /^\d+$/.test(r[roundCol] || ''))
+    .map((r) => ({ label: r[0].replace(/[*`]/g, ''), round: Number(r[roundCol]), answer: answerCol === -1 ? '' : r[answerCol] }));
+}
+
+// The final message must hold the run's latest round: the ledger's highest round asks nothing the
+// message's round leaves out, and with no question tool in play the user answered nothing.
+export function latestRoundFailures(output, ledger, context) {
+  if (!ledger || ledger.length === 0) return [];
+  const round = lastRound(output);
+  const out = [];
+  const latest = Math.max(...ledger.map((r) => r.round));
+  const live = ledger.filter((r) => r.round === latest && /^\d/.test(r.label) && !/void|withdrawn/i.test(r.answer));
+  const posted = new Set((round ? round.labels : []).filter((x) => /^\d/.test(x)).map(topLevel));
+  const missing = [...new Set(live.map((r) => topLevel(r.label)).filter((n) => !posted.has(n)))];
+  if (missing.length) out.push(`the ledger's round ${latest} asks ${missing.join(', ')}, which the final message's round does not: it is not the latest round the run posted`);
+  if (!askedThroughTool(context)) {
+    const answered = ledger.filter((r) => !/^[\s*_`—–-]*$/.test(r.answer) && !/^\**(open|pending|carried)/i.test(r.answer) && !/void|withdrawn/i.test(r.answer));
+    if (answered.length) out.push(`the ledger records answers to ${answered.map((r) => r.label).join(', ')} that no user gave`);
+  }
+  return out;
+}
+
 // A round that went out through AskUserQuestion is auto-answered under `first_option`, so the
 // final message can hold no numbered question even though the grilling ran.
 export function askedThroughTool(context) {
   return (context?.providerResponse?.metadata?.toolCalls || []).some((call) => call.name === 'AskUserQuestion');
 }
+
