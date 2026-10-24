@@ -30,6 +30,11 @@ A missing `--base` or `--out`, a `-C` that is not a git checkout, a `--spec-focu
 `--spec`, or a `--spec-focus` that holds no code ends the run with `status: error` and the reason.
 Guess nothing.
 
+Read every file this skill names — `scope.md`, `review-setup.md`, each convention and standards
+file — with the `Read` tool, one call per file. A `cat` chain through `Bash` is no substitute:
+under zsh a separator such as `echo =====` aborts the whole chain, and joined output past a size
+is truncated. `Bash` is for `git` and the scope script.
+
 ## 1. Resolve the scope
 
 The review covers what the checkout's commits changed since the base — never its uncommitted

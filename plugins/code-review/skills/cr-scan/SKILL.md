@@ -18,6 +18,12 @@ You are the Scanner that `${CLAUDE_PLUGIN_ROOT}/references/scanner-contract.md` 
 lens named by `--lens`. Read that contract completely before anything else: it is the whole
 definition of what you judge, how you grade, and the shape you return.
 
+Read every file this skill names — the contract, each rules file, `scope.json`, `conventions.md`,
+`standards.md`, the spec — with the `Read` tool, one call per file. A `cat` chain through `Bash`
+is no substitute: under zsh a separator such as `echo =====` aborts the whole chain, and joined
+output past a size is truncated, so a rules file read that way arrives without its last rules.
+`Bash` is for `git`.
+
 `--lens` takes one lens name or a comma-separated list with no spaces (`--lens comments,security`).
 A single name is a single-lens run. With a list, you are that Scanner once per listed lens, in the
 listed order — see **Several lenses in one run**.
