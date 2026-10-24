@@ -79,13 +79,19 @@ export function lineNumbers(text) {
   return out;
 }
 
-const selects = (f, c) =>
-  (!c.family || f.family === c.family) &&
-  (!c.rule || list(c.rule).includes(f.rule)) &&
-  (!c.atSeverity || list(c.atSeverity).includes(f.severity)) &&
-  (!c.under || (f.file ?? '').endsWith(c.under)) &&
-  (!c.mentions || list(c.mentions).some((p) => re(p).test(f.text))) &&
-  list(c.all).every((p) => re(p).test(f.text));
+// `siteOnly` matches mentions before the fix arrow: a fix may name what a look-alike is made of
+// ("read it from a secret-manager data source") without flagging that look-alike.
+const selects = (f, c) => {
+  const text = c.siteOnly && f.text.includes('→') ? f.text.slice(0, f.text.indexOf('→')) : f.text;
+  return (
+    (!c.family || f.family === c.family) &&
+    (!c.rule || list(c.rule).includes(f.rule)) &&
+    (!c.atSeverity || list(c.atSeverity).includes(f.severity)) &&
+    (!c.under || (f.file ?? '').endsWith(c.under)) &&
+    (!c.mentions || list(c.mentions).some((p) => re(p).test(text))) &&
+    list(c.all).every((p) => re(p).test(text))
+  );
+};
 
 const describe = (c) =>
   [c.family && `\`${c.family}\``, c.rule && list(c.rule).join('|'), c.atSeverity && list(c.atSeverity).join('|'), c.mentions && `mentioning ${list(c.mentions).join(' | ')}`, c.under && `under ${c.under}`]

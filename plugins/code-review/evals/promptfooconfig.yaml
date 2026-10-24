@@ -468,28 +468,37 @@ tests:
       # "scanner actually ran" proxy: findings carry the lens's own family tag.
       - type: regex
         value: '`security`'
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: secret-in-source, mentions: [sk_live, STRIPE_SECRET], severity: high, lines: [7] }
+      # the fix reads the value from the environment or a secret module
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: secret-in-source, mentions: [sk_live, STRIPE_SECRET], fix: 'env|secret' }
       - type: llm-rubric
         value: >-
-          Flags the `sk_live_…` literal used as the `process.env.STRIPE_SECRET` fallback
-          (L7) as `security` · `secret-in-source`, severity **high**. The fix reads the
-          value from the environment or a secret module, and the finding says rotation of
-          the committed value is the user's step — it never claims rotation is done.
-      - type: llm-rubric
-        value: >-
-          Flags the `listOrders` handler as `security` · `injection-sink`, severity
-          **high**, naming BOTH ends by line: where `req.query.status` enters (L12) and
-          the sink where it is interpolated into the `pool.query(...)` SQL string (L13).
-          The fix binds the value through a `$1`/placeholder parameter.
-      - type: llm-rubric
-        value: >-
-          Flags `rejectUnauthorized: false` on the `https.Agent` (L9) as `security` ·
-          `insecure-setting`, severity **high**, naming both the setting line and the
-          request it weakens (the `https.request` to `api.stripe.com` that passes
-          `agent: gatewayAgent`). The fix restores certificate verification.
-      - type: llm-rubric
-        value: >-
-          All three problems above (`secret-in-source`, `injection-sink`,
-          `insecure-setting`) are present. Missing any one of them fails this assertion.
+          The `secret-in-source` finding on the `sk_live_…` literal says that rotating
+          the committed value is the user's step, and never claims the rotation is done.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: injection-sink, mentions: [listOrders, 'req\.query\.status', 'pool\.query'], severity: high }
+      # both ends by line: the source at L12, the sink at L13
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: injection-sink, mentions: [listOrders, 'req\.query\.status', 'pool\.query'], lines: [12, 13] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: injection-sink, mentions: [listOrders, 'req\.query\.status', 'pool\.query'], fix: '\$1|placeholder|parameteri[sz]|bind' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: insecure-setting, mentions: rejectUnauthorized, severity: high, lines: [9] }
+      # it names the request the setting weakens
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: insecure-setting, mentions: rejectUnauthorized, all: ['api\.stripe\.com|https\.request'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: insecure-setting, mentions: rejectUnauthorized, fix: 'rejectUnauthorized|verif|certificate' }
       # a security finding is never `nit`
       - type: javascript
         value: file://checks/report.mjs:findingsVocabulary
@@ -531,11 +540,13 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { rule: missing-access-check, mentions: health }
-      - type: llm-rubric
-        value: >-
-          The output raises NO finding in the `` `security` · rule · severity `` shape at
-          all; every look-alike it considered is named on the `Not flagged` line (a
-          `CANDIDATES` entry for the `sk_test_` literal is tolerated, a finding is not).
+      # a CANDIDATES entry for the `sk_test_` literal is tolerated, a finding is not
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['db\.raw|findUserByEmail', 'spawn|resizeUpload', 'sk_test|stripeTestKey', 'SENDGRID|sendgridKey', health], min: 1 }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-12 performance-recall (performance-recall.ts)'
@@ -548,31 +559,33 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: performance, rule: n-plus-one, mentions: [findUnique, pendingOrdersWithCustomers], severity: high }
+      # the multiplier, the call inside it and the batch API, by name
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: n-plus-one, mentions: findUnique, all: ['order\.findMany', findUnique, 'customersByIds|\bin\b|include'] }
       - type: llm-rubric
         value: >-
-          That `n-plus-one` finding names all four evidence items: (1) the multiplier —
-          the `orders` list returned by `prisma.order.findMany` (sized by data); (2) the
-          call inside it — `findUnique` per order; (3) the missing bound — one batched
-          read before the loop; (4) the batch API that already exists in the file —
-          `findMany({ where: { id: { in } } })` as used by `customersByIds` (or an
-          `include` on the outer query).
+          The `n-plus-one` finding on `pendingOrdersWithCustomers` names the bound that
+          is missing: one batched read of the customers before the loop.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: unbounded-fetch, mentions: [listEvents, 'event\.findMany'], severity: medium }
+      # the fix adds `take` plus a cursor or page parameter
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: unbounded-fetch, mentions: [listEvents, 'event\.findMany'], fix: '^(?=.*\btake\b)(?=.*(cursor|page))' }
       - type: llm-rubric
         value: >-
-          Flags the `prisma.event.findMany` in the `listEvents` route handler as
-          `performance` · `unbounded-fetch`, severity **medium** — no `take`/cursor on a
-          growing table, returned whole from a list endpoint that accepts no page
-          parameter — with a fix that adds `take` plus a cursor/page parameter.
-      - type: llm-rubric
-        value: >-
-          Both problems above (`n-plus-one` and `unbounded-fetch`) are present. Missing
-          either fails this assertion.
+          The `unbounded-fetch` finding on `listEvents` says why the read is unbounded:
+          the table grows, and the list endpoint accepts no page parameter.
       - type: javascript
         value: "!/could be slow|may impact performance|might not scale|performance impact/i.test(output)"
-      - type: llm-rubric
+      # An estimate the file cannot back: a latency, a row count, a complexity class.
+      - type: javascript
         value: >-
-          No finding carries a latency, a row count, a complexity class, or any other
-          estimate not derived from a line in the file, and the scanner never claims to
-          have run, benchmarked, or profiled the code.
+          !/\b\d[\d,.]*\s?(ms|milliseconds|seconds|rows|records)\b|\bO\((n|N|log|1)/.test(output)
+      - type: not-regex
+        value: '\b(I|we) (ran|executed|benchmarked|profiled|measured|timed)\b'
 
   # ----------------------------------------------------------------------------
   - description: 'eval-13 performance-calibration (performance-calibration.ts)'
@@ -612,37 +625,48 @@ tests:
     assert:
       - type: regex
         value: '`spec`'
-      - type: llm-rubric
-        value: >-
-          Flags spec requirement 3 — "Orders whose status is `cancelled` are excluded
-          from the export." — as `spec` · `missing-requirement`, severity **high**: nothing
-          in `feature-impl.ts` filters on `status`. The bullet quotes that spec line and
-          sits under a `### plugins/code-review/evals/fixtures/spec/feature-spec.md`
-          header with the spec's own line number (L7), not under the code file.
-      - type: llm-rubric
-        value: >-
-          Flags the sort comparator in `exportOrders` (`b.createdAt - a.createdAt`, newest
-          first) as `spec` · `wrong-implementation`, severity **high**, quoting spec line
-          4 — "Rows are sorted by `created_at`, oldest first." — under the code file's
-          header with the code's line number, and the fix reverses the comparator.
-      - type: llm-rubric
-        value: >-
-          Flags `exportOrdersGzip` as `spec` · `scope-creep`, severity **medium** — no
-          spec line asks for compression — quoting the requirement the extra behaviour
-          attaches to, with a fix that drops it or splits it into its own change.
-      - type: llm-rubric
-        value: >-
-          All three problems above (`missing-requirement`, `wrong-implementation`,
-          `scope-creep`) are present. Missing any one of them fails this assertion.
+      # the bullet quotes the spec line verbatim
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: missing-requirement, severity: high, all: ['Orders whose status is `cancelled` are excluded from the export'] }
+      # no code site, so it sits under the spec with the spec's own line
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: missing-requirement, under: feature-spec.md, lines: [7] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: wrong-implementation, severity: high, all: ['Rows are sorted by `created_at`, oldest first'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: wrong-implementation, under: feature-impl.ts, all: ['L\d+'] }
+      # the fix reverses the comparator
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: wrong-implementation, under: feature-impl.ts, fix: 'a\.createdAt.*-\s*b\.createdAt|revers|swap|ascending|oldest' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: scope-creep, mentions: [exportOrdersGzip, gzip, compress], severity: medium }
+      # it quotes the requirement the extra behaviour attaches to
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: scope-creep, mentions: [exportOrdersGzip, gzip, compress], all: ['"[^"]{10,}"'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: scope-creep, mentions: [exportOrdersGzip, gzip, compress], fix: 'drop|remov|delet|split|separate|own change' }
       - type: regex
         value: '\b3 of 5 requirements met\b'
-      - type: llm-rubric
-        value: >-
-          The met requirements (the column set + header row, the ISO-8601 `created_at`,
-          and the empty-input empty-string case) never appear as bullets in the
-          `` `spec` · rule · severity `` finding shape — an enumeration or mapping list
-          that marks them "met" is fine, a finding-shaped bullet is not — and the
-          motivation sentence ("Finance wants a plain CSV…") generates no finding.
+      # a "met" bullet in the finding shape carries a rule the spec table does not have
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [spec], rules: true }
+      # requirements 2 and 5 are met, so they are no finding
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: spec, mentions: ['ISO[- ]?8601|toISOString', 'empty (input|array|list|string)'], siteOnly: true }
+      # the motivation sentence is not a requirement
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { mentions: [Finance] }
 
   # ============================================================================
   # Standards track — CODING_STANDARDS.md + .local.md generate `standards` findings
@@ -694,33 +718,35 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: security, rule: iac-exposure, mentions: [tls_private_key, deploy_key, private_key_pem], severity: high }
-      - type: llm-rubric
-        value: >-
-          Flags BOTH credential leaks in the declaration: the plaintext `default` on the
-          `db_admin_password` variable and the `database_admin_password` output that
-          carries it without `sensitive`.
-      - type: llm-rubric
-        value: >-
-          Flags the `allUsers` invoker binding on the `internal_admin` Cloud Run service
-          and the `0.0.0.0/0` source range reaching port 5432 as over-wide grants
-          (`iac-exposure`, high).
+      # the plaintext `default` on the variable
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, mentions: [db_admin_password], all: ['default|Sup3rS3cret|plaintext'] }
+      # the output that carries it without `sensitive`
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, mentions: [database_admin_password], all: [sensitive] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: iac-exposure, severity: high, all: [allUsers, 'internal_admin|run\.invoker|Cloud Run'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: iac-exposure, severity: high, all: ['0\.0\.0\.0/0', '5432'] }
       # a condition pinning only the repository admits any workflow or ref of it
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: security, mentions: [attribute_condition, 'attribute\.repository'] }
-      - type: llm-rubric
-        value: >-
-          Does NOT flag as findings, and names on the `Not flagged` line: the `allUsers`
-          objectViewer binding on the marketing-assets bucket (public by design), the
-          `0.0.0.0/0` range on port 443 (a public port), the Stripe key read from the
-          secret-manager data source, and the `cluster_endpoint` output (not a
-          credential).
-      - type: llm-rubric
-        value: >-
-          Every finding is tagged `security` with a rule from the master table and
-          severity `high` or `medium` — no craft family (readability, naming, module,
-          objects, patterns, simplicity) appears at all.
-
+      # public by design, a public port, a secret-manager read, a non-credential output
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, mentions: [objectViewer, marketing, '\b443\b', secret_manager, cluster_endpoint], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['objectViewer|marketing', '\b443\b', 'secret[_ -]manager|stripe', cluster_endpoint] }
+      # HANDOFF names another family by design, so only the findings are held to this
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [security], severities: [high, medium], rules: true }
   - description: 'eval-17 access-widening-diff (access-widening.diff)'
     prompts: [security-diff-track]
     vars:
@@ -728,25 +754,27 @@ tests:
     assert:
       - type: regex
         value: 'access-widening'
-      - type: llm-rubric
-        value: >-
-          Flags the `/contracts/:id` route as `security` · access-widening · high: the
-          required scope went from `contract:read:own` to `org:read` AND the
-          `{ ownerId: req.user.id }` predicate was dropped from the store call.
+      # the required scope widened from `contract:read:own` to `org:read`
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: access-widening, severity: high, all: ['org:read'] }
+      # the owner predicate dropped from the store call
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: access-widening, all: [ownerId] }
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: security, all: [export, requireAuth] }
-      - type: llm-rubric
-        value: >-
-          Flags the webhook query losing its `tenant_id` predicate as `access-widening`
-          (an `injection-sink` finding for the interpolated `status` alongside it is
-          correct, not a substitute for it).
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the two hunks that tighten: `requireOwner` added to the sign
-          route, and the CORS origin list losing `https://staging.acme.com`. Both are
-          named on the `Not flagged` line.
-
+      # an injection-sink finding on the interpolated `status` is correct beside it, not a substitute
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: access-widening, all: [tenant_id] }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, mentions: [requireOwner, 'staging\.acme\.com', '\bcors\b'], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: [requireOwner, 'staging\.acme\.com|cors'] }
   - description: 'eval-18 guard-test-fidelity-routing (tenant-guard.ts + tenant-guard.test.ts)'
     prompts: [security-track]
     vars:
@@ -756,13 +784,18 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { rule: missing-access-check }
+      # routed to the tests family in the contract's HANDOFF shape
+      - type: regex
+        value: '`tests` · test-fidelity'
+      # not graded as a security finding of any severity
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, mentions: ['\.test\.ts', 'test-fidelity', '\btests?\b'], siteOnly: true }
       - type: llm-rubric
         value: >-
-          Identifies that both tests claim a boundary their assertions never exercise
-          (each passes the SAME tenant and asserts only that the happy path ran), and
-          routes it to the `tests` family as test-fidelity — in a HANDOFF block or named
-          as belonging to the tests lens — rather than grading it as a `security` finding
-          of any severity.
+          The output says that both tests in `tenant-guard.test.ts` claim a boundary
+          their assertions never exercise: each passes the same tenant and asserts only
+          that the happy path ran.
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { family: security, atSeverity: high }
