@@ -34,6 +34,17 @@ overriding the runner) because the workflow's agents have `run_in_background` an
 put the task files outside the sandbox's git root and record the task branch's head in
 `.sandbox/.origins/<scenario>/branch-head`, out of every agent's reach.
 
+A skill scenario (`implement-consent-batch`) runs `/fd3:implement` headless from its
+`prompts/` file, with the plugin loaded and `ask_user_question: first_option`. The
+provider's PreToolUse hook on `Workflow` snapshots the task files into
+`metadata.fd3.workflowCalls` and denies the call, so the run ends at its launch and the
+check reads the files as the workflow's agents would have received them. The "first
+batch" is every AskUserQuestion call made before the first Edit, Write or Workflow
+call, read from the top-level `metadata.toolCalls`. A second hook denies any
+`claude plugin enable|disable|install|uninstall|update`: step 2 offers enabling
+code-review as part of its review answer, and `first_option` took it on a live trial,
+writing the operator's real user settings.
+
 `implement-ci-waits-long-command` must hold every time: its intended gate is pass^3
 (`scripts/run-evals.sh fd3 implement-ci --trials 3`). It sleeps 200 s by design.
 None of the group is in the CI smoke filter.

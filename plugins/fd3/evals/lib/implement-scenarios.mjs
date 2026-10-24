@@ -49,6 +49,17 @@ export const SCENARIOS = {
       });
     },
   },
+
+  'implement-consent-batch': {
+    kind: 'skill',
+    fixture: 'consent-notes-tasks',
+    tasksDir: 'app/docs/specs/queue-status/tasks',
+    consents: [
+      { slug: 'queue-status-table', name: 'Add the queue status table migration', artifact: /migration/i },
+      { slug: 'queue-worker-compose', name: 'Run the queue worker in local compose', artifact: /docker-compose/i },
+      { slug: 'redis-client-dependency', name: 'Add the Redis client dependency', artifact: /pnpm-lock|lockfile/i },
+    ],
+  },
 };
 
 // The commit SETUP.sh left the task branch on — written outside the sandbox, so no agent reads it.

@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-description: fd3 implement evals — workflow agents run live on the prompts implement-run.js renders
+description: fd3 implement evals — workflow agents run live on the prompts implement-run.js renders, and the /fd3:implement step-2 batch up to its launch
 
 # Agent scenarios ignore this prompt: lib/implement-provider.mjs renders the workflow's own prompt
 # for the agent it names, with that agent's model, effort and schema.
@@ -27,3 +27,11 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/implement-ci-waits-long-command.mjs
+
+  # /fd3:implement headless up to its launch: the provider denies the Workflow call and snapshots
+  # the task files at that moment.
+  - description: implement-consent-batch
+    vars: { scenario: implement-consent-batch, query: file://prompts/implement-consent-batch.txt }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-consent-batch.mjs

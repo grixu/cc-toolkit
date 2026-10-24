@@ -37,6 +37,7 @@ MAPPINGS=(
   "researcher-multiple-questions:-:"
   "researcher-unanswered:-:"
   "implement-ci-waits-long-command:long-build-app:app"
+  "implement-consent-batch:consent-notes-tasks:app"
 )
 
 rm -rf .sandbox
