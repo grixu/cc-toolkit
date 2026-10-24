@@ -2,7 +2,7 @@
 name: cr-scan
 description: >-
   Headless code-review Scanner for one lens, or a listed few in turn — reads the context
-  directory cr-prepare wrote, judges the change against each lens's rules, and writes each lens's
+  directory cr-prepare or /start-cr wrote, judges the change against each lens's rules, and writes each lens's
   findings into the directory for cr-merge. Asks nothing and edits nothing. Not for interactive use: a person reviews with
   /start-cr.
 argument-hint: "--lens <lens>[,<lens>…] --context <dir>"

@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `/start-cr` writes its scope, conventions and standards to a context directory and runs each
+  lens as `code-review:scanner` with a two-line prompt invoking `cr-scan`, then merges the lens
+  files. Its briefs had paraphrased the contract in every run, losing clauses, and cost 13–31k
+  output tokens and up to three minutes before the last Scanner started
 - Scanner findings carry their own `path:L<lines>`; every Scanner opens with a
   `files judged: N of M` header; KEEP verdicts are counted, not listed; a HANDOFF names one of the
   fixed families; suggested comment fixes obey every comment rule; `/start-cr` copies the contract

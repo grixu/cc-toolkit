@@ -18,8 +18,8 @@ conflict the `.local` one wins. Work it there, then:
   records a **tracked `.local` file** (`git check-ignore` fails on it) and any
   **conflict between two project files** (resolved by scope.md's precedence order),
   both of which reach the report's `Conventions` line;
-- **one note, byte-identical in every brief, and it may only suppress.** Write it once and paste
-  the same text into all N briefs: a per-Lens note is a per-Lens instruction, and the Scanner
+- **one note, the same for every Lens, and it may only suppress.** Write it once, as the context
+  directory's `conventions.md` that every Scanner reads: a per-Lens note is a per-Lens instruction, and the Scanner
   reads whatever it finds there as what you want it to look for. So the slot holds nothing but
   documented conventions, each **quoted verbatim with its file** — never your own threat
   hypotheses or "where to focus", never an "established facts — do not raise" list, never a
