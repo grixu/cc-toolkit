@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lens as `code-review:scanner` with a two-line prompt invoking `cr-scan`, then merges the lens
   files. Its briefs had paraphrased the contract in every run, losing clauses, and cost 13–31k
   output tokens and up to three minutes before the last Scanner started
+- `/start-cr` runs the four craft lenses (`readability-tests`, `naming-module`, `objects-patterns`,
+  `simplicity-types`) on Sonnet; on eval-5…9, three repeats each, Sonnet 5.5 passed 13 of 15
+  against Opus 5.5's 12 of 15 at 55% of the cost. The other five lenses keep the session's model
 - Scanner findings carry their own `path:L<lines>`; every Scanner opens with a
   `files judged: N of M` header; KEEP verdicts are counted, not listed; a HANDOFF names one of the
   fixed families; suggested comment fixes obey every comment rule; `/start-cr` copies the contract

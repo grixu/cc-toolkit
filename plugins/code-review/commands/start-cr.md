@@ -194,7 +194,10 @@ Return its closing block verbatim, and nothing else.
 ```
 
 The `scanner` agent has only the tools a Scanner needs and loads no `CLAUDE.md`, so the
-conventions note is the one house style it judges by. Batching them in one message is what makes them run concurrently,
+conventions note is the one house style it judges by. Pass `model: "sonnet"` for the four craft
+Lenses — `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types` — and no
+`model` for the rest: on the craft recall and calibration fixtures Sonnet scored as well as the
+session's Opus at about half the cost, and nothing has measured it on the other five. Batching them in one message is what makes them run concurrently,
 and a concurrent fan-out **runs in the background**: N agents cannot each block and
 return inline at once, so the harness backgrounds them — this holds **even if you pass
 `run_in_background: false`**, because the flag cannot make a concurrent fan-out
