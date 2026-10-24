@@ -304,6 +304,22 @@ export function askedThroughTool(context) {
   return (context?.providerResponse?.metadata?.toolCalls || []).some((call) => call.name === 'AskUserQuestion');
 }
 
+// Tool calls that look for a file by name rather than open the path given: a recursive glob, a
+// content search, a find by name, or a path above the working dir. Listing the given directory is
+// not a search.
+export function searchesFor(context, name) {
+  return (context?.providerResponse?.metadata?.toolCalls || [])
+    .map((call) => ({ call, input: JSON.stringify(call.input ?? {}) }))
+    .filter(({ call, input }) => {
+      if (!name.test(input)) return false;
+      if (call.name === 'Glob') return /\*\*|\.\.\/|"\//.test(input);
+      if (call.name === 'Grep') return true;
+      if (call.name === 'Bash') return /\b(?:find|fd|locate|rg|grep|mdfind)\b|\.\.\//.test(input);
+      return false;
+    })
+    .map(({ call, input }) => `${call.name} ${input}`);
+}
+
 // The run's last AskUserQuestion call errored: whatever it said after, the question never reached
 // the user.
 export function questionToolFailed(context) {

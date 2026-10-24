@@ -146,6 +146,17 @@ test('question tool: an answered question, a retry that got through, or no quest
   assert.equal(h.questionToolFailed(undefined), false);
 });
 
+test('notes search: hunting for the notes by name counts, reading or listing the given path does not', () => {
+  const name = /grilling|summary/i;
+  const hunt = (call) => h.searchesFor(calls(call), name).length;
+  assert.equal(hunt({ name: 'Glob', input: { pattern: '**/grilling-summary*' } }), 1);
+  assert.equal(hunt({ name: 'Bash', input: { command: 'find .. -name "grilling-summary.md"' } }), 1);
+  assert.equal(hunt({ name: 'Grep', input: { pattern: 'grilling summary' } }), 1);
+  assert.equal(hunt({ name: 'Read', input: { file_path: 'notes/grilling-summary.md' } }), 0);
+  assert.equal(hunt({ name: 'Bash', input: { command: 'ls -la notes/grilling-summary.md' } }), 0);
+  assert.equal(hunt({ name: 'Bash', input: { command: 'find . -type f' } }), 0);
+});
+
 const shape = (text) => h.roundShapeFailures(text);
 const round = grill('round-225b31aa.md');
 

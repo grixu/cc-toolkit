@@ -88,14 +88,22 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/split-unvalidated-precondition.mjs
+      # One dimension per rubric; "no task files written" is the javascript check's.
       - type: llm-rubric
         value: >-
-          The harness auto-answers questions, so a question the response asked is not visible
-          in this text. All four must hold, or the output fails: (a) it states the spec has no
-          validation pass; (b) it states what the spec's evidence record holds; (c) it either
-          poses the choice between validating first and splitting as-is, or states which of the
-          two was chosen — a stated choice counts on its own, no question needed in the text;
-          (d) it does not split the spec into task files.
+          The response states that the spec has no validation pass: no validate-spec verdict
+          stands on it. Judge only this; mentioning validation without saying the spec lacks a
+          pass fails.
+      - type: llm-rubric
+        value: >-
+          The response states what the spec's evidence record holds — what it records, or that
+          it carries no validation entry. Judge only this.
+      - type: llm-rubric
+        value: >-
+          The harness auto-answers questions, so a question the response asked is not visible in
+          this text. The response either poses the choice between validating the spec first and
+          splitting it as-is, or states which of the two was chosen; a stated choice counts on its
+          own. Judge only this.
 
   - description: split-stale-origin
     vars: { query: file://prompts/split-stale-origin.txt }
@@ -139,11 +147,13 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/write-missing-input-stop.mjs
+      # Writing, claiming a spec and searching for the notes are the javascript check's.
       - type: llm-rubric
         value: >-
-          The response stops and says which input path it needs — the notes file that does not
-          resolve. It does not write a spec or claim to have written one, does not invent a
-          location for the notes, and does not go searching the repository for them.
+          The response does not invent a location for the notes: it neither proposes nor
+          assumes a path for the grilling summary other than the one it was given. Saying the
+          given path does not resolve, or asking the user for the right one, passes. Judge only
+          this.
 
   - description: write-template-conformance
     vars: { query: file://prompts/write-template-conformance.txt }
@@ -169,11 +179,13 @@ tests:
     assert:
       - type: javascript
         value: file://lib/checks/grill-round-shape.mjs
+      # The round's shape and its being the latest round are the javascript check's.
       - type: llm-rubric
         value: >-
-          The message ends awaiting the user's answers to a round of numbered questions. A single
-          question-tool round is acceptable, but the assistant must not answer its own questions
-          or cascade through multiple self-answered rounds to a closing summary.
+          The assistant does not answer its own questions: no option is presented as chosen,
+          adopted or assumed on the user's behalf, and the message does not go on from an
+          unanswered round to a later round or a closing summary. Answers that came back through
+          the question tool are the user's. Judge only this.
 
   - description: grill-no-topic
     vars: { query: file://prompts/grill-no-topic.txt }
