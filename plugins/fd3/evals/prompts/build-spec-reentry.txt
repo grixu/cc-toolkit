@@ -1,1 +1,1 @@
-/fd3:build-spec spec/rollout-spec.md
+/fd3:build-spec spec/rollout-spec.md nothing in the design changes, but the repositories may have moved since its last verdict, so re-validate it

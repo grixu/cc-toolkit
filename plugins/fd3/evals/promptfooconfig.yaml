@@ -242,6 +242,8 @@ tests:
       - type: javascript
         value: file://lib/checks/build-spec-gate.mjs
 
+  # Re-entry prompts carry the reason beside the path, as a user types it: asked what brings the
+  # spec back, first_option picks "a change to make" with no change to apply, and the run stops.
   - description: build-spec-reentry
     vars: { query: file://prompts/build-spec-reentry.txt }
     options: { working_dir: .sandbox/build-spec-reentry, max_budget_usd: 8.0 }
