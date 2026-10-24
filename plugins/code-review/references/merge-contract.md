@@ -14,7 +14,10 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   as the dispatcher collected it, not merely a notification that fired; a lens you could not collect is a
   labelled degradation you already surfaced to the user, never a silent gap in the merge.
   An output whose header reads `files judged: 0 of <M>` with `M` above zero has not reviewed
-  anything: it is a lens that did not deliver, however clean its findings list looks.
+  anything: it is a lens that did not deliver, however clean its findings list looks. One that
+  reads `files judged: <K> of <M>` with `K` below `M` delivered in part: merge it, and name the
+  lens with its `K of M` in the `Tally`'s lens clause, so a lens that skipped files never reads
+  as one that judged them all.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses, and across **all twelve families**, craft and `correctness` /
   `security` / `performance` / `spec` / `standards` alike — re-grade each against the table
@@ -218,7 +221,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
 
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 9 (skipped: <lens> — <reason>). Spec: R of T requirements met. Skipped: <files + reason>.
+**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 9 (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files). Spec: R of T requirements met. Skipped: <files + reason>.
 ```
 
 A filled-in report reads like this:
@@ -313,7 +316,8 @@ Rules for filling it in:
   empty).
 - **The `Tally` names the lenses.** `Lenses: L of 9` always, with each skipped Lens
   and its lens-set reason in the parenthesis (`skipped: performance — no executable
-  code; spec — no spec named`); drop the parenthesis when all nine ran. When a spec was
+  code; spec — no spec named`), and each lens that judged only part of its files after them
+  (`partial: security — 3 of 5 files`); drop the parenthesis when all nine ran in full. When a spec was
   given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
   met`; omit that clause otherwise.
 
