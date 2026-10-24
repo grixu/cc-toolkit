@@ -117,6 +117,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The headless skills read their files with the `Read` tool, one call per file: a `cat` chain with
   an `echo =====` separator aborted under zsh in 59 of 70 scans of one run, and its joined output
   was truncated before the last rules
+- The `Reconciliation` line counts every `Not flagged` entry: a new `L passed on` count holds the
+  look-alikes, reasoned KEEPs and file-growth bullet that come from no channel, so `D + P + L`
+  can match the block. A deduped primary finding is silent and no longer counted as dropped, and
+  every channel entry cleared in `Not flagged` gets its own entry, since one shared entry cannot
+  satisfy both sums
 
 ## [0.4.0] - 2026-10-03
 
