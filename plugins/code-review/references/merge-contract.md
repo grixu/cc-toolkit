@@ -17,11 +17,12 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   anything: it is a lens that did not deliver, however clean its findings list looks.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses, and across **all twelve families**, craft and `correctness` /
-  `security` / `performance` / `spec` / `standards` alike — keep the **most-specific** one and drop
-  the rest. When the overlap
-  spans two severities (a `high` symptom folding into a lower-severity root cause, or the
-  reverse), the surviving bullet keeps the **highest** severity of the overlap — deduping
-  must never quietly demote a `high` under a `medium`.
+  `security` / `performance` / `spec` / `standards` alike — re-grade each against the table
+  first (see *Re-grade* below), then keep the one whose rule's row grades highest, the
+  **most-specific** among equals, and drop the rest. Choosing the survivor before re-grading
+  lets the table demote it afterwards: a `high` symptom folded under a root cause whose row
+  says `medium` quietly ships as `medium`. A finding that keeps its own row's severity is the
+  only one the table will not rewrite, so the survivor's rule must carry the grade.
 - **Duplication has one owner per reach, keyed on whether a copy is exported.** Code repeated
   inside one file, or across files where no copy is exported, is `simplicity` · over-complex;
   a helper or inline code the change adds that repeats one exported elsewhere is `module` ·

@@ -122,6 +122,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   can match the block. A deduped primary finding is silent and no longer counted as dropped, and
   every channel entry cleared in `Not flagged` gets its own entry, since one shared entry cannot
   satisfy both sums
+- Dedup re-grades the overlapping findings against the table before it picks the survivor, and
+  keeps the one whose row grades highest: keeping the higher severity on a lower-graded rule was
+  undone by the re-grade that follows
 
 ## [0.4.0] - 2026-10-03
 
