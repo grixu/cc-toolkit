@@ -1,5 +1,20 @@
 import * as h from '../helpers.mjs';
 
+// Giving the worker a code is the one obvious correction, so a spec that now carries it counts as
+// surfacing the defect just as a report finding does. Coding it may retitle it too ("DB-2 — delivery
+// outcome recording"), so any heading under a code the fixture never had and naming the worker's job
+// counts; a code the fixture already carries cannot stand in for the worker.
+export function workerCoded(spec, fixture) {
+  if (spec === null) return false;
+  const code = /^###\s+([A-Z][A-Z0-9]*-\d+)\b/;
+  const fixtureCodes = new Set(h.headings(fixture).map((x) => x.match(code)?.[1]).filter(Boolean));
+  const newlyCoded = h.headings(spec).some((x) => {
+    const m = x.match(code);
+    return m && !fixtureCodes.has(m[1]) && /worker|retry|deliver/i.test(x);
+  });
+  return newlyCoded && !/^###\s+Delivery retry worker\s*$/im.test(spec);
+}
+
 export default (output) => {
   const c = h.checker();
   const spec = h.readSandboxFile('validate-defective-spec', 'spec/payments-spec.md');
@@ -12,10 +27,7 @@ export default (output) => {
   c.check(/D2[\s\S]{0,400}D5|D5[\s\S]{0,400}D2/.test(output), 'D2/D5 contradiction not surfaced');
   c.check(/redis/i.test(output) && /postgres/i.test(output), 'undecided Redis-or-Postgres either/or not surfaced');
   c.check(/invoice pdf/i.test(output), 'ownerless out-of-scope item (invoice PDF rendering) not surfaced');
-  // Giving the worker a code is the one obvious correction, so a spec that now carries it counts as
-  // surfacing the defect just as a report finding does.
-  const workerCoded = spec !== null && /^###\s+[A-Z][A-Z0-9]*-\d+\b.*worker/im.test(spec) && !/^###\s+Delivery retry worker\s*$/im.test(spec);
-  c.check(workerCoded || (/retry[-\s]worker/i.test(output) && /element[-\s]code/i.test(output)), 'uncoded "Delivery retry worker" element neither surfaced nor coded in the spec');
+  c.check(workerCoded(spec, fixture) || (/retry[-\s]worker/i.test(output) && /element[-\s]code/i.test(output)), 'uncoded "Delivery retry worker" element neither surfaced nor coded in the spec');
   c.check(/section 3/i.test(output), 'no finding anchored to section 3');
   c.check(/section 10/i.test(output), 'no finding anchored to section 10');
   c.check(/section 4/i.test(output), 'no finding anchored to section 4');

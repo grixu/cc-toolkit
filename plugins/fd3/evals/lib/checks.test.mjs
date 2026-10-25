@@ -522,3 +522,29 @@ test('write stop: asking where the spec should be written is not a claim to have
   assert.equal(writeClaims('I wrote the spec to `spec/out.md`.').length, 1);
   assert.equal(writeClaims('The spec has been written to spec/out.md.').length, 1);
 });
+
+// 36c8f72's CI run coded the worker DB-2 and retitled it "delivery outcome recording", dropping "worker".
+const defectiveSpec = h.readFixtureFile('defective-payments-spec', 'spec/payments-spec.md');
+const codedAsDb2 = defectiveSpec
+  .replace('### Delivery retry worker\n', '### DB-2 — delivery outcome recording\n')
+  .replace('3. **Delivery retry worker** (section 4) — changed:', '3. **DB-2** — changed:')
+  .replace('- **Delivery retry worker** — triggered:', '- **DB-2** — triggered:');
+
+test('defective spec: the worker coded under a new title passes', async () => {
+  const { workerCoded } = await import('./checks/validate-defective-spec.mjs');
+  assert.notEqual(codedAsDb2, defectiveSpec);
+  assert.equal(workerCoded(codedAsDb2, defectiveSpec), true);
+  assert.equal(workerCoded(defectiveSpec.replace('### Delivery retry worker\n', '### DB-2 — delivery retry worker\n'), defectiveSpec), true);
+});
+
+test('defective spec: the worker left uncoded, removed, or replaced by a code the fixture already had fails', async () => {
+  const { workerCoded } = await import('./checks/validate-defective-spec.mjs');
+  assert.equal(workerCoded(defectiveSpec, defectiveSpec), false);
+  assert.equal(workerCoded(null, defectiveSpec), false);
+  const removed = defectiveSpec.replace(/### Delivery retry worker\n[\s\S]*?(?=### OBSERVABILITY-1)/, '');
+  assert.notEqual(removed, defectiveSpec);
+  assert.equal(workerCoded(removed, defectiveSpec), false);
+  const retitledExisting = removed.replace('### OBSERVABILITY-1 — delivery metrics', '### OBSERVABILITY-1 — delivery and retry metrics');
+  assert.notEqual(retitledExisting, removed);
+  assert.equal(workerCoded(retitledExisting, defectiveSpec), false);
+});
