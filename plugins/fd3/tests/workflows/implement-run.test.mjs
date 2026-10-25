@@ -51,6 +51,9 @@ test('happy path: two waves, merge, full CI, review with a fix, delta review, fi
   assert.equal(r.call('toolchain-touch:app:feat-x').schema, 'TOOLCHAIN_TOUCH_RESULT')
   assert.equal(r.call('ci:app:feat-x').model, 'haiku')
   assert.equal(r.call('scout:app').agentType, 'fd3:toolchain-scout')
+  // The runner's agent type is what keeps a self-scheduling tool out of its reach.
+  for (const c of r.callsMatching(/^(ci|baseline):/)) assert.equal(c.agentType, 'fd3:ci-runner', c.label)
+  for (const c of r.callsMatching(/^(fix-|mark:|unmark:|toolchain-touch:)/)) assert.equal(c.agentType, null, c.label)
   assert.match(r.call('fix-cr:app:feat-x').prompt, new RegExp(`- ${line(f).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
   // The delta review is measured from the fixer's starting commit, so it reads only the fixes.
   assert.match(r.call('cr-prep:app:feat-x:delta').prompt, /--base aaa111 /)
@@ -262,6 +265,7 @@ test('CI incomplete: re-dispatched once, then no verdict — never a fix round',
   const incomplete = (p) => ({ ...ciPass(p), passed: false, incomplete: ['pnpm test — last line: RUN v2'] })
   const r = await run(implementArgs(), [['ci:app:feat-x', incomplete]])
   assert.deepEqual(r.callsMatching(/^ci:/).map((c) => c.label), ['ci:app:feat-x', 'ci:app:feat-x:unfinished'])
+  assert.equal(r.call('ci:app:feat-x:unfinished').agentType, 'fd3:ci-runner')
   assert.ok(!r.has('fix-'))
   assert.ok(!r.has('cr-prep:'))
   const b = r.result.branches[0]
@@ -298,6 +302,7 @@ test('CI failure: one fix round, then pass', async () => {
     ['ci:app:feat-x', ciFail(['pnpm test: a.test.ts expected 1 got 2'])],
   ])
   assert.deepEqual(r.callsMatching(/^(ci|fix)/).map((c) => c.label), ['ci:app:feat-x', 'fix-ci:app:feat-x#1', 'ci:app:feat-x#2', 'ci:app:feat-x:final'])
+  for (const c of r.callsMatching(/^ci:/)) assert.equal(c.agentType, 'fd3:ci-runner', c.label)
   // A fix round is verified scoped; the full list runs again because the fix moved HEAD.
   assert.match(r.call('ci:app:feat-x#2').prompt, /git diff --name-only origin\/main\.\.\.HEAD/)
   assert.match(r.call('ci:app:feat-x:final').prompt, /Run every command in full/)

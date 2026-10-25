@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fd3:ci-runner`, the sub-agent the implement workflow's baseline and CI runners run as: it has
+  every tool a runner uses but none that schedules a later turn or watches a background command
+  (`ScheduleWakeup`, `Monitor`, `CronCreate`, `RemoteTrigger`)
+
 ### Changed
 
 - a later phase's merge hold is a task frontmatter field, `merge-after: [<branch>…]` (a branch of
@@ -38,7 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - a CI runner waiting on a long command runs its exit-file wait in the foreground with the Bash
   timeout at 600000 and never ends its turn on a `ScheduleWakeup` or a backgrounded wait: on the
   long-command eval a Haiku runner whose 120 s default wait was moved to the background scheduled a
-  wakeup and returned the build as incomplete in 1 of 3 trials; the log it waits on is a fresh
+  wakeup and returned the build as incomplete in 1 of 3 trials, and once more in 6 trials after the
+  prompt banned it, so the baseline and CI runners now run as the `fd3:ci-runner` agent, which has
+  no `ScheduleWakeup` or `Monitor`; the log it waits on is a fresh
   `mktemp` path under `$TMPDIR`, since `$TMPDIR` outlives a run and a fixed name found an earlier run's exit file
   and passed a build that had not finished
 - review scans of the four craft lenses run on the session's model again, as `/start-cr`'s do: the

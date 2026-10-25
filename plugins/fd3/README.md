@@ -234,6 +234,7 @@ You do not call these. They are listed so you recognise them in the `/` menu and
 | `implement-run` | workflow | Waves, merges, checks and review; in repair mode, applies your HIL decisions to existing branches and checks them again. It appears in the `/` menu as `/fd3:implement-run`; do not run it directly. |
 | `fd3:researcher` | sub-agent | Looks up documentation and other external facts. |
 | `fd3:toolchain-scout` | sub-agent | Finds a repository's build, typecheck, lint and test commands. |
+| `fd3:ci-runner` | sub-agent | Runs those commands on a branch, or on the clean base for the baseline, and waits for each to finish. |
 
 To test the two workflows without model calls, run `node --test 'plugins/fd3/tests/workflows/*.test.mjs'` from the repository root.
 

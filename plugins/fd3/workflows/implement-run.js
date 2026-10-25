@@ -104,6 +104,9 @@ const waitRule = (unfinished) =>
   'you once you return: never end your turn on a ScheduleWakeup or a background task — wait again instead. ' +
   `Never return while a command you started has no exit line; if you must stop before one finishes, ${unfinished}. ` +
   'An unfinished command is never a failure and never a pass.'
+// CI runners interpret command output; they design nothing. Their agent type has no tool that
+// schedules a later turn: a Haiku runner given one ended its turn on it mid-build despite the ban.
+const mechanical = { agentType: 'fd3:ci-runner', model: 'haiku', effort: 'high' }
 // The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
 // takes their uncommitted and untracked work with it.
 const checkoutRule = (repo) =>
@@ -257,8 +260,7 @@ const baselineReady = (async () => {
       label: `baseline:${repo.split('/').pop()}`,
       phase: 'Recon',
       schema: BASELINE_RESULT,
-      model: 'haiku',
-      effort: 'high',
+      ...mechanical,
     })
     if (report) {
       baseline.set(repo, report)
@@ -1460,8 +1462,6 @@ const conformancePrompt = (unit, base, ciFixes, baseMerged) => {
 }
 
 const conformanceFinding = (f) => ({ severity: f.severity, family: 'conformance', rule: f.rule, location: f.location, risk: f.risk, fix: f.fix })
-
-const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
 // A CI verdict is a statement about one tree at one commit. A runner that stayed in the
 // repository's main checkout graded another branch's code, and one that edited its way to green
