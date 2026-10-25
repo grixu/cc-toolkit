@@ -103,7 +103,9 @@ tests:
   - description: 'eval-0 banners-and-doc-refs (datadog-integration.tf)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/datadog-integration.tf
+      # Outside fixtures/: scope.md makes a fixtures/ path `test` kind, and R11's
+      # remove-when-unsure bar then turns the REWRITE verdicts this track checks into REMOVE.
+      file: plugins/code-review/evals/comment-track/datadog-integration.tf
     assert:
       # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
       # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
@@ -150,7 +152,7 @@ tests:
   - description: 'eval-1 file-refs-and-diagram (scheduler.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/scheduler.ts
+      file: plugins/code-review/evals/comment-track/scheduler.ts
     assert:
       - type: regex
         value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
@@ -184,7 +186,7 @@ tests:
   - description: 'eval-2 misplaced-and-duplicated-rationale (dlq-codes.ts + dlq.handler.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/dlq-codes.ts plugins/code-review/evals/fixtures/dlq.handler.ts
+      file: plugins/code-review/evals/comment-track/dlq-codes.ts plugins/code-review/evals/comment-track/dlq.handler.ts
     assert:
       - type: regex
         value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
@@ -220,7 +222,7 @@ tests:
   - description: 'eval-3 spec-id-references (payment-validator.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/payment-validator.ts
+      file: plugins/code-review/evals/comment-track/payment-validator.ts
     assert:
       - type: regex
         value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
@@ -269,7 +271,7 @@ tests:
   - description: 'eval-4 spec-id-embedded-midsentence (host-allowlist.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/host-allowlist.ts
+      file: plugins/code-review/evals/comment-track/host-allowlist.ts
     assert:
       - type: regex
         value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'

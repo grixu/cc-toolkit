@@ -23,6 +23,7 @@ evals/
   prompts/standards.txt    # quality trigger with the standards fixture dir as repo root
   fixtures/                # inputs; fixtures/spec/ and fixtures/standards/ are multi-file
   scope-mix/               # eval-19 input, kept out of fixtures/ so its paths classify by kind
+  comment-track/           # evals 0–4 inputs, kept out of fixtures/ so R11's test-file bar does not apply
   prompts/headless.txt     # cr-prepare → cr-scan × N → cr-merge, in that order — headless track
   prompts/headless-prepare.txt # cr-prepare alone — eval-22
   prompts/headless-list.txt # the headless track with one cr-scan over a lens list — eval-25
@@ -53,11 +54,11 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 
 | Test | Track | Fixture(s) | Focus | Asserts (code / rubric) |
 |------|-------|-----------|-------|-----|
-| eval-0 | comment | `datadog-integration.tf` | R5 banners + R4 internal-doc refs vs external RFC | 10 / 1 |
-| eval-1 | comment | `scheduler.ts` | R4 file/doc refs, R5 banners, R1 narration, kept diagram/CVE | 8 / 0 |
-| eval-2 | comment | `dlq-codes.ts` + `dlq.handler.ts` | R12 misplaced/duplicated rationale (REMOVE vs MOVE) | 8 / 0 |
-| eval-3 | comment | `payment-validator.ts` | R4 spec-id pointers (REMOVE/REWRITE), token-stripping | 12 / 0 |
-| eval-4 | comment | `host-allowlist.ts` | R4 spec-ids embedded mid-sentence → REWRITE, keep the WHY | 4 / 2 |
+| eval-0 | comment | `comment-track/datadog-integration.tf` | R5 banners + R4 internal-doc refs vs external RFC | 10 / 1 |
+| eval-1 | comment | `comment-track/scheduler.ts` | R4 file/doc refs, R5 banners, R1 narration, kept diagram/CVE | 8 / 0 |
+| eval-2 | comment | `comment-track/dlq-codes.ts` + `dlq.handler.ts` | R12 misplaced/duplicated rationale (REMOVE vs MOVE) | 8 / 0 |
+| eval-3 | comment | `comment-track/payment-validator.ts` | R4 spec-id pointers (REMOVE/REWRITE), token-stripping | 12 / 0 |
+| eval-4 | comment | `comment-track/host-allowlist.ts` | R4 spec-ids embedded mid-sentence → REWRITE, keep the WHY | 4 / 2 |
 | eval-5 | quality | `quality-vocabulary.ts` | severity verbatim from the table, repeats collapsed, headline honesty | 10 / 0 |
 | eval-6 | quality | `quality-recall.ts` | recall gate — a seeded high + medium + nit across three families must all surface | 6 / 0 |
 | eval-7 | quality | `quality-calibration.ts` | noise gate — five documented look-alikes must stay non-findings | 8 / 0 |
