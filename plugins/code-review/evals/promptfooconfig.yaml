@@ -205,7 +205,7 @@ tests:
       # the destination is the handler method
       - type: javascript
         value: file://checks/report.mjs:commentFix
-        config: { quote: 'we swallow the duplicate', pattern: '\bhandle\b' }
+        config: { quote: 'we swallow the duplicate', pattern: '\bhandle\b|seen\.has\(' }
       # a value-meaning note stays on the value (R12 contrast)
       - type: javascript
         value: file://checks/report.mjs:commentKept
