@@ -16,6 +16,11 @@ Load-bearing facts:
 - Section 7's rollout table carries `spec-template.md`'s five columns, including `Gate after?`;
   its single row gates because the final phase always closes its landing unit, and it lands "all
   three work items" — section 6 has three, and a count that disagrees is a finding.
+- Section 8 defers the check of DB-1's rewiring of `getIdempotencyKey` / `saveIdempotencyKey`,
+  with an owner and a placement (ticket PAY-262): their only caller, `charge`, has no caller and
+  the branch has no database, so a branch-level test of it has nothing to drive it. A section 8
+  that verifies the migration alone without that sentence leaves the rewiring unverified and
+  undeclared, which is a finding.
 - Section 8 quotes psql's real message for a missing relation, `Did not find any relation`, with
   its capital D (the same quote, fixed the same way, sits in every payments and rollout spec).
 - Section 3 carries a **risks accepted** table after the decision table — `spec-template.md`

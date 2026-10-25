@@ -134,6 +134,11 @@ and nothing in this spec drops it — section 9 says so, and rollback does not c
 
 Phase 1 is verified when both checks above pass.
 
+The rewiring of `getIdempotencyKey` / `saveIdempotencyKey` is not exercised here — their only
+caller, `charge` (`src/billing/charge.ts:16`, `src/billing/charge.ts:21`), has no caller until
+PAY-262 (section 10) and the branch has no database — so its check lands with PAY-262's
+request-path tests; owner: payments team, placement: ticket PAY-262.
+
 ## 9. Cleanup
 
 The subject has no cleanup: nothing is deleted, and the only irreversible artifact (the
