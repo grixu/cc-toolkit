@@ -100,10 +100,16 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
     `--base <alternate.ref>` — do not report "nothing to review" over it. With no
     `alternate`, tell the user there is nothing to review and **stop**;
   - exactly one non-zero → use that scope automatically;
-  - both non-zero → ask with **one** `AskUserQuestion` which to review —
-    **Uncommitted** (working tree vs HEAD), **Committed** (HEAD vs base), or
-    **Both** (base → working tree) — putting the file counts you just saw in each
-    option's description.
+  - both non-zero, but every file on one side is one `${CLAUDE_PLUGIN_ROOT}/references/scope.md`
+    **skips** (Markdown, JSON, plain text, a lockfile…) → use the other side without
+    asking: a question whose one answer grades nothing only holds the review up. Say which side
+    you review in one line, and name the other side's files once in the report, in the `Tally`'s
+    `Skipped:` clause (`CLAUDE.md, docs/notes.md (uncommitted, skipped kinds)`), and in the
+    context directory's `skipped`;
+  - both non-zero, with a file on each side that the review would judge → ask with **one**
+    `AskUserQuestion` which to review — **Uncommitted** (working tree vs HEAD), **Committed**
+    (HEAD vs base), or **Both** (base → working tree) — putting the file counts you just saw in
+    each option's description.
 
   The detection calls above already returned the full file list for `uncommitted` and
   for `committed`, so **reuse that list** when the chosen scope is one of them — re-run

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `/start-cr` with no arguments no longer asks Committed/Uncommitted/Both when every file on one
+  side is a kind `scope.md` skips (Markdown, JSON, a lockfile…): it reviews the other side and
+  names the skipped side's files once, in the `Tally`'s `Skipped:` clause. Evals 29–30 cover the
+  all-skipped side and the control where both sides hold a judged file
+
 ## [0.5.0] - 2026-10-25
 
 ### Added

@@ -206,4 +206,34 @@ cp -R fixtures/arch-marker/src "$marker/"
 git -C "$marker" add -A
 commit "$marker" 'feat: order cancellation'
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker"
+# evals 29-30: a branch with one committed source change above origin/main and an uncommitted side.
+# In scope-skip that side holds only files scope.md skips, so Step 1 has nothing to ask; scope-mixed
+# adds an untracked .ts, so the scope question is due.
+for name in scope-skip scope-mixed; do
+  dir=.sandbox/$name
+  mkdir -p "$dir/src"
+  git -C "$dir" init -q -b main
+  printf '# orders service\n\nRun the tests with `pnpm test`.\n' > "$dir/CLAUDE.md"
+  printf 'export function orderTotal(lines: { price: number; qty: number }[]): number {\n  return lines.reduce((sum, l) => sum + l.price * l.qty, 0);\n}\n' > "$dir/src/order-service.ts"
+  git -C "$dir" add -A
+  commit "$dir" 'base'
+  git clone -q --bare "$dir" ".sandbox/$name-origin.git"
+  git -C "$dir" remote add origin "$(pwd)/.sandbox/$name-origin.git"
+  git -C "$dir" fetch -q origin
+  git -C "$dir" switch -q -c feat/order-discount
+  cat >> "$dir/src/order-service.ts" <<'TS'
+
+export function discountedTotal(lines: { price: number; qty: number }[], percent: number): number {
+  return orderTotal(lines) * (1 - percent / 100);
+}
+TS
+  git -C "$dir" add -A
+  commit "$dir" 'feat: discounted order totals'
+  printf '\nDiscounts are percentages, never absolute amounts.\n' >> "$dir/CLAUDE.md"
+  mkdir -p "$dir/docs" "$dir/.claude"
+  printf 'Open question: do discounts stack with vouchers?\n' > "$dir/docs/notes.md"
+  printf '{ "permissions": { "allow": ["Bash(pnpm test)"] } }\n' > "$dir/.claude/settings.json"
+done
+printf 'export const MAX_DISCOUNT_PERCENT = 50;\n' > .sandbox/scope-mixed/src/discount-limits.ts
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed"

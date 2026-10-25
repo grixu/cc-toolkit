@@ -1,0 +1,12 @@
+Act as the orchestrator of the code-review plugin's `start-cr` command. Read
+`plugins/code-review/commands/start-cr.md` completely and carry out its **Step 1 only**, for an
+invocation with no arguments, in the git checkout {{checkout}} — that directory is the repository
+the command was invoked in, so run the script and every git command there, and the plugin root
+(`${CLAUDE_PLUGIN_ROOT}`) is `plugins/code-review`.
+
+Stop after Step 1: dispatch no Scanner, write no context directory and edit no file. Reply with
+exactly these lines:
+
+scope: <uncommitted | committed | both>
+files: <comma-separated paths the review will judge>
+skipped: <comma-separated paths left out, each with its reason>

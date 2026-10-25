@@ -44,6 +44,9 @@ prompts:
   # start-cr --pr on someone else's PR: Step 1, then from Step 4 over lens files already on disk.
   - id: file://prompts/pr-draft.txt
     label: pr-draft-track
+  # start-cr's Step 1 with no arguments, over a branch with committed and uncommitted changes.
+  - id: file://prompts/scope-question.txt
+    label: scope-question-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -1031,3 +1034,25 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: 'check if the order has already shipped', verdict: REMOVE, rule: R1 }
+
+  - description: 'eval-29 scope-all-skipped (start-cr Step 1, an uncommitted side of skipped kinds only)'
+    prompts: [scope-question-track]
+    vars:
+      # uncommitted: CLAUDE.md, docs/notes.md, .claude/settings.json; committed: src/order-service.ts
+      checkout: plugins/code-review/evals/.sandbox/scope-skip
+      expect: skip
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/scope-question.mjs
+
+  - description: 'eval-30 scope-question (start-cr Step 1, a judged file on both sides)'
+    prompts: [scope-question-track]
+    vars:
+      # eval-29's checkout plus an untracked src/discount-limits.ts
+      checkout: plugins/code-review/evals/.sandbox/scope-mixed
+      expect: ask
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/scope-question.mjs
