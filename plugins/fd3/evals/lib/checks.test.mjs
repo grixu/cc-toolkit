@@ -378,6 +378,15 @@ test('grill session files: scratchpad files written through the shell pass; a sc
   assert.deepEqual(sessionFileFailures(quoted, repo).filter((f) => /inside the repository/.test(f)), []);
 });
 
+// 49a531fb ran four passes and nested three `#### ... answers applied — <date>` blocks inside them.
+test('build-spec re-entry: resume sub-blocks are not passes; a fifth dated pass heading is', async () => {
+  const { appendedPasses } = await import('./checks/build-spec-reentry.mjs');
+  const fixture = h.readFixtureFile('rollout-spec', 'spec/rollout-spec.md');
+  const spec = specSide('reentry-spec-49a531fb.md');
+  assert.equal(appendedPasses(fixture, spec), 4);
+  assert.equal(appendedPasses(fixture, `${spec}\n### Validation pass 5 — 2026-10-25\n\nVerdict: ready\n`), 5);
+});
+
 // fdebc07f listed its gaps under "Still open:" and said two claims "aren't verified".
 test('template conformance: a closing message that lists what is still open passes; one claiming nothing open fails', async () => {
   const { statesUnsettled } = await import('./checks/write-template-conformance.mjs');
