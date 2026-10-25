@@ -219,6 +219,12 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   META_EXIT_CODES="${exit_codes[*]}" META_ENDED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" write_meta "$@"
   echo "==> results archived in ${run_dir}"
   node scripts/eval-summary.mjs "$run_dir" || echo "!! eval-summary.mjs failed; trials are still in ${run_dir}" >&2
+  # A sandbox whose seccomp helper cannot arm fails every Bash call, and agents work around a dead
+  # shell well enough to pass, so the run is void however it scored.
+  if grep -l 'apply-seccomp:' "${run_dir}"/trial-*.json >/dev/null 2>&1; then
+    echo "!! the sandbox could not arm (apply-seccomp failed in a Bash call); the run is void" >&2
+    status=3
+  fi
   exit "$status"
 fi
 
