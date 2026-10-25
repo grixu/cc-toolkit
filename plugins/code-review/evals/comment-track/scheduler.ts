@@ -2,7 +2,8 @@
 
 // Job lifecycle:
 //   IDLE ──submit──▶ QUEUED ──claim──▶ RUNNING ──ok───▶ DONE
-//                                  └───err──▶ BACKOFF ──retry──▶ QUEUED
+//                                      └───err──▶ BACKOFF ──retry──▶ QUEUED
+//                                                 └──maxAttempts──▶ FAILED
 import { nextDelay } from "./utils/backoff";
 
 const MAX_DELAY_MS = 30_000;
