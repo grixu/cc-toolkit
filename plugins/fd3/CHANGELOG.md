@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- a CI runner waiting on a long command runs its exit-file wait in the foreground with the Bash
+  timeout at 600000 and never ends its turn on a `ScheduleWakeup` or a backgrounded wait: on the
+  long-command eval a Haiku runner whose 120 s default wait was moved to the background scheduled a
+  wakeup and returned the build as incomplete in 1 of 3 trials; the log it waits on is a fresh
+  `mktemp` path under `$TMPDIR`, since `$TMPDIR` outlives a run and a fixed name found an earlier run's exit file
+  and passed a build that had not finished
 - review scans of the four craft lenses run on the session's model again, as `/start-cr`'s do: the
   A/B that moved them to Sonnet was confounded by a code-review fixture defect, and on the fixed
   fixtures Sonnet 5.5 tied Opus 5.5 on quality at about 30% more cost

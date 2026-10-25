@@ -95,8 +95,13 @@ const STEP_GUARD =
 // build then read as a failure, fed fix rounds that had nothing to fix, or was skipped as broken.
 const waitRule = (unfinished) =>
   'A command is finished only when its exit line exists. When one may outlast your shell timeout, ' +
-  'start it in the background with its status written to a file — `( <command> > <log> 2>&1; echo "exit $?" > <log>.exit ) &` — ' +
-  'and wait for that file with `until [ -s <log>.exit ]; do sleep 15; done`, repeating the wait as often as it times out. ' +
+  // $TMPDIR outlives a run, so a fixed log name can find the previous run's exit file already there.
+  'start it in the background with its status written to a file under a name no earlier run used — ' +
+  '`<log>` is the path `mktemp "${TMPDIR:-/tmp}/ci.XXXXXX"` prints, written out literally in every later command since shell variables do not survive between calls — ' +
+  'then `( <command> > <log> 2>&1; echo "exit $?" > <log>.exit ) &` — ' +
+  'and wait for that file with `until [ -s <log>.exit ]; do sleep 15; done` in the foreground with the Bash `timeout` at 600000, ' +
+  'repeating the wait as often as it times out. A wait the shell moved to the background has not finished, and nothing resumes ' +
+  'you once you return: never end your turn on a ScheduleWakeup or a background task — wait again instead. ' +
   `Never return while a command you started has no exit line; if you must stop before one finishes, ${unfinished}. ` +
   'An unfinished command is never a failure and never a pass.'
 // The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
