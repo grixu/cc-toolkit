@@ -14,8 +14,8 @@ git -C "$repo" add -A
 git -C "$repo" -c user.name='cr-evals' -c user.email='cr-evals@localhost' commit -q -m 'base' --no-gpg-sign
 
 # Under src/, not fixtures/: scope.md classes anything below a fixtures/ directory as test code.
-cp fixtures/security-recall.ts "$repo/src/security-recall.ts"
-cp fixtures/quality-recall.ts "$repo/src/quality-recall.ts"
+cp cases/security-recall.ts "$repo/src/security-recall.ts"
+cp cases/quality-recall.ts "$repo/src/quality-recall.ts"
 git -C "$repo" add -A
 git -C "$repo" -c user.name='cr-evals' -c user.email='cr-evals@localhost' commit -q -m 'feat: add order lookup and pricing' --no-gpg-sign
 
@@ -42,8 +42,8 @@ pr=.sandbox/pr
 origin="$(pwd)/.sandbox/pr-origin.git"
 mkdir -p "$pr/src"
 git -C "$pr" init -q -b main
-cp fixtures/quality-recall.ts "$pr/src/pricing.ts"
-cp fixtures/billing-window/base.ts "$pr/src/billing-window.ts"
+cp cases/quality-recall.ts "$pr/src/pricing.ts"
+cp cases/billing-window/base.ts "$pr/src/billing-window.ts"
 git -C "$pr" add -A
 commit "$pr" 'base'
 pr_base="$(git -C "$pr" rev-parse HEAD)"
@@ -51,20 +51,20 @@ git clone -q --bare "$pr" "$origin"
 git -C "$pr" remote add origin "$origin"
 git -C "$pr" fetch -q origin
 git -C "$pr" switch -q -c pr-7
-cp fixtures/correctness/order-sync.ts "$pr/src/order-sync.ts"
+cp cases/correctness/order-sync.ts "$pr/src/order-sync.ts"
 git -C "$pr" add -A
 commit "$pr" 'feat: sync orders to the ledger'
 head="$(git -C "$pr" rev-parse HEAD)"
 git -C "$pr" push -q origin "HEAD:refs/pull/7/head" "HEAD:refs/pull/8/head"
 # PR #9's earlier revision, which its outdated review comments were made on: isStale's signature and
 # the payment term differ there, and the next commit settles both.
-sed 's/syncedAt: number, now: number/syncedAt: number, now = Date.now()/' fixtures/correctness/order-sync.ts > "$pr/src/order-sync.ts"
-sed 's/30 \* DAY_MS/60 * DAY_MS/' fixtures/billing-window/base.ts > "$pr/src/billing-window.ts"
+sed 's/syncedAt: number, now: number/syncedAt: number, now = Date.now()/' cases/correctness/order-sync.ts > "$pr/src/order-sync.ts"
+sed 's/30 \* DAY_MS/60 * DAY_MS/' cases/billing-window/base.ts > "$pr/src/billing-window.ts"
 git -C "$pr" add -A
 commit "$pr" 'feat: give invoices a 60-day payment term'
 rev9="$(git -C "$pr" rev-parse HEAD)"
-cp fixtures/correctness/order-sync.ts "$pr/src/order-sync.ts"
-cp fixtures/billing-window/head.ts "$pr/src/billing-window.ts"
+cp cases/correctness/order-sync.ts "$pr/src/order-sync.ts"
+cp cases/billing-window/head.ts "$pr/src/billing-window.ts"
 git -C "$pr" add -A
 commit "$pr" 'feat: give invoices a 45-day payment term'
 head9="$(git -C "$pr" rev-parse HEAD)"
@@ -147,7 +147,7 @@ exit 1
 EOF
 chmod +x .sandbox/bin/gh
 # The review comments already on PR #9, which eval-27's draft must not repeat.
-sed -e "s/HEAD_OID/$head9/g" -e "s/REV9_OID/$rev9/g" fixtures/billing-window/review-comments.json > .sandbox/gh-pr9-comments.json
+sed -e "s/HEAD_OID/$head9/g" -e "s/REV9_OID/$rev9/g" cases/billing-window/review-comments.json > .sandbox/gh-pr9-comments.json
 
 # eval-31: a clone of the PR origin with PR #9's head checked out on its branch, as a reviewer who
 # fetched a colleague's branch would have it. Run with no --pr, start-cr must offer reviewer mode.
@@ -168,7 +168,7 @@ git -C "$own_pr" config cr-evals.gh-user colleague
 # worktree Step 1 makes as the checkout, so the run goes from Step 1 straight to the merge.
 pr9_ctx="$(pwd)/.sandbox/pr9-ctx"
 mkdir -p "$pr9_ctx"
-cp fixtures/billing-window/lenses/*.md "$pr9_ctx/"
+cp cases/billing-window/lenses/*.md "$pr9_ctx/"
 printf 'No project convention files: no CODING_STANDARDS.md, CLAUDE.md, AGENTS.md, CONTRIBUTING.md, .cursor/rules or .claude/rules at the repository root or along the reviewed paths.\n' > "$pr9_ctx/conventions.md"
 printf 'none\n' > "$pr9_ctx/standards.md"
 pr9_lenses="$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security performance; do printf '      { "lens": "%s", "files": ["src/billing-window.ts", "src/order-sync.ts"] },\n' "$l"; done)"
@@ -198,7 +198,7 @@ EOF
 # Scanner. An untracked file stands for the user's own work, which no commit may pick up.
 mailer=.sandbox/mailer
 mailer_ctx="$(pwd)/.sandbox/mailer-ctx"
-src=fixtures/campaign-mailer
+src=cases/campaign-mailer
 mkdir -p "$mailer" "$mailer_ctx"
 git -C "$mailer" init -q -b main
 cp -R "$src/base/." "$mailer/"
@@ -252,7 +252,7 @@ EOF
 marker=.sandbox/arch-marker
 mkdir -p "$marker"
 git -C "$marker" init -q -b main
-cp -R fixtures/arch-marker/src "$marker/"
+cp -R cases/arch-marker/src "$marker/"
 git -C "$marker" add -A
 commit "$marker" 'feat: order cancellation'
 

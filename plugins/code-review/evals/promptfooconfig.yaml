@@ -105,6 +105,8 @@ tests:
     vars:
       # Outside fixtures/: scope.md makes a fixtures/ path `test` kind, and R11's
       # remove-when-unsure bar then turns the REWRITE verdicts this track checks into REMOVE.
+      # Every other input sits under cases/ for the same reason (the kind also gates the
+      # performance lens), and cases/spec-conformance/ dodges the test-kind spec/ name.
       file: plugins/code-review/evals/comment-track/datadog-integration.tf
     assert:
       # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
@@ -302,7 +304,7 @@ tests:
   - description: 'eval-5 vocabulary-and-skeleton (quality-vocabulary.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-vocabulary.ts
+      file: plugins/code-review/evals/cases/quality-vocabulary.ts
     assert:
       # "skill actually ran" proxy: the report uses the skill's own family vocabulary.
       - type: regex
@@ -338,7 +340,7 @@ tests:
   - description: 'eval-6 recall-across-families (quality-recall.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-recall.ts
+      file: plugins/code-review/evals/cases/quality-recall.ts
     assert:
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
@@ -365,7 +367,7 @@ tests:
   - description: 'eval-7 calibration-look-alikes (quality-calibration.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-calibration.ts
+      file: plugins/code-review/evals/cases/quality-calibration.ts
     assert:
       # This fixture is deliberately clean, so a family tag may be absent from a collapsed
       # report. Use the skeleton's tally line as the "skill actually ran" proxy instead.
@@ -401,7 +403,7 @@ tests:
   - description: 'eval-8 folded-rules-recall (quality-recall-2.ts + quality-recall-2.model.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-recall-2.ts plugins/code-review/evals/fixtures/quality-recall-2.model.ts
+      file: plugins/code-review/evals/cases/quality-recall-2.ts plugins/code-review/evals/cases/quality-recall-2.model.ts
     assert:
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
@@ -442,7 +444,7 @@ tests:
   - description: 'eval-9 folded-rules-calibration (quality-calibration-2.ts + quality-calibration-2.types.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-calibration-2.ts plugins/code-review/evals/fixtures/quality-calibration-2.types.ts
+      file: plugins/code-review/evals/cases/quality-calibration-2.ts plugins/code-review/evals/cases/quality-calibration-2.types.ts
     assert:
       # Deliberately clean fixture — proxy on the skeleton's tally line, as in eval-7.
       - type: regex
@@ -482,7 +484,7 @@ tests:
   - description: 'eval-10 security-recall (security-recall.ts)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/security-recall.ts
+      file: plugins/code-review/evals/cases/security-recall.ts
     assert:
       # "scanner actually ran" proxy: findings carry the lens's own family tag.
       - type: regex
@@ -534,7 +536,7 @@ tests:
   - description: 'eval-11 security-calibration (security-calibration.ts)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/security-calibration.ts
+      file: plugins/code-review/evals/cases/security-calibration.ts
     assert:
       # Clean fixture — the prompt asks for a `Not flagged:` line, so proxy on it.
       - type: regex
@@ -571,7 +573,7 @@ tests:
   - description: 'eval-12 performance-recall (performance-recall.ts)'
     prompts: [performance-track]
     vars:
-      file: plugins/code-review/evals/fixtures/performance-recall.ts
+      file: plugins/code-review/evals/cases/performance-recall.ts
     assert:
       - type: regex
         value: '`performance`'
@@ -610,7 +612,7 @@ tests:
   - description: 'eval-13 performance-calibration (performance-calibration.ts)'
     prompts: [performance-track]
     vars:
-      file: plugins/code-review/evals/fixtures/performance-calibration.ts
+      file: plugins/code-review/evals/cases/performance-calibration.ts
     assert:
       - type: regex
         value: '[Nn]ot flagged'
@@ -639,8 +641,8 @@ tests:
   - description: 'eval-14 spec-conformance (feature-spec.md vs feature-impl.ts)'
     prompts: [spec-track]
     vars:
-      file: plugins/code-review/evals/fixtures/spec/feature-impl.ts
-      spec: plugins/code-review/evals/fixtures/spec/feature-spec.md
+      file: plugins/code-review/evals/cases/spec-conformance/feature-impl.ts
+      spec: plugins/code-review/evals/cases/spec-conformance/feature-spec.md
     assert:
       - type: regex
         value: '`spec`'
@@ -694,7 +696,7 @@ tests:
   - description: 'eval-15 standards-pair (standards/service.ts)'
     prompts: [standards-track]
     vars:
-      file: plugins/code-review/evals/fixtures/standards/service.ts
+      file: plugins/code-review/evals/cases/standards/service.ts
     assert:
       - type: regex
         value: '`standards`'
@@ -738,7 +740,7 @@ tests:
   - description: 'eval-16 iac-exposure-recall (iac-exposure.tf)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/iac-exposure.tf
+      file: plugins/code-review/evals/cases/iac-exposure.tf
     assert:
       - type: regex
         value: 'iac-exposure'
@@ -778,7 +780,7 @@ tests:
   - description: 'eval-17 access-widening-diff (access-widening.diff)'
     prompts: [security-diff-track]
     vars:
-      file: plugins/code-review/evals/fixtures/access-widening.diff
+      file: plugins/code-review/evals/cases/access-widening.diff
     assert:
       - type: regex
         value: 'access-widening'
@@ -806,7 +808,7 @@ tests:
   - description: 'eval-18 guard-test-fidelity-routing (tenant-guard.ts + tenant-guard.test.ts)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/tenant-guard.ts plugins/code-review/evals/fixtures/tenant-guard.test.ts
+      file: plugins/code-review/evals/cases/tenant-guard.ts plugins/code-review/evals/cases/tenant-guard.test.ts
     assert:
       # the guard compares tenants and both queries bind a tenant_id predicate
       - type: javascript
@@ -878,7 +880,7 @@ tests:
     prompts: [correctness-track]
     vars:
       # correctness/DEFECTS.md lists the planted defects and look-alikes; the lens never sees it.
-      file: plugins/code-review/evals/fixtures/correctness/order-sync.ts
+      file: plugins/code-review/evals/cases/correctness/order-sync.ts
     assert:
       - type: regex
         value: '`correctness`'
