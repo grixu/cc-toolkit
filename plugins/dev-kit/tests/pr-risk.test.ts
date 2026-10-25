@@ -71,11 +71,11 @@ test('assesses the diff without lockfiles and binaries', async ($, on) => {
 
   const out = await $.tool.call({ tool: TOOL, base: 'main' })
   const report = JSON.parse(out.result)
+  const body = JSON.parse(requests[0].init.body)
 
   expect(requests.length).toBe(1)
   expect(requests[0].url).toBe('https://api.typesafe.ai/v1/systemone')
   expect(requests[0].init.headers.authorization).toBe('Bearer secret')
-  const body = JSON.parse(requests[0].init.body)
   expect(body.model).toBe('jev-latest')
   expect(body.state.diff).toContain('checkToken')
   expect(body.state.diff).not.toContain('pnpm-lock.yaml')
@@ -149,9 +149,15 @@ test('maps the rubric onto the configured levels', () => {
   expect(three.length).toBe(3)
   expect(three[0]).toMatch(/^low: Documentation/)
   expect(three[2]).toMatch(/^high: A defect would likely cause an outage/)
+})
+
+test('reads the level and label options with fallbacks', () => {
   expect(readConfig({ risk_levels: ['only'] }).levels).toEqual(['low', 'medium', 'high', 'critical'])
   expect(readConfig({ risk_levels: 'minor, major' }).levels).toEqual(['minor', 'major'])
   expect(readConfig({ risk_label: false }).labelEnabled).toBe(false)
+})
+
+test('fills the label template', () => {
   expect(labelFor('risk/{level}', 'high')).toBe('risk/high')
   expect(labelFor('risk', 'high')).toBe('risk: high')
 })
