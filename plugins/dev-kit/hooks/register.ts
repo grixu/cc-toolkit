@@ -50,9 +50,13 @@ export function register(on, options) {
       const report = await assess($, e.base, options, config)
       return { result: JSON.stringify(report, null, 2) }
     } catch (error) {
-      return { result: 'Risk assessment unavailable: ' + (error instanceof Error ? error.message : String(error)) }
+      return unavailable(error instanceof Error ? error.message : String(error))
     }
-  }).catch(($, e, next) => ({ result: `Risk assessment unavailable: the hook failed (${next.error.kind}): ${next.error.message}` }))
+  }).catch(($, e, next) => unavailable(`the hook failed (${next.error.kind}): ${next.error.message}`))
+}
+
+function unavailable(reason: string) {
+  return { result: 'Risk assessment unavailable: ' + reason }
 }
 
 async function apiKey($, options): Promise<string> {
@@ -93,8 +97,9 @@ async function assess($, base: unknown, options, config) {
   })
   if (!entries.length) throw new Error(`no changes between ${ref} and HEAD`)
 
-  const excluded = entries.filter((f) => f.binary || isExcluded(f.path)).map((f) => f.path)
-  const reviewable = entries.filter((f) => !f.binary && !isExcluded(f.path)).map((f) => f.path)
+  const isReviewable = (f: { path: string; binary: boolean }) => !f.binary && !isExcluded(f.path)
+  const excluded = entries.filter((f) => !isReviewable(f)).map((f) => f.path)
+  const reviewable = entries.filter(isReviewable).map((f) => f.path)
 
   const head = header(commits.trim(), diffstat.trim())
   const budget = STATE_CHAR_BUDGET - head.commits.length - head.diffstat.length
