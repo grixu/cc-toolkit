@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   appended to the folder's `notes.md`, `validate-spec` dispatches write their reports into its
   `research/`, the template keeps it out of the companion links, `split-to-tasks` schedules no
   task for it, and `implement-tasks` keeps it out of every commit option
+- an `AskUserQuestion` option whose answer needs typed detail ("Elsewhere — I'll name it", "a change
+  to make") is never recommended or first: `question-batching.md` puts the concrete choices first
+  and routes the detail through the tool's free-text answer, and a `build-spec` re-entry that names
+  no reason recommends re-validating the spec as it stands; `validate-spec` asks for a fact only
+  the user holds with the outcomes it can apply as options, never with "name it" as the
+  recommendation
 
 ## [0.4.0] - 2026-10-25
 

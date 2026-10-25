@@ -294,6 +294,11 @@ Four things go to the user, and nothing else:
 4. **The owner and placement of a claim nothing settles** — the last move before recording it
    `blocked` (step 5).
 
+A fact only the user holds — a name, a path, a component you could not find — is not something to
+recommend: its options are the outcomes you can apply without it (repair the spec, declare a gap),
+and the fact itself is the user's own text, which `main` collects as the question's free-text
+answer (`${CLAUDE_SKILL_DIR}/../../references/question-batching.md`).
+
 Everything else you settle yourself or record as a finding. A gap the spec already declares with an
 owner and a placement is `deferred` on sight — it is not a finding, it does not go into the batch,
 and a pass that asks about it has turned a settled document into a question.

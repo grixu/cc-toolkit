@@ -86,7 +86,10 @@ before session folders keeps its notes beside it as `<spec-basename>.notes.md`, 
 
 A finished spec handed back to `/fd3:build-spec` skips stages 1 and 2. A change the user brings is
 a decision taken after the verdict — apply it as the section above says — and then stage 3 runs on
-that path.
+that path. When the re-entry names no reason, ask for one with the concrete choice first and
+recommended — re-validate the spec as it stands against the repositories as they are now — and
+the change the user would have to type as the question's free-text answer, never as a listed option
+(`question-batching.md`).
 
 The first pass's focus list is what changed since the last verdict line, read from the spec and the
 re-entry itself, never from `git`, which often does not track the spec at all: the sections
