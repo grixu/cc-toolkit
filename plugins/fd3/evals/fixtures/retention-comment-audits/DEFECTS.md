@@ -39,7 +39,9 @@ whose options leave the expiry alone (a clearer 404, a time-travel restore, mont
 `notes/topic.md` makes no claim about the read window, so nothing in it legitimises the 30-day
 claim; the comment is the only source of it.
 
-It also states that the live table matches Terraform and gives its size. The sandbox denies
+It also states that the live table matches Terraform and gives its size. The size is one month of
+audits, since the 31-day expiry keeps no more, and the 1.3 GB is growth in that monthly volume; a
+"40 GB growing 1.3 GB a month" reading as accumulation contradicts the expiry. The sandbox denies
 `gcloud`, and without those facts runs held the fix-and-retention question back on an access
 request, so the expiry option never appeared; a user would answer both from what they know.
 
