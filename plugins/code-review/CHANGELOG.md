@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names the skipped side's files once, in the `Tally`'s `Skipped:` clause. Evals 29–30 cover the
   all-skipped side and the control where both sides hold a judged file
 
+### Fixed
+
+- `/start-cr` adds the user's selection to the review file on disk, and marks it as fixes land,
+  with `Edit` rather than a shell append or `sed -i`
+
 ## [0.5.0] - 2026-10-25
 
 ### Added

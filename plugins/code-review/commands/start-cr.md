@@ -390,8 +390,9 @@ of the run and the one most likely to be compacted; when that happens mid-walk, 
 the user's answer are gone, and a run that had to reconstruct its approved list by parsing its
 own transcript spent that effort for nothing. Write the rendered report to a file in the session
 scratchpad before the menu, and the user's selection — each approved finding with its file, site
-and exact fix, and the commit mode — under it as soon as the answer arrives. Read it back rather than recalling it,
-and say where it is in the wrap-up.
+and exact fix, and the commit mode — under it as soon as the answer arrives. Add the selection, and any later
+mark on it, with `Edit`, never `cat >>`, `tee -a` or `sed -i`: this file is a file on disk like any
+other. Read it back rather than recalling it, and say where it is in the wrap-up.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
 without an explicit yes**. Only findings confirmed in Step 4 enter an apply batch.
