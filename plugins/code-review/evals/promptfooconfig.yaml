@@ -408,10 +408,11 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: module, rule: pass-through, mentions: fetchInvoice, severity: medium }
-      # the fix inlines the call at the caller and deletes the wrapper
+      # the fix inlines the call at the caller ("call it directly in the caller" says the same)
+      # and deletes the wrapper
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: module, rule: pass-through, mentions: fetchInvoice, fix: '^(?=.*inline)(?=.*(delete|remov))' }
+        config: { family: module, rule: pass-through, mentions: fetchInvoice, fix: '^(?=.*(inline|directly|at the caller))(?=.*(delete|remov))' }
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: module, rule: canonical-helper, mentions: renderAmount, severity: high }
