@@ -151,6 +151,10 @@ every step while writes in the working directory succeeded.
   `defaultTest` SDK grader, and one dimension per rubric — a rubric judging four facts
   fails without saying which. Keep its `append_system_prompt`: without the JSON-only
   pin the grader intermittently wraps verdicts in prose and promptfoo cannot parse.
+- Where a run's files land is graded through git, not the file diff alone:
+  `lib/checks/session-folder.mjs` (used by write-template-conformance) fails a run that leaves git
+  anything to commit besides the spec and `evidence/`, or a `<spec>.session/` file git does not
+  ignore. It needs a git root at the sandbox, so it guards only scenarios whose spec sits in one.
 - Checks have model-free tests in `lib/checks.test.mjs` (run by the CI
   `workflow-scripts` job): `node --test 'plugins/fd3/evals/lib/*.test.mjs'`. A check
   fix lands with the real text it misjudged, anonymised under `lib/__fixtures__/`, and

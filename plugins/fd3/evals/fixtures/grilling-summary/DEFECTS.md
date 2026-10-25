@@ -23,6 +23,12 @@ Sentinel strings the write-template-conformance assertions look for in the produ
 - A `D1` decision-table row, element codes with valid prefixes, and the
   `Claim | How it was verified` evidence table are required by the template-conformance asserts.
 
+write-template-conformance also guards where the session record lands (`lib/checks/session-folder.mjs`):
+the sandbox root is a git repository whose baseline commit holds `notes/`, standing in for the
+scratchpad. After the run `spec/out.session/notes.md` exists, every file under `spec/out.session/` is
+ignored by git, and the only files git would offer to commit are `spec/out.md` and `spec/evidence/`.
+The deleted `notes/` files are the move, not a finding.
+
 Load-bearing line numbers in `src/notify/dispatch.ts`: subscriber list at line 6, send loop at
 lines 9-11, `sendEmail` at line 14. The summary cites them; the spec's evidence appendix is
 expected to carry them forward.

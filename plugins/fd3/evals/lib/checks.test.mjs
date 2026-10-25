@@ -2,7 +2,9 @@
 // a check once judged wrongly, and texts it must keep failing.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as h from './helpers.mjs';
@@ -339,4 +341,56 @@ test('post-verdict change: the notes must gain a line recording D2 option b', as
   assert.equal(ratifiedLine(before, `${before}\n5. Re-entry 2026-10-25 — D2 reversed: Q2 b, ratified by the user.`), true);
   assert.equal(ratifiedLine(before, before), false);
   assert.equal(ratifiedLine(before, `${before}\n5. A change to D3.`), false);
+});
+
+// write-spec's end state, as layouts the session-folder guard must pass or fail.
+const sessionRepo = (files) => {
+  const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'fd3-session-'));
+  const write = (rel, text) => {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+    fs.writeFileSync(path.join(root, rel), text);
+  };
+  write('notes/grilling-summary.md', 'closing notes\n');
+  const git = (...args) => execFileSync('git', ['-C', root, ...args]);
+  git('init', '-q', '-b', 'main');
+  git('add', '-A');
+  git('-c', 'user.name=t', '-c', 'user.email=t@localhost', 'commit', '-q', '-m', 'fixture baseline', '--no-gpg-sign');
+  fs.rmSync(path.join(root, 'notes'), { recursive: true });
+  for (const [rel, text] of Object.entries(files)) write(rel, text);
+  return root;
+};
+
+test('session folder: the spec, its evidence and an ignored session folder pass', async () => {
+  const { sessionFolderFailures } = await import('./checks/session-folder.mjs');
+  const inFolder = sessionRepo({
+    'spec/out.md': 'spec\n',
+    'spec/evidence/rollout.md': 'evidence\n',
+    'spec/out.session/.gitignore': '*\n',
+    'spec/out.session/notes.md': 'notes\n',
+    'spec/out.session/research/dispatch-path-lookup.md': 'report\n',
+  });
+  assert.deepEqual(sessionFolderFailures(inFolder, 'spec/out.md'), []);
+});
+
+test('session folder: a repository-level .gitignore created for it is one more file to commit', async () => {
+  const { sessionFolderFailures } = await import('./checks/session-folder.mjs');
+  const atRoot = sessionRepo({ '.gitignore': '*.session/\n', 'spec/out.md': 'spec\n', 'spec/out.session/notes.md': 'notes\n' });
+  assert.deepEqual(sessionFolderFailures(atRoot, 'spec/out.md'), [
+    'files git would offer to commit besides the spec and its evidence: .gitignore',
+  ]);
+});
+
+test('session folder: notes beside the spec, an unignored folder or a force-added note fail', async () => {
+  const { sessionFolderFailures } = await import('./checks/session-folder.mjs');
+  const beside = sessionRepo({ 'spec/out.md': 'spec\n', 'spec/out.notes.md': 'notes\n', 'spec/out.research/r.md': 'report\n' });
+  const f1 = sessionFolderFailures(beside, 'spec/out.md');
+  assert.match(f1[0], /spec\/out\.notes\.md, spec\/out\.research\/r\.md/);
+  assert.match(f1[1], /notes never moved/);
+  const unignored = sessionRepo({ 'spec/out.md': 'spec\n', 'spec/out.session/notes.md': 'notes\n' });
+  const f2 = sessionFolderFailures(unignored, 'spec/out.md');
+  assert.match(f2[0], /spec\/out\.session\/notes\.md/);
+  assert.match(f2[1], /does not ignore: spec\/out\.session\/notes\.md/);
+  const forced = sessionRepo({ 'spec/out.md': 'spec\n', 'spec/out.session/.gitignore': '*\n', 'spec/out.session/notes.md': 'notes\n' });
+  execFileSync('git', ['-C', forced, 'add', '-f', 'spec/out.session/notes.md']);
+  assert.match(sessionFolderFailures(forced, 'spec/out.md').join('; '), /does not ignore: spec\/out\.session\/notes\.md/);
 });
