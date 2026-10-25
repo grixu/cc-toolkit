@@ -47,6 +47,9 @@ prompts:
   # start-cr's Step 1 with no arguments, over a branch with committed and uncommitted changes.
   - id: file://prompts/scope-question.txt
     label: scope-question-track
+  # start-cr's Step 1 with no arguments, on a branch that is someone else's open PR.
+  - id: file://prompts/pr-detect.txt
+    label: pr-detect-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -1040,6 +1043,7 @@ tests:
     vars:
       # uncommitted: CLAUDE.md, docs/notes.md, .claude/settings.json; committed: src/order-service.ts
       checkout: plugins/code-review/evals/.sandbox/scope-skip
+      gh: plugins/code-review/evals/.sandbox/bin/gh
       expect: skip
     options: { allow_all_tools: true }
     assert:
@@ -1051,8 +1055,22 @@ tests:
     vars:
       # eval-29's checkout plus an untracked src/discount-limits.ts
       checkout: plugins/code-review/evals/.sandbox/scope-mixed
+      gh: plugins/code-review/evals/.sandbox/bin/gh
       expect: ask
     options: { allow_all_tools: true }
     assert:
       - type: javascript
         value: file://checks/scope-question.mjs
+
+  - description: 'eval-31 pr-detect (start-cr Step 1 with no --pr, on a branch that is someone else''s PR)'
+    prompts: [pr-detect-track]
+    vars:
+      # PR #9's head on its own branch; the gh stand-in finds PR #9 for it, authored by colleague
+      checkout: plugins/code-review/evals/.sandbox/pr-local
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      pr: 9
+      branch: feat/payment-term
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-detect.mjs

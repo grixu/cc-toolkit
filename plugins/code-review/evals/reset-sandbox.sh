@@ -67,23 +67,44 @@ git -C "$pr" branch -q -D pr-7
 mkdir -p .sandbox/bin
 cat > .sandbox/bin/gh <<EOF
 #!/usr/bin/env bash
-# Stand-in for gh: answers \`gh pr view 7|8|9\` and \`gh api user\`, takes a POST of a PR review
+# Stand-in for gh: answers \`gh pr view 7|8|9\`, \`gh pr view\` on a branch that has a PR, and
+# \`gh api user\`, filters any of them through --jq like gh does, takes a POST of a PR review
 # (keeping its --input body as .sandbox/gh-posted-<n>.json), answers any other GET under pulls/
-# with an empty list, and records every call.
-echo "\$*" >> "$(pwd)/.sandbox/gh-calls.log"
+# with an empty list, and records every call with the directory it ran in.
+echo "\$* # in \$PWD" >> "$(pwd)/.sandbox/gh-calls.log"
+jq_expr='' args=()
+while [ \$# -gt 0 ]; do
+  case "\$1" in
+    --jq|-q) jq_expr="\$2"; shift ;;
+    --jq=*) jq_expr="\${1#--jq=}" ;;
+    *) args+=("\$1") ;;
+  esac
+  shift
+done
+set -- "\${args[@]}"
+emit() { if [ -n "\$jq_expr" ]; then jq -r "\$jq_expr"; else cat; fi; }
 if [ "\$1 \$2" = "api user" ]; then
-  echo eval-user
+  echo '{"login":"eval-user"}' | emit
   exit 0
 fi
 if [ "\$1 \$2" = "pr view" ]; then
+  n="\$3"
+  case "\$n" in
+    ''|-*)
+      branch="\$(git branch --show-current 2>/dev/null)"
+      case "\$branch" in
+        feat/payment-term) n=9 ;;
+        *) echo "no pull requests found for branch \"\$branch\"" >&2; exit 1 ;;
+      esac ;;
+  esac
   title='Sync orders to the ledger' ref=feat/order-sync oid=$head
-  case "\$3" in
+  case "\$n" in
     7) author=eval-user ;;
     8) author=colleague ;;
     9) author=colleague title='Give invoices a 45-day payment term' ref=feat/payment-term oid=$head9 ;;
-    *) echo "gh stand-in: no PR \$3" >&2; exit 1 ;;
+    *) echo "gh stand-in: no PR \$n" >&2; exit 1 ;;
   esac
-  printf '{"number":%s,"url":"https://github.com/example/orders/pull/%s","state":"OPEN","title":"%s","author":{"login":"%s"},"baseRefName":"main","headRefName":"%s","headRefOid":"%s","isCrossRepository":false,"maintainerCanModify":true}\n' "\$3" "\$3" "\$title" "\$author" "\$ref" "\$oid"
+  printf '{"number":%s,"url":"https://github.com/example/orders/pull/%s","state":"OPEN","title":"%s","author":{"login":"%s"},"baseRefName":"main","headRefName":"%s","headRefOid":"%s","isCrossRepository":false,"maintainerCanModify":true}\n' "\$n" "\$n" "\$title" "\$author" "\$ref" "\$oid" | emit
   exit 0
 fi
 if [ "\$1" = "api" ]; then
@@ -95,6 +116,7 @@ if [ "\$1" = "api" ]; then
       --method=POST|-XPOST) post=1 ;;
       --input) input="\$2"; shift ;;
       --input=*) input="\${1#--input=}" ;;
+      -H|--header|-f|-F|--field|--raw-field) shift ;;
       repos/*|/repos/*) path="\$1" ;;
     esac
     shift
@@ -106,13 +128,20 @@ if [ "\$1" = "api" ]; then
     exit 0
   fi
   case "\$path" in
-    *pulls/*) [ -z "\$post" ] && { echo '[]'; exit 0; } ;;
+    *pulls/*) [ -z "\$post" ] && { echo '[]' | emit; exit 0; } ;;
   esac
 fi
 echo "gh stand-in: unsupported call: \$*" >&2
 exit 1
 EOF
 chmod +x .sandbox/bin/gh
+
+# eval-31: a clone of the PR origin with PR #9's head checked out on its branch, as a reviewer who
+# fetched a colleague's branch would have it. Run with no --pr, start-cr must offer reviewer mode.
+local_pr=.sandbox/pr-local
+git clone -q "$origin" "$local_pr"
+git -C "$local_pr" fetch -q origin refs/pull/9/head
+git -C "$local_pr" switch -q -c feat/payment-term FETCH_HEAD
 
 # eval-27: PR #9's review already ran through Step 3. The context directory names the detached
 # worktree Step 1 makes as the checkout, so the run goes from Step 1 straight to the merge.

@@ -10,7 +10,8 @@ description: >-
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
   With `--pr <number>` it reviews a GitHub pull request's head against its base; on
-  someone else's pull request it drafts review comments instead of applying fixes.
+  someone else's pull request it drafts review comments instead of applying fixes. Without
+  `--pr`, on a branch that is someone else's open pull request, it offers that reviewer mode.
 allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
@@ -79,7 +80,25 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   else's and the run is in **reviewer mode** (see the section after Step 7): say so in one
   line now. The author decides what lands on their branch, so the review drafts comments
   for them instead of editing anything.
-- **No path arguments** → review the current branch diff. Detect what exists with
+- **No path arguments and no `--pr`** → first ask `gh` whether the current branch is someone
+  else's open pull request, run in the checkout:
+
+  ```bash
+  gh pr view --json number,title,state,author
+  gh api user --jq .login
+  ```
+
+  When `gh` is missing or either call fails (no pull request for the branch, no GitHub remote),
+  when `state` is not `OPEN`, or when `author.login` is the `gh` user, carry on below without a
+  word. Otherwise the user may be reviewing a colleague's branch they checked out, and an apply
+  menu would edit work that is not theirs, so ask with **one** `AskUserQuestion` before anything
+  else: **Review PR #<number> as its reviewer (Recommended)** — draft comments for
+  `<author.login>`, edit nothing — first, then **Review the local changes** — the branch diff
+  with the apply menu, as without a pull request. On the first answer, continue exactly as
+  `--pr <number>` above (a `--base` the user passed gives way to the PR's base); on the second,
+  carry on below. Never enter reviewer mode without that answer.
+
+  Then review the current branch diff. Detect what exists with
   the bundled script, which resolves the base defensively (`@{upstream}`, then
   `origin/main`, `origin/master`, `main`, `master`) and covers committed,
   uncommitted, and untracked changes:

@@ -31,11 +31,12 @@ evals/
   prompts/start-cr-merge.txt # start-cr Steps 4–7 over lens files already on disk — eval-26
   prompts/pr-draft.txt     # start-cr --pr Step 1, then Step 4 on over lens files on disk — eval-27
   prompts/scope-question.txt # start-cr Step 1 with no arguments, committed and uncommitted changes — evals 29–30
+  prompts/pr-detect.txt    # start-cr Step 1 with no arguments, on a branch that is someone else's PR — eval-31
   checks/report.mjs        # code asserts over the final message: finding bullets, comment verdicts, the quality skeleton
   checks/menu-and-commits.mjs # eval-26: the apply menu and commit question from the tool calls, the commits from git
   checks/pr-draft.mjs      # eval-27: the reviewer-mode draft, its hunks, and when the gh stand-in got a POST
   checks/                  # the other checks read files on disk (headless, pr, HANDOFF families)
-  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20 and 22–30 run in, the context dirs of evals 26–27, and the gh stand-in
+  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20 and 22–31 run in, the context dirs of evals 26–27, and the gh stand-in
 ```
 
 The headless skills review committed changes only, so eval-20 runs against a git
@@ -83,10 +84,11 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-28 | comment | `.sandbox/arch-marker/src/order-handler.ts` (`arch-marker/DEFECTS.md`) | a bracketed `ARCH` tag that opens a comment in every sibling file is the project's marker (the comments rules' "A tag vs a project marker" trap): never REMOVE, REWRITE or MOVE; an R1 narration beside it is still REMOVE | 3 / 0 |
 | eval-29 | start-cr | `.sandbox/scope-skip` | Step 1 with no arguments: the uncommitted side is `CLAUDE.md`, an untracked `docs/notes.md` and `.claude/settings.json`, all kinds `scope.md` skips, so no Committed/Uncommitted/Both question is asked, the scope is committed, and the three files are named as skipped | 1 / 0 |
 | eval-30 | start-cr | `.sandbox/scope-mixed` | eval-29's checkout plus an untracked `.ts`: a judged file on each side, so the scope question is asked once with all three scopes, and the scope reported is the one answered | 1 / 0 |
+| eval-31 | pr | `.sandbox/pr-local` + `.sandbox/bin/gh` | Step 1 with no `--pr` on a clone sitting on PR #9's branch, which the gh stand-in's `gh pr view` finds authored by someone else: one question offers reviewer mode first and as the recommended option, with the local review beside it; on that answer the scope is PR #9's against `origin/main`, in the clone itself since it is already at the head, with `mode: reviewer` | 1 / 0 |
 
 ### Grading
 
-Code first: 209 of the 216 asserts are `regex`, `not-regex` or `javascript`. Most read the
+Code first: 210 of the 217 asserts are `regex`, `not-regex` or `javascript`. Most read the
 final message through `checks/report.mjs`. It parses the fixed shapes the skills prescribe:
 `` `family` · rule · severity · L… `` findings, ``L… · `quote` — **VERDICT** (R#)`` comment
 verdicts, and the Conventions / Headline / `###` path / Tally skeleton. It grades only the
@@ -125,7 +127,8 @@ those skills do not fire on top of the brief.
 ### start-cr track
 
 eval-23 and eval-24 run `start-cr.md` Step 1 from a prompt that names the step, and so do
-eval-29 and eval-30, with no arguments over a branch that also has uncommitted changes. eval-26 starts
+eval-29 and eval-30, with no arguments over a branch that also has uncommitted changes, and
+eval-31, with no arguments on a branch that is someone else's pull request. eval-26 starts
 it at Step 4 the same way, and eval-27 runs Step 1 for `--pr 9` and then jumps to Step 4: `reset-sandbox.sh` writes the context directory Step 2b would have
 written, plus the `<lens>.md` file each of the eight active Scanners would have left, so the run
 merges, reports, asks and commits with no Scanner dispatched. `first_option` answers the menu with

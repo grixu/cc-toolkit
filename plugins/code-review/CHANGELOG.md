@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `/start-cr` without `--pr`, on a branch that is someone else's open pull request (`gh pr view`
+  on the branch, its author against `gh api user`), asks first and offers reviewer mode on that
+  pull request as the recommended option, beside reviewing the local changes. Eval-31 covers it,
+  with a `gh` stand-in that resolves the current branch's pull request
+
 ### Changed
 
 - `/start-cr` with no arguments no longer asks Committed/Uncommitted/Both when every file on one
