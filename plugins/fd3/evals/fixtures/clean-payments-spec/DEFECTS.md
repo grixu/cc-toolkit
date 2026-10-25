@@ -14,7 +14,10 @@ Load-bearing facts:
 - The spec has exactly one rollout phase, so the verdict must be the single word, not the phase
   table.
 - Section 7's rollout table carries `spec-template.md`'s five columns, including `Gate after?`;
-  its single row gates because the final phase always closes its landing unit.
+  its single row gates because the final phase always closes its landing unit, and it lands "all
+  three work items" — section 6 has three, and a count that disagrees is a finding.
+- Section 8 quotes psql's real message for a missing relation, `Did not find any relation`, with
+  its capital D (the same quote, fixed the same way, sits in every payments and rollout spec).
 - Section 3 carries a **risks accepted** table after the decision table — `spec-template.md`
   requires one, and its absence is what once made this fixture stop being defect-free. Both rows accept
   their risk outright: a row that defers instead ("a later change", "a follow-up") is a deferral,

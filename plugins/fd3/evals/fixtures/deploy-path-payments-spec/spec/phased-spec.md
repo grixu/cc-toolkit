@@ -162,7 +162,7 @@ process until the worker is wired in (section 10), so the counts stay at zero ei
 ## 8. Verification
 
 - **DB-1** — probe: `psql "$DATABASE_URL" -c "\d idempotency_keys"` lists the four columns. Before
-  the change the same command errors with `did not find any relation`.
+  the change the same command errors with `Did not find any relation`.
 - **OBSERVABILITY-1** — triggered, through `npm test` (`vitest run`, the script `package.json`
   defines): call `deliver` on two events, then assert `deliveryMetrics()` returns `delivered: 2`.
   Before the change the export does not exist. The `failed` count is not exercised — nothing here

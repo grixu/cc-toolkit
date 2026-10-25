@@ -165,7 +165,7 @@ the migration stays behind, unused (expand-only; removal is out of scope, LED-10
 ## 8. Verification
 
 - **DB-1** — probe: `psql "$LEDGER_DATABASE_URL" -c "\d ledger_entries"` lists the five columns
-  and the `(order_id, created_at)` index. Before the change: `did not find any relation`.
+  and the `(order_id, created_at)` index. Before the change: `Did not find any relation`.
 - **API-2** — probe: `curl -s "ledger.internal/ledger/entries?orderId=o_1"` returns `[]` with 200;
   omitting `orderId` returns 400; a valid `POST` returns 201. Before the change both `GET`s return the stub's empty 200 and the `POST` 404s.
 - **API-1** — triggered: with the flag on in a test environment, post a charge; one `credit` row
