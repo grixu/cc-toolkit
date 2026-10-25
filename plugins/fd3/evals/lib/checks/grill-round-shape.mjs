@@ -6,6 +6,6 @@ import * as h from '../helpers.mjs';
 export default (output, context) => {
   const c = h.checker();
   for (const failure of h.roundShapeFailures(output)) c.check(false, failure);
-  for (const failure of h.latestRoundFailures(output, h.readLedger('grill-round-shape'), context)) c.check(false, failure);
+  for (const failure of h.ledgerFailures(output, h.readLedger('grill-round-shape', context), context)) c.check(false, failure);
   return c.verdict();
 };

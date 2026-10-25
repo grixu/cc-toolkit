@@ -262,10 +262,114 @@ export function roundShapeFailures(output) {
   return out;
 }
 
-// The question ledger grill-topic keeps, as rows of { label, round, answer }; null when the run kept
-// none inside the sandbox.
-export function readLedger(scenario) {
-  const file = listFiles(sandboxDir(scenario)).find((f) => /question-ledger\.md$/.test(f));
+const unquote = (s) => s.replace(/^(["'])(.*)\1$/, '$2');
+
+// Shell-level writes only: `>`/`>>` redirections and `tee`, with `VAR=` and `cd` tracked within the
+// one command. A write fed by a heredoc carries its body; a markdown blockquote line in a heredoc
+// starts with `>`, so bodies are never scanned for redirections.
+export function bashWrites(command, cwd) {
+  const vars = {};
+  let dir = cwd;
+  const out = [];
+  const expand = (s) =>
+    unquote(s).replace(/\$\{?([A-Za-z_]\w*)\}?/g, (m, v) => (v === 'PWD' ? dir : vars[v] ?? m));
+  // Under a `cd $TMPDIR/...` the directory stays unexpanded; joining keeps `>` and `>>` to one
+  // file on one key instead of rooting the relative one at this process's cwd.
+  const resolve = (p) => (/^[$~]/.test(p) ? p : /^[$~]/.test(dir) ? path.join(dir, p) : path.resolve(dir, p));
+  let heredoc = null;
+  for (const line of String(command || '').split('\n')) {
+    if (heredoc) {
+      if (line.trim() === heredoc.end) {
+        for (const w of heredoc.writes) w.body = heredoc.lines.length ? `${heredoc.lines.join('\n')}\n` : '';
+        heredoc = null;
+      } else heredoc.lines.push(line);
+      continue;
+    }
+    let fed = null;
+    for (const segment of line.split(/;|&&|\|\|?/)) {
+      const cd = /^\s*cd\s+(\S+)/.exec(segment);
+      if (cd) dir = resolve(expand(cd[1]));
+      for (const m of segment.matchAll(/(?:^|\s)(?:export\s+)?([A-Za-z_]\w*)=("[^"]*"|'[^']*'|[^\s"']+)/g)) vars[m[1]] = expand(m[2]);
+      const start = /<<-?\s*(["']?)(\w+)\1/.exec(segment);
+      const writes = [];
+      // A `>` inside a quoted argument (`echo "$h -> $code"`) redirects nothing.
+      const bare = segment.replace(/(>{1,2}\s*|\btee\s+(?:-a\s+)?)?("[^"]*"|'[^']*')/g, (m, op) => (op ? m : '""'));
+      for (const m of bare.matchAll(/(?:^|[^\d&>])(>{1,2})\s*("[^"]*"|'[^']*'|[^\s<>&|)]+)/g)) {
+        const target = expand(m[2]);
+        if (!target.startsWith('/dev/')) writes.push({ path: resolve(target), append: m[1] === '>>', body: null });
+      }
+      for (const m of bare.matchAll(/\btee\s+(-a\s+)?("[^"]*"|'[^']*'|[^\s<>&|)]+)/g)) {
+        writes.push({ path: resolve(expand(m[2])), append: Boolean(m[1]), body: null });
+      }
+      if (start) fed = { end: start[2], writes, lines: [] };
+      out.push(...writes);
+    }
+    if (fed) heredoc = fed;
+  }
+  return out;
+}
+
+export function bashWriteTargets(command, cwd) {
+  return bashWrites(command, cwd).map((w) => w.path);
+}
+
+export function writtenPaths(toolCalls, cwd) {
+  const out = [];
+  for (const t of toolCalls || []) {
+    if (t.is_error) continue;
+    if ((t.name === 'Write' || t.name === 'Edit') && t.input?.file_path) out.push(path.resolve(cwd, t.input.file_path));
+    if (t.name === 'Bash' && typeof t.input?.command === 'string') out.push(...bashWriteTargets(t.input.command, cwd));
+  }
+  return [...new Set(out)];
+}
+
+const LEDGER_FILE = /(^|\/)question-ledger\.md$/;
+const IN_PLACE = /\b(?:sed|perl)\b[^;&|]*\s-i|\b(?:python3?|node|awk|mv|cp|rm)\b/;
+
+// The ledger's last-written path and its content as the run's own tool calls left it; content is
+// null when a write the calls do not spell out (an Edit to an unseen file, `sed -i`) touched it.
+export function locateLedger(toolCalls, cwd) {
+  const content = new Map();
+  let last = null;
+  const put = (p, text) => {
+    content.set(p, text);
+    if (LEDGER_FILE.test(p)) last = p;
+  };
+  for (const t of toolCalls || []) {
+    if (t.is_error) continue;
+    const file = t.input?.file_path ? path.resolve(cwd, t.input.file_path) : null;
+    if (t.name === 'Write' && file) put(file, typeof t.input.content === 'string' ? t.input.content : null);
+    if (t.name === 'Edit' && file) {
+      const prev = content.get(file);
+      const { old_string: from, new_string: to, replace_all: all } = t.input;
+      put(file, typeof prev === 'string' && typeof from === 'string' && prev.includes(from) ? (all ? prev.split(from).join(to) : prev.replace(from, () => to)) : null);
+    }
+    if (t.name === 'Bash' && typeof t.input?.command === 'string') {
+      const writes = bashWrites(t.input.command, cwd);
+      for (const w of writes) {
+        const prev = content.has(w.path) ? content.get(w.path) : '';
+        put(w.path, w.body === null || (w.append && prev === null) ? null : w.append ? prev + w.body : w.body);
+      }
+      if (/question-ledger/.test(t.input.command) && !writes.some((w) => LEDGER_FILE.test(w.path)) && IN_PLACE.test(t.input.command)) {
+        for (const p of content.keys()) if (LEDGER_FILE.test(p)) content.set(p, null);
+      }
+    }
+  }
+  return last ? { path: last, content: content.get(last) } : null;
+}
+
+// The question ledger grill-topic keeps, as rows of { label, round, answer }; null when no readable
+// ledger exists. The skill keeps it in the session scratchpad, so it is found through the run's own
+// writes. Their content comes first: a fixed scratch path such as /tmp/claude-501/grill-backoff can
+// be shared by concurrent scenarios, so the file on disk may be another run's.
+export function readLedger(scenario, context) {
+  const found = locateLedger(context?.providerResponse?.metadata?.toolCalls, sandboxDir(scenario));
+  if (found) {
+    const disk = found.content === null && path.isAbsolute(found.path) && fs.existsSync(found.path) ? fs.readFileSync(found.path, 'utf8') : null;
+    const text = found.content ?? disk;
+    if (text !== null) return parseLedger(text);
+  }
+  const file = listFiles(sandboxDir(scenario)).find((f) => LEDGER_FILE.test(f));
   return file ? parseLedger(readSandboxFile(scenario, file)) : null;
 }
 
@@ -296,6 +400,14 @@ export function latestRoundFailures(output, ledger, context) {
     if (answered.length) out.push(`the ledger records answers to ${answered.map((r) => r.label).join(', ')} that no user gave`);
   }
   return out;
+}
+
+// Without a ledger the latest-round and self-answered guards have nothing to read, so a run that
+// asked questions and kept none fails rather than passing them by default.
+export function ledgerFailures(output, ledger, context) {
+  const asked = lastRound(output) !== null || askedThroughTool(context);
+  if (asked && (!ledger || ledger.length === 0)) return ['the run asked questions but left no readable notes/question-ledger.md with numbered round rows'];
+  return latestRoundFailures(output, ledger, context);
 }
 
 // A round that went out through AskUserQuestion is auto-answered under `first_option`, so the

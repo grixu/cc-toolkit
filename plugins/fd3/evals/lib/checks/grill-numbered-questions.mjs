@@ -5,7 +5,7 @@ export default (output, context) => {
 
   // Any numbered lines would do otherwise — a lookup update re-listing findings passed as a round.
   c.check(h.lastRound(output) !== null, 'the final message closes no round with an "Answer as:" line');
-  for (const failure of h.latestRoundFailures(output, h.readLedger('grill-numbered-questions'), context)) c.check(false, failure);
+  for (const failure of h.ledgerFailures(output, h.readLedger('grill-numbered-questions', context), context)) c.check(false, failure);
 
   const lines = output.split('\n');
   const firstNumbered = lines.findIndex((l) => /^\s{0,3}(?:#{1,4}\s+)?(?:\*\*)?Q?\d+[.)]\s/.test(l));

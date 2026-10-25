@@ -130,6 +130,43 @@ test('latest round: a later ledger round or an answer nobody gave fails', () => 
   assert.deepEqual(h.latestRoundFailures(grill('round-225b31aa.md'), selfAnswered, viaTool), []);
 });
 
+// 523f576c kept its ledger in the scratchpad through a `cat > $S/notes/question-ledger.md` heredoc,
+// where a sandbox-only lookup never saw it and the latest-round guards passed by default.
+test('ledger: located through the run\'s writes outside the sandbox, edits and appends applied', () => {
+  const calls = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'grill', 'session-calls-523f576c.json'), 'utf8'));
+  const ctx = (toolCalls) => ({ providerResponse: { metadata: { toolCalls } } });
+  const found = h.locateLedger(calls, '/sandbox/grill-round-shape');
+  assert.equal(found.path, '/tmp/claude-1000/grill-retry-backoff/notes/question-ledger.md');
+  assert.deepEqual(h.readLedger('grill-round-shape', ctx(calls)).map((r) => r.label), ['1', '2', '3', '4', '5']);
+
+  const ledger = found.path;
+  const updated = [
+    ...calls,
+    { name: 'Edit', input: { file_path: ledger, old_string: '| open | facts: I3 |', new_string: '| a) throw | facts: I3 |' } },
+    { name: 'Bash', input: { command: `cd /tmp/claude-1000/grill-retry-backoff && cat >> notes/question-ledger.md <<'EOF'\n| 6 | Jitter? | 2 | open | |\nEOF` } },
+  ];
+  const rows = h.readLedger('grill-round-shape', ctx(updated));
+  assert.equal(rows.find((r) => r.label === '1').answer, 'a) throw');
+  assert.deepEqual(rows.at(-1), { label: '6', round: 2, answer: 'open' });
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ledger-'));
+  fs.mkdirSync(path.join(dir, 'notes'));
+  fs.writeFileSync(path.join(dir, 'notes', 'question-ledger.md'), '| # | Q | Round | Answer |\n|---|---|---|---|\n| 1 | q | 1 | open |\n');
+  const sedOnly = [
+    { name: 'Bash', input: { command: `S=${dir}; cat > $S/notes/question-ledger.md <<'EOF'\n| # | Q | Round | Answer |\n| 1 | q | 1 | open |\n| 4 | q | 1 | open |\nEOF` } },
+    { name: 'Bash', input: { command: `cd ${dir}/notes && sed -i '' '/^| 4 |/d' question-ledger.md` } },
+  ];
+  assert.equal(h.locateLedger(sedOnly, '/sandbox/x').content, null);
+  assert.deepEqual(h.readLedger('grill-round-shape', ctx(sedOnly)).map((r) => r.label), ['1']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('ledger: a run that asked questions and kept no readable ledger fails', () => {
+  assert.match(h.ledgerFailures(grill('round-225b31aa.md'), null, noTool).join('\n'), /no readable notes\/question-ledger\.md/);
+  assert.match(h.ledgerFailures(grill('round-225b31aa.md'), [], noTool).join('\n'), /no readable/);
+  assert.deepEqual(h.ledgerFailures(grill('round-225b31aa.md'), h.parseLedger(grill('ledger-225b31aa.md')), noTool), []);
+});
+
 // 39b47064 and c547b433: both AskUserQuestion calls came back with this error, the run ended
 // telling the user it could not reach them, and the check passed on verdict lines alone.
 const abort = { name: 'AskUserQuestion', is_error: true, output: 'Tool permission request failed: AbortError: Stream closed' };
