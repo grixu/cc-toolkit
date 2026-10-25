@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
 ### Added
 - A mod with the `pr_risk` tool (`mcp__dev-kit__pr_risk`): assesses `<base>...HEAD` with the TypeSafe Jev model and returns a risk level, confidence and risk flags. It is registered only when a key is set (the `typesafe_api_key` option, else `TYPESAFE_API_KEY`), and its endpoint, model, label and level names are plugin options. Diffs over Jev's context are compacted, then split into up to 8 requests
 - `pr-open`: with the `pr_risk` tool available, the body ends with a **Risk** section and the PR gets a configurable risk label; on an existing PR the label is swapped and the **Risk** section refreshed; the report gives the level or why it was not assessed
