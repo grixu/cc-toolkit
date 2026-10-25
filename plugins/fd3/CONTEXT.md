@@ -74,6 +74,10 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Research index** (`research/INDEX.md`) — grill-topic's digest of every lookup: an `I<n>` entry
   per question with the condensed answer, its sources and the report file. Decisions cite entries
   (`facts: I3`), write-spec reads it to find the reports; it routes, and evidence never cites it.
+- **Session scratchpad** — the scratchpad directory the system prompt names, or, when it names
+  none, one `mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"` whose literal path the session
+  keeps. Never inside a repository. It holds a session's working files until the spec has a path,
+  and probe worktrees.
 - **Session folder** — the git-ignored folder beside a spec, named the spec's filename without `.md`,
   plus `.session/` (`spec/out.md` → `spec/out.session/`). It holds its session's working files once
   the spec has a path: the closing notes (`notes.md`), the question ledger and `research/`.

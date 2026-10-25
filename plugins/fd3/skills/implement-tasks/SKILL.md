@@ -310,7 +310,10 @@ drift the run's own changes caused — a README, an index or a reference a branc
 to a repair without asking. Only a caveat that contradicts a spec decision or names an
 irreversible operation becomes a question. One that reports compliance with its own prompt, or
 restates what the task file already records, is dropped. Write the full list to `caveats.txt` in
-the session scratchpad and give its path.
+the session scratchpad and give its path. The session scratchpad is the directory your system
+prompt names; when it names none, create one once with `mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"`
+and use that literal path for the rest of the session — never a directory inside a repository
+(`scratchpad/`, `.scratchpad/`, `notes/`, `research/`).
 
 Put to the user only what needs a human: an operational task is theirs to execute (offer the task
 file's steps as a script to follow; mark `done` only when they confirm), and a blocker or a

@@ -28,7 +28,10 @@ you write them up, you do not reopen them.
 A probe — a command you run to settle a claim, a repository's own script included (a `package.json`
 script, a Makefile target, a docs build) — runs in a detached worktree under your scratchpad
 (`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout, and never
-installs, links or rebuilds dependencies; a claim that needs more is a gap to declare.
+installs, links or rebuilds dependencies; a claim that needs more is a gap to declare. Your
+scratchpad is the directory your system prompt names; when it names none, create one once with
+`mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"` and use that literal path for the rest of the
+session — never a directory inside a repository (`scratchpad/`, `.scratchpad/`, `notes/`, `research/`).
 
 `INDEX.md` in the research directory is the research you write from: each decision's `facts:`
 names its entries, and each entry holds the question, the condensed answer, its sources and the

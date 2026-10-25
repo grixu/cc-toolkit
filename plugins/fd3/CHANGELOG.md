@@ -44,6 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - review scans of the four craft lenses run on the session's model again, as `/start-cr`'s do: the
   A/B that moved them to Sonnet was confounded by a code-review fixture defect, and on the fixed
   fixtures Sonnet 5.5 tied Opus 5.5 on quality at about 30% more cost
+- the session scratchpad is defined where `grill-topic`, `write-spec`, `validate-spec` and
+  `implement-tasks` first use it: the scratchpad directory the system prompt names, or else one
+  `mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"` whose literal path the session keeps, never
+  inside a repository; headless sessions get no scratchpad line and the model invented
+  `scratchpad/`, `.scratchpad/` and `notes/` in the working tree
 
 ## [0.4.0] - 2026-10-25
 

@@ -14,6 +14,10 @@ need, then end your turn. Do not guess it and do not go looking for it.
 **That spec file, and the overflow files step 3 puts under `<spec-dir>/evidence/`, are the only
 files you may write.** Everything else you read is read-only, no matter what you find in it.
 
+Your scratchpad is the directory your system prompt names; when it names none, create one once with
+`mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"` and use that literal path for the rest of the
+session — never a directory inside a repository (`scratchpad/`, `.scratchpad/`, `notes/`, `research/`).
+
 A probe — a command you run to settle a claim — runs in a detached worktree under your scratchpad
 (`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout. It never
 installs, links or rebuilds dependencies, anywhere. A repository's own script — a `package.json`
