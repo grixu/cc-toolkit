@@ -135,7 +135,7 @@ Open the options with `/plugin configure dev-kit@cc-toolkit`:
 | `typesafe_model` | `jev-latest` | Model name or alias; pin a version such as `jev-1.14.0` to keep levels stable across Jev releases |
 | `risk_label` | `true` | Whether `pr-open` labels the pull request |
 | `risk_label_name` | `risk: {level}` | The label name; `{level}` becomes the level |
-| `risk_levels` | `low`, `medium`, `high`, `critical` | Level names from lowest to highest, 2 to 5 of them; the model rates the change on exactly these levels, and with fewer than 5 each level covers several of the built-in descriptions |
+| `risk_levels` | `low`, `medium`, `high`, `critical` | Level names from lowest to highest, 2 to 5 of them; the model rates the change on exactly these levels, and with fewer than 5 some levels cover more than one of the built-in descriptions |
 
 `pr-open` creates a missing label once and never changes an existing one. A key set or changed during a session takes effect after `/reload-plugins`.
 
