@@ -57,6 +57,14 @@ jobs:
           if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
+      # Under bwrap's AppArmor profile the unix-socket seccomp helper cannot write
+      # /proc/self/setgroups, which kills every Bash call (anthropics/claude-code#43454). Allowing
+      # unix sockets skips that helper; filesystem and domain filtering still apply, and the
+      # runner is ephemeral, so the looser setting stays off developer machines.
+      - name: Allow unix sockets in the eval sandbox
+        run: |
+          jq '.sandbox.network.allowAllUnixSockets = true' scripts/evals-isolation.json > "$RUNNER_TEMP/isolation.json"
+          mv "$RUNNER_TEMP/isolation.json" scripts/evals-isolation.json
       - name: Run smoke group
         run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate"
       - name: Upload results for triage
