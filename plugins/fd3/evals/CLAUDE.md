@@ -122,7 +122,8 @@ None of the group is in the CI smoke filter.
   strings, exact line numbers the asserts rely on. Read it BEFORE editing any fixture
   file; update it with any edit.
 - Derived fixtures (`unvalidated-rollout-spec`, `orphan-rollout-spec`,
-  `no-rollout-order`) are regenerated from their base fixture, never edited directly.
+  `no-rollout-order`, `deploy-path-payments-spec`, `ratified-rollout-spec`) are regenerated
+  from their base fixture, never edited directly.
 - `DEFECTS.md` never reaches a sandbox (the reset script excludes it) — asserts must
   not depend on it.
 
@@ -141,6 +142,14 @@ Fix the fixture or the assert, never lower the bar. Distinguish three cases:
    leftover sandbox (precedent: an appended evidence note quoting the old stale
    citation tripped a whole-file regex; the check now scopes to the pre-append body),
    then add that text to `lib/checks.test.mjs`.
+
+A capability eval guards a mode real runs still show although the rule against it exists
+(`grill-verified-claims`): its failure is the expected signal, reported as a skill finding until
+the skill closes it, never a reason to loosen the check.
+
+A prompt that hands `/fd3:build-spec` a finished spec carries the reason beside the path, the
+way a user types it. Without one, re-entry asks what brings the spec back, `first_option` picks
+"a change to make" with no change attached, and the run stops waiting for it.
 
 A pass deserves the same suspicion: a check that any numbered lines satisfied passed a
 lookup update as a grilling round, and one that counted verdict lines passed a run whose
