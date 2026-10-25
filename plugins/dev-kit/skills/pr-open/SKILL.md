@@ -16,7 +16,7 @@ Run `git fetch origin` first, then resolve each before moving on:
 
 - **Branch.** `git branch --show-current`. On the default branch (`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`) or a detached HEAD, stop and say so.
 - **Working tree.** When `git status --porcelain --untracked-files=no` prints anything, list it and ask whether to open the PR from the committed state or stop so the user can commit. The PR carries commits only; this skill never commits. Untracked files do not block; list their paths in the final report as not in the PR.
-- **Existing PR.** Check this before the base: `gh pr list --head <branch> --state open --json number,url,baseRefName`. When one exists, push (step 5), report its URL, its base and the push result, and finish. Rewrite its description only when the request asks for it: draft the body (steps 2-4) against that PR's base and apply it with `gh pr edit <number> --body-file <file>`, leaving its title as it is. Otherwise offer the rewrite in one line of the report, not as a question.
+- **Existing PR.** Check this before the base: `gh pr list --head <branch> --state open --json number,url,baseRefName`. When one exists, push (step 5), assess the risk against that PR's base and update its risk label (step 2 **Risk**, step 5.6), report its URL, its base, the push result and the risk, and finish. Rewrite its description only when the request asks for it: draft the body (steps 2-4) against that PR's base and apply it with `gh pr edit <number> --body-file <file>`, leaving its title as it is. Otherwise offer the rewrite in one line of the report, not as a question.
 - **Base.** Take a base named in the request. Otherwise use the default branch, unless the branch is stacked: when the head branch of an open PR other than the current branch (`gh pr list --state open --json number,headRefName`) is an ancestor of HEAD (`git merge-base --is-ancestor origin/<head> HEAD`), base on the nearest such branch and say so. Every other such ancestor that is not itself an ancestor of the chosen base (`git merge-base --is-ancestor origin/<head> origin/<base>` fails) is a second parent: name its PR in the report and in the body's dependency section, and say that its commits show in this PR's diff until it merges.
 - **Commits ahead.** `git log --oneline origin/<base>..HEAD` lists at least one commit. With none, stop: there is nothing to open.
 - **Behind base.** When `git rev-list --count HEAD..origin/<base>` is above zero, report the count and whether `git merge-tree --write-tree HEAD origin/<base>` conflicts (it exits 1), then open the PR as it stands. Never merge, rebase or commit here; offer the sync in the report as a separate step.
@@ -28,6 +28,7 @@ Run `git fetch origin` first, then resolve each before moving on:
 - **Why.** Take it from commit bodies, the issue, or the conversation. When none of them gives a reason, describe the effect of the change and leave the motive out.
 - **Design docs.** Collect the specs, ADRs and design documents the diff adds or a commit message names.
 - **Testing.** Collect what is evidenced: tests added or changed in the diff, and commands run in this session with their result. Nothing else counts as tested.
+- **Risk.** Call the `mcp__dev-kit__pr_risk` tool with `base` set to the chosen base; when it is not loaded, look it up with tool search first. It exists only when a TypeSafe key is configured, so a missing tool means the PR opens without a risk section or label, and the report says `Risk: not assessed (pr_risk tool not available)`. A result starting `Risk assessment unavailable:` means the same, with its reason in the report. Otherwise the result is JSON: `level`, `confidence`, `lowConfidence`, `flags` (each with `label` and `probability`), `model`, `label` and `coverage`. It is evidence from a model, not a verdict: quote it as given and never adjust the level.
 
 ## 3. Find the template
 
@@ -64,6 +65,19 @@ Keep the template's structure intact: every heading, in its order, and every che
 - A section the change does not touch gets `N/A`, plus a few words of reason when it is not obvious.
 - Tick a checkbox only when evidence shows it is true. Leave the rest unticked, as written.
 - The first section that describes the change opens with the **one big thing** in bold, then a **Why it matters** line, then bullets. It ends with a **Go deeper** line linking the design docs from step 2 (a repository-relative path or a blob URL), even when the repository has its own template; drop the line when there are none.
+- With a risk result from step 2, append a `## Risk` section as the body's last section, also under a repository template, and leave it out otherwise. It does not count toward the word budget:
+
+```markdown
+## Risk
+
+**<level>** · confidence <confidence> · assessed by <model>
+
+- <flag label> (<probability>)
+
+<sub>Partial assessment: <filesNotAssessed> files and <truncatedHunks> cut hunks were not assessed.</sub>
+```
+
+  Write `No risk flags raised.` in place of the bullets when `flags` is empty. Keep the `<sub>` line only when `coverage.partial` is true, and add `Low confidence.` to the first line when `lowConfidence` is true.
 
 **Title.** Check `git log --format=%s -30 origin/<base>`: when most subjects follow Conventional Commits (`type(scope): subject`), write the title that way, with the type and scope the branch's commits use. Otherwise write a concise imperative sentence. Keep it under 70 characters.
 
@@ -83,5 +97,6 @@ Keep the template's structure intact: every heading, in its order, and every che
 3. `gh pr create --base <base> --head <branch> --title "<title>" --body-file <file>`, adding `--draft` only when the request asks for a draft.
 4. Delete the temporary file.
 5. `gh pr edit <url> --add-assignee @me`. It runs apart from the create because assignment can fail on its own (no push access to the base repository); on failure the PR stays opened, and the report says it is unassigned and why.
+6. With a risk result whose `label.enabled` is true: `gh pr edit <url> --add-label "<label.name>"`, plus `--remove-label` for every other name in `label.all` the PR already carries (`gh pr view <url> --json labels`). When the add fails because the label does not exist, run `gh label create "<label.name>" --description "Pull request risk assessed by TypeSafe Jev"` once and retry; never pass `--force`, which rewrites an existing label. A label failure leaves the PR as it is, and the report says why.
 
-Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), each section left `N/A` or checkbox left unticked for the author to complete, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.
+Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), each section left `N/A` or checkbox left unticked for the author to complete, the risk level with its flags and label, or why it was not assessed, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.
