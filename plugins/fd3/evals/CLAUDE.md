@@ -40,10 +40,10 @@ provider's PreToolUse hook on `Workflow` snapshots the task files into
 `metadata.fd3.workflowCalls` and denies the call, so the run ends at its launch and the
 check reads the files as the workflow's agents would have received them. The "first
 batch" is every AskUserQuestion call made before the first Edit, Write or Workflow
-call, read from the top-level `metadata.toolCalls`. A second hook denies any
-`claude plugin enable|disable|install|uninstall|update`: step 2 offers enabling
-code-review as part of its review answer, and `first_option` took it on a live trial,
-writing the operator's real user settings.
+call, read from the top-level `metadata.toolCalls`. Step 2 offers enabling code-review as
+part of its review answer, and `first_option` took it on a live trial, writing the
+operator's real user settings — the shared `Bash(claude plugin *)` deny rule (see
+Isolation) now refuses it in every config.
 
 The two `implement-fix-cr-*` scenarios render the review fixer the same way, after a
 review whose scripted cr-merge result is the scenario's one `finding`. Their check reads
@@ -54,6 +54,43 @@ must match the scenario's `allowedLine` (none for the spec-bound one).
 `implement-ci-waits-long-command` must hold every time: its intended gate is pass^3
 (`scripts/run-evals.sh fd3 implement-ci --trials 3`). It sleeps 200 s by design.
 None of the group is in the CI smoke filter.
+
+## Isolation
+
+Eval agents run with `bypassPermissions` on the operator's machine, so every target
+provider and the SDK grader load `scripts/evals-isolation.json` as flag settings (`settings:`;
+the SDK refuses a settings path together with its `sandbox` option, so the sandbox block
+lives in the file). What it confines:
+
+- **Bash (and Monitor) — OS sandbox** (Seatbelt on macOS, bubblewrap + socat on Linux).
+  `failIfUnavailable` makes a run fail rather than run unsandboxed; `allowUnsandboxedCommands:
+  false` ignores `dangerouslyDisableSandbox`. Writes: the working directory (each scenario's
+  `.sandbox/<name>`) and the sandbox temp dir only (`$TMPDIR` = `/tmp/claude-<uid>` on macOS);
+  `/tmp` itself and the home directory are read-only, and the CLI's config dir is write-protected.
+  Unsandboxed runs of `grill-verified-claims` and `build-spec-post-verdict-change` wrote scratch
+  files straight to `/tmp`; those writes now fail and the agent has to fall back to `$TMPDIR`.
+  Reads: `credentials.files` denies `~/.config/gcloud`, `~/.aws`, `~/.kube`, `~/.docker`,
+  `~/.ssh`, `~/.netrc`, `~/.npmrc`, `~/.git-credentials`, `~/.config/gh`, `~/.config/op`,
+  `~/.ccs`, `~/.claude`, `~/.claude.json`; `credentials.envVars` unsets cloud, registry,
+  GitHub, Anthropic and MCP tokens. Network: `strictAllowlist` with only the package registries
+  and GitHub read hosts the grill research used (`registry.npmjs.org`, `registry.terraform.io`,
+  `raw.githubusercontent.com`, `api.github.com`); any other host is refused, not prompted.
+- **File tools — permission deny rules**, which hold under `bypassPermissions` (deny is
+  evaluated before the mode). `Read(...)` denies on the same credential paths and on the CLI's
+  settings and credential files under `~/.claude` and `~/.ccs` (a `Read` deny also blocks
+  Edit/Write there), plus `Edit(~/.claude/**)` and `Edit(~/.ccs/**)`. The rest of those dirs
+  stays readable to Read on purpose: the CLI persists oversized tool results under its config
+  dir's `projects/`, and sandboxed Bash cannot reach them (an `allowRead` for that subtree does
+  not re-open it inside the credentials deny), so the agent reads them back with Read — a run
+  that greps such a file from Bash gets `Operation not permitted` and retries.
+- **`claude plugin …` / `claude plugins …`** — a Bash deny rule.
+
+Not confined: WebFetch and WebSearch (in-process; `allowedDomains` does not gate them), MCP
+servers (in-process HTTP), the CLI's own API traffic and auth, hooks, and the rest of the
+filesystem for reads. For code-review, whose `working_dir` is the repo root, the whole checkout
+is writable. A live probe (Bash `wc` and Read of a gcloud config, `claude plugin list`, writes
+into `~/.ccs`, `curl https://example.com`, a `dangerouslyDisableSandbox` retry) was denied at
+every step while writes in the working directory succeeded.
 
 ## Running
 
@@ -69,8 +106,11 @@ None of the group is in the CI smoke filter.
   serially (`maxConcurrency: 1`) from a fresh `.sandbox/e2e-chain`. Never run two
   invocations of the runner at once — they share `.sandbox/`, and the second one's
   reset wipes the first one's chain mid-run.
+- For a model A/B, `--model <id>` exports `EVAL_TARGET_MODEL`, which every config's target
+  model reads (`{{ env.EVAL_TARGET_MODEL | default("claude-opus-5-5") }}`); the grader stays
+  pinned, and models the implement workflow script pins (the CI runner's haiku) keep theirs.
 - Every run is archived in `.results/runs/<UTC>-<sha>[-dirty]/`: `trial-<i>.json`,
-  `meta.json` (SHA, config, filter, configured target/grader model, tool versions)
+  `meta.json` (SHA, config, filter, configured target/grader model, `--model` override, tool versions)
   and `summary.json` (per test: passes/trials, Wilson 95% interval, pass^k,
   failures vs errors, cost, latency, actual model), printed at the end of the run;
   re-print one with `node scripts/eval-summary.mjs <run-dir>`.

@@ -187,13 +187,40 @@ the one `.sandbox/` the run reset. Run-all mode (`pnpm eval`) discovers every
 `plugins/<name>/evals/promptfooconfig.yaml`, runs each once, and writes
 `/tmp/eval-<name>.json` without the archive.
 
+## Isolation
+
+The target agent runs with `bypassPermissions` on your machine, so the target provider and
+the grader load `scripts/evals-isolation.json` (the same file the fd3 suite uses) as flag
+settings:
+
+- **Bash runs in the Claude Code sandbox** (Seatbelt on macOS; bubblewrap + socat on
+  Linux), in strict mode: the run fails if the sandbox cannot start, and
+  `dangerouslyDisableSandbox` is ignored. Sandboxed commands write only inside the working
+  directory and `$TMPDIR`, cannot read `~/.config/gcloud`, `~/.aws`, `~/.kube`, `~/.docker`,
+  `~/.ssh`, `~/.netrc`, `~/.npmrc`, `~/.git-credentials`, `~/.config/gh`, `~/.config/op`,
+  `~/.ccs`, `~/.claude` or `~/.claude.json`, see cloud/registry/GitHub/Anthropic tokens
+  unset, and reach only `registry.npmjs.org`, `registry.terraform.io`,
+  `raw.githubusercontent.com` and `api.github.com` on the network.
+- **Read / Edit / Write** are kept off the same credential paths and off the CLI's settings
+  and credential files by permission deny rules, which hold under `bypassPermissions`.
+- **`claude plugin …`** is refused by a Bash deny rule.
+
+Not confined: WebFetch/WebSearch, MCP servers, the CLI's own API traffic, and reads elsewhere
+on disk. This suite's `working_dir` is the repo root, so the whole checkout is writable. The
+pr-scope evals call the `gh` stand-in in `.sandbox/bin` by path; it answers from canned data and
+writes only under `.sandbox/`, so it needs no network or token. A large tool output the CLI persists under its config
+dir is readable with Read, not from sandboxed Bash.
+
 ## Notes & knobs
 
 - **Model.** Target and grader are pinned to `claude-opus-5-5`, the model the plugin
   is used with, so a score measures what users run (`providers[0].config.model` and
   `defaultTest.options.provider.config.model`). promptfoo 0.123.1 does not list that
   id and logs a harmless "Using unknown model for Claude Agent SDK" warning. Every
-  score below was measured on the model its row names, not on this pin.
+  score below was measured on the model its row names, not on this pin. For an A/B,
+  `pnpm eval:code-review -- <pattern> --model <id>` swaps the target model only (the
+  config reads `EVAL_TARGET_MODEL`); the grader stays pinned and `meta.json` records the
+  override.
 
 - **Measured scores** (assertion-level; promptfoo's headline count is test-level and
   fails a whole test on one assertion). They were measured on the earlier, mostly-rubric
