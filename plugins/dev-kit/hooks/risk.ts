@@ -1,11 +1,11 @@
 // Pure helpers for the pr_risk tool: no mods API calls, so they can be imported and unit tested.
 
-export const DEFAULT_LEVELS = ['low', 'medium', 'high', 'critical']
+const DEFAULT_LEVELS = ['low', 'medium', 'high', 'critical']
 
 // Jev's default limit is 32k tokens per question and code tokenizes at ~3 chars a token;
 // 72k chars (~24k tokens) for the whole state leaves headroom for the questions.
 export const STATE_CHAR_BUDGET = 72_000
-export const HEADER_CHAR_BUDGET = 12_000
+const HEADER_CHAR_BUDGET = 12_000
 export const MAX_PARTS = 8
 
 const EXCLUDED_FILE = [
@@ -25,7 +25,7 @@ const RUBRIC = [
   'A defect would likely cause an outage, data loss or a security exposure that is hard to reverse',
 ]
 
-export const SIGNALS: Record<string, { label: string; instructions: string }> = {
+const SIGNALS: Record<string, { label: string; instructions: string }> = {
   security: {
     label: 'Touches security',
     instructions:
@@ -58,15 +58,15 @@ export const SIGNALS: Record<string, { label: string; instructions: string }> = 
 
 export type FileDiff = { path: string; text: string }
 
-export type Part = { files: string[]; diff: string }
+type Part = { files: string[]; diff: string }
 
-export type Split = {
+type Split = {
   parts: Part[]
   skippedFiles: string[]
   truncatedHunks: number
 }
 
-export type JevAnswer = {
+type JevAnswer = {
   score?: number
   confidence?: number
   noul?: number
@@ -74,7 +74,7 @@ export type JevAnswer = {
 
 export type PartResult = { model: string; answers: Record<string, JevAnswer> }
 
-export type Config = {
+type Config = {
   levels: string[]
   labelEnabled: boolean
   labelTemplate: string
@@ -84,7 +84,7 @@ export function isExcluded(path: string): boolean {
   return EXCLUDED_FILE.some((re) => re.test(path))
 }
 
-export function readLevels(value: unknown): string[] {
+function readLevels(value: unknown): string[] {
   const list = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
   const levels = list.map((v) => String(v).trim()).filter(Boolean)
   // Jev accepts 1–10 score criteria, and one level carries no information.
