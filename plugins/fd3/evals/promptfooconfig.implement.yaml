@@ -13,6 +13,9 @@ providers:
       # The session model; an agent the workflow script pins (the CI runner's haiku) runs on that.
       model: claude-opus-5-5
       setting_sources: []
+      # Sandboxed Bash and deny rules for the file tools: these agents run with bypassPermissions
+      # on the operator's machine.
+      settings: ../../../scripts/evals-isolation.json
       max_budget_usd: 5.0
       max_turns: 80
       allow_all_tools: true

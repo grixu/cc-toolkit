@@ -10,6 +10,9 @@ providers:
       apiKeyRequired: false
       model: claude-opus-5-5
       setting_sources: []
+      # Sandboxed Bash and deny rules for the file tools: these agents run with bypassPermissions
+      # on the operator's machine.
+      settings: ../../../scripts/evals-isolation.json
       max_budget_usd: 2.0
       max_turns: 60
       allow_all_tools: true

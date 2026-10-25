@@ -51,30 +51,13 @@ function skillConfig(scenario, sandbox, base, model, fd3) {
       },
     };
   };
-  // Step 2's review option can mean `claude plugin enable`, and a first_option "yes" then rewrites
-  // the operator's real user settings, which no sandbox reset restores.
-  const keepPluginConfig = async (input) =>
-    /\bclaude\s+plugins?\s+(enable|disable|install|uninstall|update)\b/.test(input?.tool_input?.command ?? '')
-      ? {
-          hookSpecificOutput: {
-            hookEventName: 'PreToolUse',
-            permissionDecision: 'deny',
-            permissionDecisionReason: 'This evaluation never changes the machine\'s plugin configuration; carry on without it.',
-          },
-        }
-      : {};
   return {
     ...base,
     model,
     working_dir: path.join(sandbox, 'app'),
     ask_user_question: { behavior: 'first_option' },
     plugins: [{ type: 'local', path: PLUGIN_ROOT }],
-    hooks: {
-      PreToolUse: [
-        { matcher: 'Workflow', hooks: [stopAtLaunch] },
-        { matcher: 'Bash', hooks: [keepPluginConfig] },
-      ],
-    },
+    hooks: { PreToolUse: [{ matcher: 'Workflow', hooks: [stopAtLaunch] }] },
   };
 }
 
@@ -93,6 +76,9 @@ export default class ImplementProvider {
     if (!scenario) return { error: `unknown implement scenario: ${name}` };
     const sandbox = sandboxDir(name);
     const { model, ...base } = this.config;
+    // promptfoo resolves a relative `settings` path only for its own YAML-declared providers; passed
+    // through here, the CLI would resolve it against the agent's working directory.
+    if (base.settings && !path.isAbsolute(base.settings)) base.settings = path.resolve(EVALS_DIR, base.settings);
     const fd3 = { scenario: name };
     let config;
     let text = prompt;
