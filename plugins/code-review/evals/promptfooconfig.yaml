@@ -111,7 +111,7 @@ tests:
       # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
       # report closes on the skill's own tally line instead.
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: '# ===== Datadog =====', verdict: REMOVE, rule: R5 }
@@ -155,7 +155,7 @@ tests:
       file: plugins/code-review/evals/comment-track/scheduler.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
       # cross-file / internal-doc references
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
@@ -189,7 +189,7 @@ tests:
       file: plugins/code-review/evals/comment-track/dlq-codes.ts plugins/code-review/evals/comment-track/dlq.handler.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
       # rationale parked on a declaration
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
@@ -225,7 +225,7 @@ tests:
       file: plugins/code-review/evals/comment-track/payment-validator.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: 'F1: users can submit', verdict: REMOVE, rule: R4 }
@@ -274,7 +274,7 @@ tests:
       file: plugins/code-review/evals/comment-track/host-allowlist.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
       # each carries a real WHY: neither a blanket REMOVE nor KEEP-as-is
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
