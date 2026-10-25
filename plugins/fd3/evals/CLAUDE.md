@@ -72,9 +72,10 @@ lives in the file). What it confines:
   Reads: `credentials.files` denies `~/.config/gcloud`, `~/.aws`, `~/.kube`, `~/.docker`,
   `~/.ssh`, `~/.netrc`, `~/.npmrc`, `~/.git-credentials`, `~/.config/gh`, `~/.config/op`,
   `~/.ccs`, `~/.claude`, `~/.claude.json`; `credentials.envVars` unsets cloud, registry,
-  GitHub, Anthropic and MCP tokens. Network: `strictAllowlist` with only the package registries
-  and GitHub read hosts the grill research used (`registry.npmjs.org`, `registry.terraform.io`,
-  `raw.githubusercontent.com`, `api.github.com`); any other host is refused, not prompted.
+  GitHub, Anthropic and MCP tokens. Network: `strictAllowlist` with only the package registries,
+  GitHub read hosts and vendor docs the grill research used (`registry.npmjs.org`,
+  `registry.terraform.io`, `raw.githubusercontent.com`, `api.github.com`, `cloud.google.com` for
+  the BigQuery docs `grill-verified-claims` reads); any other host is refused, not prompted.
 - **File tools — permission deny rules**, which hold under `bypassPermissions` (deny is
   evaluated before the mode). `Read(...)` denies on the same credential paths and on the CLI's
   settings and credential files under `~/.claude` and `~/.ccs` (a `Read` deny also blocks

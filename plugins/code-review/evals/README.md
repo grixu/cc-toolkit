@@ -201,7 +201,7 @@ settings:
   `~/.ssh`, `~/.netrc`, `~/.npmrc`, `~/.git-credentials`, `~/.config/gh`, `~/.config/op`,
   `~/.ccs`, `~/.claude` or `~/.claude.json`, see cloud/registry/GitHub/Anthropic tokens
   unset, and reach only `registry.npmjs.org`, `registry.terraform.io`,
-  `raw.githubusercontent.com` and `api.github.com` on the network.
+  `raw.githubusercontent.com`, `api.github.com` and `cloud.google.com` on the network.
 - **Read / Edit / Write** are kept off the same credential paths and off the CLI's settings
   and credential files by permission deny rules, which hold under `bypassPermissions`.
 - **`claude plugin …`** is refused by a Bash deny rule.

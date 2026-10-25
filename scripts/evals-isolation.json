@@ -80,7 +80,8 @@
         "registry.npmjs.org",
         "registry.terraform.io",
         "raw.githubusercontent.com",
-        "api.github.com"
+        "api.github.com",
+        "cloud.google.com"
       ]
     }
   }
