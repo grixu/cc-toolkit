@@ -25,7 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The reviewer-mode draft also leaves out a finding an outdated review comment (`line` null)
   already raises, when `git diff <original_commit_id> <head>` leaves the comment's
   `original_line` range untouched; a comment on lines the branch has since changed suppresses
-  nothing. The wrap-up names such a point as raised on an earlier revision. Eval-27's PR #9 gains
+  nothing, and neither does one whose `original_commit_id` stays missing after
+  `git fetch origin <original_commit_id>` (a force-pushed or rebased PR). The wrap-up names such
+  a point as raised on an earlier revision. Eval-27's PR #9 gains
   an earlier revision with one outdated comment of each kind
 
 ### Changed

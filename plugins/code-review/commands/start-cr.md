@@ -534,7 +534,11 @@ matching point on other lines. A comment GitHub marks outdated has `line` null: 
 `original_line` (from `original_start_line` for a range) of `original_commit_id`, an earlier
 revision. It still raises its point when `git diff <original_commit_id> <headRefOid> -- <path>`
 leaves those lines untouched; match it at the head lines they now sit on. A comment on lines the
-branch has since changed raises nothing, even when the new code repeats the defect. The wrap-up
+branch has since changed raises nothing, even when the new code repeats the defect. After a
+force-push or rebase `original_commit_id` may be missing from the fetched history: run
+`git fetch origin <original_commit_id>`, and if the commit is still missing, treat the comment as
+on changed lines — it raises nothing and the finding stays in the draft, since dropping a real
+finding on a guess costs more than a repeated point. The wrap-up
 names each point left out this way once — `path:L<lines>`, the finding, and who already raised
 it, adding "on an earlier revision" for an outdated comment.
 
