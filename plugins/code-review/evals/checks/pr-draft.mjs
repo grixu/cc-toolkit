@@ -143,3 +143,40 @@ export function nothingEdited(output, context) {
   if (mutating.length) bad.push(`edited, committed or pushed: ${mutating.map((c) => c.input?.file_path ?? c.input?.command.slice(0, 80)).join(' | ')}`);
   return bad.length ? result(false, bad.join('; ')) : result(true, 'nothing edited, committed or pushed');
 }
+
+const SUGGESTION = /```suggestion[^\n]*\n([\s\S]*?)\n?```/;
+
+// The one-line fix inside a hunk: its comment carries a suggestion block, and committing that block
+// over the comment's lines gives the fixed line with everything else in the file unchanged.
+export function suggestionBlock(output, context) {
+  const st = state(context);
+  if (!st.body?.comments) return result(false, 'no inline comments');
+  const { file, line, fixed, defect } = context.vars.suggestion;
+  const on = st.body.comments.filter((c) => c.path === file && (c.start_line ?? c.line) <= line && line <= c.line);
+  const withBlock = on.find((c) => SUGGESTION.test(c.body ?? ''));
+  if (!withBlock) return result(false, `no suggestion block on ${file}:${line} (${on.length} comment(s) there)`);
+  const before = git(st.repo, 'show', `${st.head}:${file}`).split('\n');
+  const lo = withBlock.start_line ?? withBlock.line;
+  const block = withBlock.body.match(SUGGESTION)[1].split('\n');
+  const after = [...before.slice(0, lo - 1), ...block, ...before.slice(withBlock.line)];
+  const where = `${file}:${lo === withBlock.line ? lo : `${lo}-${withBlock.line}`}`;
+  if (new RegExp(defect).test(after.join('\n'))) return result(false, `committing the suggestion on ${where} leaves /${defect}/ in the file`);
+  if (!after.some((l) => l.includes(fixed))) return result(false, `committing the suggestion on ${where} does not give "${fixed}"`);
+  // A block that spans more lines than its comment duplicates its neighbours; an added comment line is fine.
+  const code = (ls) => ls.filter((l) => l.trim() && !/^\s*\/\//.test(l)).map((l) => l.trim());
+  const expected = code(before.map((l, i) => (i === line - 1 ? fixed : l)));
+  const got = code(after);
+  const stray = got.length !== expected.length || got.some((l, i) => l !== expected[i] && !l.includes(fixed));
+  return stray ? result(false, `committing the suggestion on ${where} changes more than the fixed line`) : result(true, `${where} carries a suggestion that commits the fix`);
+}
+
+// A fix that needs a line outside the commented range, so a suggestion committed alone would break the file.
+export function noSuggestionMultiSite(output, context) {
+  const st = state(context);
+  if (!st.body?.comments) return result(false, 'no inline comments');
+  const { file, mentions } = context.vars.multiSite;
+  const hits = st.body.comments.filter((c) => c.path === file && new RegExp(mentions, 'i').test(c.body ?? ''));
+  if (!hits.length) return result(false, `no inline comment in ${file} matching /${mentions}/`);
+  const bad = hits.filter((c) => SUGGESTION.test(c.body));
+  return bad.length ? result(false, `${file}:${bad.map((c) => c.line).join(', ')} carries a suggestion block for a fix that needs a line outside its range`) : result(true, `${file}: the multi-site fix stays in prose`);
+}

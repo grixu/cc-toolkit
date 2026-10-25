@@ -21,5 +21,14 @@ reviewer mode. `lenses/` holds the files the eight active Scanners would have wr
 | `readability` · magic-literal · medium, `86400 * 1000` | `src/order-sync.ts:L53` | inline |
 | comments R9 REWRITE, the doc still says "30 days after issue" | `src/billing-window.ts:L5` | the review body, under its path: L5 is outside every hunk |
 
+## Suggestion blocks
+
+- The off-by-one at `src/order-sync.ts:L13` is fixed by replacing that one line
+  (`page < totalPages - 1` → `page < totalPages`), inside its hunk, so its comment ends with a
+  `suggestion` block that commits the fix alone.
+- The `45` at `src/billing-window.ts:L19` is fixed by a constant declared beside `DAY_MS` at L3,
+  outside every hunk: a block over L19 alone would name a constant that does not exist, so that fix
+  stays in prose.
+
 The R9 verdict is real because the change, not the comment, moved: the doc at L5 was true on
 `main` and the commit at L19 made it false.

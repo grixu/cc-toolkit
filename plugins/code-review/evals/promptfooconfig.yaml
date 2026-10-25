@@ -1006,6 +1006,9 @@ tests:
       # the R9 doc comment sits outside every hunk, so it belongs in the review body
       outside: { file: src/billing-window.ts, quote: '30 days' }
       high: { file: src/order-sync.ts, mentions: 'totalPages|last page|off-by-one' }
+      # the off-by-one is fixed by replacing L13 alone; the 45-day literal needs a constant beside DAY_MS at L3
+      suggestion: { file: src/order-sync.ts, line: 13, fixed: 'page < totalPages;', defect: 'totalPages - 1' }
+      multiSite: { file: src/billing-window.ts, mentions: '\b45\b|PAYMENT_TERM' }
     options: { max_budget_usd: 6, allow_all_tools: true }
     assert:
       - type: javascript
@@ -1018,6 +1021,10 @@ tests:
         value: file://checks/pr-draft.mjs:outsideHunkInBody
       - type: javascript
         value: file://checks/pr-draft.mjs:commentLabels
+      - type: javascript
+        value: file://checks/pr-draft.mjs:suggestionBlock
+      - type: javascript
+        value: file://checks/pr-draft.mjs:noSuggestionMultiSite
       - type: javascript
         value: file://checks/pr-draft.mjs:postOnlyAfterAnswer
       - type: javascript

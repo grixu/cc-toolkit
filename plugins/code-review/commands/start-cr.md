@@ -526,7 +526,19 @@ After the report, write the draft to a file in the session scratchpad as the req
 bullet (`path`, `line`, `side: RIGHT`, and `start_line` with `start_side: RIGHT` for a range,
 `body` the labelled comment with its fix clause), and a `body` holding the headline plus every
 `file-level` finding under its file path — the endpoint takes no file-level comment, so the
-review body carries them. Then, in the same turn, close with **one** `AskUserQuestion`:
+review body carries them.
+
+**A fix that only replaces the commented lines ends its comment with a suggestion block** — a
+`` ```suggestion `` fence holding the replacement for exactly the lines the comment spans
+(`start_line` to `line`, or `line` alone), indented as in the file, which GitHub lets the author
+commit with one click. Only when the replacement alone leaves the file correct: a fix that also
+needs a line outside that range (a constant declared elsewhere, an import), reaches another hunk or
+file, restructures code (a move, an extract, a rename across sites), or leaves the author a choice
+between remedies stays a fix clause in prose — a suggestion committed on its own would break the
+build or pick for them. The block lives in the draft only; the report keeps its no-fenced-code
+rule.
+
+Then, in the same turn, close with **one** `AskUserQuestion`:
 
 - **Post as a COMMENT review** — `gh api repos/<owner>/<repo>/pulls/<number>/reviews --method
   POST --input <draft file>`, then report the review's URL from the response;

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on the branch, its author against `gh api user`), asks first and offers reviewer mode on that
   pull request as the recommended option, beside reviewing the local changes. Eval-31 covers it,
   with a `gh` stand-in that resolves the current branch's pull request
+- Reviewer-mode draft comments end with a GitHub `suggestion` block when the fix only replaces the
+  lines the comment spans and that replacement alone leaves the file correct; a fix that needs
+  another line, hunk or file, restructures code, or leaves a choice between remedies stays in
+  prose. Eval-27 checks both
 
 ### Changed
 
