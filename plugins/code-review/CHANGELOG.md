@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `/start-cr` runs the four craft lenses on the session's model again. The eval-5…9 A/B behind
+  the Sonnet routing was confounded by a fixture defect (eval-9's real unused export); re-measured
+  on the fixed fixtures (eval-5…9 and eval-21, three trials each, Opus 5.5 grader) the two models
+  tie on quality, Sonnet 5.5 costs about 30% more, and it found the one real defect in the
+  calibration fixtures 1 of 3 times against Opus's 3 of 3
 - `/start-cr` adds the user's selection to the review file on disk, and marks it as fixes land,
   with `Edit` rather than a shell append or `sed -i`
 
