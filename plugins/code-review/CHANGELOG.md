@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lines the comment spans and that replacement alone leaves the file correct; a fix that needs
   another line, hunk or file, restructures code, or leaves a choice between remedies stays in
   prose. Eval-27 checks both
+- The reviewer-mode draft reads the review comments already on the pull request
+  (`GET /repos/{owner}/{repo}/pulls/{pull_number}/comments`) and leaves out a finding one of them
+  already raises on overlapping lines of the same file; the wrap-up names each left-out point once
+  with who raised it. Eval-27's `gh` stand-in now serves two existing comments, one matching a
+  finding and one on another finding's line about something else
 
 ### Changed
 

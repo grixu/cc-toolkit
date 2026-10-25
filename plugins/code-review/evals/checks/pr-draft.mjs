@@ -144,6 +144,25 @@ export function nothingEdited(output, context) {
   return bad.length ? result(false, bad.join('; ')) : result(true, 'nothing edited, committed or pushed');
 }
 
+// A finding a review comment on the PR already raises is left out of the draft and named once in the
+// wrap-up, while a comment on the same line about something else leaves its finding in.
+export function existingRaised(output, context) {
+  const st = state(context);
+  if (!st.body) return result(false, 'no review request body was drafted');
+  const { file, lines: [a, b], mentions, by } = context.vars.raised;
+  const bad = [];
+  const log = path.join(path.resolve(ROOT, path.dirname(context.vars.gh), '..'), 'gh-calls.log');
+  if (!(fs.existsSync(log) && new RegExp(`pulls/${context.vars.pr}/comments`).test(fs.readFileSync(log, 'utf8')))) bad.push('the PR\'s review comments were never fetched');
+  const point = new RegExp(mentions, 'i');
+  const repeated = (st.body.comments || []).filter((c) => c.path === file && (c.start_line ?? c.line) <= b && c.line >= a && point.test(c.body ?? ''));
+  if (repeated.length) bad.push(`the draft repeats the raised point at ${file}:${repeated.map((c) => c.line).join(', ')}`);
+  if (point.test(st.body.body ?? '')) bad.push('the review body repeats the raised point');
+  const { file: kf, line: kl, mentions: km } = context.vars.kept;
+  if (!(st.body.comments || []).some((c) => c.path === kf && (c.start_line ?? c.line) <= kl && kl <= c.line && new RegExp(km, 'i').test(c.body ?? ''))) bad.push(`the ${kf}:${kl} finding was dropped, though the comment there makes another point`);
+  if (!(output.includes(by) && point.test(output))) bad.push(`the wrap-up does not name the point ${by} already raised`);
+  return bad.length ? result(false, bad.join('; ')) : result(true, `${file}:${a}-${b} left to ${by}'s comment and named in the wrap-up; ${kf}:${kl} still drafted`);
+}
+
 const SUGGESTION = /```suggestion[^\n]*\n([\s\S]*?)\n?```/;
 
 // The one-line fix inside a hunk: its comment carries a suggestion block, and committing that block

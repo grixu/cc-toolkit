@@ -520,6 +520,15 @@ run as usual, with two changes to the report:
   `medium` → `suggestion:`, `nit` → `nitpick:`; a comment verdict R9 → `issue:`, any other
   comment verdict → `suggestion:`. The label never softens or raises the graded severity.
 
+**Leave out what the PR's reviewers already said.** Before drafting, read the review comments
+already on the PR — `gh api repos/<owner>/<repo>/pulls/<number>/comments --paginate`, each with
+its `path`, `line`, `start_line`, `body` and `user.login`. A comment on the same `path` whose
+lines overlap the finding's and that makes the same point — the same defect, however it is
+worded — already raises it: the finding gets no comment and no line in the review body, since a
+second voice on a raised point only adds noise to the author's queue. Same lines with a different
+point is not a match, and neither is a matching point on other lines. The wrap-up names each
+point left out this way once — `path:L<lines>`, the finding, and who already raised it.
+
 After the report, write the draft to a file in the session scratchpad as the request body of
 `POST repos/<owner>/<repo>/pulls/<number>/reviews` (owner and repo from the PR's `url`):
 `commit_id` set to `headRefOid`, `event` set to `COMMENT`, one `comments` entry per anchored

@@ -69,8 +69,9 @@ cat > .sandbox/bin/gh <<EOF
 #!/usr/bin/env bash
 # Stand-in for gh: answers \`gh pr view 7|8|9\`, \`gh pr view\` on a branch that has a PR, and
 # \`gh api user\`, filters any of them through --jq like gh does, takes a POST of a PR review
-# (keeping its --input body as .sandbox/gh-posted-<n>.json), answers any other GET under pulls/
-# with an empty list, and records every call with the directory it ran in.
+# (keeping its --input body as .sandbox/gh-posted-<n>.json), answers PR #9's review comments from
+# .sandbox/gh-pr9-comments.json and any other GET under pulls/ with an empty list, and records
+# every call with the directory it ran in.
 echo "\$* # in \$PWD" >> "$(pwd)/.sandbox/gh-calls.log"
 jq_expr='' args=()
 while [ \$# -gt 0 ]; do
@@ -128,6 +129,7 @@ if [ "\$1" = "api" ]; then
     exit 0
   fi
   case "\$path" in
+    *pulls/9/comments*) [ -z "\$post" ] && { emit < "$(pwd)/.sandbox/gh-pr9-comments.json"; exit 0; } ;;
     *pulls/*) [ -z "\$post" ] && { echo '[]' | emit; exit 0; } ;;
   esac
 fi
@@ -135,6 +137,8 @@ echo "gh stand-in: unsupported call: \$*" >&2
 exit 1
 EOF
 chmod +x .sandbox/bin/gh
+# The review comments already on PR #9, which eval-27's draft must not repeat.
+sed "s/HEAD_OID/$head9/g" fixtures/billing-window/review-comments.json > .sandbox/gh-pr9-comments.json
 
 # eval-31: a clone of the PR origin with PR #9's head checked out on its branch, as a reviewer who
 # fetched a colleague's branch would have it. Run with no --pr, start-cr must offer reviewer mode.

@@ -16,10 +16,21 @@ reviewer mode. `lenses/` holds the files the eight active Scanners would have wr
 | finding | site | where the draft puts it |
 |---|---|---|
 | `correctness` · off-by-one · high, the last page never fetched | `src/order-sync.ts:L13` | inline, opening `issue:` |
-| `correctness` · swallowed-error · medium, a failed post returns ok | `src/order-sync.ts:L20-L25` | inline |
+| `correctness` · swallowed-error · medium, a failed post returns ok | `src/order-sync.ts:L20-L25` | left out: `reviewer-a` already raised it |
 | `readability` · magic-literal · medium, `45` | `src/billing-window.ts:L19` | inline |
 | `readability` · magic-literal · medium, `86400 * 1000` | `src/order-sync.ts:L53` | inline |
 | comments R9 REWRITE, the doc still says "30 days after issue" | `src/billing-window.ts:L5` | the review body, under its path: L5 is outside every hunk |
+
+## Review comments already on the PR
+
+`review-comments.json` is what the `gh` stand-in answers for
+`GET repos/example/orders/pulls/9/comments` (`reset-sandbox.sh` fills in the head SHA):
+
+- `reviewer-a` on `src/order-sync.ts:L20-L25` raises the swallowed `ledger.post` failure, the
+  lens's `swallowed-error` point: the draft leaves that finding out, and the wrap-up names it once
+  with `reviewer-a`.
+- `reviewer-a` on `src/order-sync.ts:L13` asks for `pageIndex`, a naming nit: the same line as
+  the off-by-one but another point, so the off-by-one is still drafted.
 
 ## Suggestion blocks
 

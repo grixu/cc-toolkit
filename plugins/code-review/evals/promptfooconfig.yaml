@@ -1009,6 +1009,9 @@ tests:
       # the off-by-one is fixed by replacing L13 alone; the 45-day literal needs a constant beside DAY_MS at L3
       suggestion: { file: src/order-sync.ts, line: 13, fixed: 'page < totalPages;', defect: 'totalPages - 1' }
       multiSite: { file: src/billing-window.ts, mentions: '\b45\b|PAYMENT_TERM' }
+      # review-comments.json: reviewer-a already raised the swallowed error, and left an unrelated nit on L13
+      raised: { file: src/order-sync.ts, lines: [20, 25], mentions: 'ledger|ok: true|swallow|rethrow', by: reviewer-a }
+      kept: { file: src/order-sync.ts, line: 13, mentions: 'totalPages|last page|off-by-one' }
     options: { max_budget_usd: 6, allow_all_tools: true }
     assert:
       - type: javascript
@@ -1025,6 +1028,8 @@ tests:
         value: file://checks/pr-draft.mjs:suggestionBlock
       - type: javascript
         value: file://checks/pr-draft.mjs:noSuggestionMultiSite
+      - type: javascript
+        value: file://checks/pr-draft.mjs:existingRaised
       - type: javascript
         value: file://checks/pr-draft.mjs:postOnlyAfterAnswer
       - type: javascript
