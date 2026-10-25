@@ -37,9 +37,14 @@
 # node_modules, so this must run from the repo root (it cd's there itself).
 set -euo pipefail
 
-# `pnpm eval -- <args>` forwards a literal "--" into the script; drop it so it isn't
-# passed on to promptfoo (where "--" would end option parsing).
-[ "${1:-}" = "--" ] && shift
+# pnpm forwards a literal "--" wherever it sits (`pnpm eval:code-review -- eval-20` arrives
+# as `code-review -- eval-20`); drop every one so it neither hides the pattern nor reaches
+# promptfoo, where "--" would end option parsing.
+argv=()
+for a in "$@"; do
+  [ "$a" = "--" ] || argv+=("$a")
+done
+set -- ${argv[@]+"${argv[@]}"}
 
 cd "$(dirname "$0")/.."
 
