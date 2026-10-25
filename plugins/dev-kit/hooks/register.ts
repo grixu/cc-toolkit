@@ -100,15 +100,15 @@ async function assess($, base: unknown, options, config) {
   const budget = STATE_CHAR_BUDGET - head.commits.length - head.diffstat.length
   const files: FileDiff[] = []
   const unread: string[] = []
-  let read = 0
+  let charsRead = 0
   // Stop reading once the diff cannot fit in MAX_PARTS requests; the rest is reported as not assessed.
   for (const path of reviewable) {
-    if (read > budget * MAX_PARTS) {
+    if (charsRead > budget * MAX_PARTS) {
       unread.push(path)
       continue
     }
     const text = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(literal)${path}`])
-    read += text.length
+    charsRead += text.length
     files.push({ path, text: text.trimEnd() })
   }
 
@@ -119,7 +119,6 @@ async function assess($, base: unknown, options, config) {
 
   const url = endpointUrl(options?.typesafe_endpoint)
   const model = typeof options?.typesafe_model === 'string' && options.typesafe_model.trim() ? options.typesafe_model.trim() : 'jev-latest'
-  const qs = questions(config.levels)
   const results: PartResult[] = []
   for (const [i, part] of parts.entries()) {
     const res = await $.http.fetch(url, {
@@ -128,7 +127,7 @@ async function assess($, base: unknown, options, config) {
       body: JSON.stringify({
         model,
         state: { ...head, part: `${i + 1} of ${parts.length}`, diff: part.diff },
-        questions: qs,
+        questions: questions(config.levels),
       }),
     })
     if (!res.ok) throw new Error(httpError(res.status, res.text))
