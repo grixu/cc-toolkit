@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the user holds with the outcomes it can apply as options, never with "name it" as the
   recommendation
 
+### Fixed
+
+- review scans of the four craft lenses run on the session's model again, as `/start-cr`'s do: the
+  A/B that moved them to Sonnet was confounded by a code-review fixture defect, and on the fixed
+  fixtures Sonnet 5.5 tied Opus 5.5 on quality at about 30% more cost
+
 ## [0.4.0] - 2026-10-25
 
 ### Added

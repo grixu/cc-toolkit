@@ -1227,10 +1227,6 @@ const SINGLE_SCAN_MAX_FILES = 3
 // The scanner agent carries the lens's narrowed tool set and loads no CLAUDE.md, so the conventions
 // note cr-prepare wrote is the only house style a lens judges by.
 const SCANNER = 'code-review:scanner'
-// On the craft recall and calibration fixtures Sonnet matched Opus at about half the cost; the
-// other lenses were not measured, so they keep the session's model.
-const CRAFT_LENSES = ['readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types']
-const scanModel = (lens) => (CRAFT_LENSES.includes(lens) ? { model: 'sonnet' } : {})
 
 const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
 // A lens that read some of its files still reported, but its silence on the rest is not a verdict.
@@ -1247,7 +1243,7 @@ const scanLenses = async (lenses, dir, files, tag, pass) => {
   } else {
     results = await parallel(
       lenses.map((lens) => () =>
-        tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, ...scanModel(lens), label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+        tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
       ),
     )
   }
