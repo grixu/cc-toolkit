@@ -141,7 +141,10 @@ export function onlySelectedApplied(output, context) {
   if (!bucket) return result(false, `the first option "${picked}" matches no seeded bucket`);
   const { changed } = runState(context);
   const extra = changed.filter((f) => !bucket.files.includes(f));
-  return extra.length ? result(false, `"${picked}" was picked, yet the run also changed ${extra.join(', ')}`) : result(true, `"${picked}" changed ${changed.join(', ') || 'nothing'}`);
+  if (extra.length) return result(false, `"${picked}" was picked, yet the run also changed ${extra.join(', ')}`);
+  const untouched = bucket.files.filter((f) => !changed.includes(f));
+  if (untouched.length) return result(false, `"${picked}" was picked, yet the run left ${untouched.join(', ')} unchanged`);
+  return result(true, `"${picked}" changed ${changed.join(', ') || 'nothing'}`);
 }
 
 export function commitsMatchMode(output, context) {
@@ -153,9 +156,11 @@ export function commitsMatchMode(output, context) {
   const families = context.vars.families;
   const uncommitted = status.filter((l) => !userFiles(context).includes(l.slice(3)));
   const summary = `"${picked}", mode ${mode}, ${commits.length} commit(s)`;
-  if (/report only/i.test(picked) || !changed.length) {
+  if (/report only/i.test(picked)) {
     return commits.length || uncommitted.length ? result(false, `${summary}, yet the tree moved: ${uncommitted.join(', ')}`) : result(true, `${summary}; nothing applied, nothing committed`);
   }
+  // A fix bucket that applied nothing would otherwise satisfy every mode vacuously.
+  if (!changed.length) return result(false, `${summary}; a fix bucket was picked, yet nothing was applied`);
   if (mode === 'leave') return commits.length ? result(false, `${summary} under Leave uncommitted`) : result(true, `${summary}; edits left in the tree`);
   if (uncommitted.length) return result(false, `${summary}; still uncommitted: ${uncommitted.join(', ')}`);
   if (mode === 'one') return commits.length === 1 ? result(true, summary) : result(false, `${summary} under One commit`);
