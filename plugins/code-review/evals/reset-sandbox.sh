@@ -76,7 +76,8 @@ mkdir -p .sandbox/bin
 cat > .sandbox/bin/gh <<EOF
 #!/usr/bin/env bash
 # Stand-in for gh: answers \`gh pr view 7|8|9\`, \`gh pr view\` on a branch that has a PR, and
-# \`gh api user\`, filters any of them through --jq like gh does, takes a POST of a PR review
+# \`gh api user\` (eval-user, or the checkout's cr-evals.gh-user git config), filters any of them
+# through --jq like gh does, takes a POST of a PR review
 # (keeping its --input body as .sandbox/gh-posted-<n>.json), answers PR #9's review comments from
 # .sandbox/gh-pr9-comments.json and any other GET under pulls/ with an empty list, and records
 # every call with the directory it ran in.
@@ -93,7 +94,7 @@ done
 set -- "\${args[@]}"
 emit() { if [ -n "\$jq_expr" ]; then jq -r "\$jq_expr"; else cat; fi; }
 if [ "\$1 \$2" = "api user" ]; then
-  echo '{"login":"eval-user"}' | emit
+  printf '{"login":"%s"}\n' "\$(git config --get cr-evals.gh-user || echo eval-user)" | emit
   exit 0
 fi
 if [ "\$1 \$2" = "pr view" ]; then
@@ -154,6 +155,14 @@ local_pr=.sandbox/pr-local
 git clone -q "$origin" "$local_pr"
 git -C "$local_pr" fetch -q origin refs/pull/9/head
 git -C "$local_pr" switch -q -c feat/payment-term FETCH_HEAD
+
+# eval-32: eval-31's clone, but its gh user is colleague, PR #9's author, so the branch is the
+# user's own PR and start-cr must not offer reviewer mode.
+own_pr=.sandbox/pr-local-own
+git clone -q "$origin" "$own_pr"
+git -C "$own_pr" fetch -q origin refs/pull/9/head
+git -C "$own_pr" switch -q -c feat/payment-term FETCH_HEAD
+git -C "$own_pr" config cr-evals.gh-user colleague
 
 # eval-27: PR #9's review already ran through Step 3. The context directory names the detached
 # worktree Step 1 makes as the checkout, so the run goes from Step 1 straight to the merge.

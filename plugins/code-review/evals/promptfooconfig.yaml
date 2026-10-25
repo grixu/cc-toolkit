@@ -1100,3 +1100,17 @@ tests:
     assert:
       - type: javascript
         value: file://checks/pr-detect.mjs
+
+  - description: 'eval-32 pr-detect-own (start-cr Step 1 with no --pr, on a branch that is the user''s own PR)'
+    prompts: [pr-detect-track]
+    vars:
+      # eval-31's clone, but the gh stand-in's user there is colleague, PR #9's author
+      checkout: plugins/code-review/evals/.sandbox/pr-local-own
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      pr: 9
+      branch: feat/payment-term
+      expect: own
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-detect.mjs
