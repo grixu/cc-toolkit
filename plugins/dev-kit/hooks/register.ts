@@ -7,6 +7,7 @@ import {
   httpError,
   isExcluded,
   isSafeRef,
+  missingAnswer,
   questions,
   readConfig,
   split,
@@ -106,7 +107,7 @@ async function assess($, base: unknown, options, config) {
       unread.push(path)
       continue
     }
-    const text = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', path])
+    const text = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(literal)${path}`])
     read += text.length
     files.push({ path, text: text.trimEnd() })
   }
@@ -132,7 +133,10 @@ async function assess($, base: unknown, options, config) {
     })
     if (!res.ok) throw new Error(httpError(res.status, res.text))
     const data = JSON.parse(res.text)
-    results.push({ model: data.model, answers: data.answers ?? {} })
+    const answers = data.answers ?? {}
+    const missing = missingAnswer(answers)
+    if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}" (part ${i + 1} of ${parts.length})`)
+    results.push({ model: data.model, answers })
   }
 
   const report = aggregate(results, config)

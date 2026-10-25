@@ -200,6 +200,11 @@ export function split(files: FileDiff[], budget: number, maxParts = MAX_PARTS): 
   return { parts, skippedFiles, truncatedHunks }
 }
 
+export function missingAnswer(answers: Record<string, JevAnswer>): string | undefined {
+  if (!Number.isFinite(answers.overall_risk?.score)) return 'overall_risk'
+  return Object.keys(SIGNALS).find((key) => !Number.isFinite(answers[key]?.noul))
+}
+
 // The riskiest part decides the change's risk; a signal raised by any part counts for the whole.
 export function aggregate(results: PartResult[], config: Config) {
   let best = results[0]

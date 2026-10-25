@@ -14,8 +14,8 @@ function fakeGit(files: Numstat[]) {
     if (args[0] === 'log') return ok('abc123 feat: add login\n')
     if (args.includes('--stat=200')) return ok(files.map((f) => ` ${f.path} | 1 +`).join('\n'))
     if (args.includes('--numstat')) return ok(files.map((f) => `${f.binary ? '-' : '1'}\t${f.binary ? '-' : '0'}\t${f.path}\0`).join(''))
-    const path = args[args.length - 1]
-    return ok(files.find((f) => f.path === path)?.text ?? '')
+    const pathspec = args[args.length - 1]
+    return ok(files.find((f) => pathspec === `:(literal)${f.path}`)?.text ?? '')
   }
 }
 
@@ -110,12 +110,32 @@ test('splits a large diff across requests and keeps the riskiest part', async ($
   expect(report.flags.map((f) => f.key)).toEqual(['data'])
 })
 
+test('reads a path with glob characters literally', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeGit([{ path: 'app/[id]/page.tsx', text: fileDiff('app/[id]/page.tsx', '+route') }]))
+  let body = ''
+  on('http.fetch', ($, e) => {
+    body = e.init.body
+    return { value: jevAnswer(1) }
+  })
+  await $.tool.call({ tool: TOOL, base: 'main' })
+  expect(JSON.parse(body).state.diff).toContain('+route')
+})
+
 test('reports a rejected key', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'bad' })
   on('process.run', fakeGit([{ path: 'a.ts', text: fileDiff('a.ts', '+a') }]))
   on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: 'unauthorized' } }))
   const out = await $.tool.call({ tool: TOOL, base: 'main' })
   expect(out.result).toMatch(/^Risk assessment unavailable: TypeSafe rejected the API key \(HTTP 401\)/)
+})
+
+test('reports an answer without a numeric score as unavailable', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeGit([{ path: 'a.ts', text: fileDiff('a.ts', '+a') }]))
+  on('http.fetch', () => ({ value: jevAnswer(Number.NaN) }))
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+  expect(out.result).toMatch(/^Risk assessment unavailable: TypeSafe returned no numeric answer for "overall_risk"/)
 })
 
 test('refuses a base that git could read as an option', async ($, on) => {
