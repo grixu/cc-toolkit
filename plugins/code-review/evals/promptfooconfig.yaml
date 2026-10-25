@@ -715,14 +715,14 @@ tests:
         config: { family: standards, mentions: ['return type'] }
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: standards, mentions: creditLimitMinor, severity: nit }
+        config: { family: standards, mentions: [creditLimitMinor, CREDIT_LIMIT_MINOR, '\bL19\b'], severity: nit }
       # the craft "prefer" rule quoted from the `.local` file
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: standards, mentions: creditLimitMinor, all: ['Prefer `\?\?` over `\|\|` for a default value', 'CODING_STANDARDS\.local\.md`? › Defaults'] }
+        config: { family: standards, mentions: [creditLimitMinor, CREDIT_LIMIT_MINOR, '\bL19\b'], all: ['Prefer `\?\?` over `\|\|` for a default value', 'CODING_STANDARDS\.local\.md`? › Defaults'] }
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: standards, mentions: creditLimitMinor, fix: '\?\?' }
+        config: { family: standards, mentions: [creditLimitMinor, CREDIT_LIMIT_MINOR, '\bL19\b'], fix: '\?\?' }
       # a vague line is not a quotable rule
       - type: javascript
         value: file://checks/report.mjs:noFinding
