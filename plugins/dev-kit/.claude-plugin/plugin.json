@@ -1,6 +1,6 @@
 {
   "name": "dev-kit",
-  "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template.",
+  "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template and labelled with its risk, assessed by the TypeSafe Jev model.",
   "version": "0.1.0",
   "author": {
     "name": "Mateusz Gostański",
@@ -14,5 +14,49 @@
     "code-review",
     "dependencies",
     "renovate"
-  ]
+  ],
+  "userConfig": {
+    "typesafe_api_key": {
+      "type": "string",
+      "title": "TypeSafe API key",
+      "description": "Key for the Jev risk assessment. Leave empty to read TYPESAFE_API_KEY; with neither set, no diff is sent anywhere.",
+      "sensitive": true
+    },
+    "typesafe_endpoint": {
+      "type": "string",
+      "title": "TypeSafe endpoint",
+      "description": "Base URL of the TypeSafe API",
+      "default": "https://api.typesafe.ai"
+    },
+    "typesafe_model": {
+      "type": "string",
+      "title": "Jev model",
+      "description": "Model name or alias, such as jev-latest or jev-1.14.0",
+      "default": "jev-latest"
+    },
+    "risk_label": {
+      "type": "boolean",
+      "title": "Risk label",
+      "description": "Add a risk label to the pull request pr-open opens",
+      "default": true
+    },
+    "risk_label_name": {
+      "type": "string",
+      "title": "Risk label name",
+      "description": "Label name; {level} is replaced by the risk level",
+      "default": "risk: {level}"
+    },
+    "risk_levels": {
+      "type": "string",
+      "multiple": true,
+      "title": "Risk levels",
+      "description": "Risk level names from lowest to highest, 2 to 10 of them",
+      "default": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    }
+  }
 }

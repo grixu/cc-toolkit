@@ -19,3 +19,7 @@ plugins/tester/evals/fixtures/target-app/state.json
 # Python bytecode
 __pycache__/
 *.pyc
+
+# mod type declarations Claude Code writes when it loads a plugin with --plugin-dir
+plugins/*/.claude-plugin/types/
+plugins/*/tsconfig.json

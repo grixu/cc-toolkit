@@ -18,6 +18,7 @@ dev-kit is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then ins
 - To push a fix to a file under `.github/workflows/`, a token with the `workflow` scope.
 - For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
 - Optional, for `dep-upgrade-check`: the firecrawl and context7 MCP servers, which it uses to find migration guides. Without them it still reads GitHub releases and changelogs, and reports a guide it could not find as `no guide found`.
+- Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment-typesafe-jev).
 
 ## Skills
 
@@ -108,10 +109,37 @@ It pushes the current branch and fills the repository's pull request template. I
 - It assigns the pull request to you.
 - When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
 - When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line.
+- With a TypeSafe key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one. Without a key, nothing is sent and the report says the risk was not assessed.
 
 When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
-Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, and a one-line suggestion to run `pr-shepherd` next.
+Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label (or why it was not assessed), and a one-line suggestion to run `pr-shepherd` next.
+
+## Risk assessment (TypeSafe Jev)
+
+dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It sends the commits, the diffstat and the diff of `<base>...HEAD` to [TypeSafe's Jev model](https://docs.typesafe.ai/introduction) and returns a risk level, the model's confidence, and risk flags: security, persisted data, public contracts, CI and deployment, hard-to-reverse operations, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
+
+**The diff leaves your machine.** The tool exists only when a key is configured, so without one nothing is sent.
+
+Set the key in one of two ways:
+
+- Export `TYPESAFE_API_KEY` in the shell you start Claude Code from (the default).
+- Or enter it as the plugin's **TypeSafe API key** option, which Claude Code keeps in your system's credential store. It takes precedence over the variable.
+
+Open the options with `/plugin configure dev-kit@cc-toolkit`:
+
+| Option | Default | What it does |
+|---|---|---|
+| `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The API key |
+| `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the API; `/v1/systemone` is appended |
+| `typesafe_model` | `jev-latest` | Model name or alias; pin a version such as `jev-1.14.0` to keep levels stable across Jev releases |
+| `risk_label` | `true` | Whether `pr-open` labels the pull request |
+| `risk_label_name` | `risk: {level}` | The label name; `{level}` becomes the level |
+| `risk_levels` | `low`, `medium`, `high`, `critical` | Level names from lowest to highest, 2 to 10 of them; the model rates the change on exactly these levels |
+
+`pr-open` creates a missing label once and never changes an existing one. A key set or changed during a session takes effect after `/reload-plugins`.
+
+Large diffs are compacted and split. Lockfiles, binaries, minified, generated and build output files are left out of the diff but stay in the diffstat, and context lines are cut to one. When the rest exceeds what Jev reads in one request, it is split by file, and a large file by hunk, into up to 8 requests. The riskiest part sets the level, and a flag raised by any part counts. Anything beyond 8 requests is not assessed, and the **Risk** section says so.
 
 ## Permissions
 

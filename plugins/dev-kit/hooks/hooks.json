@@ -1,0 +1,4 @@
+{
+  "description": "dev-kit mod: the pr_risk tool that assesses a branch's risk with the TypeSafe Jev model",
+  "modules": ["./register.ts"]
+}

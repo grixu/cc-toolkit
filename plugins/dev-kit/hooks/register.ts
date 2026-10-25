@@ -1,0 +1,154 @@
+import {
+  MAX_PARTS,
+  STATE_CHAR_BUDGET,
+  aggregate,
+  endpointUrl,
+  header,
+  httpError,
+  isExcluded,
+  isSafeRef,
+  questions,
+  readConfig,
+  split,
+  type FileDiff,
+  type PartResult,
+} from './risk.ts'
+
+const TOOL = 'pr_risk'
+const DESCRIPTION =
+  'Assess the risk a branch introduces, with the TypeSafe Jev model. Sends the commits, diffstat and diff of <base>...HEAD in the current repository to TypeSafe and returns JSON: risk level, score, confidence, risk flags with probabilities, the GitHub label to apply, and how much of the diff was assessed. Call it when preparing or reviewing a pull request.'
+
+export function register(on, options) {
+  const config = readConfig(options)
+
+  on('session.start', async ($, e, next) => {
+    // Without a key nothing may leave the machine, so the tool does not exist at all.
+    if (await apiKey($, options)) {
+      try {
+        await $.tool.register({
+          name: TOOL,
+          description: DESCRIPTION,
+          inputSchema: {
+            type: 'object',
+            properties: {
+              base: { type: 'string', description: 'The branch the change merges into, such as main' },
+            },
+            required: ['base'],
+          },
+        })
+      } catch {
+        // A refused registration leaves the session without the tool, which pr-open treats as unconfigured.
+      }
+    }
+    return next(e)
+  })
+
+  on('tool.call', { tool: 'mcp__dev-kit__pr_risk' }, async ($, e) => {
+    try {
+      const report = await assess($, e.base, options, config)
+      return { result: JSON.stringify(report, null, 2) }
+    } catch (error) {
+      return { result: 'Risk assessment unavailable: ' + (error instanceof Error ? error.message : String(error)) }
+    }
+  }).catch(($, e, next) => ({ result: `Risk assessment unavailable: the hook failed (${next.error.kind}): ${next.error.message}` }))
+}
+
+async function apiKey($, options): Promise<string> {
+  const configured = typeof options?.typesafe_api_key === 'string' ? options.typesafe_api_key.trim() : ''
+  if (configured) return configured
+  return ((await $.env.get('TYPESAFE_API_KEY')) ?? '').trim()
+}
+
+async function git($, args: string[]): Promise<string> {
+  const r = await $.process.run(['git', ...args], { timeoutMs: 60_000 })
+  if (r.exitCode !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr.trim().slice(0, 300)}`)
+  return r.stdout
+}
+
+async function resolveBase($, base: string): Promise<string> {
+  for (const ref of [`origin/${base}`, base]) {
+    const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
+    if (r.exitCode === 0) return ref
+  }
+  throw new Error(`base branch "${base}" not found locally or on origin; run git fetch origin`)
+}
+
+async function assess($, base: unknown, options, config) {
+  if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
+  const key = await apiKey($, options)
+  if (!key) throw new Error('no TypeSafe API key; set TYPESAFE_API_KEY or the dev-kit option typesafe_api_key')
+
+  const ref = await resolveBase($, base)
+  const range = `${ref}...HEAD`
+  const [commits, diffstat, numstat] = await Promise.all([
+    git($, ['log', '--no-color', '--format=%h %s%n%b', `${ref}..HEAD`]),
+    git($, ['diff', '--no-color', '--stat=200', range]),
+    git($, ['diff', '--numstat', '-z', '--no-renames', range]),
+  ])
+
+  const entries = numstat.split('\0').filter(Boolean).map((line) => {
+    const [added, , ...path] = line.split('\t')
+    return { path: path.join('\t'), binary: added === '-' }
+  })
+  if (!entries.length) throw new Error(`no changes between ${ref} and HEAD`)
+
+  const excluded = entries.filter((f) => f.binary || isExcluded(f.path)).map((f) => f.path)
+  const reviewable = entries.filter((f) => !f.binary && !isExcluded(f.path)).map((f) => f.path)
+
+  const head = header(commits.trim(), diffstat.trim())
+  const budget = STATE_CHAR_BUDGET - head.commits.length - head.diffstat.length
+  const files: FileDiff[] = []
+  const unread: string[] = []
+  let read = 0
+  // Stop reading once the diff cannot fit in MAX_PARTS requests; the rest is reported as not assessed.
+  for (const path of reviewable) {
+    if (read > budget * MAX_PARTS) {
+      unread.push(path)
+      continue
+    }
+    const text = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', path])
+    read += text.length
+    files.push({ path, text: text.trimEnd() })
+  }
+
+  const plan = split(files, budget)
+  const parts = plan.parts.length
+    ? plan.parts
+    : [{ files: [], diff: '(no reviewable text diff: only lockfiles, binary or generated files changed)' }]
+
+  const url = endpointUrl(options?.typesafe_endpoint)
+  const model = typeof options?.typesafe_model === 'string' && options.typesafe_model.trim() ? options.typesafe_model.trim() : 'jev-latest'
+  const qs = questions(config.levels)
+  const results: PartResult[] = []
+  for (const [i, part] of parts.entries()) {
+    const res = await $.http.fetch(url, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        state: { ...head, part: `${i + 1} of ${parts.length}`, diff: part.diff },
+        questions: qs,
+      }),
+    })
+    if (!res.ok) throw new Error(httpError(res.status, res.text))
+    const data = JSON.parse(res.text)
+    results.push({ model: data.model, answers: data.answers ?? {} })
+  }
+
+  const report = aggregate(results, config)
+  const notAssessed = [...plan.skippedFiles, ...unread]
+  return {
+    ...report,
+    base: ref,
+    lowConfidence: report.confidence < 0.5,
+    coverage: {
+      requests: parts.length,
+      filesAssessed: reviewable.length - notAssessed.length,
+      filesNotAssessed: notAssessed.length,
+      filesNotAssessedSample: notAssessed.slice(0, 20),
+      filesExcluded: excluded.length,
+      truncatedHunks: plan.truncatedHunks,
+      partial: notAssessed.length > 0 || plan.truncatedHunks > 0,
+    },
+  }
+}
