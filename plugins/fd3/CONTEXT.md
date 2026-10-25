@@ -74,6 +74,10 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Research index** (`research/INDEX.md`) — grill-topic's digest of every lookup: an `I<n>` entry
   per question with the condensed answer, its sources and the report file. Decisions cite entries
   (`facts: I3`), write-spec reads it to find the reports; it routes, and evidence never cites it.
+- **Session folder** (`<spec-basename>.session/`) — the git-ignored folder beside a spec that holds
+  its session's working files once the spec has a path: the closing notes (`notes.md`), the question
+  ledger and `research/`. write-spec creates it with a `.gitignore` of `*`; a decision taken after
+  the verdict is appended to its notes. Never committed, never a task.
 - **Evidence record** — the spec's `Claim | How it was verified` table (template section 12). The
   spec's proof of work; a claim that rests on inference must say so.
 - **Verification kinds** — probes (runnable on demand), triggered (exercised by using the feature),

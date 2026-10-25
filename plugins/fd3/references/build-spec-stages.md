@@ -72,13 +72,15 @@ its verdict is not `ready`, relay what stays open and stop rather than launching
 The status, the verdict and any "validated" wording are written by passes only; never type them
 into the spec yourself. Nor its body, nor its place: the spec stays at the path stage 2 wrote, never
 moved or copied once a pass has read it. A decision the user takes after the verdict — a new option,
-a reversed choice, in this session or on re-entry — is appended to the spec's
-`<spec-basename>.notes.md` as a ratified decision with its provenance (a notes file or
-`<spec-basename>.research/` directory that no longer exists is created beside the spec, holding only
-what this decision brings), then applied by `fd3:write-spec` (resumed with `SendMessage` while its
-agent is addressable, otherwise invoked with the notes file, the research directory and the existing
-spec path), and the next pass reads its edit — the post-verdict pass in this session, the first
-stage-3 pass on re-entry.
+a reversed choice, in this session or on re-entry — is appended to `notes.md` in the spec's
+session folder, `<spec-basename>.session/`, as a ratified decision with its provenance, then
+applied by `fd3:write-spec` (resumed with `SendMessage` while its agent is addressable, otherwise
+invoked with that notes file, the folder's `research/` directory and the existing spec path), and
+the next pass reads its edit — the post-verdict pass in this session, the first stage-3 pass on
+re-entry. A session folder or a file in it that no longer exists is created, holding only what this
+decision brings, the folder with the `.gitignore` of `*` that `fd3:write-spec` gives it. A spec from
+before session folders keeps its notes beside it as `<spec-basename>.notes.md`, its research in
+`<spec-basename>.research/`: use those where they exist.
 
 ## Re-entry
 

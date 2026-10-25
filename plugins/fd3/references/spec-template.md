@@ -28,7 +28,8 @@ live in `spec-rules.md`, beside this file. Read it alongside this one.
 ## 1. Header and precedence
 
 Title, one sentence on what changes, the epic or ticket, a status, a date. Then the companion
-documents, each as a link.
+documents, each as a link. The spec's session folder is not one: it is never committed, so a link
+to it dangles for every reader but the author.
 
 Then, if the spec disagrees with anything already written down — an earlier design note, a set of
 ADRs, a previous iteration — a **precedence declaration**: what it supersedes, on what, and who wins

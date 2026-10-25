@@ -182,6 +182,11 @@ spec where it lives is a question the implementation stage asks before launch. A
 spec lists for registering or publishing the spec itself gets no task: record it in the report
 under what the user still owes, and it counts as covered there.
 
+The spec's session folder (`<spec-basename>.session/` beside it — closing notes, question ledger,
+research) is git-ignored working state, not part of the work: no task deletes, moves, commits or
+de-links it, and the report owes nothing about it. Notes and research beside a spec from before
+session folders (`<spec-basename>.notes.md`, `<spec-basename>.research/`) are the same working state.
+
 ### 3. Draw the edges
 
 Dependencies come from the spec's build order, and one test decides every edge you derive:

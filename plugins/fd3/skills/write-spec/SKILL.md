@@ -49,15 +49,22 @@ apply only the decisions the notes file holds that the spec's decision table doe
 sections it binds, and touch nothing else — the rest of the document stands on its last verdict.
 Report the edits by section; validation reads exactly those.
 
-Confirm `spec-path`'s directory exists before writing. Once the spec is there, move the
-closing-notes file beside it as `<spec-basename>.notes.md` — it outlives the session, and a
-validation pass can read the decisions' provenance from it. Move the research reports the same
-way, into `<spec-basename>.research/` with `INDEX.md` among them, and rewrite every scratchpad
-path the notes, the index or the spec cite to the new location — evidence a later pass cannot open is evidence lost. What moves is the
-evidence: the reports, and any data file the spec or a report cites. Raw dumps and scratch scripts
-nothing cites stay in the scratchpad — they land in the repository with the spec and become a
-commit decision nobody asked for — and so does a file that holds an error response instead of the
-page it was fetching, which proves nothing.
+Confirm `spec-path`'s directory exists before writing. Once the spec is there, the session's
+working files move out of the scratchpad into the spec's **session folder**,
+`<spec-basename>.session/` beside it: the closing-notes file as `notes.md`, the question ledger
+beside it (`question-ledger.md`) when there is one, and the research directory as `research/` with
+`INDEX.md` among them. They outlive the session — a validation pass reads the decisions' provenance
+from them, and a re-entry appends to them — but they are never committed, so create the folder
+holding a `.gitignore` whose one line is `*`. That hides the folder from git, the ignore file
+included, without touching a tracked file, and goes wherever the folder goes. On an update the
+folder already exists: add to it. Rewrite every scratchpad path the notes, the
+index or the spec cite to the new location — evidence a later pass cannot open is evidence lost.
+What moves is the evidence: the reports, and any data file the spec or a report cites. Raw dumps
+and scratch scripts nothing cites stay in the scratchpad, and so does a file that holds an error
+response instead of the page it was fetching, which proves nothing.
+
+Nothing else you write lands beside the spec except `evidence/<section>.md` (section 3), which is
+committed with it.
 
 ## 2. What goes in
 
@@ -106,7 +113,9 @@ session maps into it:
 Every load-bearing claim gets a row: the claim as the spec asserts it, and how it was established —
 the command, the `path:line`, the doc quote, the probe output. Not "checked the code". A claim a
 research file establishes cites that file's path beside the source it quotes — the report, never
-`INDEX.md`, which only routes to it; an `inline` entry's own sources are the citation.
+`INDEX.md`, which only routes to it; an `inline` entry's own sources are the citation. The report
+sits in the uncommitted session folder, so the source beside it is what a reader on another
+machine can open; a quote that must outlive the session goes into `evidence/<section>.md`.
 
 This table is the spec's proof of work and the thing a validation pass spot-checks first, so it is
 worth more than any prose you could write instead. Two rules:
