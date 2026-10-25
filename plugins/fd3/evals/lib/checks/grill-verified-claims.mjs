@@ -10,6 +10,9 @@ const ATTRIBUTED = /\b(?:claims?|claimed|says|said|states|asserts)\b/i;
 const DISPUTED = /\b(?:false|wrong|incorrect|untrue|misleading|contradict\w*)\b/i;
 const DROP_EXPIRY =
   /\b(?:drop|remov|disabl|delet|unset|turn(?:ing)? off|switch(?:ing)? off|stop)\w*\b[^.]{0,60}\b(?:expir|ttl)\w*|\bno (?:partition )?expir\w*|\bnever expir\w*|\bkeep\b(?: \w+){0,4} (?:forever|indefinitely)\b|\bindefinite(?:ly)? (?:retention|retained|kept)\b/i;
+// Links stay in inboxes for months, so a longer retention fixes them as surely as no expiry does.
+const RAISE_RETENTION =
+  /\b(?:rais|extend|increas|lengthen|bump)\w*\b[^.]{0,40}\b(?:retention|expir|ttl)\w*|\blonger (?:retention|expir\w*|ttl)\b/i;
 
 // The comment in infra/results.tf claims reads only look back 30 days; the code reads by id within a
 // day of the result's createdAt, at any age. A round that repeats the comment's claim without the
@@ -35,8 +38,9 @@ export function claimFailures(output) {
     }
   }
 
-  if (h.affirmedMatches(h.normalizeProse(text), DROP_EXPIRY).length === 0) {
-    out.push('no option or finding drops the partition expiry, the fix the facts in the tree point to');
+  const whole = h.normalizeProse(text);
+  if (h.affirmedMatches(whole, DROP_EXPIRY).length === 0 && h.affirmedMatches(whole, RAISE_RETENTION).length === 0) {
+    out.push('no option or finding drops or raises the partition expiry, the fix the facts in the tree point to');
   }
 
   for (const m of text.matchAll(/store\.ts:L?(\d+)(?:\s*[-–]\s*L?(\d+))?/g)) {

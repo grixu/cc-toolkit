@@ -203,7 +203,7 @@ test('verified claims: a round that checks the comment against the read path pas
   assert.deepEqual(claimFailures(verifiedRound), []);
 });
 
-test('verified claims: the comment repeated as fact, a missing no-expiry option, or a stray citation fails', async () => {
+test('verified claims: the comment repeated as fact, no option changing the expiry, or a stray citation fails', async () => {
   const { claimFailures } = await import('./checks/grill-verified-claims.mjs');
   const finding = /- The comment[\s\S]*?any age\.\n/;
   const asFact = verifiedRound.replace(finding, '- Reads only look back 30 days, so a 31-day expiry should never bite.\n');
@@ -212,10 +212,20 @@ test('verified claims: the comment repeated as fact, a missing no-expiry option,
   assert.match(claimFailures(wrapped).join('\n'), /asserts a 30-day read window/);
   const negated = verifiedRound.replace(finding, '- There is no 30-day window in the reads.\n');
   assert.deepEqual(claimFailures(negated), []);
-  const noDrop = verifiedRound.replace('Remove the partition expiry', 'Raise the expiry to 90 days');
-  assert.match(claimFailures(noDrop).join('\n'), /no option or finding drops the partition expiry/);
+  const noDrop = verifiedRound.replace(/\*\*1\. What[\s\S]*?400 days\*\* — links older than that still break\./, `**1. What should an expired link show?**
+- **a) Say the report has expired** — customers stop reading the 404 as a bug. **Recommended**: one line in \`openReport\`.
+- **b) Restore expired partitions from time travel** — brings back about a week of reports.`);
+  assert.notEqual(noDrop, verifiedRound);
+  assert.match(claimFailures(noDrop).join('\n'), /no option or finding drops or raises the partition expiry/);
   assert.match(claimFailures(verifiedRound.replace('src/store.ts:14-26', 'src/store.ts:3')).join('\n'), /store\.ts:3 does not point at the read query/);
   assert.match(claimFailures('Looking into the retention now.').join('\n'), /asks no numbered question/);
+});
+
+// e50ac03 trial 2 recommended raising the table's retention and held the length back on a lookup;
+// links stay in inboxes for months, so that fixes them as well as dropping the expiry does.
+test('verified claims: a round that recommends raising retention passes', async () => {
+  const { claimFailures } = await import('./checks/grill-verified-claims.mjs');
+  assert.deepEqual(claimFailures(grill('raise-retention-e50ac03.md')), []);
 });
 
 // 4557c43 trial 2 named the comment's claim in Q3 only to call it false.

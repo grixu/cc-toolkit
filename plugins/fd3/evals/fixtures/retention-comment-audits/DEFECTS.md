@@ -29,9 +29,10 @@ the planted trap. Keep the insert column-exact, and keep the read query at lines
 
 ## The option the facts point to
 
-Dropping the partition expiry (or keeping results indefinitely) — the option the real grill left out
-of its first question. The check requires an option or finding that names it. `notes/topic.md`
-mentions only raising retention and re-running audits, so that option comes from the facts.
+Changing the partition expiry: dropping it (or keeping results indefinitely), the option the real
+grill left out of its first question, or raising it, since `src/routes/report.ts:3` says links stay in
+customers' inboxes for months. The check requires an option or finding that names either. A round
+whose options leave the expiry alone (a clearer 404, a time-travel restore, monthly re-runs) fails.
 
 ## Topic
 
