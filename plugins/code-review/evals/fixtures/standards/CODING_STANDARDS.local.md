@@ -6,4 +6,4 @@
 
 ## Defaults
 
-- A default value MAY be supplied with `??` rather than `||`, so that `0` and `''` survive.
+- Prefer `??` over `||` for a default value.

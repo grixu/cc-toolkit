@@ -715,10 +715,10 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: standards, mentions: creditLimitMinor, severity: nit }
-      # the MAY rule quoted from the `.local` file
+      # the craft "prefer" rule quoted from the `.local` file
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: standards, mentions: creditLimitMinor, all: ['MAY be supplied with', 'CODING_STANDARDS\.local\.md`? › Defaults'] }
+        config: { family: standards, mentions: creditLimitMinor, all: ['Prefer `\?\?` over `\|\|` for a default value', 'CODING_STANDARDS\.local\.md`? › Defaults'] }
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: standards, mentions: creditLimitMinor, fix: '\?\?' }

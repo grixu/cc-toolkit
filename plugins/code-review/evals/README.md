@@ -69,7 +69,7 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-12 | performance | `performance-recall.ts` | `n-plus-one` with all four evidence items, `unbounded-fetch`; no "could be slow" | 8 / 2 |
 | eval-13 | performance | `performance-calibration.ts` | enum loop, `take`/`skip` page, module-level `readFileSync` stay non-findings | 7 / 0 |
 | eval-14 | spec | `spec/feature-spec.md` + `spec/feature-impl.ts` | one MISSING (under the spec path), one WRONG, one scope-creep, "3 of 5 requirements met" | 13 / 0 |
-| eval-15 | standards | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, MAY → nit, vague prose ignored | 10 / 0 |
+| eval-15 | standards | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, a craft "prefer" rule → nit, vague prose ignored | 10 / 0 |
 | eval-16 | security | `iac-exposure.tf` | `iac-exposure` recall: generated key in state and on disk, plaintext default + unmarked output, `allUsers` invoker, `0.0.0.0/0` on 5432, repo-only OIDC condition; four public-by-design look-alikes stay non-findings | 10 / 0 |
 | eval-17 | security (diff) | `access-widening.diff` | `access-widening` from the `-`/`+` sides: widened scope, dropped owner predicate, lost `requireAuth`, lost `tenant_id`; the two tightening hunks stay non-findings | 7 / 0 |
 | eval-18 | security | `tenant-guard.ts` + `tenant-guard.test.ts` | a sound guard stays clean; the tests' unexercised boundary goes to `tests` · test-fidelity as a HANDOFF, never a `security` finding | 4 / 1 |
