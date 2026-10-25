@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already raises on overlapping lines of the same file; the wrap-up names each left-out point once
   with who raised it. Eval-27's `gh` stand-in now serves two existing comments, one matching a
   finding and one on another finding's line about something else
+- The reviewer-mode draft also leaves out a finding an outdated review comment (`line` null)
+  already raises, when `git diff <original_commit_id> <head>` leaves the comment's
+  `original_line` range untouched; a comment on lines the branch has since changed suppresses
+  nothing. The wrap-up names such a point as raised on an earlier revision. Eval-27's PR #9 gains
+  an earlier revision with one outdated comment of each kind
 
 ### Changed
 

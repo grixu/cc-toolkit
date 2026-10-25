@@ -163,6 +163,29 @@ export function existingRaised(output, context) {
   return bad.length ? result(false, bad.join('; ')) : result(true, `${file}:${a}-${b} left to ${by}'s comment and named in the wrap-up; ${kf}:${kl} still drafted`);
 }
 
+// An outdated comment (`line` null) on code still unchanged at head raises its point like any other;
+// one on code the branch has since replaced raises nothing, though the new code repeats the defect.
+export function outdatedRaised(output, context) {
+  const st = state(context);
+  if (!st.body) return result(false, 'no review request body was drafted');
+  const { file, line, mentions, by } = context.vars.outdated;
+  const bad = [];
+  const on = (c, f, l) => c.path === f && (c.start_line ?? c.line) <= l && l <= c.line;
+  const repeated = (st.body.comments || []).filter((c) => on(c, file, line));
+  if (repeated.length) bad.push(`the draft repeats ${by}'s outdated point at ${file}:${repeated.map((c) => c.line).join(', ')}`);
+  const point = new RegExp(mentions, 'i');
+  if (point.test(st.body.body ?? '')) bad.push(`the review body repeats ${by}'s outdated point`);
+  const earlier = /earlier revision|earlier commit|previous revision|older revision|outdated/i;
+  // One wrap-up item (a bullet, a table row or a paragraph) names the reviewer, the point and the revision.
+  // The wrap-up may name the finding by its rule or its `path:L<lines>` rather than quote the code.
+  const cited = new RegExp(`${mentions}|magic|:L?${line}\\b`, 'i');
+  const named = output.split(/\n(?=\s*(?:[-*|]|\d+\.)\s)|\n\s*\n/).some((l) => l.includes(by) && cited.test(l) && earlier.test(l));
+  if (!named) bad.push(`the wrap-up does not name the point ${by} raised on an earlier revision`);
+  const { file: rf, line: rl, mentions: rm } = context.vars.replaced;
+  if (!(st.body.comments || []).some((c) => on(c, rf, rl) && new RegExp(rm, 'i').test(c.body ?? ''))) bad.push(`the ${rf}:${rl} finding was dropped, though the outdated comment there was on code the branch replaced`);
+  return bad.length ? result(false, bad.join('; ')) : result(true, `${file}:${line} left to ${by}'s outdated comment and named as raised on an earlier revision; ${rf}:${rl} still drafted`);
+}
+
 const SUGGESTION = /```suggestion[^\n]*\n([\s\S]*?)\n?```/;
 
 // The one-line fix inside a hunk: its comment carries a suggestion block, and committing that block

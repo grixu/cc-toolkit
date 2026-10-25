@@ -1020,6 +1020,10 @@ tests:
       # review-comments.json: reviewer-a already raised the swallowed error, and left an unrelated nit on L13
       raised: { file: src/order-sync.ts, lines: [20, 25], mentions: 'ledger|ok: true|swallow|rethrow', by: reviewer-a }
       kept: { file: src/order-sync.ts, line: 13, mentions: 'totalPages|last page|off-by-one' }
+      # two outdated comments by reviewer-b on PR #9's earlier revision: the day-in-ms literal at L53 is
+      # unchanged since, so it stays raised; the 60-day term at L19 was replaced by 45, so the 45 finding stays
+      outdated: { file: src/order-sync.ts, line: 53, mentions: '86400|isStale', by: reviewer-b }
+      replaced: { file: src/billing-window.ts, line: 19, mentions: '\b45\b|PAYMENT_TERM' }
     options: { max_budget_usd: 6, allow_all_tools: true }
     assert:
       - type: javascript
@@ -1038,6 +1042,8 @@ tests:
         value: file://checks/pr-draft.mjs:noSuggestionMultiSite
       - type: javascript
         value: file://checks/pr-draft.mjs:existingRaised
+      - type: javascript
+        value: file://checks/pr-draft.mjs:outdatedRaised
       - type: javascript
         value: file://checks/pr-draft.mjs:postOnlyAfterAnswer
       - type: javascript

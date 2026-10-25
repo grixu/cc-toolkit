@@ -56,6 +56,14 @@ git -C "$pr" add -A
 commit "$pr" 'feat: sync orders to the ledger'
 head="$(git -C "$pr" rev-parse HEAD)"
 git -C "$pr" push -q origin "HEAD:refs/pull/7/head" "HEAD:refs/pull/8/head"
+# PR #9's earlier revision, which its outdated review comments were made on: isStale's signature and
+# the payment term differ there, and the next commit settles both.
+sed 's/syncedAt: number, now: number/syncedAt: number, now = Date.now()/' fixtures/correctness/order-sync.ts > "$pr/src/order-sync.ts"
+sed 's/30 \* DAY_MS/60 * DAY_MS/' fixtures/billing-window/base.ts > "$pr/src/billing-window.ts"
+git -C "$pr" add -A
+commit "$pr" 'feat: give invoices a 60-day payment term'
+rev9="$(git -C "$pr" rev-parse HEAD)"
+cp fixtures/correctness/order-sync.ts "$pr/src/order-sync.ts"
 cp fixtures/billing-window/head.ts "$pr/src/billing-window.ts"
 git -C "$pr" add -A
 commit "$pr" 'feat: give invoices a 45-day payment term'
@@ -138,7 +146,7 @@ exit 1
 EOF
 chmod +x .sandbox/bin/gh
 # The review comments already on PR #9, which eval-27's draft must not repeat.
-sed "s/HEAD_OID/$head9/g" fixtures/billing-window/review-comments.json > .sandbox/gh-pr9-comments.json
+sed -e "s/HEAD_OID/$head9/g" -e "s/REV9_OID/$rev9/g" fixtures/billing-window/review-comments.json > .sandbox/gh-pr9-comments.json
 
 # eval-31: a clone of the PR origin with PR #9's head checked out on its branch, as a reviewer who
 # fetched a colleague's branch would have it. Run with no --pr, start-cr must offer reviewer mode.

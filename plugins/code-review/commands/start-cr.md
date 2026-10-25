@@ -522,12 +522,18 @@ run as usual, with two changes to the report:
 
 **Leave out what the PR's reviewers already said.** Before drafting, read the review comments
 already on the PR — `gh api repos/<owner>/<repo>/pulls/<number>/comments --paginate`, each with
-its `path`, `line`, `start_line`, `body` and `user.login`. A comment on the same `path` whose
-lines overlap the finding's and that makes the same point — the same defect, however it is
-worded — already raises it: the finding gets no comment and no line in the review body, since a
-second voice on a raised point only adds noise to the author's queue. Same lines with a different
-point is not a match, and neither is a matching point on other lines. The wrap-up names each
-point left out this way once — `path:L<lines>`, the finding, and who already raised it.
+its `path`, `line`, `start_line`, `original_line`, `original_start_line`, `original_commit_id`,
+`body` and `user.login`. A comment on the same `path` whose lines overlap the finding's and that
+makes the same point — the same defect, however it is worded — already raises it: the finding
+gets no comment and no line in the review body, since a second voice on a raised point only adds
+noise to the author's queue. Same lines with a different point is not a match, and neither is a
+matching point on other lines. A comment GitHub marks outdated has `line` null: it was made at
+`original_line` (from `original_start_line` for a range) of `original_commit_id`, an earlier
+revision. It still raises its point when `git diff <original_commit_id> <headRefOid> -- <path>`
+leaves those lines untouched; match it at the head lines they now sit on. A comment on lines the
+branch has since changed raises nothing, even when the new code repeats the defect. The wrap-up
+names each point left out this way once — `path:L<lines>`, the finding, and who already raised
+it, adding "on an earlier revision" for an outdated comment.
 
 After the report, write the draft to a file in the session scratchpad as the request body of
 `POST repos/<owner>/<repo>/pulls/<number>/reviews` (owner and repo from the PR's `url`):
