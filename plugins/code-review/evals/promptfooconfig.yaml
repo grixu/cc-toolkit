@@ -581,7 +581,7 @@ tests:
       # the multiplier, the call inside it and the batch API, by name
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: performance, rule: n-plus-one, mentions: findUnique, all: ['order\.findMany', findUnique, 'customersByIds|\bin\b|include'] }
+        config: { family: performance, rule: n-plus-one, mentions: findUnique, all: ['order\.findMany|`orders`', findUnique, 'customersByIds|\bin\b|include'] }
       - type: llm-rubric
         value: >-
           The `n-plus-one` finding on `pendingOrdersWithCustomers` names the bound that

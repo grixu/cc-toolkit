@@ -94,7 +94,7 @@ const selects = (f, c) => {
 };
 
 const describe = (c) =>
-  [c.family && `\`${c.family}\``, c.rule && list(c.rule).join('|'), c.atSeverity && list(c.atSeverity).join('|'), c.mentions && `mentioning ${list(c.mentions).join(' | ')}`, c.under && `under ${c.under}`]
+  [c.family && `\`${c.family}\``, c.rule && list(c.rule).join('|'), c.atSeverity && list(c.atSeverity).join('|'), c.mentions && `mentioning ${list(c.mentions).join(' | ')}`, c.all && `with all of ${list(c.all).join(' & ')}`, c.under && `under ${c.under}`]
     .filter(Boolean)
     .join(' · ');
 
