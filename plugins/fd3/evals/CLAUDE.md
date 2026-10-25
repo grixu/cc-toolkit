@@ -74,8 +74,8 @@ lives in the file). What it confines:
   `~/.ccs`, `~/.claude`, `~/.claude.json`; `credentials.envVars` unsets cloud, registry,
   GitHub, Anthropic and MCP tokens. Network: `strictAllowlist` with only the package registries,
   GitHub read hosts and vendor docs the grill research used (`registry.npmjs.org`,
-  `registry.terraform.io`, `raw.githubusercontent.com`, `api.github.com`, `cloud.google.com` for
-  the BigQuery docs `grill-verified-claims` reads); any other host is refused, not prompted.
+  `registry.terraform.io`, `raw.githubusercontent.com`, `api.github.com`, `cloud.google.com` and
+  `docs.cloud.google.com`, where it 301-redirects, for the BigQuery docs `grill-verified-claims` reads); any other host is refused, not prompted.
 - **File tools — permission deny rules**, which hold under `bypassPermissions` (deny is
   evaluated before the mode). `Read(...)` denies on the same credential paths and on the CLI's
   settings and credential files under `~/.claude` and `~/.ccs` (a `Read` deny also blocks
