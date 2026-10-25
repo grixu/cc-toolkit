@@ -37,6 +37,11 @@ delivery and the `failed` count is declared unexercisable.
 Also load-bearing against `spec-template.md`:
 
 - section 3 carries a **risks accepted** table after the decision table;
+- section 5 marks the pipeline as asserted by the payments team (this repository tracks no CI
+  configuration; placement: confirmed before the phase-1 deploy), and section 6's DB-1 item says
+  the CI deploy on merge to `main` applies the `node-pg-migrate` migration, so no human runs it.
+  Without both, who runs the migration against the deployed database is unanswered — a real
+  finding;
 - section 7's rollout table carries all five columns, including `Gate after?`;
 - DB-1's `Limits:` bullet promises no deletion, so section 9's "nothing is deleted" holds — any
   edit reintroducing expiry or a delete job re-plants that contradiction.

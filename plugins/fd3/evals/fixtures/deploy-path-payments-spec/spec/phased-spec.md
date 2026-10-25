@@ -115,7 +115,9 @@ before phase 2 (phase 2 does not start until the platform team confirms the ceil
 | payments-service (this repository) | everything in this spec | pull request; the deploy workflow (`.github/workflows/payments-cd.yaml`) deploys on merge to `main` |
 
 All paths in this spec are owned by the payments team; review is one approval from that team, and
-CI applies the deploy — no human runs anything by hand.
+CI applies the deploy — no human runs anything by hand. The pipeline is the deploy
+workflow (`.github/workflows/payments-cd.yaml`); that its deploy applies the migration is asserted by
+the payments team — owner: payments team, placement: confirmed before the phase-1 deploy.
 
 ## 6. The change, per repository
 
@@ -123,6 +125,7 @@ CI applies the deploy — no human runs anything by hand.
 
 1. **DB-1** — new: migration adding `idempotency_keys`, plus rewiring `getIdempotencyKey` /
    `saveIdempotencyKey` (`src/store/idempotency.ts:5`, `src/store/idempotency.ts:9`) to the table.
+   The CI deploy on merge to `main` (section 5) applies the migration; no human runs it.
 2. **OBSERVABILITY-1** — new: module-scope counts in `src/queue/worker.ts`, incremented inside the
    retry loop (`src/queue/worker.ts:6`) once per attempt, plus the exported `deliveryMetrics()`.
 3. **CONFIG-1** — new: the module-scope token bucket in `src/queue/worker.ts`, read from

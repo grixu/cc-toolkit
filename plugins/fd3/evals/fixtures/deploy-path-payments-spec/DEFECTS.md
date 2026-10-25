@@ -7,11 +7,13 @@ Used by validate-deploy-path. Shape taken (anonymised) from a real validation pa
 ## Derivation
 
 Derived from `phased-payments-spec`: identical `src/`, `README.md` and `package.json`, plus
-`.github/workflows/payments-cd.yaml`. The spec is `phased-payments-spec`'s with seven
+`.github/workflows/payments-cd.yaml`. The spec is `phased-payments-spec`'s with eight
 replacements, each of one unique passage:
 
 - section 4 prerequisites: the repository's one CI configuration is the deploy workflow;
 - section 5: the deploy workflow deploys on merge to `main`;
+- section 5: the pipeline is that workflow, and that its deploy applies the migration is asserted
+  by the payments team (the base says the repository tracks no CI configuration);
 - section 7: phase 1's `Where` cell reads `test`, then `stage`, then `prod`, and the paragraph
   under the table says a merge to `main` deploys to `test`, then the same commit is promoted to
   `stage` and `prod`;
