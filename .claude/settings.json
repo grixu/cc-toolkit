@@ -14,12 +14,22 @@
       }
     ]
   },
+  "enabledPlugins": {
+    "agent-engineer@agent-engineer": true,
+    "code-review@cc-toolkit": true
+  },
   "extraKnownMarketplaces": {
     "agent-engineer": {
-      "source": { "source": "github", "repo": "sarthakrastogi/agent-engineer" }
+      "source": {
+        "source": "github",
+        "repo": "sarthakrastogi/agent-engineer"
+      }
+    },
+    "cc-toolkit": {
+      "source": {
+        "source": "github",
+        "repo": "grixu/cc-toolkit"
+      }
     }
-  },
-  "enabledPlugins": {
-    "agent-engineer@agent-engineer": true
   }
 }

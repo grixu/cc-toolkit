@@ -191,7 +191,7 @@
     {
       "name": "dev-kit",
       "source": "./plugins/dev-kit",
-      "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template.",
+      "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template and labelled with its risk, assessed by the TypeSafe Jev model.",
       "version": "0.1.0",
       "author": {
         "name": "Mateusz Gostański",
