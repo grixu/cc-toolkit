@@ -1,0 +1,37 @@
+[
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cat notes/topic.md; echo ----; git fetch 2>&1; git status -sb; git remote -v; echo ----; ls -la; find . -path ./.git -prune -o -type f -print | head -100; echo ----; cat /plugins/fd3/references/fact-routes.md"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cat -n src/retry.ts; echo ----; cat -n src/jobs/sync.ts; echo ----; cat -n package.json; echo; ls -la .claude; find .claude -type f; ls package-lock.json yarn.lock pnpm-lock.yaml 2>&1; git log --oneline -5; echo $TMPDIR"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "node --version 2>&1; grep -rn \"syncCatalog\\|withRetry\" --exclude-dir=.git . ; git branch -a; ls docs requirements 2>&1"
+  },
+  "is_error": true
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "S=/tmp/claude-1000/grill-retry-backoff; mkdir -p $S/notes $S/research\ncat > $S/research/prior-conversation.md <<'EOF'\n# Prior conversation\n- (none) — /fd3:grill-topic was invoked as the first message with argument `notes/topic.md`; nothing was established before it.\nEOF\ncat > $S/research/INDEX.md <<'EOF'\n# Research index\n\n| ID | Question | Condensed answer | Sources | Report |\n|----|----------|------------------|---------|--------|\n| I1 | What attempt cap does withRetry use? | 5 attempts (`MAX_ATTEMPTS = 5`), not 3 as the topic says. | src/retry.ts:1 | inline |\n| I2 | What does withRetry retry on? | Any thrown error, with no predicate and no delay; loop returns on first success. | src/retry.ts:5-10 | inline |\n| I3 | Does syncCatalog's operation throw on supplier HTTP errors? | No. It calls `fetch` and discards the Response without checking `res.ok`; `fetch` resolves on 4xx/5xx, so only network-level failures (DNS, connection refused/reset) reach withRetry. A supplier answering 503 is not retried at all. The response body is also never read. | src/jobs/sync.ts:5 | inline |\n| I4 | Callers of withRetry? | Only syncCatalog (src/jobs/sync.ts:4). syncCatalog itself has no caller or scheduler in the repo. | grep over repo | inline |\n| I5 | Tooling / versions | No dependencies, no lockfile, no tsconfig. `test` script runs `vitest run` but vitest is not declared. No tests exist. Local Node is v26.10.0 (global fetch built in); no `engines` field. | package.json:5-7 | inline |\n| I6 | Repo state / prior decisions | No git remote (fetch is a no-op, cannot check staleness); single branch `main`; no docs/specs/ADRs. | git remote -v, ls | inline |\nEOF\necho ok"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "S=/tmp/claude-1000/grill-retry-backoff; cat > $S/notes/question-ledger.md <<'EOF'\n# Question ledger\n\n| # | Question | Round | Answer | Notes |\n|---|----------|-------|--------|-------|\n| 1 | Scope: does the work include making syncCatalog throw on supplier HTTP errors (5xx/429)? | 1 | open | facts: I3 |\n| 2 | Attempt cap: keep 5, go to 3, or other? | 1 | open | facts: I1 |\n| 3 | Jitter on the backoff delay? | 1 | open | |\n| 4 | Backoff parameters hardcoded or an optional per-call options argument? | 1 | open | facts: I4 |\n| 5 | Add vitest + unit tests for withRetry? | 1 | open | facts: I5 |\nEOF\necho ok"
+  },
+  "is_error": false
+ }
+]

@@ -1,0 +1,310 @@
+[
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cat notes/topic.md; echo ----; git ls-files | head -100; echo ----; cat /plugins/fd3/references/fact-routes.md; echo ---; git remote -v; git fetch 2>&1 | tail -3"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "for f in package.json src/retry.ts src/jobs/sync.ts; do echo \"=== $f\"; cat -n $f; done; ls -la; ls docs requirements 2>&1; echo \"TMP=$TMPDIR\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "S=/tmp/claude-1000/fd3-grill-retry-backoff; mkdir -p $S/research $S/notes && echo $S; cd /sandbox/grill-session-files; ls .claude; find . -name \"*lock*\" -not -path \"./.git/*\"; node --version 2>&1"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://registry.npmjs.org/p-retry | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('latest:', d['dist-tags']['latest'])\nprint('time latest:', d['time'][d['dist-tags']['latest']])\nprint('all versions last 10:', list(d['versions'].keys())[-10:])\n\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://registry.npmjs.org/exponential-backoff | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('latest:', d['dist-tags']['latest'])\nprint('time latest:', d['time'][d['dist-tags']['latest']])\n\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://registry.npmjs.org/vitest | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('latest:', d['dist-tags']['latest'])\nprint('time latest:', d['time'][d['dist-tags']['latest']])\n\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://registry.npmjs.org/p-retry/8.0.1 | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('type:', d.get('type'))\nprint('engines:', d.get('engines'))\nprint('dependencies:', d.get('dependencies'))\nprint('exports:', d.get('exports'))\nprint('main:', d.get('main'))\n\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://registry.npmjs.org/exponential-backoff/3.1.3 | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('type:', d.get('type'))\nprint('engines:', d.get('engines'))\nprint('dependencies:', d.get('dependencies'))\nprint('main:', d.get('main'))\n\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://registry.npmjs.org/vitest/5.0.5 | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('type:', d.get('type'))\nprint('engines:', d.get('engines'))\n\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://raw.githubusercontent.com/sindresorhus/p-retry/main/readme.md -o $TMPDIR/p-retry-readme.md; wc -l $TMPDIR/p-retry-readme.md; echo \"---\"; cat $TMPDIR/p-retry-readme.md"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s https://raw.githubusercontent.com/coveooss/exponential-backoff/master/README.md -o $TMPDIR/exp-backoff-readme.md; wc -l $TMPDIR/exp-backoff-readme.md; echo \"---\"; cat $TMPDIR/exp-backoff-readme.md"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://api.github.com/repos/coveooss/exponential-backoff/releases?per_page=5\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nfor r in d:\n    print(r['tag_name'], r['published_at'])\n\"\necho \"---tags---\"\ncurl -s \"https://api.github.com/repos/coveooss/exponential-backoff/tags?per_page=5\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://api.github.com/repos/sindresorhus/p-retry/tags?per_page=5\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch\" -o $TMPDIR/mdn-fetch.html\nwc -c $TMPDIR/mdn-fetch.html\ngrep -o \"reject[^<]*\" $TMPDIR/mdn-fetch.html | head -20\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://developer.mozilla.org/en-US/docs/Web/API/Window/fetch\" -o $TMPDIR/mdn-fetch.html\nwc -c $TMPDIR/mdn-fetch.html"
+  },
+  "is_error": true
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/\" -o $TMPDIR/aws-jitter.html\nwc -c $TMPDIR/aws-jitter.html"
+  },
+  "is_error": true
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://fetch.spec.whatwg.org/\" -o $TMPDIR/fetch-spec.html\nwc -c $TMPDIR/fetch-spec.html"
+  },
+  "is_error": true
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://vitest.dev/guide/mocking.html\" -o $TMPDIR/vitest-mocking.html\nwc -c $TMPDIR/vitest-mocking.html"
+  },
+  "is_error": true
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s -o /dev/null -w \"%{http_code}\\n\" \"https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/window/fetch/index.md\"\ncurl -s -o /dev/null -w \"%{http_code}\\n\" \"https://raw.githubusercontent.com/whatwg/fetch/main/fetch.bs\"\ncurl -s -o /dev/null -w \"%{http_code}\\n\" \"https://web.archive.org/web/2024/https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/\"\ncurl -s -o /dev/null -w \"%{http_code}\\n\" \"https://raw.githubusercontent.com/vitest-dev/vitest/main/docs/guide/mocking.md\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/window/fetch/index.md\" -o $TMPDIR/mdn-fetch.md\nwc -l $TMPDIR/mdn-fetch.md\ngrep -n -i -A5 -B5 \"reject\\|TypeError\\|network error\\|ok\\b\" $TMPDIR/mdn-fetch.md | head -150"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/whatwg/fetch/main/fetch.bs\" -o $TMPDIR/fetch-spec.bs\nwc -l $TMPDIR/fetch-spec.bs\ngrep -n -i \"network error\" $TMPDIR/fetch-spec.bs | head -40"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/vitest-dev/vitest/main/docs/guide/mocking.md\" -o $TMPDIR/vitest-mocking.md\nwc -l $TMPDIR/vitest-mocking.md\ngrep -n -i -A10 \"useFakeTimers\\|advanceTimersByTimeAsync\\|advanceTimersByTime\\b\" $TMPDIR/vitest-mocking.md | head -150"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://api.github.com/search/code?q=advanceTimersByTimeAsync+repo:vitest-dev/vitest+extension:md\" | python3 -m json.tool | head -60"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/vitest-dev/vitest/main/docs/api/vi.md\" -o $TMPDIR/vitest-api-vi.md\nwc -l $TMPDIR/vitest-api-vi.md\ngrep -n -i -B3 -A15 \"advanceTimersByTimeAsync\" $TMPDIR/vitest-api-vi.md"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s -o /dev/null -w \"%{http_code}\\n\" \"https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/\"\ncurl -s -o /dev/null -w \"%{http_code}\\n\" \"https://docs.aws.amazon.com/general/latest/gr/api-retries.html\"\ncurl -s -o /dev/null -w \"%{http_code}\\n\" \"https://en.wikipedia.org/wiki/Exponential_backoff\"\ncurl -s -o /dev/null -w \"%{http_code}\\n\" \"https://raw.githubusercontent.com/aws-samples/aws-arch-backoff-simulator/master/README.md\"\n"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/aws-samples/aws-arch-backoff-simulator/master/README.md\" -o $TMPDIR/aws-backoff-readme.md\nwc -l $TMPDIR/aws-backoff-readme.md\ncat $TMPDIR/aws-backoff-readme.md"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "find / -maxdepth 2 -iname \"*aws-arch-backoff-simulator*\" 2>/dev/null\ncurl -s \"https://api.github.com/repos/aws-samples/aws-arch-backoff-simulator\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint(d.get('description'))\nprint(d.get('full_name'))\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://api.github.com/repos/aws-samples/aws-arch-backoff-simulator/contents/\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nfor f in d:\n    print(f['name'], f['type'])\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://api.github.com/repos/aws-samples/aws-arch-backoff-simulator/contents/src\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nfor f in d:\n    print(f['name'], f['type'], f['path'])\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/aws-samples/aws-arch-backoff-simulator/master/src/backoff_simulator.py\" -o $TMPDIR/backoff_simulator.py\nwc -l $TMPDIR/backoff_simulator.py\ncat $TMPDIR/backoff_simulator.py"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s -o /dev/null -w \"%{http_code}\\n\" \"https://r.jina.ai/https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/\"\n"
+  },
+  "is_error": true
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "for h in \"raw.githubusercontent.com\" \"gist.githubusercontent.com\" \"api.allorigins.win\" \"corsproxy.io\" \"allorigins.win\"; do\n  code=$(curl -s -o /dev/null -w \"%{http_code}\" --max-time 5 \"https://$h/\" 2>&1)\n  echo \"$h -> $code\"\ndone"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s -o /dev/null -w \"%{http_code}\\n\" --max-time 5 \"https://www.google.com/\"\ncurl -s -o /dev/null -w \"%{http_code}\\n\" --max-time 5 \"https://duckduckgo.com/\""
+  },
+  "is_error": true
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://api.github.com/repos/sindresorhus/p-retry/releases/tags/v8.0.1\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint(d.get('tag_name'), d.get('published_at'))\nprint(d.get('body'))\n\"\necho \"===v8.0.0===\"\ncurl -s \"https://api.github.com/repos/sindresorhus/p-retry/releases/tags/v8.0.0\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint(d.get('tag_name'), d.get('published_at'))\nprint(d.get('body'))\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/sindresorhus/p-retry/v8.0.1/package.json\" -o $TMPDIR/p-retry-pkg.json\ncat $TMPDIR/p-retry-pkg.json | python3 -m json.tool | head -40"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://api.github.com/repos/coveooss/exponential-backoff\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('created_at:', d.get('created_at'))\nprint('pushed_at:', d.get('pushed_at'))\nprint('open_issues:', d.get('open_issues_count'))\nprint('archived:', d.get('archived'))\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://registry.npmjs.org/exponential-backoff/3.1.3\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('devDependencies:', d.get('devDependencies'))\nprint('types:', d.get('types'))\nprint('module:', d.get('module'))\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://raw.githubusercontent.com/vitest-dev/vitest/main/docs/guide/index.md\" -o $TMPDIR/vitest-guide.md\ngrep -n -i -B2 -A5 \"node\" $TMPDIR/vitest-guide.md | grep -i -B2 -A5 \"version\\|engine\\|22\\|24\\|26\" | head -60"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://registry.npmjs.org/vitest/5.0.5\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nprint('peerDependencies:', d.get('peerDependencies'))\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "curl -s \"https://registry.npmjs.org/is-network-error\" | python3 -c \"\nimport json,sys\nd=json.load(sys.stdin)\nv=d['dist-tags']['latest']\nprint('latest:', v)\nprint('dependencies:', d['versions'][v].get('dependencies'))\n\""
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "mkdir -p /tmp/claude-1000/fd3-grill-retry-backoff/research/\nls -la /tmp/claude-1000/fd3-grill-retry-backoff/research/ 2>&1 | head"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Write",
+  "input": {
+   "file_path": "/tmp/claude-1000/fd3-grill-retry-backoff/research/retry-libs-and-vitest.md"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cd /tmp/claude-1000/fd3-grill-retry-backoff/research; wc -l retry-libs-and-vitest.md; grep -nE \"8\\.0|5\\.0\\.|3\\.1\\.|randomize|engines|best|unanswered|full jitter\" retry-libs-and-vitest.md | head -40"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "S=/tmp/claude-1000/fd3-grill-retry-backoff\ncat > $S/research/prior-conversation.md <<'EOF'\n# Prior conversation\n\nNothing was established before /fd3:grill-topic was invoked — the command (with argument notes/topic.md) was the user's first message in this session.\nEOF\ncat > $S/research/INDEX.md <<'EOF'\n# Research index\n\n| ID | Question | Condensed answer | Sources | Report |\n|----|----------|------------------|---------|--------|\n| I1 | What is the attempt cap? | `MAX_ATTEMPTS = 5` (topic says 3) | src/retry.ts:1 | inline |\n| I2 | How does withRetry behave? | No options param; catches every error and retries immediately, no delay, rethrows last error | src/retry.ts:3, src/retry.ts:8, src/retry.ts:12 | inline |\n| I3 | Does syncCatalog detect HTTP failures? | No — `fetch` result discarded, no `response.ok` check; body never read | src/jobs/sync.ts:5 | inline |\n| I4 | Callers of withRetry | Only syncCatalog (repo has two source files) | src/jobs/sync.ts:4 | inline |\n| I5 | Test/tooling state | `test` script runs vitest, but no dependencies/devDependencies, no lockfile, no tsconfig, no tests | package.json:6 | inline |\n| I6 | Is the clone current? | No git remote configured; `git fetch` is a no-op; staleness unknowable | `git remote -v` | inline |\n| I7 | Prior specs/ADRs? | None (no docs/, requirements/) | `ls` | inline |\n| I8 | Node version | Local v26.10.0; package.json has no engines field | `node --version` | inline |\n| I9 | p-retry facts | 8.0.1 (2026-09-01), ESM-only, Node>=22 since 8.0.0; jitter = boolean `randomize` (×1–2); options factor/minTimeout/maxTimeout/maxRetryTime/retries/shouldRetry; no HTTP status handling; dep is-network-error | registry.npmjs.org/p-retry/8.0.1 | research/retry-libs-and-vitest.md |\n| I10 | exponential-backoff facts | 3.1.3 (2025-10-10), CommonJS, zero deps; `jitter: \"full\"|\"none\"`; startingDelay/timeMultiple/maxDelay/numOfAttempts/retry | api.github.com/repos/coveooss/exponential-backoff | research/retry-libs-and-vitest.md |\n| I11 | Jitter schemes | full = random(0,t); equal = t/2+random(0,t/2); decorrelated = min(cap, random(base, prev*3)). AWS blog's \"best\" verdict NOT verified (site unreachable) | aws-samples/aws-arch-backoff-simulator | research/retry-libs-and-vitest.md |\n| I12 | vitest | 5.0.5 (2026-10-15); engines ^22.12 \\|\\| ^24 \\|\\| >=26; `vi.advanceTimersByTimeAsync` flushes awaited setTimeout chains | registry.npmjs.org/vitest/5.0.5 | research/retry-libs-and-vitest.md |\n| I13 | fetch on HTTP errors | Resolves on 4xx/5xx; rejects (TypeError) only on network errors — MDN and WHATWG agree | mdn/content, whatwg/fetch mirrors | research/retry-libs-and-vitest.md |\nEOF\ncat > $S/notes/question-ledger.md <<'EOF'\n# Question ledger\n\n| # | Question | Round | Answer | Notes |\n|---|----------|-------|--------|-------|\n| 1 | Scope boundary: helper only / + HTTP failure detection in syncCatalog / + consume catalog | 1 | open | |\n| 2.1 | Attempt cap: keep 5 / lower to 3 | 1 | open | |\n| 2.2 | Total ride-out window: ~3s / ~15s / ~60s | 1 | open | |\n| 2.3 | Multiplier: 2 / 3 | 1 | open | |\n| 2.4 | Separate max-total-delay: no / yes | 1 | open | |\n| 3 | Jitter: full / equal / none | 1 | open | |\n| 4 | Parameters: hardcoded constants / per-call options | 1 | open | |\n| 5 | Implementation: hand-rolled / p-retry / exponential-backoff | 1 | open | |\n| 6 | Tests: add vitest + lockfile + tests / none | 1 | open | |\nEOF\necho ok"
+  },
+  "is_error": false
+ }
+]

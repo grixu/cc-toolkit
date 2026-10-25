@@ -1,0 +1,37 @@
+[
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cd /sandbox/grill-session-files; cat notes/topic.md; echo ----; git ls-files; echo ----; cat /plugins/fd3/references/fact-routes.md; echo; git remote -v; git fetch 2>&1 | head"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cd /sandbox/grill-session-files; for f in package.json src/retry.ts src/jobs/sync.ts; do echo \"== $f\"; cat -n $f; done; ls -a; ls docs requirements 2>&1; git log --oneline | head"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cd /sandbox/grill-session-files; ls -a .claude; ls package-lock.json pnpm-lock.yaml yarn.lock tsconfig.json .nvmrc 2>&1; grep -rn \"withRetry\\|syncCatalog\" --include=*.ts . | grep -v node_modules"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cd /sandbox/grill-session-files; grep -rn \"withRetry\\|syncCatalog\" src"
+  },
+  "is_error": false
+ },
+ {
+  "name": "Bash",
+  "input": {
+   "command": "cd /sandbox/grill-session-files; S=.fd3-scratch/retry-backoff; mkdir -p $S/notes $S/research\ncat > $S/research/prior-conversation.md <<'EOF'\n# Prior conversation\n\n- (none) — the user invoked `/fd3:grill-topic notes/topic.md` with no prior discussion; nothing was established before the command. (established by: user, by omission)\nEOF\ncat > $S/research/INDEX.md <<'EOF'\n# Research index\n\nAll entries below are `inline`: the repository has four tracked files and was read directly.\n\n- **I1** — What is the attempt cap? → `MAX_ATTEMPTS = 5`, not 3 as the topic says. Source: `src/retry.ts:1`. Report: inline.\n- **I2** — Does `withRetry` wait between attempts or filter errors? → No delay and no filtering: every thrown error is retried immediately, last error rethrown. Source: `src/retry.ts:5-12` (catch at `src/retry.ts:8`). Report: inline.\n- **I3** — Does `syncCatalog` fail on supplier HTTP errors? → No. It calls `fetch` and discards the response (`src/jobs/sync.ts:5`); `fetch` rejects only on network-level failure, so 429/5xx resolve successfully and are never retried — and the job reports success. No timeout on the request either. Source: `src/jobs/sync.ts:5`; WHATWG fetch semantics. Report: inline.\n- **I4** — Who calls `withRetry` / `syncCatalog`? → `withRetry`: only `syncCatalog` (`src/jobs/sync.ts:4`). `syncCatalog`: no caller in the repo — it is invoked from outside (scheduler unknown). Source: grep over `src/`. Report: inline.\n- **I5** — Dependency versions? → No lockfile, no dependencies or devDependencies in `package.json`. `vitest` appears only in the `test` script (`package.json:6`) and is not declared; no `typescript`, no `tsconfig.json`, no `.nvmrc`/`engines`. No tests exist. Source: `package.json:1-8`, `git ls-files`. Report: inline.\n- **I6** — Prior specs/ADRs? → None (no `docs/`, `requirements/`, or similar). No git remote, so `git fetch` had nothing to compare against. Report: inline.\nEOF\ncat > $S/notes/question-ledger.md <<'EOF'\n# Question ledger\n\n| # | Question | Round | Answer | Notes |\n|---|----------|-------|--------|-------|\n| 1 | Scope: backoff only, or also make syncCatalog fail on HTTP errors / add timeout | 1 | open | |\n| 2 | Attempt cap: keep 5 or change to 3 | 1 | open | |\n| 3 | Which errors withRetry retries (all vs predicate) | 1 | open | |\n| 4 | Backoff params hardcoded vs per-call configurable | 1 | open | |\n| 5 | Test harness for the delay behaviour | 1 | open | |\nEOF\necho ok"
+  },
+  "is_error": false
+ }
+]

@@ -357,6 +357,27 @@ test('post-verdict change: the notes must gain a line recording D2 option b', as
 });
 
 // write-spec's end state, as layouts the session-folder guard must pass or fail.
+// 80cc3e39 and 523f576c kept the ledger and the prior-conversation record in the scratchpad through
+// `cat > $S/...` heredocs; 59cc9948 put the same scratch directory inside the repository.
+test('grill session files: scratchpad files written through the shell pass; a scratch dir inside the repo fails', async () => {
+  const { sessionFileFailures } = await import('./checks/grill-session-files.mjs');
+  const calls = (id) => JSON.parse(fs.readFileSync(path.join(FIXTURES, 'grill', `session-calls-${id}.json`), 'utf8'));
+  const repo = '/sandbox/grill-session-files';
+  assert.deepEqual(sessionFileFailures(calls('80cc3e39'), repo), []);
+  assert.deepEqual(sessionFileFailures(calls('523f576c'), repo), []);
+  const inRepo = sessionFileFailures(calls('59cc9948'), repo).join('\n');
+  assert.match(inRepo, /question-ledger\.md was written only inside the repository/);
+  assert.match(inRepo, /session files written inside the repository: \.fd3-scratch\//);
+  const noLedger = calls('523f576c').filter((t) => !/question-ledger/.test(t.input.command || ''));
+  assert.match(sessionFileFailures(noLedger, repo).join('\n'), /no notes\/question-ledger\.md was written/);
+  const noPrior = calls('523f576c').filter((t) => !/prior-conversation/.test(t.input.command || '') && !/prior-conversation/.test(t.input.file_path || ''));
+  assert.deepEqual(sessionFileFailures(noPrior, repo), []);
+  const priorInRepo = [...noPrior, { name: 'Write', input: { file_path: `${repo}/research/prior-conversation.md`, content: '-' } }];
+  assert.match(sessionFileFailures(priorInRepo, repo).join('\n'), /prior-conversation\.md was written only inside the repository/);
+  const quoted = [{ name: 'Bash', input: { command: 'S=/tmp/x; echo "$S -> notes" > /dev/null' } }];
+  assert.deepEqual(sessionFileFailures(quoted, repo).filter((f) => /inside the repository/.test(f)), []);
+});
+
 // fdebc07f listed its gaps under "Still open:" and said two claims "aren't verified".
 test('template conformance: a closing message that lists what is still open passes; one claiming nothing open fails', async () => {
   const { statesUnsettled } = await import('./checks/write-template-conformance.mjs');
