@@ -357,6 +357,13 @@ test('post-verdict change: the notes must gain a line recording D2 option b', as
 });
 
 // write-spec's end state, as layouts the session-folder guard must pass or fail.
+// fdebc07f listed its gaps under "Still open:" and said two claims "aren't verified".
+test('template conformance: a closing message that lists what is still open passes; one claiming nothing open fails', async () => {
+  const { statesUnsettled } = await import('./checks/write-template-conformance.mjs');
+  assert.equal(statesUnsettled(specSide('template-closing-fdebc07f.md')), true);
+  assert.equal(statesUnsettled('Spec written to spec/out.md: all 12 sections, every decision ratified.'), false);
+});
+
 const sessionRepo = (files) => {
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'fd3-session-'));
   const write = (rel, text) => {

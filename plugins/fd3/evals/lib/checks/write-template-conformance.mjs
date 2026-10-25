@@ -2,6 +2,9 @@ import * as h from '../helpers.mjs';
 import { checkSpecShape } from './spec-shape.mjs';
 import { sessionFolderFailures } from './session-folder.mjs';
 
+export const statesUnsettled = (output) =>
+  /gap|unconfirmed|not.*settled|unsettled|still open|unverified|not verified|aren['’]t verified/i.test(String(output || ''));
+
 export default (output) => {
   const c = h.checker();
   const spec = h.readSandboxFile('write-template-conformance', 'spec/out.md');
@@ -15,7 +18,7 @@ export default (output) => {
   for (const failure of sessionFolderFailures(h.sandboxDir('write-template-conformance'), 'spec/out.md')) c.check(false, failure);
 
   c.check(/out\.md/.test(output), 'the closing message does not name the path');
-  c.check(/gap|unconfirmed|not.*settled|unsettled/i.test(output), 'the closing message does not state what is not yet settled');
+  c.check(statesUnsettled(output), 'the closing message does not state what is not yet settled');
 
   return c.verdict();
 };
