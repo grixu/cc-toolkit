@@ -50,18 +50,25 @@ function percentile(values, q) {
 
 const mean = (values) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null);
 
-// The main agent is the model that spent the most; subagents and the CLI's own helper calls
-// (e.g. a Haiku title request) show up as smaller modelUsage entries.
+const configuredTarget = meta?.configured_target_model?.[0] ?? null;
+const matchesConfigured = (m) =>
+  configuredTarget === null || m.canonical === configuredTarget || m.key.replace(/\[.*\]$/, '') === configuredTarget;
+
+// modelUsage also holds subagents and the CLI's own helper calls (e.g. a Haiku title request), and a
+// sonnet researcher can outspend the main thread, so the configured target is the main model whenever
+// it appears at all; only without it does the biggest spender stand in.
 function primaryModel(modelUsage) {
   if (!modelUsage || typeof modelUsage !== 'object') return null;
   let best = null;
   let bestWeight = -1;
   for (const [key, usage] of Object.entries(modelUsage)) {
     if (!key || key === 'undefined') continue;
+    const model = { key, canonical: usage?.canonicalModel ?? key };
+    if (configuredTarget !== null && matchesConfigured(model)) return model;
     const weight = usage?.costUSD ?? (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0);
     if (weight > bestWeight) {
       bestWeight = weight;
-      best = { key, canonical: usage?.canonicalModel ?? key };
+      best = model;
     }
   }
   return best;
@@ -92,10 +99,6 @@ for (const { index, file } of trialFiles) {
   }
 }
 
-const configuredTarget = meta?.configured_target_model?.[0] ?? null;
-const matchesConfigured = (m) =>
-  configuredTarget === null || m.canonical === configuredTarget || m.key.replace(/\[.*\]$/, '') === configuredTarget;
-
 function countBy(values) {
   const counts = {};
   for (const v of values) counts[v] = (counts[v] ?? 0) + 1;
@@ -122,7 +125,7 @@ const perTest = [...tests.values()].map(({ id, trials }) => {
     latency_ms_p50: percentile(trials.map((t) => t.latencyMs).filter((l) => l !== null), 0.5),
     latency_ms_p95: percentile(trials.map((t) => t.latencyMs).filter((l) => l !== null), 0.95),
     actual_model: recorded ? countBy(primaries.map((m) => m.canonical)) : null,
-    other_models_seen: recorded
+    subagent_models: recorded
       ? [...new Set(trials.flatMap((t) => t.models ?? []))].filter((k) => !primaries.some((m) => m.key === k))
       : null,
     model_mismatch: recorded ? primaries.some((m) => !matchesConfigured(m)) : null,
