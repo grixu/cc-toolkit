@@ -2,8 +2,9 @@
 
 This file is fixture documentation only. `reset-sandboxes.sh` excludes it from the sandbox copy.
 The fixture is shared by split-baseline (correct split), split-english-artifacts (English
-artifacts; Polish conversation), and — minus the validation sub-heading / plus the orphan
-element — by the two derived fixtures.
+artifacts; Polish conversation) and build-spec-reentry (re-validation of a finished spec), and is
+the base of four derived fixtures: `unvalidated-rollout-spec`, `orphan-rollout-spec`,
+`stale-origin-rollout-spec` and `ratified-rollout-spec`.
 
 ## The frozen 6-task split (decision, EVALS_PLAN section 6)
 
@@ -48,12 +49,36 @@ waiting period here without unfreezing the task count.
 The `### Validation pass — 2026-07-30` sub-heading in section 12 is what satisfies the
 split-to-tasks precondition without conversation context. The dated block opens with the verdict
 line the precondition reads — `Verdict: ready — claims: 1 verified / 0 deferred / 0 blocked — spec
-216 lines at this verdict` — and a dated heading alone would not satisfy it. Two of its numbers are
+220 lines at this verdict` — and a dated heading alone would not satisfy it. Two of its numbers are
 load-bearing: zero blocked claims, and a line count equal to `wc -l` on this file. Any edit to the
 spec, anywhere, changes that count and must be followed by rewriting the number.
 `unvalidated-rollout-spec` is this spec with that sub-heading removed; `orphan-rollout-spec` is this
 spec plus an `API-3` element that no section 6 work item names, its verdict line recounted for the
-longer file.
+longer file. Regenerate all four derived fixtures, repos included, after any edit here.
+
+## Every existing thing the spec names is in the trees
+
+A re-validation reads the whole spec against both repositories, so everything the spec says
+already exists has a file behind it, cited in section 4's prerequisites and section 12. Without
+them every re-entry run spent passes and user questions on prerequisites nothing could back.
+
+- Service token: `repo-a/services/ledger/src/middleware/serviceToken.ts` (`requireServiceToken`),
+  guarding the routes in `repo-a/services/ledger/src/server.ts` (`GET /ledger/health`,
+  `GET /ledger/entries` → the stub; no `POST` — API-2 adds it).
+- Callers that send it today: `repo-a/services/checkout/src/clients/ledger.ts` (used by
+  `repo-a/services/checkout/src/health.ts`) and `repo-b/src/api/ledger.ts`, both on
+  `GET /ledger/health` only, so `postCharge` still makes no outbound call.
+- CI: `repo-a/.github/workflows/ledger.yml` applies `services/ledger/migrations/*.sql` in glob order
+  (lines 13-18) before deploying; `repo-a/.github/workflows/checkout.yml` and
+  `repo-b/.github/workflows/deploy.yml` deploy on merge to `main`. No element edits a workflow, so
+  the protected-path cut finds nothing here (that case is `protected-path-rollout-spec`).
+- Dashboard shell: `repo-b/src/session.ts`, `repo-b/src/router.tsx` (routes `/orders/:orderId` to
+  `repo-b/src/pages/OrderDetail.tsx`, never `PaymentStatus`), `repo-b/src/components/ErrorBanner.tsx`,
+  `repo-b/src/preview/index.tsx`.
+
+Still unbacked, and left as they are: API-1's flag-on "test environment" in section 8, and section
+7's rollback citing LED-109, which section 10 gives to team-web's fixture cleanup — validation may
+still raise both.
 
 ## Load-bearing line numbers
 

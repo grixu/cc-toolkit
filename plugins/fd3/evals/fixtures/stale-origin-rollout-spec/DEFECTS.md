@@ -5,7 +5,7 @@ sandbox copy.
 
 Derived from `rollout-spec`: the same repos and the same spec, PLUS one line under the validation
 pass's verdict line — `Checked at: repo-a @ @@SHA:repo-a@@, repo-b @ @@SHA:repo-b@@` — and the verdict
-line recounted to 217 lines. Regenerate it from `rollout-spec` that way; never edit the spec here
+line recounted to 221 lines. Regenerate it from `rollout-spec` that way; never edit the spec here
 directly.
 
 `SETUP.sh` runs after the reset script commits the repos:

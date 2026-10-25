@@ -162,7 +162,7 @@ every step while writes in the working directory succeeded.
   strings, exact line numbers the asserts rely on. Read it BEFORE editing any fixture
   file; update it with any edit.
 - Derived fixtures (`unvalidated-rollout-spec`, `orphan-rollout-spec`,
-  `no-rollout-order`, `deploy-path-payments-spec`, `ratified-rollout-spec`) are regenerated
+  `no-rollout-order`, `deploy-path-payments-spec`, `ratified-rollout-spec`, `stale-origin-rollout-spec`) are regenerated
   from their base fixture, never edited directly.
 - `DEFECTS.md` never reaches a sandbox (the reset script excludes it) — asserts must
   not depend on it.

@@ -1,0 +1,22 @@
+name: ledger
+
+on:
+  push:
+    branches: [main]
+    paths: ["services/ledger/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations in filename order
+        run: |
+          shopt -s nullglob
+          for f in services/ledger/migrations/*.sql; do
+            psql "$LEDGER_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
+        env:
+          LEDGER_DATABASE_URL: ${{ secrets.LEDGER_DATABASE_URL }}
+      - name: Deploy ledger
+        run: ./scripts/deploy.sh ledger
