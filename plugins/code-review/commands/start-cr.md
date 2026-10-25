@@ -124,7 +124,9 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
     asking: a question whose one answer grades nothing only holds the review up. Say which side
     you review in one line, and name the other side's files once in the report, in the `Tally`'s
     `Skipped:` clause (`CLAUDE.md, docs/notes.md (uncommitted, skipped kinds)`), and in the
-    context directory's `skipped`;
+    context directory's `skipped`. This does not hold when a spec is active — `--spec` resolved
+    to a readable file, or that side holds a document the spec offer below would make: the `spec`
+    Lens reviews every skipped file, so every answer grades something. Ask as below;
   - both non-zero, with a file on each side that the review would judge → ask with **one**
     `AskUserQuestion` which to review — **Uncommitted** (working tree vs HEAD), **Committed**
     (HEAD vs base), or **Both** (base → working tree) — putting the file counts you just saw in
@@ -165,7 +167,8 @@ sibling branch: among its `SPEC.split.md` and `tasks/*.md` files, tracked or not
 current branch (`git branch --show-current`) and offer the `SPEC.md` beside them, when exactly
 one does. On acceptance, treat it exactly as a passed
 `--spec` — Read it now — and note in the Tally that the spec Lens was activated from the
-diff rather than from the flag. Do not make this offer twice, and never activate the
+diff rather than from the flag; when Step 1 left a side of skipped kinds out unasked, ask the
+scope question now. Do not make this offer twice, and never activate the
 Lens without the user saying yes.
 
 **Which files get judged** — the in-scope extensions, the skip list, and the rule

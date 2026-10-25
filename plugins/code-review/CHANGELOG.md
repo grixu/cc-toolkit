@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   side is a kind `scope.md` skips (Markdown, JSON, a lockfile…): it reviews the other side and
   names the skipped side's files once, in the `Tally`'s `Skipped:` clause. Evals 29–30 cover the
   all-skipped side and the control where both sides hold a judged file
+- That shortcut does not apply while a spec is active (`--spec`, or a spec-shaped document on the
+  skipped side), since the `spec` lens reviews skipped files; a spec accepted from the offer after
+  the shortcut asks the scope question then. Eval-33 runs eval-29's checkout with `--spec`
 
 ### Fixed
 

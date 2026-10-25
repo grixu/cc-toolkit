@@ -1088,6 +1088,19 @@ tests:
       - type: javascript
         value: file://checks/scope-question.mjs
 
+  - description: 'eval-33 scope-skipped-spec (start-cr Step 1 with --spec, an uncommitted side of skipped kinds only)'
+    prompts: [scope-question-track]
+    vars:
+      # eval-29's checkout plus specs/order-discount.md on the base, passed as --spec
+      checkout: plugins/code-review/evals/.sandbox/scope-spec
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      spec: specs/order-discount.md
+      expect: ask
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/scope-question.mjs
+
   - description: 'eval-31 pr-detect (start-cr Step 1 with no --pr, on a branch that is someone else''s PR)'
     prompts: [pr-detect-track]
     vars:

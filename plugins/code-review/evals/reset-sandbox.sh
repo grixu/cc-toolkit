@@ -258,13 +258,18 @@ commit "$marker" 'feat: order cancellation'
 
 # evals 29-30: a branch with one committed source change above origin/main and an uncommitted side.
 # In scope-skip that side holds only files scope.md skips, so Step 1 has nothing to ask; scope-mixed
-# adds an untracked .ts, so the scope question is due.
-for name in scope-skip scope-mixed; do
+# adds an untracked .ts, so the scope question is due. eval-33's scope-spec is scope-skip plus a spec
+# on the base that the run gets as --spec: the spec lens reviews skipped files, so the question is due.
+for name in scope-skip scope-mixed scope-spec; do
   dir=.sandbox/$name
   mkdir -p "$dir/src"
   git -C "$dir" init -q -b main
   printf '# orders service\n\nRun the tests with `pnpm test`.\n' > "$dir/CLAUDE.md"
   printf 'export function orderTotal(lines: { price: number; qty: number }[]): number {\n  return lines.reduce((sum, l) => sum + l.price * l.qty, 0);\n}\n' > "$dir/src/order-service.ts"
+  if [ "$name" = scope-spec ]; then
+    mkdir -p "$dir/specs"
+    printf '# Order discounts\n\n1. `discountedTotal(lines, percent)` returns the order total reduced by `percent` per cent.\n2. `CLAUDE.md` tells contributors that discounts are percentages, never absolute amounts.\n' > "$dir/specs/order-discount.md"
+  fi
   git -C "$dir" add -A
   commit "$dir" 'base'
   git clone -q --bare "$dir" ".sandbox/$name-origin.git"
@@ -286,4 +291,4 @@ TS
 done
 printf 'export const MAX_DISCOUNT_PERCENT = 50;\n' > .sandbox/scope-mixed/src/discount-limits.ts
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed"
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec"
