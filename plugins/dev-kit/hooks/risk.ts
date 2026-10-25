@@ -187,14 +187,7 @@ export function split(files: FileDiff[], budget: number, maxParts = MAX_PARTS): 
     }
     const { pieces, truncated } = hunks(file, budget)
     truncatedHunks += truncated
-    let complete = true
-    for (const piece of pieces) {
-      if (!add(file.path, piece)) {
-        complete = false
-        break
-      }
-    }
-    if (!complete) skippedFiles.push(file.path)
+    if (!pieces.every((piece) => add(file.path, piece))) skippedFiles.push(file.path)
   }
   flush()
   return { parts, skippedFiles, truncatedHunks }
