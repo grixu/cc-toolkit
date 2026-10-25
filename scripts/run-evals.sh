@@ -13,6 +13,8 @@
 #                                          # one implement pattern: the two review-fixer scenarios
 #   scripts/run-evals.sh fd3 split-baseline --trials 3
 #                                          # 3 sequential trials, sandboxes reset before each
+#   scripts/run-evals.sh fd3 split-baseline --trials 2 --gate any
+#                                          # succeed when every test passed at least one trial
 #   scripts/run-evals.sh fd3 split-baseline --model <model-id>
 #                                          # A/B: another target model (default claude-opus-5-5);
 #                                          # the grader stays pinned
@@ -25,7 +27,9 @@
 # network config and one starting with "implement" the implement config; anything else
 # filters the default config. --trials <k> runs the selected
 # config k times, one after another, resetting every sandbox before each trial; --repeat is
-# rejected because its copies share one sandbox. --model <id> exports EVAL_TARGET_MODEL, which
+# rejected because its copies share one sandbox. By default the run exits with the first
+# nonzero trial exit code; --gate any instead succeeds when every test passed at least one
+# trial (an errored result is not a pass) and every trial exported its JSON. --model <id> exports EVAL_TARGET_MODEL, which
 # every config's target provider reads. Each run is archived in
 # plugins/<name>/evals/.results/runs/<UTC>-<sha>[-dirty]/ (trial-<i>.json, meta.json with
 # SHA, config, models and tool versions, summary.json from eval-summary.mjs), and
@@ -132,6 +136,7 @@ const meta = {
   filter_pattern: env.META_PATTERN || null,
   extra_args: process.argv.slice(2),
   trials: Number(env.META_TRIALS),
+  gate: env.META_GATE,
   trial_exit_codes: env.META_EXIT_CODES ? env.META_EXIT_CODES.split(' ').map(Number) : [],
   configured_target_model: target,
   target_model_override: env.EVAL_TARGET_MODEL || null,
@@ -156,11 +161,14 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   # into, concurrently — the copies see and delete each other's writes. A trial is a whole
   # run after its own reset.
   trials=1
+  gate=all
   args=()
   while [ $# -gt 0 ]; do
     case "$1" in
       --trials) trials="${2:-}"; shift 2 || { echo "--trials needs a count" >&2; exit 2; } ;;
       --trials=*) trials="${1#--trials=}"; shift ;;
+      --gate) gate="${2:-}"; shift 2 || { echo "--gate needs all or any" >&2; exit 2; } ;;
+      --gate=*) gate="${1#--gate=}"; shift ;;
       --model) model="${2:-}"; shift 2 || { echo "--model needs a model id" >&2; exit 2; } ;;
       --model=*) model="${1#--model=}"; shift ;;
       --repeat|--repeat=*)
@@ -171,6 +179,10 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   done
   if ! [[ "$trials" =~ ^[1-9][0-9]*$ ]]; then
     echo "--trials needs a positive integer, got '${trials}'" >&2
+    exit 2
+  fi
+  if [ "$gate" != all ] && [ "$gate" != any ]; then
+    echo "--gate needs all or any, got '${gate}'" >&2
     exit 2
   fi
   # The configs read the target model from EVAL_TARGET_MODEL; the grader stays pinned.
@@ -202,7 +214,7 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   mkdir -p "$run_dir"
   started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   export META_RUN_DIR="$run_dir" META_SHA="$sha" META_DIRTY="$dirty" META_CONFIG="$cfg" \
-    META_PATTERN="${pattern:-}" META_TRIALS="$trials" META_STARTED="$started"
+    META_PATTERN="${pattern:-}" META_TRIALS="$trials" META_GATE="$gate" META_STARTED="$started"
   # Written up front too, so an interrupted run still says what it was.
   write_meta "$@"
 
@@ -224,6 +236,21 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   META_EXIT_CODES="${exit_codes[*]}" META_ENDED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" write_meta "$@"
   echo "==> results archived in ${run_dir}"
   node scripts/eval-summary.mjs "$run_dir" || echo "!! eval-summary.mjs failed; trials are still in ${run_dir}" >&2
+  # A trial that never exported may have crashed on the very test that failed elsewhere, so the
+  # gate fails closed on it; a missing summary.json fails it too.
+  if [ "$gate" = any ]; then
+    status=0
+    node --input-type=module - "${run_dir}/summary.json" <<'JS' || status=1
+import fs from 'node:fs';
+
+const s = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const none = s.tests.filter((t) => t.passes === 0).map((t) => t.test);
+if (s.missing_trials.length) console.error(`!! gate any: trial ${s.missing_trials.join(', ')} exported no results`);
+if (none.length) console.error(`!! gate any: passed no trial: ${none.join(', ')}`);
+if (s.tests.length === 0) console.error('!! gate any: no test ran');
+process.exit(s.missing_trials.length || none.length || s.tests.length === 0 ? 1 : 0);
+JS
+  fi
   # A sandbox whose seccomp helper cannot arm fails every Bash call, and agents work around a dead
   # shell well enough to pass, so the run is void however it scored.
   if grep -l 'apply-seccomp:' "${run_dir}"/trial-*.json >/dev/null 2>&1; then
