@@ -30,7 +30,9 @@ export default (output, context) => {
     c.check(passes <= 4, `${passes} dated validation blocks appended; the loop allows three passes and one post-verdict pass`);
   }
 
-  const newSpecs = diff.added.filter((f) => f.endsWith('.md') && !/(^|\/)(notes|research|evidence)\//.test(f));
+  const beside = diff.added.filter((f) => /\.notes\.md$|\.research\//.test(f));
+  c.check(beside.length === 0, `session files written beside the spec instead of into a session folder: ${beside.join(', ')}`);
+  const newSpecs = diff.added.filter((f) => f.endsWith('.md') && !/(^|\/)(notes|research|evidence)\//.test(f) && !/\.session\//.test(f));
   c.check(newSpecs.length === 0, `a second spec was written instead of re-validating the given one: ${newSpecs.join(', ')}`);
 
   const code = diff.modified.filter((f) => f !== SPEC);

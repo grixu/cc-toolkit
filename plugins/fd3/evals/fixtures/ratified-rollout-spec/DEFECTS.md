@@ -7,9 +7,11 @@ typed a post-verdict decision into the spec body itself.
 ## Derivation
 
 `rollout-spec` byte for byte, repos included (its DEFECTS.md holds the spec's contract, including the
-220-line verdict line), plus `spec/rollout-spec.notes.md`: the closing notes write-spec moves beside the spec.
-Regenerate from `rollout-spec` rather than editing the copy, so the two never drift apart. The spec
-and its notes sit outside the two git repositories, as on re-entry.
+220-line verdict line), plus `spec/rollout-spec.session/notes.md`: the closing notes write-spec moves into the spec's
+session folder. Regenerate from `rollout-spec` rather than editing the copy, so the two never drift
+apart. The spec and its session folder sit outside the two git repositories, as on re-entry. The
+folder carries no `.gitignore` here: one holding `*` would hide the notes from this repository's
+own git, and the sandbox's `spec/` is in no repository for it to act on.
 
 ## The change the prompt brings
 
@@ -26,8 +28,10 @@ trees, so that re-read finds no new defect there; the backfill owner is what may
 
 - No `Edit`/`Write`/`MultiEdit` and no shell write on `spec/rollout-spec.md` from the main thread
   (a tool call without a parent tool-use id); write-spec and validate-spec run forked.
-- `spec/rollout-spec.notes.md` gains a line naming D2 (or question 2) and option b.
+- `spec/rollout-spec.session/notes.md` gains a line naming D2 (or question 2) and option b.
 - The API-1 sentence above is gone from the spec: option b was applied.
 - One to four new dated validation headings (re-entry runs the full loop: three passes plus one
   post-verdict pass), and the last verdict line's count equals the spec's `wc -l`.
-- No question ledger, no second spec, no file touched outside the spec and its notes.
+- No question ledger, no second spec, no file touched outside the spec and its notes, and no
+  `rollout-spec.notes.md` or `rollout-spec.research/` written beside the spec: the decision goes into
+  the session folder that already exists.

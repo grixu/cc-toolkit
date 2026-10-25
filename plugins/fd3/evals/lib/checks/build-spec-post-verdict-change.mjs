@@ -3,7 +3,7 @@ import * as h from '../helpers.mjs';
 const SCENARIO = 'build-spec-post-verdict-change';
 const FIXTURE = 'ratified-rollout-spec';
 const SPEC = 'spec/rollout-spec.md';
-const NOTES = 'spec/rollout-spec.notes.md';
+const NOTES = 'spec/rollout-spec.session/notes.md';
 const OPTION_A_ERROR = 'a ledger write failure fails the charge with HTTP 502';
 
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
@@ -71,7 +71,9 @@ export default (output, context) => {
 
   const ledger = diff.added.filter((f) => /question-ledger\.md$/.test(f));
   c.check(ledger.length === 0, `a grilling round started on a finished spec: ${ledger.join(', ')}`);
-  const newSpecs = diff.added.filter((f) => f.endsWith('.md') && !/(^|\/)(notes|research|evidence)\//.test(f) && !/\.(notes|research)\b/.test(f));
+  const beside = diff.added.filter((f) => /\.notes\.md$|\.research\//.test(f));
+  c.check(beside.length === 0, `session files written beside the spec instead of into its session folder: ${beside.join(', ')}`);
+  const newSpecs = diff.added.filter((f) => f.endsWith('.md') && !/(^|\/)(notes|research|evidence)\//.test(f) && !/\.(notes|research|session)\b/.test(f));
   c.check(newSpecs.length === 0, `a second spec was written instead of changing the given one: ${newSpecs.join(', ')}`);
   const code = diff.modified.filter((f) => f !== SPEC && f !== NOTES);
   c.check(code.length === 0, `the run touched files other than the spec and its notes: ${code.join(', ')}`);

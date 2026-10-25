@@ -314,10 +314,10 @@ test('post-verdict change: only the main thread editing the spec counts', async 
   const edit = { name: 'Edit', input: { file_path: '/sandbox/spec/rollout-spec.md', old_string: 'a', new_string: 'b' } };
   assert.equal(mainThreadSpecEdits(calls(edit)).length, 1);
   assert.equal(mainThreadSpecEdits(calls({ ...edit, parentToolUseId: 'toolu_write_spec' })).length, 0);
-  assert.equal(mainThreadSpecEdits(calls({ name: 'Edit', input: { file_path: 'spec/rollout-spec.notes.md' } })).length, 0);
+  assert.equal(mainThreadSpecEdits(calls({ name: 'Edit', input: { file_path: 'spec/rollout-spec.session/notes.md' } })).length, 0);
   assert.equal(mainThreadSpecEdits(calls({ name: 'Bash', input: { command: "sed -i '' 's/502/200/' spec/rollout-spec.md" } })).length, 1);
   assert.equal(mainThreadSpecEdits(calls({ name: 'Bash', input: { command: 'wc -l spec/rollout-spec.md; grep -n Verdict spec/rollout-spec.md' } })).length, 0);
-  assert.equal(mainThreadSpecEdits(calls({ name: 'Bash', input: { command: 'cat >> spec/rollout-spec.notes.md <<EOF' } })).length, 0);
+  assert.equal(mainThreadSpecEdits(calls({ name: 'Bash', input: { command: 'cat >> spec/rollout-spec.session/notes.md <<EOF' } })).length, 0);
 });
 
 // 2a8b8230: passes 1 and 2 edited the body, so the loop ran a third that edited nothing.
