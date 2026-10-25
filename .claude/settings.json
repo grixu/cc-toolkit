@@ -24,6 +24,12 @@
         "source": "github",
         "repo": "sarthakrastogi/agent-engineer"
       }
+    },
+    "cc-toolkit": {
+      "source": {
+        "source": "github",
+        "repo": "grixu/cc-toolkit"
+      }
     }
   }
 }
