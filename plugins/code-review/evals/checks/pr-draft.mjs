@@ -177,8 +177,9 @@ export function outdatedRaised(output, context) {
   if (point.test(st.body.body ?? '')) bad.push(`the review body repeats ${by}'s outdated point`);
   const earlier = /earlier revision|earlier commit|previous revision|older revision|outdated/i;
   // One wrap-up item (a bullet, a table row or a paragraph) names the reviewer, the point and the revision.
-  // The wrap-up may name the finding by its rule or its `path:L<lines>` rather than quote the code.
-  const cited = new RegExp(`${mentions}|magic|:L?${line}\\b`, 'i');
+  // The wrap-up may name the finding by its `path:L<lines>` rather than quote the code. A rule name
+  // is no anchor: the same reviewer's outdated item on the replaced code is a magic literal too.
+  const cited = new RegExp(`${mentions}|${path.basename(file)}|:L?${line}\\b`, 'i');
   const named = output.split(/\n(?=\s*(?:[-*|]|\d+\.)\s)|\n\s*\n/).some((l) => l.includes(by) && cited.test(l) && earlier.test(l));
   if (!named) bad.push(`the wrap-up does not name the point ${by} raised on an earlier revision`);
   const { file: rf, line: rl, mentions: rm } = context.vars.replaced;
