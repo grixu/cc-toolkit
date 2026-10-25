@@ -13,8 +13,16 @@ const TOPIC = {
   limit: /\b(?:body|payload|request) size\b|\bsize limit\b|\bmax(?:imum)? (?:body |payload |request )?size\b|\b413\b|\b\d+\s?(?:KB|KiB|MB|MiB|bytes)\b/i,
 };
 // A gap may name infra/secrets.tf for who applies it; only the consent itself is a parked choice.
-const PARKED = [TOPIC.adr, /\bconsent\b|\bpermission\b|\bprotected\b/i, TOPIC.port, TOPIC.limit];
-const anyTopic = (text) => PARKED.some((re) => re.test(text));
+const PARKED = { adr: TOPIC.adr, consent: /\bconsent\b|\bpermission\b|\bprotected\b/i, port: TOPIC.port, limit: TOPIC.limit };
+// What a decision row needs for its topic to be settled: a gap on the carrier's payload contract may
+// then name "payload size" without parking the limit a D row already fixed.
+const SETTLED = {
+  adr: /\bADRs?\b|architecture decision record/i,
+  consent: /\bconsent\b/i,
+  port: /(?:\b|_)port\b[^|]*\b\d{2,5}\b/i,
+  limit: /\b\d[\d,   ]*\s?(?:KB|KiB|MB|MiB|bytes)\b/i,
+};
+const DECISION_ROW = /^\s*\|\s*\**D\d+\**\s*\|/;
 
 // Table rows, list items and paragraphs, each with the heading it sits under.
 function blocks(markdown) {
@@ -43,9 +51,13 @@ function blocks(markdown) {
 
 // A gap entry names an owner or a placement, calls itself a gap, or sits under a gaps heading.
 export function parkedChoices(spec) {
-  return blocks(spec)
+  const body = String(spec || '').replace(/^\s*(```|~~~)[^\n]*\n[\s\S]*?^\s*\1[^\n]*$/gm, '');
+  const decisions = body.split('\n').filter((l) => DECISION_ROW.test(l));
+  const open = Object.keys(PARKED).filter((k) => !decisions.some((row) => SETTLED[k].test(row)));
+  return blocks(body)
     .filter((b) => /\bgaps?\b/i.test(b.heading) || /\bgaps?\b|\bowner\s*:|\bplacement\s*:/i.test(b.text))
-    .filter((b) => !/^\s*\|\s*-/.test(b.text) && anyTopic(b.text))
+    .filter((b) => !/^\s*\|\s*-/.test(b.text) && !DECISION_ROW.test(b.text))
+    .filter((b) => open.some((k) => PARKED[k].test(b.text)))
     .map((b) => b.text.replace(/\s+/g, ' ').trim());
 }
 

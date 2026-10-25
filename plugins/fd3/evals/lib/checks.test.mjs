@@ -274,6 +274,19 @@ test('closing batch: a port named as an env var and a row cited inside another r
   assert.equal(/(?:\b|_)port\b/i.test('the report and its transport support'), false);
 });
 
+// 4df08999, 06b19235 and daaf1134 settled port and size in D rows, then mentioned them in gaps on the
+// carrier contract and the deployment, in the D rows themselves and in a fenced handler sketch.
+test('closing batch: a gap mentioning a topic a D row settles parks nothing; an unsettled one still fails', async () => {
+  const { parkedChoices } = await import('./checks/write-closing-batch.mjs');
+  for (const id of ['4df08999', '06b19235', 'daaf1134']) assert.deepEqual(parkedChoices(specSide(`closing-batch-spec-${id}.md`)), [], id);
+  const gaps = '\n### Declared gaps\n\n| ID | Gap | Owner |\n|---|---|---|\n| G1 | The listener port is not given in the notes. | the user |\n';
+  assert.equal(parkedChoices(gaps).length, 1);
+  const portOnly = '| D9 | **Listener on `WEBHOOK_PORT`, default 8081** | assistant-taken |\n\n### Declared gaps\n\n| G1 | Maximum body size not decided. | the user |\n';
+  assert.equal(parkedChoices(portOnly).length, 1);
+  const sizeWithoutValue = '| D4 | **Oversized bodies get 413** | Q4 a. |\n\n### Declared gaps\n\n| G1 | The body size limit is not decided. | the user |\n';
+  assert.equal(parkedChoices(sizeWithoutValue).length, 1);
+});
+
 const deployVerdict = (headline, phase1) => `## Verdict
 ${headline} — the deploy path phase 1 relies on does not exist.
 
