@@ -148,11 +148,20 @@ test('maps the rubric onto the configured levels', () => {
   const three = rubric(['low', 'medium', 'high'])
   expect(three.length).toBe(3)
   expect(three[0]).toMatch(/^low: Documentation/)
-  expect(three[2]).toMatch(/^high: A defect would likely cause an outage/)
+  expect(three[2]).toMatch(/would likely cause an outage/)
+})
+
+test('sends every anchor exactly once for any level count', () => {
+  const anchors = ['documentation', 'small, localized', 'shared code', 'critical path', 'outage']
+  for (const levels of [['a', 'b'], ['a', 'b', 'c'], ['low', 'medium', 'high', 'critical'], ['a', 'b', 'c', 'd', 'e']]) {
+    const criteria = rubric(levels).map((c) => c.toLowerCase())
+    for (const anchor of anchors) expect(criteria.filter((c) => c.includes(anchor)).length).toBe(1)
+  }
 })
 
 test('reads the level and label options with fallbacks', () => {
   expect(readConfig({ risk_levels: ['only'] }).levels).toEqual(['low', 'medium', 'high', 'critical'])
+  expect(readConfig({ risk_levels: ['1', '2', '3', '4', '5', '6'] }).levels).toEqual(['low', 'medium', 'high', 'critical'])
   expect(readConfig({ risk_levels: 'minor, major' }).levels).toEqual(['minor', 'major'])
   expect(readConfig({ risk_label: false }).labelEnabled).toBe(false)
 })

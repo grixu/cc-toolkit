@@ -18,7 +18,7 @@ const EXCLUDED_FILE = [
   /\.snap$/,
 ]
 
-// Anchors from no runtime impact to hard-to-reverse harm; levels between them borrow the nearest one.
+// Anchors from no runtime impact to hard-to-reverse harm, not the levels themselves.
 const RUBRIC = [
   'Documentation, comments, formatting or test-only changes; no runtime behavior changes',
   'A small, localized behavior change in one area with an obvious blast radius',
@@ -89,8 +89,8 @@ export function isExcluded(path: string): boolean {
 function readLevels(value: unknown): string[] {
   const list = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
   const levels = list.map((v) => String(v).trim()).filter(Boolean)
-  // Jev accepts 1–10 score criteria, and one level carries no information.
-  return levels.length >= 2 && levels.length <= 10 ? levels : DEFAULT_LEVELS
+  // One level carries no information, and a level beyond the anchor count would repeat another's criterion.
+  return levels.length >= 2 && levels.length <= RUBRIC.length ? levels : DEFAULT_LEVELS
 }
 
 export function readConfig(options: Record<string, unknown> | undefined): Config {
@@ -110,9 +110,13 @@ export function labelFor(template: string, level: string): string {
   return template.includes('{level}') ? template.split('{level}').join(level) : `${template}: ${level}`
 }
 
+// Each level takes a contiguous run of anchors, so every anchor is sent once and no two levels share one.
 export function rubric(levels: string[]): string[] {
-  const last = levels.length - 1
-  return levels.map((name, i) => `${name}: ${RUBRIC[Math.round((i * (RUBRIC.length - 1)) / last)]}`)
+  const edge = (i: number) => Math.round((i * RUBRIC.length) / levels.length)
+  return levels.map((name, i) => {
+    const anchors = RUBRIC.slice(edge(i), edge(i + 1)).map((a, j) => (j ? a[0].toLowerCase() + a.slice(1) : a))
+    return `${name}: ${anchors.join('; or ')}`
+  })
 }
 
 export function questions(levels: string[]): Record<string, unknown> {
