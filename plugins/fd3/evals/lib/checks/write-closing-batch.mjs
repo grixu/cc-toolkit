@@ -18,11 +18,25 @@ const PARKED = { adr: TOPIC.adr, consent: /\bconsent\b|\bpermission\b|\bprotecte
 // then name "payload size" without parking the limit a D row already fixed.
 const SETTLED = {
   adr: /\bADRs?\b|architecture decision record/i,
-  consent: /\bconsent\b/i,
+  consent: { test: (row) => consentSettled(row) },
   port: /(?:\b|_)port\b[^|]*\b\d{2,5}\b/i,
   limit: /\b\d[\d,   ]*\s?(?:KB|KiB|MB|MiB|bytes)\b/i,
 };
 const DECISION_ROW = /^\s*\|\s*\**D\d+\**\s*\|/;
+
+// "Needs consent from the platform team" names a party yet records nothing given: consent is
+// settled only as given by someone, or as not needed for a stated reason.
+const CONSENT_NOT_NEEDED = /\b(?:no|not)\b[^|;]{0,20}\bconsent\b[^|;]{0,20}\b(?:needed|required)\b\s*(?:because|since|as|[:—–(,;])\s*\w|\bconsent\b[^|;]{0,10}\bnot (?:needed|required)\b\s*(?:because|since|as|[:—–(,;])\s*\w/i;
+const CONSENT_OPEN = /\b(?:needs?|needing|requires?|requiring|awaits?|awaiting|pending|without|seek(?:s|ing)?|ask(?:s|ing)? for|no)\b[^|;]{0,30}\bconsent\b|\bconsent\b[^|;]{0,20}\b(?:pending|needed|required|outstanding|not (?:yet )?(?:given|granted|obtained|recorded))\b/i;
+const CONSENT_GIVEN = [
+  /\bconsent\b[^|;]{0,80}\b(?:given|granted|obtained|confirmed|recorded|provided)\b[^|;]{0,40}\b(?:by|from|in|as)\b/i,
+  /\b(?:user|owner|team|lead|maintainer)s?['’]s?\s+(?:explicit\s+|written\s+)?consent\b/i,
+  /\b(?:Q\d+\w*|answer|choice|reply|ratification)\b[^|;]{0,30}\b(?:as|is) (?:\w+ ){0,3}consent\b/i,
+];
+export function consentSettled(row) {
+  if (CONSENT_NOT_NEEDED.test(row)) return true;
+  return !CONSENT_OPEN.test(row) && CONSENT_GIVEN.some((re) => re.test(row));
+}
 
 // Table rows, list items and paragraphs, each with the heading it sits under.
 function blocks(markdown) {

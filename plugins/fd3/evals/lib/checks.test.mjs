@@ -295,6 +295,21 @@ test('closing batch: a gap mentioning a topic a D row settles parks nothing; an 
   assert.equal(parkedChoices(sizeWithoutValue).length, 1);
 });
 
+// A D row that merely says "consent" left the consent topic settled, so a gap parking it passed.
+// The real row is 4557c43 trial 2's D2, which records the user's Q2 a answer as the consent.
+test('closing batch: consent is settled only by a D row recording it given or not needed', async () => {
+  const { parkedChoices, consentSettled } = await import('./checks/write-closing-batch.mjs');
+  const gap = '\n### Declared gaps\n\n- Consent to create the protected infra/secrets.tf — owner: the user, placement: before phase 1.\n';
+  const withRow = (row) => `${row}\n${gap}`;
+  assert.equal(parkedChoices(withRow('| D7 | Consent for touching CI | needs consent from platform team |')).length, 1);
+  assert.equal(parkedChoices(withRow('| D7 | **A new file `infra/secrets.tf`** | consent pending |')).length, 1);
+  const real = "| D2 | **Every request is verified with HMAC-SHA256 over the raw body; the signing secret is a new Secret Manager resource `carrier-webhook-secret` in a new file `infra/secrets.tf` (INFRA-1).** | Q2, option a; this answer is the user's explicit consent to create `infra/secrets.tf` that `CLAUDE.md:7-8` requires. Follows the existing pattern at `infra/main.tf:1-7`. |";
+  assert.deepEqual(parkedChoices(withRow(real)), []);
+  assert.equal(consentSettled('| D7 | Consent given by the platform team on 2026-10-20 |'), true);
+  assert.equal(consentSettled('| D7 | Consent is not needed: the file sits outside infra/ |'), true);
+  assert.equal(consentSettled('| D7 | Consent is not needed |'), false);
+});
+
 const deployVerdict = (headline, phase1) => `## Verdict
 ${headline} — the deploy path phase 1 relies on does not exist.
 
