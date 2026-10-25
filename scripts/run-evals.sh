@@ -49,6 +49,11 @@ export CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1
 # An eval measures the plugin at the CLI's default compaction point; an operator's compaction
 # settings leak in through the env and move it, either compacting mid-skill or never.
 unset CLAUDE_AUTOCOMPACT_PCT_OVERRIDE CLAUDE_CODE_AUTO_COMPACT_WINDOW DISABLE_AUTO_COMPACT DISABLE_COMPACT
+# An operator's commit signing needs ~/.gnupg, which the eval sandbox denies, so every agent
+# commit would exit 128; the env-based config overrides the operator's gitconfig for this run.
+export GIT_CONFIG_COUNT=2
+export GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false
+export GIT_CONFIG_KEY_1=tag.gpgsign GIT_CONFIG_VALUE_1=false
 
 bin="./node_modules/.bin/promptfoo"
 if [ ! -x "$bin" ]; then
