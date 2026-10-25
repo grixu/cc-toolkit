@@ -67,6 +67,7 @@ async function git($, args: string[]): Promise<string> {
 }
 
 async function resolveBase($, base: string): Promise<string> {
+  // origin first: the PR merges into the remote branch, and a stale local copy would widen the range.
   for (const ref of [`origin/${base}`, base]) {
     const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
     if (r.exitCode === 0) return ref

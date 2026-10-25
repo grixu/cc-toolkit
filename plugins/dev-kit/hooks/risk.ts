@@ -2,7 +2,8 @@
 
 export const DEFAULT_LEVELS = ['low', 'medium', 'high', 'critical']
 
-// Jev's default limit is 32k tokens per question; code tokenizes densely, so budget ~3 chars a token.
+// Jev's default limit is 32k tokens per question and code tokenizes at ~3 chars a token;
+// 72k chars (~24k tokens) for the whole state leaves headroom for the questions.
 export const STATE_CHAR_BUDGET = 72_000
 export const HEADER_CHAR_BUDGET = 12_000
 export const MAX_PARTS = 8
