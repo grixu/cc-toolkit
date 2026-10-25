@@ -23,14 +23,20 @@ and regenerated.
 (`tests/workflows/harness.mjs`, scripted replies from `fixtures.mjs`), keeps the one
 call `lib/implement-scenarios.mjs` names, and runs that prompt as a single live agent
 with the call's own model, effort and schema (`output_format`), so the output is the
-agent's structured result. A model the script does not pin is the config's
+agent's structured result. A call with an `agentType` of `fd3:<name>` also gets the
+`disallowedTools` of `agents/<name>.md`, merged into the provider's own
+`disallowed_tools`: the CI runner runs as `fd3:ci-runner` without `ScheduleWakeup` or
+`Monitor`, after a Haiku runner ended its turn on a wakeup mid-build despite a prompt
+ban. An agent definition with a `tools` allowlist fails the scenario, since the provider
+does not apply one. A model the script does not pin is the config's
 `claude-opus-5-5`; the CI runner's `haiku` therefore shows as a model mismatch in the
 summary, by design. The provider delegates to promptfoo's `anthropic:claude-agent-sdk`
 provider (`loadApiProvider`), which keeps its cost, `modelUsage` and `toolCalls`
 metadata — a YAML provider config cannot carry a run-time prompt or a hook callback.
 Agent scenarios run with background tasks enabled (`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=0`,
-overriding the runner) because the workflow's agents have `run_in_background` and
-`Monitor`, and abandoning a backgrounded build is the failure they test. The fixtures
+overriding the runner) because the workflow's agents have the Bash tool's `run_in_background`
+(and every agent but the CI runner `Monitor`), and abandoning a backgrounded build is the
+failure they test. The fixtures
 put the task files outside the sandbox's git root and record the task branch's head in
 `.sandbox/.origins/<scenario>/branch-head`, out of every agent's reach.
 

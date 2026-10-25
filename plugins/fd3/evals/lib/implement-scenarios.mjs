@@ -23,8 +23,8 @@ async function renderAgent({ sandbox, branch, slug, toolchain, commands, review,
   const run = await runWorkflow('implement-run.js', args, [...rules, ...implementDefaults()]);
   const call = run.callsMatching(capture);
   if (call.length !== 1) throw new Error(`expected one ${capture} call, got ${run.labels.join(', ')}`);
-  const { prompt, model, effort, label, opts } = call[0];
-  return { prompt, model, effort, label, schema: opts.schema, cwd: repo };
+  const { prompt, model, effort, agentType, label, opts } = call[0];
+  return { prompt, model, effort, agentType, label, schema: opts.schema, cwd: repo };
 }
 
 const LONG_BUILD = "sh -c 'sleep 200; echo built'";

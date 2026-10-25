@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadApiProvider } from 'promptfoo';
-import { EVALS_DIR, sandboxDir } from './helpers.mjs';
+import { EVALS_DIR, parseFrontmatter, sandboxDir } from './helpers.mjs';
 import { SCENARIOS } from './implement-scenarios.mjs';
 
 const PLUGIN_ROOT = path.resolve(EVALS_DIR, '..');
@@ -19,7 +19,23 @@ const readTaskFiles = (dir) =>
       .map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]),
   );
 
+const toolList = (value) => (Array.isArray(value) ? value : String(value ?? '').split(',')).map((t) => t.trim()).filter(Boolean);
+
+// The workflow runs a call with an agentType as that agent, so its tool restriction is part of what
+// the scenario tests: the CI runner's missing ScheduleWakeup is the fix it guards.
+export function agentTools(agentType) {
+  if (!agentType) return { disallowed: [] };
+  const [plugin, name] = agentType.split(':');
+  if (plugin !== 'fd3' || !name) throw new Error(`implement scenario renders an agent of another plugin: ${agentType}`);
+  const fm = parseFrontmatter(fs.readFileSync(path.join(PLUGIN_ROOT, 'agents', `${name}.md`), 'utf8'));
+  if (!fm) throw new Error(`agents/${name}.md has no frontmatter`);
+  // An allowlist would need its StructuredOutput channel proven to survive; no scenario renders one yet.
+  if (fm.tools !== undefined) throw new Error(`agents/${name}.md sets a tools allowlist, which this provider does not apply`);
+  return { disallowed: toolList(fm.disallowedTools) };
+}
+
 function agentConfig(agent, base, model) {
+  const { disallowed } = agentTools(agent.agentType);
   return {
     ...base,
     model: agent.model ?? model,
@@ -27,7 +43,7 @@ function agentConfig(agent, base, model) {
     working_dir: agent.cwd,
     // A workflow agent answers through its schema and has no human to ask or workflow to start.
     output_format: { type: 'json_schema', schema: agent.schema },
-    disallowed_tools: ['AskUserQuestion', 'Workflow'],
+    disallowed_tools: [...new Set(['AskUserQuestion', 'Workflow', ...disallowed])],
     // The runner disables background tasks for every headless eval, but the workflow's agents
     // run with them: the Bash tool's run_in_background and Monitor are how the long build got
     // abandoned in the traces this suite reproduces.
@@ -86,7 +102,7 @@ export default class ImplementProvider {
     if (scenario.kind === 'agent') {
       const agent = await scenario.render(sandbox);
       text = agent.prompt;
-      Object.assign(fd3, { label: agent.label, model: agent.model ?? model, effort: agent.effort ?? null, renderedPrompt: agent.prompt });
+      Object.assign(fd3, { label: agent.label, agentType: agent.agentType ?? null, model: agent.model ?? model, effort: agent.effort ?? null, renderedPrompt: agent.prompt });
       config = agentConfig(agent, base, model);
     } else {
       config = skillConfig(scenario, sandbox, base, model, fd3);
