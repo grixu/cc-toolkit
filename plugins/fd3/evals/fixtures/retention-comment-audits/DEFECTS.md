@@ -20,6 +20,13 @@ A round that repeats the 30-day claim without the read path beside it (`src/stor
 `getAuditResult` in the same paragraph) fails. The check reads the `QUERY_LINES` range (14-27):
 a `store.ts:N` citation outside it fails.
 
+## No other defect
+
+`saveAuditResult` (`src/store.ts:29-34`) destructures `createdAt` out of the row and inserts it as
+`created_at`, so every field it sends is a column of `infra/audit_results.schema.json`. Spreading the
+whole result sent the non-column `createdAt` as well — a real insert bug every trial found instead of
+the planted trap. Keep the insert column-exact, and keep the read query at lines 14-27.
+
 ## The option the facts point to
 
 Dropping the partition expiry (or keeping results indefinitely) — the option the real grill left out

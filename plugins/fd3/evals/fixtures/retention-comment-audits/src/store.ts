@@ -27,7 +27,8 @@ export async function getAuditResult(id: string, createdAt: Date): Promise<Audit
 }
 
 export async function saveAuditResult(result: AuditResult): Promise<void> {
+  const { createdAt, ...row } = result;
   await bigquery.dataset("audits").table("audit_results").insert([
-    { ...result, created_at: result.createdAt },
+    { ...row, created_at: createdAt },
   ]);
 }
