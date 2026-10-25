@@ -264,10 +264,12 @@ for name in scope-skip scope-mixed scope-spec; do
   dir=.sandbox/$name
   mkdir -p "$dir/src"
   git -C "$dir" init -q -b main
+  # shellcheck disable=SC2016 # backticks are literal Markdown
   printf '# orders service\n\nRun the tests with `pnpm test`.\n' > "$dir/CLAUDE.md"
   printf 'export function orderTotal(lines: { price: number; qty: number }[]): number {\n  return lines.reduce((sum, l) => sum + l.price * l.qty, 0);\n}\n' > "$dir/src/order-service.ts"
   if [ "$name" = scope-spec ]; then
     mkdir -p "$dir/specs"
+    # shellcheck disable=SC2016 # backticks are literal Markdown
     printf '# Order discounts\n\n1. `discountedTotal(lines, percent)` returns the order total reduced by `percent` per cent.\n2. `CLAUDE.md` tells contributors that discounts are percentages, never absolute amounts.\n' > "$dir/specs/order-discount.md"
   fi
   git -C "$dir" add -A
