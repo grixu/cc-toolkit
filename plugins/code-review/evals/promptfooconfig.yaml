@@ -745,10 +745,11 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: security, rule: iac-exposure, mentions: [tls_private_key, deploy_key, private_key_pem], severity: high }
-      # the plaintext `default` on the variable
+      # the plaintext `default` on the variable; its line counts only in the location slot,
+      # since the 5432 finding can cite "the committed default at L12" in passing
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: security, mentions: [db_admin_password], all: ['default|Sup3rS3cret|plaintext'] }
+        config: { family: security, mentions: [db_admin_password, Sup3rS3cret, '· (?:L[\d–-]+, )*L1[02]\b'], all: ['default|Sup3rS3cret|plaintext'] }
       # the output that carries it without `sensitive`
       - type: javascript
         value: file://checks/report.mjs:finding
