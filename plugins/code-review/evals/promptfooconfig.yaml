@@ -883,10 +883,10 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], severity: high }
-      # the wrong result: the last page is never fetched
+      # the wrong result: the last page is never fetched, in whichever words
       - type: javascript
         value: file://checks/report.mjs:finding
-        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], all: ['last'] }
+        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], all: ['last|final page|drops? page|never fetch'] }
       - type: javascript
         value: file://checks/report.mjs:finding
         config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], fix: 'page < totalPages(?!\s*-)|<= totalPages - 1' }
