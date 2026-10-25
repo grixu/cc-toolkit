@@ -218,6 +218,14 @@ test('verified claims: the comment repeated as fact, a missing no-expiry option,
   assert.match(claimFailures('Looking into the retention now.').join('\n'), /asks no numbered question/);
 });
 
+// 4557c43 trial 2 named the comment's claim in Q3 only to call it false.
+test('verified claims: a round that reports the comment\'s claim as false passes', async () => {
+  const { claimFailures } = await import('./checks/grill-verified-claims.mjs');
+  assert.deepEqual(claimFailures(grill('disputed-claim-4557c43.md')), []);
+  const endorsed = verifiedRound.replace(/- The comment[\s\S]*?any age\.\n/, '- As the comment says, reads only look back 30 days.\n');
+  assert.match(claimFailures(endorsed).join('\n'), /asserts a 30-day read window/);
+});
+
 const closingSpec = `## 3. Design decisions
 
 | # | Decision | Rationale |

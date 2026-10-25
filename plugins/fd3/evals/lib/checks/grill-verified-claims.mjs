@@ -6,12 +6,21 @@ const QUERY_LINES = [14, 27];
 const READ_PATH = /store\.ts|getAuditResult/;
 const THIRTY_DAY_READS =
   /\b(?:30|thirty) day (?:query |read |lookback |look back )?window\b|\blook(?:s|ing)? back (?:only )?(?:30|thirty) days\b|\b(?:reads?|queries|queried|lookups?)\b[^.]{0,40}\b(?:30|thirty) days\b/i;
+const ATTRIBUTED = /\b(?:claims?|claimed|says|said|states|asserts)\b/i;
+const DISPUTED = /\b(?:false|wrong|incorrect|untrue|misleading|contradict\w*)\b/i;
 const DROP_EXPIRY =
   /\b(?:drop|remov|disabl|delet|unset|turn(?:ing)? off|switch(?:ing)? off|stop)\w*\b[^.]{0,60}\b(?:expir|ttl)\w*|\bno (?:partition )?expir\w*|\bnever expir\w*|\bkeep\b(?: \w+){0,4} (?:forever|indefinitely)\b|\bindefinite(?:ly)? (?:retention|retained|kept)\b/i;
 
 // The comment in infra/results.tf claims reads only look back 30 days; the code reads by id within a
 // day of the result's createdAt, at any age. A round that repeats the comment's claim without the
 // read path beside it states a fact no lookup established.
+// Reporting the comment's claim in order to dispute it is not repeating it as fact.
+function attributed(prose, index) {
+  const before = prose.slice(0, index);
+  const clauseStart = Math.max(...['.', '!', '?', ';'].map((c) => before.lastIndexOf(c))) + 1;
+  return ATTRIBUTED.test(before.slice(clauseStart));
+}
+
 export function claimFailures(output) {
   const out = [];
   const text = String(output || '');
@@ -19,7 +28,9 @@ export function claimFailures(output) {
 
   for (const block of text.split(/\n\s*\n/)) {
     const prose = h.normalizeProse(block);
-    if (h.affirmedMatches(prose, THIRTY_DAY_READS).length && !READ_PATH.test(block)) {
+    const disputed = DISPUTED.test(prose);
+    const asserted = h.affirmedMatches(prose, THIRTY_DAY_READS).filter((m) => !(disputed && attributed(prose, m.index)));
+    if (asserted.length && !READ_PATH.test(block)) {
       out.push(`the round asserts a 30-day read window that only the infra/results.tf comment claims, without the read path (src/store.ts): "${prose.trim().slice(0, 160)}"`);
     }
   }
