@@ -17,10 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prints every branch's transitive merge order as `landing`, and `implement-tasks` orders the
   pull-request proposal from it, falling back to the report's prose only for tasks split before the
   field existed
-- a spec's session files live in a git-ignored session folder beside it, `<spec-basename>.session/`:
-  `write-spec` moves the closing notes (`notes.md`), the question ledger and the research directory
-  there instead of beside the spec as `<spec>.notes.md` and `<spec>.research/`, and creates the
-  folder with a `.gitignore` of `*`, so `git status` shows only the spec and its `evidence/`; the
+- a spec's session files live in a git-ignored session folder beside it, named the spec's filename
+  without `.md`, plus `.session/` (`spec/out.md` → `spec/out.session/`): `write-spec` moves the
+  closing notes (`notes.md`), the question ledger and the research directory there instead of
+  beside the spec as `<spec>.notes.md` and `<spec>.research/`, and creates the folder with a
+  `.gitignore` of `*`, so `git status` shows only the spec and its `evidence/`; the
   grilling keeps writing to the scratchpad until the spec has a path, a post-verdict decision is
   appended to the folder's `notes.md`, `validate-spec` dispatches write their reports into its
   `research/`, the template keeps it out of the companion links, `split-to-tasks` schedules no

@@ -194,10 +194,11 @@ branch's pull request. The commit is a change to the repository like any other: 
 a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
 that you did not. A stale generated file fails validation on every branch of the run at once,
 and reads there as the branches' own defect. The recommendation is the spec and the tasks
-directory alone. The spec's session folder (`<spec-basename>.session/` — notes, ledger, research)
-is working state — megabytes of transcripts and scraped pages — that git already ignores, and never
-part of any option; when the spec links into it, the option says so, because a docs build that
-checks links then fails on every branch for the whole run, and the user picks. Notes and research
+directory alone. The spec's session folder (notes, ledger, research), named the spec's filename
+without `.md`, plus `.session/` (`spec/out.md` → `spec/out.session/`), is working state —
+megabytes of transcripts and scraped pages — that git already ignores, and never part of any
+option; when the spec links into it, the option says so, because a docs build that checks links
+then fails on every branch for the whole run, and the user picks. Notes and research
 beside a spec from before session folders (`<spec-basename>.notes.md`, `<spec-basename>.research/`)
 are the same working files, left out the same way.
 

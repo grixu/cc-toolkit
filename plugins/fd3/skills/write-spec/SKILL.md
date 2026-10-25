@@ -50,10 +50,11 @@ sections it binds, and touch nothing else — the rest of the document stands on
 Report the edits by section; validation reads exactly those.
 
 Confirm `spec-path`'s directory exists before writing. Once the spec is there, the session's
-working files move out of the scratchpad into the spec's **session folder**,
-`<spec-basename>.session/` beside it: the closing-notes file as `notes.md`, the question ledger
-beside it (`question-ledger.md`) when there is one, and the research directory as `research/` with
-`INDEX.md` among them. They outlive the session — a validation pass reads the decisions' provenance
+working files move out of the scratchpad into the spec's **session folder** beside it, named the
+spec's filename without `.md`, plus `.session/` (`spec/out.md` → `spec/out.session/`, never
+`spec/out.md.session/`): the closing-notes file as `notes.md`, the question ledger beside it
+(`question-ledger.md`) when there is one, and the research directory as `research/` with `INDEX.md`
+among them. They outlive the session — a validation pass reads the decisions' provenance
 from them, and a re-entry appends to them — but they are never committed, so create the folder
 holding a `.gitignore` whose one line is `*`. That hides the folder from git, the ignore file
 included, without touching a tracked file, and goes wherever the folder goes. On an update the

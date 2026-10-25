@@ -220,8 +220,9 @@ existing assertion those rules now touch, not only against the assertions the re
 For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
 Route every lookup by where the fact lives — the routes and dispatch rules are in
 `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
-The research directory a dispatch writes its report into is `research/` in the spec's session folder
-(`<spec-basename>.session/`, git-ignored) when that folder exists, otherwise your scratchpad — never
+The research directory a dispatch writes its report into is `research/` in the spec's git-ignored
+session folder — the spec's filename without `.md`, plus `.session/` (`spec/out.md` →
+`spec/out.session/`) — when that folder exists, otherwise your scratchpad; never
 anywhere else beside the spec, where a report becomes a file the user has to decide not to commit.
 
 Tell each agent what it needs to work in the tree you are sending it to: the repository root, whether the
