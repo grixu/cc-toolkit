@@ -91,8 +91,8 @@ export function outsideHunkInBody(output, context) {
   if (!st.body) return result(false, 'no review request body was drafted');
   const { file, quote } = context.vars.outside;
   const q = new RegExp(quote, 'i');
-  const inline = (st.body.comments || []).filter((c) => c.path === file && q.test(c.body ?? ''));
-  if (inline.length) return result(false, `the outside-hunk finding went inline at ${file}:${inline.map((c) => c.line).join(', ')}`);
+  // An inline comment placed on the outside-hunk line fails commentsInHunks; one inside a hunk may
+  // quote the old term itself ("was 30 days, now 45"), so only the body is graded here.
   const text = st.body.body ?? '';
   return text.includes(file) && q.test(text) ? result(true, `the review body carries the ${file} finding`) : result(false, `the review body does not carry the ${file} finding /${quote}/ under its path`);
 }
