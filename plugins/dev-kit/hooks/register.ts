@@ -65,21 +65,6 @@ async function apiKey($, options): Promise<string> {
   return trimmedOption(options?.typesafe_api_key, '') || trimmedOption(await $.env.get('TYPESAFE_API_KEY'), '')
 }
 
-async function git($, args: string[]): Promise<string> {
-  const r = await $.process.run(['git', ...args], { timeoutMs: 60_000 })
-  if (r.exitCode !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr.trim().slice(0, 300)}`)
-  return r.stdout
-}
-
-async function resolveBase($, base: string): Promise<string> {
-  // origin first: the PR merges into the remote branch, and a stale local copy would widen the range.
-  for (const ref of [`origin/${base}`, base]) {
-    const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
-    if (r.exitCode === 0) return ref
-  }
-  throw new Error(`base branch "${base}" not found locally or on origin; run git fetch origin`)
-}
-
 async function assess($, base: unknown, options, config) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
   const key = await apiKey($, options)
@@ -105,45 +90,20 @@ async function assess($, base: unknown, options, config) {
 
   const head = header(commits.trim(), diffstat.trim())
   const budget = STATE_CHAR_BUDGET - head.commits.length - head.diffstat.length
-  const files: FileDiff[] = []
-  const unread: string[] = []
-  let charsRead = 0
-  // Stop reading once the diff cannot fit in MAX_PARTS requests; the rest is reported as not assessed.
-  for (const path of reviewable) {
-    if (charsRead > budget * MAX_PARTS) {
-      unread.push(path)
-      continue
-    }
-    const text = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(literal)${path}`])
-    charsRead += text.length
-    files.push({ path, text: text.trimEnd() })
-  }
+  const { files, unread } = await readDiffs($, range, reviewable, budget)
 
   const plan = split(files, budget)
   const parts = plan.parts.length
     ? plan.parts
     : [{ files: [], diff: '(no reviewable text diff: only lockfiles, binary or generated files changed)' }]
 
-  const url = endpointUrl(options?.typesafe_endpoint)
-  const model = trimmedOption(options?.typesafe_model, 'jev-latest')
-  const results: PartResult[] = []
-  for (const [i, part] of parts.entries()) {
-    const res = await $.http.fetch(url, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        state: { ...head, part: `${i + 1} of ${parts.length}`, diff: part.diff },
-        questions: questions(config.levels),
-      }),
-    })
-    if (!res.ok) throw new Error(httpError(res.status, res.text))
-    const data = JSON.parse(res.text)
-    const answers = data.answers ?? {}
-    const missing = missingAnswer(answers)
-    if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}" (part ${i + 1} of ${parts.length})`)
-    results.push({ model: data.model, answers })
+  const request: JevRequest = {
+    url: endpointUrl(options?.typesafe_endpoint),
+    model: trimmedOption(options?.typesafe_model, 'jev-latest'),
+    key,
+    questions: questions(config.levels),
   }
+  const results = await requestParts($, request, head, parts)
 
   const report = aggregate(results, config)
   const notAssessed = [...plan.skippedFiles, ...unread]
@@ -161,4 +121,65 @@ async function assess($, base: unknown, options, config) {
       partial: notAssessed.length > 0 || plan.truncatedHunks > 0,
     },
   }
+}
+
+async function resolveBase($, base: string): Promise<string> {
+  // origin first: the PR merges into the remote branch, and a stale local copy would widen the range.
+  for (const ref of [`origin/${base}`, base]) {
+    const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
+    if (r.exitCode === 0) return ref
+  }
+  throw new Error(`base branch "${base}" not found locally or on origin; run git fetch origin`)
+}
+
+async function readDiffs($, range: string, paths: string[], budget: number): Promise<{ files: FileDiff[]; unread: string[] }> {
+  const files: FileDiff[] = []
+  const unread: string[] = []
+  let charsRead = 0
+  // Stop reading once the diff cannot fit in MAX_PARTS requests; the rest is reported as not assessed.
+  for (const path of paths) {
+    if (charsRead > budget * MAX_PARTS) {
+      unread.push(path)
+      continue
+    }
+    const text = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(literal)${path}`])
+    charsRead += text.length
+    files.push({ path, text: text.trimEnd() })
+  }
+  return { files, unread }
+}
+
+type JevRequest = { url: string; model: string; key: string; questions: Record<string, unknown> }
+
+async function requestParts(
+  $,
+  request: JevRequest,
+  head: { commits: string; diffstat: string },
+  parts: { diff: string }[],
+): Promise<PartResult[]> {
+  const results: PartResult[] = []
+  for (const [i, part] of parts.entries()) {
+    const res = await $.http.fetch(request.url, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${request.key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: request.model,
+        state: { ...head, part: `${i + 1} of ${parts.length}`, diff: part.diff },
+        questions: request.questions,
+      }),
+    })
+    if (!res.ok) throw new Error(httpError(res.status, res.text))
+    const data = JSON.parse(res.text)
+    const answers = data.answers ?? {}
+    const missing = missingAnswer(answers)
+    if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}" (part ${i + 1} of ${parts.length})`)
+    results.push({ model: data.model, answers })
+  }
+  return results
+}
+
+async function git($, args: string[]): Promise<string> {
+  const r = await $.process.run(['git', ...args], { timeoutMs: 60_000 })
+  if (r.exitCode !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr.trim().slice(0, 300)}`)
+  return r.stdout
 }
