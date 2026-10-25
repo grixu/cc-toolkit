@@ -11,6 +11,7 @@ import {
   questions,
   readConfig,
   split,
+  trimmedOption,
   type FileDiff,
   type PartResult,
 } from './risk.ts'
@@ -55,9 +56,7 @@ export function register(on, options) {
 }
 
 async function apiKey($, options): Promise<string> {
-  const configured = typeof options?.typesafe_api_key === 'string' ? options.typesafe_api_key.trim() : ''
-  if (configured) return configured
-  return ((await $.env.get('TYPESAFE_API_KEY')) ?? '').trim()
+  return trimmedOption(options?.typesafe_api_key, '') || trimmedOption(await $.env.get('TYPESAFE_API_KEY'), '')
 }
 
 async function git($, args: string[]): Promise<string> {
@@ -119,7 +118,7 @@ async function assess($, base: unknown, options, config) {
     : [{ files: [], diff: '(no reviewable text diff: only lockfiles, binary or generated files changed)' }]
 
   const url = endpointUrl(options?.typesafe_endpoint)
-  const model = typeof options?.typesafe_model === 'string' && options.typesafe_model.trim() ? options.typesafe_model.trim() : 'jev-latest'
+  const model = trimmedOption(options?.typesafe_model, 'jev-latest')
   const results: PartResult[] = []
   for (const [i, part] of parts.entries()) {
     const res = await $.http.fetch(url, {

@@ -96,8 +96,12 @@ export function readConfig(options: Record<string, unknown> | undefined): Config
   return {
     levels: readLevels(o.risk_levels),
     labelEnabled: o.risk_label !== false && o.risk_label !== 'false',
-    labelTemplate: typeof o.risk_label_name === 'string' && o.risk_label_name.trim() ? o.risk_label_name.trim() : 'risk: {level}',
+    labelTemplate: trimmedOption(o.risk_label_name, 'risk: {level}'),
   }
+}
+
+export function trimmedOption(value: unknown, fallback: string): string {
+  return (typeof value === 'string' && value.trim()) || fallback
 }
 
 export function labelFor(template: string, level: string): string {
@@ -202,8 +206,8 @@ export function missingAnswer(answers: Record<string, JevAnswer>): string | unde
 // The riskiest part decides the change's risk; a signal raised by any part counts for the whole.
 export function aggregate(results: PartResult[], config: Config) {
   let best = results[0]
-  for (const r of results) if ((r.answers.overall_risk?.score ?? 0) > (best.answers.overall_risk?.score ?? 0)) best = r
-  const score = best.answers.overall_risk?.score ?? 0
+  for (const r of results) if (scoreOf(r) > scoreOf(best)) best = r
+  const score = scoreOf(best)
   const index = Math.min(config.levels.length - 1, Math.max(0, Math.round(score)))
   const level = config.levels[index]
   const signals = Object.entries(SIGNALS).map(([key, s]) => ({
@@ -227,6 +231,10 @@ export function aggregate(results: PartResult[], config: Config) {
   }
 }
 
+function scoreOf(result: PartResult): number {
+  return result.answers.overall_risk?.score ?? 0
+}
+
 function round(n: number): number {
   return Math.round(n * 100) / 100
 }
@@ -237,7 +245,7 @@ export function isSafeRef(ref: unknown): ref is string {
 }
 
 export function endpointUrl(endpoint: unknown): string {
-  const base = (typeof endpoint === 'string' && endpoint.trim() ? endpoint.trim() : 'https://api.typesafe.ai').replace(/\/+$/, '')
+  const base = trimmedOption(endpoint, 'https://api.typesafe.ai').replace(/\/+$/, '')
   return base.endsWith('/v1/systemone') ? base : base + '/v1/systemone'
 }
 
