@@ -17,6 +17,8 @@ import {
 } from './risk.ts'
 
 const TOOL = 'pr_risk'
+const LOW_CONFIDENCE = 0.5
+const NOT_ASSESSED_SAMPLE = 20
 const DESCRIPTION =
   'Assess the risk a branch introduces, with the TypeSafe Jev model. Sends the commits, diffstat and diff of <base>...HEAD in the current repository to TypeSafe and returns JSON: risk level, score, confidence, risk flags with probabilities, the GitHub label to apply, and how much of the diff was assessed. Call it when preparing or reviewing a pull request.'
 
@@ -148,12 +150,12 @@ async function assess($, base: unknown, options, config) {
   return {
     ...report,
     base: ref,
-    lowConfidence: report.confidence < 0.5,
+    lowConfidence: report.confidence < LOW_CONFIDENCE,
     coverage: {
       requests: parts.length,
       filesAssessed: reviewable.length - notAssessed.length,
       filesNotAssessed: notAssessed.length,
-      filesNotAssessedSample: notAssessed.slice(0, 20),
+      filesNotAssessedSample: notAssessed.slice(0, NOT_ASSESSED_SAMPLE),
       filesExcluded: excluded.length,
       truncatedHunks: plan.truncatedHunks,
       partial: notAssessed.length > 0 || plan.truncatedHunks > 0,

@@ -7,6 +7,8 @@ const DEFAULT_LEVELS = ['low', 'medium', 'high', 'critical']
 export const STATE_CHAR_BUDGET = 72_000
 const HEADER_CHAR_BUDGET = 12_000
 export const MAX_PARTS = 8
+const FLAG_PROBABILITY = 0.5
+const CUT_HUNK = '\n[… hunk cut to fit the request]'
 
 const EXCLUDED_FILE = [
   /(^|\/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lockb?|composer\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|go\.sum|flake\.lock)$/,
@@ -153,7 +155,7 @@ function hunks(file: FileDiff, budget: number): { pieces: string[]; truncated: n
   for (let block of blocks) {
     if (block.length > room) {
       truncated += 1
-      block = block.slice(0, room - 40) + '\n[… hunk cut to fit the request]'
+      block = block.slice(0, room - CUT_HUNK.length) + CUT_HUNK
     }
     if (current && current.length + block.length + 1 > room) {
       pieces.push(head + current)
@@ -221,7 +223,7 @@ export function aggregate(results: PartResult[], config: Config) {
     score: round(score),
     confidence: round(best.answers.overall_risk?.confidence ?? 0),
     model: best.model,
-    flags: signals.filter((s) => s.probability >= 0.5).sort((a, b) => b.probability - a.probability),
+    flags: signals.filter((s) => s.probability >= FLAG_PROBABILITY).sort((a, b) => b.probability - a.probability),
     signals,
     label: {
       enabled: config.labelEnabled,
