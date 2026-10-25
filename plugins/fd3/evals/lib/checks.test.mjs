@@ -514,3 +514,11 @@ test('session folder: notes beside the spec, an unignored folder or a force-adde
   execFileSync('git', ['-C', forced, 'add', '-f', 'spec/out.session/notes.md']);
   assert.match(sessionFolderFailures(forced, 'spec/out.md').join('; '), /does not ignore: spec\/out\.session\/notes\.md/);
 });
+
+test('write stop: asking where the spec should be written is not a claim to have written it', async () => {
+  const { writeClaims } = await import('./checks/write-missing-input-stop.mjs');
+  const real = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '__fixtures__/write/missing-input-stop-5a87871.md'), 'utf8');
+  assert.deepEqual(writeClaims(real), []);
+  assert.equal(writeClaims('I wrote the spec to `spec/out.md`.').length, 1);
+  assert.equal(writeClaims('The spec has been written to spec/out.md.').length, 1);
+});
