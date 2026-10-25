@@ -1,0 +1,8 @@
+Invoke the fd3:write-spec skill with these three arguments, in this order: notes/grilling-summary.md notes/research spec/out.md
+The notes file is the closing summary of a grilling I confirmed, so treat it as the settled design.
+
+Pass the skill this with the paths: nobody can answer questions during this run, so it must not stop
+to ask; whatever it would ask goes into its closing question batch, and the skill returns its full
+report.
+
+When it returns, print its report verbatim and unedited as your entire reply — no summary, no reordering, no commentary of your own.

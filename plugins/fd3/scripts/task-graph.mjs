@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Parses a tasks directory written by split-to-tasks, checks the graph, and prints JSON:
-// { dir, specPaths, tasks, launch, problems }. Derived on every call and never written to disk —
+// { dir, specPaths, tasks, launch, landing, problems }. Derived on every call and never written to disk —
 // the task files stay the only store.
 //
 // Usage: node task-graph.mjs <tasks dir>
@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const STATUSES = ['todo', 'in-progress', 'implemented', 'merged', 'blocked', 'done'];
 const TASK_FILE = /^(\d+)-(.+)\.md$/;
-const LIST_KEYS = new Set(['elements', 'decisions', 'depends-on', 'tickets']);
+const LIST_KEYS = new Set(['elements', 'decisions', 'depends-on', 'merge-after', 'tickets']);
 
 function fail(message) {
   process.stderr.write(`task-graph: ${message}\n`);
@@ -113,6 +113,7 @@ const tasks = fs
       repository: get('repository'),
       branch: get('branch'),
       branchBase: get('branch-base'),
+      mergeAfter: asList(fm && fm['merge-after']),
       worktree: get('worktree'),
       phase: get('phase'),
       dependsOn: asList(fm && fm['depends-on']),
@@ -167,6 +168,79 @@ for (const group of branches.values()) {
   }
 }
 
+// A merge-after entry names a branch of the task's own repository, or `<repository path>:<branch>`
+// for another one; git forbids `:` in a branch name, so the last colon is the split.
+const branchKey = (repository, branch) => `${path.resolve(repository)}\0${branch}`;
+const refOf = (t, entry) => {
+  const i = entry.lastIndexOf(':');
+  return entry.startsWith('/') && i > 0 ? { repository: entry.slice(0, i), branch: entry.slice(i + 1) } : { repository: t.repository, branch: entry };
+};
+const byBranch = new Map([...branches.values()].map((g) => [branchKey(g[0].repository, g[0].branch), g]));
+for (const group of byBranch.values()) {
+  const values = [...new Set(group.map((t) => JSON.stringify([...t.mergeAfter].sort())))];
+  if (values.length > 1) {
+    problem('merge-after', group.map((t) => t.slug), `branch ${group[0].branch} carries ${values.length} merge-after values`);
+  }
+  for (const entry of new Set(group.flatMap((t) => t.mergeAfter))) {
+    const ref = refOf(group[0], entry);
+    const key = branchKey(ref.repository, ref.branch);
+    if (key === branchKey(group[0].repository, group[0].branch)) problem('merge-after', group.map((t) => t.slug), `branch ${group[0].branch} names itself in merge-after`);
+    else if (!byBranch.has(key)) problem('merge-after', group.map((t) => t.slug), `merge-after "${entry}" on branch ${group[0].branch} names a branch no task builds`);
+  }
+}
+
+// What each branch's pull request must merge after: its stack base, the branches its tasks' edges
+// point at, and its merge-after holds — each followed transitively.
+const directlyAfter = new Map();
+for (const [key, group] of byBranch) {
+  const after = new Set();
+  const base = group[0].branchBase && branchKey(group[0].repository, group[0].branchBase);
+  if (base && byBranch.has(base)) after.add(base);
+  for (const t of group) {
+    for (const d of t.dependsOn) {
+      const dep = bySlug.get(d);
+      if (dep && dep.repository !== 'none' && dep.branch) after.add(branchKey(dep.repository, dep.branch));
+    }
+    for (const entry of t.mergeAfter) {
+      const ref = refOf(t, entry);
+      after.add(branchKey(ref.repository, ref.branch));
+    }
+  }
+  after.delete(key);
+  directlyAfter.set(key, [...after].filter((k) => byBranch.has(k)));
+}
+const landing = [];
+{
+  const state = new Map();
+  const closure = new Map();
+  const stack = [];
+  const visit = (key) => {
+    state.set(key, 'open');
+    stack.push(key);
+    const all = new Set();
+    for (const k of directlyAfter.get(key)) {
+      if (state.get(k) === 'open') {
+        const cycle = stack.slice(stack.indexOf(k));
+        problem('merge-after', cycle.flatMap((c) => byBranch.get(c).map((t) => t.slug)), `landing cycle: ${[...cycle, k].map((c) => byBranch.get(c)[0].branch).join(' -> ')}`);
+        continue;
+      }
+      if (!state.has(k)) visit(k);
+      all.add(k);
+      for (const x of closure.get(k) || []) all.add(x);
+    }
+    stack.pop();
+    state.set(key, 'closed');
+    closure.set(key, all);
+    const g = byBranch.get(key);
+    landing.push({
+      repository: g[0].repository,
+      branch: g[0].branch,
+      after: [...all].map((k) => ({ repository: byBranch.get(k)[0].repository, branch: byBranch.get(k)[0].branch })),
+    });
+  };
+  for (const key of byBranch.keys()) if (!state.has(key)) visit(key);
+}
+
 for (const t of tasks) {
   if (t.repository === 'none') continue;
   if (!t.repository || !path.isAbsolute(t.repository) || !fs.existsSync(t.repository) || !fs.statSync(t.repository).isDirectory()) {
@@ -192,5 +266,5 @@ const launch = tasks.map((t) => ({
   status: t.status,
 }));
 
-process.stdout.write(`${JSON.stringify({ dir, specPaths, tasks, launch, problems })}\n`);
+process.stdout.write(`${JSON.stringify({ dir, specPaths, tasks, launch, landing, problems })}\n`);
 process.exit(problems.length ? 2 : 0);

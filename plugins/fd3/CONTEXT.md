@@ -74,6 +74,15 @@ the skills and the template, and when they and this file disagree, the skills an
 - **Research index** (`research/INDEX.md`) — grill-topic's digest of every lookup: an `I<n>` entry
   per question with the condensed answer, its sources and the report file. Decisions cite entries
   (`facts: I3`), write-spec reads it to find the reports; it routes, and evidence never cites it.
+- **Session scratchpad** — the scratchpad directory the system prompt names, or, when it names
+  none, one `mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"` whose literal path the session
+  keeps. Never inside a repository. It holds a session's working files until the spec has a path,
+  and probe worktrees.
+- **Session folder** — the git-ignored folder beside a spec, named the spec's filename without `.md`,
+  plus `.session/` (`spec/out.md` → `spec/out.session/`). It holds its session's working files once
+  the spec has a path: the closing notes (`notes.md`), the question ledger and `research/`.
+  write-spec creates it with a `.gitignore` of `*`; a decision taken after the verdict is appended
+  to its notes. Never committed, never a task.
 - **Evidence record** — the spec's `Claim | How it was verified` table (template section 12). The
   spec's proof of work; a claim that rests on inference must say so.
 - **Verification kinds** — probes (runnable on demand), triggered (exercised by using the feature),
@@ -107,7 +116,8 @@ the skills and the template, and when they and this file disagree, the skills an
   as a subdivision question, `split-to-tasks` only warns; it never appears in the spec.
 - **Where a split's knowledge lands** — the implementation orchestrator reads task frontmatter
   and the split report's `## Branches` / `## Still owed` sections, so anything it must act on per
-  task is a field and anything per branch (draft pull request, retarget, merge order) is that
-  branch's section of `<spec>.split.md`, written once; the implementation agent reads the whole
+  task is a field, the base and the merge order of a branch are fields too (`branch-base`,
+  `merge-after`) because the pull-request chain is ordered from them, and anything else per branch
+  (draft pull request, retarget) is that branch's section of `<spec>.split.md`, written once; the implementation agent reads the whole
   task file, so anything that changes what *this* task's agent does is that task's `## Note`, and
   nothing else is.

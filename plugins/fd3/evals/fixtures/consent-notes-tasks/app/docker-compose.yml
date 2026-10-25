@@ -1,0 +1,12 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: local
+    ports:
+      - "5432:5432"
+  api:
+    build: .
+    command: node dist/api/server.js
+    depends_on:
+      - db

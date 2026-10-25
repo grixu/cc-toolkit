@@ -1,0 +1,1 @@
+/fd3:build-spec spec/rollout-spec.md change D2 to option b of question 2 in its notes: a failed ledger write is logged with the order id and the charge still returns accepted

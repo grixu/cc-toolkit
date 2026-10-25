@@ -38,13 +38,25 @@ prompts:
   # start-cr's Step 1 for --pr, against a sandbox origin and a gh stand-in.
   - id: file://prompts/pr-scope.txt
     label: pr-track
+  # start-cr from Step 4 over lens files already on disk: merge, report, menu, apply, commit.
+  - id: file://prompts/start-cr-merge.txt
+    label: start-cr-merge-track
+  # start-cr --pr on someone else's PR: Step 1, then from Step 4 over lens files already on disk.
+  - id: file://prompts/pr-draft.txt
+    label: pr-draft-track
+  # start-cr's Step 1 with no arguments, over a branch with committed and uncommitted changes.
+  - id: file://prompts/scope-question.txt
+    label: scope-question-track
+  # start-cr's Step 1 with no arguments, on a branch that is someone else's open PR.
+  - id: file://prompts/pr-detect.txt
+    label: pr-detect-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
     label: code-review
     config:
       apiKeyRequired: false # use the local Claude Code subscription, no API key for the target
-      model: claude-sonnet-4-6 # override per run; a capable model is needed for evals 3/4 to pass
+      model: '{{ env.EVAL_TARGET_MODEL | default("claude-opus-5-5") }}' # the model users run; a capable model is needed for evals 3/4 to pass
       permission_mode: bypassPermissions # the skill's Read/Grep/Bash run unattended
       allow_dangerously_skip_permissions: true # required alongside bypassPermissions
       working_dir: ../../.. # repo root, so the plugin path and {{file}} paths resolve
@@ -59,6 +71,9 @@ providers:
           path: ..
       skills: all
       setting_sources: [] # keep this repo's CLAUDE.md / hooks OUT of the eval
+      # Sandboxed Bash and deny rules for the file tools: these agents run with bypassPermissions
+      # on the operator's machine.
+      settings: ../../../scripts/evals-isolation.json
       ask_user_question:
         behavior: first_option # file-path mode shouldn't prompt, but never block if it does
 
@@ -71,8 +86,14 @@ defaultTest:
       id: anthropic:claude-agent-sdk
       config:
         apiKeyRequired: false
-        model: claude-sonnet-4-6
+        model: claude-opus-5-5
         max_turns: 1
+        settings: ../../../scripts/evals-isolation.json
+        # Without the JSON-only pin the grader occasionally wraps the verdict in prose and
+        # promptfoo cannot extract the JSON.
+        append_system_prompt: >-
+          You are being used as an automated grader. Reply with ONLY the JSON object the
+          grading instructions ask for — no prose before or after it, no code fences.
 
 tests:
   # ============================================================================
@@ -82,192 +103,195 @@ tests:
   - description: 'eval-0 banners-and-doc-refs (datadog-integration.tf)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/datadog-integration.tf
+      # Outside fixtures/: scope.md makes a fixtures/ path `test` kind, and R11's
+      # remove-when-unsure bar then turns the REWRITE verdicts this track checks into REMOVE.
+      # Every other input sits under cases/ for the same reason (the kind also gates the
+      # performance lens), and cases/spec-conformance/ dodges the test-kind spec/ name.
+      file: plugins/code-review/evals/comment-track/datadog-integration.tf
     assert:
       # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
       # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
-      # report uses the skill's own R1–R12 rule taxonomy instead.
+      # report closes on the skill's own tally line instead.
       - type: regex
-        value: '\bR(1[0-2]|[1-9])\b'
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '# ===== Datadog =====', verdict: REMOVE, rule: R5 }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '# ----- Provider credentials -----', verdict: REMOVE, rule: R5 }
+      # a descriptive title does not redeem the fence
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '# ----- DD GCP integration', verdict: REMOVE, rule: R5 }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '# ----- Metric namespaces -----', verdict: REMOVE, rule: R5 }
+      # internal-doc reference
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'DD_ARCH.md §3.2', verdict: [REMOVE, REWRITE, MOVE], rule: R4 }
+      # the rationale survives, so the verdict rewrites rather than removes
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'DD_PLAN.md T4.1', verdict: [REWRITE, MOVE], rule: R4 }
+      - type: javascript
+        value: file://checks/report.mjs:replacementsOmit
+        config: { quote: 'DD_PLAN.md T4.1', tokens: [DD_PLAN, T4.1] }
       - type: llm-rubric
         value: >-
-          Flags the top `# ===== Datadog =====` banner as R5 with verdict REMOVE.
-      - type: llm-rubric
-        value: >-
-          Flags `# ----- Provider credentials -----` as R5 REMOVE.
-      - type: llm-rubric
-        value: >-
-          Flags the titled banner `# ----- DD GCP integration — per-env SA + STS
-          registration -----` as R5 REMOVE (a descriptive title does not redeem the fence).
-      - type: llm-rubric
-        value: >-
-          Flags `# ----- Metric namespace allowlist -----` as R5 REMOVE.
-      - type: llm-rubric
-        value: >-
-          Flags the `account scoping lives in DD_ARCH.md §3.2` comment under R4
-          (internal-doc reference).
-      - type: llm-rubric
-        value: >-
-          Flags the `DD_PLAN.md T4.1` comment under R4 — keeps the "hard-stop is
-          intentional" rationale but drops the internal-doc reference.
-      - type: llm-rubric
-        value: >-
-          Keeps `# Retry-After handling per RFC 9110 §10.2.4` (R4 external-pinned-spec
-          exception) — it is not flagged for removal.
-      - type: llm-rubric
-        value: >-
-          Keeps the metric-allowlist WHY rationale ("only gcp.* and custom.app.* are
-          billed … so an accidental high-cardinality metric can't blow the bill").
+          The replacement the report proposes for the `DD_PLAN.md T4.1` comment keeps
+          its rationale: the per-env hard-stop on `host_filters` is deliberate.
+      # R4 external-pinned-spec exception
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'RFC 9110 §10.2.3', forbid: [REMOVE] }
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'gke and cloudsql emit', forbid: [REMOVE] }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-1 file-refs-and-diagram (scheduler.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/scheduler.ts
+      file: plugins/code-review/evals/comment-track/scheduler.ts
     assert:
       - type: regex
-        value: '\bR(1[0-2]|[1-9])\b'
-      - type: llm-rubric
-        value: >-
-          Flags the comment that references `utils/backoff.ts` and `docs/scheduling.md`
-          under R4 (cross-file / internal-doc references).
-      - type: llm-rubric
-        value: >-
-          Flags `// ----- helpers -----` as R5 REMOVE.
-      - type: llm-rubric
-        value: >-
-          Flags the top `// ===== Scheduler =====` banner as R5 REMOVE.
-      - type: llm-rubric
-        value: >-
-          Flags `// increment the attempt counter` as R1 REMOVE.
-      - type: llm-rubric
-        value: >-
-          Keeps the ASCII state-machine / job-lifecycle diagram (IDLE → QUEUED → RUNNING …)
-          — the R5 exception for a diagram that encodes information; it is NOT flagged.
-      - type: llm-rubric
-        value: >-
-          Keeps `// Sequential, not parallel — the broker rate-limits per worker token`
-          as a genuine decision/WHY (R2); it is NOT flagged.
-      - type: llm-rubric
-        value: >-
-          Keeps the `CVE-2024-1234` reference (R4 external exception); it is NOT flagged
-          for removal.
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+      # cross-file / internal-doc references
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'utils/backoff.ts', verdict: [REMOVE, REWRITE, MOVE], rule: R4 }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '// ----- helpers -----', verdict: REMOVE, rule: R5 }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '// ===== Scheduler =====', verdict: REMOVE, rule: R5 }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '// increment the attempt counter', verdict: REMOVE, rule: R1 }
+      # the R5 exception for a diagram that encodes information
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'IDLE' }
+      # a genuine decision (R2)
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'Sequential, not parallel' }
+      # R4 external exception
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'CVE-2024-1234', forbid: [REMOVE] }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-2 misplaced-and-duplicated-rationale (dlq-codes.ts + dlq.handler.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/dlq-codes.ts plugins/code-review/evals/fixtures/dlq.handler.ts
+      file: plugins/code-review/evals/comment-track/dlq-codes.ts plugins/code-review/evals/comment-track/dlq.handler.ts
     assert:
       - type: regex
-        value: '\bR(1[0-2]|[1-9])\b'
-      - type: llm-rubric
-        value: >-
-          Flags `// the conditional UPDATE can't distinguish a missing row from an
-          ineligible status` sitting on the enum member `DLQ_STATUS_NOT_ELIGIBLE` as R12
-          (rationale parked on a declaration).
-      - type: llm-rubric
-        value: >-
-          For that enum-member comment the verdict is REMOVE — the same rationale already
-          lives at the handler's `updateIfEligible` call, so the declaration copy is the
-          redundant/duplicated one.
-      - type: llm-rubric
-        value: >-
-          For the `// we swallow the duplicate …` comment on `DLQ_DUPLICATE_DROPPED` the
-          verdict is MOVE — the rationale exists only at the declaration, and the fix names
-          the handler method (`handle` / its duplicate branch) as the destination.
-      - type: llm-rubric
-        value: >-
-          Keeps `// 0 means unbounded, not disabled` on the `DLQ_MAX_RETRIES` constant —
-          a value-meaning note every reader needs (R12 contrast, not a MOVE/REMOVE).
-      - type: llm-rubric
-        value: >-
-          Keeps the genuine WHY already located at the handler's `updateIfEligible`
-          (R2); it is NOT flagged.
-      - type: llm-rubric
-        value: >-
-          Does not flag the bare enum members that carry no comment
-          (`DLQ_MESSAGE_RECEIVED`, `DLQ_REQUEUED`).
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+      # rationale parked on a declaration
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: "conditional UPDATE can't distinguish", file: dlq-codes.ts, verdict: [REMOVE, REWRITE, MOVE], rule: R12 }
+      # the handler already holds the same rationale, so the declaration copy goes
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: "conditional UPDATE can't distinguish", file: dlq-codes.ts, verdict: REMOVE }
+      # the rationale lives only at the declaration, so it moves rather than goes
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'we swallow the duplicate', verdict: MOVE }
+      # the destination is the handler method
+      - type: javascript
+        value: file://checks/report.mjs:commentFix
+        config: { quote: 'we swallow the duplicate', pattern: '\bhandle\b|seen\.has\(' }
+      # a value-meaning note stays on the value (R12 contrast)
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: '0 means unbounded, not disabled' }
+      # the genuine WHY where the behaviour lives (R2)
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: "conditional UPDATE can't distinguish", file: dlq.handler.ts }
+      - type: javascript
+        value: file://checks/report.mjs:commentNotFlagged
+        config: { mentions: [DLQ_MESSAGE_RECEIVED, DLQ_REQUEUED] }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-3 spec-id-references (payment-validator.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/payment-validator.ts
+      file: plugins/code-review/evals/comment-track/payment-validator.ts
     assert:
       - type: regex
-        value: '\bR(1[0-2]|[1-9])\b'
-      - type: llm-rubric
-        value: >-
-          Flags `// F1: users can submit a payment with a saved card` as R4 with verdict
-          REMOVE.
-      - type: llm-rubric
-        value: >-
-          Flags `// see Q1` as R4 REMOVE (a pure spec-id pointer; nothing survives stripping it).
-      - type: llm-rubric
-        value: >-
-          Flags `// §4.1 caps a single charge at 500_000 minor units` under R4 with a
-          verdict of REWRITE *or* REMOVE — both are defensible: once the `§4.1` spec-id
-          is stripped, the remainder ("caps a single charge at 500_000 minor units")
-          borders on R1 narration of `MAX_CHARGE_MINOR_UNITS = 500_000` + its guard, so a
-          strong model may delete it rather than rewrite. It must NOT be kept as-is.
-      - type: llm-rubric
-        value: >-
-          The handling of the `§4.1` comment never retains the token `§4.1` or `4.1`: a
-          REWRITE drops it from the replacement text, and a REMOVE (delete the line)
-          satisfies this trivially.
-      - type: llm-rubric
-        value: >-
-          Flags `// R7: charge in source order — the ledger rejects out-of-order sequence
-          numbers` as R4 REWRITE, keeping the ordering rationale.
-      - type: llm-rubric
-        value: >-
-          The suggested fix for the `R7` comment does NOT contain the token `R7` but keeps
-          the ordering meaning ("source order" / "out-of-order").
-      - type: llm-rubric
-        value: >-
-          Flags `/** Implements AC-3 and AC-4. */` as R4 REMOVE (a pure spec-id pointer doc).
-      - type: llm-rubric
-        value: >-
-          Keeps `// Retry-After handling per RFC 9110 §10.2.4` (R4 external-pin exception);
-          it is NOT flagged for removal.
-      - type: llm-rubric
-        value: >-
-          Keeps `// region R2 is EU-only; never route US tenants here` — `R2` is a real
-          string-literal value (`const REGION = "R2"`), not a spec-id; it is NOT flagged.
-      - type: llm-rubric
-        value: >-
-          Keeps `// sequential, not parallel — the gateway rate-limits per merchant IP`
-          as a genuine WHY (R2); it is NOT flagged.
-      - type: llm-rubric
-        value: >-
-          No kept or rewritten comment text in the report retains any spec-id fragment
-          (`F1`, `Q1`, `AC-3`, `AC-4`, `§4.1`, `R7`). Quoting the ORIGINAL comment in a
-          finding header is fine; the requirement is about the kept/rewritten text.
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'F1: users can submit', verdict: REMOVE, rule: R4 }
+      # a pure spec-id pointer; nothing survives stripping it
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '// see Q1', verdict: REMOVE, rule: R4 }
+      # both are defensible: once `§4.1` is stripped the rest borders on R1 narration of
+      # MAX_CHARGE_MINOR_UNITS + its guard; only keeping it as-is fails
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: '§4.1 caps a single charge', verdict: [REWRITE, REMOVE], rule: R4 }
+      - type: javascript
+        value: file://checks/report.mjs:replacementsOmit
+        config: { quote: '§4.1 caps a single charge', tokens: ['§4.1', '4.1'] }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'R7: charge in source order', verdict: REWRITE, rule: R4 }
+      # the `R7` token itself is the suite-wide replacementsOmit below
+      - type: javascript
+        value: file://checks/report.mjs:commentFix
+        config: { quote: 'R7: charge in source order', in: replacement, pattern: 'out-of-order|source order|sequence' }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'Implements AC-3 and AC-4', verdict: REMOVE, rule: R4 }
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'Retry-After handling per RFC 9110', forbid: [REMOVE] }
+      # `R2` is the real value of `const REGION = "R2"`, not a spec-id
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'region R2 is EU-only' }
+      # a genuine WHY (R2)
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'sequential, not parallel' }
+      # only the replacement text counts; quoting the original comment is fine
+      - type: javascript
+        value: file://checks/report.mjs:replacementsOmit
+        config: { tokens: [F1, Q1, AC-3, AC-4, '§4.1', R7] }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-4 spec-id-embedded-midsentence (host-allowlist.ts)'
     prompts: [comment-track]
     vars:
-      file: plugins/code-review/evals/fixtures/host-allowlist.ts
+      file: plugins/code-review/evals/comment-track/host-allowlist.ts
     assert:
       - type: regex
-        value: '\bR(1[0-2]|[1-9])\b'
-      - type: llm-rubric
-        value: >-
-          All three genuine-WHY comments (the R2 normalize note, the F3/registry note,
-          and the §2.3/§2.4 two-pass-validation note) are REWRITE — not a blanket REMOVE,
-          and not KEEP-as-is.
-      - type: llm-rubric
-        value: >-
-          No rewritten comment retains the tokens `R2`, `F3`, `Q4`, `§2.3` or `§2.4`.
+        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+      # each carries a real WHY: neither a blanket REMOVE nor KEEP-as-is
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: ['We lowercase the host', 'Per Q4 the cache TTL', 'Validate in two passes'], verdict: REWRITE }
+      - type: javascript
+        value: file://checks/report.mjs:replacementsOmit
+        config: { tokens: [R2, F3, Q4, '§2.3', '§2.4'] }
       - type: llm-rubric
         value: >-
           The ordering / failure-mode rationale of each comment is preserved in its rewrite
           (the WHY survives; only the spec-id token is stripped).
-      - type: llm-rubric
-        value: >-
-          The bare R1 narration line `// hosts are matched case-insensitively` is REMOVE.
+      # bare R1 narration
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'hosts are matched case-insensitively', verdict: REMOVE }
       - type: llm-rubric
         value: >-
           The reasoning checks whether each token is a real code value before stripping it,
@@ -280,199 +304,177 @@ tests:
   - description: 'eval-5 vocabulary-and-skeleton (quality-vocabulary.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-vocabulary.ts
+      file: plugins/code-review/evals/cases/quality-vocabulary.ts
     assert:
       # "skill actually ran" proxy: the report uses the skill's own family vocabulary.
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
-      - type: llm-rubric
-        value: >-
-          Flags the local `placedIso` in `buildReceipt` — computed from `order.placedAt`
-          but never read and never returned — under the `simplicity` family, rule
-          `dead-code`.
-      - type: llm-rubric
-        value: >-
-          That `dead-code` finding is graded severity **high**. It is not downgraded to
-          `medium` or `nit` on the grounds that the file is otherwise small, tidy, or
-          correct.
-      - type: llm-rubric
-        value: >-
-          Every severity in the report is exactly one of `high`, `medium`, or `nit` — the
-          word "low", a numeric score, or an invented severity word appears nowhere.
-      - type: llm-rubric
-        value: >-
-          If the report flags `openness` (blocks jammed together with no blank line) at
-          more than one site, those sites are collapsed into a SINGLE bullet listing the
-          lines together (e.g. "L20, L34, L51") rather than repeated as one bullet per
-          site.
-      - type: llm-rubric
-        value: >-
-          The report carries an explicit `**Headline:**` line, and it does NOT call the
-          change clean, well-structured, or cosmetic-nits-only — a high-severity finding
-          exists, so the headline names the worst problem instead.
-      - type: llm-rubric
-        value: >-
-          The report follows the skill's fixed skeleton: it opens with a `**Conventions:**`
-          line and a `**Headline:**` line, its `###` headers are FILE PATHS (not
-          "Findings", "Finding 1", or a family name), and each finding is a single
-          markdown bullet rather than a numbered or bolded entry block.
-      - type: llm-rubric
-        value: >-
-          The report body contains NO fenced code blocks and no before/after listing, and
-          no suggested fix pastes a multi-line rewritten function body. (The skill allows
-          at most a short inline expression inside backticks when a fix cannot be named
-          without one, so a single inline expression does NOT fail this assertion —
-          a fenced block or a multi-line rewrite does.)
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: dead-code, mentions: placedIso }
+      # not downgraded because the file is otherwise small, tidy or correct
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: dead-code, mentions: placedIso, severity: high }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { severities: [high, medium, nit] }
+      # one rule breaking at several sites is one bullet listing the lines
+      - type: javascript
+        value: file://checks/report.mjs:collapsedRepeats
+        config: { rule: openness }
+      # a high finding exists, so the headline must not call the change clean
+      - type: javascript
+        value: file://checks/report.mjs:headlineHonest
+        config: {}
+      - type: javascript
+        value: file://checks/report.mjs:skeletonPreamble
+      - type: javascript
+        value: file://checks/report.mjs:fileHeaders
+      - type: javascript
+        value: file://checks/report.mjs:findingBullets
+      - type: javascript
+        value: file://checks/report.mjs:noCodeBlocks
 
   # ----------------------------------------------------------------------------
   - description: 'eval-6 recall-across-families (quality-recall.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-recall.ts
+      file: plugins/code-review/evals/cases/quality-recall.ts
     assert:
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
-      - type: llm-rubric
-        value: >-
-          Flags the duplication between `renderInvoiceLine` and `renderCreditNoteLine`
-          (identical bodies differing only by the literal label "INVOICE" vs
-          "CREDIT NOTE") as `simplicity` · `over-complex`, severity **high**, and the fix
-          collapses them into one function taking the label as a parameter.
-      - type: llm-rubric
-        value: >-
-          Flags the bare `86400 * 30` in `findOverdueInvoices` as `readability` ·
-          `magic-literal`, severity **medium**, proposing a name for the 30-day overdue
-          window.
-      - type: llm-rubric
-        value: >-
-          Flags the local `currencyMap` in `groupByCurrency` as `naming` · `role-name`,
-          severity **nit** — the name carries the type (`Map`) instead of the role.
-      - type: llm-rubric
-        value: >-
-          All three problems above are present in the report. Missing any one of them
-          fails this assertion, regardless of how well the others are described.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: over-complex, mentions: [renderInvoiceLine, renderCreditNoteLine, 'INVOICE', 'CREDIT NOTE'], severity: high }
+      # the fix collapses both into one function taking the label
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: simplicity, rule: over-complex, mentions: [renderInvoiceLine, renderCreditNoteLine, 'INVOICE', 'CREDIT NOTE'], fix: 'label|param' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: readability, rule: magic-literal, mentions: ['86400', findOverdueInvoices], severity: medium }
+      # the fix proposes a name for the 30-day overdue window
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: readability, rule: magic-literal, mentions: ['86400', findOverdueInvoices], fix: '`\w*(overdue|window|days)\w*`' }
+      # the name carries the type (`Map`), not the role
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: naming, rule: role-name, mentions: currencyMap, severity: nit }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-7 calibration-look-alikes (quality-calibration.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-calibration.ts
+      file: plugins/code-review/evals/cases/quality-calibration.ts
     assert:
       # This fixture is deliberately clean, so a family tag may be absent from a collapsed
       # report. Use the skeleton's tally line as the "skill actually ran" proxy instead.
       - type: regex
-        value: '[Tt]ally'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `JSON.parse(raw) as Config` in `parseConfig` as `needless-cast` —
-          narrowing an `unknown` boundary is the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `default:` branch of the `switch` in `area` as `dead-code` —
-          an intentionally exhaustive default kept as a defensive assertion is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the arithmetic in `median` (`Math.floor(sorted.length / 2)`,
-          `% 2 === 1`, `sorted[middle - 1]`) as `magic-literal` — these are
-          self-evidently themselves, not domain constants.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `items.length > 0` in `hasResults` as `explaining-variable` — the
-          expression is already idiomatic and plain.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the two-branch conditional in `describeStock` as `guard-clause` —
-          both arms do real, comparable work, which the rule documents as a legitimate
-          `if/else` rather than a guard plus body.
-      - type: llm-rubric
-        value: >-
-          The overall verdict is clean: the report has no high or medium findings. Any
-          look-alike the review considered and passed on is named on the "Not flagged"
-          line rather than raised as a finding.
+        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+      # narrowing an `unknown` boundary is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: needless-cast, mentions: ['JSON\.parse', parseConfig, 'as Config'] }
+      # an exhaustive default kept as a defensive assertion
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: dead-code, mentions: [default, area] }
+      # arithmetic that is self-evidently itself
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: magic-literal, mentions: [median, 'Math\.floor', '% 2', middle] }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: explaining-variable, mentions: [hasResults, 'items\.length'] }
+      # both arms do comparable work: a legitimate if/else
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: guard-clause, mentions: describeStock }
+      - type: javascript
+        value: file://checks/report.mjs:cleanVerdict
+        config: {}
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['JSON\.parse|parseConfig|as Config', 'default|area', 'median', 'hasResults|items\.length', describeStock], min: 1 }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-8 folded-rules-recall (quality-recall-2.ts + quality-recall-2.model.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-recall-2.ts plugins/code-review/evals/fixtures/quality-recall-2.model.ts
+      file: plugins/code-review/evals/cases/quality-recall-2.ts plugins/code-review/evals/cases/quality-recall-2.model.ts
     assert:
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
-      - type: llm-rubric
-        value: >-
-          Flags the module-local `fetchInvoice` in `quality-recall-2.ts` — it forwards
-          `(repo, id)` unchanged to `repo.findById(id)` and has one caller (`collect`) —
-          as `module` · `pass-through`, severity **medium**, with a fix that inlines the
-          call at the caller and deletes the wrapper.
-      - type: llm-rubric
-        value: >-
-          Flags the file-local `renderAmount` in `quality-recall-2.ts` as `module` ·
-          `canonical-helper`, severity **high** — it duplicates the exported `formatMoney`
-          in `quality-recall-2.model.ts` (same `(amountMinor / 100).toFixed(2)` + currency
-          expression) — and the fix imports `formatMoney` instead. It is NOT filed as
-          `simplicity` · `over-complex` (that rule is for same-file duplication).
-      - type: llm-rubric
-        value: >-
-          Raises an `objects` · `feature-envy` finding, severity **medium**, on
-          `CollectionsQueue` — on ANY of `totalOf`, `priorityOf`, or `labelFor` (naming
-          one of them is enough): they compute the invoice total / days overdue from
-          `Invoice`'s own fields (`lines`, `dueAt`, `isSettled`) while `Invoice` has
-          behaviour of its own — and the fix moves that computation onto `Invoice`
-          (e.g. `total()`, `daysOverdue(now)`). A report that clears it as a
-          mapper/serializer exception fails this assertion.
-      - type: llm-rubric
-        value: >-
-          Flags `invoice.customer().account().primaryContact().email` in
-          `CollectionsQueue.recipientFor` as `objects` · `message-chain`, severity
-          **medium**, with a fix that asks `Invoice` (or `Customer`) for the answer
-          directly instead of navigating three foreign objects.
-      - type: llm-rubric
-        value: >-
-          All four problems above (`pass-through`, `canonical-helper`, `feature-envy`,
-          `message-chain`) are present in the report. Missing any one of them fails this
-          assertion, regardless of how well the others are described.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: pass-through, mentions: fetchInvoice, severity: medium }
+      # the fix inlines the call at the caller ("call it directly in the caller" says the same)
+      # and deletes the wrapper
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: pass-through, mentions: fetchInvoice, fix: '^(?=.*(inline|directly|at the caller))(?=.*(delete|remov))' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: canonical-helper, mentions: renderAmount, severity: high }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: module, rule: canonical-helper, mentions: renderAmount, fix: formatMoney }
+      # `over-complex` is for same-file duplication
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: over-complex, mentions: [renderAmount, formatMoney] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: feature-envy, mentions: [totalOf, priorityOf, labelFor], severity: medium }
+      # the fix moves the computation onto `Invoice`
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: feature-envy, mentions: [totalOf, priorityOf, labelFor], fix: 'Invoice|total\(\)|daysOverdue' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: message-chain, mentions: [recipientFor, primaryContact], severity: medium }
+      # the fix asks `Invoice` or `Customer` for the answer
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: objects, rule: message-chain, mentions: [recipientFor, primaryContact], fix: 'Invoice|Customer' }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-9 folded-rules-calibration (quality-calibration-2.ts + quality-calibration-2.types.ts)'
     prompts: [quality-track]
     vars:
-      file: plugins/code-review/evals/fixtures/quality-calibration-2.ts plugins/code-review/evals/fixtures/quality-calibration-2.types.ts
+      file: plugins/code-review/evals/cases/quality-calibration-2.ts plugins/code-review/evals/cases/quality-calibration-2.types.ts
     assert:
       # Deliberately clean fixture — proxy on the skeleton's tally line, as in eval-7.
       - type: regex
-        value: '[Tt]ally'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `OrderDtoMapper.toDto` as `feature-envy` — a DTO mapper reads
-          another object's fields because that is its job (the rule's documented
-          exception).
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `new OrderQuery().where(...).where(...).limit(...).build()`
-          chains in `OrdersController.list` / `find` as `message-chain` — a fluent builder
-          / `this`-returning chain is the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `PaymentGateway.chargeOrder` as `pass-through` — it adapts the
-          call (translates `Order` into Stripe's `{ amount, currency }` shape and lowers the
-          currency) at a real boundary, which the rule documents as a facade, not a
-          forwarder.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `import type` pair between `quality-calibration-2.ts` and
-          `quality-calibration-2.types.ts` as `dependency-direction` — erased, type-only
-          imports are the rule's documented exception, even though they form a cycle.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the repeated `(req: Request, res: Response)` signatures of
-          `OrdersController.get`, `list`, `charge` as `data-clump` — a framework-fixed
-          signature is the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          The overall verdict is clean: the report has no high or medium findings. Any
-          look-alike the review considered and passed on is named on the "Not flagged"
-          line rather than raised as a finding.
+        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+      # a DTO mapper reads another object because that is its job
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: feature-envy, mentions: [toDto, OrderDtoMapper] }
+      # a fluent, this-returning builder
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: message-chain, mentions: [OrderQuery, 'where\(', 'build\(', list, find] }
+      # it adapts the call at a real boundary: a facade
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: pass-through, mentions: [chargeOrder, PaymentGateway] }
+      # the fixture has one cross-file import pair, erased and type-only
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: dependency-direction }
+      # a framework-fixed signature
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: data-clump, mentions: ['req', Request, 'res\b'] }
+      - type: javascript
+        value: file://checks/report.mjs:cleanVerdict
+        config: {}
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['toDto|OrderDtoMapper', 'OrderQuery|builder', 'chargeOrder|PaymentGateway', 'import type|type-only', 'data-clump|\(req|req: Request|Request, Response'], min: 1 }
 
   # ============================================================================
   # Scanner track — security / performance / spec, prompts that emulate the
@@ -482,143 +484,156 @@ tests:
   - description: 'eval-10 security-recall (security-recall.ts)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/security-recall.ts
+      file: plugins/code-review/evals/cases/security-recall.ts
     assert:
       # "scanner actually ran" proxy: findings carry the lens's own family tag.
       - type: regex
         value: '`security`'
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: secret-in-source, mentions: [sk_live, STRIPE_SECRET], severity: high, lines: [7] }
+      # the fix reads the value from the environment or a secret module
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: secret-in-source, mentions: [sk_live, STRIPE_SECRET], fix: 'env|secret' }
       - type: llm-rubric
         value: >-
-          Flags the `sk_live_…` literal used as the `process.env.STRIPE_SECRET` fallback
-          (L7) as `security` · `secret-in-source`, severity **high**. The fix reads the
-          value from the environment or a secret module, and the finding says rotation of
-          the committed value is the user's step — it never claims rotation is done.
-      - type: llm-rubric
-        value: >-
-          Flags the `listOrders` handler as `security` · `injection-sink`, severity
-          **high**, naming BOTH ends by line: where `req.query.status` enters (L12) and
-          the sink where it is interpolated into the `pool.query(...)` SQL string (L13).
-          The fix binds the value through a `$1`/placeholder parameter.
-      - type: llm-rubric
-        value: >-
-          Flags `rejectUnauthorized: false` on the `https.Agent` (L9) as `security` ·
-          `insecure-setting`, severity **high**, naming both the setting line and the
-          request it weakens (the `https.request` to `api.stripe.com` that passes
-          `agent: gatewayAgent`). The fix restores certificate verification.
-      - type: llm-rubric
-        value: >-
-          All three problems above (`secret-in-source`, `injection-sink`,
-          `insecure-setting`) are present. Missing any one of them fails this assertion.
-      - type: llm-rubric
-        value: >-
-          Every severity in the output is exactly `high` or `medium` — never `nit`, never
-          `low`, never `critical`, never a number — and each finding is a single bullet in
-          the `` `security` · rule · severity · L<lines> — … → … `` shape with no fenced
-          code block and no rewritten function body.
+          The `secret-in-source` finding on the `sk_live_…` literal says that rotating
+          the committed value is the user's step, and never claims the rotation is done.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: injection-sink, mentions: [listOrders, 'req\.query\.status', 'pool\.query'], severity: high }
+      # both ends by line: the source at L12, the sink at L13
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: injection-sink, mentions: [listOrders, 'req\.query\.status', 'pool\.query'], lines: [12, 13] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: injection-sink, mentions: [listOrders, 'req\.query\.status', 'pool\.query'], fix: '\$1|placeholder|parameteri[sz]|bind' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: insecure-setting, mentions: rejectUnauthorized, severity: high, lines: [9] }
+      # it names the request the setting weakens
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: insecure-setting, mentions: rejectUnauthorized, all: ['api\.stripe\.com|https\.request'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: insecure-setting, mentions: rejectUnauthorized, fix: 'rejectUnauthorized|verif|certificate' }
+      # a security finding is never `nit`
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { severities: [high, medium] }
+      # CANDIDATES and HANDOFF have their own shapes, so only the findings are held to this one
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: security, pattern: '^- `security` · [a-z]+(-[a-z]+)* · (high|medium) · `?[\w./-]*:?L\d+.* — .+ → .+' }
+      - type: javascript
+        value: file://checks/report.mjs:noCodeBlocks
+        config: { scope: findings }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-11 security-calibration (security-calibration.ts)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/security-calibration.ts
+      file: plugins/code-review/evals/cases/security-calibration.ts
     assert:
       # Clean fixture — the prompt asks for a `Not flagged:` line, so proxy on it.
       - type: regex
         value: '[Nn]ot flagged'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `db.raw('SELECT … WHERE email = ?', [email])` in `findUserByEmail`
-          as `injection-sink` — a parameterized builder with a bound `?` placeholder is the
-          rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag `spawn('convert', [uploadPath, …])` in `resizeUpload` as
-          `injection-sink` — `spawn` with an argv array and no shell is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `sk_test_…` literal assigned to `stripeTestKey` as
-          `secret-in-source` — an obviously fake `sk_test_` value in a fixture file is
-          the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `SENDGRID_API_KEY` environment read (into `sendgridKey`, sent
-          as a bearer header) as `secret-in-source` — an environment read is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `health` handler as `missing-access-check` — a deliberately
-          public health endpoint is the rule's documented exception.
-      - type: llm-rubric
-        value: >-
-          The output raises NO finding in the `` `security` · rule · severity `` shape at
-          all; every look-alike it considered is named on the `Not flagged` line (a
-          `CANDIDATES` entry for the `sk_test_` literal is tolerated, a finding is not).
+      # a parameterized builder with a bound `?` is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: injection-sink, mentions: [findUserByEmail, 'db\.raw', 'email = \?'] }
+      # `spawn` with an argv array and no shell is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: injection-sink, mentions: [spawn, resizeUpload] }
+      # an obviously fake `sk_test_` fixture value is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: secret-in-source, mentions: [sk_test, stripeTestKey] }
+      # an environment read is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: secret-in-source, mentions: [SENDGRID, sendgridKey] }
+      # a deliberately public health endpoint is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: missing-access-check, mentions: health }
+      # a CANDIDATES entry for the `sk_test_` literal is tolerated, a finding is not
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['db\.raw|findUserByEmail', 'spawn|resizeUpload', 'sk_test|stripeTestKey', 'SENDGRID|sendgridKey', health], min: 1 }
 
   # ----------------------------------------------------------------------------
   - description: 'eval-12 performance-recall (performance-recall.ts)'
     prompts: [performance-track]
     vars:
-      file: plugins/code-review/evals/fixtures/performance-recall.ts
+      file: plugins/code-review/evals/cases/performance-recall.ts
     assert:
       - type: regex
         value: '`performance`'
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: n-plus-one, mentions: [findUnique, pendingOrdersWithCustomers], severity: high }
+      # the multiplier, the call inside it and the batch API, by name
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: n-plus-one, mentions: findUnique, all: ['order\.findMany|`orders`', findUnique, 'customersByIds|\bin\b|include'] }
       - type: llm-rubric
         value: >-
-          Flags the per-order `prisma.customer.findUnique` inside the `for` loop of
-          `pendingOrdersWithCustomers` as `performance` · `n-plus-one`, severity **high**.
+          The `n-plus-one` finding on `pendingOrdersWithCustomers` names the bound that
+          is missing: one batched read of the customers before the loop.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: unbounded-fetch, mentions: [listEvents, 'event\.findMany'], severity: medium }
+      # the fix adds `take` plus a cursor or page parameter
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: performance, rule: unbounded-fetch, mentions: [listEvents, 'event\.findMany'], fix: '^(?=.*\btake\b)(?=.*(cursor|page))' }
       - type: llm-rubric
         value: >-
-          That `n-plus-one` finding names all four evidence items: (1) the multiplier —
-          the `orders` list returned by `prisma.order.findMany` (sized by data); (2) the
-          call inside it — `findUnique` per order; (3) the missing bound — one batched
-          read before the loop; (4) the batch API that already exists in the file —
-          `findMany({ where: { id: { in } } })` as used by `customersByIds` (or an
-          `include` on the outer query).
-      - type: llm-rubric
-        value: >-
-          Flags the `prisma.event.findMany` in the `listEvents` route handler as
-          `performance` · `unbounded-fetch`, severity **medium** — no `take`/cursor on a
-          growing table, returned whole from a list endpoint that accepts no page
-          parameter — with a fix that adds `take` plus a cursor/page parameter.
-      - type: llm-rubric
-        value: >-
-          Both problems above (`n-plus-one` and `unbounded-fetch`) are present. Missing
-          either fails this assertion.
+          The `unbounded-fetch` finding on `listEvents` says why the read is unbounded:
+          the table grows, and the list endpoint accepts no page parameter.
       - type: javascript
         value: "!/could be slow|may impact performance|might not scale|performance impact/i.test(output)"
-      - type: llm-rubric
+      # An estimate the file cannot back: a latency, a row count, a complexity class.
+      - type: javascript
         value: >-
-          No finding carries a latency, a row count, a complexity class, or any other
-          estimate not derived from a line in the file, and the scanner never claims to
-          have run, benchmarked, or profiled the code.
+          !/\b\d[\d,.]*\s?(ms|milliseconds|seconds|rows|records)\b|\bO\((n|N|log|1)/.test(output)
+      - type: not-regex
+        value: '\b(I|we) (ran|executed|benchmarked|profiled|measured|timed)\b'
 
   # ----------------------------------------------------------------------------
   - description: 'eval-13 performance-calibration (performance-calibration.ts)'
     prompts: [performance-track]
     vars:
-      file: plugins/code-review/evals/fixtures/performance-calibration.ts
+      file: plugins/code-review/evals/cases/performance-calibration.ts
     assert:
       - type: regex
         value: '[Nn]ot flagged'
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `await deliver(...)` loop over `Object.values(Channel)` in
-          `broadcast` as `n-plus-one` — a loop over an enum is bounded by the source, not
-          by data (the rule's documented exception).
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the `prisma.order.findMany({ take, skip, … })` in `listOrders` as
-          `unbounded-fetch` — the read is paginated with `take`/`skip`.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the module-level `readFileSync` of the settings file as
-          `blocking-in-async` — a startup/config load at module top level is the rule's
-          documented exception.
-      - type: llm-rubric
-        value: >-
-          The output raises NO finding in the `` `performance` · rule · severity `` shape;
-          every look-alike it considered is named on the `Not flagged` line.
+      # a loop over an enum is bounded by the source, not by data
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: n-plus-one, mentions: [broadcast, deliver, Channel] }
+      # the read is paginated with `take`/`skip`
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: unbounded-fetch, mentions: [listOrders, 'order\.findMany', skip] }
+      # a module-top-level config load is the documented exception
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: blocking-in-async, mentions: [readFileSync, settings] }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: performance }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['Channel|broadcast', 'listOrders|take|skip', readFileSync], min: 1 }
       - type: javascript
         value: "!/could be slow|may impact performance|might not scale|performance impact/i.test(output)"
 
@@ -626,42 +641,53 @@ tests:
   - description: 'eval-14 spec-conformance (feature-spec.md vs feature-impl.ts)'
     prompts: [spec-track]
     vars:
-      file: plugins/code-review/evals/fixtures/spec/feature-impl.ts
-      spec: plugins/code-review/evals/fixtures/spec/feature-spec.md
+      file: plugins/code-review/evals/cases/spec-conformance/feature-impl.ts
+      spec: plugins/code-review/evals/cases/spec-conformance/feature-spec.md
     assert:
       - type: regex
         value: '`spec`'
-      - type: llm-rubric
-        value: >-
-          Flags spec requirement 3 — "Orders whose status is `cancelled` are excluded
-          from the export." — as `spec` · `missing-requirement`, severity **high**: nothing
-          in `feature-impl.ts` filters on `status`. The bullet quotes that spec line and
-          sits under a `### plugins/code-review/evals/fixtures/spec/feature-spec.md`
-          header with the spec's own line number (L7), not under the code file.
-      - type: llm-rubric
-        value: >-
-          Flags the sort comparator in `exportOrders` (`b.createdAt - a.createdAt`, newest
-          first) as `spec` · `wrong-implementation`, severity **high**, quoting spec line
-          4 — "Rows are sorted by `created_at`, oldest first." — under the code file's
-          header with the code's line number, and the fix reverses the comparator.
-      - type: llm-rubric
-        value: >-
-          Flags `exportOrdersGzip` as `spec` · `scope-creep`, severity **medium** — no
-          spec line asks for compression — quoting the requirement the extra behaviour
-          attaches to, with a fix that drops it or splits it into its own change.
-      - type: llm-rubric
-        value: >-
-          All three problems above (`missing-requirement`, `wrong-implementation`,
-          `scope-creep`) are present. Missing any one of them fails this assertion.
+      # the bullet quotes the spec line verbatim
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: missing-requirement, severity: high, all: ['Orders whose status is `cancelled` are excluded from the export'] }
+      # no code site, so it sits under the spec with the spec's own line
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: missing-requirement, under: feature-spec.md, lines: [7] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: wrong-implementation, severity: high, all: ['Rows are sorted by `created_at`, oldest first'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: wrong-implementation, under: feature-impl.ts, all: ['L\d+'] }
+      # the fix reverses the comparator
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: wrong-implementation, under: feature-impl.ts, fix: 'a\.createdAt.*-\s*b\.createdAt|revers|swap|ascending|oldest' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: scope-creep, mentions: [exportOrdersGzip, gzip, compress], severity: medium }
+      # it quotes the requirement the extra behaviour attaches to
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: scope-creep, mentions: [exportOrdersGzip, gzip, compress], all: ['"[^"]{10,}"'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: spec, rule: scope-creep, mentions: [exportOrdersGzip, gzip, compress], fix: 'drop|remov|delet|split|separate|own change' }
       - type: regex
         value: '\b3 of 5 requirements met\b'
-      - type: llm-rubric
-        value: >-
-          The met requirements (the column set + header row, the ISO-8601 `created_at`,
-          and the empty-input empty-string case) never appear as bullets in the
-          `` `spec` · rule · severity `` finding shape — an enumeration or mapping list
-          that marks them "met" is fine, a finding-shaped bullet is not — and the
-          motivation sentence ("Finance wants a plain CSV…") generates no finding.
+      # a "met" bullet in the finding shape carries a rule the spec table does not have
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [spec], rules: true }
+      # requirements 2 and 5 are met, so they are no finding
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: spec, mentions: ['ISO[- ]?8601|toISOString', 'empty (input|array|list|string)'], siteOnly: true }
+      # the motivation sentence is not a requirement
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { mentions: [Finance] }
 
   # ============================================================================
   # Standards track — CODING_STANDARDS.md + .local.md generate `standards` findings
@@ -670,39 +696,42 @@ tests:
   - description: 'eval-15 standards-pair (standards/service.ts)'
     prompts: [standards-track]
     vars:
-      file: plugins/code-review/evals/fixtures/standards/service.ts
+      file: plugins/code-review/evals/cases/standards/service.ts
     assert:
       - type: regex
         value: '`standards`'
-      - type: llm-rubric
-        value: >-
-          Flags `activeAccount` (a boolean-returning function without an `is`/`has`/`can`
-          prefix) as `standards`, severity **high**, quoting the MUST rule
-          ("Boolean-returning functions MUST be named with an `is`, `has`, or `can`
-          prefix.") and citing `CODING_STANDARDS.md › Naming`; the fix renames it (e.g.
-          `isActiveAccount`).
-      - type: llm-rubric
-        value: >-
-          Does NOT raise a `standards` finding for the missing explicit return types on
-          the exported functions — `CODING_STANDARDS.local.md` relaxes the SHOULD rule
-          ("Exported functions need not declare an explicit return type"), and `.local`
-          wins per statement.
-      - type: llm-rubric
-        value: >-
-          Flags the `||` default in `creditLimitMinor` (`account.creditLimitMinor ||
-          DEFAULT_CREDIT_LIMIT_MINOR`, which turns a legitimate `0` into the default) as
-          `standards`, severity **nit**, quoting the MAY rule from
-          `CODING_STANDARDS.local.md › Defaults` and proposing `??`.
-      - type: llm-rubric
-        value: >-
-          The vague line "Write clean code." under `CODING_STANDARDS.md › General`
-          generates NO finding of any kind.
-      - type: llm-rubric
-        value: >-
-          Every `standards` bullet in the report has the shape
-          `` `standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (<file> › <section>) → <fix> ``:
-          a kebab-case slug, a verbatim quoted rule, and a file › section citation. No
-          `standards` bullet lacks the quoted rule.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: activeAccount, severity: high }
+      # the MUST rule quoted verbatim, with its file › section
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: activeAccount, all: ['Boolean-returning functions MUST be named with an `is`, `has`, or `can` prefix', 'CODING_STANDARDS\.md`? › Naming'] }
+      # the fix renames it with the prefix
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: activeAccount, fix: '\b(is|has|can)[A-Z]\w*' }
+      # `.local` relaxes the SHOULD rule, and `.local` wins per statement
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: standards, mentions: ['return type'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: [creditLimitMinor, CREDIT_LIMIT_MINOR, '\bL19\b'], severity: nit }
+      # the craft "prefer" rule quoted from the `.local` file
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: [creditLimitMinor, CREDIT_LIMIT_MINOR, '\bL19\b'], all: ['Prefer `\?\?` over `\|\|` for a default value', 'CODING_STANDARDS\.local\.md`? › Defaults'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: standards, mentions: [creditLimitMinor, CREDIT_LIMIT_MINOR, '\bL19\b'], fix: '\?\?' }
+      # a vague line is not a quotable rule
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { mentions: ['clean code'] }
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: standards, pattern: '^- `standards` · [a-z0-9]+(-[a-z0-9]+)* · (high|medium|nit) · `?[\w./-]*:?L\d+.* — "[^"]+" \(`?CODING_STANDARDS(\.local)?\.md`? › [^)]+\) → .+' }
 
   # ============================================================================
   # Regression guards — the rules and the scope boundaries added from run analysis
@@ -711,88 +740,95 @@ tests:
   - description: 'eval-16 iac-exposure-recall (iac-exposure.tf)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/iac-exposure.tf
+      file: plugins/code-review/evals/cases/iac-exposure.tf
     assert:
       - type: regex
         value: 'iac-exposure'
-      - type: llm-rubric
-        value: >-
-          Flags the generated `tls_private_key.deploy` — written to remote state and to
-          `local_file.deploy_key` on disk — as `security` · iac-exposure · high.
-      - type: llm-rubric
-        value: >-
-          Flags BOTH credential leaks in the declaration: the plaintext `default` on the
-          `db_admin_password` variable and the `database_admin_password` output that
-          carries it without `sensitive`.
-      - type: llm-rubric
-        value: >-
-          Flags the `allUsers` invoker binding on the `internal_admin` Cloud Run service
-          and the `0.0.0.0/0` source range reaching port 5432 as over-wide grants
-          (`iac-exposure`, high).
-      - type: llm-rubric
-        value: >-
-          Flags the GitHub OIDC provider whose `attribute_condition` pins only
-          `attribute.repository` — any workflow or ref of that repository satisfies it.
-      - type: llm-rubric
-        value: >-
-          Does NOT flag as findings, and names on the `Not flagged` line: the `allUsers`
-          objectViewer binding on the marketing-assets bucket (public by design), the
-          `0.0.0.0/0` range on port 443 (a public port), the Stripe key read from the
-          secret-manager data source, and the `cluster_endpoint` output (not a
-          credential).
-      - type: llm-rubric
-        value: >-
-          Every finding is tagged `security` with a rule from the master table and
-          severity `high` or `medium` — no craft family (readability, naming, module,
-          objects, patterns, simplicity) appears at all.
-
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: iac-exposure, mentions: [tls_private_key, deploy_key, private_key_pem], severity: high }
+      # the plaintext `default` on the variable; its line counts only in the location slot,
+      # since the 5432 finding can cite "the committed default at L12" in passing
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, mentions: [db_admin_password, Sup3rS3cret, '· (?:L[\d–-]+, )*L1[02]\b'], all: ['default|Sup3rS3cret|plaintext'] }
+      # the output that carries it without `sensitive`
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, mentions: [database_admin_password], all: [sensitive] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: iac-exposure, severity: high, all: [allUsers, 'internal_admin|run\.invoker|Cloud Run'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: iac-exposure, severity: high, all: ['0\.0\.0\.0/0', '5432'] }
+      # a condition pinning only the repository admits any workflow or ref of it
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, mentions: [attribute_condition, 'attribute\.repository'] }
+      # public by design, a public port, a secret-manager read, a non-credential output
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, mentions: [objectViewer, marketing, '\b443\b', secret_manager, cluster_endpoint], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['objectViewer|marketing', '\b443\b', 'secret[_ -]manager|stripe', cluster_endpoint] }
+      # HANDOFF names another family by design, so only the findings are held to this
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [security], severities: [high, medium], rules: true }
   - description: 'eval-17 access-widening-diff (access-widening.diff)'
     prompts: [security-diff-track]
     vars:
-      file: plugins/code-review/evals/fixtures/access-widening.diff
+      file: plugins/code-review/evals/cases/access-widening.diff
     assert:
       - type: regex
         value: 'access-widening'
-      - type: llm-rubric
-        value: >-
-          Flags the `/contracts/:id` route as `security` · access-widening · high: the
-          required scope went from `contract:read:own` to `org:read` AND the
-          `{ ownerId: req.user.id }` predicate was dropped from the store call.
-      - type: llm-rubric
-        value: >-
-          Flags the `/contracts/:id/export` route, which lost `requireAuth` entirely.
-      - type: llm-rubric
-        value: >-
-          Flags the webhook query losing its `tenant_id` predicate as `access-widening`
-          (an `injection-sink` finding for the interpolated `status` alongside it is
-          correct, not a substitute for it).
-      - type: llm-rubric
-        value: >-
-          Does NOT flag the two hunks that tighten: `requireOwner` added to the sign
-          route, and the CORS origin list losing `https://staging.acme.com`. Both are
-          named on the `Not flagged` line.
-
+      # the required scope widened from `contract:read:own` to `org:read`
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: access-widening, severity: high, all: ['org:read'] }
+      # the owner predicate dropped from the store call
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: access-widening, all: [ownerId] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, all: [export, requireAuth] }
+      # an injection-sink finding on the interpolated `status` is correct beside it, not a substitute
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: security, rule: access-widening, all: [tenant_id] }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, mentions: [requireOwner, 'staging\.acme\.com', '\bcors\b'], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: [requireOwner, 'staging\.acme\.com|cors'] }
   - description: 'eval-18 guard-test-fidelity-routing (tenant-guard.ts + tenant-guard.test.ts)'
     prompts: [security-track]
     vars:
-      file: plugins/code-review/evals/fixtures/tenant-guard.ts plugins/code-review/evals/fixtures/tenant-guard.test.ts
+      file: plugins/code-review/evals/cases/tenant-guard.ts plugins/code-review/evals/cases/tenant-guard.test.ts
     assert:
+      # the guard compares tenants and both queries bind a tenant_id predicate
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: missing-access-check }
+      # routed to the tests family in the contract's HANDOFF shape
+      - type: regex
+        value: '`tests` · test-fidelity'
+      # not graded as a security finding of any severity
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, mentions: ['\.test\.ts', 'test-fidelity', '\btests?\b'], siteOnly: true }
       - type: llm-rubric
         value: >-
-          Raises NO `missing-access-check` finding against `tenant-guard.ts`: the
-          middleware compares the session tenant with the route tenant, and both queries
-          carry a `tenant_id` predicate bound as a parameter.
-      - type: llm-rubric
-        value: >-
-          Identifies that both tests claim a boundary their assertions never exercise
-          (each passes the SAME tenant and asserts only that the happy path ran), and
-          routes it to the `tests` family as test-fidelity — in a HANDOFF block or named
-          as belonging to the tests lens — rather than grading it as a `security` finding
-          of any severity.
-      - type: llm-rubric
-        value: >-
-          No finding in the output carries the `security` family with severity `high`.
-
+          The output says that both tests in `tenant-guard.test.ts` claim a boundary
+          their assertions never exercise: each passes the same tenant and asserts only
+          that the happy path ran.
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: security, atSeverity: high }
   - description: 'eval-19 scope-classification (scope-mix/)'
     prompts: [quality-track]
     vars:
@@ -800,23 +836,31 @@ tests:
       # which would hide the source-vs-test classification this eval checks.
       file: plugins/code-review/evals/scope-mix
     assert:
-      - type: llm-rubric
-        value: >-
-          `build.mjs` and `legacy-report.cjs` were reviewed as source files — the report
-          judges their content (findings against them, or an explicit clean verdict naming
-          them). Neither is listed as skipped or dismissed as tooling.
-      - type: llm-rubric
-        value: >-
-          `tests-e2e/checkout.spec.ts` is treated as a test file — it is reviewed, and any
-          finding against it comes from the `tests` family (for example the interleaved
-          act/assert steps as test-structure), never dismissed for sitting outside a
-          directory named `test`.
-      - type: llm-rubric
-        value: >-
-          `.github/workflows/ci.yml` is not graded by the quality lenses: the report says it
-          is left to the security lens (a policy file) or lists it as skipped, and points
-          the reader at `/security-review` for the pipeline audit. No readability, naming
-          or other craft finding is raised against it. `notes.txt` is listed as skipped.
+      - type: javascript
+        value: file://checks/report.mjs:fileReviewed
+        config: { files: [build.mjs, legacy-report.cjs] }
+      # both are source files, never dismissed as tooling
+      - type: javascript
+        value: file://checks/report.mjs:notSkipped
+        config: { patterns: ['build\.mjs', 'legacy-report'] }
+      # a test file outside a `test` directory still gets the tests family
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, under: checkout.spec.ts }
+      - type: javascript
+        value: file://checks/report.mjs:notSkipped
+        config: { patterns: ['checkout\.spec'] }
+      # a policy file is the security lens's alone
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { under: ci.yml }
+      - type: regex
+        value: 'ci\.yml.*(security|[Ss]kipped)|([Ss]kipped|security).*ci\.yml'
+      - type: regex
+        value: '/security-review'
+      - type: javascript
+        value: file://checks/report.mjs:skippedNames
+        config: { patterns: ['notes\.txt'] }
       - type: regex
         value: '[Ss]kipped'
 
@@ -836,29 +880,39 @@ tests:
     prompts: [correctness-track]
     vars:
       # correctness/DEFECTS.md lists the planted defects and look-alikes; the lens never sees it.
-      file: plugins/code-review/evals/fixtures/correctness/order-sync.ts
+      file: plugins/code-review/evals/cases/correctness/order-sync.ts
     assert:
       - type: regex
         value: '`correctness`'
-      - type: llm-rubric
-        value: >-
-          Flags `fetchAllOrders` as `correctness` · `off-by-one`, severity **high**: the loop
-          runs while `page < totalPages - 1`, so the last page is never fetched. The fix
-          loops while `page < totalPages`.
-      - type: llm-rubric
-        value: >-
-          Flags `syncOrder` as `correctness` · `swallowed-error`, severity **medium** (or
-          high): a failed `ledger.post` is caught and logged, and the function still returns
-          `{ ok: true }`, so the caller treats the failure as a success.
-      - type: llm-rubric
-        value: >-
-          Does NOT raise a finding against `labelFor`'s `default:` arm (an exhaustive
-          `never` assertion) or against `recordSync`'s catch (best-effort telemetry whose
-          comment says so); either may appear on the `Not flagged` line.
-      - type: llm-rubric
-        value: >-
-          Every severity is exactly `high` or `medium` — never `nit`, `low` or a number —
-          and every finding is one bullet naming its own file as `path:L<lines>`.
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], severity: high }
+      # the wrong result: the last page is never fetched, in whichever words
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], all: ['last|final page|drops? page|never fetch'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: off-by-one, mentions: [fetchAllOrders, totalPages], fix: 'page < totalPages(?!\s*-)|<= totalPages - 1' }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: swallowed-error, mentions: [syncOrder, 'ledger\.post'], severity: [medium, high] }
+      # the caller reads the failure as a success
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: swallowed-error, mentions: [syncOrder, 'ledger\.post'], all: ['ok: true'] }
+      # an exhaustive `never` assertion, and best-effort telemetry whose comment says so
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: correctness, mentions: [labelFor, recordSync], siteOnly: true }
+      # a correctness finding is never `nit`
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { severities: [high, medium] }
+      # every finding names its own file, so the merge can regroup it
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: correctness, pattern: '^- `correctness` · [a-z]+(-[a-z]+)* · (high|medium) · `[\w./-]+:L\d+[^`]*` — .+ → .+' }
       - type: javascript
         value: file://checks/handoff-families.mjs
 
@@ -906,3 +960,172 @@ tests:
     assert:
       - type: javascript
         value: file://checks/headless-pipeline.mjs
+
+  - description: 'eval-26 start-cr-menu-and-commits (start-cr Steps 4–7 from written lens files)'
+    prompts: [start-cr-merge-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/mailer
+      context: plugins/code-review/evals/.sandbox/mailer-ctx
+      head: plugins/code-review/evals/.sandbox/mailer.head
+      branch: feat/weekly-digest
+      ruleless: unsubscribe
+      userFiles: [scratch-notes.txt]
+      # The first option of each question is the answer; which bucket that is, the run decides.
+      buckets:
+        - { match: unsubscribe, files: [src/templates/digest.ts] }
+        - { match: report only, files: [] }
+        - { match: safe, files: [src/campaigns/schedule.ts, src/campaigns/throttle.ts] }
+        - { match: structural|walk, files: [src/campaigns/recipients.ts, src/campaigns/sender.ts] }
+      families:
+        src/templates/digest.ts: correctness
+        src/campaigns/schedule.ts: comments
+        src/campaigns/throttle.ts: readability
+        src/campaigns/recipients.ts: simplicity
+        src/campaigns/sender.ts: objects
+        src/campaigns/audience.ts: naming
+    options: { max_budget_usd: 8, allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:menuSlots
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:rulelessOption
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:boyScoutDropped
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:reportBeforeMenu
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:selectionOnDisk
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:commitModeQuestion
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:onlySelectedApplied
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:commitsMatchMode
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:commitMessages
+      - type: javascript
+        value: file://checks/menu-and-commits.mjs:userFilesUntouched
+
+  - description: 'eval-27 pr-reviewer-draft (start-cr --pr on someone else''s PR, through the draft)'
+    prompts: [pr-draft-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/pr
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      context: plugins/code-review/evals/.sandbox/pr9-ctx
+      pr: 9
+      # the R9 doc comment sits outside every hunk, so it belongs in the review body
+      outside: { file: src/billing-window.ts, quote: '30 days' }
+      high: { file: src/order-sync.ts, mentions: 'totalPages|last page|off-by-one' }
+      # the off-by-one is fixed by replacing L13 alone; the 45-day literal needs a constant beside DAY_MS at L3
+      suggestion: { file: src/order-sync.ts, line: 13, fixed: 'page < totalPages;', defect: 'totalPages - 1' }
+      multiSite: { file: src/billing-window.ts, mentions: '\b45\b|PAYMENT_TERM' }
+      # review-comments.json: reviewer-a already raised the swallowed error, and left an unrelated nit on L13
+      raised: { file: src/order-sync.ts, lines: [20, 25], mentions: 'ledger|ok: true|swallow|rethrow', by: reviewer-a }
+      kept: { file: src/order-sync.ts, line: 13, mentions: 'totalPages|last page|off-by-one' }
+      # two outdated comments by reviewer-b on PR #9's earlier revision: the day-in-ms literal at L53 is
+      # unchanged since, so it stays raised; the 60-day term at L19 was replaced by 45, so the 45 finding stays
+      outdated: { file: src/order-sync.ts, line: 53, mentions: '86400|isStale', by: reviewer-b }
+      replaced: { file: src/billing-window.ts, line: 19, mentions: '\b45\b|PAYMENT_TERM' }
+    options: { max_budget_usd: 6, allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-draft.mjs:draftPayload
+      - type: javascript
+        value: file://checks/pr-draft.mjs:draftBeforeQuestion
+      - type: javascript
+        value: file://checks/pr-draft.mjs:commentsInHunks
+      - type: javascript
+        value: file://checks/pr-draft.mjs:outsideHunkInBody
+      - type: javascript
+        value: file://checks/pr-draft.mjs:commentLabels
+      - type: javascript
+        value: file://checks/pr-draft.mjs:suggestionBlock
+      - type: javascript
+        value: file://checks/pr-draft.mjs:noSuggestionMultiSite
+      - type: javascript
+        value: file://checks/pr-draft.mjs:existingRaised
+      - type: javascript
+        value: file://checks/pr-draft.mjs:outdatedRaised
+      - type: javascript
+        value: file://checks/pr-draft.mjs:postOnlyAfterAnswer
+      - type: javascript
+        value: file://checks/pr-draft.mjs:nothingEdited
+
+  - description: 'eval-28 project-marker (arch-marker/src/order-handler.ts)'
+    prompts: [comment-track]
+    vars:
+      # arch-marker/DEFECTS.md: the tag recurs in every sibling, which the comments rules keep as a marker
+      file: plugins/code-review/evals/.sandbox/arch-marker/src/order-handler.ts
+    assert:
+      - type: regex
+        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+      - type: javascript
+        value: file://checks/report.mjs:commentKept
+        config: { quote: 'Stamp coupling' }
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: 'check if the order has already shipped', verdict: REMOVE, rule: R1 }
+
+  - description: 'eval-29 scope-all-skipped (start-cr Step 1, an uncommitted side of skipped kinds only)'
+    prompts: [scope-question-track]
+    vars:
+      # uncommitted: CLAUDE.md, docs/notes.md, .claude/settings.json; committed: src/order-service.ts
+      checkout: plugins/code-review/evals/.sandbox/scope-skip
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      expect: skip
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/scope-question.mjs
+
+  - description: 'eval-30 scope-question (start-cr Step 1, a judged file on both sides)'
+    prompts: [scope-question-track]
+    vars:
+      # eval-29's checkout plus an untracked src/discount-limits.ts
+      checkout: plugins/code-review/evals/.sandbox/scope-mixed
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      expect: ask
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/scope-question.mjs
+
+  - description: 'eval-33 scope-skipped-spec (start-cr Step 1 with --spec, an uncommitted side of skipped kinds only)'
+    prompts: [scope-question-track]
+    vars:
+      # eval-29's checkout plus specs/order-discount.md on the base, passed as --spec
+      checkout: plugins/code-review/evals/.sandbox/scope-spec
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      spec: specs/order-discount.md
+      expect: ask
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/scope-question.mjs
+
+  - description: 'eval-31 pr-detect (start-cr Step 1 with no --pr, on a branch that is someone else''s PR)'
+    prompts: [pr-detect-track]
+    vars:
+      # PR #9's head on its own branch; the gh stand-in finds PR #9 for it, authored by colleague
+      checkout: plugins/code-review/evals/.sandbox/pr-local
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      pr: 9
+      branch: feat/payment-term
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-detect.mjs
+
+  - description: 'eval-32 pr-detect-own (start-cr Step 1 with no --pr, on a branch that is the user''s own PR)'
+    prompts: [pr-detect-track]
+    vars:
+      # eval-31's clone, but the gh stand-in's user there is colleague, PR #9's author
+      checkout: plugins/code-review/evals/.sandbox/pr-local-own
+      gh: plugins/code-review/evals/.sandbox/bin/gh
+      pr: 9
+      branch: feat/payment-term
+      expect: own
+    options: { allow_all_tools: true }
+    assert:
+      - type: javascript
+        value: file://checks/pr-detect.mjs

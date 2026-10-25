@@ -54,7 +54,9 @@ other step starts with its tool call, not with the list:
 Parse the directory with `node ${CLAUDE_PLUGIN_ROOT}/scripts/task-graph.mjs <tasks dir>` — never a
 parser of your own. It prints one JSON object: `tasks` (every frontmatter field per task, slug and
 ordinal included), `launch` (step 3's `tasks` argument, `baseBranch` carrying the raw `branch-base`
-or `null`), `specPaths` (each resolved `spec:` pointer and whether it exists) and `problems`, each
+or `null`), `landing` (every branch with the branches its pull request merges after — its stack
+chain, its tasks' edges and its `merge-after` holds, followed transitively — listed in an order that
+lands each after those), `specPaths` (each resolved `spec:` pointer and whether it exists) and `problems`, each
 with a `kind`, the slugs it names and a detail line; it exits 2 when there are problems. Nothing it
 prints is written to disk: rerun it whenever the files change. The spec is not read — the task
 files and the split report are the whole input.
@@ -67,9 +69,11 @@ Then make the graph launchable:
   different files — puts the spec location in the step-2 batch.
 - **Read the split report's branch facts.** `<spec-basename>.split.md` beside the spec is the
   split's report, not the spec: read its `## Branches` section (per-branch landing facts — draft
-  pull requests, retargets, merge order, a branch reuse the user already answered) and its
-  `## Still owed` section. A report from an older split has no such headings — read its branch
-  creation order and stack chain instead. A branch call the report settles is not asked again in
+  pull requests, retargets, a branch reuse the user already answered) and its `## Still owed`
+  section. The merge order is not among them: it is `landing`, read from the tasks' `merge-after:`
+  fields. A report from an older split has no such headings — read its branch creation order and
+  stack chain instead — and tasks split before `merge-after` existed carry none, so for them the
+  report's merge-order prose is the only record of it. A branch call the report settles is not asked again in
   step 2, and step 5's pull-request chain carries its facts. No report, or no branch facts in it,
   leaves the task files as the whole input.
 - **Resolve repositories to absolute paths.** A `repository` problem — a value that is not an
@@ -110,7 +114,10 @@ Then make the graph launchable:
 - **Check integrity**: the script checks for dependency cycles, that every `depends-on` edge
   points at a task that exists **and carries a lower ordinal** — the merge planning relies on the
   file order being topological — that every status is one of the six, and that the frontmatter
-  reads. A problem of any kind other than `spec`, `repository` or `branch-base` is a broken graph
+  reads. A `merge-after` problem — a hold naming a branch no task builds, two values on one
+  branch, a landing loop — orders only the pull requests, never the work: it joins the step-2 batch
+  and leaves `landing` unsettled for the branches it names. A problem of any kind other than
+  `spec`, `repository`, `branch-base` or `merge-after` is a broken graph
   and stops the run — recommend re-running `fd3:split-to-tasks` rather than patching by hand.
 - **Find the confirmations a task asks for.** A task whose `## Note` asks for a human's
   confirmation or approval before its work starts — a protected path, a consent the repository's
@@ -187,10 +194,13 @@ branch's pull request. The commit is a change to the repository like any other: 
 a docs index, a manifest, a generated list — regenerate it in the same commit, or say plainly
 that you did not. A stale generated file fails validation on every branch of the run at once,
 and reads there as the branches' own defect. The recommendation is the spec and the tasks
-directory alone. The spec's notes file and research directory are working files — megabytes of
-transcripts and scraped pages — and never part of the recommendation; when the spec links them,
-the option that leaves them out says so, because a docs build that checks links then fails on
-every branch for the whole run, and the user picks.
+directory alone. The spec's session folder (notes, ledger, research), named the spec's filename
+without `.md`, plus `.session/` (`spec/out.md` → `spec/out.session/`), is working state —
+megabytes of transcripts and scraped pages — that git already ignores, and never part of any
+option; when the spec links into it, the option says so, because a docs build that checks links
+then fails on every branch for the whole run, and the user picks. Notes and research
+beside a spec from before session folders (`<spec-basename>.notes.md`, `<spec-basename>.research/`)
+are the same working files, left out the same way.
 
 ### 3. Launch
 
@@ -300,7 +310,10 @@ drift the run's own changes caused — a README, an index or a reference a branc
 to a repair without asking. Only a caveat that contradicts a spec decision or names an
 irreversible operation becomes a question. One that reports compliance with its own prompt, or
 restates what the task file already records, is dropped. Write the full list to `caveats.txt` in
-the session scratchpad and give its path.
+the session scratchpad and give its path. The session scratchpad is the directory your system
+prompt names; when it names none, create one once with `mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"`
+and use that literal path for the rest of the session — never a directory inside a repository
+(`scratchpad/`, `.scratchpad/`, `notes/`, `research/`).
 
 Put to the user only what needs a human: an operational task is theirs to execute (offer the task
 file's steps as a script to follow; mark `done` only when they confirm), and a blocker or a

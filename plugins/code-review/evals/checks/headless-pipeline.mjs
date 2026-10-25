@@ -8,11 +8,24 @@ const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patte
 const FINDING = /^- (high|medium|nit) · [\w-]+ · [\w-]+ · \S+:L\d+(?:-\d+)? · (safe|structural|report-only)\b.* — /m;
 const RECONCILIATION = /^Reconciliation: (\d+) handoffs \+ (\d+) candidates → (\d+) merged · (\d+) own bullet · (\d+) boy-scout · (\d+) Not flagged; (\d+) primary dropped · (\d+) passed on\s*$/m;
 
+// An entry's parenthesised reason may itself hold a `;`, which does not end the entry.
+const splitOutsideParens = (text) => {
+  const out = [''];
+  let depth = 0;
+  for (const ch of text) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    if (ch === ';' && depth === 0) out.push('');
+    else out[out.length - 1] += ch;
+  }
+  return out;
+};
+
 // The one-line form separates entries with `;`, the long form gives each a bullet.
 const notFlaggedEntries = (report) => {
   const m = report.match(/^\*\*Not flagged:\*\*(.*)$/m);
   if (!m) return 0;
-  if (m[1].trim()) return m[1].split(';').filter((e) => e.trim()).length;
+  if (m[1].trim()) return splitOutsideParens(m[1]).filter((e) => e.trim()).length;
   const after = report.slice(m.index + m[0].length).split('\n').slice(1);
   let n = 0;
   for (const line of after) {

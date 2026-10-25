@@ -115,7 +115,9 @@ who would confirm it, and the spec places the question nowhere.
 | payments-service (this repository) | everything in this spec | pull request, CI deploy on merge to `main` |
 
 All paths in this spec are owned by the payments team; review is one approval from that team, and
-CI applies the deploy — no human runs anything by hand.
+CI applies the deploy — no human runs anything by hand. The pipeline is asserted by the payments
+team: this repository tracks no CI configuration, so nothing here shows it — owner: payments team,
+placement: confirmed before the phase-1 deploy.
 
 ## 6. The change, per repository
 
@@ -123,6 +125,7 @@ CI applies the deploy — no human runs anything by hand.
 
 1. **DB-1** — new: migration adding `idempotency_keys`, plus rewiring `getIdempotencyKey` /
    `saveIdempotencyKey` (`src/store/idempotency.ts:5`, `src/store/idempotency.ts:9`) to the table.
+   The CI deploy on merge to `main` (section 5) applies the migration; no human runs it.
 2. **OBSERVABILITY-1** — new: module-scope counts in `src/queue/worker.ts`, incremented inside the
    retry loop (`src/queue/worker.ts:6`) once per attempt, plus the exported `deliveryMetrics()`.
 3. **CONFIG-1** — new: the module-scope token bucket in `src/queue/worker.ts`, read from
@@ -157,7 +160,7 @@ process until the worker is wired in (section 10), so the counts stay at zero ei
 ## 8. Verification
 
 - **DB-1** — probe: `psql "$DATABASE_URL" -c "\d idempotency_keys"` lists the four columns. Before
-  the change the same command errors with `did not find any relation`.
+  the change the same command errors with `Did not find any relation`.
 - **OBSERVABILITY-1** — triggered, through `npm test` (`vitest run`, the script `package.json`
   defines): call `deliver` on two events, then assert `deliveryMetrics()` returns `delivered: 2`.
   Before the change the export does not exist. The `failed` count is not exercised — nothing here

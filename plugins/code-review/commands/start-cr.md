@@ -10,7 +10,8 @@ description: >-
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
   With `--pr <number>` it reviews a GitHub pull request's head against its base; on
-  someone else's pull request it drafts review comments instead of applying fixes.
+  someone else's pull request it drafts review comments instead of applying fixes. Without
+  `--pr`, on a branch that is someone else's open pull request, it offers that reviewer mode.
 allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
@@ -79,7 +80,25 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
   else's and the run is in **reviewer mode** (see the section after Step 7): say so in one
   line now. The author decides what lands on their branch, so the review drafts comments
   for them instead of editing anything.
-- **No path arguments** → review the current branch diff. Detect what exists with
+- **No path arguments and no `--pr`** → first ask `gh` whether the current branch is someone
+  else's open pull request, run in the checkout:
+
+  ```bash
+  gh pr view --json number,title,state,author
+  gh api user --jq .login
+  ```
+
+  When `gh` is missing or either call fails (no pull request for the branch, no GitHub remote),
+  when `state` is not `OPEN`, or when `author.login` is the `gh` user, carry on below without a
+  word. Otherwise the user may be reviewing a colleague's branch they checked out, and an apply
+  menu would edit work that is not theirs, so ask with **one** `AskUserQuestion` before anything
+  else: **Review PR #<number> as its reviewer (Recommended)** — draft comments for
+  `<author.login>`, edit nothing — first, then **Review the local changes** — the branch diff
+  with the apply menu, as without a pull request. On the first answer, continue exactly as
+  `--pr <number>` above (a `--base` the user passed gives way to the PR's base); on the second,
+  carry on below. Never enter reviewer mode without that answer.
+
+  Then review the current branch diff. Detect what exists with
   the bundled script, which resolves the base defensively (`@{upstream}`, then
   `origin/main`, `origin/master`, `main`, `master`) and covers committed,
   uncommitted, and untracked changes:
@@ -100,10 +119,18 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
     `--base <alternate.ref>` — do not report "nothing to review" over it. With no
     `alternate`, tell the user there is nothing to review and **stop**;
   - exactly one non-zero → use that scope automatically;
-  - both non-zero → ask with **one** `AskUserQuestion` which to review —
-    **Uncommitted** (working tree vs HEAD), **Committed** (HEAD vs base), or
-    **Both** (base → working tree) — putting the file counts you just saw in each
-    option's description.
+  - both non-zero, but every file on one side is one `${CLAUDE_PLUGIN_ROOT}/references/scope.md`
+    **skips** (Markdown, JSON, plain text, a lockfile…) → use the other side without
+    asking: a question whose one answer grades nothing only holds the review up. Say which side
+    you review in one line, and name the other side's files once in the report, in the `Tally`'s
+    `Skipped:` clause (`CLAUDE.md, docs/notes.md (uncommitted, skipped kinds)`), and in the
+    context directory's `skipped`. This does not hold when a spec is active — `--spec` resolved
+    to a readable file, or that side holds a document the spec offer below would make: the `spec`
+    Lens reviews every skipped file, so every answer grades something. Ask as below;
+  - both non-zero, with a file on each side that the review would judge → ask with **one**
+    `AskUserQuestion` which to review — **Uncommitted** (working tree vs HEAD), **Committed**
+    (HEAD vs base), or **Both** (base → working tree) — putting the file counts you just saw in
+    each option's description.
 
   The detection calls above already returned the full file list for `uncommitted` and
   for `committed`, so **reuse that list** when the chosen scope is one of them — re-run
@@ -140,7 +167,8 @@ sibling branch: among its `SPEC.split.md` and `tasks/*.md` files, tracked or not
 current branch (`git branch --show-current`) and offer the `SPEC.md` beside them, when exactly
 one does. On acceptance, treat it exactly as a passed
 `--spec` — Read it now — and note in the Tally that the spec Lens was activated from the
-diff rather than from the flag. Do not make this offer twice, and never activate the
+diff rather than from the flag; when Step 1 left a side of skipped kinds out unasked, ask the
+scope question now. Do not make this offer twice, and never activate the
 Lens without the user saying yes.
 
 **Which files get judged** — the in-scope extensions, the skip list, and the rule
@@ -194,10 +222,9 @@ Return its closing block verbatim, and nothing else.
 ```
 
 The `scanner` agent has only the tools a Scanner needs and loads no `CLAUDE.md`, so the
-conventions note is the one house style it judges by. Pass `model: "sonnet"` for the four craft
-Lenses — `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types` — and no
-`model` for the rest: on the craft recall and calibration fixtures Sonnet scored as well as the
-session's Opus at about half the cost, and nothing has measured it on the other five. Batching them in one message is what makes them run concurrently,
+conventions note is the one house style it judges by. Pass no `model`: every Lens runs on the
+session's model, because on the craft recall and calibration fixtures Sonnet matched Opus at a
+higher cost and found the one real defect less often. Batching them in one message is what makes them run concurrently,
 and a concurrent fan-out **runs in the background**: N agents cannot each block and
 return inline at once, so the harness backgrounds them — this holds **even if you pass
 `run_in_background: false`**, because the flag cannot make a concurrent fan-out
@@ -365,8 +392,9 @@ of the run and the one most likely to be compacted; when that happens mid-walk, 
 the user's answer are gone, and a run that had to reconstruct its approved list by parsing its
 own transcript spent that effort for nothing. Write the rendered report to a file in the session
 scratchpad before the menu, and the user's selection — each approved finding with its file, site
-and exact fix, and the commit mode — under it as soon as the answer arrives. Read it back rather than recalling it,
-and say where it is in the wrap-up.
+and exact fix, and the commit mode — under it as soon as the answer arrives. Add the selection, and any later
+mark on it, with `Edit`, never `cat >>`, `tee -a` or `sed -i`: this file is a file on disk like any
+other. Read it back rather than recalling it, and say where it is in the wrap-up.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
 without an explicit yes**. Only findings confirmed in Step 4 enter an apply batch.
@@ -495,13 +523,44 @@ run as usual, with two changes to the report:
   `medium` → `suggestion:`, `nit` → `nitpick:`; a comment verdict R9 → `issue:`, any other
   comment verdict → `suggestion:`. The label never softens or raises the graded severity.
 
+**Leave out what the PR's reviewers already said.** Before drafting, read the review comments
+already on the PR — `gh api repos/<owner>/<repo>/pulls/<number>/comments --paginate`, each with
+its `path`, `line`, `start_line`, `original_line`, `original_start_line`, `original_commit_id`,
+`body` and `user.login`. A comment on the same `path` whose lines overlap the finding's and that
+makes the same point — the same defect, however it is worded — already raises it: the finding
+gets no comment and no line in the review body, since a second voice on a raised point only adds
+noise to the author's queue. Same lines with a different point is not a match, and neither is a
+matching point on other lines. A comment GitHub marks outdated has `line` null: it was made at
+`original_line` (from `original_start_line` for a range) of `original_commit_id`, an earlier
+revision. It still raises its point when `git diff <original_commit_id> <headRefOid> -- <path>`
+leaves those lines untouched; match it at the head lines they now sit on. A comment on lines the
+branch has since changed raises nothing, even when the new code repeats the defect. After a
+force-push or rebase `original_commit_id` may be missing from the fetched history: run
+`git fetch origin <original_commit_id>`, and if the commit is still missing, treat the comment as
+on changed lines — it raises nothing and the finding stays in the draft, since dropping a real
+finding on a guess costs more than a repeated point. The wrap-up
+names each point left out this way once — `path:L<lines>`, the finding, and who already raised
+it, adding "on an earlier revision" for an outdated comment.
+
 After the report, write the draft to a file in the session scratchpad as the request body of
 `POST repos/<owner>/<repo>/pulls/<number>/reviews` (owner and repo from the PR's `url`):
 `commit_id` set to `headRefOid`, `event` set to `COMMENT`, one `comments` entry per anchored
 bullet (`path`, `line`, `side: RIGHT`, and `start_line` with `start_side: RIGHT` for a range,
 `body` the labelled comment with its fix clause), and a `body` holding the headline plus every
 `file-level` finding under its file path — the endpoint takes no file-level comment, so the
-review body carries them. Then, in the same turn, close with **one** `AskUserQuestion`:
+review body carries them.
+
+**A fix that only replaces the commented lines ends its comment with a suggestion block** — a
+`` ```suggestion `` fence holding the replacement for exactly the lines the comment spans
+(`start_line` to `line`, or `line` alone), indented as in the file, which GitHub lets the author
+commit with one click. Only when the replacement alone leaves the file correct: a fix that also
+needs a line outside that range (a constant declared elsewhere, an import), reaches another hunk or
+file, restructures code (a move, an extract, a rename across sites), or leaves the author a choice
+between remedies stays a fix clause in prose — a suggestion committed on its own would break the
+build or pick for them. The block lives in the draft only; the report keeps its no-fenced-code
+rule.
+
+Then, in the same turn, close with **one** `AskUserQuestion`:
 
 - **Post as a COMMENT review** — `gh api repos/<owner>/<repo>/pulls/<number>/reviews --method
   POST --input <draft file>`, then report the review's URL from the response;

@@ -72,19 +72,25 @@ its verdict is not `ready`, relay what stays open and stop rather than launching
 The status, the verdict and any "validated" wording are written by passes only; never type them
 into the spec yourself. Nor its body, nor its place: the spec stays at the path stage 2 wrote, never
 moved or copied once a pass has read it. A decision the user takes after the verdict — a new option,
-a reversed choice, in this session or on re-entry — is appended to the spec's
-`<spec-basename>.notes.md` as a ratified decision with its provenance (a notes file or
-`<spec-basename>.research/` directory that no longer exists is created beside the spec, holding only
-what this decision brings), then applied by `fd3:write-spec` (resumed with `SendMessage` while its
-agent is addressable, otherwise invoked with the notes file, the research directory and the existing
-spec path), and the next pass reads its edit — the post-verdict pass in this session, the first
-stage-3 pass on re-entry.
+a reversed choice, in this session or on re-entry — is appended to `notes.md` in the spec's
+session folder — the spec's filename without `.md`, plus `.session/` (`spec/out.md` →
+`spec/out.session/`) — as a ratified decision with its provenance, then
+applied by `fd3:write-spec` (resumed with `SendMessage` while its agent is addressable, otherwise
+invoked with that notes file, the folder's `research/` directory and the existing spec path), and
+the next pass reads its edit — the post-verdict pass in this session, the first stage-3 pass on
+re-entry. A session folder or a file in it that no longer exists is created, holding only what this
+decision brings, the folder with the `.gitignore` of `*` that `fd3:write-spec` gives it. A spec from
+before session folders keeps its notes beside it as `<spec-basename>.notes.md`, its research in
+`<spec-basename>.research/`: use those where they exist.
 
 ## Re-entry
 
 A finished spec handed back to `/fd3:build-spec` skips stages 1 and 2. A change the user brings is
 a decision taken after the verdict — apply it as the section above says — and then stage 3 runs on
-that path.
+that path. When the re-entry names no reason, ask for one with the concrete choice first and
+recommended — re-validate the spec as it stands against the repositories as they are now — and
+the change the user would have to type as the question's free-text answer, never as a listed option
+(`question-batching.md`).
 
 The first pass's focus list is what changed since the last verdict line, read from the spec and the
 re-entry itself, never from `git`, which often does not track the spec at all: the sections

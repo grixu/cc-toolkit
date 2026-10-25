@@ -108,7 +108,7 @@ any order; item 3 lands with or before whichever of them needs it.
 
 | # | Phase | Where | Switches anything? | Gate after? |
 |---|---|---|---|---|
-| 1 | Both work items land and deploy together | payments-service | yes — the migration creates the durable store; the counts start once PAY-262 wires their callers | yes — the final phase, so it closes its landing unit: one branch, one pull request |
+| 1 | All three work items land and deploy together | payments-service | yes — the migration creates the durable store; the counts start once PAY-262 wires their callers | yes — the final phase, so it closes its landing unit: one branch, one pull request |
 
 Single environment; the deploy on merge is the rollout. No waiting period: the migration is the only
 live change, since `charge` and `deliver` have no callers until PAY-262 lands.
@@ -125,7 +125,7 @@ and nothing in this spec drops it — section 9 says so, and rollback does not c
 - **DB-1** — probe, run in the single deployed environment after the phase 1 deploy (section 7)
   and not on the branch, since this repository has no database and reads no environment variable:
   `psql "$DATABASE_URL" -c "\d idempotency_keys"` lists the four columns. Before
-  the change the same command errors with `did not find any relation`.
+  the change the same command errors with `Did not find any relation`.
 - **OBSERVABILITY-1** — triggered, on the branch, through `npm test` (`vitest run`, the script
   `package.json` defines): call `deliver` on two events, then assert `deliveryMetrics()` returns
   `delivered: 2`.
@@ -133,6 +133,11 @@ and nothing in this spec drops it — section 9 says so, and rollback does not c
   can make a delivery fail (section 10).
 
 Phase 1 is verified when both checks above pass.
+
+The rewiring of `getIdempotencyKey` / `saveIdempotencyKey` is not exercised here — their only
+caller, `charge` (`src/billing/charge.ts:16`, `src/billing/charge.ts:21`), has no caller until
+PAY-262 (section 10) and the branch has no database — so its check lands with PAY-262's
+request-path tests; owner: payments team, placement: ticket PAY-262.
 
 ## 9. Cleanup
 

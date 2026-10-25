@@ -39,3 +39,10 @@ Identical to `rollout-spec`:
 - `repo-a/services/checkout/src/config.ts:2` — `asyncSettlement: false`
 - `repo-a/services/ledger/src/api/entries.ts:7` — `listEntries`
 - `repo-b/src/components/PaymentStatus.tsx:5` — `PaymentStatus`
+
+## Not regenerated from `rollout-spec`
+
+This fixture keeps `rollout-spec`'s spec and repos from before the prerequisites got backing files
+(the token middleware, its callers, the CI workflows, the dashboard shell). split-declared-gap never validates the
+spec, so the unbacked prerequisites cost it nothing, and a regenerated copy would change the trees
+its frozen split was measured against.

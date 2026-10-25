@@ -6,8 +6,8 @@ When every repository-bearing task is `done`, or the loop ends short of that, cl
 end-of-run report and one question batch — everything the run deferred lands here, so nothing
 earlier had to stop for it. A loop that ended short proposes only the branches whose tasks are all
 `done` and asks nothing about the rest; their state is in the report. The report
-holds, in this order: one table — repository, branch, its stack base,
-its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
+holds, in this order: one table — repository, branch, its stack base, the branches it merges after
+(its `landing` entry from step 1, rows in that order), its worktree path, tasks on it, the element codes those tasks carry, proposed pull-request title
 citing the tickets; the still-open operational tasks — they need the branches landed first, so
 they never gate this proposal; *Decisions taken for you*, each with how to revert it; and the
 `review` items left open, numbered, each with its `cr-report.md` path. Stacked branches make a pull-request chain: each pull
@@ -17,7 +17,9 @@ merge the predecessor's branch is no longer an ancestor of the default, so a bar
 shows the whole stack as new: merge `origin/<default>` into the successor first, then retarget.
 Say that in the proposal, together with each branch's landing facts from the split report read in
 step 1 — a draft pull request until a gate clears (`gh pr create --draft`), a retarget once a
-prerequisite merges, the merge order. The batch then asks two things: whether to push the branches and open
+prerequisite merges — and the merge order: each pull request's description names the pull requests
+that must merge before it, from `landing`, because a reviewer who approves one has no other way to
+see that it waits on another repository's branch. The batch then asks two things: whether to push the branches and open
 the pull requests, and which open `review` items, by number, go to a repair before that. Recommend
 per item on its merit and offer one "all fixable" option; list a branch's boy-scout findings — the
 report's separate list, pre-existing code in a touched file — on their own line, recommended to

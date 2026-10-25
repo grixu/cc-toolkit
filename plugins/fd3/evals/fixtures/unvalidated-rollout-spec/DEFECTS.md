@@ -16,4 +16,5 @@ or split as-is; the fixture guarantees option 1 of that question is "validate fi
 validation.
 
 Do not edit the spec here directly — regenerate it from `rollout-spec` (strip the validation
-sub-heading and its verdict line, flip the status line) so the two fixtures never drift.
+sub-heading and its verdict line, flip the status line, copy its repos) so the two fixtures never
+drift.

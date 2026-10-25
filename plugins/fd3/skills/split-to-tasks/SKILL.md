@@ -182,6 +182,12 @@ spec where it lives is a question the implementation stage asks before launch. A
 spec lists for registering or publishing the spec itself gets no task: record it in the report
 under what the user still owes, and it counts as covered there.
 
+The spec's session folder beside it (closing notes, question ledger, research), named the spec's
+filename without `.md`, plus `.session/` (`spec/out.md` → `spec/out.session/`), is git-ignored
+working state, not part of the work: no task deletes, moves, commits or
+de-links it, and the report owes nothing about it. Notes and research beside a spec from before
+session folders (`<spec-basename>.notes.md`, `<spec-basename>.research/`) are the same working state.
+
 ### 3. Draw the edges
 
 Dependencies come from the spec's build order, and one test decides every edge you derive:
@@ -206,7 +212,7 @@ output, or when the spec itself binds the order:
 
 Anything else that binds only *landing* is never an edge: the phase table's order between phases,
 a gate the spec lets the code land before, a dependency that only gates *verification*. Phase order is the merge order
-step 4 records in the report; a gate that only verifies goes in the task's Done-when. An edge drawn
+step 4 records in `merge-after:`; a gate that only verifies goes in the task's Done-when. An edge drawn
 from landing strands work — across branches, a whole branch behind work it never uses; onto an
 operational task, implementable work behind human hands, and a whole extra run pays for it.
 
@@ -242,12 +248,25 @@ its tasks has an edge onto — not merely the previous landing unit — and a br
 from the repository's default branch. A branch that builds on two earlier branches neither of which
 builds on the other has no single base holding both: stack the later of the two on the earlier, so
 one chain carries both, then base the branch on the later one, and name that extra stacking in the
-report. The order the gates impose on landing is the merge order, stated in the report's chain; it
-is not a base. Stacking on the previous unit by habit cuts a branch from a base that lacks the files
-it needs whenever the unit in between touched something else, and it chains the branch to whatever
-that unit waits on. Record each branch's base in its tasks' `branch-base:` frontmatter field — the
-same value on every task of the branch, and the field implementation reads; a base recorded only in
-the report is a base lost with the conversation.
+report. The order the gates impose on landing is the merge order; it is not a base. Stacking on the
+previous unit by habit cuts a branch from a base that lacks the files it needs whenever the unit in
+between touched something else, and it chains the branch to whatever that unit waits on. Record
+each branch's base in its tasks' `branch-base:` frontmatter field — the same value on every task of
+the branch, and the field implementation reads; a base recorded only in the report is a base lost
+with the conversation.
+
+Record the merge order the same way, in the `merge-after:` field: the branches whose pull requests
+must merge before this branch's may, because a phase boundary or gate in the rollout table stands
+between them. An entry is a branch name, prefixed with its repository's absolute path and a colon
+(`/abs/repo-a:feat/ledger-api`) when the branch lives in another repository — a branch name cannot
+contain a colon, so the reading is unambiguous. A hold is transitive, and two already hold without
+an entry: this branch's own stack chain, whose pull request it cannot merge before anyway, and a
+branch carrying a task one of this branch's tasks has a `depends-on` edge onto. List what neither
+reaches — every branch of an earlier landing unit the gate orders this one after, in every
+repository — naming the last branch of a chain to hold behind the whole of it. The value is the
+same on every task of the branch, `[]` where nothing more holds it, and empty on an operational
+task. This field is the merge order's only record: implementation orders the pull requests from it,
+and a hold stated in the report's prose or a task's `## Note` is one it never sees.
 
 The same test holds where a landing constraint has produced one branch per task: tasks applying the
 same change to disjoint targets are siblings — each off the default branch, no edge between them —
@@ -306,6 +325,9 @@ Before writing anything, check — and say in the report — that:
 - the dependency graph has no cycles, every edge points at a task that exists, and every edge
   points at a lower ordinal — the reading order really is topological, and the implementation
   workflow's merge planning relies on that;
+- every branch of a later landing unit is held behind every branch of the units its gate orders it
+  after — through its stack chain, a `depends-on` edge or `merge-after`, followed transitively — and
+  every `merge-after` entry names a branch some task builds;
 - the `branch-base` chain is rooted, acyclic, single-parent and identical on every task of a
   branch. Its one root is the repository's default branch — or a prerequisite branch the spec names
   as not yet landed (step 4) — or, where step 4 found the checkout
@@ -358,8 +380,9 @@ lists. The implementation agent reads those from the spec sections the pointers 
 Once every file is written, re-run step 5 mechanically over the files on disk — the written set is
 what implementation reads, and a file that drifted from the plan shows only there.
 `node ${CLAUDE_PLUGIN_ROOT}/scripts/task-graph.mjs <tasks dir>` does the graph half — cycles, edge
-order, statuses, one `branch-base` per branch, readable frontmatter — and prints every task's
-fields for the element and phase checks; any `problems` entry it prints is a file to fix before the
+order, statuses, one `branch-base` and one `merge-after` per branch, holds that name a built branch
+and close no loop, readable frontmatter — and prints every task's fields for the element and phase
+checks, and under `landing` every branch's full merge order; any `problems` entry it prints is a file to fix before the
 report.
 
 Write the report to `<spec-basename>.split.md` beside the spec — never inside `tasks/`, where
@@ -367,8 +390,7 @@ a task-file glob trips over it — after that re-run, since its coverage stateme
 result. It carries one table (slug, repository, branch, phase, depends-on as the bare slugs the
 frontmatter holds, elements); a `## Branches` section with the creation order and stack chain per
 repository and one `### <branch>` subsection per branch holding every landing fact about it — its
-base and how far that is behind `origin/<default>`, its place in the merge order, a draft pull
-request until a gate clears, a retarget once a prerequisite merges, a reuse the user answered, the
+base and how far that is behind `origin/<default>`, a draft pull request until a gate clears, a retarget once a prerequisite merges, a reuse the user answered, the
 readings step 4 applied; where the files went; the coverage statement from step 5; every work item
 split across tasks with its seam; any size-check warning; the verdict line this split was taken
 against, quoted verbatim; and a `## Still owed` section with anything the user still owes an
@@ -376,7 +398,8 @@ answer. In the conversation give the path and the same table — all six columns
 included — not the file.
 
 The implementation stage reads that report's `## Branches` and `## Still owed` sections, so a
-branch-level fact lives there once. A task's `## Note` carries only what changes *that task's*
+branch-level fact lives there once — except the base and the merge order, which live in the
+`branch-base:` and `merge-after:` fields and nowhere else. A task's `## Note` carries only what changes *that task's*
 work, in the imperative — a shared file an edge names, a consent recorded, a decision that binds
 it, where an operational task's output lands, and for a declared gap's task what has to come back
 and from whom — because the conversation ends before

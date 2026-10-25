@@ -1,7 +1,7 @@
 name: fd3 evals (smoke)
 
 # The smoke group only — one scenario per skill plus the command gate (plan section 5).
-# The e2e chain, --repeat variance runs and the network-dependent researcher tests
+# The e2e chain, longer --trials variance runs and the network-dependent researcher tests
 # stay local-only.
 on:
   pull_request:
@@ -10,10 +10,13 @@ on:
       # The job runs the shared runner and resolves promptfoo and the agent SDK from the root
       # manifest, so a change to either breaks these evals without touching the plugin.
       - 'scripts/run-evals.sh'
+      - 'scripts/eval-summary.mjs'
+      - 'scripts/evals-isolation.json'
       - 'package.json'
 
 jobs:
-  # Model-free: the workflow scripts against scripted agents, no token and no dependencies.
+  # Model-free: the workflow scripts against scripted agents and the eval checks against saved run
+  # artifacts — no token and no dependencies.
   workflow-scripts:
     runs-on: ubuntu-latest
     steps:
@@ -24,6 +27,8 @@ jobs:
       # A glob, not the directory: Node 22's --test does not accept a directory argument.
       - name: Run workflow script tests
         run: node --test 'plugins/fd3/tests/workflows/*.test.mjs'
+      - name: Run eval check tests
+        run: node --test 'plugins/fd3/evals/lib/*.test.mjs'
 
   smoke:
     runs-on: ubuntu-latest
@@ -43,12 +48,37 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
+      # The eval configs require the Claude Code sandbox (failIfUnavailable), which needs bubblewrap
+      # and socat on Linux; Ubuntu 24.04's AppArmor policy otherwise stops bwrap from creating the
+      # user namespace it isolates with.
+      - name: Install sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap socat
+          if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+      # Under bwrap's AppArmor profile the unix-socket seccomp helper cannot write
+      # /proc/self/setgroups, which kills every Bash call (anthropics/claude-code#43454). Allowing
+      # unix sockets skips that helper, so sandboxed Bash can connect to any socket it can see, and
+      # Linux has no per-path socket allowlist. The runner user is in the docker group, so the
+      # daemon socket would let a `docker run -v /:/host` bypass the filesystem and credential deny
+      # rules and read this job's OAuth token; making it root-only closes that, and no smoke
+      # scenario runs Docker. Filesystem and domain filtering apply to everything else, and the
+      # looser socket setting stays off developer machines.
+      - name: Allow unix sockets in the eval sandbox
+        run: |
+          jq '.sandbox.network.allowAllUnixSockets = true' scripts/evals-isolation.json > "$RUNNER_TEMP/isolation.json"
+          mv "$RUNNER_TEMP/isolation.json" scripts/evals-isolation.json
+          sudo chmod 600 /var/run/docker.sock
+      # Each scenario passes about 3/3 locally, yet one trial a run still flips a different one red;
+      # two trials gated on every scenario passing at least one keeps the gate without that noise.
       - name: Run smoke group
-        run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate"
+        run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate" --trials 2 --gate any
       - name: Upload results for triage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: fd3-eval-results
-          path: plugins/fd3/evals/.results/latest.json
+          path: plugins/fd3/evals/.results/runs/
           if-no-files-found: ignore

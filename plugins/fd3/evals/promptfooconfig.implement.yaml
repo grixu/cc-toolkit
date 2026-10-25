@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: fd3 implement evals — workflow agents run live on the prompts implement-run.js renders, and the /fd3:implement step-2 batch up to its launch
+
+# Agent scenarios ignore this prompt: lib/implement-provider.mjs renders the workflow's own prompt
+# for the agent it names, with that agent's model, effort and schema.
+prompts:
+  - '{{query}}'
+
+providers:
+  - id: file://lib/implement-provider.mjs
+    config:
+      apiKeyRequired: false
+      # The session model; an agent the workflow script pins (the CI runner's haiku) runs on that.
+      model: '{{ env.EVAL_TARGET_MODEL | default("claude-opus-5-5") }}'
+      setting_sources: []
+      # Sandboxed Bash and deny rules for the file tools: these agents run with bypassPermissions
+      # on the operator's machine.
+      settings: ../../../scripts/evals-isolation.json
+      max_budget_usd: 5.0
+      max_turns: 80
+      allow_all_tools: true
+      permission_mode: bypassPermissions
+      allow_dangerously_skip_permissions: true
+
+tests:
+  # The CI runner (haiku, effort high) on a toolchain whose last command outlives the Bash tool's
+  # 2-minute timeout. The intended gate is pass^3 (--trials 3): a gate agent must wait every time.
+  - description: implement-ci-waits-long-command
+    vars: { scenario: implement-ci-waits-long-command }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-ci-waits-long-command.mjs
+
+  # /fd3:implement headless up to its launch: the provider denies the Workflow call and snapshots
+  # the task files at that moment.
+  - description: implement-consent-batch
+    vars: { scenario: implement-consent-batch, query: file://prompts/implement-consent-batch.txt }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-consent-batch.mjs
+
+  # The review fixer (session model) on a finding that would loosen a slug pattern spec decision D3
+  # states; cr-merge did not mark it specBound, so the fixer must skip it and change nothing.
+  - description: implement-fix-cr-spec-bound
+    vars: { scenario: implement-fix-cr-spec-bound }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-fix-cr-spec-bound.mjs
+
+  # The review fixer on a safe comment finding in a protected .tf file whose Consent covers two
+  # other lines: the finding is out of consent and no line beyond the consented ones may change.
+  - description: implement-fix-cr-stays-in-consent
+    vars: { scenario: implement-fix-cr-stays-in-consent }
+    assert:
+      - type: javascript
+        value: file://lib/checks/implement-fix-cr-stays-in-consent.mjs

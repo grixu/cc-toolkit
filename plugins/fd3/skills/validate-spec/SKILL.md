@@ -14,6 +14,10 @@ need, then end your turn. Do not guess it and do not go looking for it.
 **That spec file, and the overflow files step 3 puts under `<spec-dir>/evidence/`, are the only
 files you may write.** Everything else you read is read-only, no matter what you find in it.
 
+Your scratchpad is the directory your system prompt names; when it names none, create one once with
+`mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"` and use that literal path for the rest of the
+session — never a directory inside a repository (`scratchpad/`, `.scratchpad/`, `notes/`, `research/`).
+
 A probe — a command you run to settle a claim — runs in a detached worktree under your scratchpad
 (`git worktree add --detach <scratchpad>/<name> <commit>`), never in the user's checkout. It never
 installs, links or rebuilds dependencies, anywhere. A repository's own script — a `package.json`
@@ -220,6 +224,10 @@ existing assertion those rules now touch, not only against the assertions the re
 For a claim with no evidence, find the fact yourself — never ask the user for something you can look up.
 Route every lookup by where the fact lives — the routes and dispatch rules are in
 `${CLAUDE_SKILL_DIR}/../../references/fact-routes.md`; read that file before dispatching anything.
+The research directory a dispatch writes its report into is `research/` in the spec's git-ignored
+session folder — the spec's filename without `.md`, plus `.session/` (`spec/out.md` →
+`spec/out.session/`) — when that folder exists, otherwise your scratchpad; never
+anywhere else beside the spec, where a report becomes a file the user has to decide not to commit.
 
 Tell each agent what it needs to work in the tree you are sending it to: the repository root, whether the
 working tree is dirty, and which search tools function there. An agent that has to discover its own
@@ -290,6 +298,11 @@ Four things go to the user, and nothing else:
 3. **A repair choice**, as step 3's carve-out defines it — accepting a risk included.
 4. **The owner and placement of a claim nothing settles** — the last move before recording it
    `blocked` (step 5).
+
+A fact only the user holds — a name, a path, a component you could not find — is not something to
+recommend: its options are the outcomes you can apply without it (repair the spec, declare a gap),
+and the fact itself is the user's own text, which `main` collects as the question's free-text
+answer (`${CLAUDE_SKILL_DIR}/../../references/question-batching.md`).
 
 Everything else you settle yourself or record as a finding. A gap the spec already declares with an
 owner and a placement is `deferred` on sight — it is not a finding, it does not go into the batch,

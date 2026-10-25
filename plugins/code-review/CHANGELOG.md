@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `/start-cr` without `--pr`, on a branch that is someone else's open pull request (`gh pr view`
+  on the branch, its author against `gh api user`), asks first and offers reviewer mode on that
+  pull request as the recommended option, beside reviewing the local changes. Eval-31 covers it,
+  with a `gh` stand-in that resolves the current branch's pull request
+- Reviewer-mode draft comments end with a GitHub `suggestion` block when the fix only replaces the
+  lines the comment spans and that replacement alone leaves the file correct; a fix that needs
+  another line, hunk or file, restructures code, or leaves a choice between remedies stays in
+  prose. Eval-27 checks both
+- The reviewer-mode draft reads the review comments already on the pull request
+  (`GET /repos/{owner}/{repo}/pulls/{pull_number}/comments`) and leaves out a finding one of them
+  already raises on overlapping lines of the same file; the wrap-up names each left-out point once
+  with who raised it. Eval-27's `gh` stand-in now serves two existing comments, one matching a
+  finding and one on another finding's line about something else
+- The reviewer-mode draft also leaves out a finding an outdated review comment (`line` null)
+  already raises, when `git diff <original_commit_id> <head>` leaves the comment's
+  `original_line` range untouched; a comment on lines the branch has since changed suppresses
+  nothing, and neither does one whose `original_commit_id` stays missing after
+  `git fetch origin <original_commit_id>` (a force-pushed or rebased PR). The wrap-up names such
+  a point as raised on an earlier revision. Eval-27's PR #9 gains
+  an earlier revision with one outdated comment of each kind
+
+### Changed
+
+- `/start-cr` with no arguments no longer asks Committed/Uncommitted/Both when every file on one
+  side is a kind `scope.md` skips (Markdown, JSON, a lockfile…): it reviews the other side and
+  names the skipped side's files once, in the `Tally`'s `Skipped:` clause. Evals 29–30 cover the
+  all-skipped side and the control where both sides hold a judged file
+- That shortcut does not apply while a spec is active (`--spec`, or a spec-shaped document on the
+  skipped side), since the `spec` lens reviews skipped files; a spec accepted from the offer after
+  the shortcut asks the scope question then. Eval-33 runs eval-29's checkout with `--spec`
+
+### Fixed
+
+- `/start-cr` runs the four craft lenses on the session's model again. The eval-5…9 A/B behind
+  the Sonnet routing was confounded by a fixture defect (eval-9's real unused export); re-measured
+  on the fixed fixtures (eval-5…9 and eval-21, three trials each, Opus 5.5 grader) the two models
+  tie on quality, Sonnet 5.5 costs about 30% more, and it found the one real defect in the
+  calibration fixtures 1 of 3 times against Opus's 3 of 3
+- `/start-cr` adds the user's selection to the review file on disk, and marks it as fixes land,
+  with `Edit` rather than a shell append or `sed -i`
+
 ## [0.5.0] - 2026-10-25
 
 ### Added

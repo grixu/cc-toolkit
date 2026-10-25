@@ -1,0 +1,15 @@
+{
+  "name": "shipment-tracker",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ioredis": "5.4.1",
+    "pg": "8.13.0"
+  },
+  "devDependencies": {
+    "vitest": "2.1.4"
+  }
+}

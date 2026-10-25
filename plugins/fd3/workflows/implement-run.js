@@ -95,10 +95,18 @@ const STEP_GUARD =
 // build then read as a failure, fed fix rounds that had nothing to fix, or was skipped as broken.
 const waitRule = (unfinished) =>
   'A command is finished only when its exit line exists. When one may outlast your shell timeout, ' +
-  'start it in the background with its status written to a file — `( <command> > <log> 2>&1; echo "exit $?" > <log>.exit ) &` — ' +
-  'and wait for that file with `until [ -s <log>.exit ]; do sleep 15; done`, repeating the wait as often as it times out. ' +
+  // $TMPDIR outlives a run, so a fixed log name can find the previous run's exit file already there.
+  'start it in the background with its status written to a file under a name no earlier run used — ' +
+  '`<log>` is the path `mktemp "${TMPDIR:-/tmp}/ci.XXXXXX"` prints, written out literally in every later command since shell variables do not survive between calls — ' +
+  'then `( <command> > <log> 2>&1; echo "exit $?" > <log>.exit ) &` — ' +
+  'and wait for that file with `until [ -s <log>.exit ]; do sleep 15; done` in the foreground with the Bash `timeout` at 600000, ' +
+  'repeating the wait as often as it times out. A wait the shell moved to the background has not finished, and nothing resumes ' +
+  'you once you return: never end your turn on a ScheduleWakeup or a background task — wait again instead. ' +
   `Never return while a command you started has no exit line; if you must stop before one finishes, ${unfinished}. ` +
   'An unfinished command is never a failure and never a pass.'
+// CI runners interpret command output; they design nothing. Their agent type has no tool that
+// schedules a later turn: a Haiku runner given one ended its turn on it mid-build despite the ban.
+const mechanical = { agentType: 'fd3:ci-runner', model: 'haiku', effort: 'high' }
 // The main checkout is the user's own tree: an agent clearing it to get a merge or a fix through
 // takes their uncommitted and untracked work with it.
 const checkoutRule = (repo) =>
@@ -252,8 +260,7 @@ const baselineReady = (async () => {
       label: `baseline:${repo.split('/').pop()}`,
       phase: 'Recon',
       schema: BASELINE_RESULT,
-      model: 'haiku',
-      effort: 'high',
+      ...mechanical,
     })
     if (report) {
       baseline.set(repo, report)
@@ -1227,10 +1234,6 @@ const SINGLE_SCAN_MAX_FILES = 3
 // The scanner agent carries the lens's narrowed tool set and loads no CLAUDE.md, so the conventions
 // note cr-prepare wrote is the only house style a lens judges by.
 const SCANNER = 'code-review:scanner'
-// On the craft recall and calibration fixtures Sonnet matched Opus at about half the cost; the
-// other lenses were not measured, so they keep the session's model.
-const CRAFT_LENSES = ['readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types']
-const scanModel = (lens) => (CRAFT_LENSES.includes(lens) ? { model: 'sonnet' } : {})
 
 const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status === 'scanned' && r.filesTotal > 0 && r.filesJudged === 0)
 // A lens that read some of its files still reported, but its silence on the rest is not a verdict.
@@ -1247,7 +1250,7 @@ const scanLenses = async (lenses, dir, files, tag, pass) => {
   } else {
     results = await parallel(
       lenses.map((lens) => () =>
-        tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, ...scanModel(lens), label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
+        tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
       ),
     )
   }
@@ -1459,8 +1462,6 @@ const conformancePrompt = (unit, base, ciFixes, baseMerged) => {
 }
 
 const conformanceFinding = (f) => ({ severity: f.severity, family: 'conformance', rule: f.rule, location: f.location, risk: f.risk, fix: f.fix })
-
-const mechanical = { model: 'haiku', effort: 'high' } // CI runners interpret command output; they design nothing
 
 // A CI verdict is a statement about one tree at one commit. A runner that stayed in the
 // repository's main checkout graded another branch's code, and one that edited its way to green

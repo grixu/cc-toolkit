@@ -68,7 +68,7 @@ The last line is optional; you need it only for automated code review.
 
 | Command | Use it when | Leaves behind |
 |---|---|---|
-| `/fd3:build-spec <idea, or path to a plan>` | You have an idea or a draft plan and want a checked spec. | A spec in your repository, with the interview notes and research beside it. |
+| `/fd3:build-spec <idea, or path to a plan>` | You have an idea or a draft plan and want a checked spec. | A spec in your repository, with the interview notes and research in a git-ignored `<spec name>.session/` folder beside it. |
 | `/fd3:build-spec <path to an existing spec>` | A spec exists but was edited after it was checked, or the code has moved on. fd3 skips the interview and checks the spec again. `split-to-tasks` sends you here when it refuses a spec. | The same spec with a new verdict. |
 | `/fd3:split-to-tasks <path to spec>` | The spec's last verdict is `ready`. | A `tasks/` directory next to the spec, and `<spec name>.split.md`. |
 | `/fd3:implement <tasks dir>` | You have a tasks directory. Run it again on the same directory to resume. | Branches, worktrees, updated task statuses, and a push and pull-request proposal. |
@@ -195,8 +195,7 @@ commits its target lacks is never removed.
 | Path | Written by | What it is |
 |---|---|---|
 | `<spec>.md` | build-spec | The spec. Each validation pass appends a dated evidence block and verdict line at the end. |
-| `<spec>.notes.md` | build-spec | The confirmed interview decisions, moved out of the scratch directory. |
-| `<spec>.research/` | build-spec | The research reports the interview relied on. |
+| `<spec>.session/` | build-spec | The interview's working files, moved out of the scratch directory: `notes.md` (the confirmed decisions), `question-ledger.md` and `research/` (the reports the interview and validation relied on). A `.gitignore` of `*` inside keeps the folder out of git; delete it once you no longer need the provenance. |
 | `evidence/<section>.md` | build-spec | Evidence too long for a table cell, next to the spec. |
 | `tasks/NNNN-<slug>.md` | split-to-tasks | One file per task, next to the spec unless you name another directory. Its `status:` field is the run's state; keep the directory until the run is over. |
 | `<spec>.split.md` | split-to-tasks | The task table, the branch order per repository, and the coverage check. |
@@ -206,7 +205,8 @@ commits its target lacks is never removed.
 | `implement-answers.md` | implement | The answers to implement's first question batch and the decisions later report rounds settled, next to the tasks directory. |
 
 Until the spec is written, the interview keeps its working files (`notes/question-ledger.md`,
-`research/`) in the session's scratch directory.
+`research/`) in the session's scratch directory; writing the spec moves them into `<spec>.session/`.
+Of what build-spec writes, only the spec and `evidence/` show up in `git status`.
 
 Branches: one `task/<slug>` per task, plus the target branches named in the task files.
 
@@ -234,6 +234,7 @@ You do not call these. They are listed so you recognise them in the `/` menu and
 | `implement-run` | workflow | Waves, merges, checks and review; in repair mode, applies your HIL decisions to existing branches and checks them again. It appears in the `/` menu as `/fd3:implement-run`; do not run it directly. |
 | `fd3:researcher` | sub-agent | Looks up documentation and other external facts. |
 | `fd3:toolchain-scout` | sub-agent | Finds a repository's build, typecheck, lint and test commands. |
+| `fd3:ci-runner` | sub-agent | Runs those commands on a branch, or on the clean base for the baseline, and waits for each to finish. |
 
 To test the two workflows without model calls, run `node --test 'plugins/fd3/tests/workflows/*.test.mjs'` from the repository root.
 

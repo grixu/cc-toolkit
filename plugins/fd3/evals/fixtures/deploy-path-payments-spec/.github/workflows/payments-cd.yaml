@@ -1,0 +1,33 @@
+name: payments-cd
+
+on:
+  push:
+    branches:
+      - main
+      - release/test
+
+jobs:
+  deploy-test:
+    if: github.ref == 'refs/heads/release/test'
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "deploying ${{ github.sha }} to test"
+
+  deploy-stage:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: stage
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "deploying ${{ github.sha }} to stage"
+
+  deploy-prod:
+    needs: deploy-stage
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "deploying ${{ github.sha }} to prod"

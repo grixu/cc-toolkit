@@ -1,7 +1,10 @@
-// Presence only: branch-base is legitimately empty on a root task and on an operational one.
+import path from 'node:path';
+
+// Presence only: branch-base is legitimately empty on a root task and on an operational one, and
+// merge-after on a branch nothing more holds.
 export const REQUIRED_FM_KEYS = [
   'name', 'status', 'spec', 'elements', 'decisions', 'repository', 'branch',
-  'branch-base', 'worktree', 'phase', 'depends-on', 'tickets',
+  'branch-base', 'merge-after', 'worktree', 'phase', 'depends-on', 'tickets',
 ];
 
 export const ELEMENT_CODES = ['DB-1', 'API-1', 'API-2', 'UI-1', 'CONFIG-1', 'INTEGRATION-1'];
@@ -73,9 +76,70 @@ export function checkCoverage(c, tasks, codes = ELEMENT_CODES) {
   }
 }
 
+const branchKey = (repository, branch) => `${path.resolve(String(repository))}\0${branch}`;
+
+// The parse task-graph.mjs applies: a bare entry is a branch of the task's own repository,
+// `<repository path>:<branch>` one of another repository.
+function mergeAfterRef(t, entry) {
+  const e = String(entry);
+  const i = e.lastIndexOf(':');
+  return e.startsWith('/') && i > 0 ? branchKey(e.slice(0, i), e.slice(i + 1)) : branchKey(t.fm.repository, e);
+}
+
+const asList = (v) => (Array.isArray(v) ? v : typeof v === 'string' && v ? [v] : []);
+
+// Checks the merge-after fields, then returns, per branch, every branch its pull request merges
+// after — its stack chain, its tasks' edges and its merge-after holds, followed transitively.
+export function checkMergeAfter(c, tasks) {
+  const built = tasks.filter((t) => t.fm && t.fm.branch && t.fm.repository !== 'none');
+  const byBranch = new Map();
+  for (const t of built) {
+    const k = branchKey(t.fm.repository, t.fm.branch);
+    if (!byBranch.has(k)) byBranch.set(k, []);
+    byBranch.get(k).push(t);
+  }
+  const taskById = new Map(tasks.flatMap((t) => [t.slug, t.file.replace(/\.md$/, ''), t.fm && t.fm.name].filter(Boolean).map((id) => [id, t])));
+  const direct = new Map();
+  for (const [k, group] of byBranch) {
+    const values = new Set(group.map((t) => JSON.stringify(asList(t.fm['merge-after']).map(String).sort())));
+    c.check(values.size === 1, `branch ${group[0].fm.branch} carries ${values.size} different merge-after values across its tasks`);
+    const after = new Set();
+    const base = group[0].fm['branch-base'];
+    if (base && byBranch.has(branchKey(group[0].fm.repository, base))) after.add(branchKey(group[0].fm.repository, base));
+    for (const t of group) {
+      for (const d of asList(t.fm['depends-on'])) {
+        const dep = taskById.get(String(d));
+        if (dep && dep.fm && dep.fm.branch && dep.fm.repository !== 'none') after.add(branchKey(dep.fm.repository, dep.fm.branch));
+      }
+      for (const entry of asList(t.fm['merge-after'])) {
+        const ref = mergeAfterRef(t, entry);
+        if (c.check(byBranch.has(ref), `${t.file}: merge-after "${entry}" names a branch no task builds`)) after.add(ref);
+      }
+    }
+    after.delete(k);
+    direct.set(k, after);
+  }
+  const closure = new Map();
+  const reach = (k, seen = new Set()) => {
+    if (closure.has(k)) return closure.get(k);
+    const all = new Set();
+    for (const x of direct.get(k) || []) {
+      all.add(x);
+      if (x === k || seen.has(x)) continue;
+      for (const y of reach(x, new Set([...seen, k]))) all.add(y);
+    }
+    closure.set(k, all);
+    return all;
+  };
+  for (const k of byBranch.keys()) {
+    c.check(!reach(k).has(k), `branch ${byBranch.get(k)[0].fm.branch} is held behind itself: a landing loop`);
+  }
+  return closure;
+}
+
 // `precedesDb` names the one element a fixture's build order puts ahead of the migration; without
 // it DB-1 is the root and any edge onto it is one the data does not require.
-export function checkBoundaries(c, tasks, { precedesDb = null, report = '' } = {}) {
+export function checkBoundaries(c, tasks, { precedesDb = null } = {}) {
   for (const t of tasks) {
     const els = elementsOf(t);
     const groupsHit = OWNER_GROUPS.filter((g) => els.some((e) => g.includes(e))).length;
@@ -98,28 +162,23 @@ export function checkBoundaries(c, tasks, { precedesDb = null, report = '' } = {
     }
   }
   const slugs = new Set(tasks.flatMap((t) => [t.slug, t.file.replace(/\.md$/, ''), t.fm && t.fm.name].filter(Boolean)));
+  const holds = checkMergeAfter(c, tasks);
+  const phase1Branches = [...new Set(
+    tasks.filter((o) => o.fm && o.fm.branch && o.fm.repository !== 'none' && /1/.test(String(o.fm.phase))).map((o) => branchKey(o.fm.repository, o.fm.branch)),
+  )];
   for (const t of tasks) {
     const els = elementsOf(t);
     const isPhase2 = els.some((e) => PHASE_2_ELEMENTS.includes(e));
     const deps = (t.fm && t.fm['depends-on']) || [];
     if (isPhase2) {
       c.check(/2/.test(String(t.fm.phase)), `${t.file}: phase-2 element in a task whose phase is ${t.fm.phase}`);
-      // A later phase orders landing, not writing: an edge, a stack onto a phase-1 branch or a recorded merge order all hold it back.
-      const phase1Branches = tasks.filter((o) => !/2/.test(String(o.fm && o.fm.phase))).map((o) => o.fm && o.fm.branch).filter(Boolean);
-      const stacked = Boolean(t.fm['branch-base']) && phase1Branches.includes(t.fm['branch-base']);
-      const MERGE_HOLD = /merge order|(do not|never|must not) merge|merges?\b[^.\n]{0,30}\bafter/i;
-      // The skill states the merge order in the split report's chain; a task note may repeat it.
-      const ids = [t.fm.branch, t.slug, t.fm.name, t.file.replace(/\.md$/, '').replace(/^\d+-/, '')].filter(Boolean);
-      const namesThisBranch = (line) => ids.some((id) => line.includes(id)) || /phase[ -]?2 branch/i.test(line);
-      // A report bullet wraps across lines, so judge it whole.
-      const bulletHold = (report || '').split(/\n(?=\s*(?:[-*] |\d+\. |$))/m).some((item) => namesThisBranch(item) && MERGE_HOLD.test(item));
-      // The report keeps one subsection per branch, whose bullets need not repeat the branch name.
-      const sectionHold = (report || '').split(/\n(?=#{2,4}\s)/).some((sec) => /^#{2,4}\s/.test(sec) && namesThisBranch(sec.split('\n')[0]) && MERGE_HOLD.test(sec));
-      const reportHold = bulletHold || sectionHold;
-      const mergeOrder = MERGE_HOLD.test(t.body || '') || reportHold;
+      // The fixtures' rollout starts phase 2 only after every phase-1 item is deployed, in both
+      // repositories, so each phase-2 branch must reach every phase-1 branch.
+      const held = holds.get(branchKey(t.fm.repository, t.fm.branch)) || new Set();
+      const missing = phase1Branches.filter((k) => !held.has(k));
       c.check(
-        (Array.isArray(deps) && deps.length > 0) || stacked || mergeOrder,
-        `${t.file}: phase-2 task is held behind phase 1 by no edge, stack or merge order`,
+        missing.length === 0,
+        `${t.file}: phase-2 branch ${t.fm.branch} is held behind ${missing.map((k) => k.split('\0')[1]).join(', ')} by no stack, edge or merge-after`,
       );
     }
     for (const d of Array.isArray(deps) ? deps : []) {

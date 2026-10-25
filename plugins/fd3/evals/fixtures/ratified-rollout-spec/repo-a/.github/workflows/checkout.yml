@@ -1,0 +1,14 @@
+name: checkout
+
+on:
+  push:
+    branches: [main]
+    paths: ["services/checkout/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy checkout
+        run: ./scripts/deploy.sh checkout

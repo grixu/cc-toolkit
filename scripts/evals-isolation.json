@@ -1,0 +1,89 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(claude plugin *)",
+      "Bash(claude plugins *)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.docker/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.netrc)",
+      "Read(~/.npmrc)",
+      "Read(~/.git-credentials)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.config/op/**)",
+      "Read(~/.claude.json)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.claude/**/*settings*.json)",
+      "Read(~/.ccs/**/.credentials.json)",
+      "Read(~/.ccs/**/.claude.json)",
+      "Read(~/.ccs/**/*settings*.json)",
+      "Read(~/.ccs/**/*.yaml)",
+      "Read(~/.ccs/.session-secret)",
+      "Edit(~/.claude/**)",
+      "Edit(~/.ccs/**)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "autoAllowBashIfSandboxed": true,
+    "credentials": {
+      "files": [
+        { "path": "~/.config/gcloud", "mode": "deny" },
+        { "path": "~/.aws", "mode": "deny" },
+        { "path": "~/.kube", "mode": "deny" },
+        { "path": "~/.docker", "mode": "deny" },
+        { "path": "~/.ssh", "mode": "deny" },
+        { "path": "~/.netrc", "mode": "deny" },
+        { "path": "~/.npmrc", "mode": "deny" },
+        { "path": "~/.git-credentials", "mode": "deny" },
+        { "path": "~/.config/gh", "mode": "deny" },
+        { "path": "~/.config/op", "mode": "deny" },
+        { "path": "~/.ccs", "mode": "deny" },
+        { "path": "~/.claude", "mode": "deny" },
+        { "path": "~/.claude.json", "mode": "deny" }
+      ],
+      "envVars": [
+        { "name": "ANTHROPIC_API_KEY", "mode": "deny" },
+        { "name": "ANTHROPIC_AUTH_TOKEN", "mode": "deny" },
+        { "name": "CLAUDE_CODE_OAUTH_TOKEN", "mode": "deny" },
+        { "name": "GITHUB_TOKEN", "mode": "deny" },
+        { "name": "GH_TOKEN", "mode": "deny" },
+        { "name": "GH_ENTERPRISE_TOKEN", "mode": "deny" },
+        { "name": "GITHUB_ENTERPRISE_TOKEN", "mode": "deny" },
+        { "name": "NPM_TOKEN", "mode": "deny" },
+        { "name": "NODE_AUTH_TOKEN", "mode": "deny" },
+        { "name": "AWS_ACCESS_KEY_ID", "mode": "deny" },
+        { "name": "AWS_SECRET_ACCESS_KEY", "mode": "deny" },
+        { "name": "AWS_SESSION_TOKEN", "mode": "deny" },
+        { "name": "GOOGLE_APPLICATION_CREDENTIALS", "mode": "deny" },
+        { "name": "GOOGLE_OAUTH_ACCESS_TOKEN", "mode": "deny" },
+        { "name": "CLOUDSDK_AUTH_ACCESS_TOKEN", "mode": "deny" },
+        { "name": "AZURE_CLIENT_SECRET", "mode": "deny" },
+        { "name": "ARM_CLIENT_SECRET", "mode": "deny" },
+        { "name": "CLOUDFLARE_API_TOKEN", "mode": "deny" },
+        { "name": "DIGITALOCEAN_TOKEN", "mode": "deny" },
+        { "name": "DOCKER_AUTH_CONFIG", "mode": "deny" },
+        { "name": "OP_SERVICE_ACCOUNT_TOKEN", "mode": "deny" },
+        { "name": "FIRECRAWL_API_KEY", "mode": "deny" },
+        { "name": "CONTEXT7_API_KEY", "mode": "deny" },
+        { "name": "OPENAI_API_KEY", "mode": "deny" },
+        { "name": "HF_TOKEN", "mode": "deny" }
+      ]
+    },
+    "network": {
+      "strictAllowlist": true,
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "registry.terraform.io",
+        "raw.githubusercontent.com",
+        "api.github.com",
+        "cloud.google.com",
+        "docs.cloud.google.com"
+      ]
+    }
+  }
+}

@@ -5,10 +5,19 @@ const SPEC = 'spec/rollout-spec.md';
 
 const verdictLines = (text) => (text.match(/^Verdict: /gm) || []).length;
 
+// A pass opens a dated heading at level 1-3; the `#### Answers applied — <date>` blocks a pass nests
+// under its own heading when it resumes after a question are part of that pass.
+export function appendedPasses(fixture, spec) {
+  const passHeadings = (text) => h.headings(text).filter((x) => /^#{1,3}\s/.test(x) && /20\d\d/.test(x));
+  const before = new Set(passHeadings(fixture));
+  return passHeadings(spec).filter((x) => !before.has(x)).length;
+}
+
 // A finished spec handed to build-spec is a re-validation, never a new grilling: the decisions in it
 // are the user's, already made.
-export default () => {
+export default (output, context) => {
   const c = h.checker();
+  c.check(!h.questionToolFailed(context), 'the run ended on an AskUserQuestion call that errored: its questions never reached the user');
   const diff = h.diffSandbox(SCENARIO, 'rollout-spec');
 
   const ledger = diff.added.filter((f) => /question-ledger\.md$/.test(f));
@@ -24,12 +33,13 @@ export default () => {
   // Three passes, plus at most one for edits after the verdict: a pass that counts its own
   // appended block as an edit re-invokes the next forever.
   if (spec !== null) {
-    const fixtureHeadings = new Set(h.headings(h.readFixtureFile('rollout-spec', SPEC)));
-    const passes = h.headings(spec).filter((x) => /20\d\d/.test(x) && !fixtureHeadings.has(x)).length;
+    const passes = appendedPasses(h.readFixtureFile('rollout-spec', SPEC), spec);
     c.check(passes <= 4, `${passes} dated validation blocks appended; the loop allows three passes and one post-verdict pass`);
   }
 
-  const newSpecs = diff.added.filter((f) => f.endsWith('.md') && !/(^|\/)(notes|research|evidence)\//.test(f));
+  const beside = diff.added.filter((f) => /\.notes\.md$|\.research\//.test(f));
+  c.check(beside.length === 0, `session files written beside the spec instead of into a session folder: ${beside.join(', ')}`);
+  const newSpecs = diff.added.filter((f) => f.endsWith('.md') && !/(^|\/)(notes|research|evidence)\//.test(f) && !/\.session\//.test(f));
   c.check(newSpecs.length === 0, `a second spec was written instead of re-validating the given one: ${newSpecs.join(', ')}`);
 
   const code = diff.modified.filter((f) => f !== SPEC);

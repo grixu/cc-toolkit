@@ -16,3 +16,10 @@ question.
 - **Recommend in every question.** The recommended option goes first and its description begins
   with `Recommended — `. Options with balanced descriptions and no recommendation make the user do
   the comparison you were meant to do.
+- **Options are choices, not requests for text.** `AskUserQuestion` returns the label picked and
+  nothing more, so an option whose answer needs typed detail — "Elsewhere — I'll name it", "a change
+  to make", "give the path" — picked as it stands carries no answer at all. Such an option is never
+  the recommended one and never first: the concrete choices come first, the recommendation is one
+  of them, and the detail the user may want to type goes through the tool's own free-text answer,
+  which the question names. When the only useful answer is a value the user must supply, the
+  options are the values you can see, or the concrete fallback that holds without one.

@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `fd3:ci-runner`, the sub-agent the implement workflow's baseline and CI runners run as: it has
+  every tool a runner uses but none that schedules a later turn or watches a background command
+  (`ScheduleWakeup`, `Monitor`, `CronCreate`, `RemoteTrigger`)
+
+### Changed
+
+- a later phase's merge hold is a task frontmatter field, `merge-after: [<branch>…]` (a branch of
+  another repository as `<repository path>:<branch>`), identical on every task of a branch and
+  listing only what its stack chain and `depends-on` edges do not already hold it behind;
+  `split-to-tasks` writes the merge order there instead of in the split report or a task `## Note`,
+  `task-graph.mjs` parses and checks it (unbuilt branch, two values on one branch, landing loop) and
+  prints every branch's transitive merge order as `landing`, and `implement-tasks` orders the
+  pull-request proposal from it, falling back to the report's prose only for tasks split before the
+  field existed
+- a spec's session files live in a git-ignored session folder beside it, named the spec's filename
+  without `.md`, plus `.session/` (`spec/out.md` → `spec/out.session/`): `write-spec` moves the
+  closing notes (`notes.md`), the question ledger and the research directory there instead of
+  beside the spec as `<spec>.notes.md` and `<spec>.research/`, and creates the folder with a
+  `.gitignore` of `*`, so `git status` shows only the spec and its `evidence/`; the
+  grilling keeps writing to the scratchpad until the spec has a path, a post-verdict decision is
+  appended to the folder's `notes.md`, `validate-spec` dispatches write their reports into its
+  `research/`, the template keeps it out of the companion links, `split-to-tasks` schedules no
+  task for it, and `implement-tasks` keeps it out of every commit option
+- an `AskUserQuestion` option whose answer needs typed detail ("Elsewhere — I'll name it", "a change
+  to make") is never recommended or first: `question-batching.md` puts the concrete choices first
+  and routes the detail through the tool's free-text answer, and a `build-spec` re-entry that names
+  no reason recommends re-validating the spec as it stands; `validate-spec` asks for a fact only
+  the user holds with the outcomes it can apply as options, never with "name it" as the
+  recommendation
+
+### Fixed
+
+- a CI runner waiting on a long command runs its exit-file wait in the foreground with the Bash
+  timeout at 600000 and never ends its turn on a `ScheduleWakeup` or a backgrounded wait: on the
+  long-command eval a Haiku runner whose 120 s default wait was moved to the background scheduled a
+  wakeup and returned the build as incomplete in 1 of 3 trials, and once more in 6 trials after the
+  prompt banned it, so the baseline and CI runners now run as the `fd3:ci-runner` agent, which has
+  no `ScheduleWakeup` or `Monitor`; the log it waits on is a fresh
+  `mktemp` path under `$TMPDIR`, since `$TMPDIR` outlives a run and a fixed name found an earlier run's exit file
+  and passed a build that had not finished
+- review scans of the four craft lenses run on the session's model again, as `/start-cr`'s do: the
+  A/B that moved them to Sonnet was confounded by a code-review fixture defect, and on the fixed
+  fixtures Sonnet 5.5 tied Opus 5.5 on quality at about 30% more cost
+- the session scratchpad is defined where `grill-topic`, `write-spec`, `validate-spec` and
+  `implement-tasks` first use it: the scratchpad directory the system prompt names, or else one
+  `mktemp -d "${TMPDIR:-/tmp}/fd3-<topic-slug>.XXXXXX"` whose literal path the session keeps, never
+  inside a repository; headless sessions get no scratchpad line and the model invented
+  `scratchpad/`, `.scratchpad/` and `notes/` in the working tree
+
 ## [0.4.0] - 2026-10-25
 
 ### Added
