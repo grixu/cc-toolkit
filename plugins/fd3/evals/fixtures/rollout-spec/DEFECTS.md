@@ -66,19 +66,29 @@ them every re-entry run spent passes and user questions on prerequisites nothing
   guarding the routes in `repo-a/services/ledger/src/server.ts` (`GET /ledger/health`,
   `GET /ledger/entries` → the stub; no `POST` — API-2 adds it).
 - Callers that send it today: `repo-a/services/checkout/src/clients/ledger.ts` (used by
-  `repo-a/services/checkout/src/health.ts`) and `repo-b/src/api/ledger.ts`, both on
-  `GET /ledger/health` only, so `postCharge` still makes no outbound call.
+  `repo-a/services/checkout/src/health.ts`) and the dashboard's server, `repo-b/server/ledgerProxy.ts`
+  (mounted at `/api/ledger/` by `repo-b/server/index.ts`), both on `GET /ledger/health` only, so
+  `postCharge` still makes no outbound call. The browser's `repo-b/src/api/ledger.ts` calls that
+  same-origin route and holds no token. It once read `VITE_SERVICE_TOKEN` into the bundle, which put
+  a shared service secret in every merchant's browser: every re-entry run asked blocking redesign
+  questions about it instead of re-validating. The proxy forwards any `GET /ledger/*`, so
+  INTEGRATION-1's live call needs no server change and the split stays at six tasks.
 - CI: `repo-a/.github/workflows/ledger.yml` applies `services/ledger/migrations/*.sql` in glob order
   (lines 13-18) before deploying; `repo-a/.github/workflows/checkout.yml` and
-  `repo-b/.github/workflows/deploy.yml` deploy on merge to `main`. No element edits a workflow, so
-  the protected-path cut finds nothing here (that case is `protected-path-rollout-spec`).
+  `repo-b/.github/workflows/deploy.yml` deploy on merge to `main`, each through its repository's
+  `scripts/deploy.sh` (a stub). No element edits a workflow, so the protected-path cut finds nothing
+  here (that case is `protected-path-rollout-spec`).
+- `repo-a/CODEOWNERS`, which `repo-a/README.md` and section 5 promise, gives `services/checkout/` to
+  team-checkout and `services/ledger/` to team-ledger — the same split the ownership cut already
+  makes, so it adds no protected-path cut. Never give it a third entry an element touches.
 - Dashboard shell: `repo-b/src/session.ts`, `repo-b/src/router.tsx` (routes `/orders/:orderId` to
   `repo-b/src/pages/OrderDetail.tsx`, never `PaymentStatus`), `repo-b/src/components/ErrorBanner.tsx`,
   `repo-b/src/preview/index.tsx`.
 
 Still unbacked, and left as they are: API-1's flag-on "test environment" in section 8, and section
 7's rollback citing LED-109, which section 10 gives to team-web's fixture cleanup — validation may
-still raise both.
+still raise both. The proxy also does not scope reads to the session's merchant; the spec claims
+nothing about that either way.
 
 ## Load-bearing line numbers
 

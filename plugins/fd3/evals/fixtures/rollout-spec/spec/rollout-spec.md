@@ -94,7 +94,7 @@ order detail page.
 
 - Fields: same rendering contract as UI-1; the data source changes.
 - Errors: same error banner path as UI-1.
-- Auth: the dashboard's existing internal service token toward the ledger.
+- Auth: the dashboard server's existing internal service token toward the ledger; the browser holds none.
 - Limits: phase 2 only, after API-2 is deployed and UI-1 has landed.
 
 ### Prerequisites
@@ -102,7 +102,7 @@ order detail page.
 | Prerequisite | Status |
 |---|---|
 | CI applies ledger migrations on merge | met — `repo-a/.github/workflows/ledger.yml` applies `services/ledger/migrations/*.sql` in filename order on every merge to `main` that touches the ledger, the convention `repo-a/services/ledger/migrations/README.md` documents |
-| Internal service token shared between the three services | met — the ledger's `requireServiceToken` guards its routes, and checkout (`repo-a/services/checkout/src/clients/ledger.ts`) and the dashboard (`repo-b/src/api/ledger.ts`) already send it on their `GET /ledger/health` calls |
+| Internal service token shared between the three services | met — the ledger's `requireServiceToken` guards its routes, and checkout (`repo-a/services/checkout/src/clients/ledger.ts`) and the dashboard's server (`repo-b/server/ledgerProxy.ts`, which the browser reaches through `repo-b/src/api/ledger.ts`) already send it on their `GET /ledger/health` calls |
 
 ## 5. Ownership
 
@@ -112,9 +112,9 @@ order detail page.
 | repo-a `services/ledger/` | DB-1, API-2 | pull request; CODEOWNERS requires team-ledger approval; CI deploys on merge and applies migrations |
 | repo-b | UI-1, INTEGRATION-1 | pull request; team-web approval; CI deploys on merge |
 
-repo-a is a monorepo with per-subtree CODEOWNERS: a pull request touching both `services/checkout/`
-and `services/ledger/` needs both teams' approval, so changes are scoped to one subtree per pull
-request.
+repo-a is a monorepo with per-subtree CODEOWNERS (`repo-a/CODEOWNERS`): a pull request touching both
+`services/checkout/` and `services/ledger/` needs both teams' approval, so changes are scoped to one
+subtree per pull request.
 
 ## 6. The change, per repository
 
@@ -205,9 +205,9 @@ pull request cites LED-100.
 | The settlement flag exists and is off | `repo-a/services/checkout/src/config.ts:2` — `asyncSettlement: false` |
 | The dashboard panel exists and is unrouted | `repo-b/src/components/PaymentStatus.tsx:5` — component returns `null`; no route references it |
 | Migrations are applied by CI in filename order and are irreversible on staging | `repo-a/services/ledger/migrations/README.md` — the convention paragraph; `repo-a/.github/workflows/ledger.yml:13-18` — the migration step runs every `*.sql` in glob order before the deploy step |
-| Every subtree and repo-b deploy from CI on merge to `main` | `repo-a/.github/workflows/ledger.yml`, `repo-a/.github/workflows/checkout.yml` and `repo-b/.github/workflows/deploy.yml` — each a `push: main` job ending in its deploy step |
+| Every subtree and repo-b deploy from CI on merge to `main` | `repo-a/.github/workflows/ledger.yml`, `repo-a/.github/workflows/checkout.yml` and `repo-b/.github/workflows/deploy.yml` — each a `push: main` job ending in its deploy step, `repo-a/scripts/deploy.sh` or `repo-b/scripts/deploy.sh` |
 | The ledger's routes sit behind the service-token middleware; `GET /ledger/entries` serves the stub and no `POST` route exists | `repo-a/services/ledger/src/server.ts:4-7` — the route table; `repo-a/services/ledger/src/middleware/serviceToken.ts:5` — `requireServiceToken` |
-| Checkout and the dashboard already call the ledger with the service token | `repo-a/services/checkout/src/clients/ledger.ts:3-7` and `repo-a/services/checkout/src/health.ts:4`; `repo-b/src/api/ledger.ts:3-11` — each sends `x-service-token` |
+| Checkout and the dashboard's server already call the ledger with the service token, and the browser bundle carries none | `repo-a/services/checkout/src/clients/ledger.ts:3-7` and `repo-a/services/checkout/src/health.ts:4`; `repo-b/server/ledgerProxy.ts:3-8` — each sends `x-service-token`; `repo-b/src/api/ledger.ts:1-3` sends the browser's calls to the dashboard's own `/api/ledger/` route (`repo-b/server/index.ts:3-5`) |
 | The dashboard has a session, a routed order detail page, an error banner and a component preview | `repo-b/src/session.ts:5`, `repo-b/src/router.tsx:3-5`, `repo-b/src/pages/OrderDetail.tsx:1`, `repo-b/src/components/ErrorBanner.tsx:1`, `repo-b/src/preview/index.tsx:3-5` |
 
 ### Validation pass — 2026-07-30
