@@ -56,7 +56,7 @@ providers:
     label: code-review
     config:
       apiKeyRequired: false # use the local Claude Code subscription, no API key for the target
-      model: claude-opus-5-5 # the model users run; a capable model is needed for evals 3/4 to pass
+      model: '{{ env.EVAL_TARGET_MODEL | default("claude-opus-5-5") }}' # the model users run; a capable model is needed for evals 3/4 to pass
       permission_mode: bypassPermissions # the skill's Read/Grep/Bash run unattended
       allow_dangerously_skip_permissions: true # required alongside bypassPermissions
       working_dir: ../../.. # repo root, so the plugin path and {{file}} paths resolve

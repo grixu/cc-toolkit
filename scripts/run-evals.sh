@@ -13,6 +13,9 @@
 #                                          # one implement pattern: the two review-fixer scenarios
 #   scripts/run-evals.sh fd3 split-baseline --trials 3
 #                                          # 3 sequential trials, sandboxes reset before each
+#   scripts/run-evals.sh fd3 split-baseline --model <model-id>
+#                                          # A/B: another target model (default claude-opus-5-5);
+#                                          # the grader stays pinned
 #   pnpm eval:code-review -- eval-20       # same runner for code-review (plugin mode)
 #   node scripts/eval-summary.mjs plugins/fd3/evals/.results/runs/<run>
 #                                          # re-print a run's summary
@@ -22,7 +25,8 @@
 # network config and one starting with "implement" the implement config; anything else
 # filters the default config. --trials <k> runs the selected
 # config k times, one after another, resetting every sandbox before each trial; --repeat is
-# rejected because its copies share one sandbox. Each run is archived in
+# rejected because its copies share one sandbox. --model <id> exports EVAL_TARGET_MODEL, which
+# every config's target provider reads. Each run is archived in
 # plugins/<name>/evals/.results/runs/<UTC>-<sha>[-dirty]/ (trial-<i>.json, meta.json with
 # SHA, config, models and tool versions, summary.json from eval-summary.mjs), and
 # .results/latest.json is the last trial's output — agent tests take minutes each, so
@@ -92,13 +96,19 @@ const pkgVersion = (name) => {
 const promptfoo = pkgVersion('promptfoo');
 const sdk = pkgVersion('@anthropic-ai/claude-agent-sdk');
 
+// The target model is an `{{ env.X | default("y") }}` template; promptfoo renders it at load.
+const renderEnv = (value) =>
+  typeof value === 'string'
+    ? value.replace(/\{\{\s*env\.(\w+)\s*(?:\|\s*default\(\s*['"]([^'"]*)['"]\s*\))?\s*\}\}/g, (_, name, fallback) => env[name] || fallback || '')
+    : value;
+
 let target = null;
 let grader = null;
 try {
   // js-yaml is promptfoo's dependency, reachable only from its real (pnpm store) path.
   const yaml = createRequire(fs.realpathSync('node_modules/promptfoo/package.json'))('js-yaml');
   const config = yaml.load(fs.readFileSync(env.META_CONFIG, 'utf8'));
-  target = (config.providers ?? []).map((p) => (typeof p === 'object' ? p.config?.model ?? null : null));
+  target = (config.providers ?? []).map((p) => (typeof p === 'object' ? renderEnv(p.config?.model) ?? null : null));
   const g = config.defaultTest?.options?.provider;
   grader = g === undefined ? null : typeof g === 'string' ? g : g.config?.model ?? null;
 } catch (err) {
@@ -114,6 +124,7 @@ const meta = {
   trials: Number(env.META_TRIALS),
   trial_exit_codes: env.META_EXIT_CODES ? env.META_EXIT_CODES.split(' ').map(Number) : [],
   configured_target_model: target,
+  target_model_override: env.EVAL_TARGET_MODEL || null,
   configured_grader_model: grader,
   promptfoo_version: promptfoo?.version ?? null,
   claude_agent_sdk_version: sdk?.version ?? null,
@@ -140,6 +151,8 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
     case "$1" in
       --trials) trials="${2:-}"; shift 2 || { echo "--trials needs a count" >&2; exit 2; } ;;
       --trials=*) trials="${1#--trials=}"; shift ;;
+      --model) model="${2:-}"; shift 2 || { echo "--model needs a model id" >&2; exit 2; } ;;
+      --model=*) model="${1#--model=}"; shift ;;
       --repeat|--repeat=*)
         echo "--repeat shares one sandbox across copies of a scenario; use --trials <k> (a fresh sandbox per trial)" >&2
         exit 2 ;;
@@ -149,6 +162,11 @@ if [ $# -ge 1 ] && [ -f "plugins/${1}/evals/promptfooconfig.yaml" ]; then
   if ! [[ "$trials" =~ ^[1-9][0-9]*$ ]]; then
     echo "--trials needs a positive integer, got '${trials}'" >&2
     exit 2
+  fi
+  # The configs read the target model from EVAL_TARGET_MODEL; the grader stays pinned.
+  if [ -n "${model+set}" ]; then
+    [ -n "$model" ] || { echo "--model needs a model id" >&2; exit 2; }
+    export EVAL_TARGET_MODEL="$model"
   fi
   set -- ${args[@]+"${args[@]}"}
 
