@@ -1,7 +1,7 @@
 name: fd3 evals (smoke)
 
 # The smoke group only — one scenario per skill plus the command gate (plan section 5).
-# The e2e chain, --trials variance runs and the network-dependent researcher tests
+# The e2e chain, longer --trials variance runs and the network-dependent researcher tests
 # stay local-only.
 on:
   pull_request:
@@ -10,6 +10,7 @@ on:
       # The job runs the shared runner and resolves promptfoo and the agent SDK from the root
       # manifest, so a change to either breaks these evals without touching the plugin.
       - 'scripts/run-evals.sh'
+      - 'scripts/eval-summary.mjs'
       - 'scripts/evals-isolation.json'
       - 'package.json'
 
@@ -70,12 +71,14 @@ jobs:
           jq '.sandbox.network.allowAllUnixSockets = true' scripts/evals-isolation.json > "$RUNNER_TEMP/isolation.json"
           mv "$RUNNER_TEMP/isolation.json" scripts/evals-isolation.json
           sudo chmod 600 /var/run/docker.sock
+      # Each scenario passes about 3/3 locally, yet one trial a run still flips a different one red;
+      # two trials gated on every scenario passing at least one keeps the gate without that noise.
       - name: Run smoke group
-        run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate"
+        run: scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate" --trials 2 --gate any
       - name: Upload results for triage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: fd3-eval-results
-          path: plugins/fd3/evals/.results/latest.json
+          path: plugins/fd3/evals/.results/runs/
           if-no-files-found: ignore

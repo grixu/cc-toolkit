@@ -4,8 +4,8 @@
 #   pnpm eval                              # run every suite's default config
 #   pnpm eval -- --filter-pattern split    # forward args to promptfoo (all suites)
 #   scripts/run-evals.sh fd3               # one suite: reset sandboxes, run, export results
-#   scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate"
-#                                          # smoke group via --filter-pattern
+#   scripts/run-evals.sh fd3 "validate-defective|split-baseline|write-missing-input|grill-round|build-spec-gate" --trials 2 --gate any
+#                                          # smoke group via --filter-pattern, as CI runs it
 #   scripts/run-evals.sh fd3 e2e           # e2e chain → promptfooconfig.e2e.yaml (serial)
 #   scripts/run-evals.sh fd3 researcher    # researcher group → promptfooconfig.network.yaml
 #   scripts/run-evals.sh fd3 implement     # implement group → promptfooconfig.implement.yaml

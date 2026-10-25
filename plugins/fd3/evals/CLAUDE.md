@@ -109,6 +109,10 @@ every step while writes in the working directory succeeded.
   sandbox reset before each trial. The runner rejects promptfoo's `--repeat` — its
   copies run concurrently in the one sandbox the run reset, and eight runs saw or
   deleted each other's writes. The same holds for `repeat` set in a config.
+- A k-trial run exits with the first nonzero trial exit code. `--gate any` makes it succeed
+  when every test passed at least one trial instead (pass@k); an errored result is not a
+  pass, a trial that exported no JSON fails the gate, and a sandbox that could not arm
+  still exits 3.
 - The e2e chain under `--trials` stays safe: each trial replays write→validate→split
   serially (`maxConcurrency: 1`) from a fresh `.sandbox/e2e-chain`. Never run two
   invocations of the runner at once — they share `.sandbox/`, and the second one's
@@ -216,6 +220,8 @@ grilling-length runs where `ask_user_question: first_option` auto-answers whole 
 ## CI
 
 The smoke group (one scenario per skill plus the command gate) runs on PRs touching
-`plugins/fd3/**`. When adding or renaming scenarios, keep the filter pattern in
+`plugins/fd3/**`, twice (`--trials 2 --gate any`): the job fails when any scenario passed
+neither trial. Its `fd3-eval-results` artifact is the run dir (both `trial-<i>.json`,
+`meta.json`, `summary.json`). When adding or renaming scenarios, keep the filter pattern in
 `.github/workflows/fd3-evals.yml` and the usage examples in `scripts/run-evals.sh`
 in sync.
