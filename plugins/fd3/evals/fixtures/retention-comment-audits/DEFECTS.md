@@ -38,6 +38,10 @@ mentions only raising retention and re-running audits, so that option comes from
 `notes/topic.md` makes no claim about the read window, so nothing in it legitimises the 30-day
 claim; the comment is the only source of it.
 
+It also states that the live table matches Terraform and gives its size. The sandbox denies
+`gcloud`, and without those facts runs held the fix-and-retention question back on an access
+request, so the expiry option never appeared; a user would answer both from what they know.
+
 ## Scenario settings
 
 The scenario disallows `AskUserQuestion`, so round 1 is posted as text and the run ends on it:
