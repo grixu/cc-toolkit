@@ -6,7 +6,7 @@ prompts:
     label: security-gate
 
 providers:
-  - id: anthropic:claude-agent-sdk
+  - id: file://provider.mjs
     label: dev-kit
     config:
       apiKeyRequired: false
@@ -24,10 +24,7 @@ providers:
       skills: all
       setting_sources: []
       settings: ../../../scripts/evals-isolation.json
-      # Any answer lets an escalated PR scenario go on to post its comment with a Decision line; the
-      # model orders the options itself and has listed switching the target first.
-      ask_user_question:
-        behavior: first_option
+      # Questions get the first option unless a test names its answer in vars.answer.
 
 tests:
   - description: 'escalated-direct: lodash 4.17.15 → 4.17.21 keeps three advisories; reachability informs, never lowers'
@@ -58,6 +55,16 @@ tests:
       - type: javascript
         value: file://checks/security.mjs:blockedCooldown
 
+  - description: 'cooldown-exempt: a release under 7 days old that fixes an advisory of current passes the cooldown'
+    vars:
+      # Written by reset-sandbox.sh, which picks a fresh release that patches a recent advisory.
+      input: file://.sandbox/cooldown-exempt-input.txt
+      checkout: plugins/dev-kit/evals/.sandbox/cooldown-exempt
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:cooldownExempt
+
   - description: 'pr-clear-private: a clear PR still gets the comment; the private package is never sent out'
     vars:
       input: https://github.com/example/web/pull/11
@@ -75,3 +82,13 @@ tests:
     assert:
       - type: javascript
         value: file://checks/security.mjs:prTransitiveRerun
+
+  - description: 'pr-escalated-accept: the user accepts the risk; the comment records it and the target stays'
+    vars:
+      input: https://github.com/example/web/pull/13
+      checkout: plugins/dev-kit/evals/.sandbox/pr-escalated-accept
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^accept'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prEscalatedAccept

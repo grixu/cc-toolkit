@@ -67,11 +67,19 @@ export function blockedMalware(output, context) {
   });
 }
 
+// The cooldown scenarios pick their package at reset time; a missing pick is a fixture problem.
+const pickedFixture = (name) => {
+  const fixture = JSON.parse(read(path.join(sandbox, `${name}.json`)) || '{}');
+  const missing = fixture.unavailable || !fixture.published;
+  return {
+    fixture,
+    missing: missing && { pass: false, score: 0, reason: `fixture unavailable, not a skill result: ${fixture.unavailable ?? `no ${name}.json`}` },
+  };
+};
+
 export function blockedCooldown(output, context) {
-  const fixture = JSON.parse(read(path.join(sandbox, 'blocked-cooldown.json')) || '{}');
-  if (fixture.unavailable || !fixture.published) {
-    return { pass: false, score: 0, reason: `fixture unavailable, not a skill result: ${fixture.unavailable ?? 'no blocked-cooldown.json'}` };
-  }
+  const { fixture, missing } = pickedFixture('blocked-cooldown');
+  if (missing) return missing;
   const day = 86400_000;
   const due = new Date(Date.parse(fixture.published) + 7 * day);
   const dates = [-1, 0, 1].map((d) => new Date(due.getTime() + d * day).toISOString().slice(0, 10));
@@ -81,6 +89,21 @@ export function blockedCooldown(output, context) {
     check(/cooldown|cool-down|release age|7 days|seven days/i.test(run.text), 'the block is not attributed to the release-age cooldown');
     check(dates.some((d) => run.text.includes(d)), `no acceptable-from date near ${dates[1]}`);
     check(!run.asked, 'a blocked unit asked the user');
+  });
+}
+
+export function cooldownExempt(output, context) {
+  const { fixture, missing } = pickedFixture('cooldown-exempt');
+  if (missing) return missing;
+  return grade(output, context, (run, check) => {
+    check(run.outcome === 'clear', `security outcome is '${run.outcome}', expected clear`);
+    check(run.text.includes(`${fixture.package}`) && run.text.includes(fixture.target), `${fixture.package}@${fixture.target} is not named`);
+    const advisory = linesWith(run.text, new RegExp(fixture.advisory));
+    check(advisory.length > 0, `${fixture.advisory} (patched by ${fixture.target}) is not in the report`);
+    check(advisory.some((line) => /fixed/i.test(line)), `${fixture.advisory} is not marked fixed by upgrade`);
+    check(/exempt/i.test(run.text), 'the report does not say the release is exempt from the cooldown');
+    check(!run.asked, 'a clear unit asked the user');
+    check(!run.wroteComment, 'a package+version input wrote a PR comment');
   });
 }
 
@@ -96,11 +119,20 @@ export function prClearPrivate(output, context) {
       check(/not checked/i.test(body) && body.includes('@acme/telemetry'), '@acme/telemetry is not listed as not checked in the comment');
     }
     check(comments.length <= 1, `${comments.length} comments posted on PR #11`);
+    // A heredoc body is a file's text, not a command: the comment file says the name was not sent.
+    // A JSON body naming the package is a lookup payload, posted later with `-d @file`.
+    const heredoc = /<<-?\s*['"]?(\w+)['"]?[^\n]*\n([\s\S]*?)\n\s*\1[ \t]*(?=\n|$)/g;
+    const payloads = run.bash.flatMap((cmd) => [...cmd.matchAll(heredoc)].map((m) => m[2])).filter((body) => /"name"\s*:\s*"@acme\//.test(body));
+    check(payloads.length === 0, `a lookup payload names the private package: ${payloads[0]}`);
     // Per simple command: agents chain a local grep for the private name with the lookups.
     const lookups = run.bash
+      .map((cmd) => cmd.replace(heredoc, ''))
       .flatMap((cmd) => cmd.split(/\n|;|&&|\|\||\|/))
       .filter((cmd) => /curl|osv|deps\.dev|advisories|api\.github/i.test(cmd) && /acme/i.test(cmd));
     check(lookups.length === 0, `the private package reached an external lookup: ${lookups[0]}`);
+    // Only this scenario has an @acme package, so the trial's shared gh log is enough.
+    const ghLookups = linesWith(read(path.join(sandbox, 'gh-calls.log')), /advisories/).filter((line) => /acme/i.test(line));
+    check(ghLookups.length === 0, `the private package reached the GitHub Advisory Database: ${ghLookups[0]}`);
     const remote = run.calls.filter((c) => /firecrawl|WebFetch|WebSearch|context7/i.test(c.name) && /acme/i.test(JSON.stringify(c.input ?? {})));
     check(remote.length === 0, `the private package reached ${remote[0]?.name}`);
   });
@@ -125,5 +157,34 @@ export function prTransitiveRerun(output, context) {
     check(posted('gh-posted-patch-9000').length === 0, "another account's comment 9000 was edited");
     check(posted('gh-posted-patch-9002').length === 0, 'the plain comment 9002 was edited');
     check(posted('gh-posted-comment-12-').length === 0 && posted('gh-posted-edit-last-12-').length === 0, 'a second comment was posted instead of updating 9001');
+  });
+}
+
+export function prEscalatedAccept(output, context) {
+  return grade(output, context, (run, check) => {
+    check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+    const answers = context.providerResponse?.metadata?.devKit?.answers ?? [];
+    if (check(run.asked, 'the escalation never asked the user')) {
+      check(
+        answers.some((a) => a.matched),
+        `no option to accept the risk was offered: ${answers.map((a) => a.options.join(' | ')).join('; ') || 'no question answered'}`,
+      );
+    }
+    check(/GHSA-r5fr-rjxr-66jc|GHSA-f23m-r3pf-42rh|GHSA-xxjr-mmjv-4gpg/.test(run.text), 'none of the advisories still present on 4.17.21 is in the report');
+    check(/accept/i.test(run.text), 'the report does not record the accepted risk');
+    const comments = posted('gh-posted-comment-13-');
+    check(comments.length <= 1, `${comments.length} comments posted on PR #13`);
+    if (check(comments.length === 1, 'no security comment was posted on PR #13')) {
+      const body = comments[0];
+      check(body.startsWith(MARKER), 'the posted comment does not start with the marker');
+      check(linesWith(body, /^#/).some((line) => /\bescalated\b/i.test(line)), 'the comment heading is not escalated');
+      const decision = linesWith(body, /Decision/i);
+      if (check(decision.length > 0, 'the comment has no Decision line')) {
+        check(decision.some((line) => /accept/i.test(line)), 'the Decision line does not record the accepted risk');
+        check(!decision.some((line) => /switch|\bhold\b/i.test(line)), 'the Decision line records a switch or a hold');
+        check(decision.some((line) => /@eval-user/.test(line)), 'the Decision line does not name @eval-user');
+      }
+      check(/GHSA-r5fr-rjxr-66jc|GHSA-f23m-r3pf-42rh|GHSA-xxjr-mmjv-4gpg/.test(body), 'the comment lists none of the advisories still present');
+    }
   });
 }
