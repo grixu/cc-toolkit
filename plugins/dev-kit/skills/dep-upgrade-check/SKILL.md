@@ -31,7 +31,7 @@ Done when every unit has an exact current version, an exact target version, and 
 
 Read [`security.md`](security.md) and run its lookups for every unit's current and target versions and for the transitive versions the upgrade brings in, merging OSV.dev and the GitHub Advisory Database into one advisory list. Severity counts from moderate up. Give each unit an outcome:
 
-- **blocked**: malware, the target or a transitive version it brings in gone from the registry, or a version published less than 7 days ago that fixes no moderate-or-above advisory of the version it replaces. A blocked unit skips steps 3–5; the report names the minimum safe version instead.
+- **blocked**: malware on the target or a transitive version it brings in, the target or such a version gone from the registry, or a version published less than 7 days ago that fixes no moderate-or-above advisory of the version it replaces. A blocked unit skips steps 3–5; the report names the minimum safe version instead.
 - **escalated**: the target, or a transitive version it brings in, carries a moderate-or-above advisory. Steps 3–5 run in full, and step 4 maps each such advisory onto the usage surface.
 - **clear**: neither.
 
