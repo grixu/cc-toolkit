@@ -1,0 +1,10 @@
+{
+  "number": 12,
+  "title": "Bump mkdirp from 0.5.1 to 0.5.5",
+  "author": { "login": "app/dependabot" },
+  "headRefName": "dependabot/npm_and_yarn/mkdirp-0.5.5",
+  "baseRefName": "main",
+  "state": "OPEN",
+  "isDraft": false,
+  "body": "Bumps [mkdirp](https://github.com/isaacs/node-mkdirp) from 0.5.1 to 0.5.5.\n<details>\n<summary>Commits</summary>\n<ul>\n<li><code>049cf18</code> 0.5.5</li>\n<li><code>3e8b7ae</code> bump minimist</li>\n<li><code>8d2cd9d</code> 0.5.4</li>\n</ul>\n</details>\n\n---\n\nDependabot will resolve any conflicts with this PR as long as you don't alter it yourself."
+}

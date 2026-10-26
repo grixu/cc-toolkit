@@ -1,0 +1,12 @@
+{
+  "name": "asset-builder",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.26.0",
+  "scripts": {
+    "build": "node scripts/build.js"
+  },
+  "devDependencies": {
+    "mkdirp": "^0.5.5"
+  }
+}
