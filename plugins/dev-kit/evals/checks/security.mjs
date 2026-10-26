@@ -148,7 +148,11 @@ export function prTransitiveRerun(output, context) {
     const fixed = linesWith(run.text, /GHSA-vh95-rmgr-6w4m|CVE-2020-7598/);
     check(fixed.some((line) => /fixed/i.test(line)), 'GHSA-vh95-rmgr-6w4m is not marked fixed by upgrade');
     // mkdirp 0.5.5 declares minimist ^1.2.5, so the remedy is a refreshed minimist, not another mkdirp.
-    check(/refresh/i.test(run.text) && /minimist[^\n]*1\.2\.(?:[6-9]|\d{2,})/.test(run.text), 'no lockfile refresh of minimist to 1.2.6 or later is named');
+    // Same line: the advisory row already pairs minimist with 1.2.6, and the re-run "refreshes" its comment.
+    check(
+      linesWith(run.text, /refresh/i).some((line) => /minimist[^\n]*1\.2\.(?:[6-9]|\d{2,})/.test(line)),
+      'no lockfile refresh of minimist to 1.2.6 or later is named',
+    );
     check(
       !/minimum safe version\W{0,8}(?:is\s+)?(?:mkdirp[ @]\W{0,4})?0\.5\.5\b/i.test(run.text),
       'the minimum safe version is the PR target mkdirp 0.5.5',
