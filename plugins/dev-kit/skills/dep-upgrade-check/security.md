@@ -25,6 +25,7 @@ Merge both sources into one record per advisory, deduplicated through `aliases`,
   - Advisories at moderate or above drive the outcome.
   - Low ones appear in the report and the comment as a count only.
 - **Malware** is any `MAL-*` ID or a GHSA of type `malware`, at any severity.
+  - Malware on **current** means the installed version is already compromised. The report and the comment give it its own malware line whatever the unit's outcome, besides its `fixed by upgrade` row.
 - **Status of each advisory**, comparing current with target: `fixed by upgrade` (affects current, not target), `introduced` (affects target, not current), or `still present` (affects both). For a new transitive package every advisory is `introduced`.
 - **Missing from the registry**: the registry no longer knows the target, or a transitive version from the PR lockfile. `pnpm view <pkg>@<v> version` answers E404, and deps.dev answers `Version not found`. Registries take down malicious versions this way, often before an advisory exists, while a bot PR opened earlier still points at them. Check that the package is not private before reading the 404 this way.
 - **Release age**: the publish time of the target and of each changed or new transitive version is in `pnpm view <pkg> time --json` (key = version); other ecosystems are in `ecosystems.md`. A version under **7 days** old is in cooldown until publish time + 7 days.
@@ -38,6 +39,8 @@ Merge both sources into one record per advisory, deduplicated through `aliases`,
 - **clear**: neither.
 
 Whether the codebase reaches the vulnerable code never changes the outcome. It is information for the user's decision.
+
+With several units (a grouped PR, a monorepo), the overall outcome is the worst one: blocked over escalated over clear. Every escalated unit gets its own question, all asked in one round.
 
 **Minimum safe version**, for a blocked or escalated unit: the lowest version above current with no advisory at moderate or above and no malware, that is out of cooldown or exempt from it. Check candidates in ascending semver order with the same lookups. Say when none exists up to `latest`. It is never the target itself.
 
