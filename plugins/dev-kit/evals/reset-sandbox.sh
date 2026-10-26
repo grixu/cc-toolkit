@@ -111,6 +111,8 @@ for pkg in @biomejs/biome vite next @aws-sdk/client-s3 renovate; do
   current="$(jq -r 'to_entries
     | map(select(.key | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | .t = (.value[:19] + "Z" | fromdateiso8601))
     | map(select(.t <= now - 30 * 86400)) | max_by(.t) | .key' <<<"$times")"
+  # A target that fixes an advisory of current is exempt from the cooldown, and the answer is clear.
+  [ "$(osv_count "$pkg" "$current")" = 0 ] || continue
   published="$(jq -r --arg v "$target" '.[$v]' <<<"$times")"
   picked="$pkg"
   break
