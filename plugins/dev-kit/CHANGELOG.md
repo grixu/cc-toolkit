@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `dep-upgrade-check`: a security step before the change ledger checks the target, and every new or changed transitive version it brings in, in OSV.dev and the GitHub Advisory Database (malware included) and gives each unit `clear`, `escalated` or `blocked`; the rules and lookups live in the new `security.md`
 - `dep-upgrade-check`: `blocked` for malware, a version gone from the registry, or a version under 7 days old unless it fixes a moderate-or-above advisory of the version it replaces; the report names the minimum safe version
-- `dep-upgrade-check`: `escalated` for a moderate-or-above advisory (missing severity counts as moderate); the advisory is mapped to `file:line` uses as information that never lowers it, and the user picks accept, switch to the minimum safe version, or hold
+- `dep-upgrade-check`: `escalated` for a moderate-or-above advisory (missing severity counts as moderate); the advisory is mapped to `file:line` uses as information that never lowers it, and the user picks accept, switch to the minimum safe version, or hold; when only transitive versions pinned in the PR lockfile escalate and their declared range admits a fix, a lockfile refresh of those packages takes the place of the minimum safe version
 - `dep-upgrade-check`: a PR input always gets one security comment with the outcome, the advisories and the user's decision, updated in place on a re-run; private-registry packages are never sent to an external lookup and are listed as not checked
 - `dep-upgrade-check`: `ecosystems.md` gains the OSV and GHSA ecosystem names, the publish-time source, and the lockfile for the transitive diff per ecosystem
 

@@ -39,7 +39,9 @@ Merge both sources into one record per advisory, deduplicated through `aliases`,
 
 Whether the codebase reaches the vulnerable code never changes the outcome. It is information for the user's decision.
 
-**Minimum safe version**, for a blocked or escalated unit: the lowest version above current with no advisory at moderate or above and no malware, that is out of cooldown or exempt from it. Check candidates in ascending semver order with the same lookups. Say when none exists up to `latest`.
+**Minimum safe version**, for a blocked or escalated unit: the lowest version above current with no advisory at moderate or above and no malware, that is out of cooldown or exempt from it. Check candidates in ascending semver order with the same lookups. Say when none exists up to `latest`. It is never the target itself.
+
+**Lockfile refresh** replaces the minimum safe version when the unit is escalated only by transitive versions pinned in the PR lockfile, and the range their parent declares already admits a fixed version. A deps.dev check of the target resolves that range fresh and would return the target itself. Name each transitive package and the fixed version its range admits.
 
 ## PR comment
 
@@ -49,7 +51,7 @@ A PR input always gets one security comment, also when every unit is `clear`, an
 <!-- dev-kit:dep-upgrade-check:security -->
 ### Dependency security check: <clear | escalated | blocked>
 
-<one line per unit: `pkg current → target`: outcome and reason; for blocked/escalated the minimum safe version>
+<one line per unit: `pkg current → target`: outcome and reason; for blocked/escalated the minimum safe version or the lockfile refresh>
 
 | Advisory | Severity | Summary | Affected → fixed | vs current | Codebase use |
 |---|---|---|---|---|---|
@@ -59,7 +61,7 @@ A PR input always gets one security comment, also when every unit is `clear`, an
 - **Transitive**: advisories and cooldowns on versions the upgrade brings in, or `none`; `approximate` for a deps.dev graph.
 - **Low severity**: <count>, or `none`.
 - **Not checked**: private packages, ecosystems without a transitive source.
-- **Decision** (escalated only): <accepted risk | switched target to X | hold>, by @<login>, <date>, <reason if given>.
+- **Decision** (escalated only): <accepted risk | switched target to X | refresh <pkg> to Y in the lockfile | hold>, by @<login>, <date>, <reason if given>.
 
 Sources: OSV.dev, GitHub Advisory Database, deps.dev; queried <ISO timestamp>.
 ```

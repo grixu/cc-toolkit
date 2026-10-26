@@ -102,7 +102,7 @@ While a load-bearing unknown remains, give the worst verdict it could resolve to
 
 Then:
 
-- **Security**: the advisory table from `security.md`, the malware, registry, cooldown and provenance lines, the transitive findings, the low-severity count, and the `not checked` list. For a blocked or escalated unit, the minimum safe version.
+- **Security**: the advisory table from `security.md`, the malware, registry, cooldown and provenance lines, the transitive findings, the low-severity count, and the `not checked` list. For a blocked or escalated unit, the minimum safe version or the lockfile refresh.
 
 | Change (version) | Where used | Impact | Required fix |
 |---|---|---|---|
@@ -115,7 +115,7 @@ Then:
 
 Split the table by unit when a PR or monorepo carries several.
 
-An escalated unit ends the report with a question to the user: accept the risk, switch the target to the minimum safe version (steps 2–5 then run for it), or hold. Record the answer and any reason given.
+An escalated unit ends the report with a question to the user: accept the risk, switch the target to the minimum safe version (steps 2–5 then run for it) or, when `security.md` calls for a lockfile refresh, refresh those transitive packages, or hold. Record the answer and any reason given.
 
 For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated. A re-run updates the same comment.
 

@@ -147,6 +147,12 @@ export function prTransitiveRerun(output, context) {
     check(kept.some((line) => /still present/i.test(line)), 'GHSA-xvch-5gv4-984h is not marked still present');
     const fixed = linesWith(run.text, /GHSA-vh95-rmgr-6w4m|CVE-2020-7598/);
     check(fixed.some((line) => /fixed/i.test(line)), 'GHSA-vh95-rmgr-6w4m is not marked fixed by upgrade');
+    // mkdirp 0.5.5 declares minimist ^1.2.5, so the remedy is a refreshed minimist, not another mkdirp.
+    check(/refresh/i.test(run.text) && /minimist[^\n]*1\.2\.(?:[6-9]|\d{2,})/.test(run.text), 'no lockfile refresh of minimist to 1.2.6 or later is named');
+    check(
+      !/minimum safe version\W{0,8}(?:is\s+)?(?:mkdirp[ @]\W{0,4})?0\.5\.5\b/i.test(run.text),
+      'the minimum safe version is the PR target mkdirp 0.5.5',
+    );
     check(run.asked, 'the escalation never asked the user');
     const patched = posted('gh-posted-patch-9001');
     if (check(patched.length === 1, 'the existing security comment 9001 was not updated')) {
