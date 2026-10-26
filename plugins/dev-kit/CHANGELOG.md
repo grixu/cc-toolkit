@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-26
+
 ### Added
 - `dep-upgrade-check`: a security step before the change ledger checks the target, and every new or changed transitive version it brings in, in OSV.dev and the GitHub Advisory Database (malware included) and gives each unit `clear`, `escalated` or `blocked`; the rules and lookups live in the new `security.md`
 - `dep-upgrade-check`: `blocked` for malware, a version gone from the registry, or a version under 7 days old unless it fixes a moderate-or-above advisory of the version it replaces; the report names the minimum safe version
