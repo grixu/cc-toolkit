@@ -144,7 +144,8 @@ if [ -s "$recent" ]; then
     [ -n "$current" ] && [ "$current" != null ] || continue
     [ "$(osv_count "$pkg" "$fix")" = 0 ] || continue
     [ "$(npm view "$pkg@$current" dependencies --json | jq -S -c .)" = "$(npm view "$pkg@$fix" dependencies --json | jq -S -c .)" ] || continue
-    before="$(graph "$pkg" "$current")" && after="$(graph "$pkg" "$fix")" || continue
+    before="$(graph "$pkg" "$current")" || continue
+    after="$(graph "$pkg" "$fix")" || continue
     [ -z "$(comm -13 <(printf '%s\n' "$before") <(printf '%s\n' "$after") | sed '/^$/d')" ] || continue
     published="$(jq -r --arg v "$fix" '.[$v]' <<<"$times")"
     picked="$pkg"
