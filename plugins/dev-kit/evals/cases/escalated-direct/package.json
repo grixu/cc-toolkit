@@ -1,0 +1,9 @@
+{
+  "name": "orders-api",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.26.0",
+  "dependencies": {
+    "lodash": "^4.17.15"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "status-page",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.26.0",
+  "dependencies": {
+    "@acme/telemetry": "^1.1.0",
+    "ms": "^2.1.3"
+  }
+}

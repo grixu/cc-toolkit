@@ -1,0 +1,3 @@
+Use the `dev-kit:dep-upgrade-check` skill to check `{{input}}` for the repository at `{{checkout}}`: that directory is the repository the user is working in, so cd there first. In this environment the GitHub CLI is the executable `{{gh}}`: call it by that path wherever the skill says `gh`. Both paths are relative to the directory you start in, so resolve them to absolute paths before you cd.
+
+This run covers the security gate only: carry out step 1, step 2, the advisory mapping in step 4, and step 6. Skip step 3 (the change ledger) and step 5 (CI and installs), and say in the report that the compatibility verdict was not assessed in this run. Your final message must be the complete step-6 report, including any decision you received.

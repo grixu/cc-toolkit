@@ -1,0 +1,30 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@acme/telemetry':
+        specifier: ^1.0.0
+        version: 1.0.0
+      ms:
+        specifier: ^2.1.2
+        version: 2.1.2
+
+packages:
+
+  '@acme/telemetry@1.0.0':
+    resolution: {integrity: sha512-Qm9yZ2V0LWFjbWUtdGVsZW1ldHJ5LTEuMC4wLWludGVybmFsLXJlZ2lzdHJ5LWZpeHR1cmUtb25seQ==, tarball: https://npm.acme.internal/@acme/telemetry/-/telemetry-1.0.0.tgz}
+
+  ms@2.1.2:
+    resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
+
+snapshots:
+
+  '@acme/telemetry@1.0.0': {}
+
+  ms@2.1.2: {}

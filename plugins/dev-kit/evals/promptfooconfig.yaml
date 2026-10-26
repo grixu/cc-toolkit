@@ -1,0 +1,94 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: dev-kit plugin — dep-upgrade-check security gate (advisories, malware, cooldown, PR comment)
+
+prompts:
+  - id: file://prompts/check.txt
+    label: security-gate
+
+providers:
+  - id: file://provider.mjs
+    label: dev-kit
+    config:
+      apiKeyRequired: false
+      model: '{{ env.EVAL_TARGET_MODEL | default("claude-opus-5-5") }}'
+      permission_mode: bypassPermissions
+      allow_dangerously_skip_permissions: true
+      working_dir: ../../..
+      max_budget_usd: 3
+      # The provider enables only read-only tools unless told otherwise, and the gate runs on Bash.
+      allow_all_tools: true
+      plugins:
+        - type: local
+          # Resolved relative to this config file, not to working_dir.
+          path: ..
+      skills: all
+      setting_sources: []
+      settings: ../../../scripts/evals-isolation.json
+      # Questions get the first option unless a test names its answer in vars.answer.
+
+tests:
+  - description: 'escalated-direct: lodash 4.17.15 → 4.17.21 keeps three advisories; reachability informs, never lowers'
+    vars:
+      input: lodash@4.17.21
+      checkout: plugins/dev-kit/evals/.sandbox/escalated-direct
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:escalatedDirect
+
+  - description: 'blocked-malware: axios 1.14.1 is malware the registry took down'
+    vars:
+      input: axios@1.14.1
+      checkout: plugins/dev-kit/evals/.sandbox/blocked-malware
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:blockedMalware
+
+  - description: 'blocked-cooldown: a release under 7 days old that fixes nothing'
+    vars:
+      # Written by reset-sandbox.sh, which picks a currently fresh release.
+      input: file://.sandbox/blocked-cooldown-input.txt
+      checkout: plugins/dev-kit/evals/.sandbox/blocked-cooldown
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:blockedCooldown
+
+  - description: 'cooldown-exempt: a release under 7 days old that fixes an advisory of current passes the cooldown'
+    vars:
+      # Written by reset-sandbox.sh, which picks a fresh release that patches a recent advisory.
+      input: file://.sandbox/cooldown-exempt-input.txt
+      checkout: plugins/dev-kit/evals/.sandbox/cooldown-exempt
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:cooldownExempt
+
+  - description: 'pr-clear-private: a clear PR still gets the comment; the private package is never sent out'
+    vars:
+      input: https://github.com/example/web/pull/11
+      checkout: plugins/dev-kit/evals/.sandbox/pr-clear-private
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prClearPrivate
+
+  - description: 'pr-transitive-rerun: a vulnerable transitive minimist escalates; the existing comment is updated'
+    vars:
+      input: https://github.com/example/web/pull/12
+      checkout: plugins/dev-kit/evals/.sandbox/pr-transitive-rerun
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prTransitiveRerun
+
+  - description: 'pr-escalated-accept: the user accepts the risk; the comment records it and the target stays'
+    vars:
+      input: https://github.com/example/web/pull/13
+      checkout: plugins/dev-kit/evals/.sandbox/pr-escalated-accept
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^accept'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prEscalatedAccept

@@ -81,6 +81,8 @@
         "registry.terraform.io",
         "raw.githubusercontent.com",
         "api.github.com",
+        "api.osv.dev",
+        "api.deps.dev",
         "cloud.google.com",
         "docs.cloud.google.com"
       ]
