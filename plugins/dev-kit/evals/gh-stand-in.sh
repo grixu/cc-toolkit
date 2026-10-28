@@ -133,6 +133,23 @@ case "$path" in
     [ "$caller" = eval-user ] || { echo 'gh: Resource not accessible by integration (HTTP 403)' >&2; exit 1; }
     echo '{"login":"eval-user"}' | emit
     exit 0 ;;
+  graphql)
+    query='' n=''
+    for f in ${fields[@]+"${fields[@]}"}; do
+      case "$f" in
+        ?:query=*) query="${f#?:query=}" ;;
+        ?:number=*) n="${f#?:number=}" ;;
+      esac
+    done
+    case "$query" in *pullRequest*comments*) ;; *) fail "unsupported graphql query: $query" ;; esac
+    dir="$(pr_dir "$n")"
+    # A fixture comment without author_association is the eval user's own repository (OWNER) or a stranger's.
+    jq --arg caller "$caller" '{data: {repository: {pullRequest: {comments: {nodes: [.[] | {
+        databaseId: .id, body, createdAt: .created_at, author: {login: .user.login},
+        viewerDidAuthor: (.user.login == $caller),
+        authorAssociation: (.author_association // (if .user.login == "eval-user" then "OWNER" else "NONE" end))}]}}}}}' \
+      "$dir/comments.json" | emit
+    exit 0 ;;
   advisories*)
     [ "$method" = GET ] || fail "advisories is read-only"
     query="${path#advisories}"
@@ -174,10 +191,7 @@ case "$path" in
       echo 'gh: Not Found (HTTP 404)' >&2
       exit 1
     fi
-    if [ "$author" != "$caller" ]; then
-      echo 'gh: Resource not accessible by integration (HTTP 403)' >&2
-      exit 1
-    fi
+    # No ownership check: GitHub lets any token with write access edit anyone's comment.
     body="$(body_from_fields "$input" ${fields[@]+"${fields[@]}"})" || exit 1
     printf '%s\n' "$body" > "$sandbox/gh-posted-patch-$id.md"
     printf '{"id":%s,"html_url":"https://github.com/example/web/pull/0#issuecomment-%s"}\n' "$id" "$id" | emit
