@@ -59,7 +59,12 @@ Find the source repository with `pnpm view <pkg>@<target> repository --json` (a 
 
 1. **GitHub Releases**: `gh release list -R <owner>/<repo> -L 100 --json tagName,publishedAt,isPrerelease`, then `gh release view <tag> -R <owner>/<repo> --json body`. Tags vary: `v1.2.3`, `1.2.3`, or `<pkg>@1.2.3` in changesets monorepos.
 2. **Changelog file** at the target tag: `gh api -H "Accept: application/vnd.github.raw+json" "repos/<owner>/<repo>/contents/<path>?ref=<tag>"`, where the path is `CHANGELOG.md`, `HISTORY.md`, or the package directory's changelog.
-3. **Documentation**: the migration or upgrade guide for every major boundary crossed, found with firecrawl or context7. Release notes for a major often only link to this guide, and the guide holds the breaking list.
+3. **Documentation**: the migration or upgrade guide for every major boundary crossed. Release notes for a major often only link to this guide, and the guide holds the breaking list. Look in this order and stop at the first guide found:
+   1. a guide file in the source repository at the target tag: list the paths with `gh api "repos/<owner>/<repo>/git/trees/<tag>?recursive=1" --jq '.tree[].path'`, look for `UPGRADING.md`, `MIGRATION.md`, or `migrat*` under `docs/`, and read it as in source 2;
+   2. context7, or a `firecrawl_search` for the guide, read with `firecrawl_scrape`;
+   3. without firecrawl, `WebFetch` of the guide URL that the release notes or the package's `homepage` link to.
+
+   With none found, the ledger entry reads `no guide found`, or `no guide found (docs tools unavailable)` when neither firecrawl nor context7 is connected, and the report lists it under **Unknowns**.
 4. **Fallback when a version has neither releases nor changelog**: the registry diff, `npm diff --diff=<pkg>@<current> --diff=<pkg>@<target> '*.d.ts' package.json` (read-only, no pnpm equivalent), plus the commit range `gh api "repos/<owner>/<repo>/compare/<currentTag>...<targetTag>" --jq '.commits[].commit.message'` scanned for `BREAKING`, `!:`, `remove`, `drop`, `rename`, `deprecate`.
 
 Independently of the notes, diff the package metadata between both ends, since this is where silent breaks hide: `pnpm view <pkg>@<v> engines peerDependencies exports type main types bin --json` for `v` = current and target. A dropped subpath in `exports`, a switch to `"type": "module"`, a raised `engines.node`, or a new required peer breaks consumers without any API change. The reverse direction counts too: every installed package that declares this one as a peer (a plugin, an adapter) must admit the target in its `peerDependencies`, or it needs its own upgrade, which the report names. For a PR input, also resolve the package on the PR head's lockfile (`git fetch origin pull/<number>/head`, then `git show FETCH_HEAD:pnpm-lock.yaml`, or `pnpm why -r <pkg>` in the step-5 worktree): when old and new copies coexist and the package's classes or nominal types cross package boundaries (`instanceof`, TypeScript private members), record a `split resolution` entry whose fix is a targeted `pnpm update -r <pkg>` or a dedupe.
@@ -130,7 +135,6 @@ Split the table by unit when a PR or monorepo carries several.
 An escalated unit ends the report with a question to the user: accept the risk, switch the target to the minimum safe version (steps 2–5 then run for it) or, when `security.md` calls for a lockfile refresh, refresh those transitive packages, or hold. Record the answer and any reason given. Unattended, there is no question: the Decision stays pending or carries over, as `security.md` describes.
 
 For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated, and right away for every outcome when unattended. A re-run updates the same comment.
-
 When the user asks to apply the upgrade:
 
 - **Package + version input**: apply the fixes from the table in the working tree, then run the step-5 checks there.
