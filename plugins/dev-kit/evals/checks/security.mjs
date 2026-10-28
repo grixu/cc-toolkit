@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const sandbox = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.sandbox');
 const MARKER = '<!-- dev-kit:dep-upgrade-check:security -->';
+const REPORT_MARKER = '<!-- dev-kit:dep-upgrade-check:report -->';
 
 const read = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '');
 const posted = (prefix) =>
@@ -187,10 +188,15 @@ function unattendedEscalated(run, check, n) {
   check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
   check(!run.asked, 'an unattended run asked the user');
   const comments = posted(`gh-posted-comment-${n}-`);
-  check(comments.length <= 1, `${comments.length} comments posted on PR #${n}`);
-  if (check(comments.length === 1, `no security comment was posted on PR #${n}`)) {
-    const body = comments[0];
-    check(body.startsWith(MARKER), 'the posted comment does not start with the marker');
+  const security = comments.filter((body) => body.startsWith(MARKER));
+  const report = comments.filter((body) => body.startsWith(REPORT_MARKER));
+  check(comments.length === security.length + report.length, `a comment on PR #${n} starts with neither marker`);
+  check(security.length <= 1 && report.length <= 1, `${security.length} security and ${report.length} report comments posted on PR #${n}`);
+  if (check(report.length === 1, `no report comment was posted on PR #${n}`)) {
+    check(/escalated/i.test(report[0]), 'the report comment does not carry the security outcome');
+  }
+  if (check(security.length === 1, `no security comment was posted on PR #${n}`)) {
+    const body = security[0];
     check(linesWith(body, /^#/).some((line) => /\bescalated\b/i.test(line)), 'the comment heading is not escalated');
     const decision = linesWith(body, /Decision/i);
     check(decision.some((line) => /pending/i.test(line)), 'the Decision line is not pending');
@@ -226,7 +232,10 @@ export function prUnattendedCarry(output, context) {
       check(decision.some((line) => /accepted risk/i.test(line) && /@maintainer/.test(line)), "the maintainer's accepted-risk Decision was not kept");
       check(!decision.some((line) => /pending/i.test(line)), 'the Decision was reset to pending');
     }
-    check(posted('gh-posted-comment-17-').length === 0, 'a second comment was posted instead of updating 9020');
+    check(
+      posted('gh-posted-comment-17-').every((body) => !body.startsWith(MARKER)),
+      'a second security comment was posted instead of updating 9020',
+    );
     const block = resultBlock(run.text);
     if (check(block !== null, 'no dep-upgrade-check-result block')) {
       check(block.decision === 'carried', `result decision is '${block.decision}', expected carried`);
