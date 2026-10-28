@@ -1,8 +1,8 @@
 ---
 name: dep-upgrade-check
 description: Dependency upgrade compatibility and security check. Gates the target version on known vulnerabilities, malware, and release age, finds everything that changes between the version a codebase resolves today and the target, maps each change to where the code uses it, and returns a safe / safe with changes / breaking verdict with file:line evidence. Use when the user names a package and a target version, links a Renovate or Dependabot pull request, or asks whether bumping a dependency will break the build.
-argument-hint: "<package>[@<version>] | <pull request URL>"
-allowed-tools: Read Grep Glob Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
+argument-hint: "<package>[@<version>] | <pull request URL> [unattended]"
+allowed-tools: Read Grep Glob Bash(printenv GITHUB_ACTIONS) Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
 ---
 
 # dep-upgrade-check
@@ -12,6 +12,17 @@ Answer one question with evidence: does moving this dependency from the version 
 Two artifacts carry the analysis: the **usage surface** (every way the codebase touches the package) and the **change ledger** (every change in the range current → target). The verdict is their intersection.
 
 Input: `$ARGUMENTS`. With nothing given, ask for a package and target version or a PR link.
+
+## Invocation contract
+
+- **Unattended** when the arguments carry the literal token `unattended`, or when `printenv GITHUB_ACTIONS` prints `true`. Say in the first status line which of the two switched it on. A CI job runs the skill this way; nobody is there to answer.
+- Unattended, nothing waits for a person, and nothing that downloads or runs third-party code is offered or run:
+  - Wherever this skill says to ask, the run ends with status `stopped` and the reason instead: no input, a PR from another repository, any other ambiguity the input leaves open.
+  - An escalated unit gets no question. Its security comment goes out at once, with the Decision `pending` (`security.md` has the line), or with the decision a maintainer recorded earlier when it still applies.
+  - Step 5 reads the CI checks once and never waits for them. A check still running is reported as `pending at <ISO time>`, not as evidence.
+  - A provisional verdict names each unknown and what would settle it, without an offer.
+  - The upgrade is never applied.
+- Every run ends with the **result block** (last section), an early stop too.
 
 The commands below are pnpm/npm defaults. For a Python, Go, PHP, or Rust dependency, a container image, a GitHub Action, or a JS repo on npm or yarn, read [`ecosystems.md`](ecosystems.md) for the equivalents; every step stays the same.
 
@@ -99,7 +110,7 @@ Lead with the security outcome (`clear`, `escalated`, or `blocked` with its reas
 - **safe with changes**: affected entries exist, each with a known, bounded fix (a rename, a config key, a codemod, a peer bump).
 - **breaking**: an affected entry has no drop-in fix, the runtime or engine floor is above what the project runs, or the fix spans a redesign.
 
-While a load-bearing unknown remains, give the worst verdict it could resolve to, mark it `provisional`, name the unknown, and make the step-5 offer in the same message.
+While a load-bearing unknown remains, give the worst verdict it could resolve to, mark it `provisional`, name the unknown, and make the step-5 offer in the same message; unattended, say what would settle it instead.
 
 Then:
 
@@ -116,11 +127,31 @@ Then:
 
 Split the table by unit when a PR or monorepo carries several.
 
-An escalated unit ends the report with a question to the user: accept the risk, switch the target to the minimum safe version (steps 2–5 then run for it) or, when `security.md` calls for a lockfile refresh, refresh those transitive packages, or hold. Record the answer and any reason given.
+An escalated unit ends the report with a question to the user: accept the risk, switch the target to the minimum safe version (steps 2–5 then run for it) or, when `security.md` calls for a lockfile refresh, refresh those transitive packages, or hold. Record the answer and any reason given. Unattended, there is no question: the Decision stays pending or carries over, as `security.md` describes.
 
-For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated. A re-run updates the same comment.
+For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated, and right away for every outcome when unattended. A re-run updates the same comment.
 
 When the user asks to apply the upgrade:
 
 - **Package + version input**: apply the fixes from the table in the working tree, then run the step-5 checks there.
 - **PR input**: apply them on the PR's head branch in a worktree outside the user's checkout (the session scratchpad when there is one; `git fetch origin <headRefName>`, then `git worktree add <dir> <headRefName>`). Commit there, staging by explicit file path, run the step-5 checks there, and push only on the user's explicit go-ahead. Say that Renovate and Dependabot rebase their branches and drop commits that are not theirs, and name the bot setting that removes the need for the commit when one exists (for example Renovate `postUpdateOptions: ["pnpmDedupe"]`).
+
+## Result block
+
+End every run, an early stop too, with this block, exactly these keys, each on one line. A CI job parses it.
+
+````
+```dep-upgrade-check-result
+status: done | stopped
+security: clear | escalated | blocked | n/a
+verdict: safe | safe with changes | breaking | not assessed | n/a
+provisional: true | false
+decision: accepted | switched | refresh | hold | pending | carried | n/a
+units: <count>
+security_comment: <URL> | none
+report_comment: <URL> | none
+reason: <one line: why stopped, blocked or provisional> | none
+```
+````
+
+With several units, `security` and `verdict` take the worst unit's value, and `decision` is `pending` while any escalated unit's decision is. `verdict` is `n/a` when every unit is blocked.

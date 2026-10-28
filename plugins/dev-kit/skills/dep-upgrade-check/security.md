@@ -64,7 +64,7 @@ A PR input always gets one security comment, also when every unit is `clear`, an
 - **Transitive**: advisories and cooldowns on versions the upgrade brings in, or `none`; `approximate` for a deps.dev graph.
 - **Low severity**: <count>, or `none`.
 - **Not checked**: private packages, ecosystems without a transitive source.
-- **Decision** (escalated only): <accepted risk | switched target to X | refresh <pkg> to Y in the lockfile | hold>, by @<login>, <date>, <reason if given>.
+- **Decision** (escalated only): <accepted risk | switched target to X | refresh <pkg> to Y in the lockfile | hold>, by @<login>, <date>, <reason if given>. Unattended: `pending — unattended run; a maintainer decides (accept, switch to <minimum safe version>, refresh <pkg> to <version>, or hold)`.
 
 Sources: OSV.dev, GitHub Advisory Database, deps.dev; queried <ISO timestamp>.
 ```
@@ -74,4 +74,6 @@ Upsert:
 2. `gh api repos/<owner>/<repo>/issues/<number>/comments --paginate --jq '.[] | select(<filter> and (.body | startswith("<!-- dev-kit:dep-upgrade-check:security -->"))) | "\(.created_at) \(.id)"'`, newest first.
 3. `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> -F body=@<file>` on each ID in that order until one succeeds. A refused `PATCH` (HTTP 403 or 404) means another identity owns that comment: the `Bot` filter also matches other bots. When none succeeds or there is no ID, `gh pr comment <url> --body-file <file>`.
 
-Post it when the outcome is final: right away for clear and blocked, and after the user's decision for escalated.
+Post it when the outcome is final: right away for clear and blocked, and after the user's decision for escalated. An unattended run posts an escalated outcome right away too.
+
+**Carried decision**: bots rebase their PRs, and every push re-runs an unattended check, which must not wipe out a maintainer's answer. When the comment being updated holds a Decision other than `pending`, and the units, their targets, and the IDs of the advisories that escalate them are all unchanged, an unattended run keeps that Decision line verbatim and reports `decision: carried`. When any of them changed, the Decision goes back to `pending` and the comment says what changed.
