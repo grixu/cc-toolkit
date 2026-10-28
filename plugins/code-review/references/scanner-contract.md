@@ -67,12 +67,16 @@ it re-sends the complete list, never an "amendment" or a delta — anything the 
 leaves out never reaches the merge. It is reading the
 user's working copy, so it settles a doubt by reading the type, the signature, or the call
 site, and marks the rest `(verify)`. Read the whole changed file for context, and target
-what the change touched. The `naming & module` Scanner alone adds the **one-hop
+what the change touched. The `naming & module` Scanner adds the **one-hop
 cross-file protocol** on top of that: search the importers of each changed module and the
 imports of each module it newly imports — with the `Grep` tool, or `git grep` from `Bash` in a
 session where that tool is not handed to sub-agents — open those files at the matched lines only —
 no transitive crawl, no repo listing, no `find`; a fact beyond the hop is `(verify)`;
-it still writes nothing.
+it still writes nothing. Three other bounded read protocols sit beside it, each defined in its
+rules file: `coherence` Greps the repo for each claim's counterpart (`rules/coherence.md`),
+`assumptions` reads the lockfile and targeted lines of the installed dependency tree
+(`rules/assumptions.md`), and `tests` · mutation-gap Greps one hop for the changed unit's tests
+(`rules/readability-tests.md`). No other Scanner reads across files beyond a doubt it settles.
 
 ## The Lenses
 
