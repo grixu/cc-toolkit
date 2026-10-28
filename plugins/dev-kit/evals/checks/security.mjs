@@ -170,6 +170,38 @@ export function prTransitiveRerun(output, context) {
   });
 }
 
+// The checkout's lockfile already resolves lodash 4.17.21, so a working-tree read gives an empty range.
+export function prMergeCheckout(output, context) {
+  return grade(output, context, (run, check) => {
+    check(
+      run.bash.some((cmd) => /\bgit\b[^\n|;&]*\bshow\s+origin\/main:[^\s]*pnpm-lock\.yaml/.test(cmd)),
+      'the base lockfile was never read with git show origin/main:pnpm-lock.yaml',
+    );
+    check(/4\.17\.15\s*(?:→|->|to)\s*4\.17\.21/.test(run.text), 'the unit is not lodash 4.17.15 → 4.17.21');
+    check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+    check(
+      /already (?:carries|resolves|holds|contains|has|pins|includes)|merge commit/i.test(run.text),
+      'the report does not say the checkout already carries the upgrade',
+    );
+    check(posted('gh-posted-comment-14-').length === 1, 'no single security comment was posted on PR #14');
+  });
+}
+
+// 9011 (renovate[bot]) is the newest bot marker comment, so a run that stops at the newest one
+// never reaches its own 9010 and posts a duplicate every time.
+export function prUpsertInstallationToken(output, context) {
+  return grade(output, context, (run, check) => {
+    check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+    const patched = posted('gh-posted-patch-9010');
+    if (check(patched.length === 1, "the bot's own security comment 9010 was not updated")) {
+      check(patched[0].startsWith(MARKER), 'the updated comment does not start with the marker');
+      check(linesWith(patched[0], /^#/).some((line) => /\bescalated\b/i.test(line)), 'the updated comment heading is not escalated');
+    }
+    check(posted('gh-posted-comment-15-').length === 0, 'a new comment was posted instead of updating 9010');
+    check(posted('gh-posted-patch-9012').length === 0, "the maintainer's comment 9012 was edited");
+  });
+}
+
 export function prEscalatedAccept(output, context) {
   return grade(output, context, (run, check) => {
     check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);

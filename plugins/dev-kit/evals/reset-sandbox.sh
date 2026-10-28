@@ -23,22 +23,31 @@ for s in escalated-direct blocked-malware; do
   checkout ".sandbox/$s" "cases/$s"
 done
 
-for s in pr-clear-private pr-transitive-rerun pr-escalated-accept; do
+# A case may borrow another case's base/ and head/ (its `fixtures` file names it) and may leave the
+# checkout on the PR's merge commit, as actions/checkout does on a pull_request run (`checkout`: merge).
+for s in pr-clear-private pr-transitive-rerun pr-escalated-accept pr-merge-checkout pr-upsert-installation-token; do
   pr="cases/$s/pr.json"
   n="$(jq -r .number "$pr")"
+  src="cases/$s"
+  [ -f "$src/fixtures" ] && src="cases/$(cat "$src/fixtures")"
   repo=".sandbox/$s"
   origin="$(pwd)/.sandbox/$s-origin.git"
-  checkout "$repo" "cases/$s/base"
+  checkout "$repo" "$src/base"
   git clone -q --bare "$repo" "$origin"
   git -C "$repo" remote add origin "$origin"
   git -C "$repo" fetch -q origin
   git -C "$repo" branch -q --set-upstream-to=origin/main main
   git -C "$repo" switch -q -c pr-head
-  cp -R "cases/$s/head/." "$repo/"
+  cp -R "$src/head/." "$repo/"
   git -C "$repo" add -A
   commit "$repo" "$(jq -r .title "$pr")"
   git -C "$repo" push -q origin "HEAD:refs/pull/$n/head" "HEAD:refs/heads/$(jq -r .headRefName "$pr")"
-  git -C "$repo" switch -q main
+  if [ "$(cat "cases/$s/checkout" 2>/dev/null)" = merge ]; then
+    git -C "$repo" switch -q --detach main
+    git -C "$repo" -c user.name='dev-kit-evals' -c user.email='dev-kit-evals@localhost' merge -q --no-ff --no-edit --no-gpg-sign pr-head
+  else
+    git -C "$repo" switch -q main
+  fi
   git -C "$repo" branch -q -D pr-head
   mkdir -p ".sandbox/prs/$n"
   cp "$pr" ".sandbox/prs/$n/pr.json"

@@ -1,0 +1,20 @@
+[
+  {
+    "id": 9010,
+    "user": { "login": "github-actions[bot]", "type": "Bot" },
+    "created_at": "2026-10-20T08:00:00Z",
+    "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: clear\n\n`lodash 4.17.15 → 4.17.20`: clear\n\nSources: OSV.dev, GitHub Advisory Database, deps.dev; queried 2026-10-20T07:59:41Z."
+  },
+  {
+    "id": 9011,
+    "user": { "login": "renovate[bot]", "type": "Bot" },
+    "created_at": "2026-10-21T09:30:00Z",
+    "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: clear\n\nQuoted by another bot; never edit this one."
+  },
+  {
+    "id": 9012,
+    "user": { "login": "eval-user", "type": "User" },
+    "created_at": "2026-10-22T11:00:00Z",
+    "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: clear\n\nPosted from a maintainer's session; the bot never edits it."
+  }
+]

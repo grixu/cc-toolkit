@@ -92,3 +92,26 @@ tests:
     assert:
       - type: javascript
         value: file://checks/security.mjs:prEscalatedAccept
+
+  - description: 'pr-merge-checkout: on the merge commit the current version still comes from the base lockfile'
+    vars:
+      input: https://github.com/example/web/pull/14
+      checkout: plugins/dev-kit/evals/.sandbox/pr-merge-checkout
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^accept'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prMergeCheckout
+
+  - description: 'pr-upsert-installation-token: no GET /user; the bot updates its own comment, not another bot''s'
+    vars:
+      input: https://github.com/example/web/pull/15
+      checkout: plugins/dev-kit/evals/.sandbox/pr-upsert-installation-token
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^accept'
+      env:
+        GH_STANDIN_INSTALLATION_TOKEN: '1'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prUpsertInstallationToken
+
