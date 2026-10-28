@@ -1282,3 +1282,47 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:notFlaggedNames
         config: { patterns: ["manual", 'onRequest', 'once|closing'], min: 2 }
+
+  - description: 'eval-38 mutation-gap-recall (tests-mutation/pricing.ts + pricing.test.ts)'
+    prompts: [quality-track]
+    vars:
+      # tests-mutation/DEFECTS.md lists the three surviving mutants and the pinned bound beside them.
+      file: plugins/code-review/evals/cases/tests-mutation/pricing.ts plugins/code-review/evals/cases/tests-mutation/pricing.test.ts
+    assert:
+      - type: regex
+        value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
+      # Collapse repeats makes the three gaps one bullet or three; either way each line is cited.
+      # inputs far from the boundary
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: mutation-gap, under: pricing.ts, lines: [23], severity: medium }
+      # the guard no test rejects through
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: mutation-gap, under: pricing.ts, lines: [27] }
+      # both operands always agree
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: mutation-gap, under: pricing.ts, lines: [32] }
+      # the fix names the just-below-threshold case, which no test or source line holds
+      - type: regex
+        value: '4[_,\s]?999'
+      # the bulk bound is pinned at 10 and 9
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: mutation-gap, mentions: [BULK_MIN_QTY, 'qty >= '], siteOnly: true }
+
+  - description: 'eval-39 mutation-gap-calibration (tests-mutation/loyalty.ts + loyalty.test.ts)'
+    prompts: [quality-track]
+    vars:
+      file: plugins/code-review/evals/cases/tests-mutation/loyalty.ts plugins/code-review/evals/cases/tests-mutation/loyalty.test.ts
+    assert:
+      - type: regex
+        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: mutation-gap }
+      # the names claim the boundaries the assertions check
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { rule: test-fidelity }
