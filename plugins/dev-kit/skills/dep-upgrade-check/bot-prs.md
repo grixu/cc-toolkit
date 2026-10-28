@@ -5,7 +5,7 @@ Two sources, with different trust:
 - **The diff is authoritative** for what changes. `gh pr diff <url> --name-only` lists the touched manifests and lockfiles; `gh pr diff <url>` shows each version hunk. Take every unit's `current → target` from the manifest and lockfile hunks.
 - **The body is an index**, useful for the release-notes links it embeds, but incomplete: both bots truncate long notes, and a bot PR that skips several versions often shows only the newest few. Step 3 of the skill still fetches the full notes for every version in the range.
 
-`gh pr view <url> --json title,author,headRefName,baseRefName,body,files` gives the rest. The analysis runs against the base branch's code, so when the local checkout sits on another branch, say which ref the usage surface was read from.
+`gh pr view <url> --json title,author,headRefName,baseRefName,body,files` gives the rest. Every unit's current version comes from the base branch's lockfile (step 1 of the skill), whatever the local checkout holds. The usage surface may be read from the base or from the PR's merge commit, which differs from the base only in what the PR touches. Say which ref it was read from.
 
 ## Renovate
 
