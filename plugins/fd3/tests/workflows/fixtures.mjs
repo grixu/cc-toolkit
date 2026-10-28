@@ -83,7 +83,7 @@ export const implementDefaults = () => [
   ['toolchain-touch:', { touched: false }],
   ['refresh:', { refreshed: true }],
   [/^ci:/, ciPass],
-  [/^cr-prep:.*:delta$/, prepReady(['simplicity'])],
+  [/^cr-prep:.*:delta$/, prepReady(['correctness', 'security'])],
   ['cr-prep:', prepReady()],
   [/^cr:.*:all$/, scannedAll],
   ['cr:', scanned],

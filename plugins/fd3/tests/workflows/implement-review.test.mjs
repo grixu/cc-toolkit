@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runWorkflow } from './harness.mjs'
-import { implementArgs, implementDefaults, finding, line, crMerged } from './fixtures.mjs'
+import { implementArgs, implementDefaults, finding, line, crMerged, prepReady } from './fixtures.mjs'
 
 const F = {
   plain: finding({ location: 'src/plain.ts:L1' }),
@@ -138,6 +138,13 @@ test('delta review findings, applied or not, go to a human — never a second fi
   assert.equal(r.result.branches[0].review.delta.findings, 1)
   assert.ok(r.result.hil.some((h) => h.reason.includes(line(deltaFinding))))
   assert.ok(!r.result.hil.some((h) => h.reason.includes(line(F.nit))))
+})
+
+test('the delta review reads the fixes with the correctness and security lenses only', async () => {
+  const r = await runReview(true, [F.plain], [['cr-prep:app:feat-x:delta', prepReady(['simplicity', 'correctness', 'security', 'spec'])]])
+  assert.match(r.call('cr-prep:app:feat-x:delta').prompt, /narrow the review to the correctness and security lenses/)
+  assert.deepEqual(r.callsMatching(/^cr:app:feat-x:delta:/).map((c) => c.label), ['cr:app:feat-x:delta:correctness', 'cr:app:feat-x:delta:security'])
+  assert.doesNotMatch(r.call('cr-prep:app:feat-x:review').prompt, /narrow the review/)
 })
 
 test('an empty delta review is not a dead review', async () => {

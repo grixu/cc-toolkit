@@ -26,7 +26,8 @@ test('happy path: two waves, merge, full CI, review with a fix, delta review, fi
     'cr-merge:app:feat-x:review',
     'fix-cr:app:feat-x',
     'cr-prep:app:feat-x:delta',
-    'cr:app:feat-x:delta:simplicity',
+    'cr:app:feat-x:delta:correctness',
+    'cr:app:feat-x:delta:security',
     'cr-merge:app:feat-x:delta',
     'ci:app:feat-x:final',
   ])

@@ -6,7 +6,7 @@ export const meta = {
     { title: 'Recon', detail: 'toolchain detection and a baseline run per repository, unless an earlier report hands them over' },
     { title: 'Implement', detail: 'parallel waves gated by the depends-on graph, each wave merged into its target branch' },
     { title: 'Repair', detail: 'mode "repair": one agent per branch, the HIL decision applied verbatim; a stacked branch after its base' },
-    { title: 'Validate', detail: 'CI, then a code-review pass (on a repair: a decision-conformance check and a correctness/security review of the repair delta) with its fixes, one branch at a time' },
+    { title: 'Validate', detail: 'CI, then a code-review pass with its fixes and a correctness/security review of those fixes (on a repair: a decision-conformance check and a correctness/security review of the repair delta), one branch at a time' },
   ],
 }
 
@@ -1170,7 +1170,7 @@ const narrowRule = (dir, only) =>
         ``,
         `When the skill returns status "ready", narrow the review to the ${only.join(' and ')} lenses: in`,
         `${dir}/scope.json, move every entry of \`lenses.active\` naming another lens to \`lenses.inactive\``,
-        `as { "lens": <its name>, "reason": "not judged on a repair" }, changing nothing else in the file.`,
+        `as { "lens": <its name>, "reason": "not judged on a fix" }, changing nothing else in the file.`,
         `Then return active and inactive as the file reads after that edit. Run no lens yourself.`,
       ]
     : []
@@ -1394,9 +1394,9 @@ const findingLine = (f) => `${f.location} — ${f.family} · ${f.rule} (${f.seve
 const keptStatus = repairMode ? 'the task files keep their status' : 'the branch keeps status merged'
 const heldNote = gated ? `${keptStatus} until a repair settles it` : 'left for the end-of-run decision; the branch is not held on it'
 
-// A repair is a few lines a human decided; the craft lenses returned comment churn on it that fed
-// the next repair, so only the lenses that catch a real defect read it.
-const REPAIR_LENSES = ['correctness', 'security']
+// A repair or a review fix is a few lines aimed at a decision already made; the craft lenses returned
+// comment churn on them that went to a human, so only the lenses that catch a real defect read them.
+const FIX_LENSES = ['correctness', 'security']
 
 const CONFORMANCE_RESULT = {
   type: 'object',
@@ -1644,7 +1644,7 @@ const reviewImplemented = async (unit, tag, summary) => {
       if (!fix || !fix.fromSha) {
         dead = `the review fixes have no verdict: the fix agent ${fix ? 'did not report its starting commit' : 'returned no result after a retry'}`
       } else {
-        const delta = await runReview(unit, fix.fromSha, 'delta', tag)
+        const delta = await runReview(unit, fix.fromSha, 'delta', tag, FIX_LENSES)
         summary.review.delta = { context: delta.dir, report: delta.report || null }
         if (delta.dead && !delta.empty) {
           dead = `the delta review of the fixes did not run: ${delta.dead}`
@@ -1675,7 +1675,7 @@ const reviewRepaired = async (unit, tag, summary, reviewFrom, ciFixes, baseMerge
   if (!unit.fromSha) {
     dead = 'the repair agent did not report its starting commit, so the repair delta is unknown'
   } else {
-    const delta = await runReview(unit, reviewFrom, 'repair', tag, REPAIR_LENSES)
+    const delta = await runReview(unit, reviewFrom, 'repair', tag, FIX_LENSES)
     summary.review = { context: delta.dir, report: delta.report || null }
     // A repair that reports a decision applied yet changed nothing against its starting commit
     // left the decision off the branch, so marking its task files would close work never done.
