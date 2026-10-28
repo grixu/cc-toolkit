@@ -73,7 +73,7 @@ Upsert:
 1. List the PR's marker comments with GraphQL, which tells which ones this token wrote whatever kind of token it is (`GET /user` fails for `GITHUB_TOKEN` and GitHub App tokens):
    `gh api graphql -F owner=<owner> -F repo=<repo> -F number=<number> -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){comments(last:100){nodes{databaseId viewerDidAuthor authorAssociation createdAt body}}}}}' --jq '.data.repository.pullRequest.comments.nodes[] | select(.body | startswith("<!-- dev-kit:dep-upgrade-check:security -->"))'`
 2. The newest one with `viewerDidAuthor` true is ours: `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<databaseId> -F body=@<file>`. Never edit another author's marker comment, even though a token with write access can.
-3. With none of ours, `gh pr comment <url> --body-file <file>`.
+3. With none of ours, create it over REST: `gh api repos/<owner>/<repo>/issues/<number>/comments -F body=@<file> --jq .html_url`, which prints the new comment's URL for the result block. A CI token with `issues: write` and only `pull-requests: read` can create it this way; never use `gh pr comment`, whose GraphQL mutation is not known to accept that token.
 
 Post it when the outcome is final: right away for clear and blocked, and after the user's decision for escalated. An unattended run posts an escalated outcome right away too.
 

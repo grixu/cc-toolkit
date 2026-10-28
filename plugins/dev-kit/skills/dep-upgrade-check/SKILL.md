@@ -2,7 +2,7 @@
 name: dep-upgrade-check
 description: Dependency upgrade compatibility and security check. Gates the target version on known vulnerabilities, malware, and release age, finds everything that changes between the version a codebase resolves today and the target, maps each change to where the code uses it, and returns a safe / safe with changes / breaking verdict with file:line evidence. Use when the user names a package and a target version, links a Renovate or Dependabot pull request, or asks whether bumping a dependency will break the build.
 argument-hint: "<package>[@<version>] | <pull request URL> [unattended]"
-allowed-tools: Read Grep Glob Write Bash(printenv GITHUB_ACTIONS) Bash(git fetch *) Bash(git show *) Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh run view *) Bash(gh api *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) Bash(curl -s https://api.osv.dev/*) Bash(curl -s https://api.deps.dev/*) WebFetch mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
+allowed-tools: Read Grep Glob Write Bash(printenv GITHUB_ACTIONS) Bash(git fetch *) Bash(git show *) Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh run view *) Bash(gh api *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) Bash(curl -s https://api.osv.dev/*) Bash(curl -s https://api.deps.dev/*) WebFetch mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
 ---
 
 # dep-upgrade-check
