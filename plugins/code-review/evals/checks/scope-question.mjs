@@ -1,8 +1,9 @@
 // start-cr Step 1 with no path arguments over a branch that has committed and uncommitted changes:
 // whether the Committed/Uncommitted/Both question is asked, and the scope the run settles on.
-// vars.expect is `skip` (the uncommitted side holds only skipped kinds: no question, committed
-// scope, those files named as skipped) or `ask` (a judged file on each side, or vars.spec passed as
-// --spec, whose lens reviews the skipped side: the question is due).
+// vars.expect is `skip` (the uncommitted side holds only a lockfile and generated output: no
+// question, committed scope, those files named as skipped) or `ask` (a judged file on each side,
+// Markdown and JSON that coherence grades, or that same lockfile and generated side with vars.spec
+// passed as --spec, whose lens reviews it: the question is due).
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +39,7 @@ export default (output, context) => {
   const scope = field(output, 'scope').toLowerCase();
   const files = field(output, 'files');
   const skipped = field(output, 'skipped');
-  const skippedKinds = ['CLAUDE.md', 'docs/notes.md', '.claude/settings.json'];
+  const skippedKinds = ['pnpm-lock.yaml', 'dist/order-service.js'];
 
   if (context.vars.expect === 'skip') {
     check(asked.length === 0, `the scope question was asked: ${asked.map(({ q }) => q.options.map((o) => o.label).join(' | ')).join('; ')}`);
@@ -67,7 +68,11 @@ export default (output, context) => {
 
   check(!calls.some((c) => c.name === 'Agent'), 'Step 1 dispatched an agent');
   const status = execFileSync('git', ['-C', checkout, 'status', '--porcelain'], { encoding: 'utf8' }).trimEnd();
-  const expected = [' M CLAUDE.md', '?? .claude/', '?? docs/', ...(context.vars.expect === 'skip' || spec ? [] : ['?? src/discount-limits.ts'])].join('\n');
+  const expected = (
+    context.vars.expect === 'skip' || spec
+      ? [' M dist/order-service.js', ' M pnpm-lock.yaml']
+      : [' M CLAUDE.md', '?? .claude/', '?? docs/', '?? src/discount-limits.ts']
+  ).join('\n');
   check(status === expected, `the checkout's working tree changed: ${JSON.stringify(status)}`);
   const branch = execFileSync('git', ['-C', checkout, 'branch', '--show-current'], { encoding: 'utf8' }).trim();
   check(branch === 'feat/order-discount', `the checkout left its branch for '${branch}'`);

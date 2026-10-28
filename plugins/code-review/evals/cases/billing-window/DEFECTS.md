@@ -5,7 +5,7 @@ eval-23/24 head (which adds `src/order-sync.ts`, the `correctness/` fixture), an
 that sets the term to `60 * DAY_MS` at L19 and gives `isStale` a `now = Date.now()` default at
 `src/order-sync.ts:L52`, then one commit that puts `head.ts` in place and restores L52. The head's
 tree is what it was without the earlier revision. The gh stand-in names `colleague` as the author, so the run is in
-reviewer mode. `lenses/` holds the files the eight active Scanners would have written into
+reviewer mode. `lenses/` holds the files the ten active Scanners would have written into
 `.sandbox/pr9-ctx`; neither it nor this file reaches the checkout.
 
 ## The PR's hunks

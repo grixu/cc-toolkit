@@ -179,3 +179,16 @@ test('cr-merge prompt asks for the routing flags the filters read', async () => 
   assert.match(p, /specBound=true/)
   assert.equal(r.call('cr-merge:app:feat-x:review').schema, 'CR_MERGE_RESULT')
 })
+
+test('coherence and assumptions findings pass the cr-merge family enum and are fixed like any lens', async () => {
+  const found = [
+    finding({ family: 'coherence', rule: 'doc-drift', location: 'docs/flags.md:L3' }),
+    finding({ family: 'assumptions', rule: 'version-skew', location: 'src/dep.ts:L9' }),
+  ]
+  const r = await runReview(true, found)
+  const { family } = r.call('cr-merge:app:feat-x:review').opts.schema.properties.findings.items.properties
+  for (const f of found) {
+    assert.ok(family.enum.includes(f.family), f.family)
+    assert.ok(r.call('fix-cr:app:feat-x').prompt.includes(`- ${line(f)}`), f.family)
+  }
+})

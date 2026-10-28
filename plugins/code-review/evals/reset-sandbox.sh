@@ -21,7 +21,8 @@ git -C "$repo" -c user.name='cr-evals' -c user.email='cr-evals@localhost' commit
 
 commit() { git -C "$1" -c user.name='cr-evals' -c user.email='cr-evals@localhost' commit -q -m "$2" --no-gpg-sign; }
 
-# eval-22: a commit whose every file scope.md skips, so cr-prepare must say empty, not ready.
+# eval-22: a commit whose every file scope.md skips, all of them prose or config data coherence
+# reads, so cr-prepare must say ready with coherence the only active lens.
 skipped=.sandbox/headless-skipped
 mkdir -p "$skipped/docs"
 git -C "$skipped" init -q -b main
@@ -171,7 +172,7 @@ mkdir -p "$pr9_ctx"
 cp cases/billing-window/lenses/*.md "$pr9_ctx/"
 printf 'No project convention files: no CODING_STANDARDS.md, CLAUDE.md, AGENTS.md, CONTRIBUTING.md, .cursor/rules or .claude/rules at the repository root or along the reviewed paths.\n' > "$pr9_ctx/conventions.md"
 printf 'none\n' > "$pr9_ctx/standards.md"
-pr9_lenses="$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security performance; do printf '      { "lens": "%s", "files": ["src/billing-window.ts", "src/order-sync.ts"] },\n' "$l"; done)"
+pr9_lenses="$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security coherence assumptions performance; do printf '      { "lens": "%s", "files": ["src/billing-window.ts", "src/order-sync.ts"] },\n' "$l"; done)"
 cat > "$pr9_ctx/scope.json" <<EOF
 {
   "checkout": "$(pwd)/$pr.worktrees/cr-pr-9",
@@ -240,7 +241,7 @@ cat > "$mailer_ctx/scope.json" <<EOF
   "spec_focus": null,
   "lenses": {
     "active": [
-$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security; do lens "$l"; printf ',\n'; done; lens performance)
+$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security coherence assumptions; do lens "$l"; printf ',\n'; done; lens performance)
     ],
     "inactive": [{ "lens": "spec", "reason": "no spec named" }]
   }
@@ -257,9 +258,12 @@ git -C "$marker" add -A
 commit "$marker" 'feat: order cancellation'
 
 # evals 29-30: a branch with one committed source change above origin/main and an uncommitted side.
-# In scope-skip that side holds only files scope.md skips, so Step 1 has nothing to ask; scope-mixed
-# adds an untracked .ts, so the scope question is due. eval-33's scope-spec is scope-skip plus a spec
-# on the base that the run gets as --spec: the spec lens reviews skipped files, so the question is due.
+# In scope-skip that side is a lockfile bump and a rebuilt dist/ file, which no lens grades, so Step 1
+# has nothing to ask. In scope-mixed it is Markdown and JSON, which coherence grades, plus an
+# untracked .ts, so the question is due. eval-33's scope-spec is scope-skip plus a spec on the base
+# that the run gets as --spec: the spec lens reviews the lockfile and dist/ side, so only the spec
+# makes the question due.
+lockfile() { printf "lockfileVersion: '9.0'\n\nimporters:\n\n  .:\n    devDependencies:\n      typescript:\n        specifier: ^5.6.0\n        version: %s\n" "$1"; }
 for name in scope-skip scope-mixed scope-spec; do
   dir=.sandbox/$name
   mkdir -p "$dir/src"
@@ -267,10 +271,15 @@ for name in scope-skip scope-mixed scope-spec; do
   # shellcheck disable=SC2016 # backticks are literal Markdown
   printf '# orders service\n\nRun the tests with `pnpm test`.\n' > "$dir/CLAUDE.md"
   printf 'export function orderTotal(lines: { price: number; qty: number }[]): number {\n  return lines.reduce((sum, l) => sum + l.price * l.qty, 0);\n}\n' > "$dir/src/order-service.ts"
+  if [ "$name" != scope-mixed ]; then
+    mkdir -p "$dir/dist"
+    lockfile 5.6.3 > "$dir/pnpm-lock.yaml"
+    printf 'export function orderTotal(lines) {\n    return lines.reduce((sum, l) => sum + l.price * l.qty, 0);\n}\n' > "$dir/dist/order-service.js"
+  fi
   if [ "$name" = scope-spec ]; then
     mkdir -p "$dir/specs"
     # shellcheck disable=SC2016 # backticks are literal Markdown
-    printf '# Order discounts\n\n1. `discountedTotal(lines, percent)` returns the order total reduced by `percent` per cent.\n2. `CLAUDE.md` tells contributors that discounts are percentages, never absolute amounts.\n' > "$dir/specs/order-discount.md"
+    printf '# Order discounts\n\n1. `discountedTotal(lines, percent)` returns the order total reduced by `percent` per cent.\n2. The published build `dist/order-service.js` exports `discountedTotal`.\n3. The project builds with TypeScript 5.7.\n' > "$dir/specs/order-discount.md"
   fi
   git -C "$dir" add -A
   commit "$dir" 'base'
@@ -286,6 +295,11 @@ export function discountedTotal(lines: { price: number; qty: number }[], percent
 TS
   git -C "$dir" add -A
   commit "$dir" 'feat: discounted order totals'
+  if [ "$name" != scope-mixed ]; then
+    lockfile 5.7.2 > "$dir/pnpm-lock.yaml"
+    printf 'export function discountedTotal(lines, percent) {\n    return orderTotal(lines) * (1 - percent / 100);\n}\n' >> "$dir/dist/order-service.js"
+    continue
+  fi
   printf '\nDiscounts are percentages, never absolute amounts.\n' >> "$dir/CLAUDE.md"
   mkdir -p "$dir/docs" "$dir/.claude"
   printf 'Open question: do discounts stack with vouchers?\n' > "$dir/docs/notes.md"
@@ -293,4 +307,33 @@ TS
 done
 printf 'export const MAX_DISCOUNT_PERCENT = 50;\n' > .sandbox/scope-mixed/src/discount-limits.ts
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec"
+# evals 34-35: a repository of its own, so the lens Greps counterparts where DEFECTS.md is absent.
+coherence=.sandbox/coherence
+mkdir -p "$coherence"
+cp -R cases/coherence/. "$coherence/"
+rm "$coherence/DEFECTS.md"
+git -C "$coherence" init -q -b main
+git -C "$coherence" add -A
+commit "$coherence" 'feat: notification channels, quiet hours and the outbox'
+
+# evals 36-37: a repository whose made-up dependencies are installed but gitignored, as a real
+# install is, so the lens has to find the evidence in node_modules on its own.
+assumptions=.sandbox/assumptions
+mkdir -p "$assumptions"
+cp -R cases/assumptions/. "$assumptions/"
+rm -r "$assumptions/DEFECTS.md" "$assumptions/vendor"
+printf 'node_modules/\ndist/\n' > "$assumptions/.gitignore"
+git -C "$assumptions" init -q -b main
+git -C "$assumptions" add -A
+commit "$assumptions" 'feat: invoice PDFs, dashboard audits and the audit worker'
+mkdir -p "$assumptions/node_modules"
+cp -R cases/assumptions/vendor/@acme "$assumptions/node_modules/"
+
+# eval-41: the assumptions checkout again, its installed fetchkit carrying instructions aimed at
+# an AI reviewer in the README and at the end of the redirect handler (injection/DEFECTS.md).
+injection=.sandbox/assumptions-injection
+cp -R "$assumptions" "$injection"
+cp cases/injection/fetchkit-README.md "$injection/node_modules/@acme/fetchkit/README.md"
+cat cases/injection/redirect-note.js >> "$injection/node_modules/@acme/fetchkit/lib/redirect.js"
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions, $(pwd)/$injection"

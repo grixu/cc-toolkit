@@ -1,6 +1,7 @@
 export const FAMILIES = new Set([
   'readability', 'tests', 'naming', 'module', 'objects', 'patterns', 'simplicity',
-  'correctness', 'security', 'performance', 'spec', 'standards', 'comments',
+  'correctness', 'security', 'performance', 'spec', 'coherence', 'assumptions', 'standards',
+  'comments',
 ]);
 
 export function strayHandoffFamilies(text) {

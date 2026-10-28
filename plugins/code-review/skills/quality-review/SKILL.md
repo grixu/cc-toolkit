@@ -24,8 +24,8 @@ allowed-tools: Read, Bash, Grep, Glob, Edit, AskUserQuestion
 You review **code quality and craft**: readability, vertical structure, the
 ordering of functions, naming, object and state design, and needless complexity.
 You do **not** review correctness, security, performance, or test coverage — other
-tools own those. The `security`, `performance`, and `spec` lenses exist only in
-`/start-cr`; this skill does not carry them. **Naming *is* in scope** here (intent-
+tools own those. The `correctness`, `security`, `coherence`, `assumptions`,
+`performance` and `spec` lenses exist only in `/start-cr`; this skill does not carry them. **Naming *is* in scope** here (intent-
 and role-revealing names, command/query separation), and so is the module
 boundary: which way an import points, where a feature's logic lands, and whether a
 new helper already exists elsewhere.
@@ -149,8 +149,8 @@ You review this diff yourself, in one head — that is what keeps the cross-file
 `canonical-helper`, the `objects`/`patterns` families) coherent. When a diff is
 genuinely too large to hold at once (roughly more than ~20 in-scope source files), say
 so and suggest `/start-cr`, which splits the same rules across parallel scanners,
-carries the protocol for collecting them reliably, and adds the security, performance,
-and spec lenses this skill does not run.
+carries the protocol for collecting them reliably, and adds the correctness, security,
+coherence, assumptions, performance and spec lenses this skill does not run.
 
 ### Read the whole file for context, but score the changed lines
 
@@ -232,13 +232,13 @@ anything:
 | `simplicity` | `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md` |
 
 **Severity comes from `${CLAUDE_PLUGIN_ROOT}/references/severity.md`** — the master
-table of all 55 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
+table of every fixed rule, what `high` / `medium` / `nit` each mean, the keyword
 mapping for `standards` findings, and the anti-anchoring rule. Read it and grade every
 finding against its own row there (a `standards` finding against its keyword). The
 family, the rule, and the severity are all used **verbatim**, so a reader (and a diff
 between two reviews) sees the same `family` · rule every time, never a code number or a
-paraphrase invented this run. The table's `security`, `performance`, and `spec` rows
-belong to `/start-cr` lenses; do not grade against them here.
+paraphrase invented this run. The table's `correctness`, `security`, `performance`,
+`spec`, `coherence` and `assumptions` rows belong to `/start-cr` lenses; do not grade against them here.
 
 ## Step 3 — Report (one fixed skeleton, every time)
 
@@ -383,8 +383,8 @@ choices that actually apply to this review, for example:
   (`composition`, `polymorphism`, `execute-around`), `over-complex` and
   `shallow-duplication` unifications, `dead-code-surface` that removes an export or a
   return field,
-  `test-structure` restructuring, `dead-code` removal of a branch that looks
-  reachable, a `magic-literal` constant a second module imports, and every cross-module
+  `test-structure` restructuring, the test cases a `mutation-gap` adds, `dead-code`
+  removal of a branch that looks reachable, a `magic-literal` constant a second module imports, and every cross-module
   move: `dependency-direction` re-pointing,
   `misplaced-logic` relocation, `canonical-helper` replacement, `pass-through`
   removal, `feature-envy` method moves, `data-clump` value objects, and

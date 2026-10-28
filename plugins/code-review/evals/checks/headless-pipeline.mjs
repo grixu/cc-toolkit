@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { strayHandoffFamilies } from './handoff-families.mjs';
 
-const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'correctness', 'security', 'performance', 'spec'];
+const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'correctness', 'security', 'coherence', 'assumptions', 'performance', 'spec'];
 const FINDING = /^- (high|medium|nit) · [\w-]+ · [\w-]+ · \S+:L\d+(?:-\d+)? · (safe|structural|report-only)\b.* — /m;
 const RECONCILIATION = /^Reconciliation: (\d+) handoffs \+ (\d+) candidates → (\d+) merged · (\d+) own bullet · (\d+) boy-scout · (\d+) Not flagged; (\d+) primary dropped · (\d+) passed on\s*$/m;
 
@@ -64,7 +64,7 @@ export default (output, context) => {
     const scope = JSON.parse(fs.readFileSync(scopePath, 'utf8'));
     const active = scope.lenses.active.map((l) => l.lens);
     const named = [...active, ...scope.lenses.inactive.map((l) => l.lens)].sort();
-    check(JSON.stringify(named) === JSON.stringify([...LENSES].sort()), `scope.json does not account for all nine lenses once: ${named.join(', ')}`);
+    check(JSON.stringify(named) === JSON.stringify([...LENSES].sort()), `scope.json does not account for every lens once: ${named.join(', ')}`);
     check(!active.includes('spec'), 'the spec lens is active with no spec named');
     check(scope.files.map((f) => f.path).sort().join() === 'src/quality-recall.ts,src/security-recall.ts', `judged files are not the committed change: ${scope.files.map((f) => f.path).join(', ')}`);
     for (const lens of active) {

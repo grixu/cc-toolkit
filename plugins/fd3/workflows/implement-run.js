@@ -946,7 +946,7 @@ const SCAN_ALL_RESULT = {
 }
 
 const SEVERITIES = ['high', 'medium', 'nit', 'comment']
-const FAMILIES = ['readability', 'tests', 'naming', 'module', 'objects', 'patterns', 'simplicity', 'security', 'performance', 'correctness', 'spec', 'standards', 'comments']
+const FAMILIES = ['readability', 'tests', 'naming', 'module', 'objects', 'patterns', 'simplicity', 'security', 'performance', 'correctness', 'coherence', 'assumptions', 'spec', 'standards', 'comments']
 
 const CR_MERGE_RESULT = {
   type: 'object',

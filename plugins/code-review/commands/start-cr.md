@@ -1,10 +1,10 @@
 ---
 description: >-
-  Explicit-invocation orchestrator that runs the nine review lenses (comments,
+  Explicit-invocation orchestrator that runs the review lenses (comments,
   readability & tests, naming & module, objects & patterns, simplicity & types,
-  correctness, security, performance, spec) in parallel over a change and merges them
+  correctness, security, coherence, assumptions, performance, spec) in parallel over a change and merges them
   into one per-file report. Lenses are gated by the input, never by the user:
-  correctness and security are always on, performance runs only when executable source files are in scope,
+  correctness, security, coherence and assumptions are always on, performance runs only when executable source files are in scope,
   spec only when a spec file is named — by `--spec <path>`, or by the user accepting
   the one the diff itself carries. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
@@ -16,7 +16,7 @@ allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
 
-# start-cr — one review, up to nine parallel lenses
+# start-cr — one review, every active lens in parallel
 
 You are the **Orchestrator**. You resolve scope **once**, resolve the **active lens
 set** once, dispatch **one Scanner per active Lens** in parallel, merge their
@@ -26,8 +26,8 @@ and only for what the user picks.
 
 This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
-user choice: the five craft Lenses, `correctness` and `security` always run (`objects & patterns`
-except over infrastructure code alone), `performance` runs
+user choice: the five craft Lenses, `correctness`, `security`, `coherence` and `assumptions`
+always run (`objects & patterns` except over infrastructure code alone), `performance` runs
 when executable source is in scope, `spec` when a spec file is named. For a partial
 review the user invokes `/code-review:comment-review` or `/code-review:quality-review` directly.
 
@@ -119,15 +119,17 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
     `--base <alternate.ref>` — do not report "nothing to review" over it. With no
     `alternate`, tell the user there is nothing to review and **stop**;
   - exactly one non-zero → use that scope automatically;
-  - both non-zero, but every file on one side is one `${CLAUDE_PLUGIN_ROOT}/references/scope.md`
-    **skips** (Markdown, JSON, plain text, a lockfile…) → use the other side without
-    asking: a question whose one answer grades nothing only holds the review up. Say which side
-    you review in one line, and name the other side's files once in the report, in the `Tally`'s
-    `Skipped:` clause (`CLAUDE.md, docs/notes.md (uncommitted, skipped kinds)`), and in the
+  - both non-zero, but every file on one side is a lockfile or generated output — the skipped
+    files `${CLAUDE_PLUGIN_ROOT}/references/scope.md` keeps from `coherence` too → use the other
+    side without asking: a question whose one answer grades nothing only holds the review up. Say
+    which side you review in one line, and name the other side's files once in the report, in the
+    `Tally`'s `Skipped:` clause (`pnpm-lock.yaml (uncommitted, skipped kinds)`), and in the
     context directory's `skipped`. This does not hold when a spec is active — `--spec` resolved
     to a readable file, or that side holds a document the spec offer below would make: the `spec`
-    Lens reviews every skipped file, so every answer grades something. Ask as below;
-  - both non-zero, with a file on each side that the review would judge → ask with **one**
+    Lens reviews lockfiles and generated output too, so every answer grades something. Ask as below. A side of
+    other skipped files (Markdown, JSON, YAML, plain text) is never picked away: `coherence`
+    grades it;
+  - both non-zero otherwise → ask with **one**
     `AskUserQuestion` which to review — **Uncommitted** (working tree vs HEAD), **Committed**
     (HEAD vs base), or **Both** (base → working tree) — putting the file counts you just saw in
     each option's description.
@@ -176,8 +178,8 @@ about a skipped dependency manifest that is the substance of the change — is i
 `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. Read it and apply it to the resolved
 list. Then classify every surviving file by that file's `## File kinds` section —
 `source`, `test`, `iac`, or `policy` — and record the kind beside each path: Step 2b gates the
-`performance` Lens on the `source` subset, sends `policy` files to `security` and `spec` alone and
-skipped files to `spec` alone, and the
+`performance` Lens on the `source` subset, sends `policy` files to `security`, `assumptions`,
+`coherence` and `spec` alone and skipped files to `coherence` and `spec` alone, and the
 `comments` Scanner's test-file bar (R11) keys off the same classification.
 
 ## Step 2 — Read project conventions and standards (once)
@@ -235,7 +237,7 @@ agent, inside a workflow step — it is simply absent, and a single pass by one 
 command however carefully it reads. Say so in your first sentence, name the lenses that will not
 run, and let the caller decide between an announced single-pass reading and the headless route:
 `code-review:cr-prepare` once, `code-review:cr-scan` once per active lens as its own agent, then
-`code-review:cr-merge` — the same nine lenses, one agent each, with no questions asked. Never
+`code-review:cr-merge` — the same lens set, one agent each, with no questions asked. Never
 discover this silently halfway and report the result as a review.
 
 **Never pass `name:` to a Scanner call.** Naming routes the Scanner into the agent-teams
@@ -376,7 +378,7 @@ single-select question — how the fixes get committed — so the apply phase ca
 goes instead of rebuilding history afterwards:
 
 - **Commit each family as it lands (Recommended)** — one commit per finding family the
-  fixes come from (`comments`, each craft family, `security`, `correctness`…), each
+  fixes come from (`comments`, each craft family, `security`, `correctness`, `coherence`, `assumptions`…), each
   `security` fix in a commit of its own so it can be reverted or reviewed alone;
 - **Fixup into the commit that introduced the line** — offered only when the branch has its
   own commits above the base (`git rev-list --count <base>..HEAD` above zero): each fix

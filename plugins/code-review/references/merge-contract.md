@@ -19,8 +19,8 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   lens with its `K of M` in the `Tally`'s lens clause, so a lens that skipped files never reads
   as one that judged them all.
 - **Dedup overlaps**: when two findings point at the same code — including across
-  different lenses, and across **all twelve families**, craft and `correctness` /
-  `security` / `performance` / `spec` / `standards` alike — re-grade each against the table
+  different lenses, and across **every family**, craft and `correctness` /
+  `security` / `performance` / `spec` / `coherence` / `assumptions` / `standards` alike — re-grade each against the table
   first (see *Re-grade* below), then keep the one whose rule's row grades highest, the
   **most-specific** among equals, and drop the rest. Choosing the survivor before re-grading
   lets the table demote it afterwards: a `high` symptom folded under a root cause whose row
@@ -35,6 +35,23 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   under the wrong rule. Repetition with no logic to drift — test cases, a one-line expression,
   a restated declaration — is `shallow-duplication` at either reach; a copy of an exported
   helper stays `canonical-helper`.
+- **A disagreement between two artifacts has one owner per seam.** Two declarations the type
+  checker connects are `correctness` · contract-mismatch; two it does not connect are
+  `coherence` · contract-drift. A comment inside a source file is `comments` R9, any other
+  prose `coherence` · doc-drift — except the active spec, which is `spec`'s alone. An import
+  arrow is `module` · dependency-direction and a `CODING_STANDARDS` rule `standards`, even
+  when an ADR states it. A wider grant, an exposed secret or a missing authorization step is
+  `security`, never `coherence` · config-drift or sibling-asymmetry. When two lenses report
+  the same seam, keep the owner's bullet and fold the other into it.
+- **A false belief and a missing branch have different owners.** Missing handling for a
+  declared or universal outcome is `correctness`; a false belief about a library, the
+  runtime or the platform, backed by the installed source or its docs, is `assumptions`. A
+  test whose name claims an unchecked boundary is `tests` · test-fidelity, a double that
+  diverges from the real dependency `assumptions` · mock-divergence.
+- **Mutation gaps on one unit are one bullet.** `tests` · mutation-gap findings against the
+  same unit or the same test file merge into one bullet listing each case to add — a
+  boundary-blind unit is one report line, not five. A `tests` · test-fidelity and a `tests` ·
+  mutation-gap finding that cite the same test line are one finding, filed as test-fidelity.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
@@ -91,7 +108,7 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   resolved under its own name.
 - **Re-grade every quality finding's severity yourself** against the master table in
   `severity.md` — read it now if you have not. It
-  carries the 55 rows, what each severity means, the anti-anchoring rule, and the
+  carries every fixed row, what each severity means, the anti-anchoring rule, and the
   **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
   medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
   no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
@@ -147,14 +164,19 @@ the fix* is `report-only` too, with its one-line reason.
   `full-construction` / `exposed-representation` / `leaky-collection` reshaping, the
   `patterns` refactors (`composition`, `polymorphism`, `execute-around`), `over-complex`
   and `shallow-duplication` unifications, `test-structure` restructuring, every `test-fidelity`
-  fix — deleting, merging or rewriting a test changes what the suite covers — `dead-code-surface`
+  fix — deleting, merging or rewriting a test changes what the suite covers — the test cases a
+  `mutation-gap` adds (they land in a test file, not the source path the bullet sits under), `dead-code-surface`
   that removes an export or a return field, a `magic-literal` name a second module
   imports (where it lives decides an import edge), and `dead-code` removal of a branch that
   looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
   `misplaced-logic`, `canonical-helper`, `pass-through`, `feature-envy`, `data-clump`,
   `message-chain`); every **`performance`** fix; every **`security`** fix; every
   **`correctness`** fix, which changes behaviour by design and names the input it corrects;
-  **plus** comment **MOVE**.
+  the **`coherence`** fixes that edit a second file or a contract (`doc-drift`,
+  `contract-drift`, `schema-drift`, `config-drift`, `sibling-asymmetry`,
+  `incomplete-propagation`) outside the report-only cases below; the **`assumptions`** fixes
+  (`dependency-semantics`, `platform-semantics`, `version-skew`, `mock-divergence`) outside
+  the report-only cases below; **plus** comment **MOVE**.
 - **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
   bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
   a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
@@ -190,6 +212,21 @@ edit to apply: say in the bullet which spec line or test it collides with. The s
 a comment REWRITE or REMOVE of text a spec line quotes or prescribes: report-only, naming the
 spec line, so keeping the cleaner comment and amending the spec stays the author's choice.
 
+**A `coherence` fix is report-only wherever the side it would rewrite may be the right one.**
+Rewriting a document to match the code can hide the code's bug, so `doc-drift` is never safe,
+and it is report-only when the document is an ADR or decision record or when the finding
+leaves the authority to the author ("align A with B or B with A"). `contract-drift` is
+report-only on a published or versioned contract; `schema-drift` when the migration already
+exists before this change (the fix is a new migration, the author's call) — a migration the
+change adds (status `A`) walks structurally; `config-drift` when the artifact that provides the
+key lives outside the repo. `missing-counterpart` and `invariant-breach` are always
+report-only: which half to add, or whether to amend the decision instead, is the author's call.
+
+**An `assumptions` fix is report-only when the repo cannot carry it.** A `dependency-semantics`,
+`platform-semantics` or `version-skew` fix that is a dependency bump, or a platform setting that
+lives outside the repo (a provider console, an organisation secret), is report-only; so is any
+`assumptions` finding still marked `(verify)`. `mock-divergence` walks structurally.
+
 **`spec` findings are report-only.** A missing or partial requirement is work to do,
 not an edit to apply, and never enters a bucket. The one exception is a
 `wrong-implementation` the review **verified** in the merge whose fix is a **single edit**:
@@ -224,7 +261,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
 
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of 9 (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files). Spec: R of T requirements met. Skipped: <files + reason>.
+**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of A (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files). Spec: R of T requirements met. Skipped: <files + reason>.
 ```
 
 A filled-in report reads like this:
@@ -252,7 +289,7 @@ Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 9 of 9. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 11. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 </example>
 
 **The skeleton is the whole report.** It has no other sections: no `### Findings`
@@ -271,9 +308,9 @@ not prose.
 Rules for filling it in:
 
 - **Two vocabularies, side by side.** Quality findings use `` `family` · rule ·
-  severity ``, with the family **backticked** — one of the twelve fixed labels
+  severity ``, with the family **backticked** — one of the fixed labels
   `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`,
-  `correctness`, `security`, `performance`, `spec`, `standards` — and rule and severity verbatim from
+  `correctness`, `security`, `performance`, `spec`, `coherence`, `assumptions`, `standards` — and rule and severity verbatim from
   `references/severity.md` (a `standards` rule is its slug, graded by the keyword
   mapping). Comment verdicts use `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD ``.
   **No severity↔verdict mapping** — keep them distinct.
@@ -311,16 +348,18 @@ Rules for filling it in:
   `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE / ADD, the
   headline names the worst one — it must not call the change "clean",
   "well-structured", or "only cosmetic nits". A confirmed **`security`** finding is the
-  headline over any craft finding, whatever their severities — and so is a confirmed
+  headline over any craft finding, whatever their severities — and so is an
+  **`assumptions` finding whose clause names a credential or data exposure**, and a confirmed
   **exposure that no rule names**, which leads the report from its own `Not flagged`
   bullet rather than being demoted for want of a tag; a `spec` ·
   missing-requirement or wrong-implementation forbids the clean headline outright.
   Reserve the clean verdict for a tally that is genuinely nits-only-and-all-KEEP (or
   empty).
-- **The `Tally` names the lenses.** `Lenses: L of 9` always, with each skipped Lens
+- **The `Tally` names the lenses.** `Lenses: L of A` always — `L` the Lenses that ran, `A`
+  every Lens the lens set names, active or inactive — with each skipped Lens
   and its lens-set reason in the parenthesis (`skipped: performance — no executable
   code; spec — no spec named`), and each lens that judged only part of its files after them
-  (`partial: security — 3 of 5 files`); drop the parenthesis when all nine ran in full. When a spec was
+  (`partial: security — 3 of 5 files`); drop the parenthesis when every Lens ran in full. When a spec was
   given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
   met`; omit that clause otherwise.
 

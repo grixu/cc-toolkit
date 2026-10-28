@@ -18,9 +18,11 @@ charts (templates and `values*.yaml` under a directory holding a `Chart.yaml`); 
 same hand-written code as `.js` — a build script or a config-as-code module under
 `.mjs`/`.cjs` is reviewed, not skipped as tooling.
 
-**Access policy and pipeline files** are in scope for the `security` lens alone: they are
+**Access policy and pipeline files** are in scope for the `security` lens: they are
 config by shape, but a line in one decides who may do what, and a widening there is the
-change's whole effect. The set, by path: `*.rego`, `*.cedar`, `CODEOWNERS`, CI workflow
+change's whole effect. `assumptions` also judges what a pipeline file believes about the CI
+that runs it, and `coherence` reads them as one side of a seam; no craft lens grades them.
+The set, by path: `*.rego`, `*.cedar`, `CODEOWNERS`, CI workflow
 definitions (`.github/workflows/*.yml`, `.gitlab-ci.yml`, and their equivalents), and
 YAML/JSON under a `policies/`, `policy/`, `rbac/` or `iam/` directory or named
 `*policy*.json`/`*policy*.yaml`; plus any YAML whose own `apiVersion`/`kind` line makes it a
@@ -34,16 +36,19 @@ under `dist/`, `build/`, `node_modules/`), `.md` and docs (in a comment review t
 settings, `.env` — YAML named as infrastructure-as-code or a policy file excepted), and
 license/SPDX headers.
 
-Note every skipped file in one line, so coverage stays honest.
+Note every skipped file in one line, so coverage stays honest. Skipped is not unread:
+the `coherence` and `spec` lenses read skipped files for what they claim about the code,
+and grade no craft in them.
 
 **CI workflow definitions are not skipped — they are `policy` files.** A changed
 `.github/workflows/*.yml` or `.gitlab-ci.yml` routinely carries a real exposure — a
 `pull_request_target` job checking out and running untrusted code, a widened
 `permissions:` block, a secret passed into a step that echoes it — so the `security` lens
-judges it like any policy file, and no other lens grades it. The dependency and
-action-pinning audit stays with `/security-review`, so when a pipeline file changed the
-`Skipped` line still names it — graded by `security` alone — and points the reader to
-`/security-review` for that audit, in those words.
+judges it like any policy file, `assumptions` judges what it believes about the CI that
+runs it, and no craft lens grades it. The dependency and action-pinning audit stays with
+`/security-review`, so when a pipeline file changed the `Skipped` line still names it —
+graded by `security` and `assumptions` alone — and points the reader to `/security-review`
+for that audit, in those words.
 
 **A skipped file that is the substance of the change gets its own sentence.** A
 dependency manifest (`package.json`, `composer.json`, …) on a dependency-bump or upgrade
@@ -51,8 +56,9 @@ branch is the whole point of that diff, and so is the prose on a documentation b
 spec/ADR change, or a release-notes commit — when the skipped files *are* the change,
 name that in a sentence of its own and say what the review therefore covers (often only
 the handful of source files that came along for the ride). Say so explicitly rather than
-burying it in the skip list: the skipped content isn't line-graded, and the reader should
-read that as a deliberate scope boundary rather than an oversight. The same sentence
+burying it in the skip list: the skipped content isn't line-graded — `coherence` judges only
+what it claims about the code — and the reader should read that as a deliberate scope
+boundary rather than an oversight. The same sentence
 carries a second boundary: a changed `.env*`, dependency manifest, or lockfile is also
 **not secret- or dependency-scanned** by the `security` lens, which reads source files
 only. Say that on the `Skipped` line and point the reader to `/security-review` for the
@@ -76,15 +82,28 @@ eyeballing the content:
 - **`policy`** — the access policy and pipeline files named under *In scope*.
 - **`source`** — everything else in scope.
 
-Five consumers depend on this list:
+These consumers depend on this list:
 
-- **`policy` files go to the `security` lens only** among the grading lenses — every
-  other craft, `correctness` and `performance` lens's `<files>` leaves them out, so a
-  change that touches nothing but policy runs `security` alone, plus `spec` when one is
-  active;
+- **`policy` files go to `security` and `assumptions`** among the lenses that grade a
+  file's own lines — every craft, `correctness` and `performance` lens's `<files>` leaves
+  them out, so a change that touches nothing but policy runs `security`, `assumptions` and
+  `coherence`, plus `spec` when one is active;
+- the **`assumptions` lens** receives the whole judged list, `policy` files included, and
+  no skipped file: lockfiles, the installed dependency tree, `.nvmrc`, `engines`, a
+  Dockerfile's base image and replica counts are evidence it reads, never files it judges;
 - the **`spec` lens** receives the whole change — every judged file, `policy` files
-  included, plus every file *Skip* leaves out: conformance is not line-graded craft, and
-  a skipped workflow, manifest or doc is often exactly what a spec line describes;
+  included, plus every file *Skip* leaves out but real env files (defined below): conformance
+  is not line-graded craft, and a skipped workflow, manifest or doc is often exactly what a
+  spec line describes. A real env file in the change is never Read; the lens may only Grep it
+  for key names;
+- the **`coherence` lens** receives the whole change too — every judged file, `policy`
+  files included, plus every skipped file except lockfiles, generated output (a
+  generator's `.d.ts`, `*_pb.*`, anything under `dist/`, `build/`, `node_modules/`, minified
+  files, snapshots) and real
+  env files — every `.env*` but the templates `.env.example`, `.env.sample`, `.env.template`
+  and `.env.dist` — and minus the active spec: a doc, a changeset, a migration or a compose
+  file is one side of the seam it judges. A real env file in the change is never Read; the lens
+  may only Grep it for key names. A change of skipped files alone still runs it;
 - the **`performance` lens** receives only the `source` files, minus `.sh` files and
   `*.config.*` modules (build and tool configuration runs once, never per request) — and is not
   dispatched at all when that subset is empty (a tests-only or IaC-only change has no

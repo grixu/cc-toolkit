@@ -1,0 +1,28 @@
+services:
+  notify:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgres://notify:notify@db:5432/notify
+      SMTP_HOST: mailhog
+      SMTP_PORT: '1025'
+    depends_on:
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: notify
+      POSTGRES_PASSWORD: notify
+      POSTGRES_DB: notify
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'notify']
+      interval: 2s
+      retries: 15
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1

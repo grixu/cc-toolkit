@@ -44,7 +44,7 @@ The contract's brief arrives as files, not as a message. Assemble it slot by slo
 | `<how_to_view>` | `diff_args` `null` → read `<checkout>/<path>` whole; tracked → `git -C <checkout> diff <diff_args> -- <path>`; untracked → read `<checkout>/<path>` |
 | `<conventions>` | `conventions.md`, verbatim |
 | `<standards>` | your lens's section of `standards.md`, or all of it when it has no sections |
-| `<spec>` | `spec` and `correctness` lenses only: the file `scope.json` names, read in full — or, when `spec_focus` lists codes, the focus list with the file read as your rules file's spec-focus paragraph says; omitted when `spec` is `null` |
+| `<spec>` | `spec` and `correctness` lenses: the file `scope.json` names, read in full — or, when `spec_focus` lists codes, the focus list with the file read as your rules file's spec-focus paragraph says; `coherence`: that path alone, the file it leaves to `spec`; omitted for every other lens, and when `spec` is `null` |
 
 `<checkout>` is `scope.json`'s `checkout`; every path in `files` is relative to it. A lens listed
 under `lenses.inactive` is not judged: write its output file with the header alone, ending
@@ -72,12 +72,15 @@ few files that bootstrap is most of the bill. One agent judging a list pays it o
 lens after the first reads the change with what the earlier ones saw still in its context, and
 the lenses run one after another instead of side by side. The caller decides which way to go —
 a list suits a small change, separate agents a large one — and this skill sets no size threshold.
+One limit is the caller's to keep: `coherence` and `assumptions` read well beyond their own
+files — a counterpart for every claim, the installed source behind every belief — so on a change
+too large for one shared reader each runs as its own agent, never inside a list.
 
 With a list, judge each lens as if it were the only one:
 
 - **One lens at a time, in the listed order.** Before each lens, read its rules file completely
   again and assemble its brief from the table above — its own `<files>`, its own `<standards>`
-  slice, `<spec>` only for `spec` and `correctness` — even when an earlier lens already read the
+  slice, `<spec>` only for `spec`, `correctness` and `coherence` — even when an earlier lens already read the
   same text. Judge only that lens's families.
 - **Nothing crosses between lenses.** A finding, candidate or handoff an earlier lens wrote is not
   evidence for this one, and never appears in this lens's file unless this lens's own rules raise
@@ -88,7 +91,7 @@ With a list, judge each lens as if it were the only one:
   the same path, as a single-lens run of that lens, with one addition: its header line ends
   ` · shared run: <the --lens list as given>`. Lenses judged by one reader are not independent,
   and cr-merge reads that suffix to keep their agreement from counting as convergence.
-- **A lens you cannot complete does not stop the others.** A name that is not one of the nine,
+- **A lens you cannot complete does not stop the others.** A name that is not a lens with a rules file,
   a lens `scope.json` does not list, a rules file you cannot read, or a write that fails gets its
   own `error` block; carry on with the next lens. Never write a partial `<lens>.md` for it. A name
   listed twice is judged once, at its first place.
