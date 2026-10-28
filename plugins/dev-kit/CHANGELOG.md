@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `dep-upgrade-check`: an `unattended` argument, also switched on by `GITHUB_ACTIONS=true`, for a CI job: nothing asks, an ask point stops with a reason, an escalated outcome posts its security comment at once with the decision `pending`, and a re-run keeps a maintainer's recorded decision while the packages, targets and advisories stay the same
+- `dep-upgrade-check`: every run ends with a parseable `dep-upgrade-check-result` block
+- `dep-upgrade-check`: an unattended run on a pull request posts the full report as a second comment, updated in place on a re-run
+- `dep-upgrade-check`: without the firecrawl and context7 servers, migration guides come from the package repository's guide files, then from the guide the release notes link to; a missing guide is listed under the unknowns
+- README: a reference GitHub Actions job for Renovate pull requests
+
+### Fixed
+- `dep-upgrade-check`: a pull request's current version comes from the base branch's lockfile, so a checkout of the PR branch or its merge commit no longer yields an empty range and a false `safe`
+- `dep-upgrade-check`: the security comment is updated, not duplicated, under an installation token (`GITHUB_TOKEN`, a GitHub App), which cannot read `GET /user`
+
+### Changed
+- `dep-upgrade-check`: pre-approves every command it runs on the pnpm path, including `gh api` (writes included), `gh pr comment`, `git fetch`/`show`, the OSV and deps.dev `curl` calls, file writes and WebFetch
+
 ## [0.3.0] - 2026-10-26
 
 ### Added

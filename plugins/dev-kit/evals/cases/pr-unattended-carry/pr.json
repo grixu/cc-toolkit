@@ -1,0 +1,12 @@
+{
+  "number": 17,
+  "title": "Bump lodash from 4.17.15 to 4.17.21",
+  "author": {
+    "login": "app/dependabot"
+  },
+  "headRefName": "dependabot/npm_and_yarn/lodash-4.17.21",
+  "baseRefName": "main",
+  "state": "OPEN",
+  "isDraft": false,
+  "body": "Bumps [lodash](https://github.com/lodash/lodash) from 4.17.15 to 4.17.21.\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/lodash/lodash/commit/f299b52f39486275a9e6483b60a410e06520c538\"><code>f299b52</code></a> Bump to v4.17.21</li>\n<li><a href=\"https://github.com/lodash/lodash/commit/c4847ebe7d14540bb28a8b932a9ce1b9ecbfee1a\"><code>c4847eb</code></a> Improve performance of <code>toNumber</code>, <code>trim</code> and <code>trimEnd</code> on large input strings</li>\n<li><a href=\"https://github.com/lodash/lodash/commit/3469357cff396a26c363f8c1b5a91dde28ba4b1c\"><code>3469357</code></a> Prevent command injection through <code>_.template</code>'s <code>variable</code> option</li>\n</ul>\n</details>\n\n---\n\nDependabot will resolve any conflicts with this PR as long as you don't alter it yourself."
+}

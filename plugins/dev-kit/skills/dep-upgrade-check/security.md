@@ -7,12 +7,12 @@ The lookups, rules, and PR comment behind step 2 of the skill. Ecosystem names a
 - **Every unit**: its current and its target version.
 - **Transitive versions the upgrade brings in**:
   - **PR input**: every package whose resolved version is new or changed between the base branch's lockfile and the PR head's (`git fetch origin pull/<number>/head`, then `git show FETCH_HEAD:<lockfile>` against `git show origin/<baseRefName>:<lockfile>`). A changed one is checked against its base version; a new one has no base version.
-  - **Package + version input**: `GET https://api.deps.dev/v3/systems/<npm|pypi>/packages/<urlencoded name>/versions/<v>:dependencies` for current and target, then check the nodes of the target that the current graph lacks. deps.dev resolves the graph in isolation, not against the project's lockfile, so the report calls this set approximate. Other ecosystems get `transitive not checked`, and the step-5 worktree install settles it from the lockfile it writes.
+  - **Package + version input**: `curl -s https://api.deps.dev/v3/systems/<npm|pypi>/packages/<urlencoded name>/versions/<v>:dependencies` for current and target, then check the nodes of the target that the current graph lacks. deps.dev resolves the graph in isolation, not against the project's lockfile, so the report calls this set approximate. Other ecosystems get `transitive not checked`, and the step-5 worktree install settles it from the lockfile it writes.
 - **Private packages are never sent anywhere**: a package resolved from a host other than the public registry is listed as `not checked: private registry`, and its name goes to no OSV, GitHub, or deps.dev query. Signs: a `tarball`/`resolved` URL on another host in the lockfile, a scoped `@scope:registry=` in `.npmrc`, an `index-url`/`[[tool.uv.index]]`/poetry `source` other than PyPI, a module matched by `GOPRIVATE`, a Composer `repositories` entry, a non-crates.io `source` in `Cargo.lock`.
 
 ## Lookups
 
-1. **OSV**, every ecosystem except GitHub Actions. One batch for all versions above. Write the payload to a file and post it with `curl -s https://api.osv.dev/v1/querybatch -d @<file>`. The payload looks like `{"queries":[{"package":{"name":"<pkg>","ecosystem":"<OSV ecosystem>"},"version":"<v>"}, ...]}`. The batch returns IDs only, so fetch each distinct ID with `curl -s https://api.osv.dev/v1/vulns/<id>`. A result with `next_page_token` needs a follow-up query carrying that token.
+1. **OSV**, every ecosystem except GitHub Actions. One batch for all versions above. Write the payload to a file and post it with `curl -s https://api.osv.dev/v1/querybatch -d @<file>`. Keep each `curl` in this file in the form shown, the URL unquoted right after `-s` and no other command chained to it: that form is what the skill pre-approves, and an unattended run is denied any other. The payload looks like `{"queries":[{"package":{"name":"<pkg>","ecosystem":"<OSV ecosystem>"},"version":"<v>"}, ...]}`. The batch returns IDs only, so fetch each distinct ID with `curl -s https://api.osv.dev/v1/vulns/<id>`. A result with `next_page_token` needs a follow-up query carrying that token.
 2. **GitHub Advisory Database**, for EPSS, `first_patched_version`, and `vulnerable_functions`, and the only source for GitHub Actions (OSV version queries for Actions return nothing). Make two calls per version:
    - `gh api -X GET /advisories -f ecosystem=<e> -f affects=<pkg>@<v> --paginate`;
    - the same with `-f type=malware`. The endpoint leaves malware out unless asked.
@@ -64,14 +64,17 @@ A PR input always gets one security comment, also when every unit is `clear`, an
 - **Transitive**: advisories and cooldowns on versions the upgrade brings in, or `none`; `approximate` for a deps.dev graph.
 - **Low severity**: <count>, or `none`.
 - **Not checked**: private packages, ecosystems without a transitive source.
-- **Decision** (escalated only): <accepted risk | switched target to X | refresh <pkg> to Y in the lockfile | hold>, by @<login>, <date>, <reason if given>.
+- **Decision** (escalated only): <accepted risk | switched target to X | refresh <pkg> to Y in the lockfile | hold>, by @<login>, <date>, <reason if given>. Unattended: `pending — unattended run; a maintainer decides (accept, switch to <minimum safe version>, refresh <pkg> to <version>, or hold)`.
 
 Sources: OSV.dev, GitHub Advisory Database, deps.dev; queried <ISO timestamp>.
 ```
 
 Upsert:
-1. `gh api user --jq .login`.
-2. `gh api repos/<owner>/<repo>/issues/<number>/comments --paginate --jq '.[] | select(.user.login == "<login>" and (.body | startswith("<!-- dev-kit:dep-upgrade-check:security -->"))) | .id'`.
-3. With an ID, `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> -F body=@<file>`. Without one, `gh pr comment <url> --body-file <file>`.
+1. List the PR's marker comments with GraphQL, which tells which ones this token wrote whatever kind of token it is (`GET /user` fails for `GITHUB_TOKEN` and GitHub App tokens):
+   `gh api graphql -F owner=<owner> -F repo=<repo> -F number=<number> -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){comments(last:100){nodes{databaseId viewerDidAuthor authorAssociation createdAt body}}}}}' --jq '.data.repository.pullRequest.comments.nodes[] | select(.body | startswith("<!-- dev-kit:dep-upgrade-check:security -->"))'`
+2. The newest one with `viewerDidAuthor` true is ours: `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<databaseId> -F body=@<file>`. Never edit another author's marker comment, even though a token with write access can.
+3. With none of ours, `gh pr comment <url> --body-file <file>`.
 
-Post it when the outcome is final: right away for clear and blocked, and after the user's decision for escalated.
+Post it when the outcome is final: right away for clear and blocked, and after the user's decision for escalated. An unattended run posts an escalated outcome right away too.
+
+**Carried decision**: bots rebase their PRs, and every push re-runs an unattended check, which must not wipe out a maintainer's answer. A maintainer records a decision in their own session, which posts under their login, not the bot's, so the source is the newest marker comment from upsert step 1 that holds a Decision other than `pending` and was written by us or by an author whose `authorAssociation` is `OWNER`, `MEMBER` or `COLLABORATOR`. A Decision in anyone else's comment is never carried: anyone can post the marker. When such a Decision exists, and the units, their targets, and the IDs of the advisories that escalate them are all unchanged, an unattended run keeps that Decision line verbatim and reports `decision: carried`. When any of them changed, the Decision goes back to `pending` and the comment says what changed.

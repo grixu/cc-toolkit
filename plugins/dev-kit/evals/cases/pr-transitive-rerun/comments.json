@@ -1,19 +1,28 @@
 [
   {
     "id": 9000,
-    "user": { "login": "dependabot[bot]" },
+    "user": {
+      "login": "dependabot[bot]",
+      "type": "Bot"
+    },
     "created_at": "2026-10-20T08:00:00Z",
     "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: clear\n\nPosted by another account; never edit this one."
   },
   {
     "id": 9001,
-    "user": { "login": "eval-user" },
+    "user": {
+      "login": "eval-user",
+      "type": "User"
+    },
     "created_at": "2026-10-21T09:30:00Z",
     "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: clear\n\n`mkdirp 0.5.1 → 0.5.4`: clear\n\nSources: OSV.dev, GitHub Advisory Database, deps.dev; queried 2026-10-21T09:29:12Z."
   },
   {
     "id": 9002,
-    "user": { "login": "eval-user" },
+    "user": {
+      "login": "eval-user",
+      "type": "User"
+    },
     "created_at": "2026-10-22T11:00:00Z",
     "body": "Looks fine to me, waiting for the security check to rerun."
   }

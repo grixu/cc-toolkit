@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const sandbox = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.sandbox');
 const MARKER = '<!-- dev-kit:dep-upgrade-check:security -->';
+const REPORT_MARKER = '<!-- dev-kit:dep-upgrade-check:report -->';
 
 const read = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '');
 const posted = (prefix) =>
@@ -167,6 +168,127 @@ export function prTransitiveRerun(output, context) {
     check(posted('gh-posted-patch-9000').length === 0, "another account's comment 9000 was edited");
     check(posted('gh-posted-patch-9002').length === 0, 'the plain comment 9002 was edited');
     check(posted('gh-posted-comment-12-').length === 0 && posted('gh-posted-edit-last-12-').length === 0, 'a second comment was posted instead of updating 9001');
+  });
+}
+
+const resultBlock = (text) => {
+  const block = text.match(/```dep-upgrade-check-result\n([\s\S]*?)```/)?.[1];
+  if (!block) return null;
+  return Object.fromEntries(
+    block
+      .split('\n')
+      .map((line) => line.match(/^(\w+):\s*(.*?)\s*$/))
+      .filter(Boolean)
+      .map((m) => [m[1], m[2]]),
+  );
+};
+
+// Shared by the token-triggered and the GITHUB_ACTIONS-triggered runs on the escalated lodash PR.
+function unattendedEscalated(run, check, n) {
+  check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+  check(!run.asked, 'an unattended run asked the user');
+  const comments = posted(`gh-posted-comment-${n}-`);
+  const security = comments.filter((body) => body.startsWith(MARKER));
+  const report = comments.filter((body) => body.startsWith(REPORT_MARKER));
+  check(comments.length === security.length + report.length, `a comment on PR #${n} starts with neither marker`);
+  check(security.length <= 1 && report.length <= 1, `${security.length} security and ${report.length} report comments posted on PR #${n}`);
+  if (check(report.length === 1, `no report comment was posted on PR #${n}`)) {
+    check(/escalated/i.test(report[0]), 'the report comment does not carry the security outcome');
+  }
+  if (check(security.length === 1, `no security comment was posted on PR #${n}`)) {
+    const body = security[0];
+    check(linesWith(body, /^#/).some((line) => /\bescalated\b/i.test(line)), 'the comment heading is not escalated');
+    const decision = linesWith(body, /Decision/i);
+    check(decision.some((line) => /pending/i.test(line)), 'the Decision line is not pending');
+    check(!decision.some((line) => /accepted|@eval-user/i.test(line)), 'the Decision line records a decision nobody made');
+  }
+  const block = resultBlock(run.text);
+  if (check(block !== null, 'no dep-upgrade-check-result block')) {
+    check(block.status === 'done', `result status is '${block.status}', expected done`);
+    check(block.security === 'escalated', `result security is '${block.security}', expected escalated`);
+    check(block.decision === 'pending', `result decision is '${block.decision}', expected pending`);
+  }
+}
+
+export function prUnattendedEscalated(output, context) {
+  return grade(output, context, (run, check) => unattendedEscalated(run, check, 16));
+}
+
+export function prUnattendedEnv(output, context) {
+  return grade(output, context, (run, check) => {
+    unattendedEscalated(run, check, 18);
+    check(/GITHUB_ACTIONS/.test(run.text), 'the report does not say GITHUB_ACTIONS switched on unattended mode');
+  });
+}
+
+// The bot's own comment 9021 is pending; the maintainer (OWNER) recorded the decision in 9020 from
+// their own session, and a stranger's newer 9022 forges one. Only the maintainer's may carry over.
+export function prUnattendedCarry(output, context) {
+  return grade(output, context, (run, check) => {
+    check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+    check(!run.asked, 'an unattended run asked the user');
+    const patched = posted('gh-posted-patch-9021');
+    if (check(patched.length === 1, "the bot's own security comment 9021 was not updated")) {
+      const decision = linesWith(patched[0], /Decision/i);
+      check(decision.some((line) => /accepted risk/i.test(line) && /@maintainer/.test(line)), "the maintainer's accepted-risk Decision was not carried");
+      check(!decision.some((line) => /@mallory/.test(line)), "the stranger's forged Decision was carried");
+      check(!decision.some((line) => /pending/i.test(line)), 'the Decision stayed pending');
+    }
+    check(posted('gh-posted-patch-9020').length === 0, "the maintainer's comment 9020 was edited");
+    check(posted('gh-posted-patch-9022').length === 0, "the stranger's comment 9022 was edited");
+    check(
+      posted('gh-posted-comment-17-').every((body) => !body.startsWith(MARKER)),
+      'a second security comment was posted instead of updating 9021',
+    );
+    const block = resultBlock(run.text);
+    if (check(block !== null, 'no dep-upgrade-check-result block')) {
+      check(block.decision === 'carried', `result decision is '${block.decision}', expected carried`);
+    }
+  });
+}
+
+export function prUnattendedStop(output, context) {
+  return grade(output, context, (run, check) => {
+    check(!run.asked, 'an unattended run asked the user');
+    check(!run.wroteComment, 'a stopped run wrote a PR comment');
+    const block = resultBlock(run.text);
+    if (check(block !== null, 'no dep-upgrade-check-result block')) {
+      check(block.status === 'stopped', `result status is '${block.status}', expected stopped`);
+      check(/repo|repository|example\/web|other\/lib/i.test(block.reason ?? ''), `the stop reason does not name the repository mismatch: '${block.reason}'`);
+    }
+  });
+}
+
+// The checkout's lockfile already resolves lodash 4.17.21, so a working-tree read gives an empty range.
+export function prMergeCheckout(output, context) {
+  return grade(output, context, (run, check) => {
+    check(
+      run.bash.some((cmd) => /\bgit\b[^\n|;&]*\bshow\s+origin\/main:[^\s]*pnpm-lock\.yaml/.test(cmd)),
+      'the base lockfile was never read with git show origin/main:pnpm-lock.yaml',
+    );
+    check(/4\.17\.15\s*(?:→|->|to)\s*4\.17\.21/.test(run.text), 'the unit is not lodash 4.17.15 → 4.17.21');
+    check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+    check(
+      /already (?:carries|resolves|holds|contains|has|pins|includes)|merge commit/i.test(run.text),
+      'the report does not say the checkout already carries the upgrade',
+    );
+    check(posted('gh-posted-comment-14-').length === 1, 'no single security comment was posted on PR #14');
+  });
+}
+
+// 9011 (renovate[bot]) is the newest bot marker comment, so a run that stops at the newest one
+// never reaches its own 9010 and posts a duplicate every time.
+export function prUpsertInstallationToken(output, context) {
+  return grade(output, context, (run, check) => {
+    check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+    const patched = posted('gh-posted-patch-9010');
+    if (check(patched.length === 1, "the bot's own security comment 9010 was not updated")) {
+      check(patched[0].startsWith(MARKER), 'the updated comment does not start with the marker');
+      check(linesWith(patched[0], /^#/).some((line) => /\bescalated\b/i.test(line)), 'the updated comment heading is not escalated');
+    }
+    check(posted('gh-posted-comment-15-').length === 0, 'a new comment was posted instead of updating 9010');
+    check(posted('gh-posted-patch-9011').length === 0, "renovate[bot]'s comment 9011 was edited");
+    check(posted('gh-posted-patch-9012').length === 0, "the maintainer's comment 9012 was edited");
   });
 }
 

@@ -25,6 +25,10 @@ set -- ${args[@]+"${args[@]}"}
 emit() { if [ -n "$jq_expr" ]; then jq -r "$jq_expr"; else cat; fi; }
 fail() { echo "gh stand-in: $*" >&2; exit 1; }
 
+# An installation token (GITHUB_TOKEN, a GitHub App) acts as a bot and cannot read GET /user.
+caller=eval-user
+[ "${GH_STANDIN_INSTALLATION_TOKEN:-}" = 1 ] && caller='github-actions[bot]'
+
 pr_dir() {
   local n
   n="$(printf '%s' "$1" | sed -E 's#.*/pull/([0-9]+).*#\1#; s/^#//')"
@@ -64,7 +68,7 @@ body_from_fields() {
 }
 
 case "${1:-} ${2:-}" in
-  'auth status') echo 'github.com: Logged in to github.com account eval-user'; exit 0 ;;
+  'auth status') echo "github.com: Logged in to github.com account $caller"; exit 0 ;;
   'repo view')
     echo '{"nameWithOwner":"example/web","name":"web","owner":{"login":"example"},"url":"https://github.com/example/web","defaultBranchRef":{"name":"main"}}' | emit
     exit 0 ;;
@@ -125,7 +129,27 @@ while [ $# -gt 0 ]; do
 done
 
 case "$path" in
-  user) echo '{"login":"eval-user"}' | emit; exit 0 ;;
+  user)
+    [ "$caller" = eval-user ] || { echo 'gh: Resource not accessible by integration (HTTP 403)' >&2; exit 1; }
+    echo '{"login":"eval-user"}' | emit
+    exit 0 ;;
+  graphql)
+    query='' n=''
+    for f in ${fields[@]+"${fields[@]}"}; do
+      case "$f" in
+        ?:query=*) query="${f#?:query=}" ;;
+        ?:number=*) n="${f#?:number=}" ;;
+      esac
+    done
+    case "$query" in *pullRequest*comments*) ;; *) fail "unsupported graphql query: $query" ;; esac
+    dir="$(pr_dir "$n")"
+    # A fixture comment without author_association is the eval user's own repository (OWNER) or a stranger's.
+    jq --arg caller "$caller" '{data: {repository: {pullRequest: {comments: {nodes: [.[] | {
+        databaseId: .id, body, createdAt: .created_at, author: {login: .user.login},
+        viewerDidAuthor: (.user.login == $caller),
+        authorAssociation: (.author_association // (if .user.login == "eval-user" then "OWNER" else "NONE" end))}]}}}}}' \
+      "$dir/comments.json" | emit
+    exit 0 ;;
   advisories*)
     [ "$method" = GET ] || fail "advisories is read-only"
     query="${path#advisories}"
@@ -162,6 +186,12 @@ case "$path" in
   repos/example/web/issues/comments/*)
     id="${path##*/}"
     [ "$method" = PATCH ] || fail "only PATCH is supported on a single comment"
+    author="$(jq -rs --argjson id "$id" '[.[][] | select(.id == $id) | .user.login][0] // empty' "$sandbox"/prs/*/comments.json)"
+    if [ -z "$author" ]; then
+      echo 'gh: Not Found (HTTP 404)' >&2
+      exit 1
+    fi
+    # No ownership check: GitHub lets any token with write access edit anyone's comment.
     body="$(body_from_fields "$input" ${fields[@]+"${fields[@]}"})" || exit 1
     printf '%s\n' "$body" > "$sandbox/gh-posted-patch-$id.md"
     printf '{"id":%s,"html_url":"https://github.com/example/web/pull/0#issuecomment-%s"}\n' "$id" "$id" | emit

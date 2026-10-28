@@ -44,6 +44,10 @@ export default class DevKitProvider {
     const base = this.config;
     const config = {
       ...base,
+      // The repo's eval CI runs under GitHub Actions, and GITHUB_ACTIONS=true switches the skill to
+      // unattended; an empty value keeps every case attended unless its vars.env says otherwise.
+      // promptfoo skips undefined values, so an empty string is the only way to mask the variable.
+      env: { ...base.env, GITHUB_ACTIONS: '', ...context?.vars?.env },
       working_dir: absolute(base.working_dir),
       settings: absolute(base.settings),
       plugins: base.plugins?.map((p) => (p.type === 'local' ? { ...p, path: absolute(p.path) } : p)),

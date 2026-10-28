@@ -17,7 +17,7 @@ dev-kit is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then ins
 - A GitHub repository. `ci-fix` and `pr-shepherd` handle GitHub Actions runs and GitHub check runs only.
 - To push a fix to a file under `.github/workflows/`, a token with the `workflow` scope.
 - For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
-- Optional, for `dep-upgrade-check`: the firecrawl and context7 MCP servers, which it uses to find migration guides. Without them it still reads GitHub releases and changelogs, and reports a guide it could not find as `no guide found`.
+- Optional, for `dep-upgrade-check`: the firecrawl and context7 MCP servers, which it uses to find migration guides. Without them it still reads GitHub releases, changelogs and guide files in the package's repository, then fetches the guide the release notes link to, and reports a guide it could not find as `no guide found`.
 - Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment-typesafe-jev).
 
 ## Skills
@@ -99,6 +99,78 @@ The check is otherwise read-only: it changes no manifest, lockfile or source fil
 
 Output: the security outcome with its advisory table, a verdict (`safe`, `safe with changes` or `breaking`; marked `provisional`, at the worst value still possible, while an open question could change it), a table of affected changes with `file:line` locations and the fix for each, the open unknowns, and the sources it used. If you then ask it to apply the upgrade, it applies the fixes from the table and runs your checks: in your working tree for a package and version, or for a pull request on its branch in a separate worktree, committed locally and pushed only when you say so. It warns that Renovate and Dependabot drop commits that are not theirs when they rebase, and names the bot setting that would make the commit unnecessary.
 
+Every run ends with a `dep-upgrade-check-result` block (`status`, `security`, `verdict`, `provisional`, `decision`, `units`, the two comment URLs, `reason`) that a script can parse.
+
+#### Unattended, in CI
+
+Add `unattended` after the pull request URL, or run it where `GITHUB_ACTIONS=true`, and the check never waits for a person:
+
+- Where it would ask, it stops with `status: stopped` and the reason: no input, or a pull request from another repository.
+- An escalated outcome gets no question. The security comment goes up at once with the decision `pending`, and a maintainer decides by running the check on the pull request in their own session. When a later run finds the same packages, targets and advisories, it keeps the decision the maintainer recorded.
+- It reads the CI checks once and reports a running check as pending. It never installs or builds the upgrade, and never applies it.
+- It posts the full report as a second comment next to the security comment, and a re-run updates both.
+
+A reference job for Renovate pull requests, pinned to a cc-toolkit commit:
+
+```yaml
+name: dependency check
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  pull-requests: write
+  checks: read
+  actions: read
+concurrency:
+  group: dep-upgrade-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  dep-upgrade-check:
+    # The pull request's author, not github.actor: a maintainer's push to the branch changes the actor.
+    if: github.event.pull_request.user.login == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: repo
+      - uses: actions/checkout@v6
+        with:
+          repository: grixu/cc-toolkit
+          ref: <cc-toolkit commit SHA>
+          path: cc-toolkit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Check the upgrade
+        working-directory: repo
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
+            --plugin-dir ../cc-toolkit/plugins/dev-kit \
+            --permission-mode dontAsk \
+            --max-turns 80 \
+            --output-format json > ../result.json
+          jq -r .result ../result.json | sed -n '/^```dep-upgrade-check-result/,/^```/p' >> "$GITHUB_STEP_SUMMARY"
+          jq -e '(.permission_denials // []) | length == 0' ../result.json
+```
+
+- Check out the base commit. On `pull_request`, `actions/checkout` defaults to the merge commit, whose lockfile already holds the upgrade. The check reads the current version from the base branch's lockfile either way, but the code it searches should be the base's.
+- Keep the plugin checkout outside the repository's directory, or the usage search reads it as part of your code.
+- `--permission-mode dontAsk` denies every call the skill does not pre-approve. The pre-approved set covers the pnpm path. For npm, yarn, Python, Go, PHP, Rust, container images or GitHub Actions, add their lookups with `--allowedTools`, or those calls are denied.
+- The run reads release notes and guides it cannot trust, and the skill pre-approves commands that reach the network: `gh api` (writes included), the OSV and deps.dev `curl` calls, whose rules match any text after the URL, and `WebFetch` to any domain. A prompt injection in that text can send out whatever those commands can read:
+  - `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1` strips `ANTHROPIC_API_KEY` and other credentials from the commands' environment and leaves the GitHub token in place, so `gh` keeps working. Keep it.
+  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head.
+  - Repository code is within reach of `WebFetch`. For a private repository where that matters, add a deny rule such as `--disallowedTools WebFetch`; migration guides then come from the package's repository only.
+- Self-hosted Renovate posts under its own bot login; use that in the `if`.
+- On a pull request Dependabot opens, the token is read-only unless `permissions` raises it, as above, and only Dependabot secrets are available: store `ANTHROPIC_API_KEY` as a Dependabot secret too.
+
 ### pr-open: push the branch and open a pull request
 
 Use it when your commits are ready for review. Add `draft` for a draft pull request, and a branch name to set the base:
@@ -157,7 +229,7 @@ Each skill pre-approves only some of the commands it runs. Anything else asks fo
 |---|---|---|
 | `ci-fix` | File edits; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checks from third-party apps); your test, lint and build commands |
 | `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `merge`, `worktree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
-| `dep-upgrade-check` | `gh repo view`; `gh pr view`, `diff`, `checks`; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; firecrawl search and scrape; context7 | `gh api` (changelog files, commit ranges, advisories, the security comment's lookup and update); `gh pr comment`; `curl` to api.osv.dev and api.deps.dev; lookups for npm, yarn, Python, Go, PHP, Rust, container images and GitHub Actions; the optional worktree build |
+| `dep-upgrade-check` | Writing files (the advisory query and the comment bodies); `printenv GITHUB_ACTIONS`; `git fetch`, `show`; `gh repo view`; `gh pr view`, `diff`, `checks`, `comment`; `gh run view`; `gh api`, writes included (changelog files, commit ranges, advisories, the comments' lookup and update); `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; `curl -s` to api.osv.dev and api.deps.dev; WebFetch; firecrawl search and scrape; context7 | Lookups for npm, yarn, Python, Go, PHP, Rust, container images and GitHub Actions; the optional worktree build |
 | `pr-open` | Nothing | Every `git` and `gh` command |
 
 An unattended `pr-shepherd` loop pauses at the first permission prompt. Before you start it, allow your repository's check commands in `.claude/settings.json`, for example `"Bash(pnpm test *)"`.
@@ -165,5 +237,6 @@ An unattended `pr-shepherd` loop pauses at the first permission prompt. Before y
 ## Advanced
 
 - `ci-fix` accepts the extra argument `push-authorized`. It then pushes without asking and ends with status `blocked` wherever it would otherwise ask you. `pr-shepherd` calls it this way.
+- `dep-upgrade-check` accepts the extra argument `unattended`, and `GITHUB_ACTIONS=true` has the same effect. It then asks nothing, ends with status `stopped` wherever it would otherwise ask you, and posts its full report on a pull request. See [Unattended, in CI](#unattended-in-ci).
 - `pr-shepherd` accepts an `iteration` argument after any pull request numbers. The loop passes it; you do not need to.
 - `skills/dep-upgrade-check/bot-prs.md`, `ecosystems.md` and `security.md` are reference files the skill reads, not commands.

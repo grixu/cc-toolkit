@@ -1,8 +1,8 @@
 ---
 name: dep-upgrade-check
 description: Dependency upgrade compatibility and security check. Gates the target version on known vulnerabilities, malware, and release age, finds everything that changes between the version a codebase resolves today and the target, maps each change to where the code uses it, and returns a safe / safe with changes / breaking verdict with file:line evidence. Use when the user names a package and a target version, links a Renovate or Dependabot pull request, or asks whether bumping a dependency will break the build.
-argument-hint: "<package>[@<version>] | <pull request URL>"
-allowed-tools: Read Grep Glob Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
+argument-hint: "<package>[@<version>] | <pull request URL> [unattended]"
+allowed-tools: Read Grep Glob Write Bash(printenv GITHUB_ACTIONS) Bash(git fetch *) Bash(git show *) Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh run view *) Bash(gh api *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) Bash(curl -s https://api.osv.dev/*) Bash(curl -s https://api.deps.dev/*) WebFetch mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
 ---
 
 # dep-upgrade-check
@@ -13,6 +13,17 @@ Two artifacts carry the analysis: the **usage surface** (every way the codebase 
 
 Input: `$ARGUMENTS`. With nothing given, ask for a package and target version or a PR link.
 
+## Invocation contract
+
+- **Unattended** when the arguments carry the literal token `unattended`, or when `printenv GITHUB_ACTIONS` prints `true`. Say in the first status line which of the two switched it on. A CI job runs the skill this way; nobody is there to answer.
+- Unattended, nothing waits for a person, and nothing that downloads or runs third-party code is offered or run:
+  - Wherever this skill says to ask, the run ends with status `stopped` and the reason instead: no input, a PR from another repository, any other ambiguity the input leaves open.
+  - An escalated unit gets no question. Its security comment goes out at once, with the Decision `pending` (`security.md` has the line), or with the decision a maintainer recorded earlier when it still applies.
+  - Step 5 reads the CI checks once and never waits for them. A check still running is reported as `pending at <ISO time>`, not as evidence.
+  - A provisional verdict names each unknown and what would settle it, without an offer.
+  - The upgrade is never applied.
+- Every run ends with the **result block** (last section), an early stop too.
+
 The commands below are pnpm/npm defaults. For a Python, Go, PHP, or Rust dependency, a container image, a GitHub Action, or a JS repo on npm or yarn, read [`ecosystems.md`](ecosystems.md) for the equivalents; every step stays the same.
 
 ## 1. Pin the range
@@ -22,6 +33,7 @@ Resolve every upgrade unit to `package: current → target`, where both ends are
 - **PR link**: read [`bot-prs.md`](bot-prs.md) to extract the units from a Renovate or Dependabot PR, including grouped and lockfile-only PRs. Confirm the PR belongs to the repository in the working directory (`gh repo view --json nameWithOwner`); when it does not, ask for the path of a local checkout.
 - **Package + version**: take the target as given; with no version, use the `latest` dist-tag (`pnpm view <pkg> dist-tags --json`).
 - **Current version** is the version the lockfile resolves, not the manifest range: `pnpm why -r <pkg> --json` lists each resolved version and the workspace projects that pull it in. A `^4.1.0` range can resolve to `4.9.2`, and the range starts there.
+- **Current version of a PR input** comes from the base branch's lockfile, never the working tree: `git fetch origin <baseRefName>`, then `git show origin/<baseRefName>:<lockfile>`. A checkout of the PR branch, or of its merge commit (what `actions/checkout` gives a `pull_request` run), already resolves the target, and the range would come out empty. `pnpm why -r` still names the projects that pull the package in. When the working-tree lockfile already resolves the PR head's version, say so in the report: `usage surface read from <ref>; its lockfile already carries the upgrade`.
 - **Multiple resolutions** (monorepo projects on different versions, or a direct and a transitive copy): keep one unit per resolved version and record which projects each covers. The report splits by unit.
 - **Transitive-only package** (no manifest declares it): name the direct dependents that pull it in and check whether their declared ranges even admit the target (`pnpm view <parent>@<ver> dependencies --json`). A target outside every parent's range reaches the codebase only through an `overrides` entry, and the report says so.
 
@@ -47,7 +59,12 @@ Find the source repository with `pnpm view <pkg>@<target> repository --json` (a 
 
 1. **GitHub Releases**: `gh release list -R <owner>/<repo> -L 100 --json tagName,publishedAt,isPrerelease`, then `gh release view <tag> -R <owner>/<repo> --json body`. Tags vary: `v1.2.3`, `1.2.3`, or `<pkg>@1.2.3` in changesets monorepos.
 2. **Changelog file** at the target tag: `gh api -H "Accept: application/vnd.github.raw+json" "repos/<owner>/<repo>/contents/<path>?ref=<tag>"`, where the path is `CHANGELOG.md`, `HISTORY.md`, or the package directory's changelog.
-3. **Documentation**: the migration or upgrade guide for every major boundary crossed, found with firecrawl or context7. Release notes for a major often only link to this guide, and the guide holds the breaking list.
+3. **Documentation**: the migration or upgrade guide for every major boundary crossed. Release notes for a major often only link to this guide, and the guide holds the breaking list. Look in this order and stop at the first guide found:
+   1. a guide file in the source repository at the target tag: list the paths with `gh api "repos/<owner>/<repo>/git/trees/<tag>?recursive=1" --jq '.tree[].path'`, look for `UPGRADING.md`, `MIGRATION.md`, or `migrat*` under `docs/`, and read it as in source 2;
+   2. context7, or a `firecrawl_search` for the guide, read with `firecrawl_scrape`;
+   3. without firecrawl, `WebFetch` of the guide URL that the release notes or the package's `homepage` link to.
+
+   With none found, the ledger entry reads `no guide found`, or `no guide found (docs tools unavailable)` when neither firecrawl nor context7 is connected, and the report lists it under **Unknowns**.
 4. **Fallback when a version has neither releases nor changelog**: the registry diff, `npm diff --diff=<pkg>@<current> --diff=<pkg>@<target> '*.d.ts' package.json` (read-only, no pnpm equivalent), plus the commit range `gh api "repos/<owner>/<repo>/compare/<currentTag>...<targetTag>" --jq '.commits[].commit.message'` scanned for `BREAKING`, `!:`, `remove`, `drop`, `rename`, `deprecate`.
 
 Independently of the notes, diff the package metadata between both ends, since this is where silent breaks hide: `pnpm view <pkg>@<v> engines peerDependencies exports type main types bin --json` for `v` = current and target. A dropped subpath in `exports`, a switch to `"type": "module"`, a raised `engines.node`, or a new required peer breaks consumers without any API change. The reverse direction counts too: every installed package that declares this one as a peer (a plugin, an adapter) must admit the target in its `peerDependencies`, or it needs its own upgrade, which the report names. For a PR input, also resolve the package on the PR head's lockfile (`git fetch origin pull/<number>/head`, then `git show FETCH_HEAD:pnpm-lock.yaml`, or `pnpm why -r <pkg>` in the step-5 worktree): when old and new copies coexist and the package's classes or nominal types cross package boundaries (`instanceof`, TypeScript private members), record a `split resolution` entry whose fix is a targeted `pnpm update -r <pkg>` or a dedupe.
@@ -98,7 +115,7 @@ Lead with the security outcome (`clear`, `escalated`, or `blocked` with its reas
 - **safe with changes**: affected entries exist, each with a known, bounded fix (a rename, a config key, a codemod, a peer bump).
 - **breaking**: an affected entry has no drop-in fix, the runtime or engine floor is above what the project runs, or the fix spans a redesign.
 
-While a load-bearing unknown remains, give the worst verdict it could resolve to, mark it `provisional`, name the unknown, and make the step-5 offer in the same message.
+While a load-bearing unknown remains, give the worst verdict it could resolve to, mark it `provisional`, name the unknown, and make the step-5 offer in the same message; unattended, say what would settle it instead.
 
 Then:
 
@@ -115,11 +132,32 @@ Then:
 
 Split the table by unit when a PR or monorepo carries several.
 
-An escalated unit ends the report with a question to the user: accept the risk, switch the target to the minimum safe version (steps 2–5 then run for it) or, when `security.md` calls for a lockfile refresh, refresh those transitive packages, or hold. Record the answer and any reason given.
+An escalated unit ends the report with a question to the user: accept the risk, switch the target to the minimum safe version (steps 2–5 then run for it) or, when `security.md` calls for a lockfile refresh, refresh those transitive packages, or hold. Record the answer and any reason given. Unattended, there is no question: the Decision stays pending or carries over, as `security.md` describes.
 
-For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated. A re-run updates the same comment.
+For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated, and right away for every outcome when unattended. A re-run updates the same comment.
 
+An unattended run on a PR input also posts the rest of the report, since nobody reads its output: a second comment, written in English to a file, starting with the marker line `<!-- dev-kit:dep-upgrade-check:report -->`, then the security outcome line, the verdict with its sentence of reasoning, the affected-changes table, the not-affected count, the unknowns, the sources, and the evidence run. It goes up with the security comment's upsert procedure from `security.md`, under its own marker, and a re-run updates it.
 When the user asks to apply the upgrade:
 
 - **Package + version input**: apply the fixes from the table in the working tree, then run the step-5 checks there.
 - **PR input**: apply them on the PR's head branch in a worktree outside the user's checkout (the session scratchpad when there is one; `git fetch origin <headRefName>`, then `git worktree add <dir> <headRefName>`). Commit there, staging by explicit file path, run the step-5 checks there, and push only on the user's explicit go-ahead. Say that Renovate and Dependabot rebase their branches and drop commits that are not theirs, and name the bot setting that removes the need for the commit when one exists (for example Renovate `postUpdateOptions: ["pnpmDedupe"]`).
+
+## Result block
+
+End every run, an early stop too, with this block, exactly these keys, each on one line. A CI job parses it.
+
+````
+```dep-upgrade-check-result
+status: done | stopped
+security: clear | escalated | blocked | n/a
+verdict: safe | safe with changes | breaking | not assessed | n/a
+provisional: true | false
+decision: accepted | switched | refresh | hold | pending | carried | n/a
+units: <count>
+security_comment: <URL> | none
+report_comment: <URL> | none
+reason: <one line: why stopped, blocked or provisional> | none
+```
+````
+
+With several units, `security` and `verdict` take the worst unit's value, and `decision` is `pending` while any escalated unit's decision is. `verdict` is `n/a` when every unit is blocked.

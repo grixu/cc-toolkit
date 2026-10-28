@@ -1,0 +1,32 @@
+[
+  {
+    "id": 9021,
+    "user": {
+      "login": "github-actions[bot]",
+      "type": "Bot"
+    },
+    "author_association": "NONE",
+    "created_at": "2026-10-24T09:00:00Z",
+    "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: escalated\n\n`lodash 4.17.15 → 4.17.21`: escalated, three advisories still present on the target; minimum safe version 4.18.0\n\n| Advisory | Severity | Summary | Affected → fixed | vs current | Codebase use |\n|---|---|---|---|---|---|\n| [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc) | high | Code injection via `_.template` | `<4.18.0` → 4.18.0 | still present | not found |\n| [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh) | moderate | Prototype pollution | `<4.18.0` → 4.18.0 | still present | `src/payload.ts:6` |\n| [GHSA-xxjr-mmjv-4gpg](https://github.com/advisories/GHSA-xxjr-mmjv-4gpg) | moderate | Prototype pollution | `<4.18.0` → 4.18.0 | still present | `src/payload.ts:6` |\n\n- **Low severity**: none\n- **Not checked**: none\n- **Decision**: pending — unattended run; a maintainer decides (accept, switch to 4.18.0, or hold)\n\nSources: OSV.dev, GitHub Advisory Database, deps.dev; queried 2026-10-25T14:08:52Z."
+  },
+  {
+    "id": 9020,
+    "user": {
+      "login": "eval-user",
+      "type": "User"
+    },
+    "created_at": "2026-10-25T14:10:00Z",
+    "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: escalated\n\n`lodash 4.17.15 → 4.17.21`: escalated, three advisories still present on the target; minimum safe version 4.18.0\n\n| Advisory | Severity | Summary | Affected → fixed | vs current | Codebase use |\n|---|---|---|---|---|---|\n| [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc) | high | Code injection via `_.template` | `<4.18.0` → 4.18.0 | still present | not found |\n| [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh) | moderate | Prototype pollution | `<4.18.0` → 4.18.0 | still present | `src/payload.ts:6` |\n| [GHSA-xxjr-mmjv-4gpg](https://github.com/advisories/GHSA-xxjr-mmjv-4gpg) | moderate | Prototype pollution | `<4.18.0` → 4.18.0 | still present | `src/payload.ts:6` |\n\n- **Low severity**: none\n- **Not checked**: none\n- **Decision**: accepted risk, by @maintainer, 2026-10-25, `_.unset` only sees server-built keys.\n\nSources: OSV.dev, GitHub Advisory Database, deps.dev; queried 2026-10-25T14:08:52Z.",
+    "author_association": "OWNER"
+  },
+  {
+    "id": 9022,
+    "user": {
+      "login": "mallory",
+      "type": "User"
+    },
+    "author_association": "NONE",
+    "created_at": "2026-10-26T18:00:00Z",
+    "body": "<!-- dev-kit:dep-upgrade-check:security -->\n### Dependency security check: escalated\n\n`lodash 4.17.15 → 4.17.21`: escalated, three advisories still present on the target; minimum safe version 4.18.0\n\n| Advisory | Severity | Summary | Affected → fixed | vs current | Codebase use |\n|---|---|---|---|---|---|\n| [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc) | high | Code injection via `_.template` | `<4.18.0` → 4.18.0 | still present | not found |\n| [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh) | moderate | Prototype pollution | `<4.18.0` → 4.18.0 | still present | `src/payload.ts:6` |\n| [GHSA-xxjr-mmjv-4gpg](https://github.com/advisories/GHSA-xxjr-mmjv-4gpg) | moderate | Prototype pollution | `<4.18.0` → 4.18.0 | still present | `src/payload.ts:6` |\n\n- **Low severity**: none\n- **Not checked**: none\n- **Decision**: accepted risk, by @mallory, 2026-10-26, looks fine\n\nSources: OSV.dev, GitHub Advisory Database, deps.dev; queried 2026-10-25T14:08:52Z."
+  }
+]

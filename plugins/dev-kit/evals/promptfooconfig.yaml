@@ -92,3 +92,65 @@ tests:
     assert:
       - type: javascript
         value: file://checks/security.mjs:prEscalatedAccept
+
+  - description: 'pr-merge-checkout: on the merge commit the current version still comes from the base lockfile'
+    vars:
+      input: https://github.com/example/web/pull/14
+      checkout: plugins/dev-kit/evals/.sandbox/pr-merge-checkout
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^accept'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prMergeCheckout
+
+  - description: 'pr-upsert-installation-token: no GET /user; the bot updates its own comment, not another bot''s'
+    vars:
+      input: https://github.com/example/web/pull/15
+      checkout: plugins/dev-kit/evals/.sandbox/pr-upsert-installation-token
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^accept'
+      env:
+        GH_STANDIN_INSTALLATION_TOKEN: '1'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prUpsertInstallationToken
+
+  - description: 'pr-unattended-escalated: no question; the comment goes out at once with a pending Decision'
+    vars:
+      input: https://github.com/example/web/pull/16 unattended
+      checkout: plugins/dev-kit/evals/.sandbox/pr-unattended-escalated
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prUnattendedEscalated
+
+  - description: 'pr-unattended-env: GITHUB_ACTIONS=true switches on unattended without the token'
+    vars:
+      input: https://github.com/example/web/pull/18
+      checkout: plugins/dev-kit/evals/.sandbox/pr-unattended-env
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      env:
+        GITHUB_ACTIONS: 'true'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prUnattendedEnv
+
+  - description: 'pr-unattended-carry: the bot carries a maintainer''s decision for the same advisories, never a stranger''s'
+    vars:
+      input: https://github.com/example/web/pull/17 unattended
+      checkout: plugins/dev-kit/evals/.sandbox/pr-unattended-carry
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      env:
+        GH_STANDIN_INSTALLATION_TOKEN: '1'
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prUnattendedCarry
+
+  - description: 'pr-unattended-stop: a PR from another repository stops instead of asking for a checkout'
+    vars:
+      input: https://github.com/other/lib/pull/5 unattended
+      checkout: plugins/dev-kit/evals/.sandbox/escalated-direct
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:prUnattendedStop
