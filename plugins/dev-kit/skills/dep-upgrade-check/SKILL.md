@@ -137,6 +137,7 @@ An escalated unit ends the report with a question to the user: accept the risk, 
 For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated, and right away for every outcome when unattended. A re-run updates the same comment.
 
 An unattended run on a PR input also posts the rest of the report, since nobody reads its output: a second comment, written in English to a file, starting with the marker line `<!-- dev-kit:dep-upgrade-check:report -->`, then the security outcome line, the verdict with its sentence of reasoning, the affected-changes table, the not-affected count, the unknowns, the sources, and the evidence run. It goes up with the security comment's upsert procedure from `security.md`, under its own marker, and a re-run updates it.
+
 When the user asks to apply the upgrade:
 
 - **Package + version input**: apply the fixes from the table in the working tree, then run the step-5 checks there.

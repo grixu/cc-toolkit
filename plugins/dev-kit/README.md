@@ -119,7 +119,8 @@ on:
     types: [opened, synchronize, reopened]
 permissions:
   contents: read
-  pull-requests: write
+  issues: write
+  pull-requests: read
   checks: read
   actions: read
 concurrency:
@@ -128,7 +129,9 @@ concurrency:
 jobs:
   dep-upgrade-check:
     # The pull request's author, not github.actor: a maintainer's push to the branch changes the actor.
-    if: github.event.pull_request.user.login == 'renovate[bot]'
+    if: >-
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      github.event.pull_request.head.ref != 'renovate/lock-file-maintenance'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -155,6 +158,8 @@ jobs:
           pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
             --plugin-dir ../cc-toolkit/plugins/dev-kit \
             --permission-mode dontAsk \
+            --strict-mcp-config \
+            --setting-sources user \
             --max-turns 80 \
             --output-format json > ../result.json
           jq -r .result ../result.json | sed -n '/^```dep-upgrade-check-result/,/^```/p' >> "$GITHUB_STEP_SUMMARY"
@@ -164,12 +169,15 @@ jobs:
 - Check out the base commit. On `pull_request`, `actions/checkout` defaults to the merge commit, whose lockfile already holds the upgrade. The check reads the current version from the base branch's lockfile either way, but the code it searches should be the base's.
 - Keep the plugin checkout outside the repository's directory, or the usage search reads it as part of your code.
 - `--permission-mode dontAsk` denies every call the skill does not pre-approve. The pre-approved set covers the pnpm path. For npm, yarn, Python, Go, PHP, Rust, container images or GitHub Actions, add their lookups with `--allowedTools`, or those calls are denied.
+- `--strict-mcp-config` and `--setting-sources user` keep the repository's own Claude Code configuration out of the run. Without them, a `.mcp.json` would start its servers on the runner (a stdio server is a command that runs there), and the permission rules in `.claude/settings.json` would widen what the run may do.
+- To run on a Claude subscription instead of an API key, set `CLAUDE_CODE_OAUTH_TOKEN` to a token from `claude setup-token` in place of `ANTHROPIC_API_KEY`.
+- To make the check required before merging, add the job as a required status check on the default branch. A job that its `if:` skips reports success, so pull requests from people and other bots are not blocked. Renovate's lockfile-maintenance pull request is skipped the same way, which keeps its automerge working; it then gets no security check.
 - The run reads release notes and guides it cannot trust, and the skill pre-approves commands that reach the network: `gh api` (writes included), the OSV and deps.dev `curl` calls, whose rules match any text after the URL, and `WebFetch` to any domain. A prompt injection in that text can send out whatever those commands can read:
   - `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1` strips `ANTHROPIC_API_KEY` and other credentials from the commands' environment and leaves the GitHub token in place, so `gh` keeps working. Keep it.
-  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head.
+  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head. `issues: write` is enough to create and update the comments, and `pull-requests` stays `read` so that an injected command cannot approve the pull request.
   - Repository code is within reach of `WebFetch`. For a private repository where that matters, add a deny rule such as `--disallowedTools WebFetch`; migration guides then come from the package's repository only.
 - Self-hosted Renovate posts under its own bot login; use that in the `if`.
-- On a pull request Dependabot opens, the token is read-only unless `permissions` raises it, as above, and only Dependabot secrets are available: store `ANTHROPIC_API_KEY` as a Dependabot secret too.
+- On a pull request Dependabot opens, the token is read-only unless `permissions` raises it, as above, and only Dependabot secrets are available: store `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`) as a Dependabot secret too.
 
 ### pr-open: push the branch and open a pull request
 
