@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- the delta review of the automatic review fixes runs only the `correctness` and `security`
+  lenses, as a repair's review already did; on real runs every craft finding it raised went to a
+  human, and none was a correctness or security defect
+
 ## [0.5.0] - 2026-10-25
 
 ### Added
