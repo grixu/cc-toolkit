@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-28
+
 ### Added
 - `dep-upgrade-check`: an `unattended` argument, also switched on by `GITHUB_ACTIONS=true`, for a CI job: nothing asks, an ask point stops with a reason, an escalated outcome posts its security comment at once with the decision `pending`, and a re-run keeps a maintainer's recorded decision while the packages, targets and advisories stay the same
 - `dep-upgrade-check`: every run ends with a parseable `dep-upgrade-check-result` block
