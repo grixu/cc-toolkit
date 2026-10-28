@@ -162,8 +162,12 @@ jobs:
             --setting-sources user \
             --max-turns 80 \
             --output-format json > ../result.json
-          jq -r .result ../result.json | sed -n '/^```dep-upgrade-check-result/,/^```/p' >> "$GITHUB_STEP_SUMMARY"
+          block="$(jq -r .result ../result.json | sed -n '/^```dep-upgrade-check-result/,/^```/p')"
+          printf '%s\n' "$block" >> "$GITHUB_STEP_SUMMARY"
           jq -e '(.permission_denials // []) | length == 0' ../result.json
+          grep -qx 'status: done' <<< "$block"
+          grep -Eqx 'security: (clear|escalated)' <<< "$block"
+          grep -Eqx 'decision: (accepted|n/a)' <<< "$block"
 ```
 
 - Check out the base commit. On `pull_request`, `actions/checkout` defaults to the merge commit, whose lockfile already holds the upgrade. The check reads the current version from the base branch's lockfile either way, but the code it searches should be the base's.
@@ -171,6 +175,7 @@ jobs:
 - `--permission-mode dontAsk` denies every call the skill does not pre-approve. The pre-approved set covers the pnpm path. For npm, yarn, Python, Go, PHP, Rust, container images or GitHub Actions, add their lookups with `--allowedTools`, or those calls are denied.
 - `--strict-mcp-config` and `--setting-sources user` keep the repository's own Claude Code configuration out of the run. Without them, a `.mcp.json` would start its servers on the runner (a stdio server is a command that runs there), and the permission rules in `.claude/settings.json` would widen what the run may do.
 - To run on a Claude subscription instead of an API key, set `CLAUDE_CODE_OAUTH_TOKEN` to a token from `claude setup-token` in place of `ANTHROPIC_API_KEY`.
+- The last three lines are the gate. The job fails unless the run finished (`status: done`), no unit is blocked, and every escalated unit's decision is `accepted`, carried or fresh; `pending`, `hold`, `switched` and `refresh` fail, since the pull request as opened is not what was approved. The compatibility verdict does not gate: your build and tests already run on the pull request.
 - To make the check required before merging, add the job as a required status check on the default branch. A job that its `if:` skips reports success, so pull requests from people and other bots are not blocked. Renovate's lockfile-maintenance pull request is skipped the same way, which keeps its automerge working; it then gets no security check.
 - The run reads release notes and guides it cannot trust, and the skill pre-approves commands that reach the network: `gh api` (writes included), the OSV and deps.dev `curl` calls, whose rules match any text after the URL, and `WebFetch` to any domain. A prompt injection in that text can send out whatever those commands can read:
   - `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1` strips `ANTHROPIC_API_KEY` and other credentials from the commands' environment and leaves the GitHub token in place, so `gh` keeps working. Keep it.
