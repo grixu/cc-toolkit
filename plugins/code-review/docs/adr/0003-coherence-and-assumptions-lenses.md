@@ -19,7 +19,8 @@ because each needs evidence no existing lens reads:
   the handler, a migration against the model, a compose key against the code that reads
   it. One side is often a file every other lens skips (Markdown, YAML, `.env.example`,
   `.sql`, a workflow), so its `<files>` is the resolved list plus every skipped file except
-  lockfiles and generated output, minus the active spec.
+  lockfiles, generated output and real `.env*` files (templates such as `.env.example`
+  stay; a real one is Grepped for key names only, never Read), minus the active spec.
 - **`assumptions` judges a belief against installed source.** A finding pins the
   dependency's version from the lockfile and cites the installed implementation
   (`node_modules/…:L`, `site-packages`, `vendor/`), its own docs, or the platform's

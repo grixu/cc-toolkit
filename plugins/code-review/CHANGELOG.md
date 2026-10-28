@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `coherence` lens, always on: eight rules (`doc-drift`, `contract-drift`, `schema-drift`,
   `config-drift`, `sibling-asymmetry`, `missing-counterpart`, `incomplete-propagation`,
   `invariant-breach`) for two artifacts that describe the same thing differently, each finding
-  quoting both sides. It reads every skipped file except lockfiles and generated output, and a
-  change of documents, changesets or config data alone runs it as the only lens. An accepted ADR,
+  quoting both sides. It reads every skipped file except lockfiles, generated output and real
+  `.env*` files (templates such as `.env.example` stay; a real one is Grepped for key names only),
+  and a change of documents, changesets or config data alone runs it as the only lens. An accepted ADR,
   `CONTEXT.md` or a decision document in the diff generates `invariant-breach` findings; other
   design notes yield candidates, and `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` and
   `.claude/rules` stay suppress-only. Eval-34 and eval-35 cover it

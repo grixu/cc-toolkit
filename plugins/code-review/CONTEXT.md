@@ -52,7 +52,7 @@ _Avoid_: lens selection (the user never picks), enabled lenses
 - Conventions suppress, **Standards files** generate: a convention file turns a would-be **Finding** into a non-finding, a **Standards file** produces `standards` **Findings**
 - Every **Scanner** reads the **Standards file** pair and raises `standards` **Findings** only inside its own Lens's subject
 - The six added **Lenses** (correctness, security, coherence, assumptions, performance, spec) have no standalone skill
-- **coherence** also reads the skipped files (documents, config data, migrations), never lockfiles or generated output; **assumptions** reads the installed dependency source and lockfile as evidence, never as files it judges
+- **coherence** also reads the skipped files (documents, config data, migrations), never lockfiles, generated output or real `.env*` files (templates such as `.env.example` stay; a real one is Grepped for key names only); **assumptions** reads the installed dependency source and lockfile as evidence, never as files it judges
 - An accepted ADR, `CONTEXT.md` or a decision document in the diff generates `coherence` · invariant-breach **Findings**; `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` and `.claude/rules` stay suppress-only
 - A **Scanner** returns **Findings**/**Verdicts** only; the **Orchestrator** merges, dedups, and re-grades severity centrally
 - A **Scanner** detects; the **Orchestrator** filters. Uncertainty travels as a **Candidate** rather than being dropped at detection, so the filter decides it with the whole review in view
