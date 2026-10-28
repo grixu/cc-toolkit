@@ -61,8 +61,8 @@ code are both doc-drift. When the stale side is read at runtime, it is `contract
   included, plus every file the scope resolution skipped — Markdown, changesets, YAML,
   TOML, JSON (`package.json` too), env templates (`.env.example`, `.env.sample`,
   `.env.template`, `.env.dist`), `.sql` migrations, Dockerfiles, compose, Helm, workflows,
-  tests. Lockfiles, generated clients, `dist/`, `*_pb.*`, generated `.d.ts`, minified files,
-  snapshots and real env files (every other `.env*`) are not in it; a generated client may
+  tests. Lockfiles, generated clients, `dist/`, `build/`, `node_modules/`, `*_pb.*`, generated
+  `.d.ts`, minified files, snapshots and real env files (every other `.env*`) are not in it; a generated client may
   still be Read as the other side of a `contract-drift`. On a change of
   documents alone the code side lives in the repo: Read it there. You grade no craft in
   any file — the seam is your whole subject.

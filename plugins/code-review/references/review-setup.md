@@ -70,7 +70,8 @@ full resolved list; `spec` gets the full resolved list plus every skipped file e
 files (every `.env*` but `.env.example`, `.env.sample`, `.env.template` and `.env.dist` — a
 real one in the change `spec` and `coherence` may only Grep for key names, never Read); `coherence`
 gets the full resolved list plus every skipped file except lockfiles, generated output (a
-generator's `.d.ts`, `*_pb.*`, anything under `dist/`, minified files, snapshots) and real env
+generator's `.d.ts`, `*_pb.*`, anything under `dist/`, `build/`, `node_modules/`, minified files,
+snapshots) and real env
 files, and minus the active spec,
 which is `spec`'s alone; every other Lens gets the resolved list minus its
 `policy` files. Record every **inactive** Lens with its reason (`performance — no executable

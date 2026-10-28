@@ -98,7 +98,8 @@ These consumers depend on this list:
   for key names;
 - the **`coherence` lens** receives the whole change too — every judged file, `policy`
   files included, plus every skipped file except lockfiles, generated output (a
-  generator's `.d.ts`, `*_pb.*`, anything under `dist/`, minified files, snapshots) and real
+  generator's `.d.ts`, `*_pb.*`, anything under `dist/`, `build/`, `node_modules/`, minified
+  files, snapshots) and real
   env files — every `.env*` but the templates `.env.example`, `.env.sample`, `.env.template`
   and `.env.dist` — and minus the active spec: a doc, a changeset, a migration or a compose
   file is one side of the seam it judges. A real env file in the change is never Read; the lens
