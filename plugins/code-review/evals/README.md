@@ -1,8 +1,8 @@
 # code-review — promptfoo eval suite
 
 Repeatable [promptfoo](https://www.promptfoo.dev/) evals for the `comment-review`
-and `quality-review` skills and for the three scanner-only lenses (`security`,
-`performance`, `spec`). Each test runs the **real plugin** (loaded as a local plugin
+and `quality-review` skills and for the scanner-only lenses (`correctness`, `security`,
+`coherence`, `assumptions`, `performance`, `spec`). Each test runs the **real plugin** (loaded as a local plugin
 through the Claude Agent SDK) against a fixture and grades its output — comment
 verdicts (KEEP / REMOVE / REWRITE / MOVE / ADD, rules R1–R12) on the comment track,
 and findings tagged `family` · rule · severity on the quality, scanner, and standards

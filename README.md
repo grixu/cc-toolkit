@@ -63,7 +63,7 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 
 | Plugin | What it does | Start with |
 |---|---|---|
-| [code-review](plugins/code-review/README.md) | Reviews your branch's changes from several angles at once (comments, readability and tests, naming, structure, simplicity, security, performance, and conformance to a spec) and merges the results into one report per file. Changes nothing until you pick which fixes to apply. | `/code-review:start-cr` |
+| [code-review](plugins/code-review/README.md) | Reviews your branch's changes from several angles at once (comments, readability and tests, naming, structure, simplicity, correctness, security, agreement between code and its docs, contracts and config, assumptions about dependencies and the platform, performance, and conformance to a spec) and merges the results into one report per file. Changes nothing until you pick which fixes to apply. | `/code-review:start-cr` |
 | [tester](plugins/tester/README.md) | Checks that a running app behaves as intended. It finds the local stack, derives checks from a spec or from your git diff, and runs them against the API, the UI in a browser, and failure cases such as a stopped dependency. Returns a pass/fail table with evidence for each check. | `/tester:run [spec or scope]` |
 | [hookify](plugins/hookify/README.md) | Stops Claude from repeating a mistake. Describe the behavior, such as "warn me before `rm -rf`", and it writes a rule that blocks or warns when it happens again. | `/hookify:hookify <behavior>` |
 

@@ -46,8 +46,8 @@ pinned to a declaration (an enum member, a constant, a type field) when it
 actually explains the behavior of a method elsewhere. That is not a deletion
 case; it is a relocation case. R12 covers it.
 
-The `security`, `performance`, and `spec` lenses exist only in `/start-cr`; this
-skill reviews comments and nothing else.
+The `correctness`, `security`, `coherence`, `assumptions`, `performance` and `spec`
+lenses exist only in `/start-cr`; this skill reviews comments and nothing else.
 
 ## Step 0 — Read the project's own conventions first
 

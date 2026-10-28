@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `coherence` lens, always on: eight rules (`doc-drift`, `contract-drift`, `schema-drift`,
+  `config-drift`, `sibling-asymmetry`, `missing-counterpart`, `incomplete-propagation`,
+  `invariant-breach`) for two artifacts that describe the same thing differently, each finding
+  quoting both sides. It reads every skipped file except lockfiles and generated output, and a
+  change of documents, changesets or config data alone runs it as the only lens. An accepted ADR,
+  `CONTEXT.md` or a decision document in the diff generates `invariant-breach` findings; other
+  design notes yield candidates, and `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` and
+  `.claude/rules` stay suppress-only. Eval-34 and eval-35 cover it
+- `assumptions` lens, always on: four rules (`dependency-semantics`, `platform-semantics`,
+  `version-skew`, `mock-divergence`) for code that relies on library, runtime, CI or platform
+  behaviour that does not hold, each finding pinning the locked version and citing the installed
+  source or the dependency's own docs. Eval-36 and eval-37 cover it
+- `tests` · mutation-gap (medium): a decision the change adds or modifies whose tests would still
+  pass if it were inverted, shifted by one or deleted. Eval-38 and eval-39 cover it
+- ADR 0003 records the two lenses, their overlap boundaries and the invariant authority bar
+
+### Changed
+
+- `correctness` carries the Code Auditor patterns as Flag conditions on its existing rules — an
+  async callback in `forEach`, a fire-and-forget promise, an `allSettled` entry read without its
+  status, `.find()` used as present, an unguarded `JSON.parse`, an unchecked HTTP status, a
+  missing timeout, a retried non-idempotent call, a dropped error cause, `.sort()` on a parameter,
+  a loose `==` — each with the look-alike that clears it; a pattern alone is never a finding.
+  Eval-40 covers them
+- the master severity table has 68 fixed rows across thirteen families, and the report's tally
+  reads `Lenses: L of 11`
+- the merge's dedup names one owner for each seam the new lenses share with `correctness`,
+  `comments`, `spec`, `module`, `standards`, `security` and `tests`
+
 ## [0.6.0] - 2026-10-25
 
 ### Added
