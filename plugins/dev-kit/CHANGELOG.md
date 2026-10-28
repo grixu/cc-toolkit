@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-28
+
 ### Fixed
 - `dep-upgrade-check`: a re-run that carries a maintainer's decision reports the decision itself in the result block's `decision` (no more `carried`), and the new `decision_carried: true | false` says where it came from, so a CI gate can pass a carried acceptance and fail a carried hold
 
