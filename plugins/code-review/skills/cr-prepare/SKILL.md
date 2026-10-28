@@ -52,13 +52,16 @@ Apply `${CLAUDE_PLUGIN_ROOT}/references/scope.md` to the list: which files are j
 skipped and why, and each judged file's kind (`source`, `test`, `iac`, `policy`) from its `## File kinds`
 section.
 
-A change whose every file is skipped has nothing to judge either: return `status: empty` with
-`files: 0 judged` and each skip reason in `skipped`, never `ready`. Lenses that "pass" over zero
-files read downstream as a clean review of a change nobody looked at. For the same reason an
-active lens never carries an empty `files` list — a lens with nothing of its kind to read is
-inactive, with that reason. The one exception is an active spec: the `spec` lens maps the spec
-against skipped files too, so an all-skipped change with a usable `--spec` is `ready`, with
-`spec` the only active lens over the skipped paths and every other lens inactive.
+An active lens never carries an empty `files` list — a lens with nothing of its kind to read is
+inactive, with that reason — and a change that leaves every lens inactive has nothing to judge
+either: return `status: empty` with `files: 0 judged` and each skip reason in `skipped`, never
+`ready`. Lenses that "pass" over zero files read downstream as a clean review of a change nobody
+looked at. A change whose every file is skipped is not always that change: `coherence` judges
+every skipped file but lockfiles, generated output and real `.env*` files, and an active `spec` maps the spec against
+all of them. An all-skipped change that leaves `coherence` a file — a document, a changeset,
+config data — is `ready`, with `coherence` (plus `spec` when one counts) the only active lens and
+every other lens inactive. One of lockfiles and generated files alone is `ready` only with a
+usable `--spec`, `spec` then the only active lens; without one it is `empty`.
 
 `--spec` counts only when it names a readable local file. Anything else — a URL, a ticket id, a
 path that does not open — leaves the `spec` Lens inactive with that reason; never substitute a file
@@ -72,7 +75,7 @@ Settle the conventions note, the standards slot and the active lens set by
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`, working the mechanical read `scope.md`
 describes inside the checkout. A lens is named by its rules file's basename: `comments`,
 `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`,
-`security`, `performance`, `spec`.
+`security`, `coherence`, `performance`, `spec`.
 
 ## 3. Write the context directory
 
@@ -101,8 +104,9 @@ Write each file with the `Write` tool:
 
 `spec_focus` is `null` when no focus was given or `spec` is `null`. `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
 `files` is its own list — the `source` subset for `performance`, the whole judged list for
-`security`, the whole judged list plus every skipped path for `spec`, and the judged list minus
-its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
+`security`, the whole judged list plus every skipped path for `spec`, the whole judged list plus
+every skipped path but lockfiles and generated output, minus the spec, for `coherence`, and the
+judged list minus its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
 the script returned, so the caller can read what you saw.
 
 ## 4. Return

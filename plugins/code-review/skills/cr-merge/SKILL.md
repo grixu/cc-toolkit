@@ -55,7 +55,7 @@ included, in the report's order:
 ```
 status: merged | incomplete | error
 report: <context>/cr-report.md | none (<reason>)
-lenses: <L> of 9 (skipped: <lens — reason; …>; partial: <lens — K of M files; …>)
+lenses: <L> of <A> (skipped: <lens — reason; …>; partial: <lens — K of M files; …>)
 findings:
 - <severity> · <family> · <rule> · <path>:L<lines> · <safe | structural | report-only> — <the fix, as a clause>
 - comments · R<n> · <VERDICT> · <path>:L<line> · <safe | structural | report-only> — <the fix>

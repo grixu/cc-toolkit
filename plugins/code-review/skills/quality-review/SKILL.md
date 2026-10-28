@@ -232,13 +232,13 @@ anything:
 | `simplicity` | `${CLAUDE_PLUGIN_ROOT}/references/rules/simplicity-types.md` |
 
 **Severity comes from `${CLAUDE_PLUGIN_ROOT}/references/severity.md`** — the master
-table of all 55 fixed rules, what `high` / `medium` / `nit` each mean, the keyword
+table of every fixed rule, what `high` / `medium` / `nit` each mean, the keyword
 mapping for `standards` findings, and the anti-anchoring rule. Read it and grade every
 finding against its own row there (a `standards` finding against its keyword). The
 family, the rule, and the severity are all used **verbatim**, so a reader (and a diff
 between two reviews) sees the same `family` · rule every time, never a code number or a
-paraphrase invented this run. The table's `security`, `performance`, and `spec` rows
-belong to `/start-cr` lenses; do not grade against them here.
+paraphrase invented this run. The table's `correctness`, `security`, `performance`,
+`spec` and `coherence` rows belong to `/start-cr` lenses; do not grade against them here.
 
 ## Step 3 — Report (one fixed skeleton, every time)
 

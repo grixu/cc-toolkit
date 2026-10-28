@@ -3,9 +3,9 @@
 Every finding that reports as `family` · rule · severity carries one **family**, one
 **rule**, and one **severity**, all three **verbatim** from this table — never a code
 number, never a paraphrase invented this run. Two reviews of the same code name the
-same `family` · rule every time. Twelve families report in that shape: the eleven below
-with **55 fixed rows**, plus `standards`, whose rules are the project's own and are
-graded by the mapping at the end of this file.
+same `family` · rule every time. Every family reports in that shape: the fixed families
+below, each with its own rows, plus `standards`, whose rules are the project's own and
+are graded by the mapping at the end of this file.
 
 Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 `critical`, and no numeric scale.
@@ -67,6 +67,14 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `spec`        | wrong-implementation | a requirement implemented, but the implementation contradicts the spec line | high |
 | `spec`        | partial-requirement | a requirement only partly implemented | medium |
 | `spec`        | scope-creep         | behaviour in the diff no spec line asked for | medium |
+| `coherence` | doc-drift              | a prose artifact (README, ADR, CONTEXT.md, changeset, `docs/`, `.env.example`, OpenAPI `description:`) states a behaviour, value, default, name or command the code does not have | medium |
+| `coherence` | contract-drift         | two declarations of one boundary that the type checker does not connect disagree on a field, optionality, type, enum member, status or error shape (OpenAPI/proto/SDL vs handler; contracts-package schema vs hand-written client type; producer vs consumer; stale generated client) | high |
+| `coherence` | schema-drift           | a migration and the ORM model / schema types / factories / seeds disagree on column, type, nullability, default or enum; a `down` that does not invert `up` | high |
+| `coherence` | config-drift           | a key, port, path, script name or flag that code or CI reads is missing or named differently in the artifact that should provide it (compose, Helm values, workflow `env:`, Dockerfile, package.json scripts/exports) | high |
+| `coherence` | sibling-asymmetry      | among ≥3 parallel paths where every other sibling, or a clear majority of ≥3 siblings, shares a step (validation, transaction, audit log, cleanup, error mapping, cache invalidation), one skips it | high |
+| `coherence` | missing-counterpart    | one half of an inherent pair is missing: create/destroy, setup/teardown, subscribe/unsubscribe, migration up without down where the repo writes downs | medium |
+| `coherence` | incomplete-propagation | the change adds an enum member, error/log code, event name, permission, or renames something, and a runtime listing of its siblings misses it (exhaustive map, switch in another module, i18n catalog, DB check constraint, OpenAPI enum) | high |
+| `coherence` | invariant-breach       | code in the diff breaks an invariant an accepted ADR, CONTEXT.md, or a decision document in the diff states as a rule (single writer, writes through outbox, money as integer cents) | high |
 
 ## What each severity means
 
@@ -86,7 +94,10 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   reaching a sink (`injection-sink`), an unguarded resource (`missing-access-check`),
   a protection switched off (`insecure-setting`), a secret or over-wide grant declared
   into infrastructure (`iac-exposure`), and a boundary the change relaxes
-  (`access-widening`). These cost the most to live with.
+  (`access-widening`), and two artifacts that disagree where the disagreement breaks a
+  wire format, a deploy, persistence or dispatch (`contract-drift`, `schema-drift`,
+  `config-drift`, `sibling-asymmetry`, `incomplete-propagation`, `invariant-breach`).
+  These cost the most to live with.
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
   that claims more than its assertions check, `guard-clause` nesting, an unexplained
@@ -102,13 +113,15 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   (`unbounded-fetch`), a blocking call on a serving path (`blocking-in-async`), a new
   query on an unindexed column (`missing-index`), a
   re-render the memoisation was meant to prevent (`wasted-render`), a failure the caller
-  never sees (`swallowed-error`), and a requirement
-  half-met or exceeded (`partial-requirement`, `scope-creep`).
+  never sees (`swallowed-error`), a requirement
+  half-met or exceeded (`partial-requirement`, `scope-creep`), prose that describes code
+  the change does not have (`doc-drift`), and one half of an inherent pair left out
+  (`missing-counterpart`).
 - **nit** — local `openness` / spacing, an inline `explaining-variable`, a
   type-in-the-name `role-name`, a `verbose` site a shorter form would say plainly. Real, but cheap; cluster them so the report does not
   drown in nits.
 
-A `security`, `correctness` or `spec` finding is never `nit`: those families grade `high`
+A `security`, `correctness`, `spec` or `coherence` finding is never `nit`: those families grade `high`
 or `medium` only, and a doubt about one goes to CANDIDATES or `Not flagged`, never to a softer
 severity.
 
