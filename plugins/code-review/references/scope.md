@@ -18,10 +18,11 @@ charts (templates and `values*.yaml` under a directory holding a `Chart.yaml`); 
 same hand-written code as `.js` — a build script or a config-as-code module under
 `.mjs`/`.cjs` is reviewed, not skipped as tooling.
 
-**Access policy and pipeline files** are graded by the `security` lens alone among the
-lenses that grade a file's own lines: they are config by shape, but a line in one decides
-who may do what, and a widening there is the change's whole effect. The lenses that judge
-the seam between files read them too. The set, by path: `*.rego`, `*.cedar`, `CODEOWNERS`, CI workflow
+**Access policy and pipeline files** are in scope for the `security` lens: they are
+config by shape, but a line in one decides who may do what, and a widening there is the
+change's whole effect. `assumptions` also judges what a pipeline file believes about the CI
+that runs it, and `coherence` reads them as one side of a seam; no craft lens grades them.
+The set, by path: `*.rego`, `*.cedar`, `CODEOWNERS`, CI workflow
 definitions (`.github/workflows/*.yml`, `.gitlab-ci.yml`, and their equivalents), and
 YAML/JSON under a `policies/`, `policy/`, `rbac/` or `iam/` directory or named
 `*policy*.json`/`*policy*.yaml`; plus any YAML whose own `apiVersion`/`kind` line makes it a
@@ -43,10 +44,11 @@ and grade no craft in them.
 `.github/workflows/*.yml` or `.gitlab-ci.yml` routinely carries a real exposure — a
 `pull_request_target` job checking out and running untrusted code, a widened
 `permissions:` block, a secret passed into a step that echoes it — so the `security` lens
-judges it like any policy file, and no craft lens grades it. The dependency and
-action-pinning audit stays with `/security-review`, so when a pipeline file changed the
-`Skipped` line still names it — graded by `security` alone — and points the reader to
-`/security-review` for that audit, in those words.
+judges it like any policy file, `assumptions` judges what it believes about the CI that
+runs it, and no craft lens grades it. The dependency and action-pinning audit stays with
+`/security-review`, so when a pipeline file changed the `Skipped` line still names it —
+graded by `security` and `assumptions` alone — and points the reader to `/security-review`
+for that audit, in those words.
 
 **A skipped file that is the substance of the change gets its own sentence.** A
 dependency manifest (`package.json`, `composer.json`, …) on a dependency-bump or upgrade
@@ -82,10 +84,13 @@ eyeballing the content:
 
 These consumers depend on this list:
 
-- **`policy` files go to the `security` lens only** among the lenses that grade a file's
-  own lines — every craft, `correctness` and `performance` lens's `<files>` leaves them
-  out, so a change that touches nothing but policy runs `security` and `coherence`, plus
-  `spec` when one is active;
+- **`policy` files go to `security` and `assumptions`** among the lenses that grade a
+  file's own lines — every craft, `correctness` and `performance` lens's `<files>` leaves
+  them out, so a change that touches nothing but policy runs `security`, `assumptions` and
+  `coherence`, plus `spec` when one is active;
+- the **`assumptions` lens** receives the whole judged list, `policy` files included, and
+  no skipped file: lockfiles, the installed dependency tree, `.nvmrc`, `engines`, a
+  Dockerfile's base image and replica counts are evidence it reads, never files it judges;
 - the **`spec` lens** receives the whole change — every judged file, `policy` files
   included, plus every file *Skip* leaves out: conformance is not line-graded craft, and
   a skipped workflow, manifest or doc is often exactly what a spec line describes;

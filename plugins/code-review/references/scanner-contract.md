@@ -16,9 +16,9 @@ Send each Scanner a brief in this shape, filling every slot:
 
 ```
 <scanner_brief>
-  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness | coherence</lens>
+  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness | coherence | assumptions</lens>
   <rules_file>rules/<lens>.md</rules_file>
-  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security`, the full resolved list plus every skipped file for `spec`, the full resolved list plus every skipped file except lockfiles and generated output, minus the active spec, for `coherence`, the resolved list minus `policy` files for every other Lens --></files>
+  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security` and `assumptions`, the full resolved list plus every skipped file for `spec`, the full resolved list plus every skipped file except lockfiles, generated output and real `.env*` files (templates such as `.env.example` stay), minus the active spec, for `coherence`, the resolved list minus `policy` files for every other Lens --></files>
   <diff_args><!-- from the scope resolution; "none" when the user named paths --></diff_args>
   <how_to_view>
     diff_args "none" → read the file whole; every line is under review
@@ -155,6 +155,12 @@ it still writes nothing.
     `pathA:L` vs `pathB:L`, each quoted or given by its exact value — and what breaks between
     them; severity is `high` or `medium`, **never `nit`**.
 
+11. **assumptions** → `rules/assumptions.md`
+    Judges the `assumptions` family; always active. A finding names **the belief** at the
+    change's `path:L`, **the contradicting fact** with its source `path:L`, and **the
+    consequence** on the changed path as input → outcome; severity is `high` or `medium`,
+    **never `nit`**.
+
 For the finding-shaped Lenses (every Lens but `comments`) the Scanner returns **FINDINGS**,
 split into primary and boy-scout (the `spec` Lens excepted), each in this exact shape:
 
@@ -164,7 +170,8 @@ split into primary and boy-scout (the `spec` Lens excepted), each in this exact 
 
 Every finding names its own file: the merge regroups findings by file, and a bare `L<lines>`
 under a Scanner's own heading loses its file the moment it is moved. `path` is relative to the
-checkout, exactly as `<files>` lists it.
+checkout, exactly as `<files>` lists it. Every `L<lines>` is a line of the file as read with
+`Read`, never an offset into the diff.
 
 A **`standards` finding** — any Lens may raise one, from the `<standards>` slot only —
 puts the quoted rule and its source where the loss goes:
@@ -178,8 +185,8 @@ mapping in `references/severity.md`.
 
 **Severity is exactly one of `high`, `medium`, or `nit`** — never `low`, never a
 number, never a paraphrase — and it is the one `severity.md` gives the rule's row. The
-vocabulary is shared; the grade is not free: a `security`, `spec`, `correctness` or
-`coherence` finding is never `nit`, and a doubt about its grade goes to `CANDIDATES`, never to a softer severity. Tell each Scanner that **severity is a
+vocabulary is shared; the grade is not free: a `security`, `spec`, `correctness`,
+`coherence` or `assumptions` finding is never `nit`, and a doubt about its grade goes to `CANDIDATES`, never to a softer severity. Tell each Scanner that **severity is a
 first pass** — you re-grade every quality finding centrally in the merge, so it grades
 honestly against its rules without agonizing over the boundary.
 
@@ -269,10 +276,16 @@ unsettled travels in one of three channels, and these are **not** interchangeabl
     `standards`, even when an ADR states them; any other invariant a decision document
     states → `coherence` · invariant-breach;
   - wider trust, an exposed secret, or a missing or weaker authorization check → `security`
-    (`iac-exposure`, `access-widening`, `missing-access-check`); a broken deploy or a name
+    (`iac-exposure`, `access-widening`, `missing-access-check`) — except an exposure caused by
+    a false belief about a dependency or platform, which stays `assumptions`; a broken deploy or a name
     mismatch between artifacts → `coherence` (`config-drift`, `sibling-asymmetry`);
   - a setup/teardown pair inside one function → `patterns` · execute-around; a paired
-    operation missing across units → `coherence` · missing-counterpart.
+    operation missing across units → `coherence` · missing-counterpart;
+  - missing handling for a declared or universal outcome → `correctness`; a false belief
+    about third-party, runtime or platform internals → `assumptions`;
+  - a test whose name or fixture claims a boundary its assertions do not check → `tests` ·
+    test-fidelity; a double that encodes behaviour the real dependency lacks →
+    `assumptions` · mock-divergence.
 
   A problem you are sure of that fits no row is still not a new family: send it
   with the nearest family and say in the clause which row it misses, and the merge decides it.

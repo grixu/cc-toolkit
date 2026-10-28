@@ -2,9 +2,9 @@
 description: >-
   Explicit-invocation orchestrator that runs the review lenses (comments,
   readability & tests, naming & module, objects & patterns, simplicity & types,
-  correctness, security, coherence, performance, spec) in parallel over a change and merges them
+  correctness, security, coherence, assumptions, performance, spec) in parallel over a change and merges them
   into one per-file report. Lenses are gated by the input, never by the user:
-  correctness, security and coherence are always on, performance runs only when executable source files are in scope,
+  correctness, security, coherence and assumptions are always on, performance runs only when executable source files are in scope,
   spec only when a spec file is named — by `--spec <path>`, or by the user accepting
   the one the diff itself carries. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
@@ -26,8 +26,8 @@ and only for what the user picks.
 
 This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
-user choice: the five craft Lenses, `correctness`, `security` and `coherence` always run
-(`objects & patterns` except over infrastructure code alone), `performance` runs
+user choice: the five craft Lenses, `correctness`, `security`, `coherence` and `assumptions`
+always run (`objects & patterns` except over infrastructure code alone), `performance` runs
 when executable source is in scope, `spec` when a spec file is named. For a partial
 review the user invokes `/code-review:comment-review` or `/code-review:quality-review` directly.
 
@@ -178,8 +178,8 @@ about a skipped dependency manifest that is the substance of the change — is i
 `${CLAUDE_PLUGIN_ROOT}/references/scope.md`. Read it and apply it to the resolved
 list. Then classify every surviving file by that file's `## File kinds` section —
 `source`, `test`, `iac`, or `policy` — and record the kind beside each path: Step 2b gates the
-`performance` Lens on the `source` subset, sends `policy` files to `security`, `coherence` and
-`spec` alone and skipped files to `coherence` and `spec` alone, and the
+`performance` Lens on the `source` subset, sends `policy` files to `security`, `assumptions`,
+`coherence` and `spec` alone and skipped files to `coherence` and `spec` alone, and the
 `comments` Scanner's test-file bar (R11) keys off the same classification.
 
 ## Step 2 — Read project conventions and standards (once)
@@ -378,7 +378,7 @@ single-select question — how the fixes get committed — so the apply phase ca
 goes instead of rebuilding history afterwards:
 
 - **Commit each family as it lands (Recommended)** — one commit per finding family the
-  fixes come from (`comments`, each craft family, `security`, `correctness`, `coherence`…), each
+  fixes come from (`comments`, each craft family, `security`, `correctness`, `coherence`, `assumptions`…), each
   `security` fix in a commit of its own so it can be reverted or reviewed alone;
 - **Fixup into the commit that introduced the line** — offered only when the branch has its
   own commits above the base (`git rev-list --count <base>..HEAD` above zero): each fix

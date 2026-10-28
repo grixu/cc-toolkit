@@ -48,13 +48,13 @@ Not every Lens runs on every change. Decide the set here, once, from the input �
 never from a preference:
 
 - the five craft Lenses (`comments`, `readability & tests`, `naming & module`,
-  `objects & patterns`, `simplicity & types`), **`correctness`**, **`security`** and
-  **`coherence`** are **always active**, on any change however small — except that a Lens
-  whose own `<files>` comes out empty is inactive with that reason: a change of `policy`
-  files only runs `security` and `coherence`, plus `spec` when one is active; a change whose
-  every file is skipped — documents, changesets, config data — runs `coherence` alone, plus
-  `spec` when one is active, and `coherence` reads the code side of each claim from the
-  repository;
+  `objects & patterns`, `simplicity & types`), **`correctness`**, **`security`**,
+  **`coherence`** and **`assumptions`** are **always active**, on any change however small
+  — except that a Lens whose own `<files>` comes out empty is inactive with that reason: a
+  change of `policy` files only runs `security`, `assumptions` and `coherence`, plus `spec`
+  when one is active; a change whose every file is skipped — documents, changesets, config
+  data — runs `coherence` alone, plus `spec` when one is active, and `coherence` reads the
+  code side of each claim from the repository;
 - **`objects & patterns`** is inactive, with the reason `declarative files only`, when
   every file in its `<files>` is `iac` — both its families are N/A for infrastructure code,
   and a scanner dispatched there only writes why;
@@ -65,12 +65,14 @@ never from a preference:
   `--spec`, or from the offer the user accepted when the change carried its own spec.
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
-`performance` gets the source subset it was gated on; `security` gets the full resolved
-list; `spec` gets the full resolved list plus every skipped file; `coherence` gets the full
-resolved list plus every skipped file except lockfiles and generated output (a generator's
-`.d.ts`, `*_pb.*`, anything under `dist/`, minified files, snapshots), and minus the active
-spec, which is `spec`'s alone; every other Lens gets the resolved list minus its `policy`
-files. Record every **inactive** Lens with its reason (`performance — no executable code`,
-`spec — no spec named`, `coherence — lockfiles and generated files only`, `correctness — no
-judged files`); the Tally prints them. From here on
+`performance` gets the source subset it was gated on; `security` and `assumptions` get the
+full resolved list; `spec` gets the full resolved list plus every skipped file; `coherence`
+gets the full resolved list plus every skipped file except lockfiles, generated output (a
+generator's `.d.ts`, `*_pb.*`, anything under `dist/`, minified files, snapshots) and real env
+files (every `.env*` but `.env.example`, `.env.sample`, `.env.template` and `.env.dist` — a
+real one in the change it may only Grep for key names, never Read), and minus the active spec,
+which is `spec`'s alone; every other Lens gets the resolved list minus its
+`policy` files. Record every **inactive** Lens with its reason (`performance — no executable
+code`, `spec — no spec named`, `coherence — lockfiles, generated and env files only`, `assumptions
+— no judged files`, `correctness — policy or skipped files only`); the Tally prints them. From here on
 **N** means this count: N Scanners run, N outputs awaited, N outputs merged.

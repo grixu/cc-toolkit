@@ -20,7 +20,7 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   as one that judged them all.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses, and across **every family**, craft and `correctness` /
-  `security` / `performance` / `spec` / `coherence` / `standards` alike — re-grade each against the table
+  `security` / `performance` / `spec` / `coherence` / `assumptions` / `standards` alike — re-grade each against the table
   first (see *Re-grade* below), then keep the one whose rule's row grades highest, the
   **most-specific** among equals, and drop the rest. Choosing the survivor before re-grading
   lets the table demote it afterwards: a `high` symptom folded under a root cause whose row
@@ -43,6 +43,11 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   when an ADR states it. A wider grant, an exposed secret or a missing authorization step is
   `security`, never `coherence` · config-drift or sibling-asymmetry. When two lenses report
   the same seam, keep the owner's bullet and fold the other into it.
+- **A false belief and a missing branch have different owners.** Missing handling for a
+  declared or universal outcome is `correctness`; a false belief about a library, the
+  runtime or the platform, backed by the installed source or its docs, is `assumptions`. A
+  test whose name claims an unchecked boundary is `tests` · test-fidelity, a double that
+  diverges from the real dependency `assumptions` · mock-divergence.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
@@ -164,7 +169,9 @@ the fix* is `report-only` too, with its one-line reason.
   **`correctness`** fix, which changes behaviour by design and names the input it corrects;
   the **`coherence`** fixes that edit a second file or a contract (`doc-drift`,
   `contract-drift`, `schema-drift`, `config-drift`, `sibling-asymmetry`,
-  `incomplete-propagation`) outside the report-only cases below; **plus** comment **MOVE**.
+  `incomplete-propagation`) outside the report-only cases below; the **`assumptions`** fixes
+  (`dependency-semantics`, `platform-semantics`, `version-skew`, `mock-divergence`) outside
+  the report-only cases below; **plus** comment **MOVE**.
 - **Boy-scout extras** — apply the untouched-code findings, or skip them. **Risk sorts this
   bucket too.** Only the mechanical ones — the same edits Safe fixes accepts — travel as a batch;
   a boy-scout finding whose fix moves, removes or restructures code, or touches `security`, joins
@@ -209,6 +216,11 @@ exists before this change (the fix is a new migration, the author's call) — a 
 change adds (status `A`) walks structurally; `config-drift` when the artifact that provides the
 key lives outside the repo. `missing-counterpart` and `invariant-breach` are always
 report-only: which half to add, or whether to amend the decision instead, is the author's call.
+
+**An `assumptions` fix is report-only when the repo cannot carry it.** A `dependency-semantics`,
+`platform-semantics` or `version-skew` fix that is a dependency bump, or a platform setting that
+lives outside the repo (a provider console, an organisation secret), is report-only; so is any
+`assumptions` finding still marked `(verify)`. `mock-divergence` walks structurally.
 
 **`spec` findings are report-only.** A missing or partial requirement is work to do,
 not an edit to apply, and never enters a bucket. The one exception is a
@@ -272,7 +284,7 @@ Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 10 of 10. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 11. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 </example>
 
 **The skeleton is the whole report.** It has no other sections: no `### Findings`
@@ -293,7 +305,7 @@ Rules for filling it in:
 - **Two vocabularies, side by side.** Quality findings use `` `family` · rule ·
   severity ``, with the family **backticked** — one of the fixed labels
   `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`,
-  `correctness`, `security`, `performance`, `spec`, `coherence`, `standards` — and rule and severity verbatim from
+  `correctness`, `security`, `performance`, `spec`, `coherence`, `assumptions`, `standards` — and rule and severity verbatim from
   `references/severity.md` (a `standards` rule is its slug, graded by the keyword
   mapping). Comment verdicts use `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD ``.
   **No severity↔verdict mapping** — keep them distinct.
@@ -331,7 +343,8 @@ Rules for filling it in:
   `high` or `medium` finding, **or** any comment REMOVE / REWRITE / MOVE / ADD, the
   headline names the worst one — it must not call the change "clean",
   "well-structured", or "only cosmetic nits". A confirmed **`security`** finding is the
-  headline over any craft finding, whatever their severities — and so is a confirmed
+  headline over any craft finding, whatever their severities — and so is an
+  **`assumptions` finding whose clause names a credential or data exposure**, and a confirmed
   **exposure that no rule names**, which leads the report from its own `Not flagged`
   bullet rather than being demoted for want of a tag; a `spec` ·
   missing-requirement or wrong-implementation forbids the clean headline outright.

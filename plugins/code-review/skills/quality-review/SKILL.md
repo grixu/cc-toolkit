@@ -238,7 +238,7 @@ finding against its own row there (a `standards` finding against its keyword). T
 family, the rule, and the severity are all used **verbatim**, so a reader (and a diff
 between two reviews) sees the same `family` · rule every time, never a code number or a
 paraphrase invented this run. The table's `correctness`, `security`, `performance`,
-`spec` and `coherence` rows belong to `/start-cr` lenses; do not grade against them here.
+`spec`, `coherence` and `assumptions` rows belong to `/start-cr` lenses; do not grade against them here.
 
 ## Step 3 — Report (one fixed skeleton, every time)
 

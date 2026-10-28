@@ -75,7 +75,7 @@ Settle the conventions note, the standards slot and the active lens set by
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`, working the mechanical read `scope.md`
 describes inside the checkout. A lens is named by its rules file's basename: `comments`,
 `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`,
-`security`, `coherence`, `performance`, `spec`.
+`security`, `coherence`, `assumptions`, `performance`, `spec`.
 
 ## 3. Write the context directory
 
@@ -104,8 +104,8 @@ Write each file with the `Write` tool:
 
 `spec_focus` is `null` when no focus was given or `spec` is `null`. `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
 `files` is its own list — the `source` subset for `performance`, the whole judged list for
-`security`, the whole judged list plus every skipped path for `spec`, the whole judged list plus
-every skipped path but lockfiles and generated output, minus the spec, for `coherence`, and the
+`security` and `assumptions`, the whole judged list plus every skipped path for `spec`, the whole judged list plus
+every skipped path but lockfiles, generated output and real `.env*` files (every one but `.env.example`, `.env.sample`, `.env.template` and `.env.dist`), minus the spec, for `coherence`, and the
 judged list minus its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
 the script returned, so the caller can read what you saw.
 

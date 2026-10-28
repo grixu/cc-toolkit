@@ -72,9 +72,9 @@ few files that bootstrap is most of the bill. One agent judging a list pays it o
 lens after the first reads the change with what the earlier ones saw still in its context, and
 the lenses run one after another instead of side by side. The caller decides which way to go —
 a list suits a small change, separate agents a large one — and this skill sets no size threshold.
-One limit is the caller's to keep: `coherence` reads well beyond its own files, Grepping a
-counterpart for every claim, so on a change too large for one shared reader it runs as its own
-agent, never inside a list.
+One limit is the caller's to keep: `coherence` and `assumptions` read well beyond their own
+files — a counterpart for every claim, the installed source behind every belief — so on a change
+too large for one shared reader each runs as its own agent, never inside a list.
 
 With a list, judge each lens as if it were the only one:
 

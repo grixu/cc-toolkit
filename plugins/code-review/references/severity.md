@@ -75,6 +75,10 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `coherence` | missing-counterpart    | one half of an inherent pair is missing: create/destroy, setup/teardown, subscribe/unsubscribe, migration up without down where the repo writes downs | medium |
 | `coherence` | incomplete-propagation | the change adds an enum member, error/log code, event name, permission, or renames something, and a runtime listing of its siblings misses it (exhaustive map, switch in another module, i18n catalog, DB check constraint, OpenAPI enum) | high |
 | `coherence` | invariant-breach       | code in the diff breaks an invariant an accepted ADR, CONTEXT.md, or a decision document in the diff states as a rule (single writer, writes through outbox, money as integer cents) | high |
+| `assumptions` | dependency-semantics | code relies on a library/framework/runtime behaviour its installed source contradicts: option scope, defaults, redirect/header handling, what a timeout covers, in-place mutation, ordering, retry | high |
+| `assumptions` | platform-semantics   | code or config relies on behaviour of where it runs that does not hold: GitHub Actions (`environment:` secrets, fork PRs get no secrets, skipped `needs` cascading), containers (`depends_on` ≠ ready), cron in UTC, at-least-once queues, DB engine semantics (collation, ON CONFLICT with partial index), replicas>1 (per repo's Helm/compose) vs in-process state | high |
+| `assumptions` | version-skew         | the change uses an API/option/behaviour the locked version lacks or changed, or a runtime API newer than `engines` / `.nvmrc` / Dockerfile base | high |
+| `assumptions` | mock-divergence      | a test double encodes behaviour the real dependency lacks, so the suite is green on the assumption (mocked fetch rejecting on 404) | medium |
 
 ## What each severity means
 
@@ -96,8 +100,10 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   into infrastructure (`iac-exposure`), and a boundary the change relaxes
   (`access-widening`), and two artifacts that disagree where the disagreement breaks a
   wire format, a deploy, persistence or dispatch (`contract-drift`, `schema-drift`,
-  `config-drift`, `sibling-asymmetry`, `incomplete-propagation`, `invariant-breach`).
-  These cost the most to live with.
+  `config-drift`, `sibling-asymmetry`, `incomplete-propagation`, `invariant-breach`), and
+  code that rests on a false belief about a library, the platform or the locked version
+  (`dependency-semantics`, `platform-semantics`, `version-skew`). These cost the most to
+  live with.
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
   that claims more than its assertions check, `guard-clause` nesting, an unexplained
@@ -116,12 +122,13 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   never sees (`swallowed-error`), a requirement
   half-met or exceeded (`partial-requirement`, `scope-creep`), prose that describes code
   the change does not have (`doc-drift`), and one half of an inherent pair left out
-  (`missing-counterpart`).
+  (`missing-counterpart`), and a test double that keeps the suite green on behaviour the
+  real dependency lacks (`mock-divergence`).
 - **nit** — local `openness` / spacing, an inline `explaining-variable`, a
   type-in-the-name `role-name`, a `verbose` site a shorter form would say plainly. Real, but cheap; cluster them so the report does not
   drown in nits.
 
-A `security`, `correctness`, `spec` or `coherence` finding is never `nit`: those families grade `high`
+A `security`, `correctness`, `spec`, `coherence` or `assumptions` finding is never `nit`: those families grade `high`
 or `medium` only, and a doubt about one goes to CANDIDATES or `Not flagged`, never to a softer
 severity.
 
