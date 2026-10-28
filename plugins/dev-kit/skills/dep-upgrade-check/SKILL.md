@@ -162,6 +162,6 @@ reason: <one line: why stopped, blocked or provisional> | none
 ```
 ````
 
-`decision` is always the decision itself, also when it was carried from an earlier comment, and `n/a` when no unit is escalated. `decision_carried` is `true` when the Decision came from an earlier comment (`security.md`, "Carried decision"), otherwise `false`, so always `false` with `pending` or `n/a`. A CI gate reads both: a carried `accepted` passes, a carried `hold` does not.
+`decision` is always the decision itself, also when it was carried from an earlier comment, and `n/a` when no unit is escalated. `decision_carried` is `true` when the Decision came from an earlier comment (`security.md`, "Carried decision"), otherwise `false`, so always `false` with `pending` or `n/a`. A CI gate passes on `status: done`, `security` other than `blocked`, and `decision` `accepted` or `n/a`, carried or not; `decision_carried` is there for whoever reads the log.
 
 With several units, `security` and `verdict` take the worst unit's value, and `decision` the first value any escalated unit holds in the order `pending`, `hold`, `switched`, `refresh`, `accepted`, a carried decision counting like a fresh one: one carried `hold` makes the run `hold`. `verdict` is `n/a` when every unit is blocked.
