@@ -875,9 +875,9 @@ tests:
     vars:
       checkout: plugins/code-review/evals/.sandbox/headless
       context: plugins/code-review/evals/.sandbox/headless-ctx
-    # Nine lenses in one agent's context: the default cap would abort mid-run. The skills write
+    # Eleven lenses in one agent's context: the default cap would abort mid-run. The skills write
     # their context files; without Write and Bash the agent narrates a review it never ran.
-    options: { max_budget_usd: 12, allow_all_tools: true }
+    options: { max_budget_usd: 16, allow_all_tools: true }
     assert:
       - type: javascript
         value: file://checks/headless-pipeline.mjs
@@ -962,7 +962,7 @@ tests:
       checkout: plugins/code-review/evals/.sandbox/headless
       context: plugins/code-review/evals/.sandbox/headless-list-ctx
       list: true
-    options: { max_budget_usd: 12, allow_all_tools: true }
+    options: { max_budget_usd: 16, allow_all_tools: true }
     assert:
       - type: javascript
         value: file://checks/headless-pipeline.mjs
@@ -1072,10 +1072,10 @@ tests:
         value: file://checks/report.mjs:commentVerdict
         config: { quote: 'check if the order has already shipped', verdict: REMOVE, rule: R1 }
 
-  - description: 'eval-29 scope-all-skipped (start-cr Step 1, an uncommitted side of skipped kinds only)'
+  - description: 'eval-29 scope-all-skipped (start-cr Step 1, an uncommitted side of a lockfile and generated output only)'
     prompts: [scope-question-track]
     vars:
-      # uncommitted: CLAUDE.md, docs/notes.md, .claude/settings.json; committed: src/order-service.ts
+      # uncommitted: pnpm-lock.yaml, dist/order-service.js; committed: src/order-service.ts
       checkout: plugins/code-review/evals/.sandbox/scope-skip
       gh: plugins/code-review/evals/.sandbox/bin/gh
       expect: skip
@@ -1087,7 +1087,7 @@ tests:
   - description: 'eval-30 scope-question (start-cr Step 1, a judged file on both sides)'
     prompts: [scope-question-track]
     vars:
-      # eval-29's checkout plus an untracked src/discount-limits.ts
+      # uncommitted: CLAUDE.md, docs/notes.md, .claude/settings.json and an untracked src/discount-limits.ts
       checkout: plugins/code-review/evals/.sandbox/scope-mixed
       gh: plugins/code-review/evals/.sandbox/bin/gh
       expect: ask
@@ -1096,10 +1096,10 @@ tests:
       - type: javascript
         value: file://checks/scope-question.mjs
 
-  - description: 'eval-33 scope-skipped-spec (start-cr Step 1 with --spec, an uncommitted side of skipped kinds only)'
+  - description: 'eval-33 scope-skipped-spec (start-cr Step 1 with --spec, an uncommitted side of a lockfile and generated output only)'
     prompts: [scope-question-track]
     vars:
-      # eval-29's checkout plus specs/order-discount.md on the base, passed as --spec
+      # eval-29's uncommitted pnpm-lock.yaml and dist/order-service.js; specs/order-discount.md on the base, passed as --spec
       checkout: plugins/code-review/evals/.sandbox/scope-spec
       gh: plugins/code-review/evals/.sandbox/bin/gh
       spec: specs/order-discount.md

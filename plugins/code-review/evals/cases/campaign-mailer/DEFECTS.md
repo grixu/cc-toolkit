@@ -2,7 +2,7 @@
 
 `reset-sandbox.sh` builds `.sandbox/mailer` from this directory: `base/` is the commit on `main`,
 `head/` the files two commits on `feat/weekly-digest` add or change, and `lenses/` the lens files
-the eight active Scanners would have written into `.sandbox/mailer-ctx`. Neither this file nor
+the ten active Scanners would have written into `.sandbox/mailer-ctx`. Neither this file nor
 `lenses/` reaches the checkout. The anonymised shape comes from a real run where a mailer's
 missing visible unsubscribe link had no rule, sat in `Not flagged`, and never reached the menu.
 

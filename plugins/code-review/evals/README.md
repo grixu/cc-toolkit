@@ -28,6 +28,8 @@ evals/
   prompts/headless-prepare.txt # cr-prepare alone — eval-22
   prompts/headless-list.txt # the headless track with one cr-scan over a lens list — eval-25
   prompts/correctness.txt  # scanner brief — correctness lens
+  prompts/coherence.txt    # scanner brief — coherence lens, over a checkout it Greps for counterparts — evals 34–35
+  prompts/assumptions.txt  # scanner brief — assumptions lens, over a checkout with node_modules installed — evals 36–37
   prompts/pr-scope.txt     # start-cr Step 1 for --pr, with a gh stand-in — eval-23
   prompts/start-cr-merge.txt # start-cr Steps 4–7 over lens files already on disk — eval-26
   prompts/pr-draft.txt     # start-cr --pr Step 1, then Step 4 on over lens files on disk — eval-27
@@ -37,7 +39,7 @@ evals/
   checks/menu-and-commits.mjs # eval-26: the apply menu and commit question from the tool calls, the commits from git
   checks/pr-draft.mjs      # eval-27: the reviewer-mode draft, its hunks, and when the gh stand-in got a POST
   checks/                  # the other checks read files on disk (headless, pr, HANDOFF families)
-  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20 and 22–33 run in, the context dirs of evals 26–27, and the gh stand-in
+  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22–33 and 34–37 run in, the context dirs of evals 26–27, and the gh stand-in
 ```
 
 The headless skills review committed changes only, so eval-20 runs against a git
@@ -76,22 +78,29 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-19 | quality | `scope-mix/` | scope by file kind: `.mjs`/`.cjs` reviewed as source, an e2e spec as a test file, the CI workflow left to the security lens, `notes.txt` skipped | 9 / 0 |
 | eval-20 | headless | `.sandbox/headless` | `cr-prepare` → `cr-scan` per lens → `cr-merge`: every lens file, the merged finding shape, the Reconciliation arithmetic | 1 / 0 |
 | eval-21 | correctness | `correctness/order-sync.ts` (`DEFECTS.md` beside it) | `off-by-one` + `swallowed-error`, exhaustive `never` default and best-effort catch left alone, HANDOFF families from the fixed table | 10 / 0 |
-| eval-22 | headless | `.sandbox/headless-skipped` | a docs-only commit makes `cr-prepare` return `empty` with 0 judged files and no active lens | 1 / 0 |
+| eval-22 | headless | `.sandbox/headless-skipped` | a docs-only commit makes `cr-prepare` return `ready` with 0 judged files and `coherence` the only active lens, over the three skipped files | 1 / 0 |
 | eval-23 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 7` reviews the PR head in a detached worktree against `origin/main`; the user's checkout stays on `main`, untouched; the gh user authored it, so `mode: own` | 1 / 0 |
 | eval-24 | pr | `.sandbox/pr` + `.sandbox/bin/gh` | `--pr 8`, the same head authored by someone else, gives the eval-23 scope with `mode: reviewer` | 1 / 0 |
 | eval-25 | headless | `.sandbox/headless` | one `cr-scan --lens a,b,…` over every active lens writes each `<lens>.md` and one closing block per lens, and `cr-merge` merges them as in eval-20 | 1 / 0 |
 | eval-26 | start-cr | `.sandbox/mailer` + `.sandbox/mailer-ctx` (`campaign-mailer/DEFECTS.md`) | start-cr Steps 4–7 over written lens files: the menu keeps four slots with the rule-less missing unsubscribe link as its own option and boy-scout dropped, the report is on disk before the menu, the commit-mode question rides along, and the `first_option` answers leave the commits that mode implies, none saying "address review" and none taking the user's untracked file | 10 / 0 |
 | eval-27 | pr | `.sandbox/pr` + `.sandbox/pr9-ctx` + `.sandbox/bin/gh` (`billing-window/DEFECTS.md`) | `--pr 9`, someone else's, from Step 1 through the draft over written lens files: `commit_id` is the head, `event` is `COMMENT`, every inline line sits in a head-side hunk, the R9 doc comment outside every hunk goes to the review body, labels open each comment (`issue:` on the high), the one-line off-by-one fix carries a `suggestion` block that commits it while the fix needing a constant outside the hunk stays in prose, the swallowed error a review comment on the PR already raises is left out and named in the wrap-up while a nit on the off-by-one's line leaves that finding in, an outdated comment on code unchanged since leaves its finding out as raised on an earlier revision while one on code the branch replaced suppresses nothing, nothing is POSTed before the closing question's answer, and nothing is edited | 11 / 0 |
 | eval-28 | comment | `.sandbox/arch-marker/src/order-handler.ts` (`arch-marker/DEFECTS.md`) | a bracketed `ARCH` tag that opens a comment in every sibling file is the project's marker (the comments rules' "A tag vs a project marker" trap): never REMOVE, REWRITE or MOVE; an R1 narration beside it is still REMOVE | 3 / 0 |
-| eval-29 | start-cr | `.sandbox/scope-skip` | Step 1 with no arguments: the uncommitted side is `CLAUDE.md`, an untracked `docs/notes.md` and `.claude/settings.json`, all kinds `scope.md` skips, so no Committed/Uncommitted/Both question is asked, the scope is committed, and the three files are named as skipped | 1 / 0 |
-| eval-30 | start-cr | `.sandbox/scope-mixed` | eval-29's checkout plus an untracked `.ts`: a judged file on each side, so the scope question is asked once with all three scopes, and the scope reported is the one answered | 1 / 0 |
+| eval-29 | start-cr | `.sandbox/scope-skip` | Step 1 with no arguments: the uncommitted side is a `pnpm-lock.yaml` bump and a rebuilt `dist/order-service.js`, a lockfile and generated output that no lens grades, so no Committed/Uncommitted/Both question is asked, the scope is committed, and the two files are named as skipped | 1 / 0 |
+| eval-30 | start-cr | `.sandbox/scope-mixed` | eval-29's branch with an uncommitted `CLAUDE.md`, `docs/notes.md`, `.claude/settings.json` and an untracked `.ts`: a judged file on each side, so the scope question is asked once with all three scopes, and the scope reported is the one answered | 1 / 0 |
 | eval-31 | pr | `.sandbox/pr-local` + `.sandbox/bin/gh` | Step 1 with no `--pr` on a clone sitting on PR #9's branch, which the gh stand-in's `gh pr view` finds authored by someone else: one question offers reviewer mode first and as the recommended option, with the local review beside it; on that answer the scope is PR #9's against `origin/main`, in the clone itself since it is already at the head, with `mode: reviewer` | 1 / 0 |
 | eval-32 | pr | `.sandbox/pr-local-own` + `.sandbox/bin/gh` | eval-31's control: the same clone on PR #9's branch, but the gh stand-in's user there (`cr-evals.gh-user` in the clone's git config) is PR #9's author, so no question offers reviewer mode, no `gh pr view 9`, `gh api repos/…` or PR-head fetch runs, and the run reviews the branch diff in the clone with `PR: none` and `mode: own` | 1 / 0 |
-| eval-33 | start-cr | `.sandbox/scope-spec` | eval-29's checkout plus `specs/order-discount.md` on the base, run with `--spec` on it: the `spec` lens reviews the skipped uncommitted side (the spec names `CLAUDE.md`), so the scope question is asked once with all three scopes, the scope reported is the one answered, and the spec is read | 1 / 0 |
+| eval-33 | start-cr | `.sandbox/scope-spec` | eval-29's branch and uncommitted lockfile and `dist/` side, plus `specs/order-discount.md` on the base, run with `--spec` on it: the `spec` lens reviews that side (the spec names the build and the TypeScript version), so where eval-29 asks nothing the scope question is asked once with all three scopes, the scope reported is the one answered, and the spec is read | 1 / 0 |
+| eval-34 | coherence | `.sandbox/coherence` (`coherence/DEFECTS.md`) | recall: a doc's reload interval the code does not have, an ADR naming a method the writer lacks, a changeset's "on by default" against a `false` flag, a `VARCHAR(32)` column against a zod `max(64)`, a compose file missing a key the config requires; each finding quotes both sides with their `path:L` | 9 / 0 |
+| eval-35 | coherence | `.sandbox/coherence` (`coherence/DEFECTS.md`) | calibration: a doc labelled Planned, an env read with a default, a model stricter than its column, an ADR citing a method that exists, a released CHANGELOG entry all stay non-findings | 8 / 0 |
+| eval-36 | assumptions | `.sandbox/assumptions` + vendored `@acme/fetchkit`, `@acme/pagekit` (`assumptions/DEFECTS.md`) | recall: a custom header kept across a cross-origin redirect, extra headers applied to the first intercepted request only, a second signal closing a closed session; each cites the installed `node_modules/@acme/…:L` line | 9 / 0 |
+| eval-37 | assumptions | `.sandbox/assumptions` (`assumptions/DEFECTS.md`) | calibration: `redirect: 'manual'`, a per-request hook, a `once` guard stay non-findings | 5 / 0 |
+| eval-38 | quality | `tests-mutation/pricing.ts` + `pricing.test.ts` (`DEFECTS.md` beside them) | `tests` · mutation-gap recall: inputs far from a boundary, a guard no test reaches, an `&&` both operands of which always agree, one bullet or three; the pinned bulk bound stays clean | 6 / 0 |
+| eval-39 | quality | `tests-mutation/loyalty.ts` + `loyalty.test.ts` | mutation-gap calibration: every decision pinned at its boundary, so no mutation-gap and no test-fidelity | 3 / 0 |
+| eval-40 | correctness | `correctness/alias-store.ts` (`correctness/DEFECTS.md`) | the folded auditor patterns: an alias cycle that never resolves, a store outage read as a missing alias, an unclamped renewal date, an `async` `forEach`; their four guarded twins stay clean | 9 / 0 |
 
 ### Grading
 
-Code first: 215 of the 222 asserts are `regex`, `not-regex` or `javascript`. Most read the
+Code first: 265 of the 272 asserts are `regex`, `not-regex` or `javascript`. Most read the
 final message through `checks/report.mjs`. It parses the fixed shapes the skills prescribe:
 `` `family` · rule · severity · L… `` findings, ``L… · `quote` — **VERDICT** (R#)`` comment
 verdicts, and the Conventions / Headline / `###` path / Tally skeleton. It grades only the
@@ -112,14 +121,15 @@ unbounded), eval-18 (the tests never exercise the boundary they name).
 under-reports; eval-7 fails when it compensates by flagging look-alikes. A prompt
 change that moves one number must be checked against the other. eval-8/eval-9 are the
 same pair for the folded `module`/`objects` rules; eval-10/11 and eval-12/13 for the
-security and performance lenses.
+security and performance lenses, eval-34/35, eval-36/37 and eval-38/39 for the `coherence` and
+`assumptions` lenses and the `mutation-gap` rule.
 
 ### Scanner track
 
-`security`, `performance`, and `spec` exist only inside `/start-cr` — they have no
-standalone skill to trigger by description, and the Agent SDK rejects a prompt that
-starts with `/`, so `/start-cr` itself cannot be invoked from a promptfoo prompt. The
-three scanner prompts therefore **emulate the orchestrator's Scanner brief** in
+`security`, `performance`, `spec`, `correctness`, `coherence` and `assumptions` exist only
+inside `/start-cr` — they have no standalone skill to trigger by description, and the Agent
+SDK rejects a prompt that starts with `/`, so `/start-cr` itself cannot be invoked from a
+promptfoo prompt. The scanner prompts therefore **emulate the orchestrator's Scanner brief** in
 natural language: act as the `<lens>` scanner, read `references/rules/<lens>.md` and
 `references/severity.md` completely, review the file in path mode, return findings
 only in the brief's exact bullet shape, write nothing. What they measure is the rules
@@ -135,7 +145,7 @@ with only `--spec` over eval-29's branch, and
 eval-31 and eval-32, with no arguments on a branch that is someone else's pull request and on
 one that is the user's own. eval-26 starts
 it at Step 4 the same way, and eval-27 runs Step 1 for `--pr 9` and then jumps to Step 4: `reset-sandbox.sh` writes the context directory Step 2b would have
-written, plus the `<lens>.md` file each of the eight active Scanners would have left, so the run
+written, plus the `<lens>.md` file each of the ten active Scanners would have left, so the run
 merges, reports, asks and commits with no Scanner dispatched. `first_option` answers the menu with
 its first option, so the run's own ordering decides which bucket gets applied; the checks map
 that option to its files and to the commit mode it picked, and grade the commits against both.
