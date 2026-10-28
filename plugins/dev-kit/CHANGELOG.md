@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `dep-upgrade-check`: a re-run that carries a maintainer's decision reports the decision itself in the result block's `decision` (no more `carried`), and the new `decision_carried: true | false` says where it came from, so a CI gate can pass a carried acceptance and fail a carried hold
+
+### Changed
+- `dep-upgrade-check`: PR comments are created with the REST issue-comments endpoint, which a token with `issues: write` and only `pull-requests: read` can use; `gh pr comment` is no longer pre-approved
+- README: the reference CI job fails unless the result block reads `status: done`, `security` `clear` or `escalated`, and `decision` `accepted` or `n/a`
+- README: the reference CI job grants `issues: write` and keeps `pull-requests: read`, runs with `--strict-mcp-config --setting-sources user`, skips Renovate's lockfile-maintenance pull request, and explains required status checks and `CLAUDE_CODE_OAUTH_TOKEN`
+
 ## [0.4.0] - 2026-10-28
 
 ### Added

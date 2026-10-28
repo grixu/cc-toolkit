@@ -24,11 +24,16 @@ function grade(output, context, checks) {
   };
   // The stand-in's log and posted files are shared by every scenario of a trial, so "this run
   // wrote a comment" is read from its own Bash calls.
-  run.wroteComment = run.bash.some((cmd) => /\bpr comment\b|(?:-X|--method)[ =]?PATCH/i.test(cmd));
-  checks(run, (ok, msg) => {
+  run.wroteComment = run.bash.some(
+    (cmd) => /\bpr comment\b|(?:-X|--method)[ =]?PATCH/i.test(cmd) || (/\bissues\/\d+\/comments\b/.test(cmd) && /\bbody=|--input\b/.test(cmd)),
+  );
+  const check = (ok, msg) => {
     if (!ok) failures.push(msg);
     return ok;
-  });
+  };
+  // A CI job with pull-requests: read creates comments over REST; gh pr comment needs more than issues: write.
+  check(!run.bash.some((cmd) => /\bpr comment\b/.test(cmd)), 'a comment was created with gh pr comment, not the REST issue-comments endpoint');
+  checks(run, check);
   return { pass: failures.length === 0, score: failures.length === 0 ? 1 : 0, reason: failures.join('; ') || 'all checks passed' };
 }
 
@@ -207,6 +212,11 @@ function unattendedEscalated(run, check, n) {
     check(block.status === 'done', `result status is '${block.status}', expected done`);
     check(block.security === 'escalated', `result security is '${block.security}', expected escalated`);
     check(block.decision === 'pending', `result decision is '${block.decision}', expected pending`);
+    check(block.decision_carried === 'false', `result decision_carried is '${block.decision_carried}', expected false`);
+    // The stand-in answers a created comment with this html_url; the block must carry the response's URL.
+    const url = new RegExp(`^https://github\\.com/example/web/pull/${n}#issuecomment-\\d+$`);
+    check(url.test(block.security_comment ?? ''), `result security_comment '${block.security_comment}' is not the created comment's URL`);
+    check(url.test(block.report_comment ?? ''), `result report_comment '${block.report_comment}' is not the created comment's URL`);
   }
 }
 
@@ -242,7 +252,9 @@ export function prUnattendedCarry(output, context) {
     );
     const block = resultBlock(run.text);
     if (check(block !== null, 'no dep-upgrade-check-result block')) {
-      check(block.decision === 'carried', `result decision is '${block.decision}', expected carried`);
+      // A CI gate reads the value itself: a carried accept passes, a carried hold must not.
+      check(block.decision === 'accepted', `result decision is '${block.decision}', expected accepted`);
+      check(block.decision_carried === 'true', `result decision_carried is '${block.decision_carried}', expected true`);
     }
   });
 }
@@ -317,6 +329,11 @@ export function prEscalatedAccept(output, context) {
         check(decision.some((line) => /@eval-user/.test(line)), 'the Decision line does not name @eval-user');
       }
       check(/GHSA-r5fr-rjxr-66jc|GHSA-f23m-r3pf-42rh|GHSA-xxjr-mmjv-4gpg/.test(body), 'the comment lists none of the advisories still present');
+    }
+    const block = resultBlock(run.text);
+    if (check(block !== null, 'no dep-upgrade-check-result block')) {
+      check(block.decision === 'accepted', `result decision is '${block.decision}', expected accepted`);
+      check(block.decision_carried === 'false', `result decision_carried is '${block.decision_carried}', expected false`);
     }
   });
 }

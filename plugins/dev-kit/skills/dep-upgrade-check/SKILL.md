@@ -2,7 +2,7 @@
 name: dep-upgrade-check
 description: Dependency upgrade compatibility and security check. Gates the target version on known vulnerabilities, malware, and release age, finds everything that changes between the version a codebase resolves today and the target, maps each change to where the code uses it, and returns a safe / safe with changes / breaking verdict with file:line evidence. Use when the user names a package and a target version, links a Renovate or Dependabot pull request, or asks whether bumping a dependency will break the build.
 argument-hint: "<package>[@<version>] | <pull request URL> [unattended]"
-allowed-tools: Read Grep Glob Write Bash(printenv GITHUB_ACTIONS) Bash(git fetch *) Bash(git show *) Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh run view *) Bash(gh api *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) Bash(curl -s https://api.osv.dev/*) Bash(curl -s https://api.deps.dev/*) WebFetch mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
+allowed-tools: Read Grep Glob Write Bash(printenv GITHUB_ACTIONS) Bash(git fetch *) Bash(git show *) Bash(gh repo view *) Bash(gh pr view *) Bash(gh pr diff *) Bash(gh pr checks *) Bash(gh run view *) Bash(gh api *) Bash(gh release list *) Bash(gh release view *) Bash(pnpm view *) Bash(pnpm why *) Bash(pnpm list *) Bash(npm diff *) Bash(curl -s https://api.osv.dev/*) Bash(curl -s https://api.deps.dev/*) WebFetch mcp__firecrawl__firecrawl_search mcp__firecrawl__firecrawl_scrape mcp__context7__resolve-library-id mcp__context7__query-docs
 ---
 
 # dep-upgrade-check
@@ -137,6 +137,7 @@ An escalated unit ends the report with a question to the user: accept the risk, 
 For a PR input, post the security comment `security.md` describes once every outcome is final: right away when all units are clear or blocked, after the user's answer when one is escalated, and right away for every outcome when unattended. A re-run updates the same comment.
 
 An unattended run on a PR input also posts the rest of the report, since nobody reads its output: a second comment, written in English to a file, starting with the marker line `<!-- dev-kit:dep-upgrade-check:report -->`, then the security outcome line, the verdict with its sentence of reasoning, the affected-changes table, the not-affected count, the unknowns, the sources, and the evidence run. It goes up with the security comment's upsert procedure from `security.md`, under its own marker, and a re-run updates it.
+
 When the user asks to apply the upgrade:
 
 - **Package + version input**: apply the fixes from the table in the working tree, then run the step-5 checks there.
@@ -152,7 +153,8 @@ status: done | stopped
 security: clear | escalated | blocked | n/a
 verdict: safe | safe with changes | breaking | not assessed | n/a
 provisional: true | false
-decision: accepted | switched | refresh | hold | pending | carried | n/a
+decision: accepted | switched | refresh | hold | pending | n/a
+decision_carried: true | false
 units: <count>
 security_comment: <URL> | none
 report_comment: <URL> | none
@@ -160,4 +162,6 @@ reason: <one line: why stopped, blocked or provisional> | none
 ```
 ````
 
-With several units, `security` and `verdict` take the worst unit's value, and `decision` is `pending` while any escalated unit's decision is. `verdict` is `n/a` when every unit is blocked.
+`decision` is always the decision itself, also when it was carried from an earlier comment, and `n/a` when no unit is escalated. `decision_carried` is `true` when the Decision came from an earlier comment (`security.md`, "Carried decision"), otherwise `false`, so always `false` with `pending` or `n/a`. A CI gate passes on `status: done`, `security` `clear` or `escalated`, and `decision` `accepted` or `n/a`, carried or not; `decision_carried` is there for whoever reads the log.
+
+With several units, `security` and `verdict` take the worst unit's value, and `decision` the first value any escalated unit holds in the order `pending`, `hold`, `switched`, `refresh`, `accepted`, a carried decision counting like a fresh one: one carried `hold` makes the run `hold`. `verdict` is `n/a` when every unit is blocked.
