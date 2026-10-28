@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-28
+
 ### Added
 
 - `coherence` lens, always on: eight rules (`doc-drift`, `contract-drift`, `schema-drift`,
