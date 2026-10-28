@@ -70,8 +70,8 @@ Sources: OSV.dev, GitHub Advisory Database, deps.dev; queried <ISO timestamp>.
 ```
 
 Upsert:
-1. `gh api user --jq .login`.
-2. `gh api repos/<owner>/<repo>/issues/<number>/comments --paginate --jq '.[] | select(.user.login == "<login>" and (.body | startswith("<!-- dev-kit:dep-upgrade-check:security -->"))) | .id'`.
-3. With an ID, `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> -F body=@<file>`. Without one, `gh pr comment <url> --body-file <file>`.
+1. `gh api user --jq .login` gives the author filter `.user.login == "<login>"`. An installation token (`GITHUB_TOKEN` in Actions, a GitHub App token) cannot read `/user` and fails with HTTP 403; the filter is then `.user.type == "Bot"`.
+2. `gh api repos/<owner>/<repo>/issues/<number>/comments --paginate --jq '.[] | select(<filter> and (.body | startswith("<!-- dev-kit:dep-upgrade-check:security -->"))) | "\(.created_at) \(.id)"'`, newest first.
+3. `gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id> -F body=@<file>` on each ID in that order until one succeeds. A refused `PATCH` (HTTP 403 or 404) means another identity owns that comment: the `Bot` filter also matches other bots. When none succeeds or there is no ID, `gh pr comment <url> --body-file <file>`.
 
 Post it when the outcome is final: right away for clear and blocked, and after the user's decision for escalated.
