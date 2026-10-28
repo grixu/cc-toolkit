@@ -52,7 +52,9 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 - **A finding names the input and the outcome.** "`page === total` skips the last
   page", "a `'refunded'` order reaches the `default:` and ships" — never "this looks
   fragile" or "might not handle edge cases". A finding you cannot state as *this input
-  → this wrong result* is not a finding yet.
+  → this wrong result* is not a finding yet. A pattern alone — an `async` callback in
+  `forEach`, an unguarded `JSON.parse`, a retried `POST` — is never a finding: it still
+  needs the input and the outcome on the changed path.
 - **Read before you claim.** You have `Read` and `Grep`: open the callee's signature,
   the type's members, the caller that feeds the value. A fact that still needs a run,
   a database or the network to settle is `(verify)`; you never run the code.
@@ -65,6 +67,13 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   focus codes (element codes like `DB-1`, decision ids), read those elements and decisions
   first and judge the change's intended behaviour against them; read the rest of the spec
   only for material they reference or that the diff clearly touches.
+- **A missing branch is not a false belief.** Missing handling for an outcome the code's
+  types, an in-repo declaration or the language itself states is this lens; a belief that
+  only a third-party implementation, its prose docs, or runtime, CI or platform behaviour
+  can confirm or refute — what a timeout covers, which headers a redirect keeps — is
+  `assumptions`: `HANDOFF` it. Clearing a site on such a behaviour needs the same evidence —
+  the installed source line, the lockfile version or the repo config; an uncited clearance is
+  a `HANDOFF` to `assumptions` naming the claim.
 - **Readability is not correctness.** A tangled but correct condition belongs to the
   craft lenses; send it as a `HANDOFF` if you notice it, and judge only whether it is
   right.
@@ -85,7 +94,8 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 - **Flag** when, for an input the code must handle, the condition selects the
   other branch: an inverted comparison (`<` for `<=`, `!==` for `===`), `&&` where the
   meaning needs `||`, a truthiness check that treats a valid `0`/`''`/`false` as
-  absent, a negation applied to the wrong operand, a check against the wrong field.
+  absent, a loose `==` that a concrete coercing input (`'0' == 0`) sends the wrong way, a
+  negation applied to the wrong operand, a check against the wrong field.
 - **Suggested fix**: name the corrected condition and the input it now handles.
 - **Calibration → not a finding**: a condition whose "wrong" input cannot reach it
   (the type, an earlier guard or the caller's contract excludes it — read it before
@@ -98,12 +108,22 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   wrong: a `switch`/`match` over an enum or union missing a member and defaulting to
   a behaviour that member must not get; an empty list, `null`/`undefined`, or missing
   key that the code dereferences or treats as a hit; a result type's error arm never
-  checked.
+  checked — a `Promise.allSettled` entry read as a value with no `status` check, an HTTP
+  response used with no status check; an unguarded `JSON.parse` whose throw kills a worker
+  loop, poisons a queue or aborts a batch; an outbound call with no timeout on a path that
+  holds a lock, a queue slot or a caller's deadline.
 - **Suggested fix**: name the missing case and what it should do — its own arm, an
   early return, or an explicit error.
 - **Calibration → not a finding**: an exhaustive `default:` that throws or asserts
   (the defensive assertion is the handling); a member the type system already forces
   every `switch` to cover; a value the caller's contract rules out, read and confirmed.
+  `allSettled` entries filtered on `status` first; `Promise.all` failing fast, alone. A
+  `JSON.parse` throw the framework maps to a 4xx/5xx for the sender's own request (the
+  payload's shape is `security` · unvalidated-boundary). A status checked one layer up. An
+  unchecked HTTP status or a missing timeout is cleared only when the installed client's
+  config or source shows it throws on non-2xx or sets a default timeout — cite that line; a
+  clearance without it is a `HANDOFF` to `assumptions` naming the claim. A wrong belief about
+  a timeout that exists is `assumptions`.
 
 #### `off-by-one` — a bound one step off
 
@@ -118,15 +138,17 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 #### `swallowed-error` — a failure the caller never sees
 
 - **Flag** when an error is caught and dropped, logged and then reported as success,
-  replaced with a default the caller cannot tell from real data, or a promise is left
-  floating so its rejection goes nowhere — and the caller goes on to act on the
-  failed step.
+  replaced with a default the caller cannot tell from real data, rethrown without the
+  `cause` a caller branches on, or a promise is left floating (an `async` callback handed to
+  `setTimeout` included) so its rejection goes nowhere — and the caller goes on to act on
+  the failed step.
 - **Suggested fix**: rethrow, return the failure in the result type, or name the
   caller that must check it.
 - **Calibration → not a finding**: a best-effort side task whose failure must not
   stop the main path (telemetry, a cache warm-up, a cleanup) where a comment or name
   says so; a catch that converts to the project's own error type and rethrows; an
-  error the function's contract documents as returned as a value.
+  error the function's contract documents as returned as a value; `void p.catch(log)`; a
+  dropped `cause` no caller branches on.
 
 #### `state-race` — a half-done update another caller can see
 
@@ -145,11 +167,19 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 
 - **Flag** when a call site contradicts what the callee declares: arguments swapped
   or in the wrong unit (seconds for milliseconds), a nullable or optional return used
-  as always present, an async call not awaited where its result or failure matters,
-  an input the callee mutates still used by the caller as if untouched, a return
-  value whose meaning (index vs count, inclusive vs exclusive) is read the other way.
+  as always present (a `.find()` or `arr[i]` result — the `!` or `as` is the site), an
+  async call not awaited where its result or failure matters (an `async` callback in
+  `forEach`, a fire-and-forget promise whose completion the caller relies on), a
+  non-idempotent call retried, an input the callee mutates (a `.sort()` on a parameter)
+  still used by the caller as if untouched, a return value whose meaning (index vs count,
+  inclusive vs exclusive) is read the other way.
 - **Suggested fix**: name the corrected call, the await, or the check on the return.
 - **Calibration → not a finding**: a type the checker already proves (a non-null
   return, a sync function); a fire-and-forget call that is the documented intent;
-  a mismatch only in a test double. A signature outside the scope you could not read
-  is `(verify)`.
+  a mismatch only in a test double. A value present by construction. An `async` `forEach`
+  whose completion and order nothing after the loop needs, its failures handled inside. A
+  retry behind an idempotency key or a dedup constraint, or only on errors that guarantee
+  nothing was sent. A signature outside the scope you could not read
+  is `(verify)`. Two declarations of one boundary are this rule only when the type checker
+  connects them; a YAML, proto or SDL contract, a hand-copied type or another service that
+  disagrees with the code is `coherence` · contract-drift — `HANDOFF` it.
