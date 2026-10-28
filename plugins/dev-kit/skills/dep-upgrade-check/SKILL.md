@@ -152,7 +152,8 @@ status: done | stopped
 security: clear | escalated | blocked | n/a
 verdict: safe | safe with changes | breaking | not assessed | n/a
 provisional: true | false
-decision: accepted | switched | refresh | hold | pending | carried | n/a
+decision: accepted | switched | refresh | hold | pending | n/a
+decision_carried: true | false
 units: <count>
 security_comment: <URL> | none
 report_comment: <URL> | none
@@ -160,4 +161,6 @@ reason: <one line: why stopped, blocked or provisional> | none
 ```
 ````
 
-With several units, `security` and `verdict` take the worst unit's value, and `decision` is `pending` while any escalated unit's decision is. `verdict` is `n/a` when every unit is blocked.
+`decision` is always the decision itself, also when it was carried from an earlier comment, and `n/a` when no unit is escalated. `decision_carried` is `true` when the Decision came from an earlier comment (`security.md`, "Carried decision"), otherwise `false`, so always `false` with `pending` or `n/a`. A CI gate reads both: a carried `accepted` passes, a carried `hold` does not.
+
+With several units, `security` and `verdict` take the worst unit's value, and `decision` the first value any escalated unit holds in the order `pending`, `hold`, `switched`, `refresh`, `accepted`, a carried decision counting like a fresh one: one carried `hold` makes the run `hold`. `verdict` is `n/a` when every unit is blocked.
