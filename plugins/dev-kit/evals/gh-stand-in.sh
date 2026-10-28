@@ -64,7 +64,15 @@ body_from_fields() {
     esac
     shift
   done
-  fail "PATCH without a body field"
+  fail "request without a body field"
+}
+
+# Keeps a created comment as .sandbox/gh-posted-<kind>-<n>-<k>.md and prints its id.
+record_comment() {
+  local kind="$1" n="$2" body="$3" k=1
+  while [ -e "$sandbox/gh-posted-$kind-$n-$k.md" ]; do k=$((k + 1)); done
+  printf '%s\n' "$body" > "$sandbox/gh-posted-$kind-$n-$k.md"
+  echo $((9100 + k))
 }
 
 case "${1:-} ${2:-}" in
@@ -102,16 +110,13 @@ case "${1:-} ${2:-}" in
       shift
     done
     [ -n "$body" ] || fail "pr comment without a body"
-    k=1
-    while [ -e "$sandbox/gh-posted-$kind-$n-$k.md" ]; do k=$((k + 1)); done
-    printf '%s\n' "$body" > "$sandbox/gh-posted-$kind-$n-$k.md"
-    echo "https://github.com/example/web/pull/$n#issuecomment-$((9100 + k))"
+    echo "https://github.com/example/web/pull/$n#issuecomment-$(record_comment "$kind" "$n" "$body")"
     exit 0 ;;
 esac
 
 [ "${1:-}" = api ] || fail "unsupported call: $*"
 shift
-method=GET path='' input='' fields=()
+method='' path='' input='' fields=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -X|--method) method="$(printf '%s' "$2" | tr '[:lower:]' '[:upper:]')"; shift ;;
@@ -127,6 +132,11 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+# Like gh: without -X, a request that carries parameters is a POST.
+if [ -z "$method" ]; then
+  method=GET
+  [ -n "$input" ] || [ -n "${fields[*]+x}" ] && method=POST
+fi
 
 case "$path" in
   user)
@@ -178,23 +188,34 @@ case "$path" in
     emit < "$key"
     exit 0 ;;
   repos/example/web/issues/*/comments*)
-    [ "$method" = GET ] || fail "comment creation goes through gh pr comment in this stand-in"
     n="$(printf '%s' "$path" | sed -E 's#repos/example/web/issues/([0-9]+)/comments.*#\1#')"
     dir="$(pr_dir "$n")"
-    emit < "$dir/comments.json"
+    case "$method" in
+      GET) emit < "$dir/comments.json" ;;
+      POST)
+        body="$(body_from_fields "$input" ${fields[@]+"${fields[@]}"})" || exit 1
+        [ -n "$body" ] || fail "comment without a body"
+        id="$(record_comment comment "$n" "$body")"
+        printf '{"id":%s,"html_url":"https://github.com/example/web/pull/%s#issuecomment-%s"}\n' "$id" "$n" "$id" | emit ;;
+      *) fail "unsupported $method on $path" ;;
+    esac
     exit 0 ;;
   repos/example/web/issues/comments/*)
     id="${path##*/}"
     [ "$method" = PATCH ] || fail "only PATCH is supported on a single comment"
-    author="$(jq -rs --argjson id "$id" '[.[][] | select(.id == $id) | .user.login][0] // empty' "$sandbox"/prs/*/comments.json)"
-    if [ -z "$author" ]; then
+    owner_file=''
+    for f in "$sandbox"/prs/*/comments.json; do
+      jq -e --argjson id "$id" 'any(.[]; .id == $id)' "$f" > /dev/null && { owner_file="$f"; break; }
+    done
+    if [ -z "$owner_file" ]; then
       echo 'gh: Not Found (HTTP 404)' >&2
       exit 1
     fi
+    n="$(basename "$(dirname "$owner_file")")"
     # No ownership check: GitHub lets any token with write access edit anyone's comment.
     body="$(body_from_fields "$input" ${fields[@]+"${fields[@]}"})" || exit 1
     printf '%s\n' "$body" > "$sandbox/gh-posted-patch-$id.md"
-    printf '{"id":%s,"html_url":"https://github.com/example/web/pull/0#issuecomment-%s"}\n' "$id" "$id" | emit
+    printf '{"id":%s,"html_url":"https://github.com/example/web/pull/%s#issuecomment-%s"}\n' "$id" "$n" "$id" | emit
     exit 0 ;;
 esac
 fail "unsupported call: api $path"
