@@ -20,6 +20,7 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `readability` | ordering            | helpers not in stepdown / newspaper order under their caller | medium |
 | `tests`       | test-structure      | arrange/act/assert (given/when/then) interleaved or out of order | medium |
 | `tests`       | test-fidelity       | a test's name or fixture claims a boundary its assertions don't actually check | medium |
+| `tests`       | mutation-gap        | a decision the change adds or modifies that the unit's tests exercise but would still pass if inverted, shifted by one, or deleted | medium |
 | `naming`      | intent-name         | a name after mechanism/algorithm, not intent | medium |
 | `naming`      | role-name           | a name carrying the type instead of the role | nit |
 | `naming`      | command-query       | a query that mutates, or a command relied on only for its return | high |
@@ -106,7 +107,8 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   live with.
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
-  that claims more than its assertions check, `guard-clause` nesting, an unexplained
+  that claims more than its assertions check, a decision its tests would not notice
+  changing (`mutation-gap`), `guard-clause` nesting, an unexplained
   `magic-literal`, a mechanism `intent-name`, eager `lazy-init`, copies with no logic to
   drift (`shallow-duplication`), surface nothing consumes (`dead-code-surface`), an exposed
   data layout (`exposed-representation`), pointless

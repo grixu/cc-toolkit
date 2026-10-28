@@ -383,8 +383,8 @@ choices that actually apply to this review, for example:
   (`composition`, `polymorphism`, `execute-around`), `over-complex` and
   `shallow-duplication` unifications, `dead-code-surface` that removes an export or a
   return field,
-  `test-structure` restructuring, `dead-code` removal of a branch that looks
-  reachable, a `magic-literal` constant a second module imports, and every cross-module
+  `test-structure` restructuring, the test cases a `mutation-gap` adds, `dead-code`
+  removal of a branch that looks reachable, a `magic-literal` constant a second module imports, and every cross-module
   move: `dependency-direction` re-pointing,
   `misplaced-logic` relocation, `canonical-helper` replacement, `pass-through`
   removal, `feature-envy` method moves, `data-clump` value objects, and

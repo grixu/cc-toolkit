@@ -26,7 +26,7 @@ is a first pass.
 ## Contents
 - `readability` — openness, guard-clause, explaining-variable, magic-literal,
   composed-method, ordering
-- `tests` — test-structure, test-fidelity
+- `tests` — test-structure, test-fidelity, mutation-gap
 
 Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 **Calibration** paragraph naming the look-alike that is *not* a violation.
@@ -41,6 +41,7 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 | `readability` | ordering            | helpers not in stepdown / newspaper order under their caller | medium |
 | `tests`       | test-structure      | arrange/act/assert (given/when/then) interleaved or out of order | medium |
 | `tests`       | test-fidelity       | a test's name or fixture claims a boundary its assertions don't actually check | medium |
+| `tests`       | mutation-gap        | a decision the change adds or modifies that the unit's tests exercise but would still pass if inverted, shifted by one, or deleted | medium |
 
 ### `readability` family
 
@@ -242,6 +243,8 @@ wrong thing — and a regression that relaxes the real boundary slips through gr
   - a fixture literal picked to represent a boundary no longer matches the boundary
     it probes, so the test would still pass if the boundary moved;
   - a test named for behaviour X asserts only behaviour Y;
+  - the expected value is computed by the unit under test (or the same helper), so the
+    assertion cannot fail;
   - a title clause names a mechanism (`"so the update rolls back"`, `"in the same
     transaction"`, `"holds the pod id"`) that a mock makes uncheckable — the clause is
     a factual claim, so tighten the double until it checks it, or drop the clause.
@@ -253,4 +256,36 @@ wrong thing — and a regression that relaxes the real boundary slips through gr
   boundary (`"rejects an over-long title"`); property-based tests whose boundary is
   intentionally abstract. This rule is about a test's *factual claim*, not a symbol
   named after mechanism (`intent-name`) or phase grouping/order (`test-structure`) —
-  most-specific wins.
+  most-specific wins. A test whose name and fixtures claim nothing about the boundary,
+  but whose inputs would not notice it moving, is `mutation-gap`; when the name or a
+  fixture does claim the boundary, the finding is this rule's.
+
+#### `mutation-gap` — the tests would not notice the decision changing
+
+A test that runs a decision without pinning it is coverage, not protection: flip the
+comparison, shift the bound by one or delete the guard, and the suite stays green. The
+change's new or modified decisions — a comparison, a bound, a guard, an early return, an
+`&&`/`||` — are exactly where a later edit will move the boundary, so their tests have to
+sit on it.
+
+- **Flag** when the change adds or modifies a decision in source and, after you Grep the
+  unit's name in `test`-kind files (one hop, no further) and read those tests, they
+  exercise it but would pass a mutant of it:
+  - every input sits far from the boundary, so both `>=` and `>` pass;
+  - no test feeds the rejecting input of a guard or early return the change adds;
+  - no test hits 0, 1 or the exact limit of a bound;
+  - no case tells `&&` from `||` (every input makes both operands agree).
+  Cite the source `path:L`, the mutant that survives, and the test `path:L` with the
+  inputs it uses; file the bullet under the **source** path.
+- **Suggested fix**: name the case to add and its expected value — "add cases at `18`
+  (adult) and `17` (minor)".
+- **Calibration → not a finding**: a unit with no tests at all — coverage is out of
+  scope, so one `Not flagged` line; an equivalent mutant (an integer domain where the
+  boundary value cannot occur, a later clamp that hides the shift); a site already pinned
+  by property, fuzz or snapshot tests whose output depends on it; exhaustiveness
+  assertions, logging or telemetry conditions, and conditions inside test files. When the
+  condition itself is wrong, never ask for a test that pins the bug — `HANDOFF` it to
+  `correctness`. A test whose name or fixture claims the boundary, or whose expected value
+  the unit under test computes, is `test-fidelity` — most-specific wins. Primary findings
+  only, never boy-scout; never run mutation tests.
+- **Example**: `` `tests` · mutation-gap · medium · `src/age/classify.ts:L14` — `age >= 18` survives a flip to `> 18`: `src/age/classify.test.ts:L8, L15` use only `25` and `10` → add cases at `18` (adult) and `17` (minor) ``

@@ -48,6 +48,10 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   runtime or the platform, backed by the installed source or its docs, is `assumptions`. A
   test whose name claims an unchecked boundary is `tests` · test-fidelity, a double that
   diverges from the real dependency `assumptions` · mock-divergence.
+- **Mutation gaps on one unit are one bullet.** `tests` · mutation-gap findings against the
+  same unit or the same test file merge into one bullet listing each case to add — a
+  boundary-blind unit is one report line, not five. A `tests` · test-fidelity and a `tests` ·
+  mutation-gap finding that cite the same test line are one finding, filed as test-fidelity.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
@@ -160,7 +164,8 @@ the fix* is `report-only` too, with its one-line reason.
   `full-construction` / `exposed-representation` / `leaky-collection` reshaping, the
   `patterns` refactors (`composition`, `polymorphism`, `execute-around`), `over-complex`
   and `shallow-duplication` unifications, `test-structure` restructuring, every `test-fidelity`
-  fix — deleting, merging or rewriting a test changes what the suite covers — `dead-code-surface`
+  fix — deleting, merging or rewriting a test changes what the suite covers — the test cases a
+  `mutation-gap` adds (they land in a test file, not the source path the bullet sits under), `dead-code-surface`
   that removes an export or a return field, a `magic-literal` name a second module
   imports (where it lives decides an import edge), and `dead-code` removal of a branch that
   looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
