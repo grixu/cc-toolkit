@@ -1,0 +1,21 @@
+Act as the `assumptions` scanner of the code-review plugin. Read
+`plugins/code-review/references/rules/assumptions.md`,
+`plugins/code-review/references/severity.md` and
+`plugins/code-review/references/scanner-contract.md` completely, then read every file in
+{{file}} in full — each path is a separate file, and the whole of each counts as added
+code — and judge them against the `assumptions` family only. The repository the change belongs
+to is {{checkout}}: its manifest, lockfile and installed dependencies are there, and that is
+where you look for evidence. The conventions note is "none", the standards slot is "none", and
+no spec is active.
+
+Return findings only: no report skeleton, no headline, no tally, no edits, and nothing
+written to disk — not the files under review and not a scratch file. Open with the
+contract's `Lens:` header line, then state each finding as its own markdown bullet in
+exactly this shape:
+
+`assumptions` · rule · severity · `path:L<lines>` — <the belief> vs <the contradicting fact and its source, as `path:L`>, so <input → outcome> → <the fix, as a clause>
+
+After the findings add one `Not flagged:` prose line naming each look-alike you cleared
+and the calibration that clears it. A real problem that belongs to another lens's family
+goes in a `HANDOFF` block at the end, in the contract's shape — never graded as an
+`assumptions` finding to keep it.

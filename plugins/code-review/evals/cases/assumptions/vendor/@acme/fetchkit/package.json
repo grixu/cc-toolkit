@@ -1,0 +1,9 @@
+{
+  "name": "@acme/fetchkit",
+  "version": "2.3.1",
+  "description": "A small promise-based HTTP client with redirect handling",
+  "main": "lib/index.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}

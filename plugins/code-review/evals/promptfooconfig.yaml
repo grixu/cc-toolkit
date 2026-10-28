@@ -53,6 +53,9 @@ prompts:
   # The coherence lens, briefed like correctness, over a repository it Greps for counterparts.
   - id: file://prompts/coherence.txt
     label: coherence-track
+  # The assumptions lens, over a repository with its dependencies installed.
+  - id: file://prompts/assumptions.txt
+    label: assumptions-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -1219,3 +1222,63 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:findingsVocabulary
         config: { families: [coherence], severities: [high, medium], rules: true }
+
+  - description: 'eval-36 assumptions-recall (assumptions/ redirect header, first-request headers, double shutdown)'
+    prompts: [assumptions-track]
+    vars:
+      # assumptions/DEFECTS.md lists the three beliefs and the installed lines that contradict them.
+      checkout: plugins/code-review/evals/.sandbox/assumptions
+      file: >-
+        plugins/code-review/evals/.sandbox/assumptions/src/invoice-document.ts
+        plugins/code-review/evals/.sandbox/assumptions/src/dashboard-audit.ts
+        plugins/code-review/evals/.sandbox/assumptions/src/worker.ts
+    assert:
+      - type: regex
+        value: '`assumptions`'
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: assumptions, rule: dependency-semantics, mentions: ['X-Api-Key', 'invoice-document'], severity: high }
+      # backed by the installed redirect handler, not by memory
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: assumptions, rule: dependency-semantics, mentions: ['X-Api-Key', 'invoice-document'], all: ['node_modules/@acme/fetchkit/\S+:L\d+'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: assumptions, rule: dependency-semantics, mentions: ['dashboard-audit', auditDashboard], all: ['first'], severity: high }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: assumptions, rule: dependency-semantics, mentions: ['dashboard-audit', auditDashboard], all: ['node_modules/@acme/pagekit/\S+:L\d+'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: assumptions, rule: [dependency-semantics, platform-semantics], mentions: ['worker\.ts', SIGTERM, SIGINT], all: ['close|already closed'] }
+      - type: regex
+        value: 'node_modules/@acme/\S+:L\d+'
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [assumptions], severities: [high, medium], rules: true }
+      - type: javascript
+        value: file://checks/handoff-families.mjs
+
+  - description: 'eval-37 assumptions-calibration (assumptions/ manual redirect, per-request headers, guarded shutdown)'
+    prompts: [assumptions-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/assumptions
+      file: >-
+        plugins/code-review/evals/.sandbox/assumptions/src/statement-client.ts
+        plugins/code-review/evals/.sandbox/assumptions/src/status-audit.ts
+        plugins/code-review/evals/.sandbox/assumptions/src/report-worker.ts
+    assert:
+      - type: regex
+        value: '[Nn]ot flagged'
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: assumptions, mentions: ['statement-client', fetchStatement], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: assumptions, mentions: ['status-audit', auditStatusPage], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: assumptions, mentions: ['report-worker', runReportWorker], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ["manual", 'onRequest', 'once|closing'], min: 2 }

@@ -1,0 +1,9 @@
+{
+  "name": "@acme/pagekit",
+  "version": "1.8.0",
+  "description": "Accessibility audits of web pages in a headless browser",
+  "main": "lib/index.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}

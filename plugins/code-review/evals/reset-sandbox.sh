@@ -302,4 +302,17 @@ git -C "$coherence" init -q -b main
 git -C "$coherence" add -A
 commit "$coherence" 'feat: notification channels, quiet hours and the outbox'
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence"
+# evals 36-37: a repository whose made-up dependencies are installed but gitignored, as a real
+# install is, so the lens has to find the evidence in node_modules on its own.
+assumptions=.sandbox/assumptions
+mkdir -p "$assumptions"
+cp -R cases/assumptions/. "$assumptions/"
+rm -r "$assumptions/DEFECTS.md" "$assumptions/vendor"
+printf 'node_modules/\ndist/\n' > "$assumptions/.gitignore"
+git -C "$assumptions" init -q -b main
+git -C "$assumptions" add -A
+commit "$assumptions" 'feat: invoice PDFs, dashboard audits and the audit worker'
+mkdir -p "$assumptions/node_modules"
+cp -R cases/assumptions/vendor/@acme "$assumptions/node_modules/"
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions"
