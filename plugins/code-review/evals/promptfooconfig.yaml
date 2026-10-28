@@ -50,6 +50,9 @@ prompts:
   # start-cr's Step 1 with no arguments, on a branch that is someone else's open PR.
   - id: file://prompts/pr-detect.txt
     label: pr-detect-track
+  # The coherence lens, briefed like correctness, over a repository it Greps for counterparts.
+  - id: file://prompts/coherence.txt
+    label: coherence-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -1129,3 +1132,90 @@ tests:
     assert:
       - type: javascript
         value: file://checks/pr-detect.mjs
+
+  - description: 'eval-34 coherence-recall (coherence/ docs, changeset, migration, compose vs code)'
+    prompts: [coherence-track]
+    vars:
+      # coherence/DEFECTS.md lists the five seams; reset-sandbox.sh leaves it out of the checkout.
+      checkout: plugins/code-review/evals/.sandbox/coherence
+      file: >-
+        plugins/code-review/evals/.sandbox/coherence/docs/flags.md
+        plugins/code-review/evals/.sandbox/coherence/src/flags.ts
+        plugins/code-review/evals/.sandbox/coherence/.changeset/quiet-hours-default.md
+        plugins/code-review/evals/.sandbox/coherence/docs/adr/0007-outbox-writes.md
+        plugins/code-review/evals/.sandbox/coherence/src/outbox/writer.ts
+        plugins/code-review/evals/.sandbox/coherence/migrations/0012_channel_handle.sql
+        plugins/code-review/evals/.sandbox/coherence/src/schemas/channel.ts
+        plugins/code-review/evals/.sandbox/coherence/src/config.ts
+        plugins/code-review/evals/.sandbox/coherence/docker-compose.yml
+    assert:
+      - type: regex
+        value: '`coherence`'
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: doc-drift, mentions: ['flags\.md', 'FLAG_RELOAD_INTERVAL'], all: ['60'], severity: medium }
+      # an ADR naming a method the writer lacks; the lens may read it as the invariant it states
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: [doc-drift, invariant-breach], mentions: enqueueBatch, all: ['enqueue\b|enqueue\(\)'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: doc-drift, mentions: ['quiet-hours-default|on by default'], all: ['quietHours|false'], severity: medium }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: schema-drift, mentions: ['0012|channel\.ts|handle'], all: ['32', '64'], severity: high }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: config-drift, mentions: SMTP_URL, all: ['docker-compose\.yml'], severity: high }
+      # every finding quotes two sides, each with its own path:L
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: coherence, pattern: '^- `coherence` · [a-z]+(-[a-z]+)* · (high|medium) · `[\w./-]+:L\d+[^`]*` — .*`[\w./-]+:L\d+[^`]*`.* → .+' }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [coherence], severities: [high, medium], rules: true }
+      - type: javascript
+        value: file://checks/handoff-families.mjs
+
+  - description: 'eval-35 coherence-calibration (coherence/ planned doc, defaulted env, stricter model, valid ADR, released entry)'
+    prompts: [coherence-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/coherence
+      file: >-
+        plugins/code-review/evals/.sandbox/coherence/docs/roadmap.md
+        plugins/code-review/evals/.sandbox/coherence/src/logging.ts
+        plugins/code-review/evals/.sandbox/coherence/docker-compose.yml
+        plugins/code-review/evals/.sandbox/coherence/migrations/0013_profile_display_name.sql
+        plugins/code-review/evals/.sandbox/coherence/src/schemas/profile.ts
+        plugins/code-review/evals/.sandbox/coherence/docs/adr/0006-delivery-retries.md
+        plugins/code-review/evals/.sandbox/coherence/src/delivery/retry.ts
+        plugins/code-review/evals/.sandbox/coherence/src/delivery/webhook.ts
+        plugins/code-review/evals/.sandbox/coherence/CHANGELOG.md
+    assert:
+      - type: regex
+        value: '[Nn]ot flagged'
+      # prose labelled plan
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: coherence, mentions: ['roadmap', '[Dd]igest'], siteOnly: true }
+      # a key with a code default is evidently optional
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: coherence, mentions: LOG_LEVEL, siteOnly: true }
+      # the model is stricter than the column
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: coherence, mentions: ['display_?[Nn]ame', '0013', 'profile\.ts'], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: coherence, mentions: ['RetryPolicy', '0006'], siteOnly: true }
+      # a released section is history
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: coherence, mentions: ['CHANGELOG', '1\.3\.0', 'WEBHOOK_TIMEOUT'], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:notFlaggedNames
+        config: { patterns: ['roadmap|[Dd]igest|[Pp]lanned', LOG_LEVEL, 'display_?[Nn]ame|stricter', 'RetryPolicy|0006', 'CHANGELOG|1\.3\.0|released'], min: 3 }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [coherence], severities: [high, medium], rules: true }

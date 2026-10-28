@@ -293,4 +293,13 @@ TS
 done
 printf 'export const MAX_DISCOUNT_PERCENT = 50;\n' > .sandbox/scope-mixed/src/discount-limits.ts
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec"
+# evals 34-35: a repository of its own, so the lens Greps counterparts where DEFECTS.md is absent.
+coherence=.sandbox/coherence
+mkdir -p "$coherence"
+cp -R cases/coherence/. "$coherence/"
+rm "$coherence/DEFECTS.md"
+git -C "$coherence" init -q -b main
+git -C "$coherence" add -A
+commit "$coherence" 'feat: notification channels, quiet hours and the outbox'
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence"
