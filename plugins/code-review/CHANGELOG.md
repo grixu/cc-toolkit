@@ -38,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - the merge's dedup names one owner for each seam the new lenses share with `correctness`,
   `comments`, `spec`, `module`, `standards`, `security` and `tests`
 
+### Fixed
+
+- `spec` no longer receives real `.env*` files (every one but `.env.example`, `.env.sample`,
+  `.env.template` and `.env.dist`), so a tracked `.env` is never read whole into its context; like
+  `coherence`, it may only Grep one for key names and never quotes a value
+
 ## [0.6.0] - 2026-10-25
 
 ### Added

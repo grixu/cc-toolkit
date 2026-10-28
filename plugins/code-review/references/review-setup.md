@@ -66,11 +66,12 @@ never from a preference:
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
 `performance` gets the source subset it was gated on; `security` and `assumptions` get the
-full resolved list; `spec` gets the full resolved list plus every skipped file; `coherence`
+full resolved list; `spec` gets the full resolved list plus every skipped file except real env
+files (every `.env*` but `.env.example`, `.env.sample`, `.env.template` and `.env.dist` — a
+real one in the change `spec` and `coherence` may only Grep for key names, never Read); `coherence`
 gets the full resolved list plus every skipped file except lockfiles, generated output (a
 generator's `.d.ts`, `*_pb.*`, anything under `dist/`, minified files, snapshots) and real env
-files (every `.env*` but `.env.example`, `.env.sample`, `.env.template` and `.env.dist` — a
-real one in the change it may only Grep for key names, never Read), and minus the active spec,
+files, and minus the active spec,
 which is `spec`'s alone; every other Lens gets the resolved list minus its
 `policy` files. Record every **inactive** Lens with its reason (`performance — no executable
 code`, `spec — no spec named`, `coherence — lockfiles, generated and env files only`, `assumptions

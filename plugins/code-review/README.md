@@ -229,7 +229,7 @@ lockfiles, generated output and real `.env` files, because a README, a migration
 is one side of the disagreements it looks for; a real `.env` it only Greps for key names, never
 reading a value. The spec lens, with a spec given, maps the spec against every changed
 file, skipped and policy files included, because a workflow or a manifest is often what a spec
-line describes.
+line describes; a real `.env` it too only Greps for key names.
 
 Limits:
 

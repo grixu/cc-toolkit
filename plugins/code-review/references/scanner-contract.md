@@ -18,7 +18,7 @@ Send each Scanner a brief in this shape, filling every slot:
 <scanner_brief>
   <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness | coherence | assumptions</lens>
   <rules_file>rules/<lens>.md</rules_file>
-  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security` and `assumptions`, the full resolved list plus every skipped file for `spec`, the full resolved list plus every skipped file except lockfiles, generated output and real `.env*` files (templates such as `.env.example` stay), minus the active spec, for `coherence`, the resolved list minus `policy` files for every other Lens --></files>
+  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security` and `assumptions`, the full resolved list plus every skipped file except real `.env*` files (templates such as `.env.example` stay) for `spec`, the full resolved list plus every skipped file except lockfiles, generated output and real `.env*` files, minus the active spec, for `coherence`, the resolved list minus `policy` files for every other Lens --></files>
   <diff_args><!-- from the scope resolution; "none" when the user named paths --></diff_args>
   <how_to_view>
     diff_args "none" → read the file whole; every line is under review

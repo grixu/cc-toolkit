@@ -92,8 +92,10 @@ These consumers depend on this list:
   no skipped file: lockfiles, the installed dependency tree, `.nvmrc`, `engines`, a
   Dockerfile's base image and replica counts are evidence it reads, never files it judges;
 - the **`spec` lens** receives the whole change — every judged file, `policy` files
-  included, plus every file *Skip* leaves out: conformance is not line-graded craft, and
-  a skipped workflow, manifest or doc is often exactly what a spec line describes;
+  included, plus every file *Skip* leaves out but real env files (defined below): conformance
+  is not line-graded craft, and a skipped workflow, manifest or doc is often exactly what a
+  spec line describes. A real env file in the change is never Read; the lens may only Grep it
+  for key names;
 - the **`coherence` lens** receives the whole change too — every judged file, `policy`
   files included, plus every skipped file except lockfiles, generated output (a
   generator's `.d.ts`, `*_pb.*`, anything under `dist/`, minified files, snapshots) and real

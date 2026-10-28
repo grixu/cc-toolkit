@@ -58,7 +58,7 @@ either: return `status: empty` with `files: 0 judged` and each skip reason in `s
 `ready`. Lenses that "pass" over zero files read downstream as a clean review of a change nobody
 looked at. A change whose every file is skipped is not always that change: `coherence` judges
 every skipped file but lockfiles, generated output and real `.env*` files, and an active `spec` maps the spec against
-all of them. An all-skipped change that leaves `coherence` a file — a document, a changeset,
+all of them but the real `.env*` files. An all-skipped change that leaves `coherence` a file — a document, a changeset,
 config data — is `ready`, with `coherence` (plus `spec` when one counts) the only active lens and
 every other lens inactive. One of lockfiles and generated files alone is `ready` only with a
 usable `--spec`, `spec` then the only active lens; without one it is `empty`.
@@ -104,8 +104,8 @@ Write each file with the `Write` tool:
 
 `spec_focus` is `null` when no focus was given or `spec` is `null`. `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
 `files` is its own list — the `source` subset for `performance`, the whole judged list for
-`security` and `assumptions`, the whole judged list plus every skipped path for `spec`, the whole judged list plus
-every skipped path but lockfiles, generated output and real `.env*` files (every one but `.env.example`, `.env.sample`, `.env.template` and `.env.dist`), minus the spec, for `coherence`, and the
+`security` and `assumptions`, the whole judged list plus every skipped path but real `.env*` files (every one but `.env.example`, `.env.sample`, `.env.template` and `.env.dist`) for `spec`, the whole judged list plus
+every skipped path but lockfiles, generated output and real `.env*` files, minus the spec, for `coherence`, and the
 judged list minus its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
 the script returned, so the caller can read what you saw.
 

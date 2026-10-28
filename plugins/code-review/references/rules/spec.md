@@ -45,7 +45,8 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   same way the other scanners do. Your `<files>` is the whole change — `policy` files and
   the files the scope resolution skipped included, since a workflow, a manifest or a doc
   is often what a requirement describes: map requirements against all of them, but grade
-  no craft in a skipped file. You never go looking for a spec yourself and never
+  no craft in a skipped file. Real env files (every `.env*` but `.env.example`,
+  `.env.sample`, `.env.template`, `.env.dist`) are not in it. You never go looking for a spec yourself and never
   treat another document as "the spec": an empty `<spec>` slot is one line saying so,
   never a guess.
 - **A spec focus narrows what you enumerate.** When the `<spec>` slot carries focus codes
@@ -69,6 +70,10 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
   state why nothing does. **Grep the repo before calling one missing** — a requirement
   may be satisfied by code the diff did not need to touch, and a finding against code
   that already exists is a false positive.
+- **Never quote a value from a `.env*` file** — cite the key only. A real env file is never
+  Read: settle whether it holds a key a requirement names with a Grep for key names
+  (`^KEY=`) in `files_with_matches` mode, or `git grep -l`, never a mode that prints the
+  matched line; a repo-wide Grep excludes real env files or runs the same way.
 - **Diff mode and path mode alike.** When the review targets paths instead of a diff,
   each requirement is mapped to the files as they stand; "the diff" in this file then
   means the files in view. Nothing else changes.

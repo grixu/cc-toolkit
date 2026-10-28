@@ -126,7 +126,7 @@ Scanner's `<files>` is cut from this one list in Step 2b, and all of them get th
     `Tally`'s `Skipped:` clause (`pnpm-lock.yaml (uncommitted, skipped kinds)`), and in the
     context directory's `skipped`. This does not hold when a spec is active — `--spec` resolved
     to a readable file, or that side holds a document the spec offer below would make: the `spec`
-    Lens reviews every skipped file, so every answer grades something. Ask as below. A side of
+    Lens reviews lockfiles and generated output too, so every answer grades something. Ask as below. A side of
     other skipped files (Markdown, JSON, YAML, plain text) is never picked away: `coherence`
     grades it;
   - both non-zero otherwise → ask with **one**
