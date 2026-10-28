@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-28
+
 ### Changed
 
 - the delta review of the automatic review fixes runs only the `correctness` and `security`
