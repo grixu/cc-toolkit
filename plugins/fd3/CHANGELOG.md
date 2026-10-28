@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- the implement workflow's `cr-merge` result schema accepts the `coherence` and `assumptions`
+  families, so a review with those lenses active no longer fails its schema; the review's lens
+  count reads nine to eleven
+
 ## [0.5.0] - 2026-10-25
 
 ### Added
