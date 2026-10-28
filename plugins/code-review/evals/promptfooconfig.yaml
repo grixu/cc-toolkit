@@ -1326,3 +1326,38 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { rule: test-fidelity }
+
+  - description: 'eval-40 correctness-auditor-patterns (correctness/alias-store.ts)'
+    prompts: [correctness-track]
+    vars:
+      # correctness/DEFECTS.md pairs each pattern with its guarded twin; the lens never sees it.
+      file: plugins/code-review/evals/cases/correctness/alias-store.ts
+    assert:
+      - type: regex
+        value: '`correctness`'
+      # an alias cycle never resolves
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, mentions: resolveAlias, all: ['cycle|loop|recurs|depth|hops?\b'] }
+      # a store timeout reads as a missing alias
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: [swallowed-error, unhandled-case, contract-mismatch], mentions: ['findAlias', 'aliasStatus'], all: ['StoreUnavailable|timeout|outage|unavailable|404'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, mentions: [renewAlias, '\bL5[3-5]\b'], all: ['90|MAX_TTL|clamp'] }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: correctness, rule: [contract-mismatch, swallowed-error], mentions: 'purgeAliases', all: ['forEach'] }
+      # the guarded twins, picked by the cited site: a finding names a twin as its contrast
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: correctness, mentions: '· `[^`]*alias-store\.ts:L(1[3-9]|2[0-4]|39|4\d|5[01]|5[89]|6[01]|7[3-9])\b' }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { severities: [high, medium] }
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: correctness, pattern: '^- `correctness` · [a-z]+(-[a-z]+)* · (high|medium) · `[\w./-]+:L\d+[^`]*` — .+ → .+' }
+      - type: javascript
+        value: file://checks/handoff-families.mjs
