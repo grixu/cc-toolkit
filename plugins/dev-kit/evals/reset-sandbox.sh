@@ -25,7 +25,8 @@ done
 
 # A case may borrow another case's base/ and head/ (its `fixtures` file names it) and may leave the
 # checkout on the PR's merge commit, as actions/checkout does on a pull_request run (`checkout`: merge).
-for s in pr-clear-private pr-transitive-rerun pr-escalated-accept pr-merge-checkout pr-upsert-installation-token; do
+for s in pr-clear-private pr-transitive-rerun pr-escalated-accept pr-merge-checkout pr-upsert-installation-token \
+  pr-unattended-escalated pr-unattended-carry pr-unattended-env; do
   pr="cases/$s/pr.json"
   n="$(jq -r .number "$pr")"
   src="cases/$s"

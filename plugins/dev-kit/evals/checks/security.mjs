@@ -170,6 +170,82 @@ export function prTransitiveRerun(output, context) {
   });
 }
 
+const resultBlock = (text) => {
+  const block = text.match(/```dep-upgrade-check-result\n([\s\S]*?)```/)?.[1];
+  if (!block) return null;
+  return Object.fromEntries(
+    block
+      .split('\n')
+      .map((line) => line.match(/^(\w+):\s*(.*?)\s*$/))
+      .filter(Boolean)
+      .map((m) => [m[1], m[2]]),
+  );
+};
+
+// Shared by the token-triggered and the GITHUB_ACTIONS-triggered runs on the escalated lodash PR.
+function unattendedEscalated(run, check, n) {
+  check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+  check(!run.asked, 'an unattended run asked the user');
+  const comments = posted(`gh-posted-comment-${n}-`);
+  check(comments.length <= 1, `${comments.length} comments posted on PR #${n}`);
+  if (check(comments.length === 1, `no security comment was posted on PR #${n}`)) {
+    const body = comments[0];
+    check(body.startsWith(MARKER), 'the posted comment does not start with the marker');
+    check(linesWith(body, /^#/).some((line) => /\bescalated\b/i.test(line)), 'the comment heading is not escalated');
+    const decision = linesWith(body, /Decision/i);
+    check(decision.some((line) => /pending/i.test(line)), 'the Decision line is not pending');
+    check(!decision.some((line) => /accepted|@eval-user/i.test(line)), 'the Decision line records a decision nobody made');
+  }
+  const block = resultBlock(run.text);
+  if (check(block !== null, 'no dep-upgrade-check-result block')) {
+    check(block.status === 'done', `result status is '${block.status}', expected done`);
+    check(block.security === 'escalated', `result security is '${block.security}', expected escalated`);
+    check(block.decision === 'pending', `result decision is '${block.decision}', expected pending`);
+  }
+}
+
+export function prUnattendedEscalated(output, context) {
+  return grade(output, context, (run, check) => unattendedEscalated(run, check, 16));
+}
+
+export function prUnattendedEnv(output, context) {
+  return grade(output, context, (run, check) => {
+    unattendedEscalated(run, check, 18);
+    check(/GITHUB_ACTIONS/.test(run.text), 'the report does not say GITHUB_ACTIONS switched on unattended mode');
+  });
+}
+
+// The advisories match the maintainer's recorded decision, so the re-run keeps it.
+export function prUnattendedCarry(output, context) {
+  return grade(output, context, (run, check) => {
+    check(run.outcome === 'escalated', `security outcome is '${run.outcome}', expected escalated`);
+    check(!run.asked, 'an unattended run asked the user');
+    const patched = posted('gh-posted-patch-9020');
+    if (check(patched.length === 1, 'the existing security comment 9020 was not updated')) {
+      const decision = linesWith(patched[0], /Decision/i);
+      check(decision.some((line) => /accepted risk/i.test(line) && /@maintainer/.test(line)), "the maintainer's accepted-risk Decision was not kept");
+      check(!decision.some((line) => /pending/i.test(line)), 'the Decision was reset to pending');
+    }
+    check(posted('gh-posted-comment-17-').length === 0, 'a second comment was posted instead of updating 9020');
+    const block = resultBlock(run.text);
+    if (check(block !== null, 'no dep-upgrade-check-result block')) {
+      check(block.decision === 'carried', `result decision is '${block.decision}', expected carried`);
+    }
+  });
+}
+
+export function prUnattendedStop(output, context) {
+  return grade(output, context, (run, check) => {
+    check(!run.asked, 'an unattended run asked the user');
+    check(!run.wroteComment, 'a stopped run wrote a PR comment');
+    const block = resultBlock(run.text);
+    if (check(block !== null, 'no dep-upgrade-check-result block')) {
+      check(block.status === 'stopped', `result status is '${block.status}', expected stopped`);
+      check(/repo|repository|example\/web|other\/lib/i.test(block.reason ?? ''), `the stop reason does not name the repository mismatch: '${block.reason}'`);
+    }
+  });
+}
+
 // The checkout's lockfile already resolves lodash 4.17.21, so a working-tree read gives an empty range.
 export function prMergeCheckout(output, context) {
   return grade(output, context, (run, check) => {
