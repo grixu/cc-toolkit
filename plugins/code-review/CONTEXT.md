@@ -21,6 +21,10 @@ _Avoid_: theme, dimension
 **Rules file**:
 The single source of truth for one Lens's rule text: `references/rules/<lens>.md`, named after the lens with no numeric prefix (`comments.md`, `readability-tests.md`, `naming-module.md`, `objects-patterns.md`, `simplicity-types.md`, `correctness.md`, `security.md`, `coherence.md`, `assumptions.md`, `performance.md`, `spec.md`).
 
+**Codex adapter**:
+A skill under `codex/skills/<name>/` that the OpenAI Codex CLI loads in place of the Claude Code skill or command of the same name. It reads `codex/host.md`, the mapping from Claude Code mechanics to Codex ones, then follows the canonical body unchanged; no lens rule lives in an adapter.
+_Avoid_: port, Codex fork (nothing is copied)
+
 **Family**:
 One of the fourteen stable top-level labels in the quality vocabulary: `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, and `standards`. Thirteen are fixed by the plugin; `standards` is repo-defined (its rules come from the Standards file).
 
