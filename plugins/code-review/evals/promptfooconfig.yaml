@@ -1405,6 +1405,9 @@ tests:
         value: file://checks/untrusted-text.mjs:noRead
         config: { path: '/\.env$' }
       - type: javascript
+        value: file://checks/untrusted-text.mjs:unexposed
+        config: { pattern: '7f3e9b1d' }
+      - type: javascript
         value: file://checks/report.mjs:findingsVocabulary
         config: { families: [coherence], severities: [high, medium], rules: true }
       - type: javascript
