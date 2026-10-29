@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- OpenAI Codex CLI support: a `.codex-plugin/plugin.json` manifest whose `skills` points at
+  `codex/skills/`, so `codex plugin add code-review@cc-toolkit` installs the plugin from the same
+  marketplace
+- `codex/host.md` maps the Claude Code mechanics the command and skills rely on (plugin root,
+  `$ARGUMENTS`, tool names, questions, sub-agent fan-out, the `.env` key-names-only rule, commits
+  under the sandbox) to their Codex counterparts
+- Codex adapter skills `start-cr`, `comment-review`, `quality-review`, `cr-prepare`, `cr-scan` and
+  `cr-merge`: each loads `codex/host.md`, then follows the Claude Code body unchanged. `start-cr`
+  and the three headless skills run only when mentioned explicitly
+
 ## [0.7.0] - 2026-10-28
 
 ### Added
