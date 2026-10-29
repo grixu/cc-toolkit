@@ -18,10 +18,10 @@ as its Orchestrator under the host mapping.
    `<root>/codex/skills/start-cr/SKILL.md`, so the root is three directories above it. Use its
    absolute path everywhere below.
 2. Read `<root>/codex/host.md` completely, in a command of its own.
-3. Read `<root>/commands/start-cr.md` in exactly three commands, one range each:
-   `nl -ba <file> | sed -n '1,250p'`, then `'251,500p'`, then `'501,$p'`. The file is about
-   45 KB with line numbers, and a read that size loses its middle, which holds Step 3's dispatch
-   and collect rules.
+3. Read `<root>/commands/start-cr.md` in 250-line ranges, one command each, until its last line:
+   `nl -ba <file> | sed -n '1,250p'`, then `'251,500p'`, and on. The file is about 45 KB with line
+   numbers, and a read that size loses its middle, which holds Step 3's dispatch and collect
+   rules.
 4. Follow that body under the mapping. Its `$ARGUMENTS` is the text written after this skill's
    mention, verbatim: paths, `--base <branch>`, `--spec <path>`, `--pr <number>`.
 
