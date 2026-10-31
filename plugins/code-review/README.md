@@ -276,6 +276,69 @@ They review committed changes only, never edit the checkout, and never ask anyth
 change or a lens that did not report comes back as a status (`empty`, `incomplete`), never as a
 clean review.
 
+## Codex
+
+The plugin also installs in the [OpenAI Codex CLI](https://github.com/openai/codex), tested on
+codex-cli 0.165.0. It needs the same `git` and `python3`. From your shell:
+
+```
+codex plugin marketplace add grixu/cc-toolkit   # --ref <branch> installs from a branch
+codex plugin add code-review@cc-toolkit
+codex plugin list                               # check that it is installed
+```
+
+To work on a local checkout, add its path as the marketplace instead. After an edit, run
+`codex plugin add code-review@cc-toolkit` again, which refreshes the installed copy, and start a
+new session.
+
+In Codex, a skill is mentioned with `$`:
+
+```
+$code-review:start-cr [--base <ref>] [--pr <n>] [--spec <path>]   # --pr needs network, see limits
+$code-review:comment-review
+$code-review:quality-review
+```
+
+`start-cr` runs only when you mention it. `comment-review` and `quality-review` also start when
+you ask for a comment or quality review in plain words. The headless `$code-review:cr-prepare`,
+`cr-scan` and `cr-merge` are mention-only too, for workflows that drive them.
+
+Codex reads the same `.claude-plugin/marketplace.json`, and this plugin's
+`.codex-plugin/plugin.json` points it at `codex/skills/` instead of the Claude Code skills. Each
+skill there is a thin adapter: it loads `codex/host.md`, which maps Claude Code's mechanics
+(plugin root, `$ARGUMENTS`, tool names, questions, sub-agents, the `.env` key-names-only rule,
+commits under the sandbox) to Codex's, then follows the Claude Code command or skill unchanged, so
+the lens rules have one source.
+
+Limits under Codex:
+
+- Scanners run as Codex sub-agents, so the lenses run in waves. How many run at a time depends on
+  which multi-agent version Codex selects for the model: six under v1, or the session's slots
+  minus one under v2, three by default. Raise the cap with
+  `agents.max_concurrent_threads_per_session` in `config.toml`.
+- `request_user_input` is unavailable in Default mode, so questions and the apply menu come as
+  numbered chat messages. Answer in your next message.
+- Under `codex exec`, every question, the apply menu included, stops the run and nothing it gates
+  is applied. Answer with `codex exec resume <id> "<answer>"`. `resume` takes no `-C` or `-s`; set
+  the sandbox with `-c sandbox_mode=...`.
+- The `workspace-write` sandbox keeps `.git` read-only and blocks the gpg-agent socket, so a commit
+  mode stops and asks instead of committing. Adding `<repo>/.git` to
+  `sandbox_workspace_write.writable_roots` fixes only the read-only `.git`; signed commits still
+  fail. Approve running the commit outside the sandbox when Codex asks (interactive runs only), or
+  choose "Leave uncommitted". The plugin never turns off commit signing or hooks.
+- `--pr` and the check for someone else's pull request need network access for `gh` and
+  `git fetch`, a writable `.git`, and, for `--pr`, a writable directory beside the repository for
+  the PR worktree. `workspace-write` gives none of them, and this path is untested under Codex.
+  When the check cannot run, the review says so in one line, and an interactive run asks to
+  escalate first.
+- Scanner sub-agents get Codex's full toolset, since Codex has no per-agent tool list like
+  `agents/scanner.md`'s, so a Scanner editing nothing rests on its prompt alone. This is an
+  accepted difference.
+- Claude Code's `/security-review` and `/code-review` do not exist in Codex and are never offered.
+- Cost, as an indicative figure from one measurement (2026-10): a full review of a one-file change
+  with ten lenses took 3.5–4 minutes, about 5M input tokens (about 95% cached) and 20k output
+  tokens.
+
 ## Upgrading from comment-review or quality-review
 
 This plugin replaces the separate `comment-review` and `quality-review` plugins, which the

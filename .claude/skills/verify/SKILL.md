@@ -35,6 +35,12 @@ for d in dirs:
     if not re.fullmatch(r'\d+\.\d+\.\d+', str(p.get('version',''))):
         fail.append(f'{n}: version {p.get("version")!r} is not semver')
     authors[f'{n}/plugin.json'] = json.dumps(p.get('author'), sort_keys=True)
+    cx = d/'.codex-plugin/plugin.json'
+    if cx.exists():
+        c = json.loads(cx.read_text())
+        for k in ('name','version','description','author','repository','keywords'):
+            if c.get(k) != p.get(k):
+                fail.append(f'{n}: .codex-plugin/plugin.json {k} differs from .claude-plugin/plugin.json')
     e = entries.get(n)
     if e is None:
         fail.append(f'{n}: not registered in marketplace.json'); continue

@@ -33,6 +33,8 @@ Every plugin must have:
 
 Plugins may also include: `commands/`, `hooks/`, `skills/`, `agents/`, `references/`, `scripts/`, `examples/`.
 
+A plugin may also carry `.codex-plugin/plugin.json` for the OpenAI Codex CLI (e.g., `plugins/code-review/`). `release.sh` bumps its version together with `.claude-plugin/plugin.json`, so never edit either version by hand.
+
 The root `.claude-plugin/marketplace.json` must list every plugin with matching name, version, source path, description, author, category, and tags.
 
 ## Hookify Upstream Sync

@@ -1,0 +1,33 @@
+{
+  "name": "code-review",
+  "version": "0.7.0",
+  "description": "Unified code review that fans out parallel scanners over a change — one per active lens, up to eleven per run — and merges them into one per-file report. Eleven lenses: comment quality, four quality/craft lenses (readability & tests, naming & module, objects & patterns, simplicity & types), an always-on correctness lens (wrong conditions, unhandled cases, off-by-one, swallowed errors, races, broken call contracts), an always-on narrow security lens (secrets, injection, access checks, boundary validation, insecure settings, IaC exposure, access widening, plus access policies and CI workflows), an always-on coherence lens (docs, contracts, migrations, config and sibling listings that disagree with the code or each other, code breaking a rule an accepted ADR or CONTEXT.md states), an always-on assumptions lens (code relying on library, runtime, CI or platform behaviour the installed source or the locked version contradicts, test doubles the real dependency would not match), a performance lens for executable source (N+1, unbounded fetch, blocking-in-async, wasted renders, missing indexes), and a spec lens via --spec <path> or a spec file the diff carries. Explicit rules in a root CODING_STANDARDS.md (plus a gitignored .local.md overlay) generate standards findings. The standalone comment-review and quality-review skills stay invocable for a single-lens pass. Reviews the current branch diff by default (or explicit paths / --base, or a GitHub PR with --pr). Quality findings are tagged family · rule · severity; comment verdicts are R1–R12 · KEEP/REMOVE/REWRITE/MOVE/ADD, shown side by side and applied through a single risk-cut menu. Successor to the comment-review and quality-review plugins.",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "code-review",
+    "code-quality",
+    "comments",
+    "clean-code",
+    "refactoring",
+    "security",
+    "performance",
+    "spec",
+    "coding-standards"
+  ],
+  "skills": "./codex/skills/",
+  "interface": {
+    "displayName": "Code Review",
+    "shortDescription": "Multi-lens review of a change, merged into one per-file report",
+    "developerName": "Mateusz Gostański",
+    "category": "Developer Tools",
+    "defaultPrompt": [
+      "Review my branch with $code-review:start-cr",
+      "Check the comments in my change with $code-review:comment-review",
+      "Review the code quality of my diff with $code-review:quality-review"
+    ]
+  }
+}

@@ -47,6 +47,19 @@ Auto-update is off by default for third-party marketplaces like this one. To upd
 open the Marketplaces tab, select `cc-toolkit`, and choose Update marketplace. On the same tab you can
 turn on auto-update. To update one plugin from your shell, run `claude plugin update <plugin>@cc-toolkit`.
 
+### OpenAI Codex CLI
+
+code-review also installs in the [OpenAI Codex CLI](https://github.com/openai/codex):
+
+```
+codex plugin marketplace add grixu/cc-toolkit
+codex plugin add code-review@cc-toolkit
+```
+
+Start it with `$code-review:start-cr`. Its [README](plugins/code-review/README.md#codex) covers
+usage and the limits under Codex. Only code-review ships Codex adapters: Codex lists the
+marketplace's other plugins too, but they are not supported there.
+
 ## Plugins
 
 Every plugin is invoked as `/<plugin>:<name>`. Many also start on their own when your request matches,
@@ -124,8 +137,9 @@ Each plugin lives in `plugins/<name>/` with `.claude-plugin/plugin.json`, a `REA
 lists every plugin.
 
 - Commits use conventional commits with the plugin as scope: `feat(hookify): ...`, `fix(fd3): ...`.
-- Release with `./scripts/release.sh <plugin> <patch|minor|major>`. It bumps both manifests, stamps the
-  changelog, commits, and tags the release. It needs `jq` and `git`; `gh` is optional.
+- Release with `./scripts/release.sh <plugin> <patch|minor|major>`. It bumps the version in
+  `plugin.json` (and `.codex-plugin/plugin.json` where one exists) and `marketplace.json`, stamps
+  the changelog, commits, and tags the release. It needs `jq` and `git`; `gh` is optional.
 - Eval suites (promptfoo) run with `pnpm install && pnpm eval`, or `scripts/run-evals.sh <plugin>` for
   one plugin.
 - `hookify` is forked from `anthropics/claude-plugins-official`. Upstream changes arrive on the
