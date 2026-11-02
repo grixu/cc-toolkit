@@ -137,6 +137,48 @@ else
   unavailable blocked-cooldown 'no candidate package has a release under 6 days old without advisories'
 fi
 
+# The repository-config scenario needs a patch release past the repository's 3-day patch rule but
+# inside the 7-day default, so only the configured value can clear it. The graph must stay the same,
+# or a fresh transitive version would decide the outcome instead.
+in_window() {
+  jq -r --arg v "$2" '((.[$v] // "1970-01-01T00:00:00")[:19] + "Z" | fromdateiso8601) as $t
+    | $t > (now - 6 * 86400) and $t < (now - 3 * 86400 - 3600)' <<<"$1"
+}
+picked=''
+for pkg in @types/node @types/react prettier typescript vite @biomejs/biome next renovate; do
+  times="$(npm view "$pkg" time --json 2>/dev/null)" || continue
+  while read -r target; do
+    [ "$(in_window "$times" "$target")" = true ] || continue
+    current="$(jq -r --arg t "$target" '($t | split(".")) as [$ma, $mi, $pa]
+      | [keys[] | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | split(".")
+        | select(.[0] == $ma and .[1] == $mi and (.[2] | tonumber) < ($pa | tonumber))]
+      | max_by(.[2] | tonumber) // empty | join(".")' <<<"$times")"
+    [ -n "$current" ] || continue
+    [ "$(osv_count "$pkg" "$target")" = 0 ] && [ "$(osv_count "$pkg" "$current")" = 0 ] || continue
+    [ "$(npm view "$pkg@$current" dependencies --json | jq -S -c .)" = "$(npm view "$pkg@$target" dependencies --json | jq -S -c .)" ] || continue
+    before="$(graph "$pkg" "$current")" || continue
+    after="$(graph "$pkg" "$target")" || continue
+    [ -z "$(comm -13 <(printf '%s\n' "$before") <(printf '%s\n' "$after") | sed '/^$/d')" ] || continue
+    published="$(jq -r --arg v "$target" '.[$v]' <<<"$times")"
+    picked="$pkg"
+    break
+  done < <(jq -r 'to_entries | map(select(.key | test("^[0-9]+\\.[0-9]+\\.[1-9][0-9]*$")))
+    | sort_by(.value) | reverse | .[:40][] | .key' <<<"$times")
+  [ -n "$picked" ] && break
+done
+
+if [ -n "$picked" ]; then
+  jq -n --arg pkg "$picked" --arg current "$current" --arg target "$target" --arg published "$published" \
+    '{package: $pkg, current: $current, target: $target, published: $published}' > .sandbox/cooldown-repo-config.json
+  printf '%s@%s' "$picked" "$target" > .sandbox/cooldown-repo-config-input.txt
+  fresh_repo .sandbox/cooldown-repo-config dependencies "$picked" "$current"
+  cp cases/cooldown-repo-config/renovate.json .sandbox/cooldown-repo-config/
+  git -C .sandbox/cooldown-repo-config add -A
+  commit .sandbox/cooldown-repo-config 'chore: configure Renovate'
+else
+  unavailable cooldown-repo-config 'no candidate package has a clean patch release 3 to 6 days old with an unchanged dependency graph'
+fi
+
 # The exemption needs a release under 6 days old that patches a moderate-or-above advisory of the
 # version before it, so it searches the newest npm advisories for one. The fix must be clean and keep
 # the dependency graph, or an advisory or a fresh transitive version would decide the outcome instead.

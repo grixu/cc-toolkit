@@ -89,9 +89,18 @@ It starts from the version your lockfile resolves today and lists every change u
 
 Before the compatibility work, it checks the target's security record in [OSV.dev](https://osv.dev) and the GitHub Advisory Database, for the target and for every new or changed transitive version the upgrade brings in:
 
-- **blocked**: malware, a version the registry has taken down, or a version published less than 7 days ago. A recent version passes when it fixes a moderate-or-above vulnerability of the version it replaces. The report names the lowest safe version instead.
+- **blocked**: malware, a version the registry has taken down, or a version younger than its release-age cooldown. A recent version passes when it fixes a moderate-or-above vulnerability of the version it replaces. The report names the lowest safe version instead.
 - **escalated**: a known vulnerability of moderate severity or above. The check reports whether your code uses the vulnerable function, but that never lowers the severity: it asks you to accept the risk, switch to the lowest safe version, or hold.
 - **clear**: neither.
+
+The cooldown follows your repository's own policy, so a check does not block what your dependency bot already waited for:
+
+- **Renovate**: `minimumReleaseAge`, top level and per `packageRules` entry. The check evaluates the update type, package name, datasource, manager, dependency type and file name matchers. A rule with a matcher it cannot evaluate, such as `matchCurrentVersion`, counts at the stricter of its value and the one it overrides. An explicit `null` means no cooldown; a configuration that never sets `minimumReleaseAge` falls through to the sources below. Presets in `extends` are not resolved, except the 3 days on npm that `config:best-practices` adds.
+- **Dependabot**: the `cooldown` block of the matching `updates` entry, or Dependabot's own 3 days without one.
+- **pnpm**: `minimumReleaseAge` in `pnpm-workspace.yaml`, with `minimumReleaseAgeExclude`.
+- **None of them**: 7 days.
+
+For a pull request the configuration is read from the base branch, so a pull request cannot lower its own cooldown. The report names the value and its source, such as `cooldown 3 days (renovate.json packageRules[2]: matchUpdateTypes patch)` or `cooldown 7 days (default)`.
 
 Package names are sent to api.osv.dev, api.github.com and api.deps.dev. Packages from a private registry are never sent and are listed as not checked. On a pull request it always posts one security comment with the outcome, the advisories and your decision, and updates that comment on a re-run.
 
@@ -120,7 +129,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
   checks: read
   actions: read
 concurrency:
@@ -179,7 +188,7 @@ jobs:
 - To make the check required before merging, add the job as a required status check on the default branch. A job that its `if:` skips reports success, so pull requests from people and other bots are not blocked. Renovate's lockfile-maintenance pull request is skipped the same way, which keeps its automerge working; it then gets no security check.
 - The run reads release notes and guides it cannot trust, and the skill pre-approves commands that reach the network: `gh api` (writes included), the OSV and deps.dev `curl` calls, whose rules match any text after the URL, and `WebFetch` to any domain. A prompt injection in that text can send out whatever those commands can read:
   - `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1` strips `ANTHROPIC_API_KEY` and other credentials from the commands' environment and leaves the GitHub token in place, so `gh` keeps working. Keep it.
-  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head. `issues: write` is enough to create and update the comments, and `pull-requests` stays `read` so that an injected command cannot approve the pull request.
+  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head. Commenting on a pull request takes `pull-requests: write`: with `pull-requests: read`, GitHub refuses the comment with a 403 even when `issues: write` is granted, and the result block's `reason` names the missing permission. With `pull-requests: write`, the token could also approve the pull request if the repository or organization setting **Allow GitHub Actions to create and approve pull requests** were on. It is off by default; keep it off, so that an injected command cannot approve the pull request.
   - Repository code is within reach of `WebFetch`. For a private repository where that matters, add a deny rule such as `--disallowedTools WebFetch`; migration guides then come from the package's repository only.
 - Self-hosted Renovate posts under its own bot login; use that in the `if`.
 - On a pull request Dependabot opens, the token is read-only unless `permissions` raises it, as above, and only Dependabot secrets are available: store `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`) as a Dependabot secret too.
