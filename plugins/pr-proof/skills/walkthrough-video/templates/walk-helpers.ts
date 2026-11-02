@@ -1,4 +1,5 @@
-// Copied as <slug>.walk.ts: fill the scenes into the test body, keep the tested beats below it.
+// Copied as <slug>.walk.ts: fill the scenes into the test body, keep the tested beats below it, but swap their
+// selectors and URLs for the target app's: they come from the app these templates were tested on.
 import { expect, Locator, Page, test } from '@playwright/test';
 import { click, highlight, narrate, pace, setupRecast, typeText } from 'playwright-recast';
 import { blockOutsideRequests, blockWrites, patchJson, stubJson } from './mocks';
