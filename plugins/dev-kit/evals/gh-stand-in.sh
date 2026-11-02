@@ -97,16 +97,25 @@ pr_dir_for_head() {
   done
 }
 
+# The PR a `gh pr <cmd> [<number|url>]` call names, or like gh the current branch's without one.
+target_dir() {
+  local dir
+  case "${1:-}" in
+    ''|-*)
+      dir="$(pr_dir_for_head "$(git branch --show-current)")"
+      [ -n "$dir" ] || fail "no pull requests found for branch \"$(git branch --show-current)\"" ;;
+    *) dir="$(pr_dir "$1")" || exit 1 ;;
+  esac
+  printf '%s' "$dir"
+}
+
 case "${1:-} ${2:-}" in
   'auth status') echo "github.com: Logged in to github.com account $caller"; exit 0 ;;
   'repo view')
     echo '{"nameWithOwner":"example/web","name":"web","owner":{"login":"example"},"url":"https://github.com/example/web","defaultBranchRef":{"name":"main"}}' | emit
     exit 0 ;;
   'pr view')
-    target="${3:-}"
-    case "$target" in ''|-*) target="$(pr_dir_for_head "$(git branch --show-current)")" ;; esac
-    [ -n "$target" ] || fail "no pull requests found for branch \"$(git branch --show-current)\""
-    case "$target" in /*) dir="$target" ;; *) dir="$(pr_dir "$target")" ;; esac
+    dir="$(target_dir "${3:-}")" || exit 1
     pr_json "$dir" | emit
     exit 0 ;;
   'pr list')
@@ -149,9 +158,11 @@ case "${1:-} ${2:-}" in
     echo "https://github.com/example/web/pull/$n"
     exit 0 ;;
   'pr edit')
-    dir="$(pr_dir "${3:-}")"
+    shift 2
+    target=''
+    case "${1:-}" in ''|-*) ;; *) target="$1"; shift ;; esac
+    dir="$(target_dir "$target")" || exit 1
     n="$(basename "$dir")"
-    shift 3
     body_file="$(flag --body-file "$@")"
     [ -n "$body_file" ] || body_file="$(flag -F "$@")"
     if [ -n "$body_file" ]; then
