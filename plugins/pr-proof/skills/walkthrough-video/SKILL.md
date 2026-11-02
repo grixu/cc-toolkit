@@ -3,7 +3,7 @@ name: walkthrough-video
 description: Record a narrated walkthrough video of a built feature or a PR's change with playwright-recast, from its spec or from requirements reconstructed out of the code, and attach it to the PR once the user accepts it. Use when asked for a demo, walkthrough, feature video or video proof, or to re-record one after fixes, whether the user asks directly or another agent dispatches it.
 ---
 
-`/walkthrough-video [feature, spec path or PR] [who watches and what they asked to see]`
+`/pr-proof:walkthrough-video [feature, spec path or PR] [who watches and what they asked to see]`
 
 A **walkthrough** is one Playwright test that tells a feature's story scene by scene against the running app, rendered by playwright-recast into an MP4 with burned-in captions. You are the orchestrator of a **relay**: five legs, each a fresh subagent handed one brief from `briefs/` and the files earlier legs wrote. Files are the only hand-off, so each leg sees only its own brief and its own finish line, the validator stays independent of the writer, and the recorder's long run stays out of your context.
 
