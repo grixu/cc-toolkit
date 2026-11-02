@@ -60,6 +60,51 @@ for s in pr-clear-private pr-transitive-rerun pr-escalated-accept pr-merge-check
   fi
 done
 
+# pr-open scenarios: a base history in Conventional Commits (`base-log`), an optional shared branch the
+# PR is based on (`feature/`), then the PR branch's own commits. A commit directory holding `push`
+# is pushed and stands as the open PR of that number (`pr.json`); later commits stay local.
+apply_commits() {
+  local repo="$1" dir="$2" origin="$3" c
+  for c in "$dir"/*/; do
+    cp -R "$c/tree/." "$repo/"
+    git -C "$repo" add -A
+    commit "$repo" "$(cat "$c/message")"
+    [ -f "$c/push" ] || continue
+    local n branch
+    n="$(cat "$c/push")"
+    branch="$(git -C "$repo" branch --show-current)"
+    git -C "$repo" push -q origin "HEAD:refs/heads/$branch" "HEAD:refs/pull/$n/head"
+    git -C "$repo" fetch -q origin
+    git -C "$repo" branch -q --set-upstream-to="origin/$branch"
+    mkdir -p ".sandbox/prs/$n"
+    cp "$(dirname "$dir")/pr.json" ".sandbox/prs/$n/pr.json"
+    printf '%s\n' "$origin" > ".sandbox/prs/$n/origin"
+    echo '[]' > ".sandbox/prs/$n/comments.json"
+  done
+}
+
+for s in pr-open-feature pr-open-no-ticket pr-open-update-body; do
+  src="cases/$s"
+  repo=".sandbox/$s"
+  origin="$(pwd)/.sandbox/$s-origin.git"
+  checkout "$repo" "$src/base"
+  while IFS= read -r subject; do
+    git -C "$repo" -c user.name='dev-kit-evals' -c user.email='dev-kit-evals@localhost' commit -q --allow-empty --no-gpg-sign -m "$subject"
+  done < "$src/base-log"
+  git clone -q --bare "$repo" "$origin"
+  git -C "$repo" remote add origin "$origin"
+  git -C "$repo" fetch -q origin
+  git -C "$repo" branch -q --set-upstream-to=origin/main main
+  if [ -d "$src/feature" ]; then
+    feature="$(cat "$src/feature/branch")"
+    git -C "$repo" switch -q -c "$feature"
+    apply_commits "$repo" "$src/feature/commits" "$origin"
+    git -C "$repo" push -q -u origin "$feature"
+  fi
+  git -C "$repo" switch -q -c "$(cat "$src/branch")"
+  apply_commits "$repo" "$src/commits" "$origin"
+done
+
 # A one-package repository whose lockfile pins <pkg>@<current>, for the scenarios picked at reset time.
 fresh_repo() {
   local dir="$1" field="$2" pkg="$3" current="$4" integrity

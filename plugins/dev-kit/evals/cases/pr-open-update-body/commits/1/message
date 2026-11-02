@@ -1,0 +1,5 @@
+feat(fup): count bandwidth per instance-day from the source it was on (PL-5820)
+
+An instance that switched to Fastly mid-period had its whole period read from Fastly, so the
+days before the switch counted as zero. Each instance-day is now read from the source the
+instance was on that day, using the switch dates Farmer reports.

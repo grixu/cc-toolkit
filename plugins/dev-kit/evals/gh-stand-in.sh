@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Stand-in for gh, copied to .sandbox/bin/gh by reset-sandbox.sh. The eval sandbox denies gh's
-# credentials, so PR reads come from .sandbox/prs/<n>/ and the PR's bare origin, comment writes are
-# kept as .sandbox/gh-posted-*.md for the checks, and advisory lookups go to the public REST API
+# credentials, so PR reads come from .sandbox/prs/<n>/ and the PR's bare origin, comment and PR
+# writes are kept as .sandbox/gh-posted-*.md for the checks, and advisory lookups go to the public REST API
 # unauthenticated. Every call is logged to .sandbox/gh-calls.log with the directory it ran in.
 set -uo pipefail
 
@@ -75,15 +75,99 @@ record_comment() {
   echo $((9100 + k))
 }
 
+# The value of a --flag / --flag=value pair among the remaining arguments.
+flag() {
+  local name="$1"
+  shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      "$name") printf '%s' "${2:-}"; return ;;
+      "$name"=*) printf '%s' "${1#"$name"=}"; return ;;
+    esac
+    shift
+  done
+}
+
+# The open fixture PR whose head is the given branch, as a directory; empty when there is none.
+pr_dir_for_head() {
+  local f
+  for f in "$sandbox"/prs/*/pr.json; do
+    [ -e "$f" ] || continue
+    jq -e --arg head "$1" '.headRefName == $head and .state == "OPEN"' "$f" > /dev/null && { dirname "$f"; return; }
+  done
+}
+
 case "${1:-} ${2:-}" in
   'auth status') echo "github.com: Logged in to github.com account $caller"; exit 0 ;;
   'repo view')
     echo '{"nameWithOwner":"example/web","name":"web","owner":{"login":"example"},"url":"https://github.com/example/web","defaultBranchRef":{"name":"main"}}' | emit
     exit 0 ;;
   'pr view')
-    dir="$(pr_dir "${3:-}")"
+    target="${3:-}"
+    case "$target" in ''|-*) target="$(pr_dir_for_head "$(git branch --show-current)")" ;; esac
+    [ -n "$target" ] || fail "no pull requests found for branch \"$(git branch --show-current)\""
+    case "$target" in /*) dir="$target" ;; *) dir="$(pr_dir "$target")" ;; esac
     pr_json "$dir" | emit
     exit 0 ;;
+  'pr list')
+    shift 2
+    head="$(flag --head "$@")"
+    state="$(flag --state "$@" | tr '[:lower:]' '[:upper:]')"
+    for f in "$sandbox"/prs/*/pr.json; do
+      [ -e "$f" ] && cat "$f"
+    done | jq -s --arg head "$head" --arg state "${state:-OPEN}" \
+      'map(select(($head == "" or .headRefName == $head) and ($state == "ALL" or .state == $state))
+        | . + {url: "https://github.com/example/web/pull/\(.number)"})' | emit
+    exit 0 ;;
+  'pr create')
+    shift 2
+    head="$(flag --head "$@")"
+    [ -n "$head" ] || head="$(git branch --show-current)"
+    [ -z "$(pr_dir_for_head "$head")" ] || fail "a pull request for branch \"$head\" already exists"
+    body_file="$(flag --body-file "$@")"
+    [ -n "$body_file" ] || body_file="$(flag -F "$@")"
+    [ -n "$body_file" ] || fail "pr create without --body-file"
+    git ls-remote --exit-code origin "refs/heads/$head" > /dev/null 2>&1 || fail "head branch \"$head\" is not on the remote"
+    key="$(printf '%s' "$head" | tr '/' '-')"
+    cp "$body_file" "$sandbox/gh-posted-pr-create-$key.md"
+    title="$(flag --title "$@")"
+    base="$(flag --base "$@")"
+    draft="$(case " $* " in *' --draft '*) echo true ;; *) echo false ;; esac)"
+    jq -n --arg title "$title" --arg base "$base" --arg head "$head" --argjson draft "$draft" \
+      '{title: $title, base: $base, head: $head, draft: $draft}' > "$sandbox/gh-posted-pr-create-$key.json"
+    # Scenarios of one trial run concurrently; mkdir claims a number atomically.
+    n=9001
+    until mkdir "$sandbox/prs/$n" 2> /dev/null; do n=$((n + 1)); done
+    origin="$(git remote get-url origin)"
+    git --git-dir="$origin" update-ref "refs/pull/$n/head" "refs/heads/$head"
+    printf '%s\n' "$origin" > "$sandbox/prs/$n/origin"
+    echo '[]' > "$sandbox/prs/$n/comments.json"
+    jq -n --argjson n "$n" --arg title "$title" --arg base "${base:-main}" --arg head "$head" --argjson draft "$draft" \
+      --rawfile body "$body_file" \
+      '{number: $n, title: $title, author: {login: "eval-user"}, headRefName: $head, baseRefName: $base,
+        state: "OPEN", isDraft: $draft, labels: [], assignees: [], body: $body}' > "$sandbox/prs/$n/pr.json"
+    echo "https://github.com/example/web/pull/$n"
+    exit 0 ;;
+  'pr edit')
+    dir="$(pr_dir "${3:-}")"
+    n="$(basename "$dir")"
+    shift 3
+    body_file="$(flag --body-file "$@")"
+    [ -n "$body_file" ] || body_file="$(flag -F "$@")"
+    if [ -n "$body_file" ]; then
+      cp "$body_file" "$sandbox/gh-posted-pr-edit-$n.md"
+      jq --rawfile body "$body_file" '.body = $body' "$dir/pr.json" > "$dir/pr.json.tmp" && mv "$dir/pr.json.tmp" "$dir/pr.json"
+    fi
+    inline="$(flag --body "$@")$(flag -b "$@")"
+    [ -z "$inline" ] || printf '%s\n' "$inline" > "$sandbox/gh-posted-pr-edit-inline-$n.md"
+    add="$(flag --add-label "$@")"
+    remove="$(flag --remove-label "$@")"
+    jq --arg add "$add" --arg remove "$remove" \
+      '.labels = ([(.labels // [])[] | select(.name != $remove)] + (if $add == "" then [] else [{name: $add}] end) | unique_by(.name))' \
+      "$dir/pr.json" > "$dir/pr.json.tmp" && mv "$dir/pr.json.tmp" "$dir/pr.json"
+    echo "https://github.com/example/web/pull/$n"
+    exit 0 ;;
+  'label create') exit 0 ;;
   'pr diff')
     dir="$(pr_dir "${3:-}")"
     n="$(basename "$dir")"
@@ -139,6 +223,9 @@ if [ -z "$method" ]; then
 fi
 
 case "$path" in
+  repos/example/.github/contents*)
+    echo 'gh: Not Found (HTTP 404)' >&2
+    exit 1 ;;
   user)
     [ "$caller" = eval-user ] || { echo 'gh: Resource not accessible by integration (HTTP 403)' >&2; exit 1; }
     echo '{"login":"eval-user"}' | emit

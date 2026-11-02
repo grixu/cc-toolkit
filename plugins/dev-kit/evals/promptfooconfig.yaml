@@ -1,9 +1,11 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-description: dev-kit plugin — dep-upgrade-check security gate (advisories, malware, cooldown, PR comment)
+description: dev-kit plugin — dep-upgrade-check security gate (advisories, malware, cooldown, PR comment) and pr-open PR body
 
 prompts:
   - id: file://prompts/check.txt
     label: security-gate
+  - id: file://prompts/pr-open.txt
+    label: pr-open
 
 providers:
   - id: file://provider.mjs
@@ -25,6 +27,11 @@ providers:
       setting_sources: []
       settings: ../../../scripts/evals-isolation.json
       # Questions get the first option unless a test names its answer in vars.answer.
+
+# Each test runs one prompt: the dep-upgrade-check tests inherit security-gate, pr-open tests name theirs.
+defaultTest:
+  prompts:
+    - security-gate
 
 tests:
   - description: 'escalated-direct: lodash 4.17.15 → 4.17.21 keeps three advisories; reachability informs, never lowers'
@@ -164,3 +171,40 @@ tests:
     assert:
       - type: javascript
         value: file://checks/security.mjs:prUnattendedStop
+
+  - description: 'pr-open-feature: three-section template, ticket in Issue, migration and policy under Dependencies, honest testing'
+    prompts:
+      - pr-open
+    vars:
+      request: >-
+        Open a PR for this branch. I ran pnpm run ci:lint ci:build ci:test locally and all passed;
+        nobody has clicked through it in a browser yet.
+      checkout: plugins/dev-kit/evals/.sandbox/pr-open-feature
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/pr-open.mjs:feature
+
+  - description: 'pr-open-no-ticket: no invented key, Issue None, Dependencies None'
+    prompts:
+      - pr-open
+    vars:
+      request: Open a PR for this fix. There is no Jira ticket for it. I only ran the frontend Vitest suite.
+      checkout: plugins/dev-kit/evals/.sandbox/pr-open-no-ticket
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/pr-open.mjs:noTicket
+
+  - description: 'pr-open-update-body: refresh an existing body on a feature-branch PR, keeping the Jira line and code story'
+    prompts:
+      - pr-open
+    vars:
+      request: >-
+        Push my latest commits and refresh the PR description. Backend unit tests and pnpm run
+        ci:test passed locally; nothing was checked in a browser.
+      checkout: plugins/dev-kit/evals/.sandbox/pr-open-update-body
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/pr-open.mjs:updateBody

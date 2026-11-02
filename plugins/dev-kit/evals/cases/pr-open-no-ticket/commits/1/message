@@ -1,0 +1,5 @@
+fix(ui): keep click-triggered popovers open until an outside click
+
+A click-triggered popover closed as soon as the pointer left it, so users lost the menu while
+moving towards it. It now stays open until a click outside, Escape, or a second click on the
+trigger. Hover popovers keep closing on mouse leave.

@@ -1,0 +1,29 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String     @id @default(uuid())
+  name      String
+  instances Instance[]
+  adminNote AdminNote?
+}
+
+model Instance {
+  namespace      String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  adminNote      AdminNote?
+}
+
+model AdminNote {
+  id                String        @id @default(uuid())
+  organizationId    String?       @unique
+  organization      Organization? @relation(fields: [organizationId], references: [id])
+  instanceNamespace String?       @unique
+  instance          Instance?     @relation(fields: [instanceNamespace], references: [namespace])
+  html              String
+  updatedBy         String
+  updatedAt         DateTime      @updatedAt
+}
