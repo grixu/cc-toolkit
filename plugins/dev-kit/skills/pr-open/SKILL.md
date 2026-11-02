@@ -97,7 +97,7 @@ Keep the template's structure intact: every heading, in its order, and every che
 ### Voice and length
 
 - Short, plain sentences with concrete nouns: the endpoint, the flag, the error message. Specific verbs (adds, removes, renames, fixes) over adjectives, numbers over intensifiers, and no preamble or closing summary.
-- Bold only the labels (**Testing:**, **Reviewer notes:**, **Go deeper:**); leave everything else plain.
+- Bold only the labels (**Testing:**, **Reviewer notes:**, **Dependencies:**, **Go deeper:**); leave everything else plain.
 - One screen: at most about 40 non-blank lines outside the Risk section. Summary or Changes sub-headings and file-by-file lists are the usual bloat, and the table already carries them. Put long logs in a `<details>` block and move other long detail behind the **Go deeper** link.
 - Keep the body valid MDX as well as Markdown, since some repositories feed PR bodies to MDX tooling: no HTML comments, and a `<` or `{` in prose goes in backticks. The `<sub>` and `<details>` tags this skill uses are valid MDX.
 
