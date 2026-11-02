@@ -24,7 +24,7 @@ Work dir: `~/.cache/walkthrough-video/<repo>/<feature-slug>/`, never under the s
 
 ## Dispatching a leg
 
-Every dispatch prompt carries: the brief's absolute path (`<this skill dir>/briefs/<leg>.md`) to read first, `<this skill dir>/briefs/rules.md` to read second, the work dir, the inputs above, and the project's own hard rules from its `CLAUDE.md` files and memory (other sessions' Docker stacks, protected files, secret handling, git limits, what reaches shared services). Name things to look at, never conclusions to confirm: a claim another run or agent made goes in as "check whether…", not as a fact.
+Every dispatch prompt carries: the brief's absolute path (`${CLAUDE_SKILL_DIR}/briefs/<leg>.md`) to read first, `${CLAUDE_SKILL_DIR}/briefs/rules.md` to read second, the skill dir `${CLAUDE_SKILL_DIR}` itself, which the briefs call `<this skill dir>`, the work dir, the inputs above, and the project's own hard rules from its `CLAUDE.md` files and memory (other sessions' Docker stacks, protected files, secret handling, git limits, what reaches shared services). Name things to look at, never conclusions to confirm: a claim another run or agent made goes in as "check whether…", not as a fact.
 
 Dispatch with `run_in_background: true` (a boolean; a string runs the leg in the foreground and blocks you) and no `name`; keep the `agentId` the result returns. A leg that has written nothing to the work dir for 20 minutes is checked: read its last output, and dispatch a fresh one with the same brief when it died.
 
@@ -44,7 +44,7 @@ Dispatch with `run_in_background: true` (a boolean; a string runs the leg in the
    - Copy it with `cp -n` to `~/Downloads/<ticket-or-PR>-<slug>.mp4`; a retake becomes `-v2`, `-v3`. Delete an earlier version only on the user's word.
    - When there is a PR, attach the video to its body without asking again. Default placement: a `### Video walkthrough` section at the end of the body, holding the video and, when the take staged any data, one line saying what was staged. When the user or the caller (a PR skill, a coordinator) names another place or heading, use theirs.
    - Recipe: save the current body with `gh pr view <n> --json body -q .body > <work dir>/out/pr-body.md`; put the MP4 in `<work dir>/out/` and reference it in the new section as `./<file>.mp4` on its own line; run `gh pr edit <n> --body-file <work dir>/out/pr-body.md --attach <work dir>/out/<file>.mp4` (gh ≥ 2.103 rewrites the `./` reference to the uploaded asset). Then re-read the body: the section must hold a `https://github.com/user-attachments/assets/…` URL, no `./` reference, and everything else must match the saved body.
-   - Clean up: delete `recast/.state/` and `recast/test-results/` (traces hold session cookies) with `<this skill dir>/templates/clean.sh <work dir> recast/.state recast/test-results`. When the recorder started the stack, ask the user whether to stop it; a caller's stack is the caller's to stop.
+   - Clean up: delete `recast/.state/` and `recast/test-results/` (traces hold session cookies) with `${CLAUDE_SKILL_DIR}/templates/clean.sh <work dir> recast/.state recast/test-results`. When the recorder started the stack, ask the user whether to stop it; a caller's stack is the caller's to stop.
 
 ## Run by another agent
 

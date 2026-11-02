@@ -27,6 +27,7 @@ ffmpeg -nostdin -v error -i "$OUT/cues/f%03d.png" -vf "scale=640:-1,tile=2x4" "$
 # The renderer may already have split long captions in the .srt, so the narrate() source is the reliable check;
 # node counts characters where macOS awk counts bytes.
 if [ -n "$WALK" ]; then
+  # shellcheck disable=SC2016 # a JavaScript program: its ${…} and backticks are node's, not the shell's
   node -e '
     const source = require("fs").readFileSync(process.argv[1], "utf8");
     for (const [, , text] of source.matchAll(/narrate\(\s*([\x27"`])(.*?)\1/g)) {
@@ -35,4 +36,4 @@ if [ -n "$WALK" ]; then
 fi
 # Captions that start lowercase are the second half of a split cue.
 awk 'prev ~ /-->/ && $0 ~ /^[a-z]/ { print "split cue: " $0 } { prev = $0 }' "$SRT"
-echo "timeline sheets: $(ls "$OUT/timeline" | wc -l | tr -d ' '), cue sheets: $(ls "$OUT"/cue-sheet*.png | wc -l | tr -d ' ')"
+echo "timeline sheets: $(find "$OUT/timeline" -type f | wc -l | tr -d ' '), cue sheets: $(find "$OUT" -maxdepth 1 -name 'cue-sheet*.png' | wc -l | tr -d ' ')"
