@@ -24,11 +24,13 @@ Create `plugins/<name>/` with:
 
 ### Required files
 
+Both manifests start at `0.0.0`, so the first `./scripts/release.sh <name> minor` cuts `v0.1.0`.
+
 1. **`.claude-plugin/plugin.json`**:
    ```json
    {
      "name": "<name>",
-     "version": "0.1.0",
+     "version": "0.0.0",
      "description": "<description>",
      "author": {
        "name": "Mateusz Gostański",
@@ -75,7 +77,7 @@ Add the new plugin entry to `.claude-plugin/marketplace.json` in the `plugins` a
   "name": "<name>",
   "source": "./plugins/<name>",
   "description": "<description>",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
