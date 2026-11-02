@@ -31,7 +31,7 @@ function grade(output, context, checks) {
     if (!ok) failures.push(msg);
     return ok;
   };
-  // A CI job with pull-requests: read creates comments over REST; gh pr comment needs more than issues: write.
+  // The skill does not pre-approve gh pr comment, so an unattended run would be denied it.
   check(!run.bash.some((cmd) => /\bpr comment\b/.test(cmd)), 'a comment was created with gh pr comment, not the REST issue-comments endpoint');
   checks(run, check);
   return { pass: failures.length === 0, score: failures.length === 0 ? 1 : 0, reason: failures.join('; ') || 'all checks passed' };

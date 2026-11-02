@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- README: the reference CI job grants `pull-requests: write`, and the security notes say to keep **Allow GitHub Actions to create and approve pull requests** off
+
+### Fixed
+- `dep-upgrade-check`: no longer claims that `issues: write` with `pull-requests: read` can comment on a pull request; GitHub answers 403, and the result block's `reason` now names the missing `pull-requests: write`
+
 ## [0.5.0] - 2026-10-28
 
 ### Fixed

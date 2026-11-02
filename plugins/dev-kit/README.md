@@ -120,7 +120,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
   checks: read
   actions: read
 concurrency:
@@ -179,7 +179,7 @@ jobs:
 - To make the check required before merging, add the job as a required status check on the default branch. A job that its `if:` skips reports success, so pull requests from people and other bots are not blocked. Renovate's lockfile-maintenance pull request is skipped the same way, which keeps its automerge working; it then gets no security check.
 - The run reads release notes and guides it cannot trust, and the skill pre-approves commands that reach the network: `gh api` (writes included), the OSV and deps.dev `curl` calls, whose rules match any text after the URL, and `WebFetch` to any domain. A prompt injection in that text can send out whatever those commands can read:
   - `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1` strips `ANTHROPIC_API_KEY` and other credentials from the commands' environment and leaves the GitHub token in place, so `gh` keeps working. Keep it.
-  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head. `issues: write` is enough to create and update the comments, and `pull-requests` stays `read` so that an injected command cannot approve the pull request.
+  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head. Commenting on a pull request takes `pull-requests: write`: with `pull-requests: read`, GitHub refuses the comment with a 403 even when `issues: write` is granted, and the result block's `reason` names the missing permission. With `pull-requests: write`, the token could also approve the pull request if the repository or organization setting **Allow GitHub Actions to create and approve pull requests** were on. It is off by default; keep it off, so that an injected command cannot approve the pull request.
   - Repository code is within reach of `WebFetch`. For a private repository where that matters, add a deny rule such as `--disallowedTools WebFetch`; migration guides then come from the package's repository only.
 - Self-hosted Renovate posts under its own bot login; use that in the `if`.
 - On a pull request Dependabot opens, the token is read-only unless `permissions` raises it, as above, and only Dependabot secrets are available: store `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`) as a Dependabot secret too.
