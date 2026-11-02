@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-02
+
 ### Changed
 - `pr-open`: the description is short and reviewer-first. One to three plain sentences and a **Before / After** table replace the bold lead line, **Why it matters** and the bullet list. **Testing:** says what was not checked, **Reviewer notes:** appears only when something needs a hard look, and **Go deeper:** stays. The body fits on one screen (about 40 non-blank lines) and stays valid MDX
 - `pr-open`: a ticket field gets the key or `None`, never a partial placeholder. A dependency section lists the deploy steps found in the diff (migrations, infrastructure code, env vars and secrets, permission and policy changes, identity-provider configuration, feature flags, other repositories' pull requests), or `- None`. Untouched sections get `None` instead of `N/A`
