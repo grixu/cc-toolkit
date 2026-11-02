@@ -1,0 +1,8 @@
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  version: default
+  resource: organization
+  rules:
+    - actions: ['organization:read']
+      effect: EFFECT_ALLOW
+      roles: ['member', 'admin', 'super_admin']

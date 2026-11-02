@@ -204,13 +204,14 @@ Use it when your commits are ready for review. Add `draft` for a draft pull requ
 
 It pushes the current branch and fills the repository's pull request template. It looks for the template in the repository root, `docs/`, `.github/`, a `PULL_REQUEST_TEMPLATE/` directory, or the owner's `.github` repository, and uses a short default when none exists.
 
-- Every claim in the description comes from the diff, the commits, a linked issue, or a command run in the session.
-- The description stays around 250 words, with long logs folded into a `<details>` block, and links the specs and ADRs the branch adds or its commits name under **Go deeper**.
+- Every claim in the description comes from the diff, the commits, a linked issue, a command run in the session, or a check you report.
+- The change is described in one to three plain sentences and a **Before / After** table, then **Testing:** (including what was not checked), **Reviewer notes:** when something needs a hard look, and **Go deeper:** for the specs and ADRs the branch adds or its commits name. The body fits on one screen, folds long logs into a `<details>` block, and stays valid MDX.
+- A ticket field gets the key from the branch, commits or conversation, or `None`. A dependency section lists the deploy steps found in the diff (migrations, infrastructure code, env vars and secrets, permission changes, feature flags, other repositories' pull requests), or `- None`. Work the base already has, such as a squash-merged commit, is left out.
 - It ticks a checkbox only when it has evidence that the item is true.
-- It writes a Conventional Commits title when the base branch's history uses that style.
+- It writes a Conventional Commits title when the base branch's history uses that style, ending with the ticket key in parentheses when the history does that too.
 - It assigns the pull request to you.
 - When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
-- When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line.
+- When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line. A rewrite edits the current description: your own sentences, bot lines, extra sections such as `## Code story` and the tracker's link line at the end stay as they are.
 - With a TypeSafe key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
 
 When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.

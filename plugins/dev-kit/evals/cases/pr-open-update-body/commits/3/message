@@ -1,0 +1,5 @@
+fix(fup): show switch-dependent metrics as unavailable when Farmer is down (PL-5820)
+
+Without Farmer's switch dates the per-day split cannot be made, and counting those metrics as
+zero under-reported usage. Bandwidth and logs now report "unavailable"; the other metrics are
+unaffected.

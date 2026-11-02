@@ -1,0 +1,10 @@
+{
+  "name": "console",
+  "private": true,
+  "packageManager": "pnpm@11.26.0",
+  "scripts": {
+    "ci:lint": "pnpm -r lint",
+    "ci:build": "pnpm -r build",
+    "ci:test": "pnpm -r test"
+  }
+}

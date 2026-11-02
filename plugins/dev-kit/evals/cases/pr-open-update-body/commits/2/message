@@ -1,0 +1,4 @@
+feat(fup): count Elasticsearch logs per instance-day the same way (PL-5820)
+
+Log volume is read from logs_size_bytes on the days the instance ran Elasticsearch and from
+Cloud Logging on the other days.

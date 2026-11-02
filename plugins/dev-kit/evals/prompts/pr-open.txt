@@ -1,0 +1,3 @@
+Use the `dev-kit:pr-open` skill for the repository at `{{checkout}}`: that directory is the repository the user is working in, so cd there first. In this environment the GitHub CLI is the executable `{{gh}}`: call it by that path wherever the skill says `gh`. Both paths are relative to the directory you start in, so resolve them to absolute paths before you cd.
+
+The user's request: {{request}}
