@@ -5,7 +5,7 @@
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
   },
-  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, plan review with OpenAI Codex, research reports, transcription, naming, and hook rules",
+  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, transcription, naming, and hook rules",
   "plugins": [
     {
       "name": "codex-plan-improver",
@@ -204,6 +204,24 @@
         "code-review",
         "dependencies",
         "github"
+      ]
+    },
+    {
+      "name": "pr-proof",
+      "source": "./plugins/pr-proof",
+      "description": "Proof that a pull request's change works: record a narrated walkthrough video of the feature against the running app with playwright-recast, from its spec or from requirements reconstructed out of the code, and attach it to the pull request once you accept it.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "pull-request",
+        "proof",
+        "demo",
+        "video",
+        "playwright"
       ]
     }
   ]

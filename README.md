@@ -65,6 +65,7 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 |---|---|---|
 | [code-review](plugins/code-review/README.md) | Reviews your branch's changes from several angles at once (comments, readability and tests, naming, structure, simplicity, correctness, security, agreement between code and its docs, contracts and config, assumptions about dependencies and the platform, performance, and conformance to a spec) and merges the results into one report per file. Changes nothing until you pick which fixes to apply. | `/code-review:start-cr` |
 | [tester](plugins/tester/README.md) | Checks that a running app behaves as intended. It finds the local stack, derives checks from a spec or from your git diff, and runs them against the API, the UI in a browser, and failure cases such as a stopped dependency. Returns a pass/fail table with evidence for each check. | `/tester:run [spec or scope]` |
+| [pr-proof](plugins/pr-proof/README.md) | Shows that a pull request's change works. It records a narrated video of the feature against your running app, from its spec or from requirements it reconstructs out of the code, reports the defects it saw on camera, and attaches the video to the pull request once you accept it. | `/pr-proof:walkthrough-video <PR or spec>` |
 | [hookify](plugins/hookify/README.md) | Stops Claude from repeating a mistake. Describe the behavior, such as "warn me before `rm -rf`", and it writes a rule that blocks or warns when it happens again. | `/hookify:hookify <behavior>` |
 
 ### Everyday git and CI chores
@@ -106,6 +107,7 @@ Most plugins need only Claude Code. These need more:
 | scribe | Node.js 20 or later, `ffmpeg`, `ELEVENLABS_API_KEY`; `yt-dlp` for YouTube |
 | tester | A running, non-production app; optional [`agent-browser`](https://github.com/vercel-labs/agent-browser) for UI checks; Docker for one failure-injection mode |
 | dev-kit | git, the GitHub CLI (`gh`) |
+| pr-proof | A web app that runs locally; Node.js 22.18 or later, `pnpm`, `ffmpeg` with libass, `timeout` (coreutils on macOS), `gh` 2.103 or later |
 | namesmith | Nothing to install; domain checks use a remote MCP server bundled with the plugin |
 
 Dynamic workflows are available on paid plans and with Anthropic API access. On Pro, turn them on
