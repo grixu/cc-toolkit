@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-02
+
 ### Changed
 - `dep-upgrade-check`: the release-age cooldown comes from the repository's own configuration, read from the base branch for a pull request. Sources: Renovate `minimumReleaseAge` (top level and matching `packageRules`), Dependabot `cooldown` (3 days without one), or pnpm `minimumReleaseAge`. 7 days applies only when none is set. The report names the value and its source, and the `blocked` reason, the acceptable-from date and the minimum safe version use it
 - README: the reference CI job grants `pull-requests: write`, and the security notes say to keep **Allow GitHub Actions to create and approve pull requests** off
