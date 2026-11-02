@@ -24,7 +24,7 @@ Run `git fetch origin` first, then resolve each before moving on:
 ## 2. Gather the change
 
 - `git log --format='%h %s%n%b' origin/<base>..HEAD` for intent, `git diff --stat origin/<base>...HEAD` for scope, `git diff origin/<base>...HEAD` for substance. Read the diff itself; the commit subjects alone miss what changed.
-- **Already merged.** A squash merge lands a branch commit on the base under another hash, so it still shows in the log above. Check each subject with `git log origin/<base> --oneline -F --grep '<subject>'` and leave work the base already has out of the body.
+- **Already merged.** A squash merge lands a branch commit on the base under another hash, so it still shows in the log above. Leave a commit out of the body only when a base commit carries it, judged by whole lines of `git log origin/<base> --format=%s%n%b`: a subject equal to the commit's, optionally followed by ` (#N)`, or a squash-body line `* <subject>`. A substring match is not enough, a `Revert "…"` commit never counts, and when a match is doubtful the work stays in the body.
 - **Linked issue.** Look for an issue number or tracker key (`#123`, `ABC-123`) in the branch name, commit messages and the conversation. Write `Closes #123` only for a GitHub issue that a commit or the branch explicitly names; mention a tracker key as plain text.
 - **Why.** Take it from commit bodies, the issue, or the conversation. When none of them gives a reason, describe the effect of the change and leave the motive out.
 - **Design docs.** Collect the specs, ADRs and design documents the diff adds or a commit message names.
