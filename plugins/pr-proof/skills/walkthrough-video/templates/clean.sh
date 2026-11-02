@@ -5,10 +5,12 @@
 # because Claude Code cannot rule out a critical path; inside this script the check never sees it.
 set -euo pipefail
 ROOT=$HOME/.cache/walkthrough-video
+# A failed substitution inside a case pattern escapes set -e and widens the guard to any dir; an assignment aborts.
+ROOT_REAL=$(cd "$ROOT" && pwd -P)
 WORK=$(cd "$1" && pwd -P)
 shift
 case $WORK/ in
-  "$(cd "$ROOT" && pwd -P)"/*/*/) ;;
+  "$ROOT_REAL"/*/*/) ;;
   *) echo "refusing: $WORK is not a work dir under $ROOT/<repo>/<slug>" >&2; exit 1 ;;
 esac
 for rel in "$@"; do
