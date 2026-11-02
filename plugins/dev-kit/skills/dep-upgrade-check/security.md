@@ -28,13 +28,13 @@ Merge both sources into one record per advisory, deduplicated through `aliases`,
   - Malware on **current** means the installed version is already compromised. The report and the comment give it its own malware line whatever the unit's outcome, besides its `fixed by upgrade` row.
 - **Status of each advisory**, comparing current with target: `fixed by upgrade` (affects current, not target), `introduced` (affects target, not current), or `still present` (affects both). For a new transitive package every advisory is `introduced`.
 - **Missing from the registry**: the registry no longer knows the target, or a transitive version from the PR lockfile. `pnpm view <pkg>@<v> version` answers E404, and deps.dev answers `Version not found`. Registries take down malicious versions this way, often before an advisory exists, while a bot PR opened earlier still points at them. Check that the package is not private before reading the 404 this way.
-- **Release age**: the publish time of the target and of each changed or new transitive version is in `pnpm view <pkg> time --json` (key = version); other ecosystems are in `ecosystems.md`. A version under **7 days** old is in cooldown until publish time + 7 days.
+- **Release age**: the publish time of the target and of each changed or new transitive version is in `pnpm view <pkg> time --json` (key = version); other ecosystems are in `ecosystems.md`. Each version's cooldown comes from the repository's own configuration, 7 days when it configures none: read [`cooldown.md`](cooldown.md). A version younger than its cooldown is in cooldown until publish time + cooldown; a version with no cooldown never is.
   - **Exemption**: the version fixes an advisory at moderate or above that affects the version it replaces (current for the target, the base-lockfile version for a changed transitive package). A new transitive package replaces nothing and gets no exemption.
 - **Provenance regression**: current has a verified SLSA attestation on deps.dev (`slsaProvenances[].verified`, from the `versions/<v>` endpoint) and the target has none. This is reported, not an outcome by itself. A present attestation proves nothing about malware: compromised release pipelines publish validly signed versions.
 
 ## Outcome per unit
 
-- **blocked**: malware on the target or on a transitive version it brings in, the target or such a version missing from the registry, or a cooldown without exemption. Name the reason, and for a cooldown the date the version becomes acceptable.
+- **blocked**: malware on the target or on a transitive version it brings in, the target or such a version missing from the registry, or a cooldown without exemption. Name the reason, and for a cooldown its cooldown line and the date the version becomes acceptable.
 - **escalated**: not blocked, and an advisory at moderate or above is `introduced` or `still present` on the target or on a transitive version it brings in.
 - **clear**: neither.
 
@@ -42,7 +42,7 @@ Whether the codebase reaches the vulnerable code never changes the outcome. It i
 
 With several units (a grouped PR, a monorepo), the overall outcome is the worst one: blocked over escalated over clear. Every escalated unit gets its own question, all asked in one round.
 
-**Minimum safe version**, for a blocked or escalated unit: the lowest version above current with no advisory at moderate or above and no malware, that is out of cooldown or exempt from it. Check candidates in ascending semver order with the same lookups. Say when none exists up to `latest`. It is never the target itself.
+**Minimum safe version**, for a blocked or escalated unit: the lowest version above current with no advisory at moderate or above and no malware, that is out of its own cooldown (resolved as for the target, since a candidate's update type can differ) or exempt from it. Check candidates in ascending semver order with the same lookups. Say when none exists up to `latest`. It is never the target itself.
 
 **Lockfile refresh** replaces the minimum safe version when the unit is escalated only by transitive versions pinned in the PR lockfile, and the range their parent declares already admits a fixed version. A deps.dev check of the target resolves that range fresh and would return the target itself. Name each transitive package and the fixed version its range admits.
 
@@ -60,7 +60,7 @@ A PR input always gets one security comment, also when every unit is `clear`, an
 |---|---|---|---|---|---|
 | [GHSA-xxxx](https://github.com/advisories/GHSA-xxxx) (CVE-…) | high · EPSS 86th pct | … | `<1.15.0` → 1.15.0 | still present | `src/http.ts:12` / not found / unknown |
 
-- **Malware / registry / cooldown / provenance**: one line each that applies.
+- **Malware / registry / cooldown / provenance**: one line each that applies; the cooldown line always, with its source (`cooldown.md`).
 - **Transitive**: advisories and cooldowns on versions the upgrade brings in, or `none`; `approximate` for a deps.dev graph.
 - **Low severity**: <count>, or `none`.
 - **Not checked**: private packages, ecosystems without a transitive source.

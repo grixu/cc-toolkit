@@ -65,6 +65,16 @@ tests:
       - type: javascript
         value: file://checks/security.mjs:cooldownExempt
 
+  - description: 'cooldown-repo-config: renovate.json sets 3 days for patches; a 3-to-6-day-old patch passes'
+    vars:
+      # Written by reset-sandbox.sh, which picks a patch release inside that window.
+      input: file://.sandbox/cooldown-repo-config-input.txt
+      checkout: plugins/dev-kit/evals/.sandbox/cooldown-repo-config
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/security.mjs:cooldownRepoConfig
+
   - description: 'pr-clear-private: a clear PR still gets the comment; the private package is never sent out'
     vars:
       input: https://github.com/example/web/pull/11

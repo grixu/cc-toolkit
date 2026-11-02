@@ -89,9 +89,18 @@ It starts from the version your lockfile resolves today and lists every change u
 
 Before the compatibility work, it checks the target's security record in [OSV.dev](https://osv.dev) and the GitHub Advisory Database, for the target and for every new or changed transitive version the upgrade brings in:
 
-- **blocked**: malware, a version the registry has taken down, or a version published less than 7 days ago. A recent version passes when it fixes a moderate-or-above vulnerability of the version it replaces. The report names the lowest safe version instead.
+- **blocked**: malware, a version the registry has taken down, or a version younger than its release-age cooldown. A recent version passes when it fixes a moderate-or-above vulnerability of the version it replaces. The report names the lowest safe version instead.
 - **escalated**: a known vulnerability of moderate severity or above. The check reports whether your code uses the vulnerable function, but that never lowers the severity: it asks you to accept the risk, switch to the lowest safe version, or hold.
 - **clear**: neither.
+
+The cooldown follows your repository's own policy, so a check does not block what your dependency bot already waited for:
+
+- **Renovate**: `minimumReleaseAge`, top level and per `packageRules` entry. The check evaluates the update type, package name, datasource, manager, dependency type and file name matchers. A rule with a matcher it cannot evaluate, such as `matchCurrentVersion`, counts at the stricter of its value and the one it overrides. `null` means no cooldown. Presets in `extends` are not resolved, except the 3 days on npm that `config:best-practices` adds.
+- **Dependabot**: the `cooldown` block of the matching `updates` entry, or Dependabot's own 3 days without one.
+- **pnpm**: `minimumReleaseAge` in `pnpm-workspace.yaml`, with `minimumReleaseAgeExclude`.
+- **None of them**: 7 days.
+
+For a pull request the configuration is read from the base branch, so a pull request cannot lower its own cooldown. The report names the value and its source, such as `cooldown 3 days (renovate.json packageRules[2]: matchUpdateTypes patch)` or `cooldown 7 days (default)`.
 
 Package names are sent to api.osv.dev, api.github.com and api.deps.dev. Packages from a private registry are never sent and are listed as not checked. On a pull request it always posts one security comment with the outcome, the advisories and your decision, and updates that comment on a re-run.
 

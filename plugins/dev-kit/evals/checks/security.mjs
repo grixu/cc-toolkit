@@ -94,7 +94,26 @@ export function blockedCooldown(output, context) {
     check(run.text.includes(fixture.target), `the target ${fixture.target} is not named`);
     check(/cooldown|cool-down|release age|7 days|seven days/i.test(run.text), 'the block is not attributed to the release-age cooldown');
     check(dates.some((d) => run.text.includes(d)), `no acceptable-from date near ${dates[1]}`);
+    check(
+      linesWith(run.text, /cooldown/i).some((line) => /\b(?:7|seven)[ -]days?\b/i.test(line) && /\bdefault\b/i.test(line)),
+      'the cooldown line does not report 7 days as the default',
+    );
     check(!run.asked, 'a blocked unit asked the user');
+  });
+}
+
+export function cooldownRepoConfig(output, context) {
+  const { fixture, missing } = pickedFixture('cooldown-repo-config');
+  if (missing) return missing;
+  return grade(output, context, (run, check) => {
+    check(run.outcome === 'clear', `security outcome is '${run.outcome}', expected clear (past the 3-day patch rule)`);
+    check(run.text.includes(fixture.target), `the target ${fixture.target} is not named`);
+    check(
+      linesWith(run.text, /cooldown/i).some((line) => /\b(?:3|three)[ -]days?\b/i.test(line) && /renovate\.json/.test(line)),
+      'the cooldown line does not report 3 days from renovate.json',
+    );
+    check(!run.asked, 'a clear unit asked the user');
+    check(!run.wroteComment, 'a package+version input wrote a PR comment');
   });
 }
 
