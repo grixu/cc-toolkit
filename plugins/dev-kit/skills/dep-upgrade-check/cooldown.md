@@ -6,7 +6,7 @@ For a PR input, read every file below from the base branch (`git show origin/<ba
 
 ## Source
 
-The first source that exists wins; the others are not consulted.
+The first source that sets a value for the version wins; the others are not consulted. A source whose file exists but sets nothing for the version falls through to the next one.
 
 1. **Renovate**: the first file found of `renovate.json`, `renovate.json5`, `.github/renovate.json`, `.github/renovate.jsonc`, `.github/renovate.json5`, `.gitlab/renovate.json`, `.gitlab/renovate.jsonc`, `.gitlab/renovate.json5`, `.renovaterc`, `.renovaterc.json`, `.renovaterc.jsonc`, `.renovaterc.json5`, or the `renovate` key of the root `package.json`.
 2. **Dependabot**: `.github/dependabot.yml` with an `updates` entry for the version's ecosystem and directory.
@@ -19,7 +19,8 @@ When a bot source wins and `pnpm-workspace.yaml` also sets a longer `minimumRele
 
 Start from the top-level `minimumReleaseAge`, then walk `packageRules` in order. Every rule whose matchers all match the version sets the value it carries; a later rule overrides an earlier one. A rule that does not set `minimumReleaseAge` changes nothing.
 
-- **Values**: a duration string (`3 days`, `1 week`, `12 hours`). `null` and `0 days` mean no cooldown.
+- **Values**: a duration string (`3 days`, `1 week`, `12 hours`). An explicit `null` or `0 days` means no cooldown.
+- **Unset**: when neither the top level, nor a matching rule, nor a resolved preset sets `minimumReleaseAge`, Renovate sets nothing for the version and the next source decides, down to the default (`cooldown 7 days (default; renovate.json sets no minimumReleaseAge)`). Only a key that is present with `null` turns the cooldown off.
 - **Presets**: the rules of presets in `extends` come before the file's own `packageRules`, and a preset rule still overrides the file's top-level value. `config:best-practices` and `security:minimumReleaseAgeNpm` add one rule: `matchDatasources: ["npm"]`, `3 days`. Other presets are not resolved: name them in the cooldown line (`presets not resolved: local>org/renovate-config`). `config:recommended` sets no release age and needs no mention.
 
 Matchers the skill evaluates:

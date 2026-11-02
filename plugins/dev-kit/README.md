@@ -95,7 +95,7 @@ Before the compatibility work, it checks the target's security record in [OSV.de
 
 The cooldown follows your repository's own policy, so a check does not block what your dependency bot already waited for:
 
-- **Renovate**: `minimumReleaseAge`, top level and per `packageRules` entry. The check evaluates the update type, package name, datasource, manager, dependency type and file name matchers. A rule with a matcher it cannot evaluate, such as `matchCurrentVersion`, counts at the stricter of its value and the one it overrides. `null` means no cooldown. Presets in `extends` are not resolved, except the 3 days on npm that `config:best-practices` adds.
+- **Renovate**: `minimumReleaseAge`, top level and per `packageRules` entry. The check evaluates the update type, package name, datasource, manager, dependency type and file name matchers. A rule with a matcher it cannot evaluate, such as `matchCurrentVersion`, counts at the stricter of its value and the one it overrides. An explicit `null` means no cooldown; a configuration that never sets `minimumReleaseAge` falls through to the sources below. Presets in `extends` are not resolved, except the 3 days on npm that `config:best-practices` adds.
 - **Dependabot**: the `cooldown` block of the matching `updates` entry, or Dependabot's own 3 days without one.
 - **pnpm**: `minimumReleaseAge` in `pnpm-workspace.yaml`, with `minimumReleaseAgeExclude`.
 - **None of them**: 7 days.
