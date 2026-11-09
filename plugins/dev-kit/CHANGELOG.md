@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-09
+
 ### Added
 - Risk evaluator: evaluation-only `semantic-likelihood-v1` and `causal-impact-v1` prompt variants with strict variant validation
 - Risk evaluator: full-denominator accuracy, Wilson intervals, failure/incomplete counts, confusion matrix, per-class metrics, experiment completeness and request provenance; strict replay with explicit legacy compatibility flags
