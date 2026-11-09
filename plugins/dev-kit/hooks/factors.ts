@@ -345,13 +345,17 @@ function notesOf(g: Scored): string[] {
 }
 
 // Replaces the level, impact and likelihood of a two-axis report with the factor scorer's; change types, intents
-// and flags still come from the diff and intent requests.
-export function factorReport<R extends { level: string; slices: { title?: string; files: string[] }[]; label: { enabled: boolean; name: string; all: string[] } }>(
+// and flags still come from the diff and intent requests. A slice in `missing` has no factor answers, so it keeps its
+// two-axis row and level, and the level of the change does not fall below it: a partial outage clears nothing.
+export function factorReport<R extends { level: string; slices: { title?: string; files: string[]; level?: string }[]; label: { enabled: boolean; name: string; all: string[] } }>(
   report: R,
   score: ReturnType<typeof scoreFactors>,
   levels: string[],
   labelFor: (level: string) => string,
+  missing: Set<number> = new Set(),
 ) {
+  const unscored = [...missing].filter((i) => !score.groups.some((g) => (g.slice ?? 0) === i))
+  const floor = Math.max(0, ...unscored.map((i) => levels.indexOf(report.slices[i]?.level ?? report.level)))
   const describe = (groups: Scored[]) => {
     const l = levelOf(groups)
     const needed = EVIDENCE.filter((t) => groups.some((g) => g.need[t] > PLAUSIBLE_NEED))
@@ -367,7 +371,7 @@ export function factorReport<R extends { level: string; slices: { title?: string
     }
   }
   const whole = describe(score.groups)
-  const level = levels[score.rank]
+  const level = levels[Math.max(score.rank, floor)]
   return {
     ...report,
     scorer: 'factors',
@@ -381,6 +385,7 @@ export function factorReport<R extends { level: string; slices: { title?: string
       ...whole.adjustments,
     ],
     slices: report.slices.map((s, i) => {
+      if (unscored.includes(i)) return { ...s, factors: 'missing' }
       const { guard: _guard, ...rest } = describe(score.groups.filter((g) => (g.slice ?? 0) === i))
       return { ...s, ...rest }
     }),

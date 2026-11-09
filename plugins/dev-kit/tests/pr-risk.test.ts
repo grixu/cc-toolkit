@@ -15,7 +15,7 @@ import {
   readConfig,
   split,
 } from '../hooks/risk.ts'
-import { averageAnswers, evidenceIn, factorGroup, factorQuestions, factorState, median, scoreFactors, type FactorGroup } from '../hooks/factors.ts'
+import { averageAnswers, evidenceIn, factorGroup, factorQuestions, factorReport, factorState, median, scoreFactors, type FactorGroup } from '../hooks/factors.ts'
 
 const TOOL = 'mcp__dev-kit__pr_risk'
 
@@ -967,6 +967,19 @@ test('a part whose factor requests fail leaves the assessment partial', async ($
   expect(report.scorer).toBe('factors')
   expect(report.coverage).toMatchObject({ factorsMissing: 1, partial: true })
   expect(report.lowConfidence).toBe(true)
+  const b = report.slices.find((s) => s.title === 'B')
+  expect(b.factors).toBe('missing')
+  expect(b.complexity).toBeUndefined()
+  const order = ['low', 'medium', 'high', 'critical']
+  expect(order.indexOf(report.level) >= order.indexOf(b.level)).toBe(true)
+})
+
+test('a slice without factor answers keeps its two-axis level as the floor', () => {
+  const twoAxis = { level: 'low', slices: [{ title: 'A', files: ['a'], level: 'low' }, { title: 'B', files: ['b'], level: 'critical' }], label: { enabled: true, name: 'risk: low', all: [] } }
+  const score = scoreOf([group({ di: 1, c: 1, slice: 0 })])
+  const report = factorReport(twoAxis, score, ['low', 'medium', 'high', 'critical'], (l) => `risk: ${l}`, new Set([1]))
+  expect([report.level, report.label.name, report.slices[1].level, report.slices[1].factors]).toEqual(['critical', 'risk: critical', 'critical', 'missing'])
+  expect(factorReport(twoAxis, score, ['low', 'medium', 'high', 'critical'], (l) => `risk: ${l}`).level).toBe('low')
 })
 
 test('without any factor answers the two-axis level stands in', async ($, on) => {

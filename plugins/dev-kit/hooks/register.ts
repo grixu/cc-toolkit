@@ -228,9 +228,10 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   const twoAxis = aggregate(results, intents, config, slices, reviewable, statuses, testsNotRequired, !codeMissing, policyName)
   const groups = results.flatMap((r) => (r.factors && r.factors !== 'failed' && r.factors !== 'documentation' ? [r.factors] : []))
   // With every factor request failed the two-axis level stands, so the PR is not cleared by an outage.
+  const missing = new Set(results.flatMap((r) => (r.factors === 'failed' ? [r.slice ?? 0] : [])))
   const report = factorsMissing && !groups.length
     ? { ...twoAxis, scorer: 'two-axis fallback' }
-    : factorReport(twoAxis, scoreFactors(groups, { slices, files: reviewable, statuses, testsNotRequired, context: cleanedContext }), config.levels, (level) => labelFor(config.labelTemplate, level))
+    : factorReport(twoAxis, scoreFactors(groups, { slices, files: reviewable, statuses, testsNotRequired, context: cleanedContext }), config.levels, (level) => labelFor(config.labelTemplate, level), missing)
   const experimental = experiment === 'atomic-v1' ? {
     version: 'atomic-v1',
     status: results.some((r) => Object.values(r.experimentalAnswers ?? {}).some((a) => a.status === 'missing')) ? 'incomplete' : 'complete',
