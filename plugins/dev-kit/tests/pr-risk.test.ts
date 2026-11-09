@@ -987,6 +987,10 @@ test('a slice without factor answers keeps its two-axis level as the floor', () 
   const report = factorReport(twoAxis, score, ['low', 'medium', 'high', 'critical'], (l) => `risk: ${l}`, new Set([1]))
   expect([report.level, report.label.name, report.slices[1].level, report.slices[1].factors]).toEqual(['critical', 'risk: critical', 'critical', 'missing'])
   expect(factorReport(twoAxis, score, ['low', 'medium', 'high', 'critical'], (l) => `risk: ${l}`).level).toBe('low')
+  const halved = scoreOf([group({ di: 1, c: 1, slice: 1 })])
+  expect(factorReport(twoAxis, halved, ['low', 'medium', 'high', 'critical'], (l) => `risk: ${l}`, new Set([1])).level).toBe('critical')
+  const unsliced = { ...twoAxis, level: 'critical', slices: [] }
+  expect(factorReport(unsliced, scoreOf([group({ di: 1, c: 1 })]), ['low', 'medium', 'high', 'critical'], (l) => `risk: ${l}`, new Set([0])).level).toBe('critical')
 })
 
 test('no more than four Jev requests are in flight at once', async ($, on) => {

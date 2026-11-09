@@ -353,7 +353,7 @@ export function factorReport<R extends { level: string; slices: { title?: string
   missing: Set<number> = new Set(),
 ) {
   const unscored = [...missing].filter((i) => !score.groups.some((g) => (g.slice ?? 0) === i))
-  const floor = Math.max(0, ...unscored.map((i) => levels.indexOf(report.slices[i]?.level ?? report.level)))
+  const floor = Math.max(0, ...[...missing].map((i) => levels.indexOf(report.slices[i]?.level ?? report.level)))
   const describe = (groups: Scored[]) => {
     const l = levelOf(groups)
     const needed = EVIDENCE.filter((t) => groups.some((g) => g.need[t] > PLAUSIBLE_NEED))
