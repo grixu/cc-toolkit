@@ -18,6 +18,8 @@ test('evidence is bounded, source attributed and isolated by changed file', () =
 test('removes only a trailing risk section outside fenced examples', () => {
   const generated = '**Custom level** · impact high · likelihood low · confidence 0.8 · assessed by model'
   expect(stripTrailingRisk(`Purpose\n\n## Risk\n\n${generated}\nold result`)).toBe('Purpose')
+  const prOpen = '**high** · impact core · complexity interacting logic · confidence 0.46 · assessed by jev-1.14.0 · Low confidence.'
+  expect(stripTrailingRisk(`Purpose\n\n## Risk\n\n${prOpen}\n\n| Slice | Risk |\n|---|---|`)).toBe('Purpose')
   expect(stripTrailingRisk('Purpose\n\n## Risk\nHuman analysis')).toBe('Purpose\n\n## Risk\nHuman analysis')
   expect(stripTrailingRisk('```md\n## Risk\nexample\n```')).toBe('```md\n## Risk\nexample\n```')
   expect(stripTrailingRisk('## Risk\nold\n## Testing\npassed')).toBe('## Risk\nold\n## Testing\npassed')

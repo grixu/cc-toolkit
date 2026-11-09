@@ -43,7 +43,7 @@ export function stripTrailingRisk(context: string): string {
   }
   if (lastHeading < 0 || !/^ {0,3}##\s+Risk\s*#*\s*$/i.test(lines[lastHeading])) return context
   const firstLine = lines.slice(lastHeading + 1).find((line) => line.trim()) ?? ''
-  const generated = /^\s*\*\*.+?\*\*\s*·\s*impact\s+.+?\s*·\s*likelihood\s+.+?\s*·\s*confidence\s+.+?\s*·\s*assessed by\s+\S/i.test(firstLine)
+  const generated = /^\s*\*\*.+?\*\*\s*·\s*impact\s+.+?\s*·\s*confidence\s+.+?\s*·\s*assessed by\s+\S/i.test(firstLine)
   return generated ? lines.slice(0, lastHeading).join('\n').trimEnd() : context
 }
 
