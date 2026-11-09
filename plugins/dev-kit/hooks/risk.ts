@@ -79,7 +79,7 @@ export const LIKELIHOOD_LEVELS = LIKELIHOOD.map((l) => l.name)
 
 // Risk level by [impact][likelihood]: a mechanical edit to something severe stays medium, and only a likely
 // mistake with a severe outcome reaches critical.
-const RISK_MATRIX = [
+export const RISK_MATRIX = [
   [0, 0, 0, 0],
   [0, 0, 0, 1],
   [0, 1, 1, 2],
@@ -441,8 +441,6 @@ export function typesProseCannotHave(files: string[]): string[] {
 const POLICY_KEY = 'tests_required_by_policy'
 const CONTEXT_CHAR_BUDGET = 16_000
 const FILES_CHAR_BUDGET = 24_000
-// Rejected rather than clipped: it rides beside a diff part already sized to the request limit.
-const DEPLOYMENT_CONTEXT_CHARS = 1_500
 
 export type FileDiff = { path: string; text: string }
 
@@ -467,7 +465,6 @@ type JevAnswer = {
 }
 
 const SCORES = { impact: 'defect_impact', likelihood: 'defect_likelihood' }
-export const IMPACT_KEY = SCORES.impact
 
 export type PartResult = { model: string; answers: Record<string, JevAnswer>; slice?: number }
 
@@ -594,25 +591,6 @@ export function questions(): Record<string, unknown> {
   return q
 }
 
-// Asked apart from the diff request, so the context reaches the impact answer alone: on fresh pull requests it cut
-// over-rated impact, while every signal and the likelihood answer were measured without it.
-export function contextImpactQuestion(): Record<string, unknown> {
-  const impact = questions()[SCORES.impact] as { instructions: string }
-  return {
-    [SCORES.impact]: {
-      ...impact,
-      instructions: `${impact.instructions} \`deployment_context\`, when present, describes where this repository's changes are deployed and who they reach; use it only to judge how far a mistake in \`diff\` would reach.`,
-    },
-  }
-}
-
-export function deploymentContext(value: unknown): string {
-  if (value === undefined) return ''
-  if (typeof value !== 'string') throw new Error('`deployment_context` must be a string')
-  const text = value.trim()
-  if (text.length > DEPLOYMENT_CONTEXT_CHARS) throw new Error(`\`deployment_context\` is ${text.length} characters; keep it under ${DEPLOYMENT_CONTEXT_CHARS}`)
-  return text
-}
 
 export function intentQuestions(): Record<string, unknown> {
   return Object.fromEntries(Object.entries(INTENTS).map(([key, t]) => [key, { type: 'noul', ...t }]))

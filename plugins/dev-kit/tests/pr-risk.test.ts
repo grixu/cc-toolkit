@@ -15,6 +15,7 @@ import {
   readConfig,
   split,
 } from '../hooks/risk.ts'
+import { averageAnswers, evidenceIn, factorGroup, factorQuestions, factorState, median, scoreFactors, type FactorGroup } from '../hooks/factors.ts'
 
 const TOOL = 'mcp__dev-kit__pr_risk'
 
@@ -48,18 +49,37 @@ const INTENT_KEYS = Object.keys(intentQuestions())
 
 const isIntent = (e) => !('diff' in JSON.parse(e.init.body).state)
 
-function answers(impact: number, likelihood: number, types: string[] = []) {
-  const a: Record<string, { score?: number; confidence?: number; noul?: number }> = {
-    defect_impact: { score: impact, confidence: 0.8 },
+type Factors = { complexity?: number; behaviour?: number; need?: { video?: number; screenshots?: number; api_dump?: number }; testable?: number }
+
+const at = (level: number) => (Number.isFinite(level) ? { [String(Math.round(level))]: 1 } : undefined)
+
+// One answer set serves every request kind: each reads only the keys it asked about. Complexity defaults to the
+// level whose likelihood equals the two-axis likelihood, so both scorers agree unless a test sets it.
+function answers(impact: number, likelihood: number, types: string[] = [], factors: Factors = {}) {
+  const a: Record<string, { score?: number; confidence?: number; noul?: number; probabilities?: Record<string, number> }> = {
+    defect_impact: { score: impact, confidence: 0.8, probabilities: at(impact) },
     defect_likelihood: { score: likelihood, confidence: 0.6 },
+    complexity: { probabilities: at(factors.complexity ?? [0, 1, 2, 4][Math.round(likelihood)] ?? 0) },
+    behaviour_change: { probabilities: at(factors.behaviour ?? 0) },
+    evidence_video: { noul: factors.need?.video ?? 0.1 },
+    evidence_screenshots: { noul: factors.need?.screenshots ?? 0.1 },
+    evidence_api_dump: { noul: factors.need?.api_dump ?? 0.1 },
+    automation_testable: { noul: factors.testable ?? 0.9 },
   }
   for (const key of [...TYPE_KEYS, ...INTENT_KEYS]) a[key] = { noul: types.includes(key) ? 0.9 : 0.1 }
   return a
 }
 
-function jevAnswer(impact: number, likelihood: number, types: string[] = []) {
-  const body = { model: 'jev-1.14.0', answers: answers(impact, likelihood, types), usage: {} }
+function jevAnswer(impact: number, likelihood: number, types: string[] = [], factors: Factors = {}) {
+  const body = { model: 'jev-1.14.0', answers: answers(impact, likelihood, types, factors), usage: {} }
   return { status: 200, ok: true, headers: {}, text: JSON.stringify(body) }
+}
+
+const kindOfRequest = (e) => {
+  const body = JSON.parse(e.init.body)
+  if ('complexity' in body.questions) return 'factor'
+  if ('automation_testable' in body.questions) return 'testable'
+  return 'diff' in body.state ? 'diff' : 'other'
 }
 
 const fileDiff = (path: string, body: string) =>
@@ -110,7 +130,7 @@ test('assesses the diff without lockfiles and binaries', async ($, on) => {
   const diffRequest = requests.find((r) => !isIntent(r))!
   const body = JSON.parse(diffRequest.init.body)
 
-  expect(requests.length).toBe(2)
+  expect(requests.map(kindOfRequest).sort()).toEqual(['diff', 'factor', 'factor', 'other', 'testable', 'testable'])
   expect(diffRequest.url).toBe('https://api.typesafe.ai/v1/systemone')
   expect(diffRequest.init.headers.authorization).toBe('Bearer secret')
   expect(body.model).toBe('jev-1.14.0')
@@ -124,8 +144,9 @@ test('assesses the diff without lockfiles and binaries', async ($, on) => {
   expect(body.questions.observability.instructions).toMatch(/^A substantial part of the changes in `diff` is this system's own telemetry/)
 
   expect(report.level).toBe('high')
-  expect(report.impact).toEqual({ level: 'severe', score: 4.2 })
-  expect(report.likelihood).toEqual({ level: 'simple', score: 0.8 })
+  expect(report.scorer).toBe('factors')
+  expect(report.impact).toEqual({ level: 'severe' })
+  expect(report.likelihood).toEqual({ level: 'simple' })
   expect(report.confidence).toBe(0.6)
   expect(report.lowConfidence).toBe(false)
   expect(report.types).toEqual(['authentication'])
@@ -240,60 +261,6 @@ test('without a testing policy no policy request is sent', async ($, on) => {
   expect(report.flags.map((f) => f.key)).toEqual(['untested'])
 })
 
-function deploymentRun(on, contextImpact: number | 'error') {
-  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
-  on('process.run', fakeGit([{ path: 'charts/app/values.yaml', text: fileDiff('charts/app/values.yaml', '+replicas: 2') }]))
-  const contextRequests: { state: Record<string, unknown>; questions: Record<string, { instructions: string }> }[] = []
-  on('http.fetch', ($, e) => {
-    const body = JSON.parse(e.init.body)
-    if (!('deployment_context' in body.state)) return { value: jevAnswer(4, 1) }
-    contextRequests.push(body)
-    if (contextImpact === 'error') return { value: { status: 400, ok: false, headers: {}, text: 'bad request' } }
-    return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify({ answers: { defect_impact: { score: contextImpact, confidence: 0.7 } } }) } }
-  })
-  return contextRequests
-}
-
-const DEPLOYED = 'Stage deploys on merge; production waits for a reviewer.'
-
-test('a deployment context replaces only the impact answer, from its own request', async ($, on) => {
-  const contextRequests = deploymentRun(on, 2)
-  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', deployment_context: ` ${DEPLOYED} ` })).result)
-
-  expect(contextRequests.length).toBe(1)
-  expect(contextRequests[0].state).toMatchObject({ deployment_context: DEPLOYED, files: ['charts/app/values.yaml'] })
-  expect(contextRequests[0].state.diff).toContain('replicas: 2')
-  expect(Object.keys(contextRequests[0].questions)).toEqual(['defect_impact'])
-  expect(contextRequests[0].questions.defect_impact.instructions).toBe(
-    "If the change in `diff` contains a mistake, what is the worst consequence once it is deployed? `deployment_context`, when present, describes where this repository's changes are deployed and who they reach; use it only to judge how far a mistake in `diff` would reach.",
-  )
-  expect(report.impact).toEqual({ level: 'feature', score: 2 })
-  expect(report.likelihood.level).toBe('simple')
-  expect(report.coverage.impactWithoutDeploymentContext).toBe(0)
-})
-
-test('a failed deployment-context request keeps the plain impact answer', async ($, on) => {
-  deploymentRun(on, 'error')
-  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', deployment_context: DEPLOYED })).result)
-  expect(report.impact.level).toBe('severe')
-  expect(report.coverage.impactWithoutDeploymentContext).toBe(1)
-})
-
-test('without a deployment context no context request is sent', async ($, on) => {
-  const contextRequests = deploymentRun(on, 2)
-  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main' })).result)
-  expect(contextRequests.length).toBe(0)
-  expect(report.impact.level).toBe('severe')
-  expect('impactWithoutDeploymentContext' in report.coverage).toBe(false)
-})
-
-test('a deployment context over 1,500 characters is refused', async ($, on) => {
-  const contextRequests = deploymentRun(on, 2)
-  const out = await $.tool.call({ tool: TOOL, base: 'main', deployment_context: 'x'.repeat(1_501) })
-  expect(out.result).toMatch(/^Risk assessment unavailable: `deployment_context` is 1501 characters/)
-  expect(contextRequests.length).toBe(0)
-})
-
 test('splits a large diff across requests and keeps the riskiest part', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   const big = (path: string) => ({ path, text: fileDiff(path, '+x'.repeat(30_000)) })
@@ -301,8 +268,9 @@ test('splits a large diff across requests and keeps the riskiest part', async ($
   let n = 0
   on('http.fetch', ($, e) => {
     if (isIntent(e)) return { value: jevAnswer(0, 0) }
-    n += 1
-    return { value: n === 2 ? jevAnswer(3.8, 2.6, ['schema_or_data_migration']) : jevAnswer(0.4, 0.2) }
+    if (kindOfRequest(e) === 'diff') n += 1
+    const risky = JSON.stringify(JSON.parse(e.init.body).state.files).includes('b.ts')
+    return { value: risky ? jevAnswer(3.8, 2.6, ['schema_or_data_migration']) : jevAnswer(0.4, 0.2) }
   })
 
   const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main' })).result)
@@ -393,7 +361,7 @@ test('assesses each slice the caller gives on its own', async ($, on) => {
   const states: { slice?: string; files: string[]; diff: string }[] = []
   on('http.fetch', ($, e) => {
     const state = JSON.parse(e.init.body).state
-    if (!isIntent(e)) states.push(state)
+    if (kindOfRequest(e) === 'diff') states.push(state)
     if (state.slice === 'Token checks') return { value: jevAnswer(4.1, 1.2, ['authentication', 'behavior_change']) }
     return { value: state.slice === 'Docs' ? jevAnswer(0.1, 0.2, ['documentation']) : jevAnswer(1.2, 0.9, ['behavior_change']) }
   })
@@ -411,7 +379,7 @@ test('assesses each slice the caller gives on its own', async ($, on) => {
   expect(report.slices.map((s) => [s.title, s.files, s.level, s.intents, s.types, s.flags])).toEqual([
     ['Token checks', ['src/auth.ts', 'src/auth.test.ts'], 'high', ['behavior_change'], ['authentication'], ['security']],
     ['Docs', ['README.md'], 'low', [], ['documentation'], []],
-    ['Other changes', ['src/stray.ts'], 'medium', ['behavior_change'], [], ['untested']],
+    ['Other changes', ['src/stray.ts'], 'low', ['behavior_change'], [], ['untested']],
   ])
   expect(report.level).toBe('high')
   expect(report.flags.map((f) => f.key)).toEqual(['security', 'untested'])
@@ -442,7 +410,7 @@ test('lets the model slice the change when the caller does not', async ($, on) =
   expect(prompt).toContain('1. a.ts (+1 -0)')
   expect(report.slicing).toEqual({ source: 'model' })
   expect(report.slices.map((s) => s.files)).toEqual([['a.ts', 'b.ts']])
-  expect(requests).toBe(2)
+  expect(requests).toBe(6)
 })
 
 test('packs the diff by size when the slicing model does not answer', async ($, on) => {
@@ -464,7 +432,7 @@ test('retries a rate-limited request', async ($, on) => {
   on('process.run', fakeGit([{ path: 'a.ts', text: fileDiff('a.ts', '+a') }]))
   let calls = 0
   on('http.fetch', ($, e) => {
-    if (isIntent(e)) return { value: jevAnswer(0, 0) }
+    if (isIntent(e) || kindOfRequest(e) !== 'diff') return { value: jevAnswer(2, 1) }
     calls += 1
     return { value: calls === 1 ? { status: 429, ok: false, headers: { 'retry-after': '2' }, text: 'slow down' } : jevAnswer(2, 1) }
   })
@@ -484,7 +452,7 @@ test('splits a request Jev refuses as too long and assesses both halves', async 
   on('http.fetch', ($, e) => {
     if (isIntent(e)) return { value: jevAnswer(0, 0) }
     const { diff } = JSON.parse(e.init.body).state
-    diffs.push(diff)
+    if (kindOfRequest(e) === 'diff') diffs.push(diff)
     if (diff.length > 10_000) return { value: { status: 400, ok: false, headers: {}, text: '{"error":{"code":"max_tokens_exceeded"}}' } }
     return { value: jevAnswer(diff.includes('+b') ? 3 : 1, 2) }
   })
@@ -891,4 +859,120 @@ test('keeps prose apart from the code diff, except agent instructions', () => {
   expect(state.diff).toBe([code, rule].join('\n'))
   expect(state.prose).toBe([doc, changeset].join('\n'))
   expect('prose' in partState({ files: [], diff: code })).toBe(false)
+})
+
+const group = (g: Partial<FactorGroup>): FactorGroup => ({
+  testOnly: false, c: 1, di: 2, b: 0, need: { video: 0.1, screenshots: 0.1, api_dump: 0.1 }, testable: 0.9, ...g,
+})
+const scoreOf = (groups: FactorGroup[], over: { files?: string[]; majorBump?: boolean; context?: string; cleared?: number[] } = {}) => {
+  const files = over.files ?? ['src/a.ts']
+  const statuses = new Map(files.map((p) => [p, { status: 'modified', ...(over.majorBump ? { majorBumps: ['react 18 → 19'] } : {}) }]))
+  return scoreFactors(groups, {
+    slices: [], files, statuses: statuses as never, testsNotRequired: new Set(over.cleared ?? []), context: over.context ?? '',
+  })
+}
+
+test('the factor level meets the worst impact with the likelihood of the most complex part', () => {
+  expect(scoreOf([group({ di: 2, c: 1 })]).rank).toBe(1)
+  expect(scoreOf([group({ di: 3, c: 3 })]).rank).toBe(2)
+  expect(scoreOf([group({ di: 4, c: 4 })]).rank).toBe(3)
+  const split = scoreOf([group({ di: 4, c: 0 }), group({ di: 0, c: 2 })])
+  expect([split.rank, split.guard]).toEqual([3, true])
+  expect(scoreOf([group({ di: 4, c: 1 })]).guard).toBe(false)
+})
+
+test('a major bump keeps a part non-trivial, even with evidence', () => {
+  const context = '![after](https://github.com/user-attachments/assets/abc-123)'
+  const need = { video: 0.1, screenshots: 0.9, api_dump: 0.1 }
+  const bumped = scoreOf([group({ di: 2, c: 0, need })], { majorBump: true, context })
+  expect(bumped.groups[0]).toMatchObject({ L: 2, credit: true })
+  expect(bumped.rank).toBe(1)
+})
+
+test('evidence that covers every plausible need lowers a low-stakes part one step', () => {
+  const need = { video: 0.9, screenshots: 0.5, api_dump: 0.1 }
+  const loom = 'Recording: https://www.loom.com/share/abc'
+  expect(scoreOf([group({ di: 2, c: 2, need })], { context: loom }).groups[0]).toMatchObject({ credit: true, L: 1 })
+  expect(scoreOf([group({ di: 2, c: 2, need })]).groups[0].credit).toBe(false)
+  expect(scoreOf([group({ di: 3, c: 2, need })], { context: loom }).groups[0].credit).toBe(false)
+  const api = { video: 0.9, screenshots: 0.1, api_dump: 0.5 }
+  expect(scoreOf([group({ di: 2, c: 2, need: api })], { context: loom }).groups[0].credit).toBe(false)
+})
+
+test('an untested behaviour change has a test gap that evidence does not close', () => {
+  const need = { video: 0.9, screenshots: 0.1, api_dump: 0.1 }
+  const context = 'https://www.loom.com/share/abc'
+  const gap = scoreOf([group({ di: 2, c: 2, b: 2, need })], { context }).groups[0]
+  expect([gap.testGap, gap.credit, gap.L]).toEqual([true, false, 2])
+  expect(scoreOf([group({ b: 2 })], { files: ['src/a.ts', 'src/a.test.ts'] }).groups[0].testGap).toBe(false)
+  expect(scoreOf([group({ b: 2 })], { cleared: [0] }).groups[0].testGap).toBe(false)
+  expect(scoreOf([group({ b: 2, testable: 0.2 })]).groups[0].testGap).toBe(false)
+})
+
+test('repeated factor answers are averaged before the median is read', () => {
+  const avg = averageAnswers([
+    { complexity: { probabilities: { '1': 1 } }, evidence_video: { noul: 0.2 } },
+    { complexity: { probabilities: { '3': 1 } }, evidence_video: { noul: 0.6 } },
+  ])
+  expect(avg.complexity.probabilities).toEqual({ '1': 0.5, '3': 0.5 })
+  expect(Math.abs(avg.evidence_video.noul! - 0.4) < 1e-9).toBe(true)
+  expect(median(avg.complexity, 5)).toBe(1)
+  expect(factorGroup({ complexity: { probabilities: { '2': 1 } } }, false)).toBeUndefined()
+})
+
+test('reads manual evidence from the description', () => {
+  expect([...evidenceIn('![s](https://github.com/user-attachments/assets/ab-1)')]).toEqual(['screenshots'])
+  expect([...evidenceIn('https://github.com/user-attachments/assets/ab-1')].sort()).toEqual(['screenshots', 'video'])
+  expect([...evidenceIn('```json\n{"status": 200}\n```')]).toEqual(['api_dump'])
+  expect([...evidenceIn('![s](https://example.com/s.png)')]).toEqual([])
+})
+
+test('the factor state drops tests beside code and skips a part of prose alone', () => {
+  const code = fileDiff('src/a.ts', '+a()')
+  const spec = fileDiff('src/a.test.ts', '+it()')
+  expect(factorState({ slice: 'S', files: [], diff: [code, spec].join('\n') })).toEqual({
+    testOnly: false,
+    state: { slice: 'S', files: ['src/a.ts: modified +1 −0'], diff: code.replace(/\n$/, '') },
+  })
+  expect(factorState({ files: [], diff: spec })?.testOnly).toBe(true)
+  expect(factorState({ files: [], diff: fileDiff('README.md', '+docs') })).toBeUndefined()
+})
+
+test('a part of tests alone is not asked about evidence, testability or failure handling', () => {
+  const tests = factorQuestions(true)
+  expect(tests.testable).toBeUndefined()
+  expect(Object.keys(tests.factor).some((k) => k.startsWith('evidence_') || k === 'failure_handling')).toBe(false)
+  expect(Object.keys(factorQuestions(false).factor)).toContain('evidence_video')
+})
+
+function factorFailureRun(on, failing: (state: { slice?: string }) => boolean) {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeGit([
+    { path: 'src/a.ts', text: fileDiff('src/a.ts', '+a()') },
+    { path: 'src/b.ts', text: fileDiff('src/b.ts', '+b()') },
+  ]))
+  on('http.fetch', ($, e) => {
+    const kind = kindOfRequest(e)
+    if ((kind === 'factor' || kind === 'testable') && failing(JSON.parse(e.init.body).state))
+      return { value: { status: 400, ok: false, headers: {}, text: 'bad request' } }
+    return { value: jevAnswer(3, 2) }
+  })
+}
+
+const AB = [{ title: 'A', files: ['src/a.ts'] }, { title: 'B', files: ['src/b.ts'] }]
+
+test('a part whose factor requests fail leaves the assessment partial', async ($, on) => {
+  factorFailureRun(on, (state) => state.slice === 'B')
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', slices: AB })).result)
+  expect(report.scorer).toBe('factors')
+  expect(report.coverage).toMatchObject({ factorsMissing: 1, partial: true })
+  expect(report.lowConfidence).toBe(true)
+})
+
+test('without any factor answers the two-axis level stands in', async ($, on) => {
+  factorFailureRun(on, () => true)
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', slices: AB })).result)
+  expect(report.scorer).toBe('two-axis fallback')
+  expect(report.coverage).toMatchObject({ factorsMissing: 2, partial: true })
+  expect(report.impact.level).toBe('core')
 })

@@ -1,7 +1,7 @@
 import { DEFAULT_MODEL, EVIDENCE_BUDGET, atomicQuestions, evidenceForFiles, experimentalAnswers, stripTrailingRisk, validateEvidence, type ExecutionEvidence } from './evidence.ts'
+import { FACTOR_REPEATS, averageAnswers, factorGroup, factorQuestions, factorReport, factorState, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
 
 import {
-  IMPACT_KEY,
   MAX_PARTS,
   RETRYABLE,
   SLICING_SYSTEM,
@@ -10,8 +10,6 @@ import {
   assignSlices,
   clipBulk,
   clipCommits,
-  contextImpactQuestion,
-  deploymentContext,
   endpointUrl,
   fileStatuses,
   groupsOf,
@@ -22,6 +20,7 @@ import {
   isDependencyManifest,
   isExcluded,
   isSafeRef,
+  labelFor,
   majorBumps,
   missingAnswer,
   missingIntent,
@@ -56,7 +55,7 @@ const MAX_ATTEMPTS = 3
 // Each split halves the request, so three levels cover a part at eight times the token limit.
 const MAX_SPLIT_DEPTH = 3
 const DESCRIPTION =
-  'Assess the risk a branch introduces, with the TypeSafe Jev model. Groups the changed files of <base>...HEAD into vertical slices, sends each slice\'s diff to TypeSafe and, separately, the change\'s purpose with each slice\'s file statistics, and returns JSON: for the change and for each slice, the risk level with the impact and likelihood of a mistake it comes from and any rule that adjusted them, what the change does (adds, changes, fixes, restructures), the types of change, and risk flags; plus confidence, the GitHub label to apply, and how much of the diff was assessed. Call it when preparing or reviewing a pull request.'
+  'Assess the risk a branch introduces, with the TypeSafe Jev model. Groups the changed files of <base>...HEAD into vertical slices, sends each slice\'s diff to TypeSafe and, separately, the change\'s purpose with each slice\'s file statistics, and returns JSON: for the change and for each slice, the risk level with the impact of a mistake, its complexity and likelihood, the manual evidence it needs and whether the description carries it, any rule that adjusted them, what the change does (adds, changes, fixes, restructures), the types of change, and risk flags; plus confidence, the GitHub label to apply, and how much of the diff was assessed. Call it when preparing or reviewing a pull request.'
 
 export function register(on, options) {
   const config = readConfig(options)
@@ -81,11 +80,6 @@ export function register(on, options) {
                 type: 'string',
                 description:
                   "Optional. The repository's rules on what gets tested and how, in a few sentences, from its CLAUDE.md, AGENTS.md, CONTRIBUTING or CI: which code needs unit or integration tests, what is left to e2e, and what is never tested. Used only to decide whether a slice that changes logic without a test breaks those rules.",
-              },
-              deployment_context: {
-                type: 'string',
-                description:
-                  "Optional, under 1,500 characters. Where this repository's changes are deployed and who they reach, as its owners describe it: the environments and their order, the gates before production, which environments other teams use, and what is local only. Used only to judge how far a mistake would reach.",
               },
               execution_context: {
                 type: 'array',
@@ -144,7 +138,7 @@ export function register(on, options) {
 
   on('tool.call', { tool: 'mcp__dev-kit__pr_risk' }, async ($, e) => {
     try {
-      const report = await assess($, e.base, options, config, e.slices, e.context, e.testing_policy, e.execution_context, e.risk_experiment, e.risk_policy, e.deployment_context)
+      const report = await assess($, e.base, options, config, e.slices, e.context, e.testing_policy, e.execution_context, e.risk_experiment, e.risk_policy)
       return { result: JSON.stringify(report, null, 2) }
     } catch (error) {
       return unavailable(error instanceof Error ? error.message : String(error))
@@ -160,9 +154,8 @@ async function apiKey($, options): Promise<string> {
   return trimmedOption(options?.typesafe_api_key, '') || trimmedOption(await $.env.get('TYPESAFE_API_KEY'), '')
 }
 
-export async function assess($, base: unknown, options, config, proposed?: unknown, context?: unknown, testingPolicy?: unknown, executionContext?: unknown, riskExperiment?: unknown, riskPolicy?: unknown, deployment?: unknown) {
+export async function assess($, base: unknown, options, config, proposed?: unknown, context?: unknown, testingPolicy?: unknown, executionContext?: unknown, riskExperiment?: unknown, riskPolicy?: unknown) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
-  const deployedTo = deploymentContext(deployment)
   const key = await apiKey($, options)
   if (!key) throw new Error('no TypeSafe API key; set TYPESAFE_API_KEY or the dev-kit option typesafe_api_key')
 
@@ -219,8 +212,9 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   const slices = slicing.slices ?? []
   const cleanedContext = typeof context === 'string' ? stripTrailingRisk(context.trim()).trim() : ''
   const purpose = { context: cleanedContext || undefined, commits: clippedCommits }
+  const tests = testsInChange(parts.flatMap((p) => p.files))
   const [{ results, truncatedHunks, truncatedCodeHunks }, intents] = await Promise.all([
-    requestParts($, request, parts, slices, evidence, experiment === 'atomic-v1', deployedTo),
+    requestParts($, request, parts, slices, evidence, experiment === 'atomic-v1', tests),
     requestIntents($, request, groupsOf(slices, reviewable), statuses, purpose),
   ])
 
@@ -228,8 +222,15 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   const flagged = policy ? untestedGroups(results, intents, config, slices, reviewable, statuses) : []
   const testsNotRequired = await requestPolicy($, request, flagged, statuses, testPaths(reviewable), policy)
   const notAssessed = [...plan.skippedFiles, ...unread]
-  const partial = notAssessed.length > 0 || plan.truncatedCodeHunks + truncatedCodeHunks > 0
-  const report = aggregate(results, intents, config, slices, reviewable, statuses, testsNotRequired, !partial, policyName)
+  const factorsMissing = results.filter((r) => r.factors === 'failed').length
+  const codeMissing = notAssessed.length > 0 || plan.truncatedCodeHunks + truncatedCodeHunks > 0
+  const partial = codeMissing || factorsMissing > 0
+  const twoAxis = aggregate(results, intents, config, slices, reviewable, statuses, testsNotRequired, !codeMissing, policyName)
+  const groups = results.flatMap((r) => (r.factors && r.factors !== 'failed' && r.factors !== 'documentation' ? [r.factors] : []))
+  // With every factor request failed the two-axis level stands, so the PR is not cleared by an outage.
+  const report = factorsMissing && !groups.length
+    ? { ...twoAxis, scorer: 'two-axis fallback' }
+    : factorReport(twoAxis, scoreFactors(groups, { slices, files: reviewable, statuses, testsNotRequired, context: cleanedContext }), config.levels, (level) => labelFor(config.labelTemplate, level))
   const experimental = experiment === 'atomic-v1' ? {
     version: 'atomic-v1',
     status: results.some((r) => Object.values(r.experimentalAnswers ?? {}).some((a) => a.status === 'missing')) ? 'incomplete' : 'complete',
@@ -249,8 +250,8 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
       filesNotAssessedSample: notAssessed.slice(0, NOT_ASSESSED_SAMPLE),
       filesExcluded: excluded.length,
       truncatedHunks: clipped + plan.truncatedHunks + truncatedHunks,
+      factorsMissing,
       partial,
-      ...(deployedTo ? { impactWithoutDeploymentContext: results.filter((r) => !r.deploymentContext).length } : {}),
     },
   }
 }
@@ -326,7 +327,11 @@ async function markMajorBumps($, ref: string, statuses: Map<string, FileStatus>)
   }
 }
 
-type ExtendedPartResult =PartResult & { experimentalFiles?: string[]; experimentalAnswers?: ReturnType<typeof experimentalAnswers>; deploymentContext?: boolean }
+type ExtendedPartResult = PartResult & {
+  experimentalFiles?: string[]
+  experimentalAnswers?: ReturnType<typeof experimentalAnswers>
+  factors?: FactorGroup | 'documentation' | 'failed'
+}
 
 type JevRequest = { url: string; model: string; key: string; questions: Record<string, unknown> }
 
@@ -337,7 +342,7 @@ async function requestParts(
   slices: Slice[],
   evidence: ExecutionEvidence,
   experiment: boolean,
-  deployedTo: string,
+  tests: string[],
 ): Promise<{ results: ExtendedPartResult[]; truncatedHunks: number; truncatedCodeHunks: number }> {
   let truncatedHunks = 0
   let truncatedCodeHunks = 0
@@ -345,7 +350,7 @@ async function requestParts(
     const relevantEvidence = evidenceForFiles(evidence, part.files)
     const state = { ...partState(part, part.slice === undefined ? undefined : slices[part.slice].title), ...(relevantEvidence.length ? { execution_context: relevantEvidence } : {}) }
     const body = JSON.stringify({ model: request.model, state, questions: experiment ? { ...request.questions, ...atomicQuestions() } : request.questions })
-    const [res, contextImpact] = await Promise.all([send($, request, body), deployedTo ? impactInContext($, request, state, deployedTo) : undefined])
+    const res = await send($, request, body)
     if (!res.ok) {
       if (depth < MAX_SPLIT_DEPTH && tooLong(res)) {
         const halves = halve(part)
@@ -364,12 +369,13 @@ async function requestParts(
     const missing = missingAnswer(answers)
     if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}" (slice ${part.slice === undefined ? '-' : part.slice + 1})`)
     const signals = experiment ? experimentalAnswers(answers) : undefined
-    if (contextImpact) answers[IMPACT_KEY] = contextImpact
+    // After the diff request, on the state that fitted: a part halved for length gets factor answers per half.
+    const factors = await requestFactors($, request, state, tests, part.slice)
     return [{
       model: data.model,
       answers,
       slice: part.slice,
-      ...(deployedTo ? { deploymentContext: contextImpact !== undefined } : {}),
+      factors,
       ...(experiment ? { experimentalFiles: part.files, experimentalAnswers: signals } : {}),
     }]
   }
@@ -377,16 +383,23 @@ async function requestParts(
   return { results, truncatedHunks, truncatedCodeHunks }
 }
 
-// A failed context request keeps the plain impact answer, which is what the tool gives without a context.
-async function impactInContext($, request: JevRequest, state: Record<string, unknown>, deployedTo: string) {
-  const body = JSON.stringify({ model: request.model, state: { ...state, deployment_context: deployedTo }, questions: contextImpactQuestion() })
-  try {
-    const res = await post($, request, body)
-    const answer = JSON.parse(res.text).answers?.[IMPACT_KEY]
-    return Number.isFinite(answer?.score) ? answer : undefined
-  } catch {
-    return undefined
-  }
+// Each repeat is the factor request plus, for a part with code, the testability request. A failed request drops only
+// its own answers, and the part counts as missing when no repeat answered.
+async function requestFactors($, request: JevRequest, state: { slice?: string; files: string[]; diff: string }, tests: string[], slice?: number): Promise<FactorGroup | 'documentation' | 'failed'> {
+  const assessed = factorState(state)
+  if (!assessed) return 'documentation'
+  const q = factorQuestions(assessed.testOnly)
+  const bodies = [
+    JSON.stringify({ model: request.model, state: assessed.state, questions: q.factor }),
+    ...(q.testable ? [JSON.stringify({ model: request.model, state: { ...assessed.state, tests_in_change: tests }, questions: q.testable })] : []),
+  ]
+  const repeats = await Promise.all(Array.from({ length: FACTOR_REPEATS }, async () => {
+    const settled = await Promise.allSettled(bodies.map(async (body) => JSON.parse((await post($, request, body)).text).answers ?? {}))
+    const answered = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value] : []))
+    return answered.length ? Object.assign({}, ...answered) : undefined
+  }))
+  const answered = repeats.filter((r) => r !== undefined)
+  return (answered.length && factorGroup(averageAnswers(answered), assessed.testOnly, slice)) || 'failed'
 }
 
 const tooLong = (res) => res.status === 400 && String(res.text).includes('max_tokens_exceeded')
