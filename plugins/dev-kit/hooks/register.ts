@@ -208,6 +208,7 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
     model: trimmedOption(options?.typesafe_model, DEFAULT_MODEL),
     key,
     questions: questions(),
+    limit: limiter(CONCURRENCY),
   }
   const slices = slicing.slices ?? []
   const cleanedContext = typeof context === 'string' ? stripTrailingRisk(context.trim()).trim() : ''
@@ -334,7 +335,26 @@ type ExtendedPartResult = PartResult & {
   factors?: FactorGroup | 'documentation' | 'failed'
 }
 
-type JevRequest = { url: string; model: string; key: string; questions: Record<string, unknown> }
+type JevRequest = { url: string; model: string; key: string; questions: Record<string, unknown>; limit: Limit }
+type Limit = <T>(fn: () => Promise<T>) => Promise<T>
+
+// The diff, factor, intent and policy pools nest and run side by side, so only a cap shared by every request holds
+// Jev to CONCURRENCY in flight.
+function limiter(size: number): Limit {
+  let active = 0
+  const waiting: (() => void)[] = []
+  return async (fn) => {
+    if (active >= size) await new Promise<void>((resolve) => waiting.push(resolve))
+    else active++
+    try {
+      return await fn()
+    } finally {
+      const next = waiting.shift()
+      if (next) next()
+      else active--
+    }
+  }
+}
 
 async function requestParts(
   $,
@@ -451,11 +471,11 @@ async function post($, request: JevRequest, body: string) {
 
 async function send($, request: JevRequest, body: string) {
   for (let attempt = 1; ; attempt++) {
-    const res = await $.http.fetch(request.url, {
+    const res = await request.limit(() => $.http.fetch(request.url, {
       method: 'POST',
       headers: { authorization: `Bearer ${request.key}`, 'content-type': 'application/json' },
       body,
-    })
+    }))
     if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) return res
     await $.clock.sleep(retryDelay(res.headers, attempt))
   }

@@ -982,6 +982,24 @@ test('a slice without factor answers keeps its two-axis level as the floor', () 
   expect(factorReport(twoAxis, score, ['low', 'medium', 'high', 'critical'], (l) => `risk: ${l}`).level).toBe('low')
 })
 
+test('no more than four Jev requests are in flight at once', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((n) => ({ path: `src/${n}.ts`, text: fileDiff(`src/${n}.ts`, `+${n}()`) }))
+  on('process.run', fakeGit(files))
+  let inFlight = 0
+  let peak = 0
+  on('http.fetch', async () => {
+    peak = Math.max(peak, ++inFlight)
+    await new Promise((resolve) => setTimeout(resolve, 2))
+    inFlight--
+    return { value: jevAnswer(1, 1) }
+  })
+  const slices = files.map((f, i) => ({ title: `S${i}`, files: [f.path] }))
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', slices })).result)
+  expect(report.scorer).toBe('factors')
+  expect(peak).toBe(4)
+})
+
 test('without any factor answers the two-axis level stands in', async ($, on) => {
   factorFailureRun(on, () => true)
   const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', slices: AB })).result)
