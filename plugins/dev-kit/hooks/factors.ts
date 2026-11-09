@@ -206,6 +206,19 @@ export function factorQuestions(testOnly: boolean): { factor: Record<string, unk
   return testOnly ? { factor } : { factor, testable: TESTABLE_QUESTION }
 }
 
+export function factorBodies(model: string, state: State, tests: string[]): { testOnly: boolean; bodies: string[] } | undefined {
+  const assessed = factorState(state)
+  if (!assessed) return undefined
+  const q = factorQuestions(assessed.testOnly)
+  return {
+    testOnly: assessed.testOnly,
+    bodies: [
+      JSON.stringify({ model, state: assessed.state, questions: q.factor }),
+      ...(q.testable ? [JSON.stringify({ model, state: { ...assessed.state, tests_in_change: tests }, questions: q.testable })] : []),
+    ],
+  }
+}
+
 // Jev's answers move between two identical asks as much as a whole wording change does, so the probabilities of
 // several asks are averaged before the median is read.
 export function averageAnswers(list: Answers[]): Answers {

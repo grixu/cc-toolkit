@@ -1,5 +1,5 @@
 import { DEFAULT_MODEL, EVIDENCE_BUDGET, atomicQuestions, evidenceForFiles, experimentalAnswers, stripTrailingRisk, validateEvidence, type ExecutionEvidence } from './evidence.ts'
-import { FACTOR_REPEATS, averageAnswers, factorGroup, factorQuestions, factorReport, factorState, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
+import { FACTOR_REPEATS, averageAnswers, factorBodies, factorGroup, factorReport, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
 
 import {
   MAX_PARTS,
@@ -386,20 +386,16 @@ async function requestParts(
 // Each repeat is the factor request plus, for a part with code, the testability request. A failed request drops only
 // its own answers, and the part counts as missing when no repeat answered.
 async function requestFactors($, request: JevRequest, state: { slice?: string; files: string[]; diff: string }, tests: string[], slice?: number): Promise<FactorGroup | 'documentation' | 'failed'> {
-  const assessed = factorState(state)
-  if (!assessed) return 'documentation'
-  const q = factorQuestions(assessed.testOnly)
-  const bodies = [
-    JSON.stringify({ model: request.model, state: assessed.state, questions: q.factor }),
-    ...(q.testable ? [JSON.stringify({ model: request.model, state: { ...assessed.state, tests_in_change: tests }, questions: q.testable })] : []),
-  ]
+  const built = factorBodies(request.model, state, tests)
+  if (!built) return 'documentation'
+  const { testOnly, bodies } = built
   const repeats = await Promise.all(Array.from({ length: FACTOR_REPEATS }, async () => {
     const settled = await Promise.allSettled(bodies.map(async (body) => JSON.parse((await post($, request, body)).text).answers ?? {}))
     const answered = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value] : []))
     return answered.length ? Object.assign({}, ...answered) : undefined
   }))
   const answered = repeats.filter((r) => r !== undefined)
-  return (answered.length && factorGroup(averageAnswers(answered), assessed.testOnly, slice)) || 'failed'
+  return (answered.length && factorGroup(averageAnswers(answered), testOnly, slice)) || 'failed'
 }
 
 const tooLong = (res) => res.status === 400 && String(res.text).includes('max_tokens_exceeded')
