@@ -220,29 +220,18 @@ Output: the pull request URL, its base branch, the template it used, the section
 
 ## Risk assessment (TypeSafe Jev)
 
-dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It sends the commits, the diffstat and the diff of `<base>...HEAD` to [TypeSafe's Jev model](https://docs.typesafe.ai/introduction) and returns a risk level, the model's confidence, and risk flags: security, persisted data, public contracts, CI and deployment, hard-to-reverse operations, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
+dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It groups the changed files of `<base>...HEAD` into slices, one per purpose of the change, and asks [TypeSafe's Jev model](https://docs.typesafe.ai/introduction) fixed questions about each slice: the impact of a mistake, how complex the logic is, what the slice does, and which risky areas it touches. Code turns the answers into a level (`low`, `medium`, `high` or `critical`) and risk flags: security, persisted data, public contracts, CI and infrastructure, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
 
-**The diff leaves your machine.** The tool exists only when a key is configured, so without one nothing is sent.
+**The diff, the commit messages and the pull request and ticket descriptions passed as `context` leave your machine.** The tool exists only when a key is configured, so without one nothing is sent.
 
 Set the key in one of two ways:
 
 - Export `TYPESAFE_API_KEY` in the shell you start Claude Code from (the default).
-- Or enter it as the plugin's **TypeSafe API key** option, which Claude Code keeps in your system's credential store. It takes precedence over the variable.
+- Or enter it as the plugin's **TypeSafe API key** option (`/plugin configure dev-kit@cc-toolkit`), which Claude Code keeps in your system's credential store. It takes precedence over the variable.
 
-Open the options with `/plugin configure dev-kit@cc-toolkit`:
+A key set or changed during a session takes effect after `/reload-plugins`.
 
-| Option | Default | What it does |
-|---|---|---|
-| `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The API key |
-| `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the API; `/v1/systemone` is appended |
-| `typesafe_model` | `jev-latest` | Model name or alias; pin a version such as `jev-1.14.0` to keep levels stable across Jev releases |
-| `risk_label` | `true` | Whether `pr-open` labels the pull request |
-| `risk_label_name` | `risk: {level}` | The label name; `{level}` becomes the level |
-| `risk_levels` | `low`, `medium`, `high`, `critical` | Level names from lowest to highest, 2 to 5 of them; the model rates the change on exactly these levels, and with fewer than 5 some levels cover more than one of the built-in descriptions |
-
-`pr-open` creates a missing label once and never changes an existing one. A key set or changed during a session takes effect after `/reload-plugins`.
-
-Large diffs are compacted and split. Lockfiles, binaries, minified, generated and build output files are left out of the diff but stay in the diffstat, and context lines are cut to one. When the rest exceeds what Jev reads in one request, it is split by file, and a large file by hunk, into up to 8 requests. The riskiest part sets the level, and a flag raised by any part counts. Anything beyond 8 requests is not assessed, and the **Risk** section says so.
+The [risk assessment docs](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/index.md) explain what the **Risk** section shows, [how a level is computed](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/how-it-works.md), [what partial and low-confidence results mean](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/reliability.md), and [every option, input and output field](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/reference.md). The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
 
 ## Permissions
 
