@@ -13,6 +13,25 @@ Live runs require `TYPESAFE_API_KEY` and the Claude Agent SDK's authenticated se
 
 `--variant causal-impact-v1` changes only the impact question's instructions in diff requests, and `--variant semantic-likelihood-v1` only the likelihood instruction. Both are evaluation-only, leave scoring unchanged, and did not meet their promotion gates. The default `dominance` and legacy `presence` and `v2` variants remain available. Unknown variant names are rejected.
 
+## Labelled cohorts and the factor scorer
+
+The labelled cohorts come from private repositories, so they live in a Cloudflare R2 bucket, never in git. `data.mjs` pulls a set into the ignored `local/data/<set>/` and verifies every file against the set's sha256 manifest:
+
+```sh
+node plugins/dev-kit/evals/pr-risk/data.mjs pull v8
+node plugins/dev-kit/evals/pr-risk/fe-eval.mjs --replay
+node plugins/dev-kit/evals/pr-risk/fe-eval.mjs --live --limit 20
+node plugins/dev-kit/evals/pr-risk/e2e.mjs --limit 3
+```
+
+It needs the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. The sets are `v8` (the test cohort: frozen part states, recorded factor answers, PR bodies and sealed labels), `v5` (the development cohort) and `research` (archived write-ups and scripts).
+
+- `fe-eval.mjs --replay` runs production's `hooks/factors.ts` on the recorded Jev answers. It fails unless every factor state and request body production builds equals the frozen ones byte for byte, and unless the cost equals the cohort's recorded baseline. A pass shows that production scores what the cohort measured.
+- `fe-eval.mjs --live` sends the same states to Jev now and compares the result with the recorded answers, showing drift in Jev or in the questions. It reports request count, tokens and latency.
+- `e2e.mjs` runs the real `pr-open` skill through the Claude Agent SDK, refreshing each labelled PR's description in a sandbox: a bare origin at the PR's base and head, and the `gh` stand-in serving the PR's title and body. It scores the level that `pr-open`'s own `pr_risk` call returns, so slicing and context collection are part of the measurement. `--max-usd` caps the Claude spend.
+
+All three use the metric from the cohorts: expected cost per case, with under-estimates counted twice and an unassessed case counted as medium, plus a paired, repository-clustered bootstrap interval. V5 is the development split. V8 is the test split, and every decision tuned on it uses it up.
+
 ## Read the metrics
 
 `summary.metrics.endToEndExactAccuracy` divides correct **completed** assessments by every labelled case selected for the run, including preparation errors, failed requests and incomplete assessments. `wilson95` gives a 95% Wilson confidence interval for that proportion. An interval is not evidence that a 95% accuracy target has been met on fresh PRs.
