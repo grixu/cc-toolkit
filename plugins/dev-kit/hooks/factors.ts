@@ -2,6 +2,7 @@
 // get, the impact of a mistake, which manual evidence would show it works, whether a test could check it), and the
 // level comes from the impact and the complexity of the riskiest parts. A PR description that carries the evidence a
 // low-stakes part needs lowers that part's likelihood one step.
+import { AGENT_FILE, PROSE_FILE, TEST_FILE } from './paths.ts'
 import { IMPACT_LEVELS, LIKELIHOOD_LEVELS, RISK_MATRIX, questions, type FileStatus, type Slice } from './risk.ts'
 
 type Answer = { score?: number; probabilities?: Record<string, number>; noul?: number; confidence?: number }
@@ -20,9 +21,6 @@ const CONFIDENT_NEED = 0.7
 const PLAUSIBLE_NEED = 0.3
 const UNTESTABLE = 0.3
 
-const PROSE_FILE = /(^|\/)\.changeset\/|\.(md|mdx|markdown|txt|rst|adoc|mmd|mermaid|puml)$/i
-const AGENT_FILE = /(^|\/)(CLAUDE|AGENTS|SKILL)\.md$|(^|\/)\.(claude|cursor|github\/prompts)\/|(^|\/)(commands|agents|skills|rules)\/[^/]+\.mdx?$/i
-const TEST_FILE = /(^|\/)(__tests__|tests?|spec|e2e|e2e-[^/]+|__mocks__|mocks?|fixtures?|__fixtures__|page-?objects?|test-?utils|testing|cypress|playwright)\/|[._-](test|spec|stories)\.[^/]+$|(^|\/)(vitest|jest|playwright|cypress)\.(config|setup)[^/]*$/i
 const CONFIG_FILE = new RegExp([
   /(^|\/)\.github\/|(^|\/)\.gitlab-ci|(^|\/)\.circleci\/|(^|\/)\.buildkite\//.source,
   /(^|\/)(Dockerfile|Containerfile)[^/]*$|(^|\/)docker-compose[^/]*$|(^|\/)compose\.ya?ml$/.source,

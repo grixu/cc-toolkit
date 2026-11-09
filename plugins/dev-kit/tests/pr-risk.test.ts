@@ -14,8 +14,9 @@ import {
   questions,
   readConfig,
   split,
+  testPaths,
 } from '../hooks/risk.ts'
-import { averageAnswers, evidenceIn, factorGroup, factorQuestions, factorReport, factorState, median, scoreFactors, type FactorGroup } from '../hooks/factors.ts'
+import { averageAnswers, evidenceIn, factorGroup, factorQuestions, factorReport, factorState, kindOf, median, scoreFactors, type FactorGroup } from '../hooks/factors.ts'
 
 const TOOL = 'mcp__dev-kit__pr_risk'
 
@@ -936,6 +937,12 @@ test('the factor state drops tests beside code and skips a part of prose alone',
   })
   expect(factorState({ files: [], diff: spec })?.testOnly).toBe(true)
   expect(factorState({ files: [], diff: fileDiff('README.md', '+docs') })).toBeUndefined()
+})
+
+test('the untested flag and the test gap read test files the same way', () => {
+  const paths = ['src/Button.stories.tsx', 'cypress/e2e/login.cy.ts', 'src/__fixtures__/user.json', 'src/Button.tsx']
+  expect(testPaths(paths)).toEqual(paths.filter((p) => kindOf(p) === 'test'))
+  expect(testPaths(paths)).toEqual(paths.slice(0, 3))
 })
 
 test('a part of tests alone is not asked about evidence, testability or failure handling', () => {

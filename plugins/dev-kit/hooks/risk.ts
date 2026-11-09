@@ -1,4 +1,5 @@
 // Pure helpers for the pr_risk tool: no mods API calls, so they can be imported and unit tested.
+import { AGENT_FILE, PROSE_FILE, TEST_FILE } from './paths.ts'
 
 const DEFAULT_LEVELS = ['low', 'medium', 'high', 'critical']
 
@@ -414,11 +415,8 @@ const EXPOSURE_TYPES = [...FLAGS.security.types, ...FLAGS.data.types]
 const SEVERE_CHANCE = 0.3
 export type RiskPolicy = 'calibrated-v1' | 'evidence-v1'
 
-const TEST_FILE = /(^|\/)(__tests__|tests?|spec|e2e|e2e-[^/]+)\/|[._-](test|spec)\.[^/]+$/
-const PROSE_FILE = /(^|\/)\.changeset\/|\.(md|mdx|markdown|txt|rst|adoc|mmd|mermaid|puml)$/i
 const baseStem = (p: string) => (p.split('/').pop() ?? p).replace(/\.[^.]+$/, '')
-const testStem = (p: string) => baseStem(p).replace(/([._-](test|spec|unit|integration|e2e))+$/i, '')
-const AGENT_FILE =/(^|\/)(CLAUDE|AGENTS|SKILL)\.md$|(^|\/)\.(claude|cursor|github\/prompts)\/|(^|\/)(commands|agents|skills|rules)\/[^/]+\.mdx?$/i
+const testStem = (p: string) => baseStem(p).replace(/([._-](test|spec|unit|integration|e2e|stories))+$/i, '')
 const DATA_FILE = /\.(json|jsonl|ya?ml|csv|tsv|xml|html?|sql)$/i
 
 // Prose and test data describe or exercise the change: a cut in them leaves every line of code assessed.
