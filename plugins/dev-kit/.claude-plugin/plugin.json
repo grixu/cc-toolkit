@@ -32,7 +32,7 @@
       "type": "string",
       "title": "Jev model",
       "description": "Model name or alias, such as jev-latest or jev-1.14.0",
-      "default": "jev-latest"
+      "default": "jev-1.14.0"
     },
     "risk_label": {
       "type": "boolean",
@@ -50,7 +50,7 @@
       "type": "string",
       "multiple": true,
       "title": "Risk levels",
-      "description": "Risk level names from lowest to highest, 2 to 5 of them",
+      "description": "Names of the four risk levels, from lowest to highest",
       "default": [
         "low",
         "medium",

@@ -220,9 +220,9 @@ Output: the pull request URL, its base branch, the template it used, the section
 
 ## Risk assessment (TypeSafe Jev)
 
-dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It sends the commits, the diffstat and the diff of `<base>...HEAD` to [TypeSafe's Jev model](https://docs.typesafe.ai/introduction) and returns a risk level, the model's confidence, and risk flags: security, persisted data, public contracts, CI and deployment, hard-to-reverse operations, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
+dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It groups the changed files of `<base>...HEAD` into vertical slices, sends each slice's diff and, separately, the change's purpose to [TypeSafe's Jev model](https://docs.typesafe.ai/introduction), and returns, for the whole change and for each slice, a risk level, what the change does, the types of change it holds, and risk flags: security, persisted data, public contracts, CI, infrastructure and deployment, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
 
-**The diff leaves your machine.** The tool exists only when a key is configured, so without one nothing is sent.
+**The diff, the commit messages and the pull request and ticket descriptions passed as `context` leave your machine.** The tool exists only when a key is configured, so without one nothing is sent.
 
 Set the key in one of two ways:
 
@@ -235,14 +235,45 @@ Open the options with `/plugin configure dev-kit@cc-toolkit`:
 |---|---|---|
 | `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The API key |
 | `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the API; `/v1/systemone` is appended |
-| `typesafe_model` | `jev-latest` | Model name or alias; pin a version such as `jev-1.14.0` to keep levels stable across Jev releases |
+| `typesafe_model` | `jev-1.14.0` | Model name or alias; pin a version such as `jev-1.14.0` to keep levels stable across Jev releases |
 | `risk_label` | `true` | Whether `pr-open` labels the pull request |
 | `risk_label_name` | `risk: {level}` | The label name; `{level}` becomes the level |
-| `risk_levels` | `low`, `medium`, `high`, `critical` | Level names from lowest to highest, 2 to 5 of them; the model rates the change on exactly these levels, and with fewer than 5 some levels cover more than one of the built-in descriptions |
+| `risk_levels` | `low`, `medium`, `high`, `critical` | Names of the four levels, from lowest to highest; any other count falls back to the default |
+
+The tool accepts optional `execution_context`: short exact source excerpts associated with changed files, checked against full HEAD or base commit IDs. Only the matching diff requests receive them. These excerpts also leave your machine. A previous generated trailing Risk section is removed from intent context; authored risk discussion is preserved.
+
+`risk_policy` selects `calibrated-v1` (default) or experimental `evidence-v1`. `risk_experiment: "atomic-v1"` separately adds five atomic questions with evidence-sufficiency questions. Their present/absent/unknown/missing results are returned under `experimental` and do not change the risk policy. They have not been validated as an accuracy improvement. The [evaluation guide](evals/pr-risk/README.md) explains comparisons and metrics.
 
 `pr-open` creates a missing label once and never changes an existing one. A key set or changed during a session takes effect after `/reload-plugins`.
 
-Large diffs are compacted and split. Lockfiles, binaries, minified, generated and build output files are left out of the diff but stay in the diffstat, and context lines are cut to one. When the rest exceeds what Jev reads in one request, it is split by file, and a large file by hunk, into up to 8 requests. The riskiest part sets the level, and a flag raised by any part counts. Anything beyond 8 requests is not assessed, and the **Risk** section says so.
+A slice is one purpose of the change, such as a feature, a fix or a refactor, with its code, tests and docs. `pr-open` passes the slices it sees in the diff. Without them, the tool sends the file paths, sizes and hunk headers (not the diff) and the commit messages to Claude Haiku on your Claude Code account, which groups the files; if that fails, the diff is split by size as one unsliced change. Every file ends up in exactly one slice, and files a grouping leaves out go to an **Other changes** slice. Up to 4 Jev requests run at once.
+
+Each slice gets two Jev requests, sent side by side. The **diff request** holds the slice's file list, its code diff and, apart from it, the diff of its prose (docs, diagram sources and changesets; agent instruction files stay with the code), and asks:
+
+- **Impact of a mistake**: what the worst consequence would be if the slice were wrong, from none, through a minor glitch, one broken feature, or a core flow down, to severe: exposed data or access, lost or corrupted data, or effects a revert cannot undo.
+- **Likelihood of a mistake**: mechanical, simple, non-trivial or intricate logic.
+- **Change types**: 31 yes/no questions on what the slice's code touches. Twenty-four are risk signals, mostly counted by presence, such as a schema migration, data that a job, endpoint or infrastructure definition deletes, rewrites or expires, a change to when or to whom the system issues invoices, payments or customer messages, data access, authorization, an API contract change across a deployment or package boundary, a feature flag check, CI, cloud infrastructure, an infrastructure change whose correctness depends on live state, UI components, a dependency update, a kind of test, or a change that reaches only the team's local setup, agent rules or alerts. Team-only scope requires agreement across every part. Seven describe what much of the slice is about, such as observability, error handling, styling, configuration, documentation, generated output or release bookkeeping. A slice made only of prose (Markdown, text, Mermaid or PlantUML diagrams, changesets) takes no risk signal except AI assistant instructions and the team-only one.
+
+The **intent request** holds no file content: the `context` passed in (the pull request's and ticket's title and description), the commit messages, and for each of the slice's files its git status and added and removed line counts. It asks what the slice does: adds new functionality, changes existing behavior, changes only when an existing behavior applies, fixes a bug, refactors, renames or moves, or removes code. Git's own renames and deletions count without asking. A type or intent counts at a probability of 0.7.
+
+When `testing_policy` is passed (a few sentences on what the repository tests, which `pr-open` reads from `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` and CI), each slice the code flags as logic without tests gets one more small request, with no file content: the policy, the slice's files with their git status and line counts, its change types and the test files anywhere in the change. It asks whether the policy expects tests here that the change lacks; when Jev says no, the flag is dropped. A failed request keeps the flag.
+
+When `deployment_context` is passed (under 1,500 characters from the repository's owners: where its changes are deployed, in what order, behind which gates, and who uses each environment), every diff request gets a twin with the same diff plus that context, asking only the impact question. Its answer replaces the diff request's impact; likelihood, change types and the weighting rules still come from the diff request. A failed twin keeps the plain impact, and `coverage.impactWithoutDeploymentContext` counts those. The context leaves your machine with the diff.
+Weighting rules combine the scores with the signals from the same request. Irreversible external effects raise impact to severe; security or persisted-data changes do so when P(severe) is at least 0.3. Behavior changes have an impact floor, and state-dependent infrastructure has impact and complexity floors. A team-only impact cap requires complete coverage, agreement from every part and no raw severe median. In the default policy, secret handling, authentication, authorization and irreversible external effects block it; data and state-dependent infrastructure signals do not. The cap can override their impact floors, while preserving the infrastructure likelihood floor. Local-state recoverability is not distinguished, an owner-accepted limitation. The default `calibrated-v1` policy retains measured UI and rename heuristics with hazard checks, and caps a slice made only of prose (agent instructions excepted) at minor impact and simple likelihood, and raises to non-trivial the likelihood of a slice whose manifest moves a runtime dependency to a new major version; the experimental `evidence-v1` policy removes those reductions. Neither lowers impact merely because a feature flag exists. Every applied adjustment is included in the report.
+
+The level comes from impact and likelihood together, so a mechanical edit to something severe, such as a rename across access policies, is medium, and only a likely mistake with a severe outcome is critical:
+
+| Impact \ Likelihood | mechanical | simple | non-trivial | intricate |
+|---|---|---|---|---|
+| none | low | low | low | low |
+| minor | low | low | low | medium |
+| feature | low | medium | medium | high |
+| core | medium | medium | high | high |
+| severe | medium | high | critical | critical |
+
+Flags are read from the change types: security from authorization, authentication or secret handling; persisted data from a schema or data migration, or from data deleted, rewritten or expired by any other code, job or infrastructure definition; a public contract from an API contract change; CI, infrastructure or deployment from the pipeline, cloud infrastructure or runtime environment types; logic without tests for a slice that holds code, whose intent adds, changes or fixes behavior, with no test type and no test file in it.
+
+A change containing only excluded files is reported as unavailable, not low risk. Large diffs are compacted and split. Lockfiles, binaries, minified, generated and build output files are left out, and context lines are cut to one. Prose and data files under test paths are cut to one request's worth, and a cut there does not mark the assessment partial. A slice that exceeds what Jev reads in one request is split by file, and a large file by hunk, with up to 32 diff requests in all; a request Jev still refuses as too long is halved and sent again. A slice split into several requests takes the risk of its riskiest request and every type any of them found, and the riskiest slice sets the level of the change. Anything beyond 32 requests is not assessed, and the **Risk** section says so.
 
 ## Permissions
 

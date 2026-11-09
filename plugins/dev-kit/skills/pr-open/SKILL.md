@@ -25,12 +25,14 @@ Run `git fetch origin` first, then resolve each before moving on:
 
 - `git log --format='%h %s%n%b' origin/<base>..HEAD` for intent, `git diff --stat origin/<base>...HEAD` for scope, `git diff origin/<base>...HEAD` for substance. Read the diff itself; the commit subjects alone miss what changed.
 - **Already merged.** A squash merge lands a branch commit on the base under another hash, so it still shows in the log above. Leave a commit out of the body only when a base commit carries it, judged by whole lines of `git log origin/<base> --format=%s%n%b`: a subject equal to the commit's, optionally followed by ` (#N)`, or a squash-body line `* <subject>`. A substring match is not enough, a `Revert "…"` commit never counts, and when a match is doubtful the work stays in the body.
-- **Linked issue.** Look for an issue number or tracker key (`#123`, `ABC-123`) in the branch name, commit messages and the conversation. Write `Closes #123` only for a GitHub issue that a commit or the branch explicitly names; mention a tracker key as plain text.
+- **Linked issue.** Look for an issue number or tracker key (`#123`, `ABC-123`) in the branch name, commit messages and the conversation. Write `Closes #123` only for a GitHub issue that a commit or the branch explicitly names; mention a tracker key as plain text. When the request, branch or commits name an issue and a tool that reads it is available (`gh issue view` for GitHub, an MCP server for another tracker), read its title and description; without such a tool, go on without them.
 - **Why.** Take it from commit bodies, the issue, or the conversation. When none of them gives a reason, describe the effect of the change and leave the motive out.
 - **Design docs.** Collect the specs, ADRs and design documents the diff adds or a commit message names.
 - **Testing.** Collect what is evidenced: tests added or changed in the diff, commands run in this session with their result, and checks the user reports, credited to them. Nothing else counts as tested. Note what was not done where a reviewer would assume it was: a UI change nobody opened in a browser, new tests nobody ran.
 - **Deploy steps.** Collect what must happen outside the merge for the change to work, from the diff and the conversation: a database migration, infrastructure code (`*.tf`), a new env var or secret, a permission or policy change, identity-provider configuration, a feature flag to flip, a pull request in another repository.
-- **Risk.** Call the `mcp__dev-kit__pr_risk` tool with `base` set to the chosen base; when it is not loaded, look it up with tool search first. It exists only when a TypeSafe key is configured, so a missing tool means the PR opens without a risk section or label, and the report says `Risk: not assessed (pr_risk tool not available)`. A result starting `Risk assessment unavailable:` means the same, with its reason in the report. Otherwise the result is JSON: `level`, `confidence`, `lowConfidence`, `flags` (each with `label` and `probability`), `model`, `label` and `coverage`. It is evidence from a model, not a verdict: quote it as given and never adjust the level.
+- **Risk.** Call the `mcp__dev-kit__pr_risk` tool with `base` set to the chosen base; when it is not loaded, look it up with tool search first. Also pass `slices`: the changed files from the diffstat grouped by purpose of the change (a feature, a fix, a refactor), each slice holding every file that serves that purpose across layers, its tests and docs included, every file in exactly one slice, and a title of a few neutral words that says what changes and never how risky it is. A change with one purpose is one slice. Pass `context` as well: the linked issue's title and description when you read them, and the why from above in a sentence or two; for an existing PR, its current title and body. When the repository states what it tests — in `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING*`, `.claude/rules/` or what its CI runs — pass `testing_policy`: those rules in a few sentences, such as which code needs unit or integration tests, what is left to e2e, and what is never tested; leave it out when the repository says nothing. The tool exists only when a TypeSafe key is configured, so a missing tool means the PR opens without a risk section or label, and the report says `Risk: not assessed (pr_risk tool not available)`. A result starting `Risk assessment unavailable:` means the same, with its reason in the report. Otherwise the result is JSON: `level`, `impact` and `likelihood` (each with its own `level`), `confidence`, `lowConfidence`, `adjustments` (the rules that moved impact or likelihood), `intents` (what the change does: `new_functionality`, `behavior_change`, `behavior_condition_change`, `bug_fix`, `refactor`, `rename_or_move`, `code_removal`), `types` (change type ids), `flags` (each with `label`), `slices` (each with `title`, `level`, `impact`, `likelihood`, `adjustments`, `intents`, `types` and `flags`), `model`, `label` and `coverage`. It is evidence from a model, not a verdict: quote it as given and never adjust the level.
+
+- **Execution context.** When a changed file depends on behavior outside its diff, optionally pass `execution_context` to `pr_risk`: at most 8 changed-file entries, each `{path, sources}` with up to 4 sources `{path, ref, symbol?, facts}`. Use full commit IDs for HEAD or the chosen base, and copy up to 4 short exact excerpts per source from `git show <commit>:<path>`; each excerpt must be at most 500 characters. The entire array must fit 8,000 characters. Collect only the source needed to understand execution boundaries and effects; missing evidence stays unknown. This is targeted context, not a full code review. Omit the previous generated trailing `## Risk` section from existing PR context.
 
 ## 3. Find the template
 
@@ -81,14 +83,18 @@ Keep the template's structure intact: every heading, in its order, and every che
 ```markdown
 ## Risk
 
-**<level>** · confidence <confidence> · assessed by <model>
+**<level>** · impact <impact.level> · likelihood <likelihood.level> · confidence <confidence> · assessed by <model>
 
-- <flag label> (<probability>)
+- <flag label>
+
+| Slice | Risk | Impact | Likelihood | What it does | Change types |
+|---|---|---|---|---|---|
+| <title> | **<level>** | <impact.level> | <likelihood.level> | <intents, comma-separated> | <types, comma-separated> |
 
 <sub>Partial assessment: <filesNotAssessed> files and <truncatedHunks> cut hunks were not assessed.</sub>
 ```
 
-  Write `No risk flags raised.` in place of the bullets when `flags` is empty. Keep the `<sub>` line only when `coverage.partial` is true, and add `Low confidence.` to the first line when `lowConfidence` is true.
+  Write `No risk flags raised.` in place of the bullets when `flags` is empty. Give the table one row per entry of `slices`, riskiest first; when `slices` is empty, replace the table with a `What it does: <intents> · Change types: <types>` line. Under the table, list each slice's `adjustments` as `- <title>: <adjustment>`; leave the list out when no slice has one. Keep the `<sub>` line only when `coverage.partial` is true, and add `Low confidence.` to the first line when `lowConfidence` is true.
 
 **Existing body.** When this skill rewrites the description of an existing PR, edit its current body instead of starting over. Keep what this skill did not write: the author's sentences, bot lines, sections outside the template such as `## Code story`, and the link reference definitions at the end, verbatim. Replace the template sections and refresh facts that drifted: commits pushed since the body was written, a dependency that landed, a testing claim that is no longer true. The report says in one line each what changed.
 
