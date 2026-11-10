@@ -52,7 +52,7 @@ test('evidence and experimental questions reach only the matching diff request',
     else if (args.includes('--name-status')) stdout = 'M\0src/a.ts\0M\0src/b.ts\0'
     else if (args[0] === 'show') stdout = 'function checkAccess(user) {}'
     else if (args[0] === 'diff') {
-      const path = args[args.length - 1].replace(':(literal)', '')
+      const path = args[args.length - 1].replace(':(top,literal)', '')
       stdout = `diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n@@ -1 +1 @@\n+x()`
     }
     return { value: { exitCode: 0, stdout, stderr: '' } }

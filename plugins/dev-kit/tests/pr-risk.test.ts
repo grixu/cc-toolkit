@@ -39,7 +39,7 @@ function fakeGit(files: Numstat[]) {
     if (args.includes('--numstat')) return ok(files.map((f) => `${f.binary ? '-' : '1'}\t${f.binary ? '-' : '0'}\t${f.path}\0`).join(''))
     if (args.includes('--name-status')) return ok(files.map((f) => `${f.status ?? 'M'}\0${f.path}\0`).join(''))
     const pathspec = args[args.length - 1]
-    return ok(files.find((f) => pathspec === `:(literal)${f.path}`)?.text ?? '')
+    return ok(files.find((f) => pathspec === `:(top,literal)${f.path}`)?.text ?? '')
   }
 }
 
@@ -463,6 +463,17 @@ test('splits a request Jev refuses as too long and assesses both halves', async 
   expect(diffs.length).toBe(3)
   expect(report.coverage.requests).toBe(2)
   expect(report.slices[0].impact.level).toBe('core')
+})
+
+test('a change with no diff text is assessed as one even when the caller sliced it', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeGit([{ path: 'bin/run.sh', text: '' }]))
+  on('http.fetch', () => ({ value: jevAnswer(1, 0) }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', slices: [{ title: 'Mode change', files: ['bin/run.sh'] }] })
+
+  expect(out.result).not.toContain('unavailable')
+  expect(JSON.parse(out.result).slices).toEqual([])
 })
 
 test('halves a part at file boundaries, keeping each file header', () => {

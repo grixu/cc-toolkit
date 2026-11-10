@@ -210,7 +210,8 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
     questions: questions(),
     limit: limiter(CONCURRENCY),
   }
-  const slices = slicing.slices ?? []
+  // The placeholder part belongs to no slice, so without any diff text the change is assessed as one.
+  const slices = plan.parts.length ? (slicing.slices ?? []) : []
   const cleanedContext = typeof context === 'string' ? stripTrailingRisk(context.trim()).trim() : ''
   const purpose = { context: cleanedContext || undefined, commits: clippedCommits }
   const tests = testsInChange(parts.flatMap((p) => p.files))
@@ -308,7 +309,8 @@ async function readDiffs($, range: string, paths: string[], budget: number): Pro
       unread.push(path)
       continue
     }
-    const diff = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(literal)${path}`])
+    // The paths are relative to the repository root, and the session may sit in a subdirectory.
+    const diff = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
     const bulk = clipBulk(path, diff.trimEnd(), budget)
     if (bulk.clipped) clipped += 1
     charsRead += bulk.text.length
