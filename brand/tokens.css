@@ -1,0 +1,77 @@
+/* cc-toolkit design tokens. Rules for using them: docs/DESIGN.md. */
+
+:root {
+  color-scheme: light dark;
+
+  /* Neutrals, H 150. light-dark(<light>, <dark>) */
+  --canvas: light-dark(oklch(0.97 0.006 150), oklch(0.17 0.012 150));    /* #F2F6F3 / #0C110D */
+  --panel:  light-dark(oklch(0.99 0.004 150), oklch(0.205 0.012 150));   /* #FAFDFA / #131914 */
+  --tray:   light-dark(oklch(0.935 0.008 150), oklch(0.245 0.013 150));  /* #E6EBE7 / #1C221D */
+  --border: light-dark(oklch(0.87 0.01 150), oklch(0.32 0.013 150));     /* #D0D6D1 / #2E352F */
+
+  --heading: light-dark(oklch(0.2 0.012 150), oklch(0.96 0.008 150));    /* #121813 / #EEF3EF */
+  --text:    light-dark(oklch(0.29 0.012 150), oklch(0.87 0.01 150));    /* #272D28 / #D0D6D1 */
+  --muted:   light-dark(oklch(0.47 0.012 150), oklch(0.76 0.012 150));   /* #565D57 / #ACB3AD */
+  --caption: light-dark(oklch(0.47 0.012 150), oklch(0.76 0.012 150));   /* #565D57 / #ACB3AD */
+  --quote:   light-dark(oklch(0.37 0.012 150), oklch(0.83 0.01 150));    /* #3B423C / #C3C9C4 */
+
+  /* Primary: bottle green from the logo's front plate, H 158 */
+  --primary:    light-dark(oklch(0.47 0.09 158), oklch(0.76 0.12 158));  /* #246A47 / #68C894 */
+  --on-primary: light-dark(oklch(0.99 0.004 150), oklch(0.17 0.012 150)); /* #FAFDFA / #0C110D */
+  --selection:  light-dark(oklch(0.88 0.05 158), oklch(0.36 0.06 158));  /* #BDE2CB / #1E4731 */
+
+  /* Secondary: clay, H 52. Never text. */
+  --secondary: light-dark(oklch(0.56 0.1 52), oklch(0.72 0.085 52));     /* #A26239 / #D09673 */
+
+  --quote-rule: var(--secondary);
+  --focus: var(--primary);
+
+  --code-bg:    light-dark(oklch(0.94 0.008 150), oklch(0.135 0.01 150)); /* #E8EDE8 / #060906 */
+  --code-text:  light-dark(oklch(0.29 0.012 150), oklch(0.87 0.01 150));  /* #272D28 / #D0D6D1 */
+  --code-muted: light-dark(oklch(0.47 0.012 150), oklch(0.74 0.012 150)); /* #565D57 / #A6ADA7 */
+
+  --diagram-line: light-dark(oklch(0.62 0.012 150), oklch(0.6 0.012 150)); /* #818882 / #7B827C */
+
+  /* Type */
+  --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+  --font-text: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-code: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --text-display: clamp(2.5rem, 2rem + 2.5vw, 3.5rem); /* 40–56px */
+  --text-h1: 2.25rem;       /* 36px */
+  --text-h2: 1.75rem;       /* 28px */
+  --text-h3: 1.25rem;       /* 20px */
+  --text-h4: 1rem;          /* 16px */
+  --text-lead: 1.125rem;    /* 18px */
+  --text-body: 1rem;        /* 16px */
+  --text-small: 0.875rem;   /* 14px */
+  --text-caption: 0.8125rem; /* 13px */
+  --text-label: 0.75rem;    /* 12px */
+  --text-code: 0.875rem;    /* 14px */
+
+  --leading-display: 1.05;
+  --leading-heading: 1.15;
+  --leading-subheading: 1.3;
+  --leading-body: 1.6;
+  --leading-small: 1.5;
+  --leading-code: 1.6;
+
+  --measure: 65ch;
+
+  /* Space and shape */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  --radius-panel: 8px;
+  --radius-inset: 4px; /* panel radius minus its 4px inset; also code blocks */
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
