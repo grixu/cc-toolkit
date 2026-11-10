@@ -203,7 +203,7 @@ def tile(ground, side, fill, radius=0.0):
 
 
 TAGLINE = "Claude Code plugins for the AI-driven development lifecycle."
-REPO = "github.com/grixu/cc-toolkit"
+SITE = "cct.grixu.dev"
 
 
 def banner(w, h, mark_h, right_align):
@@ -230,7 +230,7 @@ def og():
     ts = 34
     for i, line in enumerate(("Claude Code plugins for the", "AI-driven development lifecycle.")):
         body += TEXT.paths(line, ts, 96, 150 + lh + 92 + i * ts * 1.35, c["ink"])
-    body += TEXT.paths(REPO, 22, 96, h - 96, c["muted"])
+    body += TEXT.paths(SITE, 22, 96, h - 96, c["muted"])
     return svg(w, h, body)
 
 
@@ -239,7 +239,7 @@ def post():
     body, lw, lh = lockup_vertical("dark", 360)
     x, y = (side - lw) / 2, (side - lh) / 2 - 30
     out = [f'<rect width="{side}" height="{side}" fill="{c["ground"]}"/>', f'<g transform="translate({x:.2f} {y:.2f})">'] + body + ["</g>"]
-    out += TEXT.paths(REPO, 26, (side - TEXT.width(REPO, 26)) / 2, side - 88, c["muted"])
+    out += TEXT.paths(SITE, 26, (side - TEXT.width(SITE, 26)) / 2, side - 88, c["muted"])
     return svg(side, side, out)
 
 
