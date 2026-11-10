@@ -163,8 +163,9 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   const range = `${ref}...HEAD`
   const [commits, numstat, nameStatus] = await Promise.all([
     git($, ['log', '--no-color', '--format=%h %s%n%b', `${ref}..HEAD`]),
-    git($, ['diff', '--numstat', '-z', '--no-renames', range]),
-    git($, ['diff', '--name-status', '-z', '-M', range]),
+    // --no-relative: a user's diff.relative=true would limit the diff to the current directory.
+    git($, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
+    git($, ['diff', '--no-relative', '--name-status', '-z', '-M', range]),
   ])
 
   const entries = numstat.split('\0').filter(Boolean).map((line) => {
@@ -310,7 +311,7 @@ async function readDiffs($, range: string, paths: string[], budget: number): Pro
       continue
     }
     // The paths are relative to the repository root, and the session may sit in a subdirectory.
-    const diff = await git($, ['diff', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
+    const diff = await git($, ['diff', '--no-relative', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
     const bulk = clipBulk(path, diff.trimEnd(), budget)
     if (bulk.clipped) clipped += 1
     charsRead += bulk.text.length
