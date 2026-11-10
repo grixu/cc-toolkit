@@ -1,0 +1,18 @@
+{
+  "name": "cc-toolkit-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "deploy": "cf deploy"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.10",
+    "astro": "7.4.7",
+    "astro-mermaid": "2.2.0",
+    "mermaid": "12.3.0"
+  }
+}

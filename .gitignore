@@ -20,6 +20,12 @@ plugins/*/docprivate/
 # the target app's own runtime store, written on every boot
 plugins/tester/evals/fixtures/target-app/state.json
 
+# docs site build output, Astro's generated types, cf's build output and account cache, and local credentials
+docs/dist/
+docs/.astro/
+docs/.cloudflare/
+docs/.env
+
 # Python bytecode
 __pycache__/
 *.pyc
