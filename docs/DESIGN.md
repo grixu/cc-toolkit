@@ -30,6 +30,8 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--selection` | `::selection` background; selected text stays `--text` |
 | `--code-bg`, `--code-text`, `--code-muted` | Code blocks and inline code; `--code-muted` for comments and command output |
 | `--diagram-line` | Strokes and connectors in diagrams and illustrations |
+| `--info`, `--success`, `--warning`, `--danger` | Status tones: callout markers and titles, status words in command output |
+| `--info-bg` … `--danger-bg` | Tinted fill for a status tone; reserved, no component uses it yet |
 
 ## Which background
 
@@ -72,6 +74,7 @@ Default                                     → --text
 - **Blockquote attribution:** a `<footer>` inside the blockquote, Small in `--muted`, `--space-2` above.
 - **Tables:** the header row is Label style in `--muted` on `--tray`; cells are Small in `--text`; rows are separated by a 1 px `--border` rule and nothing else (no zebra stripes, no vertical rules); cell padding `--space-2` vertical and `--space-3` horizontal. Text aligns to the start; columns of numbers align to the end and use `tabular-nums`.
 - **Navigation:** items are Small in `--muted`, hover `--text`, current item `--primary` with `aria-current="page"`. No underline in navigation.
+- **Status tones** mean a state, never a brand accent. Use them only in callouts and for status words in output (passed, failed, a review note), always next to a symbol or word that says the same thing, so the state never depends on colour alone. `--success` is close to `--primary` in hue; never put a success-coloured word where it could be mistaken for a link.
 - **Metadata next to a heading** (a date, a version, an author) never goes inside the heading element: put it on its own line directly below, Small in `--muted`, `--space-1` below the heading.
 
 Checked contrast (WCAG 2.1 / APCA Lc), light theme then dark:
@@ -91,6 +94,10 @@ Checked contrast (WCAG 2.1 / APCA Lc), light theme then dark:
 | `--diagram-line` on `--canvas` (non-text) | 3.3:1 | 4.9:1 |
 | `--code-text` on `--code-bg` | 11.8:1 / 89 | 13.5:1 / −81 |
 | `--code-muted` on `--code-bg` | 5.7:1 / 72 | 8.7:1 / −57 |
+| `--info` on `--canvas` / on `--info-bg` | 5.4:1 / 5.2:1 | 9.7:1 / 8.5:1 |
+| `--success` on `--canvas` / on `--success-bg` | 6.0:1 / 5.8:1 | 9.9:1 / 8.7:1 |
+| `--warning` on `--canvas` / on `--warning-bg` | 5.6:1 / 5.4:1 | 10.8:1 / 9.4:1 |
+| `--danger` on `--canvas` / on `--danger-bg` | 6.0:1 / 5.7:1 | 8.7:1 / 7.7:1 |
 
 All values are inside sRGB. Re-check this table when you change a token.
 
@@ -185,12 +192,42 @@ Does the action run a command the user pastes into Claude Code?
 Correct: a plugin card with a command strip for `/plugin install fd3@cc-toolkit` and a ghost "Changelog" link below it.
 Incorrect: a green "Install" button that opens a modal with the command. It adds a step and a second primary fill, and hides what will actually run.
 
+### Callouts
+
+A callout interrupts the reading flow, so use it only for something the reader would regret missing. A side remark that is merely interesting stays a sentence in the text; a quotation is a blockquote.
+
+```
+Will skipping it cost the reader data, money or a broken run?  → danger
+Will skipping it make the next step fail or surprise them?     → warning
+Does it save them time or a mistake they would otherwise make? → tip
+Is it context they need, but not urgently?                     → note (default)
+Otherwise                                                      → no callout
+```
+
+| Kind | Tone | Marker |
+| --- | --- | --- |
+| Note (default) | `--info` | `i` |
+| Tip | `--success` | `✓` |
+| Warning | `--warning` | `!` |
+| Danger | `--danger` | `✗` |
+
+- **Anatomy:** an `<aside role="note" aria-label="Warning">` (the kind's name) on `--panel`, with a 1 px `--border` ring and a 3 px inset rule in the tone on the inline start (`box-shadow: 0 0 0 1px var(--border), inset 3px 0 0 var(--tone)`), `--radius-control`, padding `--space-3` vertical and `--space-4` plus 3 px on the start.
+- **Title line:** Plex Mono 400 Small in the tone: the marker, a space, then the title. The title defaults to the kind's name ("Warning") and may be specific ("Danger: concurrent runs"). Never repeat the kind's name after the marker.
+- **Body:** Small in `--text`, `--space-1` below the title, at most `--measure` wide, `text-wrap: pretty`. Inline code and links keep their usual style. One or two sentences; a callout that needs a list should be a section.
+- **Spacing:** a callout takes the paragraph rhythm, `--space-4` above and below, never `--space-6`.
+- **Limits:** at most one danger and two callouts of any kind per screen of text. Never stack two callouts directly, and never put one inside another panel: it would sit on `--panel` with no step left.
+- **No tinted fill:** the status `-bg` tokens are not used here, because four tinted boxes on one page out-shout the text they support.
+
+Correct: a warning before the step it guards, "! Warning — Commit or stash your local changes first. fd3 refuses to start on a dirty working tree."
+Incorrect: a note saying "fd3 is great for big specs!" It holds nothing the reader would miss, and it teaches readers to skip callouts.
+
+**Status words in command output** (inside a code block): `--success` for passed, `--danger` for failed, `--warning` for notes that need a look, each after its marker (`✓`, `✗`, `!`); durations and counts stay `--code-muted`.
+
 ## Not defined yet
 
 These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
 
 - Form inputs, apart from the 16 px text size on phones.
-- Callouts (note, tip, warning) and their titles.
 - The site header's height and layout, and the footer.
 - Hover and pressed states for components other than links, navigation and buttons.
-- Status colours: error, warning, success.
+- Any use of the status `-bg` tints.

@@ -26,6 +26,16 @@
   /* Mixing toward --heading darkens on light and lightens on dark, so --on-primary contrast only rises. */
   --primary-hover: color-mix(in oklch, var(--primary) 86%, var(--heading));
 
+  /* Status: each tone is text-safe (≥ 5.2:1) on --canvas, --panel and its own -bg. */
+  --info:       light-dark(oklch(0.5 0.1 240),     oklch(0.78 0.09 240));  /* #1F6A96 / #81BFEB */
+  --info-bg:    light-dark(oklch(0.955 0.02 240),  oklch(0.23 0.03 240));  /* #E5F2FD / #0F1F2A */
+  --success:    light-dark(oklch(0.47 0.11 138),   oklch(0.78 0.13 138));  /* #396927 / #8DCB78 */
+  --success-bg: light-dark(oklch(0.955 0.03 138),  oklch(0.23 0.035 138)); /* #E7F5E2 / #152110 */
+  --warning:    light-dark(oklch(0.5 0.105 75),    oklch(0.82 0.13 75));   /* #865901 / #F5B75B */
+  --warning-bg: light-dark(oklch(0.955 0.028 75),  oklch(0.235 0.035 75)); /* #FCEEDC / #281C0A */
+  --danger:     light-dark(oklch(0.5 0.16 27),     oklch(0.77 0.13 27));   /* #AC312C / #FC9287 */
+  --danger-bg:  light-dark(oklch(0.955 0.02 27),   oklch(0.235 0.04 27));  /* #FDEBE9 / #2E1614 */
+
   --quote-rule: var(--secondary);
   --focus: var(--primary);
 
