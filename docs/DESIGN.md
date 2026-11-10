@@ -2,7 +2,7 @@
 
 A quiet, green-tinted neutral system with two colours. Bottle green is `--primary`, taken from the logo's front plate: it marks what you can act on. Clay is `--secondary`: it marks editorial emphasis such as quotes and the second highlight in a diagram, and is never text. Everything else is neutral, so the two colours stay rare enough to mean something. The site has a light and a dark theme, derived from one set of tokens.
 
-The tokens live in `brand/tokens.css`. The logo, its files and its rules are in `docs/brand/logo.md`. There are no shared components yet. When the first ones are built, document each one here: when to use it versus the alternative, its variants with the default marked, and one correct and one incorrect example.
+The tokens live in `brand/tokens.css`. The logo, its files and its rules are in `docs/brand/logo.md`. Components are documented under Components below: when to use each one versus the alternative, its variants with the default marked, and one correct and one incorrect example.
 
 ## Tokens
 
@@ -23,6 +23,7 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--quote` | Blockquote text |
 | `--quote-rule` | The blockquote's left rule (alias of `--secondary`) |
 | `--primary` | Links, the current nav item, the primary button fill, active tab underline |
+| `--primary-hover` | Hover fill of the primary button |
 | `--on-primary` | Text and icons on a `--primary` fill |
 | `--secondary` | Quote rules, the second highlight in a diagram, step markers |
 | `--focus` | Keyboard focus ring (alias of `--primary`) |
@@ -149,13 +150,47 @@ Top margins collapse into the previous block's bottom: the larger one wins, neve
 - Content column: `--measure` for text; page max-width 1200 px; side padding `--space-5`, or `--space-4` below 600 px.
 - Header logo: copy `brand/logo/svg/lockup-on-light.svg` and `lockup-on-dark.svg` into the site's public assets and show them as two `<img alt="cc-toolkit">`, 28 px tall, one hidden per theme with the same `prefers-color-scheme` and `data-theme` selectors that drive the tokens. A `<picture>` cannot follow `data-theme`. Besides the logo, the header holds no colour except the current nav item and the focus ring; a call-to-action button never goes in the header.
 
+## Components
+
+### Buttons and the command strip
+
+The site's main action is installing a plugin, and installing is a command, not a click. So the main action on a plugin page is the **command strip**: the install command itself with a Copy button. A filled primary button is for actions that have no command, such as "Read the docs" on the landing page.
+
+```
+Does the action run a command the user pastes into Claude Code?
+ ├── Yes → command strip
+ └── No
+      ├── Is it the one main action of the view?     → primary button
+      ├── Is it an alternative action next to it?    → secondary button
+      └── Is it a minor action inside a card or row? → ghost button
+```
+
+| Variant | Fill and text | Face |
+| --- | --- | --- |
+| Primary | `--primary` fill, `--on-primary` text | Plex Sans 600, Small |
+| Secondary (default) | no fill, `--heading` text, 1 px inset `--border` ring | Plex Mono 400, Small |
+| Ghost | no fill, `--primary` text, `--space-2` side padding | Plex Mono 400, Small |
+
+- **Shape:** `--radius-control` (2 px), height 40 px and `--space-4` side padding; the small size is 32 px and `--space-3`, with its hit area extended to 44 px by a 6 px `::after` above and below. Icons are 16 px with a `--space-2` gap. Labels never wrap.
+- **Why two faces:** secondary and ghost buttons are in Plex Mono so they read as tool controls next to code; the primary keeps Plex Sans 600 because it is the one call to action and must read as a sentence.
+- **Hover** (only under `@media (hover: hover) and (pointer: fine)`, so touch screens never keep a stuck state): primary `--primary-hover`, secondary and ghost `--tray`.
+- **Pressed:** `transform: scale(0.97)`.
+- **Disabled:** `--tray` fill, `--muted` text, no ring, `cursor: not-allowed`; a disabled ghost has no fill. Prefer keeping a button enabled and explaining the problem on click.
+- **Loading:** keep the width (stack both labels in one grid cell and hide the inactive one) and show a 14 px spinner; never swap to a shorter label.
+- **Motion:** `background-color`, `color`, `box-shadow` and `transform` over 150 ms `ease-out`; under `prefers-reduced-motion` drop the `transform`.
+- **Focus:** the shared ring, `2px solid var(--focus)` with a 2 px offset.
+
+**Command strip:** `--code-bg` fill, 1 px `--border` ring, `--radius-inset`, height 44 px (36 px in a card), padding `--space-3` on the start and 4 px on the end. The command is Plex Mono 400 Small in `--code-text`, prefixed by `> ` in `--code-muted`, on one line that scrolls horizontally and never wraps or truncates, because a cut command pastes broken. The Copy button is a secondary button 4 px inside the strip's end (36 px tall, 28 px in a card); after copying, its label reads "Copied" for 2 s at the same width. In a card the strip spans the card width.
+
+Correct: a plugin card with a command strip for `/plugin install fd3@cc-toolkit` and a ghost "Changelog" link below it.
+Incorrect: a green "Install" button that opens a modal with the command. It adds a step and a second primary fill, and hides what will actually run.
+
 ## Not defined yet
 
-These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules here (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
+These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
 
-- Buttons beyond the primary fill colour: the secondary variant, sizes, radius, padding, hover, active and disabled states.
 - Form inputs, apart from the 16 px text size on phones.
 - Callouts (note, tip, warning) and their titles.
 - The site header's height and layout, and the footer.
-- Hover and pressed states for anything other than links and navigation.
+- Hover and pressed states for components other than links, navigation and buttons.
 - Status colours: error, warning, success.

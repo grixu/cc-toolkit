@@ -23,6 +23,9 @@
   /* Secondary: clay, H 52. Never text. */
   --secondary: light-dark(oklch(0.56 0.1 52), oklch(0.72 0.085 52));     /* #A26239 / #D09673 */
 
+  /* Mixing toward --heading darkens on light and lightens on dark, so --on-primary contrast only rises. */
+  --primary-hover: color-mix(in oklch, var(--primary) 86%, var(--heading));
+
   --quote-rule: var(--secondary);
   --focus: var(--primary);
 
@@ -71,6 +74,7 @@
 
   --radius-panel: 8px;
   --radius-inset: 4px; /* panel radius minus its 4px inset; also code blocks */
+  --radius-control: 2px;
 }
 
 :root[data-theme="light"] { color-scheme: light; }
