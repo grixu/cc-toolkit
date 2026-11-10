@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-10
+
 ### Fixed
 - `pr_risk`: reads each file's diff from the repository root, also under a user's `diff.relative=true`, so a session that changed into a subdirectory no longer gets empty diffs and `Risk assessment unavailable: reduce of empty array with no initial value`; a change with no diff text is assessed as one even when the caller passed slices
 
