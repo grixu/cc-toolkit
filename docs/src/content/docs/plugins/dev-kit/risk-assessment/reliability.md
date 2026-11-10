@@ -1,6 +1,9 @@
-# Confidence, partial results and failures
+---
+title: Confidence, partial results and failures
+description: When to trust a risk level less, and what happens when part of the change can't be assessed.
+---
 
-A risk level is only as good as what the model saw and answered. This page explains the signals that a level deserves less weight. It also explains what happens when part of the change can't be read or Jev doesn't answer. It assumes you know the steps from [How a risk level is computed](how-it-works.md).
+A risk level is only as good as what the model saw and answered. This page explains the signals that a level deserves less weight. It also explains what happens when part of the change can't be read or Jev doesn't answer. It assumes you know the steps from [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/).
 
 ## Confidence and `lowConfidence`
 
@@ -41,7 +44,7 @@ The fallback exists so that a Jev outage never clears a pull request. A slice wi
 
 ### The two-axis fallback
 
-Without factor answers, the level comes from the diff request's own impact and likelihood answers, through the same [risk matrix](how-it-works.md#the-risk-matrix). Weighting rules then adjust them with the change types from the same request:
+Without factor answers, the level comes from the diff request's own impact and likelihood answers, through the same [risk matrix](/plugins/dev-kit/risk-assessment/how-it-works/#the-risk-matrix). Weighting rules then adjust them with the change types from the same request:
 
 - A change to what the system sends outside itself, such as messages or payments, raises impact to severe.
 - A security or persisted-data change raises impact to severe when Jev gives a severe outcome a probability of at least 0.3.
@@ -62,9 +65,9 @@ The `risk_policy` input changes only these rules. The default `calibrated-v1` ke
 
 ## How the scorer is evaluated
 
-The factor scorer is measured against pull requests that people labelled with a risk level. The labelled data comes from private repositories, so it isn't in this repository. The evaluation scripts are, in `plugins/dev-kit/evals/pr-risk/`. Its [README](../../../plugins/dev-kit/evals/pr-risk/README.md) explains the metric and how to run the evaluations.
+The factor scorer is measured against pull requests that people labelled with a risk level. The labelled data comes from private repositories, so it isn't in this repository. The evaluation scripts are, in `plugins/dev-kit/evals/pr-risk/`. Its [README](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md) explains the metric and how to run the evaluations.
 
 ## Next steps
 
-- [Options, inputs and output](reference.md): every result field, including `coverage`.
-- [Risk assessment overview](index.md): what the **Risk** section shows.
+- [Options, inputs and output](/plugins/dev-kit/risk-assessment/reference/): every result field, including `coverage`.
+- [Risk assessment overview](/plugins/dev-kit/risk-assessment/): what the **Risk** section shows.

@@ -1,8 +1,11 @@
-# Risk assessment
+---
+title: Risk assessment
+description: How dev-kit rates a pull request's risk, what the Risk section and label show, and how to turn it on.
+---
 
 dev-kit's risk assessment rates how risky a pull request is, so you can tell how carefully to review it before you read the diff. `pr-open` runs it when it opens a pull request or refreshes one. The result goes into the description's **Risk** section and onto a `risk: <level>` label.
 
-This page explains what you see and how to turn the assessment on. [How a risk level is computed](how-it-works.md) explains the scoring. [Confidence, partial results and failures](reliability.md) explains when to trust the result less.
+This page explains what you see and how to turn the assessment on. [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/) explains the scoring. [Confidence, partial results and failures](/plugins/dev-kit/risk-assessment/reliability/) explains when to trust the result less.
 
 ## What the risk level means
 
@@ -70,7 +73,7 @@ The assessment needs Claude Code v2.1.287 or later, which loads the plugin's mod
 - Export `TYPESAFE_API_KEY` in the shell you start Claude Code from.
 - Or run `/plugin configure dev-kit@cc-toolkit` and enter it as the **TypeSafe API key** option. Claude Code keeps it in your system's credential store, and it takes precedence over the variable.
 
-A key set or changed during a session takes effect after `/reload-plugins`. [Options, inputs and output](reference.md) lists the other options, such as the label name and the model version.
+A key set or changed during a session takes effect after `/reload-plugins`. [Options, inputs and output](/plugins/dev-kit/risk-assessment/reference/) lists the other options, such as the label name and the model version.
 
 ## Get a better assessment
 
@@ -81,6 +84,6 @@ A key set or changed during a session takes effect after `/reload-plugins`. [Opt
 
 ## Next steps
 
-- [How a risk level is computed](how-it-works.md): slices, the questions asked, and the scoring rules.
-- [Confidence, partial results and failures](reliability.md): what a partial or low-confidence result means.
-- [Options, inputs and output](reference.md): plugin options, tool inputs and result fields.
+- [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/): slices, the questions asked, and the scoring rules.
+- [Confidence, partial results and failures](/plugins/dev-kit/risk-assessment/reliability/): what a partial or low-confidence result means.
+- [Options, inputs and output](/plugins/dev-kit/risk-assessment/reference/): plugin options, tool inputs and result fields.

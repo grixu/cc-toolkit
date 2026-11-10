@@ -1,6 +1,9 @@
-# Options, inputs and output
+---
+title: Options, inputs and output
+description: Plugin options, pr_risk tool inputs and the fields of its result.
+---
 
-This page lists the plugin options, the inputs of the `pr_risk` tool and the fields of its result. For what the values mean, see [How a risk level is computed](how-it-works.md).
+This page lists the plugin options, the inputs of the `pr_risk` tool and the fields of its result. For what the values mean, see [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/).
 
 ## Plugin options
 
@@ -22,11 +25,11 @@ Claude calls the tool as `mcp__dev-kit__pr_risk`. `pr-open` calls it for you, an
 | Input | Required | What it does |
 |---|---|---|
 | `base` | yes | The branch the change merges into, such as `main`. The tool diffs `origin/<base>...HEAD`, or `<base>...HEAD` without a remote branch. |
-| `slices` | no | The changed files grouped by purpose, each `{title, files}`. Without it, Claude Haiku groups the files. See [Group the files into slices](how-it-works.md#step-2-group-the-files-into-slices). |
+| `slices` | no | The changed files grouped by purpose, each `{title, files}`. Without it, Claude Haiku groups the files. See [Group the files into slices](/plugins/dev-kit/risk-assessment/how-it-works/#step-2-group-the-files-into-slices). |
 | `context` | no | The pull request's and ticket's titles and descriptions. It tells Jev what each slice is for, and it's where the tool looks for manual evidence. A **Risk** section that `pr-open` wrote earlier is removed before it's sent. |
 | `testing_policy` | no | The repository's testing rules, in a few sentences. It decides whether a slice without tests breaks those rules. |
 | `execution_context` | no | Up to 8 entries of short, exact source excerpts for changed files, each checked against a full base or HEAD commit ID. Only the matching slice's diff request receives them. |
-| `risk_policy` | no | `calibrated-v1` (default) or the stricter, unvalidated `evidence-v1`. It affects only the [two-axis fallback](reliability.md#the-two-axis-fallback). |
+| `risk_policy` | no | `calibrated-v1` (default) or the stricter, unvalidated `evidence-v1`. It affects only the [two-axis fallback](/plugins/dev-kit/risk-assessment/reliability/#the-two-axis-fallback). |
 | `risk_experiment` | no | `atomic-v1` adds experimental questions whose answers appear under `experimental`. They don't change the level. |
 
 Everything in `context`, `testing_policy` and `execution_context` is sent to TypeSafe, along with the diff and the commit messages.
@@ -45,7 +48,7 @@ The tool returns JSON. A result that starts with `Risk assessment unavailable:` 
 | `complexity` | The highest complexity across slices. |
 | `evidence` | `needed`: the manual evidence types Jev finds plausible. `provided`: those found in `context`. `credited`: whether any slice's likelihood was lowered for them. |
 | `adjustments` | The rules that moved the level, in plain sentences. |
-| `confidence`, `lowConfidence` | See [Confidence and `lowConfidence`](reliability.md#confidence-and-lowconfidence). |
+| `confidence`, `lowConfidence` | See [Confidence and `lowConfidence`](/plugins/dev-kit/risk-assessment/reliability/#confidence-and-lowconfidence). |
 | `intents` | What the change does, from the intent requests. |
 | `types` | The change types found in any slice. |
 | `flags` | Risk flags, each `{key, label}`. |

@@ -1,6 +1,9 @@
-# How a risk level is computed
+---
+title: How a risk level is computed
+description: How dev-kit's risk assessment turns a diff into a risk level.
+---
 
-This page follows one assessment from the diff to the level on the label. It's for readers who want to know why a pull request got its level, or who want to change how the assessment works. For what the result looks like on a pull request, see the [risk assessment overview](index.md).
+This page follows one assessment from the diff to the level on the label. It's for readers who want to know why a pull request got its level, or who want to change how the assessment works. For what the result looks like on a pull request, see the [risk assessment overview](/plugins/dev-kit/risk-assessment/).
 
 In short, the change is split into slices, TypeSafe's Jev model answers fixed questions about each slice, and code turns the answers into a level. Jev never picks the level itself. Every rule that turns answers into a level is in code and is reported in the result.
 
@@ -58,8 +61,8 @@ The diff request holds the slice's file list and its diff. Docs, diagram sources
 
 It asks:
 
-- **Change types:** yes/no questions on what the slice touches, such as a schema migration, authorization, an API contract, CI, cloud infrastructure, UI components or a dependency update. The [reference](reference.md#change-types-and-flags) lists the ones that raise flags.
-- **Impact and likelihood:** two scale questions that set the slice's level only when the factor requests fail. See [Confidence, partial results and failures](reliability.md#when-jev-doesnt-answer).
+- **Change types:** yes/no questions on what the slice touches, such as a schema migration, authorization, an API contract, CI, cloud infrastructure, UI components or a dependency update. The [reference](/plugins/dev-kit/risk-assessment/reference/#change-types-and-flags) lists the ones that raise flags.
+- **Impact and likelihood:** two scale questions that set the slice's level only when the factor requests fail. See [Confidence, partial results and failures](/plugins/dev-kit/risk-assessment/reliability/#when-jev-doesnt-answer).
 
 ### The intent request
 
@@ -166,5 +169,5 @@ Flags, change types and intents describe the change for the reviewer. They come 
 
 ## Next steps
 
-- [Confidence, partial results and failures](reliability.md): what happens when part of the change can't be assessed or Jev doesn't answer.
-- [Options, inputs and output](reference.md): every input and output field.
+- [Confidence, partial results and failures](/plugins/dev-kit/risk-assessment/reliability/): what happens when part of the change can't be assessed or Jev doesn't answer.
+- [Options, inputs and output](/plugins/dev-kit/risk-assessment/reference/): every input and output field.
