@@ -31,6 +31,8 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--code-bg`, `--code-text`, `--code-muted` | Code blocks and inline code; `--code-muted` for comments and command output |
 | `--diagram-line` | Strokes and connectors in diagrams and illustrations |
 | `--info`, `--success`, `--warning`, `--danger` | Status tones: callout markers and titles, status words in command output |
+| `--scrim` | Backdrop behind a dialog |
+| `--shadow-overlay` | Ring and shadow of a dialog; the only drop shadow in the system |
 | `--info-bg` … `--danger-bg` | Tinted fill for a status tone; reserved, no component uses it yet |
 
 ## Which background
@@ -223,11 +225,40 @@ Incorrect: a note saying "fd3 is great for big specs!" It holds nothing the read
 
 **Status words in command output** (inside a code block): `--success` for passed, `--danger` for failed, `--warning` for notes that need a look, each after its marker (`✓`, `✗`, `!`); durations and counts stay `--code-muted`.
 
+### Text fields
+
+Use a text field only where the reader types something the site keeps or acts on, such as a newsletter address. Search is not a text field on the page: it is the search palette below.
+
+- **Anatomy:** a visible `<label>` above the field (Small, Plex Sans 600, `--heading`), `--space-1` gap, then the field, then an optional hint or error. The placeholder is an example value in `--muted`, never the label: it disappears as soon as the reader types.
+- **Field:** height 40 px, padding `0 var(--space-3)`, `--panel` fill, a 1 px inset `--border` ring (`box-shadow: inset 0 0 0 1px var(--border)`), `--radius-control`. Text is Plex Sans 400 at 16 px on every screen, because iOS Safari zooms into anything smaller. A leading icon is 16 px in `--muted` with a `--space-2` gap.
+- **Hover** (fine pointers only): the ring turns `--diagram-line`.
+- **Focus:** the ring turns `--focus` and gains a 1 px outer ring (`inset 0 0 0 1px var(--focus), 0 0 0 1px var(--focus)`). This replaces the shared outline for fields, because an outline 2 px away from a field's own ring reads as two boxes.
+- **Hint:** Caption in `--muted`, below the field.
+- **Invalid:** set `aria-invalid="true"` and link the message with `aria-describedby`. The ring turns `--danger`, and the message replaces the hint: Caption in Plex Mono, `--danger`, prefixed `✗ `, saying how to fix it ("Add a domain, e.g. example.com"), not that it is wrong. Validate on blur and on submit, never on every keystroke.
+- **Disabled:** `--tray` fill, no ring, `--muted` text. Prefer a read-only field, which can still be selected and copied.
+- **Width** follows the expected value, capped at 360 px; never stretch a short field to the column width.
+
+### Search palette
+
+Developers expect documentation search behind a shortcut, so search opens a dialog instead of living as a field in the header.
+
+- **Trigger:** a button in the header, styled as a field 32 px tall: a 16 px search icon, "Search" in Plex Mono Small `--muted`, and the shortcut in a key cap. The key cap reads `⌘K` on macOS and `Ctrl K` elsewhere: Caption in Plex Mono, `--code-muted` on `--code-bg`, a 1 px `--border` ring, `--radius-control`, padding `3px 5px`. Below 600 px viewport width the trigger is the icon alone with `aria-label="Search docs"`.
+- **Opening:** the trigger, `⌘K` / `Ctrl K`, or `/` when focus is not in a field. The dialog is a modal `<dialog>`: focus moves into its field, Tab stays inside it, and on close focus returns to the trigger.
+- **Dialog:** over a `--scrim` backdrop, 12vh from the top, at most 520 px wide (the viewport minus `--space-4` on each side on phones); `--panel`, `--radius-panel`, `--shadow-overlay`, 4 px padding.
+- **Field in the dialog:** 48 px tall, no ring, a 1 px `--border` rule below it; otherwise as a text field.
+- **Results:** a `role="listbox"` driven by `aria-activedescendant` from the field. Each option has the page path as its title (Small, Plex Sans 600, `--heading`, sections joined by ` › `) and one line of context (Caption, `--muted`). The matched term is `<mark>` in `--primary` at weight 600 with no background. Padding `--space-2` vertical and `--space-3` horizontal, `--radius-inset`; the active option has a `--tray` fill.
+- **Keys:** ↑ and ↓ move the active option, Enter opens it, Esc closes. A footer row repeats them: Caption in Plex Mono, `--code-muted`, above a 1 px `--border` rule.
+- **Empty and no-result states:** with no query, show the five most visited pages; with no match, one line "No results for ‘query’" in `--muted` and a link to the plugin index.
+- **Motion:** the dialog fades in and scales from 0.98 over 150 ms `ease-out` and closes without animation; under `prefers-reduced-motion` it only fades.
+
+Correct: pressing `⌘K` on any page opens the palette with the cursor in the field.
+Incorrect: a 300 px search field in the header. It takes the space the navigation needs and still needs a results dropdown.
+
 ## Not defined yet
 
 These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
 
-- Form inputs, apart from the 16 px text size on phones.
 - The site header's height and layout, and the footer.
-- Hover and pressed states for components other than links, navigation and buttons.
+- Hover and pressed states for components other than links, navigation, buttons and fields.
+- Selects, checkboxes, radios and textareas.
 - Any use of the status `-bg` tints.

@@ -36,6 +36,9 @@
   --danger:     light-dark(oklch(0.5 0.16 27),     oklch(0.77 0.13 27));   /* #AC312C / #FC9287 */
   --danger-bg:  light-dark(oklch(0.955 0.02 27),   oklch(0.235 0.04 27));  /* #FDEBE9 / #2E1614 */
 
+  --scrim: color-mix(in oklch, var(--canvas) 70%, transparent);
+  --shadow-overlay: 0 0 0 1px var(--border), 0 8px 24px oklch(0 0 0 / 0.12);
+
   --quote-rule: var(--secondary);
   --focus: var(--primary);
 
