@@ -1,0 +1,144 @@
+---
+title: /dev-kit:pr-open
+description: Pushes the branch and opens a pull request a reviewer can read on one screen, with every claim traced to the diff and a label that says how risky the change is.
+group: guides
+skill: pr-open
+sidebar:
+  label: pr-open
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+A reviewer reads many pull requests a day, and a long description written from memory wastes their time.
+`pr-open` writes a short, reviewer-first description from evidence only: the diff, the commits, a linked issue, a command run in the session, or a check you report.
+It fills your repository's pull request template, so the result looks like every other pull request in the repository.
+With a TypeSafe key, it also tells the reviewer how risky the change is.
+
+## When to reach for it
+
+- Your commits are ready for review, and pr-proof has recorded its video, if you use it.
+- A pull request already exists and its description or risk label is out of date.
+- You attached a screenshot or a video to the description, and want the risk label to count it.
+
+## Run it
+
+<Strip cmd="/dev-kit:pr-open" />
+
+Add `draft` for a draft pull request, and a branch name to set the base:
+
+```
+/dev-kit:pr-open draft develop
+```
+
+Without a base, `pr-open` targets the default branch.
+When your branch builds on another open pull request's branch, it targets that branch instead and says so.
+Running it authorizes the push, and counts as the per-branch push consent that a repository rule reserving `git push` for humans asks for.
+
+## How it runs
+
+<SkillFlow
+  skill="pr-open"
+  input="A branch with commits ready for review"
+  steps={[
+    { name: 'Check', does: 'Stops on the default branch, looks for an existing pull request, and picks the base.' },
+    { name: 'Read', does: 'Reads the diff, the commits and a linked issue, and collects the testing evidence and deploy steps.' },
+    { name: 'Assess risk', does: 'Groups the files into slices and asks the pr_risk tool to rate them.', leaves: '## Risk', optional: true },
+    { name: 'Fill', does: 'Finds the template and fills it with a short description and a Before / After table.' },
+    { name: 'Open', does: 'Pushes, opens the pull request, assigns it to you and adds the risk label.', leaves: 'risk: <level>' },
+  ]}
+  next={['pr-shepherd']}
+/>
+
+`pr-open` looks for the template in the repository root, `docs/`, `.github/`, a `PULL_REQUEST_TEMPLATE/` directory, or the owner's `.github` repository.
+When there's none, it uses a short default.
+
+## What the description holds
+
+`pr-open` keeps every heading and checklist item of the template.
+The section that describes the change gets these parts, each only when it has content:
+
+1. One to three plain sentences: what changes for a user, caller or operator, and why.
+2. A **Before / After** table, with one row per thing a reviewer or user would notice.
+3. **Testing:** what was verified, and what wasn't checked where a reviewer would assume it was.
+4. **Reviewer notes:** only when something needs a hard look, such as a migration or security-relevant logic.
+5. **Go deeper:** links to the specs and ADRs the branch adds or its commits name.
+
+The rest of the template is filled the same way:
+
+- A ticket field gets the key from the branch, the commits or the conversation, or `None`. It never gets a guessed key.
+- A dependency section lists the deploy steps found in the diff, such as migrations, infrastructure code, env vars and secrets, permission changes, feature flags and other repositories' pull requests. With none, it gets `- None`.
+- A checkbox is ticked only when there's evidence that the item is true.
+- Work the base already has, such as a squash-merged commit, is left out.
+
+The body fits on one screen, about 40 non-blank lines outside the **Risk** section.
+Long logs go in a `<details>` block, and the body stays valid MDX for repositories that feed it to MDX tools.
+
+The title follows Conventional Commits when the base branch's history does.
+It ends with the ticket key in parentheses when the history does that too.
+
+## The risk label
+
+With a TypeSafe API key configured, `pr-open` rates the branch's risk before it opens the pull request.
+It groups the changed files into slices, one per purpose of the change, and passes them to the `pr_risk` tool.
+It also passes the why of the change and the linked issue, and your testing rules when `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` or CI state them.
+
+The result goes in two places:
+
+- A **Risk** section at the end of the description, with the level of the whole change, its risk flags and a table with one row per slice.
+- A label with the level, such as `risk: high`. `pr-open` creates the label once when it's missing, and never changes an existing one.
+
+```markdown
+## Risk
+
+**high** · impact core · complexity interacting logic · confidence 0.61 · assessed by jev-1.14.0
+
+- Changes a public contract
+
+| Slice | Risk | Impact | Complexity | Evidence | What it does | Change types |
+|---|---|---|---|---|---|---|
+| Order export endpoint | **high** | core | interacting logic | api_dump missing | new_functionality | api_contract, data_access |
+| Export docs | **low** | none | edits | — | new_functionality | documentation |
+```
+
+`pr-open` quotes the level as the tool returns it and never adjusts it.
+Without a key, nothing is sent, the pull request opens without a **Risk** section or label, and the report says `Risk: not assessed`.
+
+:::tip[Attach the evidence, then run it again]
+A screenshot, a video or an API request and response in the description can lower a low-stakes slice's risk.
+A new pull request rarely carries them, so run `pr-open` again after you attach them, for example after pr-proof adds its video.
+:::
+
+[The risk label](/plugins/dev-kit/risk-assessment/) explains what each level asks of a reviewer, what leaves your machine and how to set the key.
+
+## When the pull request already exists
+
+`pr-open` pushes, refreshes the risk, and reports the pull request.
+It swaps the old risk label for the new one and replaces the **Risk** section, so the description never contradicts the label.
+
+It rewrites the rest of the description only when you ask for it.
+Otherwise the report offers the rewrite in one line.
+A rewrite edits the current description: your own sentences, bot lines, extra sections such as `### Video walkthrough`, and the tracker's link line at the end stay as they are.
+
+## What it leaves
+
+- A pushed branch and an open pull request, assigned to you.
+- The **Risk** section and the risk label, when a key is configured.
+- A report with the pull request URL, its base, the template it used, the sections and checkboxes left for you, and the risk level and flags.
+
+The report ends with a one-line suggestion to run `/dev-kit:pr-shepherd`.
+`pr-open` never runs it for you.
+
+## What can go wrong
+
+- **You're on the default branch or a detached HEAD.** `pr-open` stops and says so.
+- **Tracked files have uncommitted changes.** It asks whether to open the pull request from the committed state or stop so you can commit. It never commits itself. Untracked files stay out of the pull request and are listed in the report.
+- **The base has moved ahead.** It reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never merges, rebases or force-pushes.
+- **The push is rejected.** It reports the error and stops. Resolving a diverged branch is your call.
+- **The assignment or the label fails.** The pull request stays open, and the report says why.
+
+## Next steps
+
+- Run [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) to answer review comments and keep CI green until approval.
+- Read [how a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/) to understand a level you didn't expect.

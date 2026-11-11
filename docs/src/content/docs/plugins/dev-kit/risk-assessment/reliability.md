@@ -1,6 +1,10 @@
 ---
 title: Confidence, partial results and failures
 description: When to trust a risk level less, and what happens when part of the change can't be assessed.
+group: concepts
+sidebar:
+  label: Confidence and failures
+  order: 8
 ---
 
 A risk level is only as good as what the model saw and answered. This page explains the signals that a level deserves less weight. It also explains what happens when part of the change can't be read or Jev doesn't answer. It assumes you know the steps from [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/).
@@ -22,7 +26,7 @@ The tool fits a large change into Jev's request size in these ways:
 - A slice too large for one request is split by file, and a large file by hunk.
 - A request that Jev still refuses as too long is halved and sent again, up to three times.
 - A slice split into several requests takes the risk of its riskiest part, and every change type any part found.
-- The whole change gets at most 32 diff requests. Files beyond that aren't assessed, and the result lists up to 20 of them in `coverage.filesNotAssessedSample`.
+- The whole change is packed into at most 32 diff requests before any halving. Files beyond that aren't assessed, and the result lists up to 20 of them in `coverage.filesNotAssessedSample`.
 
 Not every cut makes an assessment partial. Docs, and data files under test paths, are cut to one request's worth, and a cut there leaves every line of code assessed.
 
@@ -38,6 +42,8 @@ What happens depends on which request fails:
 | A policy request | The "Logic without tests" flag stays. |
 | Haiku's slicing | The diff is packed by size and assessed as one unsliced change. `slicing.reason` says why. |
 
+Table 1. What a failed request does to the result
+
 A slice counts as missing only when both repeats of its factor requests failed. One answered repeat is enough to score it.
 
 The fallback exists so that a Jev outage never clears a pull request. A slice without factor answers would otherwise add no risk, and the change could rate below its real risk.
@@ -49,6 +55,7 @@ Without factor answers, the level comes from the diff request's own impact and l
 - A change to what the system sends outside itself, such as messages or payments, raises impact to severe.
 - A security or persisted-data change raises impact to severe when Jev gives a severe outcome a probability of at least 0.3.
 - A behavior change raises impact to at least feature, or minor for a change that only alters how a screen looks.
+- A slice that only reworks or fixes user-interface code, and adds or changes no behavior, caps impact at minor.
 - Infrastructure that holds data or serves traffic raises impact to core and likelihood to non-trivial.
 - A change that reaches only the team's local setup, agent rules or alerts caps impact at minor. The cap doesn't apply when the slice touches secrets, authentication, authorization or external effects, or Jev rates it severe.
 - A major-version dependency bump raises likelihood to non-trivial.
@@ -69,5 +76,5 @@ The factor scorer is measured against pull requests that people labelled with a 
 
 ## Next steps
 
-- [Options, inputs and output](/plugins/dev-kit/risk-assessment/reference/): every result field, including `coverage`.
-- [Risk assessment overview](/plugins/dev-kit/risk-assessment/): what the **Risk** section shows.
+- [Risk label reference](/plugins/dev-kit/risk-assessment/reference/): every result field, including `coverage`.
+- [The risk label](/plugins/dev-kit/risk-assessment/): what the **Risk** section shows.

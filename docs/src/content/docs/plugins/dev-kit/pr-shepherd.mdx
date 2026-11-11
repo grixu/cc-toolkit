@@ -1,0 +1,120 @@
+---
+title: /dev-kit:pr-shepherd
+description: Drives an open pull request, or a stack of them, in a self-paced loop until every required check is green and no review thread is open, without asking you anything mid-run.
+group: guides
+skill: pr-shepherd
+sidebar:
+  label: pr-shepherd
+  order: 3
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+After a pull request opens, the work comes in small pieces: a check goes red, a reviewer leaves a comment, a bot flags a line.
+`pr-shepherd` handles those pieces while you work on something else.
+It hands every red check to [`ci-fix`](/plugins/dev-kit/ci-fix/), fixes the review comments it agrees with, and answers the rest with evidence.
+It stops when the pull request is clean, or when only you can move it.
+
+## When to reach for it
+
+- Your branch has an open pull request, and you want CI fixed and comments handled without watching it.
+- You have a stack of pull requests, each based on the one below, and a fix must reach all of them.
+
+## Run it
+
+<Strip cmd="/dev-kit:pr-shepherd" />
+
+Without arguments, it shepherds the current branch's pull request.
+With one number, it shepherds that pull request, in a worktree on its branch when you're on another branch.
+Pass several pull request numbers to shepherd a stack:
+
+```
+/dev-kit:pr-shepherd 101 102 103
+```
+
+Running it authorizes commits and pushes to the branches of the pull requests it shepherds.
+It also counts as the per-branch push consent that a repository rule reserving `git push` for humans asks for.
+
+:::caution[Allow your check commands first]
+The loop runs unattended, and it pauses at the first permission prompt.
+Before you start it, allow your repository's test and lint commands in `.claude/settings.json`, for example `"Bash(pnpm test *)"`.
+:::
+
+## How it runs
+
+`pr-shepherd` starts Claude Code's `/loop`, and each round re-reads the whole state from git and GitHub:
+
+<SkillFlow
+  skill="pr-shepherd"
+  input="An open pull request, or a stack of them by number"
+  steps={[
+    { name: 'Read', does: 'Reads the pull request, its checks and its unresolved review threads.' },
+    { name: 'Fix CI', does: 'Hands every red check to ci-fix, which may push without asking.' },
+    { name: 'Review', does: 'Judges each open comment, fixes, commits and pushes, then replies in the thread.' },
+    { name: 'Decide', does: 'Stops when done or blocked, or schedules the next round.', loop: 'every 5, 30 or 60 minutes, up to 48 rounds' },
+  ]}
+/>
+
+The pause between rounds depends on what's still moving.
+It waits 5 minutes after a push or while checks run, and 30, then 60 minutes while only reviewers are left to reply.
+
+## How it handles a review comment
+
+`pr-shepherd` judges each comment on its merits, whoever wrote it, and gives it one verdict:
+
+| Verdict | When | What it does |
+|---|---|---|
+| justified | The comment names a real defect or a clear improvement within the pull request's scope | Makes the change, runs your lint and test commands for the touched files, commits, pushes, replies `Fixed in <sha>.` and resolves the thread |
+| unjustified | The comment is wrong, out of scope or contradicted by the codebase | Replies with the reason and file, line or doc evidence, and @-mentions the author |
+| question | The comment asks rather than requests | Answers it the same way. When the honest answer reveals a defect, the verdict becomes justified |
+| decision | The fix is a trade-off only you can make, such as security posture or scope | Changes nothing. Replies once with the options and the cost of each, and leaves the thread for you |
+
+Table 1. Review verdicts
+
+It resolves a bot's thread after replying.
+It leaves a human's thread open for that reviewer to resolve.
+After two rebuttals in one thread, it posts nothing more there and hands the thread to you.
+
+## Stacks
+
+With several pull request numbers, each pull request gets its own worktree on its head branch.
+A fix lands on the lowest branch that owns the code.
+It reaches the branches above by a plain merge of each base into its child, one level at a time, never a rebase.
+`pr-shepherd` never merges the default branch into any of them.
+
+## When it stops
+
+It never asks you anything mid-run.
+It stops and reports when one of these happens:
+
+- Every required check is green and no review thread is open. This is success.
+- The branch has no open pull request, has uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
+- GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files. It never resolves the conflict.
+- `ci-fix` reports a failure it can't fix, or the same check is red again after two fix or rerun cycles.
+- Every required check is green, and every remaining thread waits on you or on a reviewer who hasn't replied for 24 hours.
+- It has run 48 rounds.
+
+A red check that isn't required gets one `ci-fix` run.
+If it stays red, the report lists it for you instead of holding the loop.
+
+## What it leaves
+
+- Commits pushed to the pull request's branch, one per thread or per group of threads fixed by one change.
+- Replies in the review threads, and resolved threads where it fixed the point or answered a bot.
+- A status line after each round, and a final report: why it stopped, the commits pushed, the threads fixed, answered and rebutted with links, and everything left for you.
+
+## What it never does
+
+Outside the stack merges above, it never does these unless a later message of yours names the action:
+
+- merge or rebase the base into the branch;
+- resolve a conflict or force-push;
+- close, reopen, retarget or edit the pull request.
+
+It never stages untracked files.
+
+## Next steps
+
+- Read [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/) to see what happens to a red check.
+- When a dependency upgrade arrives, check it outside the cycle with [`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/).

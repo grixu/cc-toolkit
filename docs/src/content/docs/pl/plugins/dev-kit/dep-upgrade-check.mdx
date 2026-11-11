@@ -1,0 +1,209 @@
+---
+title: /dev-kit:dep-upgrade-check
+description: Mówi, czy aktualizację zależności można bezpiecznie przyjąć i czy zepsuje twój kod. Sprawdza historię bezpieczeństwa wersji docelowej, a potem odnosi każdą zmianę do miejsc, w których twój kod jej używa.
+group: guides
+skill: dep-upgrade-check
+sidebar:
+  label: dep-upgrade-check
+  order: 5
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Podbicie zależności wygląda w diffie niewinnie: jedna linia w manifeście i lockfile.
+To, co faktycznie zmienia, siedzi w release notes, przewodnikach migracji i metadanych paczki, a twojego kodu dotyczy tylko część z tego.
+`dep-upgrade-check` czyta to wszystko, zostawia zmiany, których twój kod naprawdę używa, i kończy werdyktem z dowodami `file:line`.
+Wcześniej sprawdza, czy wersję docelową w ogóle można bezpiecznie przyjąć.
+
+Działa w [Utrzymaniu](/pl/lifecycle/maintain/), poza cyklem: uruchamiaj go, gdy tylko przychodzi aktualizacja, a nie w ustalonym miejscu cyklu.
+
+## Kiedy po niego sięgnąć
+
+- Pull request od Renovate'a albo Dependabota czeka na review.
+- Chcesz podbić paczkę i najpierw wiedzieć, co się zepsuje.
+- Chcesz joba w CI, który sprawdzi każdą aktualizację od bota, zanim ktoś ją zmerguje.
+
+## Uruchom go
+
+<Strip cmd="/dev-kit:dep-upgrade-check" />
+
+Podaj paczkę z wersją, samą paczkę, żeby sprawdzić jej najnowsze wydanie, albo URL pull requesta:
+
+```
+/dev-kit:dep-upgrade-check vite@7
+/dev-kit:dep-upgrade-check zod
+/dev-kit:dep-upgrade-check https://github.com/owner/repo/pull/42
+```
+
+Działa z projektami pnpm, npm, yarn, Python, Go, PHP i Rust, z obrazami kontenerów i z GitHub Actions.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="dep-upgrade-check"
+  input="Paczka i wersja albo pull request od Renovate'a lub Dependabota"
+  steps={[
+    { name: 'Zakres', does: 'Bierze wersję, którą twój lockfile rozwiązuje dziś, i dokładną wersję docelową.' },
+    { name: 'Bezpieczeństwo', does: 'Sprawdza wersję docelową i każdą nową wersję tranzytywną w OSV.dev i GitHub Advisory Database.', leaves: 'security comment' },
+    { name: 'Rejestr zmian', does: 'Wypisuje każdą zmianę do wersji docelowej z wydań, changelogów, przewodników migracji i metadanych paczki.' },
+    { name: 'Użycia', does: 'Znajduje każde miejsce, w którym twój kod dotyka paczki, i oznacza każdą zmianę jako affected, not affected albo unknown.' },
+    { name: 'Próbny build', does: 'Instaluje i buduje aktualizację w jednorazowym worktree, tylko za twoją zgodą.', optional: true },
+    { name: 'Raport', does: 'Podaje wynik bezpieczeństwa, werdykt i tabelę dotkniętych zmian z poprawkami.', leaves: 'dep-upgrade-check-result' },
+  ]}
+/>
+
+Dla pull requesta obecna wersja pochodzi z lockfile'a brancha bazowego, a skill czyta też wynik CI pull requesta.
+Błąd runnera w kroku przygotowania albo sprzątania po przejściu testów nie liczy się ani za, ani przeciw aktualizacji, a raport proponuje ponowne uruchomienie.
+
+## Wynik bezpieczeństwa
+
+Przed sprawdzeniem zgodności każda aktualizacja dostaje jeden z trzech wyników:
+
+- **blocked:** malware, wersja wycofana z rejestru albo wersja młodsza niż jej okres karencji. Świeża wersja przechodzi, gdy naprawia podatność o wadze moderate lub wyższej z wersji, którą zastępuje. Raport podaje wtedy najniższą bezpieczną wersję.
+- **escalated:** znana podatność o wadze moderate lub wyższej. Raport mówi, czy twój kod używa podatnej funkcji, ale to nigdy nie obniża wagi. Skill prosi cię o decyzję: przyjąć ryzyko, przejść na najniższą bezpieczną wersję albo wstrzymać.
+- **clear:** żadne z powyższych.
+
+Okres karencji wynika z polityki twojego repozytorium, więc sprawdzenie nie blokuje tego, na co twój bot zależności już poczekał:
+
+| Źródło | Skąd pochodzi wartość |
+|---|---|
+| Renovate | `minimumReleaseAge` na najwyższym poziomie i w pasującym wpisie `packageRules` |
+| Dependabot | blok `cooldown` pasującego wpisu `updates` albo 3 dni bez niego |
+| pnpm | `minimumReleaseAge` w `pnpm-workspace.yaml`, z `minimumReleaseAgeExclude` |
+| żadne z nich | 7 dni |
+
+Tabela 1. Skąd pochodzi okres karencji wydania
+
+Wygrywa pierwsze źródło z tabeli, które ustawia wartość dla danej wersji, a pozostałe nie są czytane.
+W Renovate jawne `null` oznacza brak karencji, a reguła z matcherem, którego sprawdzenie nie umie ocenić, na przykład `matchCurrentVersion`, liczy się według surowszej wartości.
+Dla pull requesta konfiguracja jest czytana z brancha bazowego, więc pull request nie obniży sobie karencji.
+Raport podaje wartość i jej źródło, na przykład `cooldown 7 days (default)`.
+
+:::note[Co opuszcza twój komputer]
+Nazwy paczek trafiają do api.osv.dev, api.github.com i api.deps.dev.
+Paczki z prywatnego rejestru nigdy nie są wysyłane i trafiają na listę niesprawdzonych.
+:::
+
+## Werdykt
+
+- **safe:** żadna zmiana nie dotyka miejsc, w których twój kod używa paczki.
+- **safe with changes:** niektóre zmiany ich dotykają, a każda ma znaną, ograniczoną poprawkę, na przykład zmianę nazwy, klucz konfiguracji, codemod albo podbicie peera.
+- **breaking:** zmiana nie ma prostego zamiennika, minimalna wersja runtime'u albo silnika jest wyższa niż ta, na której działa projekt, albo poprawka wymaga przeprojektowania.
+
+Dopóki otwarte pytanie może zmienić werdykt, raport podaje najgorszą możliwą wartość i oznacza ją jako `provisional`.
+Wymienia to pytanie i proponuje build, który je rozstrzygnie.
+
+## Co zostawia
+
+- Raport: wynik bezpieczeństwa z tabelą advisory, werdykt, tabelę dotkniętych zmian z lokalizacjami `file:line` i poprawką dla każdej, otwarte niewiadome i użyte źródła.
+- Na pull requeście jeden komentarz bezpieczeństwa z wynikiem, advisory i twoją decyzją. Ponowne uruchomienie aktualizuje ten sam komentarz.
+- Blok `dep-upgrade-check-result` na końcu każdego runu, który skrypt może sparsować.
+
+Poza tym sprawdzenie tylko czyta: nie zmienia manifestu, lockfile'a ani kodu źródłowego.
+Wszystko, co pobiera i uruchamia cudzy kod, na przykład próbny build albo pobranie obrazu kontenera, jest proponowane i uruchamiane tylko za twoją zgodą.
+
+## Zastosuj aktualizację
+
+Gdy poprosisz o zastosowanie aktualizacji, skill nanosi poprawki z tabeli i uruchamia twoje checki:
+
+- Dla paczki z wersją: w twoim drzewie roboczym.
+- Dla pull requesta: na jego branchu w osobnym worktree, z commitem lokalnym i pushem tylko na twoje polecenie.
+
+Renovate i Dependabot przy rebase'ie odrzucają commity, które nie są ich.
+Raport o tym ostrzega i podaje ustawienie bota, dzięki któremu commit nie będzie potrzebny.
+
+## Uruchom go w CI
+
+Dodaj `unattended` po URL-u pull requesta albo uruchom go tam, gdzie `GITHUB_ACTIONS=true`, a sprawdzenie nigdy nie czeka na człowieka:
+
+- Tam, gdzie by zapytało, zatrzymuje się ze `status: stopped` i powodem.
+- Wynik escalated nie dostaje pytania. Komentarz bezpieczeństwa pojawia się od razu z decyzją `pending`. Decyzję podejmuje maintainer, uruchamiając sprawdzenie na pull requeście we własnej sesji, a kolejne runy ją zachowują, dopóki paczki, wersje docelowe i advisory się nie zmienią.
+- Czyta checki CI raz i nigdy nie instaluje, nie buduje ani nie stosuje aktualizacji.
+- Publikuje pełny raport jako drugi komentarz, a ponowne uruchomienie aktualizuje oba komentarze.
+
+Ten przykładowy job sprawdza pull requesty od Renovate'a:
+
+```yaml
+name: dependency check
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  checks: read
+  actions: read
+concurrency:
+  group: dep-upgrade-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  dep-upgrade-check:
+    if: >-
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      github.event.pull_request.head.ref != 'renovate/lock-file-maintenance'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: repo
+      - uses: actions/checkout@v6
+        with:
+          repository: grixu/cc-toolkit
+          ref: <cc-toolkit commit SHA>
+          path: cc-toolkit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Check the upgrade
+        working-directory: repo
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
+            --plugin-dir ../cc-toolkit/plugins/dev-kit \
+            --permission-mode dontAsk \
+            --strict-mcp-config \
+            --setting-sources user \
+            --max-turns 80 \
+            --output-format json > ../result.json
+          block="$(jq -r .result ../result.json | sed -n '/^```dep-upgrade-check-result/,/^```/p')"
+          printf '%s\n' "$block" >> "$GITHUB_STEP_SUMMARY"
+          jq -e '(.permission_denials // []) | length == 0' ../result.json
+          grep -qx 'status: done' <<< "$block"
+          grep -Eqx 'security: (clear|escalated)' <<< "$block"
+          grep -Eqx 'decision: (accepted|n/a)' <<< "$block"
+```
+
+- **Bramka** to trzy ostatnie linie. Job pada, chyba że run się zakończył, żadna aktualizacja nie jest zablokowana, a decyzja dla każdej aktualizacji z wynikiem escalated to `accepted`. Werdykt zgodności nie jest bramką, bo twój build i testy i tak działają na pull requeście.
+- **Commit bazowy** jest checkoutowany celowo. Przy `pull_request` `actions/checkout` domyślnie bierze commit merge'a, który ma już aktualizację.
+- **Checkout pluginu** leży poza katalogiem repozytorium, bo inaczej wyszukiwanie użyć potraktuje go jako część twojego kodu.
+- **`--permission-mode dontAsk`** odrzuca każde wywołanie, którego skill nie ma z góry dozwolonego. Z góry dozwolony zestaw obejmuje pnpm. Dla innych ekosystemów dodaj ich zapytania przez `--allowedTools`.
+- **`--strict-mcp-config` i `--setting-sources user`** trzymają z dala od runu własną konfigurację Claude Code z repozytorium, na przykład `.mcp.json`.
+- **Subskrypcja Claude** też działa: zamiast `ANTHROPIC_API_KEY` ustaw `CLAUDE_CODE_OAUTH_TOKEN` na token z `claude setup-token`.
+- **Wymagany check:** dodaj joba jako wymagany status check na domyślnym branchu. Job pominięty przez swój `if:` zgłasza sukces, więc inne pull requesty nie są blokowane.
+- **Self-hosted Renovate** publikuje pod własnym loginem bota. Użyj tego loginu w `if:`.
+- **Pull requesty od Dependabota** dostają tylko sekrety Dependabota, więc zapisz `ANTHROPIC_API_KEY` także jako sekret Dependabota.
+
+:::danger[Trzymaj token w ryzach]
+Run czyta release notes, którym nie można ufać, a skill ma z góry dozwolone komendy sięgające do sieci, w tym zapisy przez `gh api` i `WebFetch` do dowolnej domeny.
+Zostaw `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1`, nadaj tylko uprawnienia z przykładu i nigdy nie używaj `pull_request_target` z checkoutem heada pull requesta.
+Ustawienie repozytorium **Allow GitHub Actions to create and approve pull requests** zostaw wyłączone, żeby wstrzyknięta komenda nie mogła zatwierdzić pull requesta.
+:::
+
+## Co może pójść nie tak
+
+- **Pull request należy do innego repozytorium.** Sprawdzenie prosi o ścieżkę do lokalnego checkoutu. Bez nadzoru się zatrzymuje.
+- **Nie ma przewodnika migracji.** Bez firecrawla i context7 sprawdzenie nadal czyta pliki przewodników w repozytorium paczki i przewodnik podlinkowany w release notes. Przewodnik, którego nie znajdzie, trafia do niewiadomych jako `no guide found`.
+- **Komentarz pada z błędem 403.** Komentowanie pull requesta wymaga `pull-requests: write`. Pole `reason` w bloku wyniku wymienia brakujące uprawnienie.
+
+## Następne kroki
+
+- [Dokumentacja referencyjna](/pl/plugins/dev-kit/reference/#dep-upgrade-check-result) wymienia każde pole bloku wyniku i komendy, które sprawdzenie uruchamia bez pytania.
+- Zobacz inne pluginy działające poza cyklem w [Utrzymaniu](/pl/lifecycle/maintain/).

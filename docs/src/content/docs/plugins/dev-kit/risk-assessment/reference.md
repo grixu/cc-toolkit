@@ -1,6 +1,10 @@
 ---
-title: Options, inputs and output
-description: Plugin options, pr_risk tool inputs and the fields of its result.
+title: Risk label reference
+description: The plugin options for the risk label, the inputs of the pr_risk tool, and every field of its result.
+group: reference
+sidebar:
+  label: Risk label
+  order: 9
 ---
 
 This page lists the plugin options, the inputs of the `pr_risk` tool and the fields of its result. For what the values mean, see [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/).
@@ -18,6 +22,8 @@ Open the options with `/plugin configure dev-kit@cc-toolkit`. A change takes eff
 | `risk_label_name` | `risk: {level}` | The label name. `{level}` becomes the level. |
 | `risk_levels` | `low`, `medium`, `high`, `critical` | Names of the four levels, from lowest to highest. Any count other than four falls back to the default. |
 
+Table 1. Plugin options
+
 ## Tool inputs
 
 Claude calls the tool as `mcp__dev-kit__pr_risk`. `pr-open` calls it for you, and Claude can also call it when you ask how risky a branch is. There's no slash command.
@@ -28,9 +34,11 @@ Claude calls the tool as `mcp__dev-kit__pr_risk`. `pr-open` calls it for you, an
 | `slices` | no | The changed files grouped by purpose, each `{title, files}`. Without it, Claude Haiku groups the files. See [Group the files into slices](/plugins/dev-kit/risk-assessment/how-it-works/#step-2-group-the-files-into-slices). |
 | `context` | no | The pull request's and ticket's titles and descriptions. It tells Jev what each slice is for, and it's where the tool looks for manual evidence. A **Risk** section that `pr-open` wrote earlier is removed before it's sent. |
 | `testing_policy` | no | The repository's testing rules, in a few sentences. It decides whether a slice without tests breaks those rules. |
-| `execution_context` | no | Up to 8 entries of short, exact source excerpts for changed files, each checked against a full base or HEAD commit ID. Only the matching slice's diff request receives them. |
+| `execution_context` | no | Up to 8 entries of short, exact source excerpts for changed files, each checked against a full base or HEAD commit ID. The whole array fits in 8,000 characters. Only the matching slice's diff request receives them. |
 | `risk_policy` | no | `calibrated-v1` (default) or the stricter, unvalidated `evidence-v1`. It affects only the [two-axis fallback](/plugins/dev-kit/risk-assessment/reliability/#the-two-axis-fallback). |
 | `risk_experiment` | no | `atomic-v1` adds experimental questions whose answers appear under `experimental`. They don't change the level. |
+
+Table 2. Inputs of the pr_risk tool
 
 Everything in `context`, `testing_policy` and `execution_context` is sent to TypeSafe, along with the diff and the commit messages.
 
@@ -57,6 +65,8 @@ The tool returns JSON. A result that starts with `Risk assessment unavailable:` 
 | `coverage` | How much of the change was assessed, described below. |
 | `model`, `base`, `riskPolicy`, `slicing` | The Jev model that answered, the resolved base, the policy used, and where the slices came from (`caller`, `model` or `size`). |
 
+Table 3. Result fields for the whole change
+
 ### Each slice
 
 Each entry of `slices` holds `title`, `files`, `level`, `impact`, `likelihood`, `complexity`, `evidence`, `testGap`, `adjustments`, `intents`, `types` and `flags`. A slice whose factor requests all failed holds `factors: "missing"` and keeps its diff request's `level`, `impact` and `likelihood`.
@@ -68,10 +78,12 @@ Each entry of `slices` holds `title`, `files`, `level`, `impact`, `likelihood`, 
 | `requests` | The number of diff requests sent. |
 | `filesAssessed`, `filesNotAssessed` | Files read and files beyond the request cap. |
 | `filesNotAssessedSample` | Up to 20 of the files not assessed. |
-| `filesExcluded` | Lockfiles, binaries and generated files left out. |
+| `filesExcluded` | Lockfiles, binaries and the other files the tool [leaves out](/plugins/dev-kit/risk-assessment/how-it-works/#step-1-read-the-diff). |
 | `truncatedHunks` | Hunks cut to fit a request. |
 | `factorsMissing` | Slices, or parts of a split slice, without factor answers. |
 | `partial` | Whether code went unread or a slice lacks factor answers. |
+
+Table 4. Coverage fields
 
 ## Change types and flags
 
@@ -84,6 +96,8 @@ The diff request asks about these change types. The ones in the table raise a fl
 | Changes a public contract | `api_contract` |
 | Changes CI, infrastructure or deployment | `ci_cd_pipeline`, `cloud_infrastructure`, `runtime_environment` |
 | Logic without tests | a slice with code that adds, changes or fixes behavior and has no test |
+
+Table 5. Risk flags and the change types that raise them
 
 The other change types describe the slice without raising a flag:
 

@@ -1,0 +1,144 @@
+---
+title: /dev-kit:pr-open
+description: Pushuje branch i otwiera pull request do przeczytania na jednym ekranie, w którym każde twierdzenie wynika z diffu, z etykietą mówiącą, jak ryzykowna jest zmiana.
+group: guides
+skill: pr-open
+sidebar:
+  label: pr-open
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Reviewer czyta wiele pull requestów dziennie, a długi opis pisany z pamięci zabiera mu czas.
+`pr-open` pisze krótki opis z myślą o reviewerze i opiera go tylko na dowodach: diffie, commitach, podlinkowanym tickecie, komendzie uruchomionej w sesji albo checku, o którym powiesz.
+Wypełnia szablon pull requesta z twojego repozytorium, więc wynik wygląda jak każdy inny pull request w tym repozytorium.
+Z kluczem TypeSafe mówi też reviewerowi, jak ryzykowna jest zmiana.
+
+## Kiedy po niego sięgnąć
+
+- Twoje commity są gotowe do review, a pr-proof nagrał już wideo, jeśli go używasz.
+- Pull request już istnieje, a jego opis albo etykieta ryzyka są nieaktualne.
+- Do opisu trafił zrzut ekranu albo wideo i etykieta ryzyka ma to uwzględnić.
+
+## Uruchom go
+
+<Strip cmd="/dev-kit:pr-open" />
+
+Dodaj `draft`, żeby otworzyć draft pull requesta, i nazwę brancha, żeby ustawić bazę:
+
+```
+/dev-kit:pr-open draft develop
+```
+
+Bez bazy `pr-open` celuje w domyślny branch.
+Gdy twój branch jest zbudowany na branchu innego otwartego pull requesta, celuje w tamten branch i o tym informuje.
+Uruchomienie go zezwala na push i liczy się jako zgoda na push dla tego brancha, której wymaga reguła repozytorium rezerwująca `git push` dla ludzi.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="pr-open"
+  input="Branch z commitami gotowymi do review"
+  steps={[
+    { name: 'Sprawdzenie', does: 'Zatrzymuje się na domyślnym branchu, szuka istniejącego pull requesta i wybiera bazę.' },
+    { name: 'Odczyt', does: 'Czyta diff, commity i podlinkowany ticket oraz zbiera dowody testów i kroki wdrożenia.' },
+    { name: 'Ocena ryzyka', does: 'Grupuje pliki w slice’y i prosi narzędzie pr_risk o ich ocenę.', leaves: '## Risk', optional: true },
+    { name: 'Wypełnienie', does: 'Znajduje szablon i wypełnia go krótkim opisem i tabelą Before / After.' },
+    { name: 'Otwarcie', does: 'Pushuje, otwiera pull request, przypisuje go do ciebie i dodaje etykietę ryzyka.', leaves: 'risk: <level>' },
+  ]}
+  next={['pr-shepherd']}
+/>
+
+`pr-open` szuka szablonu w katalogu głównym repozytorium, w `docs/`, `.github/`, w katalogu `PULL_REQUEST_TEMPLATE/` albo w repozytorium `.github` właściciela.
+Gdy go nie ma, używa krótkiego szablonu domyślnego.
+
+## Co zawiera opis
+
+`pr-open` zachowuje każdy nagłówek i każdy punkt checklisty z szablonu.
+Sekcja opisująca zmianę dostaje te części, każdą tylko wtedy, gdy ma treść:
+
+1. Od jednego do trzech prostych zdań: co się zmienia dla użytkownika, wywołującego albo operatora i dlaczego.
+2. Tabelę **Before / After**, z jednym wierszem na każdą rzecz, którą zauważy reviewer albo użytkownik.
+3. **Testing:** co sprawdzono i czego nie sprawdzono tam, gdzie reviewer by tego oczekiwał.
+4. **Reviewer notes:** tylko gdy coś wymaga uważnego spojrzenia, na przykład migracja albo logika związana z bezpieczeństwem.
+5. **Go deeper:** linki do speców i ADR-ów, które branch dodaje albo które wymieniają jego commity.
+
+Resztę szablonu wypełnia tak samo:
+
+- Pole ticketu dostaje klucz z nazwy brancha, commitów albo rozmowy, albo `None`. Nigdy nie dostaje zgadniętego klucza.
+- Sekcja zależności wymienia kroki wdrożenia znalezione w diffie, takie jak migracje, kod infrastruktury, zmienne środowiskowe i sekrety, zmiany uprawnień, feature flagi i pull requesty w innych repozytoriach. Gdy ich brak, dostaje `- None`.
+- Checkbox jest zaznaczony tylko wtedy, gdy jest dowód, że punkt jest prawdziwy.
+- Praca, którą baza już ma, na przykład commit zmergowany przez squash, zostaje pominięta.
+
+Opis mieści się na jednym ekranie, około 40 niepustych linii poza sekcją **Risk**.
+Długie logi trafiają do bloku `<details>`, a treść pozostaje poprawnym MDX dla repozytoriów, które przetwarzają ją narzędziami MDX.
+
+Tytuł stosuje Conventional Commits, gdy robi to historia brancha bazowego.
+Kończy się kluczem ticketu w nawiasie, gdy historia też tak robi.
+
+## Etykieta ryzyka
+
+Gdy skonfigurujesz klucz API TypeSafe, `pr-open` ocenia ryzyko brancha, zanim otworzy pull request.
+Grupuje zmienione pliki w slice’y, po jednym na cel zmiany, i przekazuje je narzędziu `pr_risk`.
+Przekazuje też powód zmiany i podlinkowany ticket, a także twoje zasady testowania, gdy opisują je `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` albo CI.
+
+Wynik trafia w dwa miejsca:
+
+- Sekcja **Risk** na końcu opisu, z poziomem całej zmiany, flagami ryzyka i tabelą z jednym wierszem na slice.
+- Etykieta z poziomem, na przykład `risk: high`. Gdy etykiety brakuje, `pr-open` tworzy ją raz i nigdy nie zmienia istniejącej.
+
+```markdown
+## Risk
+
+**high** · impact core · complexity interacting logic · confidence 0.61 · assessed by jev-1.14.0
+
+- Changes a public contract
+
+| Slice | Risk | Impact | Complexity | Evidence | What it does | Change types |
+|---|---|---|---|---|---|---|
+| Order export endpoint | **high** | core | interacting logic | api_dump missing | new_functionality | api_contract, data_access |
+| Export docs | **low** | none | edits | — | new_functionality | documentation |
+```
+
+`pr-open` cytuje poziom tak, jak zwraca go narzędzie, i nigdy go nie koryguje.
+Bez klucza nic nie jest wysyłane, pull request otwiera się bez sekcji **Risk** i bez etykiety, a raport podaje `Risk: not assessed`.
+
+:::tip[Dołącz dowody i uruchom go ponownie]
+Zrzut ekranu, wideo albo zapytanie i odpowiedź API w opisie mogą obniżyć ryzyko slice’a o niskiej stawce.
+Nowy pull request rzadko je ma, więc uruchom `pr-open` ponownie po ich dołączeniu, na przykład gdy pr-proof doda swoje wideo.
+:::
+
+[Etykieta ryzyka](/pl/plugins/dev-kit/risk-assessment/) wyjaśnia, czego każdy poziom wymaga od reviewera, co opuszcza twój komputer i jak ustawić klucz.
+
+## Gdy pull request już istnieje
+
+`pr-open` pushuje, odświeża ocenę ryzyka i podaje pull request w raporcie.
+Zamienia starą etykietę ryzyka na nową i podmienia sekcję **Risk**, żeby opis nigdy nie przeczył etykiecie.
+
+Resztę opisu przepisuje tylko na twoją prośbę.
+W przeciwnym razie raport proponuje to w jednej linii.
+Przepisanie edytuje obecny opis: twoje zdania, linie botów, dodatkowe sekcje takie jak `### Video walkthrough` i linia z linkiem trackera na końcu zostają bez zmian.
+
+## Co zostawia
+
+- Wypchnięty branch i otwarty pull request przypisany do ciebie.
+- Sekcję **Risk** i etykietę ryzyka, gdy klucz jest skonfigurowany.
+- Raport z URL-em pull requesta, jego bazą, użytym szablonem, sekcjami i checkboxami do uzupełnienia przez ciebie oraz poziomem i flagami ryzyka.
+
+Raport kończy się jednolinijkową sugestią, żeby uruchomić `/dev-kit:pr-shepherd`.
+`pr-open` nigdy nie uruchamia go sam.
+
+## Co może pójść nie tak
+
+- **Jesteś na domyślnym branchu albo na odłączonym HEAD.** `pr-open` zatrzymuje się i o tym informuje.
+- **Śledzone pliki mają niezacommitowane zmiany.** Pyta, czy otworzyć pull request ze stanu z commitów, czy zatrzymać się, żeby można było zrobić commit. Sam nigdy nie commituje. Nieśledzone pliki nie trafiają do pull requesta i są wymienione w raporcie.
+- **Baza poszła do przodu.** Raport mówi, o ile branch jest w tyle i czy merge dałby konflikt, pull request otwiera się w obecnym stanie, a synchronizacja jest proponowana jako osobny krok. Nigdy nie merguje, nie rebase'uje i nie robi force-pusha.
+- **Push zostaje odrzucony.** Raport podaje błąd i skill się zatrzymuje. Rozwiązanie rozjechanego brancha należy do ciebie.
+- **Przypisanie albo etykieta się nie udają.** Pull request zostaje otwarty, a raport mówi dlaczego.
+
+## Następne kroki
+
+- Uruchom [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/), żeby odpowiadał na komentarze z review i trzymał CI na zielono do akceptacji.
+- Przeczytaj, [jak liczony jest poziom ryzyka](/pl/plugins/dev-kit/risk-assessment/how-it-works/), gdy poziom cię zaskoczy.

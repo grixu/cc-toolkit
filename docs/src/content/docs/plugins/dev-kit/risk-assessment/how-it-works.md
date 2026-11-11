@@ -1,9 +1,13 @@
 ---
 title: How a risk level is computed
-description: How dev-kit's risk assessment turns a diff into a risk level.
+description: How pr-open's risk label turns a diff into a risk level, from slices through the questions sent to Jev to the scoring rules.
+group: concepts
+sidebar:
+  label: How a level is computed
+  order: 7
 ---
 
-This page follows one assessment from the diff to the level on the label. It's for readers who want to know why a pull request got its level, or who want to change how the assessment works. For what the result looks like on a pull request, see the [risk assessment overview](/plugins/dev-kit/risk-assessment/).
+This page follows one assessment from the diff to the level on the label. It's for readers who want to know why a pull request got its level, or who want to change how the assessment works. For what the result looks like on a pull request, see [The risk label](/plugins/dev-kit/risk-assessment/).
 
 In short, the change is split into slices, TypeSafe's Jev model answers fixed questions about each slice, and code turns the answers into a level. Jev never picks the level itself. Every rule that turns answers into a level is in code and is reported in the result.
 
@@ -24,6 +28,8 @@ flowchart TD
   IntentReq --> Report
   Score --> Report
 ```
+
+Figure 1. The requests of one assessment, from the diff to the report
 
 1. The tool reads the diff of the branch against its base.
 2. It groups the changed files into slices.
@@ -82,6 +88,8 @@ The factor request asks:
 | **Reach, reversibility, failure breadth and failure handling** | give the impact and complexity answers their context |
 | **Manual evidence** | would a video, screenshots or an API request and response show that the slice works? |
 
+Table 1. The factor questions
+
 The testability request is sent beside it, with the test files anywhere in the change. It asks whether an automated test could reasonably check the slice. A slice of tests alone isn't asked about manual evidence or testability.
 
 Jev's answers vary between two identical requests. So every factor and testability request is sent twice, and the two answers' probabilities are averaged before the median is read.
@@ -106,6 +114,8 @@ Impact is the factor request's impact answer:
 | core | break a core flow for most users, take a service down, or block other teams' builds or deployments |
 | severe | expose data or access, lose or corrupt stored data, or cause effects a revert can't undo, such as sent messages or payments |
 
+Table 2. The impact levels
+
 Likelihood comes from complexity. Logic that depends on something outside the diff is as hard to get right as several interacting paths inside it, so both count as non-trivial:
 
 | Complexity | Likelihood |
@@ -115,6 +125,8 @@ Likelihood comes from complexity. Logic that depends on something outside the di
 | interacting logic | non-trivial |
 | outside dependency | non-trivial |
 | ordering or shared state | intricate |
+
+Table 3. From complexity to likelihood
 
 ### The risk matrix
 
@@ -127,6 +139,8 @@ Impact and likelihood meet in this matrix:
 | feature | low | medium | medium | high |
 | core | medium | medium | high | high |
 | severe | medium | high | critical | critical |
+
+Table 4. The risk matrix
 
 A mechanical edit to something severe, such as a rename across access policies, is medium. Only a likely mistake with a severe outcome is critical.
 
@@ -170,4 +184,4 @@ Flags, change types and intents describe the change for the reviewer. They come 
 ## Next steps
 
 - [Confidence, partial results and failures](/plugins/dev-kit/risk-assessment/reliability/): what happens when part of the change can't be assessed or Jev doesn't answer.
-- [Options, inputs and output](/plugins/dev-kit/risk-assessment/reference/): every input and output field.
+- [Risk label reference](/plugins/dev-kit/risk-assessment/reference/): every option, input and output field.
