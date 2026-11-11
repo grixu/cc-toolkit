@@ -1,0 +1,29 @@
+---
+title: Build
+description: The spec cut into tasks and built in parallel worktrees.
+group: cycle
+sidebar:
+  label: 02 · Build
+  order: 2
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Why this stage
+
+A spec is too big to hand to one agent in one go: the context fills up and the late tasks get the least attention.
+Building cuts it into tasks small enough for one worktree each, orders them by what depends on what, and runs the independent ones side by side.
+
+## On the map
+
+<LifeMap stage="build" animate={false} />
+
+## What to run
+
+<StageCommands stage="build" />
+
+## What arrives and what leaves
+
+- **Arrives:** a spec.
+- **Leaves:** branches, one per pull request, each validated by the repository's own checks.

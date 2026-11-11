@@ -1,0 +1,29 @@
+---
+title: Maintain
+description: Outside the cycle. Upgrades checked before they break you, and an agent that learns your rules.
+group: outside
+sidebar:
+  order: 6
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Why it is outside the cycle
+
+Maintenance does not follow a merge.
+A dependency upgrade arrives when its maintainers release it, and a rule for the agent is worth writing the moment it repeats a mistake.
+So these plugins sit under the map, not on its line: run them whenever the need comes up.
+
+## On the map
+
+<LifeMap stage="maintain" animate={false} />
+
+## What to run
+
+<StageCommands stage="maintain" />
+
+## What arrives and what leaves
+
+- **Arrives:** a dependency and a target version, or a session in which you corrected the agent.
+- **Leaves:** a safe / safe with changes / breaking verdict with evidence, or a rule that stops the mistake next time.

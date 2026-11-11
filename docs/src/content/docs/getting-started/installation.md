@@ -1,6 +1,9 @@
 ---
 title: Installation
 description: Add the cc-toolkit marketplace to Claude Code, install a plugin, and keep it up to date.
+group: start
+sidebar:
+  order: 2
 ---
 
 This page shows how to add the cc-toolkit marketplace, install a plugin from it, and update it later. Claude Code must already be installed.
@@ -52,6 +55,5 @@ Run `/reload-plugins` in open sessions, or restart them, to load the new version
 
 ## Renamed and removed plugins
 
-- `yt` was renamed to [scribe](/plugins/scribe/).
 - `comment-review` and `quality-review` were replaced by [code-review](/plugins/code-review/) and are no longer published. Uninstall them if you still have them, or you'll see duplicate skill names.
-- [feature-delivery](/plugins/feature-delivery/) is deprecated. Use [fd3](/plugins/fd3/) instead.
+- `feature-delivery` is deprecated. Use [fd3](/plugins/fd3/) instead.

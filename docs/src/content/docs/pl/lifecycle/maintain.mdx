@@ -1,0 +1,29 @@
+---
+title: Utrzymanie
+description: Poza cyklem. Aktualizacje sprawdzone, zanim coś zepsują, i agent, który uczy się twoich zasad.
+group: outside
+sidebar:
+  order: 6
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Dlaczego jest poza cyklem
+
+Utrzymanie nie wynika z merge'a.
+Aktualizacja zależności przychodzi wtedy, gdy wyda ją jej autor, a regułę dla agenta warto napisać w chwili, gdy powtórzy błąd.
+Dlatego te pluginy leżą pod mapą, a nie na jej linii: uruchamiaj je wtedy, gdy pojawi się potrzeba.
+
+## Na mapie
+
+<LifeMap stage="maintain" animate={false} />
+
+## Co uruchomić
+
+<StageCommands stage="maintain" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** zależność i docelowa wersja albo sesja z twoimi poprawkami dla agenta.
+- **Wychodzi:** werdykt safe / safe with changes / breaking z dowodami albo reguła, która następnym razem zatrzyma błąd.

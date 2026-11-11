@@ -1,0 +1,29 @@
+---
+title: Budowa
+description: Spec pocięty na zadania i zbudowany równolegle w osobnych worktree.
+group: cycle
+sidebar:
+  label: 02 · Budowa
+  order: 2
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Po co ten etap
+
+Spec jest za duży, żeby dać go jednemu agentowi za jednym razem: kontekst się zapełnia, a ostatnie zadania dostają najmniej uwagi.
+Budowa tnie go na zadania na tyle małe, że każde mieści się w jednym worktree, układa je według zależności i uruchamia niezależne obok siebie.
+
+## Na mapie
+
+<LifeMap stage="build" animate={false} />
+
+## Co uruchomić
+
+<StageCommands stage="build" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** spec.
+- **Wychodzi:** branche, po jednym na pull request, każdy sprawdzony walidacją samego repozytorium.

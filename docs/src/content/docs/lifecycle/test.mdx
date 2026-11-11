@@ -1,0 +1,29 @@
+---
+title: Test
+description: The running app checked against the spec, with evidence for each verdict.
+group: cycle
+sidebar:
+  label: 03b · Test
+  order: 4
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Why this stage
+
+A review reads the code; it cannot tell you the app behaves.
+Testing runs the app and checks it against what the spec or the diff promised, and records the command behind every verdict, so "it works" is something a reviewer can re-run instead of take on trust.
+
+## On the map
+
+<LifeMap stage="test" animate={false} />
+
+## What to run
+
+<StageCommands stage="test" />
+
+## What arrives and what leaves
+
+- **Arrives:** a branch that builds, and its spec or its diff.
+- **Leaves:** a test report with a verdict and the evidence for each check.

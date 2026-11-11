@@ -1,0 +1,31 @@
+---
+title: Self-review
+description: Agent przegląda własny branch, zanim zobaczy go ktokolwiek inny.
+group: cycle
+sidebar:
+  label: 03a · Self-review
+  order: 3
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Po co ten etap
+
+Kod, który przechodzi CI, wciąż może być błędny, niejasny albo niebezpieczny, a reviewer to najdroższe miejsce, żeby się o tym dowiedzieć.
+Self-review to pierwszy z trzech kroków fazy Review i testy: agent czyta własną zmianę kilkoma soczewkami naraz i poprawia, co się da, zanim człowiek poświęci jej czas.
+
+## Na mapie
+
+<LifeMap stage="self" animate={false} />
+
+## Co uruchomić
+
+<StageCommands stage="self" />
+
+[`/fd3:implement`](/pl/plugins/fd3/implement/) uruchamia to review na każdym branchu, który buduje, więc po fd3 odpalasz je sam tylko dla zmian zrobionych poza fd3.
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** branch albo pull request.
+- **Wychodzi:** jeden raport z ocenami i poprawki, które zdecydujesz się zastosować.

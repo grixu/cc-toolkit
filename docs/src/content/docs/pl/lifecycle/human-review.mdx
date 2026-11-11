@@ -1,0 +1,32 @@
+---
+title: Review człowieka
+description: Dowód, że działa, pull request do przeczytania na jednym ekranie, zielony aż do akceptacji.
+group: cycle
+sidebar:
+  label: 03c · Review człowieka
+  order: 5
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Po co ten etap
+
+Na tym etapie zmiana jest już przejrzana i przetestowana; brakuje tylko akceptacji człowieka.
+Ten etap sprawia, że ta akceptacja jest tania: dowód, że zmiana działa, zanim reviewer ją otworzy, pull request do przeczytania na jednym ekranie z etykietą ryzyka, która mówi, jak uważnie patrzeć, i agent, który odpowiada na komentarze i trzyma CI na zielono do akceptacji.
+
+## Na mapie
+
+<LifeMap stage="human" animate={false} />
+
+## Co uruchomić
+
+<StageCommands stage="human" />
+
+Kolejność ma znaczenie: najpierw nagraj dowód z [pr-proof](/pl/plugins/pr-proof/), potem otwórz pull request z [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), żeby dowód do niego trafił, a na koniec oddaj go [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/).
+[`/dev-kit:ci-fix`](/pl/plugins/dev-kit/ci-fix/) rzadko uruchamiasz ręcznie: pr-shepherd woła go, gdy któryś check padnie.
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** przejrzany i przetestowany branch.
+- **Wychodzi:** zaakceptowany pull request z zielonymi checkami, gotowy do merge'a.

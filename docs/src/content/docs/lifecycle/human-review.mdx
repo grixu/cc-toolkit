@@ -1,0 +1,32 @@
+---
+title: Human review
+description: Proof it works, a pull request a person can read, kept green until approved.
+group: cycle
+sidebar:
+  label: 03c · Human review
+  order: 5
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Why this stage
+
+By now the change is reviewed and tested, and the one thing left is a person's approval.
+This stage makes that approval cheap: proof the change works before the reviewer opens it, a pull request they can read in one screen with a risk label that says how closely to look, and an agent that answers their comments and keeps CI green until they approve.
+
+## On the map
+
+<LifeMap stage="human" animate={false} />
+
+## What to run
+
+<StageCommands stage="human" />
+
+The order matters: record the proof with [pr-proof](/plugins/pr-proof/) first, open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) so the proof goes into it, then let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) drive it.
+You rarely run [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/) by hand: pr-shepherd calls it when a check fails.
+
+## What arrives and what leaves
+
+- **Arrives:** a reviewed and tested branch.
+- **Leaves:** an approved pull request with green checks, ready to merge.

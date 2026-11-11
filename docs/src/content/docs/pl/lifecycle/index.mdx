@@ -1,0 +1,32 @@
+---
+title: Cykl pracy
+description: Każda zmiana przechodzi przez te same etapy. Każdy etap ma swój plugin, a każdy plugin przekazuje następnemu plik.
+group: start
+sidebar:
+  label: Przegląd
+  order: 0
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Mapa
+
+<LifeMap animate={false} />
+
+## Etapy
+
+<StageCommands />
+
+Review i testy to jedna faza w trzech krokach.
+Najpierw agent przegląda własny branch, potem sprawdza, czy działająca aplikacja robi to, co mówi spec, i dopiero wtedy prosi człowieka o spojrzenie.
+Taka kolejność stawia tanie sprawdzenia przed drogim, czyli czasem reviewera.
+
+Utrzymanie jest poza cyklem.
+Aktualizacja zależności albo nauczenie agenta reguły nie wynika z merge'a; robisz to wtedy, kiedy jest potrzeba.
+
+## Jak pluginy przekazują pracę
+
+Żaden plugin nie czyta rozmowy innego pluginu.
+Każdy zostawia plik albo branch, a następny zaczyna od niego: spec, pliki zadań, branche, raport z review, raport z testów, pull request.
+Dlatego każdy etap możesz uruchomić osobno, z pluginami przed nim albo bez nich.

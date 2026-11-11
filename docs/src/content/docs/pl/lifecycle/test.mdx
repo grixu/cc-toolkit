@@ -1,0 +1,29 @@
+---
+title: Testy
+description: Działająca aplikacja sprawdzona ze specem, z dowodem za każdym werdyktem.
+group: cycle
+sidebar:
+  label: 03b · Testy
+  order: 4
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Po co ten etap
+
+Review czyta kod; nie powie ci, jak zachowuje się aplikacja.
+Testy uruchamiają aplikację, sprawdzają ją z tym, co obiecał spec albo diff, i zapisują komendę za każdym werdyktem, więc „działa” staje się czymś, co reviewer może powtórzyć, a nie przyjąć na wiarę.
+
+## Na mapie
+
+<LifeMap stage="test" animate={false} />
+
+## Co uruchomić
+
+<StageCommands stage="test" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** branch, który się buduje, i jego spec albo diff.
+- **Wychodzi:** raport z testów z werdyktem i dowodem dla każdego sprawdzenia.

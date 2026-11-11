@@ -1,0 +1,32 @@
+---
+title: The lifecycle
+description: Every change goes through the same stages. Each stage has a plugin, and each plugin hands the next one a file.
+group: start
+sidebar:
+  label: Overview
+  order: 0
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## The map
+
+<LifeMap animate={false} />
+
+## The stages
+
+<StageCommands />
+
+Review & test is one phase in three steps.
+The agent reviews its own branch first, then checks that the running app does what the spec says, and only then asks a person to look.
+That order puts the cheap checks before the expensive one: a reviewer's time.
+
+Maintain is outside the cycle.
+Upgrading a dependency or teaching the agent a rule does not follow a merge; it happens whenever it is needed.
+
+## How plugins hand over
+
+No plugin reads another plugin's conversation.
+Each one leaves a file or a branch, and the next one starts from it: a spec, task files, branches, a review report, a test report, a pull request.
+That is why you can run any stage on its own, with or without the plugins before it.

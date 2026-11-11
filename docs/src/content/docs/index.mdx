@@ -1,60 +1,11 @@
 ---
 title: cc-toolkit
-description: Claude Code plugins for planning, building, reviewing and shipping code.
+description: Claude Code plugins that take a change from an idea to a merged pull request.
 template: splash
-hero:
-  tagline: Claude Code plugins for planning, building, reviewing and shipping code. Install only the ones you need.
-  actions:
-    - text: Get started
-      link: /getting-started/introduction/
-      icon: right-arrow
-    - text: View on GitHub
-      link: https://github.com/grixu/cc-toolkit
-      icon: github
-      variant: minimal
+landing: true
+pagefind: false
 ---
 
-import { CardGrid, LinkCard } from '@astrojs/starlight/components'
+import Landing from '~/components/Landing.astro'
 
-Add the marketplace once, then install a plugin by name:
-
-```
-/plugin marketplace add grixu/cc-toolkit
-/plugin install code-review@cc-toolkit
-```
-
-## 01 · Plan & spec
-
-<CardGrid>
-  <LinkCard title="fd3" href="/plugins/fd3/" description="Turn a rough idea into a validated spec, split it into tasks, and implement them in parallel." />
-  <LinkCard title="codex-plan-improver" href="/plugins/codex-plan-improver/" description="Get a second opinion on Claude's plans from OpenAI Codex." />
-  <LinkCard title="researcher" href="/plugins/researcher/" description="Answer a research question with a report where every claim cites a source." />
-</CardGrid>
-
-## 02 · Build & ship
-
-<CardGrid>
-  <LinkCard title="dev-kit" href="/plugins/dev-kit/" description="Open pull requests with a risk label, fix failed CI runs, and check dependency upgrades." />
-  <LinkCard title="tester" href="/plugins/tester/" description="Check that a running app behaves as intended, with evidence for each check." />
-  <LinkCard title="pr-proof" href="/plugins/pr-proof/" description="Record a narrated video that shows a pull request's change works." />
-</CardGrid>
-
-## 03 · Review
-
-<CardGrid>
-  <LinkCard title="code-review" href="/plugins/code-review/" description="Review a change from several angles at once and merge the results into one report." />
-</CardGrid>
-
-## 04 · Agent hygiene
-
-<CardGrid>
-  <LinkCard title="hookify" href="/plugins/hookify/" description="Stop Claude from repeating a mistake with a rule that warns or blocks." />
-  <LinkCard title="session-learner" href="/plugins/session-learner/" description="Turn the corrections from a session into project rules." />
-</CardGrid>
-
-## 05 · Media & naming
-
-<CardGrid>
-  <LinkCard title="scribe" href="/plugins/scribe/" description="Transcribe YouTube videos and local media, then summarize them." />
-  <LinkCard title="namesmith" href="/plugins/namesmith/" description="Find a name for a business or product and check which domains are free." />
-</CardGrid>
+<Landing />

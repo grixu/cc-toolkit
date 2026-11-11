@@ -1,0 +1,33 @@
+---
+title: Planowanie
+description: Każda decyzja podjęta i sprawdzona z kodem, zanim powstanie choć linijka.
+group: cycle
+sidebar:
+  label: 01 · Planowanie
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Po co ten etap
+
+Daj agentowi prośbę w jednym zdaniu, a każdą lukę wypełni zgadywaniem.
+Te domysły wychodzą późno, jako poprawki w review.
+Planowanie przenosi decyzje na początek, gdzie zmiana jednej kosztuje zdanie, a nie branch.
+
+## Na mapie
+
+<LifeMap stage="plan" animate={false} />
+
+## Co uruchomić
+
+<StageCommands stage="plan" />
+
+Większości zmian wystarczy [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/).
+Po [researcher](/pl/plugins/researcher/) sięgnij, gdy decyzja zależy od faktu, na który kod nie odpowie, a po [codex-plan-improver](/pl/plugins/codex-plan-improver/), gdy chcesz, żeby drugi model podważył plan.
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** pomysł, issue albo szkic planu.
+- **Wychodzi:** spec, którego kluczowe twierdzenia sprawdzono z kodem, gotowy do pocięcia na zadania.

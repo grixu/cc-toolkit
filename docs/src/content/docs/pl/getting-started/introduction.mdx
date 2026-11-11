@@ -1,0 +1,44 @@
+---
+title: Wprowadzenie
+description: Czym jest cc-toolkit, jak pluginy przekazują sobie zmianę i od czego zacząć.
+group: start
+sidebar:
+  order: 1
+---
+
+import Strip from '~/components/Strip.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+cc-toolkit to marketplace pluginów do [Claude Code](https://code.claude.com/docs), agenta programistycznego od Anthropic.
+Każdy plugin obsługuje jeden etap dostarczania zmiany, od pierwszego pytania o nią do zaakceptowanego pull requesta, i każdy działa samodzielnie.
+
+## Pluginy i marketplace
+
+Plugin dodaje do Claude Code komendy, skille, agentów pomocniczych albo hooki.
+Marketplace to katalog, z którego je instalujesz: dodajesz go raz, a potem instalujesz tylko te pluginy, których potrzebujesz.
+
+<Strip cmd="/plugin marketplace add grixu/cc-toolkit" />
+
+Komendy i skille pluginu uruchamiasz jako `/<plugin>:<nazwa>`, na przykład `/fd3:build-spec`.
+Wiele skilli startuje też samo, gdy twoja prośba do nich pasuje, na przykład gdy wkleisz link do czerwonego przebiegu CI.
+
+## Cykl
+
+Pluginy prowadzą zmianę za każdym razem przez te same etapy.
+
+<StageCommands />
+
+Żaden plugin nie czyta rozmowy innego pluginu.
+Każdy zostawia plik albo branch, a następny zaczyna od niego: spec, pliki zadań, branche, raport z review, pull request.
+Dlatego możesz zacząć na dowolnym etapie i na dowolnym skończyć.
+
+## Od czego zacząć
+
+- Żeby zaplanować i zbudować funkcję, zacznij od [fd3](/pl/plugins/fd3/) i jego [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/).
+- Jeśli masz już branch, zacznij od [self-review](/pl/lifecycle/self-review/) z [code-review](/pl/plugins/code-review/).
+- Jeśli twój pull request jest otwarty i utknął na CI albo komentarzach, idź od razu do [dev-kit](/pl/plugins/dev-kit/).
+
+## Następne kroki
+
+- [Zainstaluj marketplace i pierwszy plugin](/pl/getting-started/installation/).
+- [Zobacz, gdzie w cyklu działa każdy plugin](/pl/lifecycle/).

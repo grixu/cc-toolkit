@@ -1,0 +1,33 @@
+---
+title: Plan
+description: Every decision made and checked against the code before any is written.
+group: cycle
+sidebar:
+  label: 01 · Plan
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+## Why this stage
+
+Give an agent a one-line request and it fills every gap with a guess.
+The guesses surface late, as rework in review.
+Planning moves those decisions to the start, where changing one costs a sentence instead of a branch.
+
+## On the map
+
+<LifeMap stage="plan" animate={false} />
+
+## What to run
+
+<StageCommands stage="plan" />
+
+Most changes need only [`/fd3:build-spec`](/plugins/fd3/build-spec/).
+Reach for [researcher](/plugins/researcher/) when a decision depends on a fact the code cannot answer, and for [codex-plan-improver](/plugins/codex-plan-improver/) when you want a second model to challenge a plan.
+
+## What arrives and what leaves
+
+- **Arrives:** an idea, an issue or a rough plan.
+- **Leaves:** a spec whose load-bearing claims were checked against the code, ready to be split into tasks.
