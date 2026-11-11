@@ -27,7 +27,7 @@ ci() {
   printf '%s' "$out"
 }
 
-KW="($(ci token)|$(ci secret)|$(ci password)|$(ci passwd)|$(ci api)[_-]?$(ci key)|$(ci authorization)|$(ci cookie))"
+KW="($(ci token)|$(ci secret)|$(ci password)|$(ci passwd)|$(ci api)[_-]?$(ci key)|$(ci authorization)|$(ci cookie)|$(ci session)|$(ci csrf)|$(ci xsrf)|$(ci refresh))"
 NAME="([A-Za-z0-9_.-]*${KW}[A-Za-z0-9_.-]*)"
 # A token must not continue an identifier, or "mask-runner-config-loader" would match sk-.
 B='(^|[^A-Za-z0-9_-])'
@@ -56,6 +56,7 @@ sed -E \
   -e "s/${B}(--$(ci password))[[:space:]]+${DQ}/\\1\\2 \"***\"/g" \
   -e "s/${B}(--$(ci password))[[:space:]]+'[^']*'/\\1\\2 '***'/g" \
   -e "s/${B}(--$(ci password))[[:space:]]+[^\"'[:space:]][^[:space:]]*/\\1\\2 ***/g" \
+  -e "s/${B}(-u|--$(ci user))([[:space:]]+|=)([^:\"'[:space:]]+):[^\"'[:space:]]+/\\1\\2\\3\\4:***/g" \
   -e "s/($(ci bearer))[[:space:]]+[^[:space:]\"',;]+/\\1 ***/g" \
   -e "s/${B}gh[pousr]_[A-Za-z0-9]+/\\1***/g" \
   -e "s/${B}github_pat_[A-Za-z0-9_]+/\\1***/g" \
