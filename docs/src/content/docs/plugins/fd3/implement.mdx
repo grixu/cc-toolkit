@@ -1,0 +1,143 @@
+---
+title: /fd3:implement
+description: Build a directory of tasks in parallel worktrees, check and review each branch, and get one proposal to push the branches and open the pull requests.
+group: guides
+skill: implement
+sidebar:
+  order: 5
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+`/fd3:implement` takes the `tasks/` directory that [`/fd3:split-to-tasks`](/plugins/fd3/split-to-tasks/) wrote and builds it.
+Agents implement the tasks in parallel, each in its own git worktree.
+Each branch then runs through your repository's checks and, if you want, a code review.
+You decide only what needs a human, and nothing is pushed until you say yes.
+
+## Before you run it
+
+- **Dynamic workflows.** They are available on paid plans and with Anthropic API access. On Pro, turn them on in the Dynamic workflows row of `/config`. They are off when `disableWorkflows` is `true` or `CLAUDE_CODE_DISABLE_WORKFLOWS=1` is set.
+- **The `gh` CLI**, logged in, to open the pull requests.
+- **Optional: the [code-review](/plugins/code-review/) plugin**, version 0.4.0 or later, for the review step.
+
+Depending on your permission mode, Claude Code asks you to approve each workflow launch.
+
+## How it runs
+
+<SkillFlow
+  skill="implement"
+  input="The path to a tasks directory"
+  steps={[
+    { name: 'Read and ask', does: 'Parses the task files, fetches each repository and asks one batch of questions.', leaves: 'implement-answers.md' },
+    { name: 'Build in waves', does: 'Every task whose dependencies are finished runs at once, then merges into its branch.', leaves: 'task/<slug>', loop: 'until no task is ready' },
+    { name: 'Check', does: 'Runs the build, typecheck, lint and test commands on each branch, with up to three fix rounds.' },
+    { name: 'Review', does: 'code-review reviews the branch, and the findings that have a fix are fixed.', leaves: 'cr-report.md', optional: true },
+    { name: 'Decide', does: 'You settle the items only a person can, and repair runs apply your answers.', leaves: 'HIL_ACTIONS.md' },
+    { name: 'Propose', does: 'One report and one batch: push, pull requests and cleanup.' },
+  ]}
+  next={['start-cr', 'tester']}
+/>
+
+## Run it
+
+Pass the tasks directory:
+
+<Strip cmd="/fd3:implement docs/specs/tasks" />
+
+A path that holds a `tasks/` subdirectory works too.
+`/fd3:implement-tasks` is the skill this command calls, and does the same thing.
+
+## Answer the first batch
+
+Before anything runs, Claude asks one batch of questions:
+
+- **Whether to review each branch.** `yes` applies every fixable finding and lists the rest in the final report without holding the branch. `gated` holds security fixes, findings in code the branch didn't touch, and anything left unfixed for you, and keeps the branch at `merged` until you settle them. `no` skips the review.
+- **Which base to start from**, when a checkout sits on a branch other than the default.
+- **Whether to merge a base up** when it is behind `origin`.
+- **Confirmations a task asks for**, such as consent to edit a protected path. A yes is written into that task file, so its agent doesn't stop on the ask.
+- **What to do with a stale `in-progress` task** from an interrupted run.
+- **Whether to commit the spec and the tasks directory** where they already live.
+
+The review costs roughly half of a run's spend, mostly a fixed cost per branch.
+A review bot on the pull request finds different things, so `no` is a real trade, not a free saving.
+When code-review isn't installed or is disabled, the question says so.
+
+The answers go to `implement-answers.md` next to the tasks directory.
+A later run over the same tasks reads it and asks only what changed.
+
+## What the run does
+
+The `implement-run` workflow runs in the background:
+
+1. **Waves.** Every task whose dependencies are finished runs at once, each by its own agent in its own worktree on a `task/<slug>` branch. At the end of a wave the task branches are merged into their target branch.
+2. **Checks, one branch at a time.** A sub-agent works out how the repository is checked. The full set runs once on the untouched base, so failures already there aren't blamed on your branch. A branch that changes how the repository is checked, such as a CI workflow or a test config, is examined again on its own tree. Each branch then runs the full set and gets up to three fix rounds, each checked against the branch's changes only. The full set runs again at the end only when a fix moved the branch.
+3. **Review.** After the checks pass, [code-review](/plugins/code-review/) reviews the branch with one agent per active lens, or one agent for all lenses when the change has at most three judged files. High and medium findings that have a fix are fixed, each security fix in its own commit. A second review then checks what the fixes changed, for correctness and security only.
+
+Findings the run won't fix unasked wait for you in the final report: spec findings, findings rated report-only, security fixes that change who may reach what, fixes that would change behavior the spec states, anything the fixer left unfixed, and what the second review finds.
+They don't stop the branch unless you chose `gated`.
+`nit` findings are reported and never applied.
+
+## Settle what needs a human
+
+When the run ends you get its report: task statuses, check and review results per branch, and the human-in-the-loop (HIL) items.
+A HIL item is anything only a person can settle: a manual step against a live system, a blocker an agent wouldn't guess past, a merge conflict.
+You decide them in one batch.
+
+Claude then carries on without asking:
+
+- It updates the task files and restarts the run for tasks your decisions unblocked.
+- It starts a repair run to apply a decision to a branch that already exists.
+- It diagnoses a check that failed and sends the diagnosis to a repair run, unless the fix would change behavior.
+
+A repair run applies your decision as you worded it, with one commit per decision, and doesn't read the spec.
+A branch stacked on a repaired branch is carried onto the new base and checked again.
+With review on, one agent checks that the repair does what you decided and nothing else, and only the correctness and security lenses read it.
+
+This repeats until every task is `done` or you stop.
+When the run waits days on people, Claude writes `HIL_ACTIONS.md` next to the tasks directory with the human steps in order.
+
+A mismatch between the spec and what was built is put to you as a HIL item.
+Its route is `/fd3:build-spec <spec path>`: no agent edits the spec.
+
+## Push and open the pull requests
+
+The run closes with one report and one batch of questions.
+The report lists, per branch, its base, the branches it merges after, its worktree path, its tasks and a proposed pull-request title.
+It also lists the decisions agents took for you, with how to revert each, and the open review findings by number.
+
+You choose:
+
+- whether to push the branches and open the pull requests,
+- which open findings go to a repair first,
+- whether to remove the worktrees and merged task branches now (recommended) or print the commands.
+
+Repairs can raise new findings, so the rounds are capped per branch.
+From a branch's second repair on, Claude recommends pushing it as it is.
+A third repair of one branch happens only when you name it.
+
+After your yes, Claude pushes and runs `gh pr create` for each branch, with its stack base as the pull request's base.
+When the repository's own rules reserve pushing to a person, Claude prints the commands instead.
+A task branch with commits its target lacks is never removed.
+
+## Resume a run
+
+Run `/fd3:implement` again on the same directory.
+Task statuses live in the task files, so `done` tasks are skipped and the rest pick up where they stopped.
+
+:::caution
+Keep the tasks directory until the run is over. When it isn't committed, it is the only copy of the run's state.
+:::
+
+## What can go wrong
+
+- **A branch reads "no verdict".** An agent died on a transient failure, and nothing was checked. Claude includes it in the next run; it never counts as a pass.
+- **A check fails after three fix rounds.** Claude diagnoses it by running the check in the branch's worktree and sends it to a repair. A failure the branch didn't cause is put to you instead.
+- **The review returns no verdict.** code-review is missing or older than 0.4.0. The branch stays `merged` and never becomes `done`.
+- **The review reads "not applicable".** Every changed file is one the review skips. That isn't a clean review.
+
+## Next steps
+
+- With review set to `no`, run [`/code-review:start-cr`](/plugins/code-review/start-cr/) on each branch before anyone else sees it.
+- Check the running app against the spec with [tester](/plugins/tester/).
+- Give each pull request a reviewer-first description and a risk label with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/).

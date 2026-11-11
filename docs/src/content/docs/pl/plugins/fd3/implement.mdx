@@ -1,0 +1,143 @@
+---
+title: /fd3:implement
+description: Zbuduj katalog zadań równolegle w worktree, sprawdź i przejrzyj każdy branch i dostań jedną propozycję pusha i otwarcia pull requestów.
+group: guides
+skill: implement
+sidebar:
+  order: 5
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+`/fd3:implement` bierze katalog `tasks/`, który zapisał [`/fd3:split-to-tasks`](/pl/plugins/fd3/split-to-tasks/), i go buduje.
+Agenty implementują zadania równolegle, każde we własnym worktree git.
+Każdy branch przechodzi potem przez checki twojego repozytorium i, jeśli chcesz, przez code review.
+Decydujesz tylko o tym, co wymaga człowieka, a nic nie trafia na remote bez twojej zgody.
+
+## Zanim uruchomisz
+
+- **Dynamiczne workflow.** Są dostępne w płatnych planach i z dostępem do Anthropic API. W planie Pro włącz je w wierszu Dynamic workflows w `/config`. Są wyłączone, gdy `disableWorkflows` ma wartość `true` albo ustawiono `CLAUDE_CODE_DISABLE_WORKFLOWS=1`.
+- **CLI `gh`**, zalogowane, do otwierania pull requestów.
+- **Opcjonalnie: plugin [code-review](/pl/plugins/code-review/)** w wersji 0.4.0 lub nowszej, do kroku review.
+
+Zależnie od trybu uprawnień Claude Code prosi o zgodę na każde uruchomienie workflow.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="implement"
+  input="Ścieżka do katalogu zadań"
+  steps={[
+    { name: 'Odczyt i pytania', does: 'Parsuje pliki zadań, robi fetch każdego repozytorium i zadaje jedną paczkę pytań.', leaves: 'implement-answers.md' },
+    { name: 'Budowa falami', does: 'Każde zadanie z ukończonymi zależnościami rusza naraz, potem trafia do swojego brancha.', leaves: 'task/<slug>', loop: 'aż żadne zadanie nie będzie gotowe' },
+    { name: 'Checki', does: 'Uruchamia build, typecheck, lint i testy na każdym branchu, z maksymalnie trzema rundami poprawek.' },
+    { name: 'Review', does: 'code-review przegląda branch, a znaleziska, które mają poprawkę, są poprawiane.', leaves: 'cr-report.md', optional: true },
+    { name: 'Decyzje', does: 'Rozstrzygasz to, co może tylko człowiek, a przebiegi naprawcze nakładają twoje odpowiedzi.', leaves: 'HIL_ACTIONS.md' },
+    { name: 'Propozycja', does: 'Jeden raport i jedna paczka: push, pull requesty i sprzątanie.' },
+  ]}
+  next={['start-cr', 'tester']}
+/>
+
+## Uruchom
+
+Podaj katalog zadań:
+
+<Strip cmd="/fd3:implement docs/specs/tasks" />
+
+Zadziała też ścieżka do katalogu, który zawiera podkatalog `tasks/`.
+`/fd3:implement-tasks` to skill, który ta komenda wywołuje, i robi to samo.
+
+## Odpowiedz na pierwszą paczkę pytań
+
+Zanim cokolwiek ruszy, Claude zadaje jedną paczkę pytań:
+
+- **Czy robić review każdego brancha.** `yes` nakłada każdą poprawkę, którą da się nałożyć, a resztę wymienia w raporcie końcowym, nie wstrzymując brancha. `gated` zostawia dla ciebie poprawki bezpieczeństwa, znaleziska w kodzie, którego branch nie dotknął, i wszystko, czego nie poprawiono, a branch zostaje w `merged`, dopóki ich nie rozstrzygniesz. `no` pomija review.
+- **Od jakiej bazy zacząć**, gdy checkout stoi na branchu innym niż domyślny.
+- **Czy podciągnąć bazę merge'em z `origin`**, gdy jest w tyle.
+- **Potwierdzenia, o które prosi zadanie**, na przykład zgoda na edycję chronionej ścieżki. Zgoda trafia do pliku zadania, więc jego agent nie zatrzymuje się na tej prośbie.
+- **Co zrobić z nieaktualnym zadaniem `in-progress`** po przerwanym przebiegu.
+- **Czy zrobić commit specu i katalogu zadań** tam, gdzie już leżą.
+
+Review to mniej więcej połowa kosztu przebiegu, głównie stały koszt na branch.
+Bot do review na pull requeście znajduje co innego, więc `no` to realny kompromis, a nie darmowa oszczędność.
+Gdy code-review nie jest zainstalowany albo jest wyłączony, pytanie to mówi.
+
+Odpowiedzi trafiają do `implement-answers.md` obok katalogu zadań.
+Kolejny przebieg na tych samych zadaniach czyta ten plik i pyta tylko o to, co się zmieniło.
+
+## Co robi przebieg
+
+Workflow `implement-run` działa w tle:
+
+1. **Fale.** Każde zadanie z ukończonymi zależnościami rusza naraz, każde z własnym agentem we własnym worktree, na branchu `task/<slug>`. Na końcu fali branche zadań są mergowane do brancha docelowego.
+2. **Checki, po jednym branchu.** Sub-agent ustala, jak repozytorium jest sprawdzane. Pełny zestaw rusza raz na nietkniętej bazie, żeby błędy, które już tam były, nie obciążały twojego brancha. Branch, który zmienia sposób sprawdzania repozytorium, na przykład workflow CI albo konfigurację testów, jest badany ponownie na własnym drzewie. Każdy branch przechodzi potem pełny zestaw i dostaje do trzech rund poprawek, każdą sprawdzaną tylko na zmianach brancha. Pełny zestaw rusza na końcu ponownie tylko wtedy, gdy poprawka zmieniła branch.
+3. **Review.** Gdy checki przejdą, [code-review](/pl/plugins/code-review/) przegląda branch, jeden agent na aktywną soczewkę, albo jeden agent dla wszystkich soczewek, gdy zmiana ma najwyżej trzy oceniane pliki. Znaleziska high i medium, które mają poprawkę, są poprawiane, każda poprawka bezpieczeństwa w osobnym commicie. Drugie review sprawdza potem zmiany z poprawek, tylko pod kątem poprawności i bezpieczeństwa.
+
+Znaleziska, których przebieg nie poprawia bez pytania, czekają na ciebie w raporcie końcowym: znaleziska dotyczące specu, znaleziska oznaczone jako report-only, poprawki bezpieczeństwa zmieniające to, kto do czego ma dostęp, poprawki zmieniające zachowanie opisane w specu, wszystko, czego nie poprawiono, i to, co znajdzie drugie review.
+Nie zatrzymują brancha, chyba że wybrano `gated`.
+Znaleziska `nit` są raportowane i nigdy nie są nakładane.
+
+## Rozstrzygnij to, co wymaga człowieka
+
+Gdy przebieg się kończy, dostajesz jego raport: statusy zadań, wyniki checków i review per branch oraz elementy HIL (human in the loop).
+Element HIL to wszystko, co może rozstrzygnąć tylko człowiek: ręczny krok na żywym systemie, blokada, której agent nie chciał zgadywać, konflikt merge'a.
+Decydujesz o nich w jednej paczce.
+
+Potem Claude działa dalej bez pytania:
+
+- Aktualizuje pliki zadań i ponownie uruchamia przebieg dla zadań, które twoje decyzje odblokowały.
+- Uruchamia przebieg naprawczy, żeby nałożyć decyzję na branch, który już istnieje.
+- Diagnozuje check, który nie przeszedł, i przekazuje diagnozę przebiegowi naprawczemu, chyba że poprawka zmieniłaby zachowanie.
+
+Przebieg naprawczy nakłada twoją decyzję dokładnie tak, jak ją sformułujesz, z jednym commitem na decyzję, i nie czyta specu.
+Branch stackowany na naprawionym branchu zostaje przeniesiony na nową bazę i sprawdzony ponownie.
+Przy włączonym review jeden agent sprawdza, czy naprawa robi to, co postanowiono, i nic więcej, a czytają ją tylko soczewki poprawności i bezpieczeństwa.
+
+Tak jest, dopóki każde zadanie nie ma statusu `done` albo dopóki nie przerwiesz.
+Gdy przebieg czeka dniami na ludzi, Claude zapisuje `HIL_ACTIONS.md` obok katalogu zadań, z krokami dla ludzi w kolejności.
+
+Rozbieżność między specem a tym, co zbudowano, trafia do ciebie jako element HIL.
+Jego droga to `/fd3:build-spec <ścieżka do specu>`: żaden agent nie edytuje specu.
+
+## Push i otwarcie pull requestów
+
+Przebieg kończy się jednym raportem i jedną paczką pytań.
+Raport wymienia dla każdego brancha jego bazę, branche, po których ma być mergowany, ścieżkę worktree, zadania i proponowany tytuł pull requesta.
+Wymienia też decyzje, które agenty podjęły za ciebie, z instrukcją wycofania każdej, oraz ponumerowane otwarte znaleziska z review.
+
+Wybierasz:
+
+- czy zrobić push branchy i otworzyć pull requesty,
+- które otwarte znaleziska najpierw trafiają do naprawy,
+- czy usunąć worktree i zmergowane branche zadań od razu (zalecane), czy wypisać komendy.
+
+Naprawy mogą przynieść nowe znaleziska, więc liczba rund na branch jest ograniczona.
+Od drugiej naprawy brancha Claude zaleca push w obecnym stanie.
+Trzecia naprawa jednego brancha odbywa się tylko na twoje wyraźne polecenie.
+
+Po twojej zgodzie Claude robi push i uruchamia `gh pr create` dla każdego brancha, z jego bazą stacka jako bazą pull requesta.
+Gdy zasady repozytorium zastrzegają push dla człowieka, Claude wypisuje komendy zamiast je uruchamiać.
+Branch zadania z commitami, których brakuje w branchu docelowym, nigdy nie jest usuwany.
+
+## Wznów przebieg
+
+Uruchom `/fd3:implement` ponownie na tym samym katalogu.
+Statusy zadań są w plikach zadań, więc zadania `done` są pomijane, a pozostałe ruszają od miejsca, w którym stanęły.
+
+:::caution
+Zachowaj katalog zadań do końca przebiegu. Gdy nie ma go w commicie, to jedyna kopia stanu przebiegu.
+:::
+
+## Co może pójść nie tak
+
+- **Branch ma „no verdict”.** Agent padł na przejściowym błędzie i nic nie zostało sprawdzone. Claude dołącza branch do kolejnego przebiegu; nigdy nie liczy się to jako sukces.
+- **Check nie przechodzi po trzech rundach poprawek.** Claude diagnozuje go, uruchamiając check w worktree brancha, i przekazuje do naprawy. Błąd, którego branch nie spowodował, trafia zamiast tego do ciebie.
+- **Review nie zwraca werdyktu.** Brakuje code-review albo jest starszy niż 0.4.0. Branch zostaje w `merged` i nigdy nie dostaje `done`.
+- **Review ma „not applicable”.** Każdy zmieniony plik należy do tych, które review pomija. To nie jest czyste review.
+
+## Następne kroki
+
+- Przy review ustawionym na `no` uruchom [`/code-review:start-cr`](/pl/plugins/code-review/start-cr/) na każdym branchu, zanim zobaczy go ktokolwiek inny.
+- Sprawdź działającą aplikację ze specem przez [tester](/pl/plugins/tester/).
+- Daj każdemu pull requestowi opis pisany pod reviewera i etykietę ryzyka przez [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).

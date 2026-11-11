@@ -1,0 +1,137 @@
+---
+title: /fd3:build-spec
+description: Get interviewed about an idea until nothing is left to decide, then get a spec whose claims were checked against your code.
+group: guides
+skill: build-spec
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Reach for `/fd3:build-spec` when an idea, a ticket or a draft plan should become work.
+It runs three stages: an interview in your conversation, then the writing and the validation, each in its own context.
+The interview needs you; the other two ask only what they can't look up.
+
+## How it runs
+
+<SkillFlow
+  skill="build-spec"
+  input="An idea in a sentence, a path to a plan, or a path to an existing spec"
+  steps={[
+    { name: 'Ground', does: 'Checks what the idea claims against the code, specs, decision records and lockfile.', leaves: 'research/INDEX.md' },
+    { name: 'Interview', does: 'Asks numbered questions in rounds, each with options and a recommendation.', leaves: 'notes/question-ledger.md', loop: 'until nothing is left to decide' },
+    { name: 'Confirm', does: 'You confirm the closing summary of every decision.', leaves: 'notes.md' },
+    { name: 'Write', does: 'A sub-agent writes the spec from the confirmed notes.', leaves: '<spec>.md' },
+    { name: 'Validate', does: 'Runs twelve checks, fixes what a fact settles and appends a verdict.', leaves: 'Verdict: ready', loop: 'up to 3 passes' },
+  ]}
+  next={['split-to-tasks']}
+/>
+
+## Run it
+
+Pass your idea as a sentence:
+
+<Strip cmd="/fd3:build-spec our retry strategy for the payment webhook" />
+
+The argument decides where the run starts:
+
+| You pass | What happens |
+|---|---|
+| An idea or a topic in a sentence | The full run: interview, write, validate. |
+| A path to a draft plan | The same, with the plan as the topic. The interview treats it as a claim to check, not as settled ground. |
+| A path to an existing spec | The interview and the writing are skipped, and the spec is validated again. |
+
+Table 1. What `/fd3:build-spec` does with its argument
+
+What you said in the conversation before the command counts too.
+A constraint you stated or an option you ruled out goes into the session's research as a fact to test in round 1.
+
+## Answer the interview
+
+Before the first question, Claude fetches the repository, reads its existing specs and decision records, and looks up the facts your idea relies on.
+For every library it names, Claude compares the version your lockfile resolves with the current release.
+Round 1 opens with every place the idea turned out to be wrong, one line each, with what that changes.
+
+Each round asks every question that can be answered now without guessing at another answer.
+Each question has two or three options with their costs, and one marked as recommended:
+
+```
+3. Where should retry state live? Today the worker keeps it in memory, so a pod restart
+   loses the count and the job starts its retries from zero.
+   - a) Redis, alongside the job queue — state survives restarts and is visible across
+     workers; the cost is one more thing Redis has to stay up for. Recommended: the
+     queue already runs on Redis, so this adds no new dependency to operate.
+   - b) A column on the jobs table — no new infrastructure, but every retry becomes a
+     write to what is already the busiest table in the system.
+```
+
+Listing 1. One question from an interview round
+
+Answer by label, for example `3 a, 4.2 b`.
+A question you skip comes back in the next round under the same number, marked as carried over.
+Skipping never counts as agreeing.
+Sub-agents look up the facts; the decisions stay yours.
+
+When a fact arrives late and contradicts a question you already answered, Claude asks that question again and says that your earlier answer no longer stands.
+
+The interview ends when nothing is left to decide and you confirm the closing summary.
+The summary lists every settled decision, then the decisions Claude took that you never answered directly, so you can overrule them before anything is written.
+
+## Writing and validation
+
+After you confirm, a sub-agent writes the spec from the confirmed notes, in the place your repository keeps specs or design docs.
+The spec follows a twelve-section template: the decisions, the target architecture with a code for each piece to build (`DB-1`, `API-2`), the work per repository, the rollout phases, the verification, and an evidence record.
+Anything the interview couldn't settle goes in as a declared gap with an owner.
+
+A second sub-agent then checks the spec and its evidence against the code.
+It corrects what a fact settles, such as a stale `file:line` reference.
+It asks you only for facts it can't look up and for choices that would change the scope.
+Then it appends a dated evidence block that opens with the verdict:
+
+```
+Verdict: ready — claims: 31 verified / 2 deferred / 0 blocked — spec 412 lines at this verdict
+Checked at: origin @ 4f2a9c1
+```
+
+Listing 2. The verdict line at the end of a spec
+
+Validation runs again while the verdict is `not ready` and another pass could close what remains, or while the last pass edited the spec.
+It stops after three passes.
+The questions these two stages ask arrive as multiple-choice prompts, up to four at a time, with the recommended option first.
+[How fd3 works](/plugins/fd3/how-it-works/#inside-build-spec) explains the twelve checks and what a verdict counts.
+
+## What it leaves
+
+- The spec, at the path the run told you. The verdict lines accumulate at its end.
+- `evidence/<section>.md` next to the spec, for evidence too long for a table cell.
+- A `<spec>.session/` folder next to the spec with the confirmed notes (`notes.md`), the question ledger and the research reports. A `.gitignore` inside keeps it out of git. Delete it once you no longer need the provenance.
+
+Only the spec and `evidence/` show up in `git status`.
+
+## Change a spec after its verdict
+
+Run `/fd3:build-spec` again with the path to the spec:
+
+<Strip cmd="/fd3:build-spec docs/specs/webhook-retries.md" />
+
+Bring the change you want made.
+When you don't say why you came back, Claude asks, and recommends re-checking the spec as it stands against the code as it is now.
+A change you bring is recorded in the session folder's `notes.md` as a decision, written into the spec, and validated.
+This is the only route by which a spec changes after its verdict.
+
+:::caution
+Don't edit or move a spec by hand after its verdict. The verdict line records the spec's line count, and `split-to-tasks` stops on a spec whose count no longer matches.
+:::
+
+## What can go wrong
+
+- **You end the session before confirming the summary.** Nothing is written. fd3 says what is still open.
+- **The third pass still says `not ready`.** The loop stops and names what is still open. Settle those points and run `/fd3:build-spec <spec>` again.
+- **A question needs access only you have.** It goes at the head of the round, naming the questions it blocks, until you run the commands it lists.
+
+## Next steps
+
+- When the verdict reads `ready`, [split the spec into tasks](/plugins/fd3/split-to-tasks/).
+- To argue an idea through without writing a spec, use [`/fd3:grill-topic`](/plugins/fd3/grill-topic/).

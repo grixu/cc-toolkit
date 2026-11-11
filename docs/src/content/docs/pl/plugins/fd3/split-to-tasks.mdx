@@ -1,0 +1,111 @@
+---
+title: /fd3:split-to-tasks
+description: Potnij gotowy spec na pliki zadań, jeden na worktree, zgrupowane na branche, z których każdy staje się jednym pull requestem.
+group: guides
+skill: split-to-tasks
+sidebar:
+  order: 4
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Spec jest za duży, żeby oddać go jednemu agentowi naraz.
+`/fd3:split-to-tasks` tnie go na zadania na tyle małe, że każde mieści się w jednym worktree, porządkuje je według zależności i grupuje na branche, które staną się pull requestami.
+Sięgnij po niego, gdy [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/) wystawił specowi werdykt `ready`.
+
+Spec jest tu tylko do odczytu.
+Cięcie nigdy go nie edytuje, nawet gdy na to pozwolisz.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="split-to-tasks"
+  input="Ścieżka do specu, którego ostatni werdykt to ready"
+  steps={[
+    { name: 'Sprawdzenie werdyktu', does: 'Czyta ostatnią linię werdyktu i porównuje zapisaną liczbę linii z plikiem.' },
+    { name: 'Spis', does: 'Robi fetch każdego repozytorium i spisuje elementy pracy, kody elementów, fazy i chronione ścieżki.' },
+    { name: 'Cięcie i kolejność', does: 'Tnie zadania wzdłuż repozytoriów, właścicieli, faz i chronionych ścieżek, potem rysuje zależności.' },
+    { name: 'Grupowanie', does: 'Grupuje zadania na branche według bramek rolloutu i zapisuje bazę każdego brancha.' },
+    { name: 'Pytania', does: 'Zadaje ci kilka decyzji w jednej paczce.' },
+    { name: 'Zapis', does: 'Zapisuje pliki zadań i raport, potem sprawdza je na dysku.', leaves: 'tasks/NNNN-<slug>.md' },
+  ]}
+  next={['implement']}
+/>
+
+## Uruchom
+
+Podaj ścieżkę do specu:
+
+<Strip cmd="/fd3:split-to-tasks docs/specs/webhook-retries.md" />
+
+Cięcie najpierw czyta ostatnią linię werdyktu specu.
+Idzie dalej tylko wtedy, gdy linia brzmi `ready`, nie liczy żadnego zablokowanego twierdzenia i podaje bieżącą liczbę linii specu.
+W przeciwnym razie mówi, co zawiera rejestr, i pyta, czy najpierw walidować (zalecane), czy ciąć mimo to.
+Wybór walidacji kończy cięcie bez zapisania czegokolwiek i wskazuje drogę: `/fd3:build-spec <ścieżka do specu>`.
+
+Sprawdza też, czy na `origin` zmienił się plik, który spec cytuje, od czasu walidacji.
+Gdy zmiana łamie to, co spec mówi o tym pliku, cięcie się zatrzymuje i wskazuje tę samą drogę.
+
+## Jak praca jest cięta
+
+Zadanie to najmniejszy kawałek pracy, który da się sprawdzić osobno i który zostawia repozytorium gotowe do merge'a.
+Jedno zadanie to jeden worktree.
+Zadanie nigdy nie obejmuje:
+
+- dwóch repozytoriów,
+- dwóch zespołów-właścicieli w monorepo,
+- dwóch faz rolloutu.
+
+Nieodwracalna zmiana, na przykład migracja bazy danych, dostaje własne zadanie, ustawione tak wcześnie, jak pozwalają zależności.
+Ścieżka wymagająca zewnętrznej akceptacji, na przykład przypisana w `CODEOWNERS` innemu zespołowi, dostaje własne zadanie i własny branch, żeby jedna akceptacja nie wstrzymywała całości.
+
+Zależność między zadaniami istnieje tylko wtedy, gdy jednego zadania nie da się napisać bez wyniku drugiego: wspólny plik, symbol definiowany w jednym i używany w drugim, migracja zapisywana w jednym i czytana w drugim.
+Zadania bez zależności między sobą są budowane jednocześnie.
+
+Krok wykonywany ręcznie na żywym systemie, na przykład akcja w konsoli, staje się zadaniem operacyjnym bez repozytorium i bez pull requesta.
+Zadeklarowana luka w specu też się nim staje, z informacją, co musi wrócić i od kogo.
+
+## Jak zadania stają się branchami
+
+Domyślnie zadania jednego repozytorium dzielą branch w ramach jednostki wdrożenia: ciągu faz rolloutu aż do bramki włącznie, takiej jak deploy albo akceptacja.
+Każdy branch staje się jednym pull requestem.
+
+Branch stackuje się na wcześniejszym branchu tylko wtedy, gdy jego zadania budują na pracy z tamtego brancha.
+W przeciwnym razie startuje z domyślnego brancha.
+Baza trafia do pola `branch-base` każdego zadania, a kolejność, w jakiej pull requesty muszą być mergowane, do `merge-after`.
+
+Nazwy branchy idą za konwencją widoczną w istniejących branchach repozytorium.
+Gdy branch przekroczyłby 80 zmienionych plików albo 2000 zmienionych linii, cięcie ostrzega w raporcie i sugeruje przejrzenie tabeli rolloutu w specu.
+Nie dzieli jednak brancha samodzielnie.
+
+## O co pyta
+
+Cięcie pyta tylko o to, czego nie rozstrzyga spec ani repozytorium, w jednej paczce, na przykład:
+
+- czy zastąpić istniejący katalog `tasks/`, czy pisać obok,
+- czy użyć brancha, na którym stoi checkout, gdy niesie on pracę dla tego specu,
+- o zgodę na ścieżkę, której edycja według repozytorium wymaga twojej akceptacji.
+
+Zastąpienie katalogu `tasks/` z wcześniejszego cięcia niszczy statusy i notatki, które zapisał w nim przebieg implementacji, dlatego to pytanie pada zawsze.
+
+## Co zostawia
+
+- `tasks/NNNN-<slug>.md` obok specu, chyba że wskażesz inny katalog. Numer to kolejność czytania.
+- `<spec>.split.md` obok specu: tabelę zadań, branche z kolejnością i stackiem per repozytorium, sprawdzenie pokrycia i to, co zostało do zrobienia po twojej stronie.
+
+Plik zadania zawiera frontmatter (repozytorium, branch, baza, faza, zależności, status) i odnośniki do specu po kodzie elementu i sekcji.
+Niczego ze specu nie kopiuje, więc spec zostaje jedynym źródłem prawdy.
+Jego pole `status` to stan przebiegu implementacji: zachowaj katalog do końca przebiegu.
+[Dokumentacja referencyjna](/pl/plugins/fd3/reference/#pola-pliku-zadania) wymienia wszystkie pola.
+
+## Co może pójść nie tak
+
+- **Werdyktu brak, jest nieaktualny albo nie brzmi `ready`.** Uruchom `/fd3:build-spec <ścieżka do specu>` i potnij ponownie.
+- **Spec ma defekt**, na przykład element, którego nie buduje żaden element pracy. Cięcie zatrzymuje się, zanim cokolwiek zapisze, i to zgłasza. Napraw to przez `/fd3:build-spec`.
+- **Brak zgody na ścieżkę.** Praca, która jej wymaga, zatrzymuje się i trafia do raportu, zamiast czekać.
+
+## Następne kroki
+
+- [Zaimplementuj zadania](/pl/plugins/fd3/implement/) przez `/fd3:implement <katalog zadań>`.
+- [Jak działa fd3](/pl/plugins/fd3/how-it-works/#statusy-zadań) objaśnia statusy zadań, które zapisuje przebieg.

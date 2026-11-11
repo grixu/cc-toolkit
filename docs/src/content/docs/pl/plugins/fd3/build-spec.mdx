@@ -1,0 +1,137 @@
+---
+title: /fd3:build-spec
+description: Przejdź wywiad o pomyśle, aż nie zostanie nic do decyzji, i dostań spec, którego twierdzenia sprawdzono z twoim kodem.
+group: guides
+skill: build-spec
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Sięgnij po `/fd3:build-spec`, gdy pomysł, ticket albo szkic planu ma się stać pracą.
+Przebieg ma trzy etapy: wywiad w twojej rozmowie, a potem pisanie i walidację, każde we własnym kontekście.
+Wywiad wymaga ciebie, dwa pozostałe etapy pytają tylko o to, czego nie da się sprawdzić.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="build-spec"
+  input="Pomysł w jednym zdaniu, ścieżka do planu albo ścieżka do istniejącego specu"
+  steps={[
+    { name: 'Rozpoznanie', does: 'Sprawdza, co pomysł zakłada, z kodem, specami, rejestrami decyzji i lockfile’em.', leaves: 'research/INDEX.md' },
+    { name: 'Wywiad', does: 'Zadaje ponumerowane pytania w rundach, każde z opcjami i rekomendacją.', leaves: 'notes/question-ledger.md', loop: 'aż nie zostanie nic do decyzji' },
+    { name: 'Potwierdzenie', does: 'Potwierdzasz podsumowanie wszystkich decyzji.', leaves: 'notes.md' },
+    { name: 'Pisanie', does: 'Sub-agent pisze spec z potwierdzonych notatek.', leaves: '<spec>.md' },
+    { name: 'Walidacja', does: 'Uruchamia dwanaście sprawdzeń, poprawia to, co rozstrzyga fakt, i dopisuje werdykt.', leaves: 'Verdict: ready', loop: 'do 3 przebiegów' },
+  ]}
+  next={['split-to-tasks']}
+/>
+
+## Uruchom
+
+Podaj pomysł w jednym zdaniu:
+
+<Strip cmd="/fd3:build-spec our retry strategy for the payment webhook" />
+
+Argument decyduje, od czego zaczyna się przebieg:
+
+| Podajesz | Co się dzieje |
+|---|---|
+| Pomysł albo temat w jednym zdaniu | Pełny przebieg: wywiad, pisanie, walidacja. |
+| Ścieżkę do szkicu planu | To samo, z planem jako tematem. Wywiad traktuje go jako twierdzenie do sprawdzenia, a nie ustalony grunt. |
+| Ścieżkę do istniejącego specu | Wywiad i pisanie są pomijane, a spec jest walidowany ponownie. |
+
+Tabela 1. Co `/fd3:build-spec` robi z argumentem
+
+Liczy się też to, co padło w rozmowie przed komendą.
+Ograniczenie, które podajesz, albo opcja, którą odrzucasz, trafia do researchu sesji jako fakt do sprawdzenia w rundzie 1.
+
+## Odpowiadaj w wywiadzie
+
+Przed pierwszym pytaniem Claude robi fetch repozytorium, czyta jego istniejące specy i rejestry decyzji i sprawdza fakty, na których opiera się pomysł.
+Dla każdej wymienionej biblioteki porównuje wersję z lockfile'a z bieżącym wydaniem.
+Runda 1 zaczyna się od każdego miejsca, w którym pomysł okazał się błędny, po jednej linii, z tym, co to zmienia.
+
+Każda runda zadaje wszystkie pytania, na które da się odpowiedzieć teraz, bez zgadywania innej odpowiedzi.
+Każde pytanie ma dwie albo trzy opcje z ich kosztami i jedną oznaczoną jako zalecana:
+
+```
+3. Where should retry state live? Today the worker keeps it in memory, so a pod restart
+   loses the count and the job starts its retries from zero.
+   - a) Redis, alongside the job queue — state survives restarts and is visible across
+     workers; the cost is one more thing Redis has to stay up for. Recommended: the
+     queue already runs on Redis, so this adds no new dependency to operate.
+   - b) A column on the jobs table — no new infrastructure, but every retry becomes a
+     write to what is already the busiest table in the system.
+```
+
+Listing 1. Jedno pytanie z rundy wywiadu
+
+Odpowiadaj etykietami, na przykład `3 a, 4.2 b`.
+Pominięte pytanie wraca w następnej rundzie pod tym samym numerem, oznaczone jako przeniesione.
+Pominięcie nigdy nie liczy się jako zgoda.
+Fakty sprawdzają sub-agenty, decyzje zostają przy tobie.
+
+Gdy fakt przychodzi późno i przeczy pytaniu, na które już odpowiedziano, Claude zadaje to pytanie ponownie i mówi, że wcześniejsza odpowiedź przestaje obowiązywać.
+
+Wywiad kończy się, gdy nie zostało nic do decyzji i potwierdzasz podsumowanie końcowe.
+Podsumowanie wymienia każdą ustaloną decyzję, a potem decyzje, które Claude podjął bez twojej bezpośredniej odpowiedzi, żeby można je było odrzucić, zanim cokolwiek powstanie.
+
+## Pisanie i walidacja
+
+Po potwierdzeniu sub-agent pisze spec z potwierdzonych notatek, w miejscu, gdzie repozytorium trzyma specy albo dokumenty projektowe.
+Spec trzyma się szablonu z dwunastoma sekcjami: decyzje, docelowa architektura z kodem dla każdego elementu do zbudowania (`DB-1`, `API-2`), praca per repozytorium, fazy rolloutu, weryfikacja i rejestr dowodów.
+Wszystko, czego wywiad nie rozstrzygnął, trafia do specu jako zadeklarowana luka z właścicielem.
+
+Drugi sub-agent sprawdza potem spec i jego dowody z kodem.
+Poprawia to, co rozstrzyga fakt, na przykład nieaktualne odwołanie `file:line`.
+Pyta cię tylko o fakty, których nie da się sprawdzić, i o wybory, które zmieniłyby zakres.
+Na koniec dopisuje datowany blok dowodów, który zaczyna się od werdyktu:
+
+```
+Verdict: ready — claims: 31 verified / 2 deferred / 0 blocked — spec 412 lines at this verdict
+Checked at: origin @ 4f2a9c1
+```
+
+Listing 2. Linia werdyktu na końcu specu
+
+Walidacja rusza ponownie, dopóki werdykt brzmi `not ready`, a kolejny przebieg mógłby domknąć resztę, albo dopóki ostatni przebieg edytował spec.
+Kończy się po trzech przebiegach.
+Pytania z tych dwóch etapów przychodzą jako pytania wielokrotnego wyboru, do czterech naraz, z zalecaną opcją na pierwszym miejscu.
+[Jak działa fd3](/pl/plugins/fd3/how-it-works/#wewnątrz-build-spec) objaśnia dwanaście sprawdzeń i to, co liczy werdykt.
+
+## Co zostawia
+
+- Spec, pod ścieżką, którą podaje przebieg. Linie werdyktów zbierają się na jego końcu.
+- `evidence/<section>.md` obok specu, dla dowodów za długich na komórkę tabeli.
+- Katalog `<spec>.session/` obok specu z potwierdzonymi notatkami (`notes.md`), rejestrem pytań i raportami z researchu. `.gitignore` w środku trzyma go poza gitem. Usuń go, gdy pochodzenie decyzji przestanie być potrzebne.
+
+W `git status` widać tylko spec i `evidence/`.
+
+## Zmień spec po werdykcie
+
+Uruchom `/fd3:build-spec` ponownie ze ścieżką do specu:
+
+<Strip cmd="/fd3:build-spec docs/specs/webhook-retries.md" />
+
+Podaj zmianę, którą chcesz wprowadzić.
+Gdy nie powiesz, po co wracasz, Claude o to zapyta i zaleci sprawdzenie specu w obecnej postaci z obecnym kodem.
+Podana zmiana trafia jako decyzja do `notes.md` w katalogu sesji, jest wpisywana do specu i walidowana.
+To jedyna droga, którą spec zmienia się po werdykcie.
+
+:::caution
+Nie edytuj ani nie przenoś specu ręcznie po werdykcie. Linia werdyktu zapisuje liczbę linii specu, a `split-to-tasks` zatrzymuje się na specu, którego liczba linii się nie zgadza.
+:::
+
+## Co może pójść nie tak
+
+- **Sesja kończy się przed potwierdzeniem podsumowania.** Nic nie powstaje. fd3 mówi, co zostało otwarte.
+- **Trzeci przebieg nadal daje `not ready`.** Pętla się zatrzymuje i wymienia, co zostało otwarte. Rozstrzygnij te punkty i uruchom `/fd3:build-spec <spec>` ponownie.
+- **Pytanie wymaga dostępu, który masz tylko ty.** Trafia na początek rundy, z numerami pytań, które blokuje, dopóki nie uruchomisz podanych komend.
+
+## Następne kroki
+
+- Gdy werdykt brzmi `ready`, [potnij spec na zadania](/pl/plugins/fd3/split-to-tasks/).
+- Żeby przegadać pomysł bez pisania specu, użyj [`/fd3:grill-topic`](/pl/plugins/fd3/grill-topic/).

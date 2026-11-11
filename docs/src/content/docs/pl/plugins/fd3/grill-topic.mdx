@@ -1,0 +1,68 @@
+---
+title: /fd3:grill-topic
+description: Przejdź wywiad o temacie, aż jego drzewo decyzji będzie ustalone, bez pisania specu.
+group: guides
+skill: grill-topic
+sidebar:
+  order: 3
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+`/fd3:grill-topic` to sam wywiad z [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/).
+Sięgnij po niego, gdy chcesz sprawdzić pomysł, plan albo decyzję, a żadna dostawa nie jest jeszcze planowana.
+Kończy się podsumowaniem i plikiem notatek, a nic nie zamienia tego pliku w spec.
+Jeśli potrzebujesz specu, uruchom zamiast tego `/fd3:build-spec`: zaczyna od tego samego wywiadu.
+
+Claude może też uruchomić ten skill sam, gdy poprosisz, żeby cię przemaglował w jakiejś sprawie.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="grill-topic"
+  input="Temat, plan, decyzja albo pomysł, albo ścieżka do dokumentu"
+  steps={[
+    { name: 'Rozpoznanie', does: 'Robi fetch repozytorium, czyta jego specy i rejestry decyzji i sprawdza twierdzenia.', leaves: 'research/prior-conversation.md' },
+    { name: 'Sprawdzanie faktów', does: 'Sub-agenty szukają faktów, od których zależą pytania.', leaves: 'research/INDEX.md' },
+    { name: 'Pytania', does: 'Jedna runda ponumerowanych pytań, każde z opcjami i rekomendacją.', leaves: 'notes/question-ledger.md', loop: 'aż nie zostanie nic do decyzji' },
+    { name: 'Zamknięcie', does: 'Potwierdzasz podsumowanie, a ono trafia do pliku notatek.' },
+  ]}
+/>
+
+## Uruchom
+
+Podaj temat w jednym zdaniu albo jako ścieżkę:
+
+<Strip cmd="/fd3:grill-topic should the webhook worker retry on its own or hand retries to the queue" />
+
+Bez tematu Claude pyta, co ma przemaglować, i czeka.
+
+## Jak wygląda runda
+
+Runda 1 zaczyna się od każdego miejsca, w którym temat okazał się błędny wobec kodu, po jednej linii, z decyzją, której to dotyczy.
+Gdy temat nie mówi, co jest w zakresie, a co poza nim, runda 1 pyta o to najpierw.
+
+Każda runda zadaje wszystkie decyzje, których warunki wstępne są już ustalone.
+Pytania są ponumerowane, każda opcja ma literę i koszt, a jedna jest oznaczona jako zalecana, z uzasadnieniem.
+Runda kończy się etykietami, których oczekuje, na przykład `Answer as: 5, 6, 7.1, 7.2`.
+Od rundy 2 każda runda zaczyna się od numerów, na które jeszcze nie odpowiedziano.
+
+Pytanie, które czeka na sprawdzenie faktu, wychodzi dopiero, gdy fakt jest znany.
+Pytania, dla których nikt niczego nie sprawdza, wychodzą od razu.
+
+## Co zostawia
+
+Wszystkie pliki zostają w katalogu roboczym sesji, nigdy w twoim repozytorium:
+
+- `research/prior-conversation.md` z tym, co ustalono w rozmowie przed komendą.
+- `research/` z jednym raportem na każde sprawdzenie faktu i `research/INDEX.md` z krótką odpowiedzią i źródłami dla każdego.
+- `notes/question-ledger.md`, jeden wiersz na pytanie z wybraną opcją.
+- Po potwierdzeniu plik notatek końcowych: ratyfikowane decyzje, decyzje podjęte przez Claude'a, zaakceptowane ryzyka i pliki z researchu.
+
+Katalog roboczy to ten, który Claude Code daje sesji, albo katalog tymczasowy tworzony przez fd3, gdy sesja go nie ma.
+
+## Następne kroki
+
+- Gdy pomysł ma stać się pracą, uruchom [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/). Przeprowadza ten wywiad, a potem pisze i sprawdza spec.
+- Raport ze źródłami na jedno otwarte pytanie da ci [researcher](/pl/plugins/researcher/).
