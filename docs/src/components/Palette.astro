@@ -54,9 +54,12 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 
   const markWords = (text: string, words: string[]) => {
-    let html = esc(text)
-    for (const w of words) html = html.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>')
-    return html
+    if (!words.length) return esc(text)
+    const anyWord = new RegExp(`(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
+    return text
+      .split(anyWord)
+      .map((part, i) => (i % 2 ? `<mark>${esc(part)}</mark>` : esc(part)))
+      .join('')
   }
 
   const loadPagefind = () =>
@@ -101,7 +104,7 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
     const mine = ++seq
     if (!words.length) {
       rows = popular.map((h) => quick.find((r) => r.href === h)).filter((r): r is Row & { hay: string } => !!r)
-      if (rows.length < popular.length) rows = quick.slice(0, MAX_QUICK_ROWS)
+      if (!rows.length) rows = quick.slice(0, MAX_QUICK_ROWS)
       return render(words)
     }
     const local = quick.filter((r) => words.every((w) => r.hay.toLowerCase().includes(w))).slice(0, MAX_QUICK_ROWS)
