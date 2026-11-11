@@ -47,6 +47,8 @@ sed -E \
   -e "s/(${PEM_BEGIN}).*(${PEM_END})/\\1***\\2/g" \
   -e "/${PEM_OPEN}/,/${PEM_END}/{" \
   -e "/${PEM_BEGIN}|${PEM_END}/!s/.*/***/" \
+  -e "/${PEM_END}/!s/(${PEM_BEGIN}).+\$/\\1***/" \
+  -e "/${PEM_BEGIN}/!s/^.+(${PEM_END})/***\\1/" \
   -e "}" \
   -e "s|([A-Za-z][A-Za-z0-9+.-]*://)[^/[:space:]@\"']+@|\\1***@|g" \
   -e "s/${B}xox[abp]-[A-Za-z0-9-]+/\\1***/g" \
