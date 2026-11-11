@@ -1,0 +1,60 @@
+---
+title: tester
+description: Checks that the running app does what the spec or the diff promised, through its API, its UI and simulated dependency failures, and records the command behind every verdict.
+group: start
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Unit tests pass, but nobody has checked that the change works in the running app.
+tester does that check against your local or staging stack.
+It works out what to test, runs each check as a real command, and reports what passed and failed with the recorded output behind every verdict.
+
+It keeps no configuration and saves no test plan.
+Each run discovers the environment from scratch and leaves a report.
+
+## Where it works
+
+<LifeMap focus="tester" animate={false} />
+
+tester works in [03b Test](/lifecycle/test/), after the agent has reviewed its own branch and before a person reviews the pull request.
+
+## When to reach for it
+
+- A branch builds and its review is clean, but you haven't seen the feature work end to end.
+- A spec lists acceptance criteria, and you want each one checked against the live app.
+- The change touches error handling, such as what happens when a dependency is down or returns a 5xx.
+
+tester reports problems; it doesn't fix your code.
+
+## What you need
+
+- A local or staging stack. tester stops if a base URL looks like production.
+- `curl` and `git`.
+- [agent-browser](https://github.com/vercel-labs/agent-browser), for UI checks and for logging test users in. Without it, UI checks are `BLOCKED`, with the reason stated.
+- Docker, for fault checks that pause a dependency's container or put a WireMock proxy in front of it.
+
+The [reference](/plugins/tester/reference/#requirements) lists the optional database access too.
+
+## Run it
+
+You start tester yourself; Claude doesn't run it on its own.
+Give it a spec, a named area of the app, or nothing, and it checks what changed since the main branch:
+
+<Strip cmd="/tester:run" />
+
+[`/tester:run`](/plugins/tester/run/) walks through a run step by step, including the one round of questions it asks before anything runs.
+
+## What you get
+
+A report in the conversation: a result table per suite, every `FAIL` tied to its acceptance criterion and classified, the behaviors it could not check, and a ledger of every change it made to your environment and how it reverted it.
+
+## Next steps
+
+- [Run your first check](/plugins/tester/run/) and read the report.
+- [How tester works](/plugins/tester/how-it-works/): the agents, the brief and the safety rules.
+- When the checks pass, hand the change to a person: [pr-proof](/plugins/pr-proof/) records a walkthrough for the reviewer, in [03c Human review](/lifecycle/human-review/).

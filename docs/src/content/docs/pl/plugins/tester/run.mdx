@@ -1,0 +1,107 @@
+---
+title: /tester:run
+description: Sprawdź spec, nazwany obszar albo swój git diff na działającej aplikacji i dostań raport z dowodem za każdym werdyktem.
+group: guides
+skill: tester
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Sięgnij po `/tester:run`, gdy branch się buduje i chcesz wiedzieć, czy uruchomiona aplikacja robi to, co obiecano.
+Komenda wyprowadza sprawdzenia, zadaje jedną rundę pytań, uruchamia sprawdzenia w twoim środowisku i przygotowuje raport.
+
+## Zanim zaczniesz
+
+- Uruchom lokalne albo stagingowe środowisko albo pozwól, żeby tester je uruchomił po twojej zgodzie.
+- Zainstaluj [agent-browser](https://github.com/vercel-labs/agent-browser), jeśli zmiana ma interfejs.
+- Włącz Dockera, jeśli zmiana obsługuje awarię zależności.
+
+Pełna lista jest w [dokumentacji referencyjnej](/pl/plugins/tester/reference/#wymagania).
+
+## Wybierz, co sprawdzić
+
+`/tester:run` przyjmuje jeden argument, czyli zakres:
+
+- **Ścieżkę albo URL specu.** tester sprawdza kryteria akceptacji specu i jego sekcje o błędach i przypadkach brzegowych.
+
+  <Strip cmd="/tester:run docs/specs/team-invites.md" />
+
+- **Nazwany obszar aplikacji.** tester znajduje kod, który za nim stoi, i spec, jeśli jakiś leży obok.
+
+  <Strip cmd='/tester:run "the org-role assignment endpoints"' />
+
+- **Nic.** tester czyta `git diff` względem merge base z głównym branchem i sprawdza dotknięte endpointy, ścieżki w interfejsie i obsługę błędów.
+
+  <Strip cmd="/tester:run" />
+
+Spec z [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/) nadaje się tu dobrze: tester wyprowadza sprawdzenia z kryteriów akceptacji specu, a potem poszerza je o kod wokół zmiany.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="tester"
+  input="Spec, nazwany obszar albo nic (git diff)"
+  steps={[
+    { name: 'Zakres', does: 'Czyta kryteria akceptacji, kod za obszarem albo diff.' },
+    { name: 'Rozpoznanie', does: 'Znajduje porty, trasy, użytkowników testowych i zależności oraz zapisuje stan początkowy.', leaves: 'BRIEF.md' },
+    { name: 'Sprawdzenia', does: 'Zamienia każde oczekiwane zachowanie na sprawdzenia API, interfejsu i awarii, pogrupowane w zestawy.' },
+    { name: 'Pytania', does: 'Pyta raz, które zestawy uruchomić i jakie zmiany wolno mu zrobić.' },
+    { name: 'Uruchomienie', does: 'Uruchamia zestawy API i interfejsu równolegle, potem sam zestaw awarii.', leaves: 'TEARDOWN.md' },
+    { name: 'Raport', does: 'Klasyfikuje każdy błąd i raportuje werdykty, luki i rejestr zmian.' },
+  ]}
+  next={['pr-proof']}
+/>
+
+Rozpoznanie odbywa się przy każdym uruchomieniu, bo porty, trasy i użytkownicy testowi to właśnie to, co w zapisanej konfiguracji najszybciej się dezaktualizuje.
+Jeśli czegoś nie da się ustalić, na przykład dostępu do bazy albo działającego logowania, brief zapisuje tę lukę, a sprawdzenia, których dotyczy, dostają `BLOCKED` zamiast fałszywego `FAIL`.
+
+## Odpowiedz na pytania
+
+Zanim cokolwiek się uruchomi, tester pokazuje wyprowadzone zestawy i zadaje jedną rundę pytań:
+
+1. **Które zestawy uruchomić.** Wybierz wszystkie albo część.
+2. **Czy sprawdzenia mogą robić prawdziwe zmiany przez aplikację.** Odpowiedz `all`, `selected` albo `none`. Domyślnie `none`: tester uruchamia wtedy tylko odczyty i próby, które aplikacja powinna odrzucić.
+3. **Jakie zmiany w środowisku są dozwolone.** Na przykład uruchomienie usługi, dodanie wierszy do bazy, zastosowanie migracji albo restart aplikacji z innymi ustawieniami.
+4. **Co możesz dostarczyć, żeby odblokować zablokowane sprawdzenie.** Na przykład dane logowania, CLI na `PATH` albo jednorazowy adres e-mail do rejestracji lub zaproszenia.
+
+Ostatnie pytanie decyduje o tym, jaką część zakresu tester w ogóle osiągnie.
+Sprawdzenie, które odblokuje jedna twoja czynność, to pytanie, a nie werdykt; dostaje `BLOCKED` dopiero wtedy, gdy odmówisz.
+
+:::caution[Rejestracja i zaproszenia]
+tester nigdy nie wymyśla adresu e-mail dla ścieżki nowego użytkownika, bo ta ścieżka może wysłać prawdziwą wiadomość i zarejestrować konto u twojego dostawcy tożsamości.
+Bez jednorazowego adresu od ciebie te sprawdzenia dostają `BLOCKED`.
+:::
+
+## Przeczytaj raport
+
+Raport pojawia się w rozmowie i zaczyna od wyniku:
+
+- tabela wyników dla każdego zestawu, z każdym sprawdzeniem oznaczonym jako `PASS`, `FAIL`, `BLOCKED`, `ERROR` albo `SKIP`;
+- każdy `FAIL` powiązany z kryterium akceptacji, z oczekiwanym i faktycznym wynikiem, sklasyfikowany jako błąd implementacji, błąd testu albo błąd specu;
+- przyczyna błędu oznaczona jako `PLAUSIBLE` albo `CONFIRMED`, przy czym `CONFIRMED` dopiero po eksperymencie, który rozróżnia hipotezy;
+- anomalie zauważone po drodze, każda w osobnym wierszu `observation` oznaczonym jako niezbadany;
+- zachowania, których nie dało się sprawdzić, każde z powodem;
+- rejestr zmian (teardown ledger): każda zmiana w twoim środowisku, sposób jej cofnięcia i to, co zostało celowo, razem z powodem;
+- jeden proponowany następny krok.
+
+Gdy tester nie jest pewien, jak sklasyfikować błąd, uznaje go za błąd implementacji.
+[Dokumentacja referencyjna](/pl/plugins/tester/reference/#werdykty) definiuje każdy werdykt i każdą klasę błędu.
+
+Po raporcie tester się zatrzymuje.
+Nie poprawia kodu i nie uruchamia kolejnej komendy.
+
+## Co może pójść nie tak
+
+- **Bazowy URL wygląda na produkcję.** tester przerywa pracę. Wskaż lokalne albo stagingowe środowisko.
+- **Nie ma zakresu.** Bez argumentu i przy pustym diffie tester prosi o wskazanie zakresu.
+- **Użytkownik testowy nie może się zalogować albo sesja wygasa w trakcie.** Sprawdzenia tego użytkownika dostają `BLOCKED`; pozostałe działają dalej.
+- **Sprawdzenie zmieniłoby więcej, niż pozwolono.** tester zgłasza różnicę i wstrzymuje zmiany tego rodzaju, dopóki znowu się nie zgodzisz.
+
+## Następne kroki
+
+- Popraw błędy z raportu i uruchom `/tester:run` ponownie z tym samym zakresem.
+- Gdy sprawdzenia przejdą, pokaż zmianę reviewerowi z [pr-proof](/pl/plugins/pr-proof/) na etapie [03c Review człowieka](/pl/lifecycle/human-review/).
+- [Jak działa tester](/pl/plugins/tester/how-it-works/) wyjaśnia brief, agentów i sposoby wywoływania awarii.
