@@ -498,7 +498,7 @@ Incorrect: an illustration in full colour from an image model. It ignores the th
 
 The site is in English and Polish, and every page exists in both.
 
-- **Paths:** English is the root locale (`/plugins/fd3/`), Polish lives under `/pl/` with the same slugs (`/pl/plugins/fd3/`). Slugs, anchors in links, commands, file names and code stay in English in both, so a link or a command copied from one version works in the other.
+- **Paths:** English is the root locale (`/plugins/fd3/`), Polish lives under `/pl/` with the same slugs (`/pl/plugins/fd3/`). Slugs, commands, file names and code stay in English in both, so a link or a command copied from one version works in the other. Heading anchors follow the heading text, so they differ between the two (`#requirements`, `#wymagania`): link to a section by its anchor in the page's own language.
 - **Switch:** the header's language link (`PL` / `EN`, Plex Mono Small `--muted`, `hreflang` and `lang` set) goes to the same page in the other language.
 - **Missing translation:** a page with no Polish file falls back to English with a note callout at the top, "This page isn't translated yet". This is a stopgap, not a state to ship: a page and its translation land in the same change.
 - **Polish copy:** written for Polish readers, not translated word for word. Address the reader with "ty"; keep established English terms (pull request, branch, worktree, spec, review, commit) and decline them where Polish does; dates in the Polish format through `toLocaleDateString('pl-PL')`.

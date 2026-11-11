@@ -23,7 +23,8 @@ This stage makes that approval cheap: proof the change works before the reviewer
 
 <StageCommands stage="human" />
 
-The order matters: record the proof with [pr-proof](/plugins/pr-proof/) first, open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) so the proof goes into it, then let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) drive it.
+Prove the change with [pr-proof](/plugins/pr-proof/), open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/), then let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) drive it.
+pr-proof attaches the video to a pull request that already exists; when there is none yet, it leaves the video in `~/Downloads/` for you to attach.
 You rarely run [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/) by hand: pr-shepherd calls it when a check fails.
 
 ## What arrives and what leaves

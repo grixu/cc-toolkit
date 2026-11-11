@@ -23,7 +23,8 @@ Ten etap sprawia, że ta akceptacja jest tania: dowód, że zmiana działa, zani
 
 <StageCommands stage="human" />
 
-Kolejność ma znaczenie: najpierw nagraj dowód z [pr-proof](/pl/plugins/pr-proof/), potem otwórz pull request z [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), żeby dowód do niego trafił, a na koniec oddaj go [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/).
+Udowodnij zmianę z [pr-proof](/pl/plugins/pr-proof/), otwórz pull request z [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), a potem oddaj go [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/).
+pr-proof dołącza wideo do pull requesta, który już istnieje; jeśli go jeszcze nie ma, zostawia wideo w `~/Downloads/` do ręcznego dołączenia.
 [`/dev-kit:ci-fix`](/pl/plugins/dev-kit/ci-fix/) rzadko uruchamiasz ręcznie: pr-shepherd woła go, gdy któryś check padnie.
 
 ## Co wchodzi, a co wychodzi
