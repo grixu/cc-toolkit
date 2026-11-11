@@ -13,6 +13,7 @@ on:
       - 'scripts/eval-summary.mjs'
       - 'scripts/evals-isolation.json'
       - 'package.json'
+      - 'pnpm-lock.yaml'
 
 jobs:
   # Model-free: the workflow scripts against scripted agents and the eval checks against saved run
@@ -41,13 +42,12 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      # No cache: the store cache keys on a committed pnpm-lock.yaml, and this repo
-      # gitignores the lockfile — setup-node fails outright when it cannot find one.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
       # The eval configs require the Claude Code sandbox (failIfUnavailable), which needs bubblewrap
       # and socat on Linux; Ubuntu 24.04's AppArmor policy otherwise stops bwrap from creating the
       # user namespace it isolates with.
