@@ -1,0 +1,148 @@
+---
+title: /pr-proof:walkthrough-video
+description: Records a narrated video of your change working in the running app, reports what went wrong on camera, and attaches the video to the pull request once you accept it.
+group: guides
+skill: pr-proof
+sidebar:
+  label: walkthrough-video
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+A walkthrough is one Playwright test that tells the change's story scene by scene against your running app.
+playwright-recast renders it into an MP4 with burned-in captions.
+The pacing is calm on purpose: the viewer sees what is clicked, reads what is typed, and has time to read every caption.
+
+## When to reach for it
+
+- A branch is reviewed and tested, and the reviewer should see it work before reading the code.
+- A product owner or another non-developer asked to see a feature end to end.
+- You fixed what an earlier video showed, and need a new take.
+
+## Run it
+
+<Strip cmd="/pr-proof:walkthrough-video" />
+
+The command takes two optional arguments: the feature, a spec path or a pull request, then who watches and what they asked to see.
+Record the change in pull request 42:
+
+```
+/pr-proof:walkthrough-video 42
+```
+
+Record a whole feature from its spec, for a named viewer:
+
+```
+/pr-proof:walkthrough-video docs/specs/invites.md "product owner, the invite flow end to end"
+```
+
+With a pull request or branch, the video shows only what that change made different for a user.
+Without one, it shows the whole feature.
+When you name no viewer, it records for a product reviewer.
+
+## How it runs
+
+<SkillFlow
+  skill="pr-proof"
+  input="A pull request, branch, spec or feature, and who watches"
+  steps={[
+    { name: 'Requirements', does: 'Lists every user-visible change with acceptance criteria; a tool check picks versions in parallel.', leaves: 'requirements.md' },
+    { name: 'Confirmation', does: 'Asks you to confirm each derived requirement, UX concern and open decision.', optional: true },
+    { name: 'Scenario', does: 'Writes the scenes; a separate subagent checks them against the code and fixes them.', leaves: 'scenario.md' },
+    { name: 'Recording', does: 'Records the test, renders the MP4 and reviews its own frames.', leaves: 'out/<slug>.mp4', loop: 'up to two retakes while a frame check fails' },
+    { name: 'Report', does: 'Gives you the video, then the defects and bugs seen on camera.' },
+    { name: 'Delivery', does: 'Once you accept, copies the video and attaches it to the pull request.', leaves: '~/Downloads/<ticket-or-PR>-<slug>.mp4' },
+  ]}
+  next={['pr-open']}
+/>
+
+The requirements, tool check, scenario, validation and recording each run in a fresh subagent working from its own brief.
+They hand over through files only, so the subagent that checks the scenario is not the one that wrote it.
+The skill itself asks you the questions, writes the report and delivers the video.
+
+The requirements come from the spec, the pull request and its ticket, the e2e tests, and the built code.
+Each one is marked `stated` when a document says it, or `derived` when it was read off the tests or code.
+
+The recording step starts the local stack when nobody else has, records the test and renders the video.
+Then it checks its own frames: readable captions of at most 60 characters, enough time to read each one, no action cut mid-way, and no error toast or blank screen.
+When a check still fails after the third take, it stops and reports which check failed and why.
+
+## What it asks you
+
+When there is anything to confirm, the skill puts it to you before it writes the scenario, and waits for a yes or corrections:
+
+- every `derived` requirement, since a scenario built on a guess costs a whole recording;
+- UX concerns: behavior that matches the code but would puzzle a user;
+- open decisions, such as real or staged data, or a negative case shown live or only in a caption.
+
+Your answers go into `requirements.md` under `## User decisions`, and every later step treats them as binding.
+A resumed run never asks them again.
+
+## How the video reaches the pull request
+
+Once you accept the video, the skill delivers it in two places:
+
+1. It copies the MP4 to `~/Downloads/<ticket-or-PR>-<slug>.mp4`. A retake becomes `-v2`, `-v3`, and an earlier version is deleted only when you say so.
+2. When the change has a pull request, it adds a `### Video walkthrough` section at the end of the description, without asking again. The section holds the video and, when the take staged any data, one line saying what was staged.
+
+The upload goes through `gh pr edit --attach`, which turns the file into a `https://github.com/user-attachments/assets/…` link.
+The skill then reads the description back: the section must hold that link, and the rest must match the description it saved before the edit.
+
+:::note[No pull request yet]
+The skill attaches the video only to a pull request that already exists.
+Without one, the video stays in `~/Downloads/`, and `/dev-kit:pr-open` does not pick it up from there.
+Open the pull request first, then record, or attach the file to the description yourself.
+:::
+
+Once the video is in the description, [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) works with it.
+Run it again on that pull request: the risk assessment reads the description and counts the uploaded video as evidence that the change works.
+That evidence can lower the risk level.
+When pr-open rewrites the description, it keeps the `### Video walkthrough` section, because it keeps every section it did not write.
+
+## Retake after fixes
+
+When the video shows a defect, fixing it is your call.
+After you fix it, ask for a retake and name each fix.
+The skill resumes the recording subagent, which still holds the test and the stack.
+It records a new take and saves a cropped frame for each fix to `out/frames/fixes/`, so you can see the fix on camera.
+
+## What it leaves
+
+Work files live in `~/.cache/walkthrough-video/<repo>/<feature-slug>/`, so a run survives a reboot.
+When that folder exists, a new run resumes after the last finished step.
+
+| File or folder | What it holds |
+|---|---|
+| `requirements.md` | Requirements and acceptance criteria, each with its source, and your decisions |
+| `recast-notes.md` | The playwright-recast and `@playwright/test` versions to run, and the machine check |
+| `scenario.md` | The scenes, each mapped to a requirement, with the validation log |
+| `recast/` | The Playwright test, its setup, teardown and staged data |
+| `teardown-ledger.jsonl` | Changes the take made that teardown still has to revert |
+| `stack.log` | The output of the local stack, when the skill started it |
+| `out/` | The video, its `.srt` and `.vtt` captions, and the reviewed frames |
+
+Table 1. The work folder of one walkthrough.
+
+On delivery, the skill deletes `recast/.state/` and `recast/test-results/`, because Playwright traces hold session cookies.
+When the skill started the local stack, it asks whether to stop it.
+
+## When another agent runs it
+
+A coordinator or a pull request skill can dispatch walkthrough-video.
+It can't ask you directly then, so its questions go back to that agent as a `Confirmation needed` block, and that agent asks you.
+The report also includes the recording subagent's id, so the caller can resume it for a retake.
+A caller that names another place for the video, or attaches it itself, takes precedence over the default section.
+
+## What can go wrong
+
+- **The stack fails on missing environment.** The recording step runs the project's own env-pull script and never writes secrets by hand. It learns how to start, seed and stop the stack from the project's `CLAUDE.md` files, so keep those steps there.
+- **The third take still fails a frame check.** The skill stops and reports which check failed, instead of delivering a weak video.
+- **Data lives on a shared service.** The skill never writes there unless you name the resource. It stages the data in the browser, and the video says so in a caption.
+
+## Next steps
+
+- Run [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) again on the pull request, so the risk label takes the video into account.
+- Let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) answer review comments and keep CI green until approval.
+- See the whole [human review stage](/lifecycle/human-review/).

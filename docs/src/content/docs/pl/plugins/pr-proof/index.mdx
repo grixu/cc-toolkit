@@ -1,0 +1,66 @@
+---
+title: pr-proof
+description: Reviewer widzi, że zmiana działa, zanim przeczyta choć linijkę kodu, na nagraniu z narracją z działającej aplikacji, dołączonym do pull requesta.
+group: start
+sidebar:
+  label: Przegląd
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Reviewer, który otwiera pull request, widzi kod i musi sobie wyobrazić, co ten kod robi dla użytkownika.
+pr-proof nagrywa to za niego: MP4 z narracją i wtopionymi napisami, na którym zmiana działa w twojej aplikacji, dołączony do opisu pull requesta.
+Reviewer najpierw ogląda zmianę, a potem czyta kod z tym obrazem w głowie.
+
+Nagranie łapie też to, czego nikt celowo nie wpisałby do pull requesta.
+Błąd UX albo bug widoczny na nagraniu trafia na początek raportu i nigdy nie jest podpisany jako sukces.
+
+## Gdzie działa
+
+<LifeMap focus="pr-proof" animate={false} />
+
+pr-proof to pierwszy krok [review człowieka](/pl/lifecycle/human-review/).
+Branch jest już przejrzany i przetestowany; teraz nagrywasz dowód.
+Skill dołącza wideo tylko do pull requesta, który już istnieje, więc jeśli chcesz mieć w nim wideo, najpierw go otwórz.
+
+## Nagraj dowód
+
+pr-proof ma jedną komendę:
+
+<Strip cmd="/pr-proof:walkthrough-video" />
+
+Podaj numer pull requesta, branch, ścieżkę do specu albo funkcję, a opcjonalnie także to, kto ogląda i co chce zobaczyć.
+Z pull requestem albo branchem nagranie pokazuje, co ta zmiana zmieniła dla użytkownika; bez nich całą funkcję.
+Możesz też opisać zadanie słowami („nagraj demo tego PR”), a Claude sam wybierze skill.
+
+[Przewodnik po walkthrough-video](/pl/plugins/pr-proof/walkthrough-video/) pokazuje, jak przebiega nagranie, o co skill pyta i co zostawia.
+
+## Zanim zaczniesz
+
+pr-proof nagrywa twoją aplikację uruchomioną lokalnie, więc maszyna musi umieć ją uruchomić:
+
+- Aplikacja webowa, która startuje z checkoutu, z użytkownikami testowymi, których dane logowania są w pliku, zwykle w pliku danych do e2e. Skill czyta z plików `CLAUDE.md` projektu, jak uruchomić, zasilić danymi i zatrzymać stack.
+- Node.js 22.18 lub nowszy i `pnpm`. playwright-recast i `@playwright/test` działają przez `pnpm dlx`, więc nic nie trafia do repozytorium.
+- `ffmpeg` i `ffprobe` w `PATH`, z libass do wtopionych napisów.
+- `timeout` w `PATH`. Na macOS pochodzi z coreutils.
+- GitHub CLI `gh` 2.103 lub nowszy, zalogowany. Starsze wersje nie dołączą pliku do pull requesta.
+- Opcjonalnie: serwer MCP firecrawl, którym sprawdzenie narzędzi czyta informacje o wydaniach playwright-recast. Do tego wystarczy też `gh`.
+
+:::caution[Starszy skill osobisty]
+Jeśli walkthrough-video był wcześniej twoim osobistym skillem, po instalacji usuń `~/.claude/skills/walkthrough-video`.
+Inaczej dwa skille z tym samym opisem konkurują o te same prośby.
+:::
+
+## Czego nigdy nie robi
+
+- Nie instaluje pakietów w repozytorium i nie zmienia śledzonych plików.
+- Nie dotyka kontenerów należących do innego checkoutu albo innej sesji.
+- Nie tworzy, nie zmienia i nie usuwa danych we współdzielonych ani zewnętrznych usługach, chyba że wskażesz konkretny zasób. Takie dane podstawia w przeglądarce, a nagranie mówi o tym w napisie.
+
+## Następne kroki
+
+- [Nagraj pierwszy walkthrough](/pl/plugins/pr-proof/walkthrough-video/).
+- Otwórz pull request z [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) przed nagraniem, żeby skill miał do czego dołączyć wideo. Gdy wideo jest już dołączone, uruchom go ponownie, żeby ocena ryzyka je odczytała.
+- Oddaj pull request [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/), który doprowadzi go do akceptacji.

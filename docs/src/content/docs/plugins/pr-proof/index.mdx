@@ -1,0 +1,66 @@
+---
+title: pr-proof
+description: A reviewer sees your change working before reading a line of code, on a narrated video recorded against your running app and attached to the pull request.
+group: start
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+A reviewer who opens a pull request sees code, and has to imagine what it does for a user.
+pr-proof records that instead: a narrated MP4 of the change working in your app, with burned-in captions, attached to the pull request description.
+The reviewer watches the change first, then reads the code with that picture in mind.
+
+It also catches what nobody would put in a pull request on purpose.
+A UX defect or a bug seen on camera goes to the top of the report, and is never captioned as a success.
+
+## Where it works
+
+<LifeMap focus="pr-proof" animate={false} />
+
+pr-proof is the first step of [human review](/lifecycle/human-review/).
+The branch is already reviewed and tested; now you record the proof.
+The skill attaches the video only to a pull request that already exists, so open one first when you want the video in it.
+
+## Record the proof
+
+pr-proof has one command:
+
+<Strip cmd="/pr-proof:walkthrough-video" />
+
+Pass it a pull request number, a branch, a spec path or a feature, and optionally who watches and what they asked to see.
+With a pull request or branch, the video shows what that change made different for a user; without one, the whole feature.
+You can also describe the task ("record a demo of this PR"), and Claude picks the skill.
+
+The [walkthrough-video guide](/plugins/pr-proof/walkthrough-video/) shows how a run goes, what it asks you, and what it leaves.
+
+## Before you start
+
+pr-proof records your app as it runs locally, so the machine must be able to run it:
+
+- A web app that starts from the checkout, with test users whose credentials live in a file, usually the e2e credentials file. The skill reads how to start, seed and stop the stack from the project's `CLAUDE.md` files.
+- Node.js 22.18 or later and `pnpm`. playwright-recast and `@playwright/test` run through `pnpm dlx`, so nothing is installed into the repository.
+- `ffmpeg` and `ffprobe` on `PATH`, with libass for the burned-in captions.
+- `timeout` on `PATH`. On macOS it comes from coreutils.
+- The GitHub CLI `gh` 2.103 or later, logged in. Older versions can't attach a file to a pull request.
+- Optional: the firecrawl MCP server, which the tool check uses to read playwright-recast's release notes. `gh` works for that too.
+
+:::caution[An older personal skill]
+If you used walkthrough-video as a personal skill before, delete `~/.claude/skills/walkthrough-video` after installing.
+Otherwise two skills with the same description compete for the same requests.
+:::
+
+## What it never does
+
+- Install packages into the repository or change tracked files.
+- Touch containers that belong to another checkout or session.
+- Create, change or delete data on shared or external services, unless you name the resource. It stages such data in the browser instead, and the video says so in a caption.
+
+## Next steps
+
+- [Record your first walkthrough](/plugins/pr-proof/walkthrough-video/).
+- Open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) before you record, so the skill has a pull request to attach the video to. Run it again once the video is attached, so the risk assessment reads it.
+- Let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) drive the pull request to approval.

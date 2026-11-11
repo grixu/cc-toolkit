@@ -1,0 +1,148 @@
+---
+title: /pr-proof:walkthrough-video
+description: Nagrywa wideo z narracją, na którym twoja zmiana działa w uruchomionej aplikacji, zgłasza, co poszło źle na nagraniu, i po twojej akceptacji dołącza wideo do pull requesta.
+group: guides
+skill: pr-proof
+sidebar:
+  label: walkthrough-video
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Walkthrough to jeden test Playwright, który scena po scenie opowiada historię zmiany na twojej działającej aplikacji.
+playwright-recast renderuje go do MP4 z wtopionymi napisami.
+Tempo jest celowo spokojne: widz widzi, co jest klikane, czyta, co jest wpisywane, i ma czas przeczytać każdy napis.
+
+## Kiedy po niego sięgnąć
+
+- Branch jest przejrzany i przetestowany, a reviewer ma zobaczyć, że działa, zanim przeczyta kod.
+- Product owner albo inna osoba spoza zespołu deweloperskiego chce zobaczyć funkcję od początku do końca.
+- Poprawki do tego, co pokazało wcześniejsze nagranie, są gotowe i potrzebne jest nowe ujęcie.
+
+## Uruchom go
+
+<Strip cmd="/pr-proof:walkthrough-video" />
+
+Komenda przyjmuje dwa opcjonalne argumenty: funkcję, ścieżkę do specu albo pull request, a potem to, kto ogląda i co chce zobaczyć.
+Nagranie zmiany z pull requesta 42:
+
+```
+/pr-proof:walkthrough-video 42
+```
+
+Nagranie całej funkcji ze specu, dla wskazanego widza:
+
+```
+/pr-proof:walkthrough-video docs/specs/invites.md "product owner, the invite flow end to end"
+```
+
+Z pull requestem albo branchem nagranie pokazuje tylko to, co ta zmiana zmieniła dla użytkownika.
+Bez nich pokazuje całą funkcję.
+Gdy nie wskażesz widza, skill nagrywa dla osoby robiącej review produktowe.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="pr-proof"
+  input="Pull request, branch, spec albo funkcja i to, kto ogląda"
+  steps={[
+    { name: 'Wymagania', does: 'Spisuje każdą zmianę widoczną dla użytkownika z kryteriami akceptacji; równolegle sprawdzenie narzędzi wybiera wersje.', leaves: 'requirements.md' },
+    { name: 'Potwierdzenie', does: 'Prosi cię o potwierdzenie każdego wywnioskowanego wymagania, uwagi UX i otwartej decyzji.', optional: true },
+    { name: 'Scenariusz', does: 'Pisze sceny; osobny subagent sprawdza je z kodem i poprawia.', leaves: 'scenario.md' },
+    { name: 'Nagranie', does: 'Nagrywa test, renderuje MP4 i przegląda własne klatki.', leaves: 'out/<slug>.mp4', loop: 'do dwóch powtórek, dopóki sprawdzenie klatek nie przejdzie' },
+    { name: 'Raport', does: 'Daje ci wideo, a przed resztą błędy i bugi widoczne na nagraniu.' },
+    { name: 'Dostarczenie', does: 'Po twojej akceptacji kopiuje wideo i dołącza je do pull requesta.', leaves: '~/Downloads/<ticket-or-PR>-<slug>.mp4' },
+  ]}
+  next={['pr-open']}
+/>
+
+Wymagania, sprawdzenie narzędzi, scenariusz, walidacja i nagranie działają każde w świeżym subagencie, według własnego briefu.
+Przekazują sobie pracę wyłącznie przez pliki, więc subagent, który sprawdza scenariusz, nie jest tym, który go napisał.
+Pytania, raport i dostarczenie wideo skill obsługuje sam.
+
+Wymagania pochodzą ze specu, z pull requesta i jego ticketu, z testów e2e i ze zbudowanego kodu.
+Każde jest oznaczone jako `stated`, gdy mówi o nim dokument, albo `derived`, gdy zostało odczytane z testów lub kodu.
+
+Krok nagrania uruchamia lokalny stack, jeśli nikt inny tego nie zrobił, nagrywa test i renderuje wideo.
+Potem sprawdza własne klatki: czytelne napisy do 60 znaków, dość czasu na przeczytanie każdego, żadnej akcji uciętej w połowie, żadnego toasta z błędem ani pustego ekranu.
+Gdy po trzecim ujęciu któreś sprawdzenie dalej nie przechodzi, skill się zatrzymuje i zgłasza, które i dlaczego.
+
+## O co pyta
+
+Gdy jest coś do potwierdzenia, skill przedstawia ci to, zanim powstanie scenariusz, i czeka na zgodę albo poprawki:
+
+- każde wymaganie `derived`, bo scenariusz zbudowany na zgadywaniu kosztuje całe nagranie;
+- uwagi UX: zachowanie zgodne z kodem, które zdziwiłoby użytkownika;
+- otwarte decyzje, na przykład prawdziwe czy podstawione dane, albo przypadek negatywny pokazany na żywo czy tylko w napisie.
+
+Odpowiedzi trafiają do `requirements.md` pod `## User decisions` i wiążą każdy późniejszy krok.
+Wznowione uruchomienie nie pyta o nie ponownie.
+
+## Jak wideo trafia do pull requesta
+
+Po twojej akceptacji skill dostarcza wideo w dwa miejsca:
+
+1. Kopiuje MP4 do `~/Downloads/<ticket-or-PR>-<slug>.mp4`. Powtórka dostaje `-v2`, `-v3`, a wcześniejszą wersję skill usuwa tylko na twoje słowo.
+2. Gdy zmiana ma pull request, bez ponownego pytania dodaje na końcu opisu sekcję `### Video walkthrough`. Sekcja zawiera wideo, a gdy ujęcie podstawiało dane, także jedną linijkę o tym, co podstawiono.
+
+Upload idzie przez `gh pr edit --attach`, które zamienia plik w link `https://github.com/user-attachments/assets/…`.
+Potem skill czyta opis ponownie: sekcja musi zawierać ten link, a reszta musi się zgadzać z opisem zapisanym przed edycją.
+
+:::note[Jeszcze bez pull requesta]
+Skill dołącza wideo tylko do pull requesta, który już istnieje.
+Bez niego wideo zostaje w `~/Downloads/`, a `/dev-kit:pr-open` go stamtąd nie weźmie.
+Najpierw otwórz pull request, potem nagrywaj, albo dołącz plik do opisu samodzielnie.
+:::
+
+Gdy wideo jest już w opisie, [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) z niego korzysta.
+Uruchom go ponownie na tym pull requeście: ocena ryzyka czyta opis i liczy wgrane wideo jako dowód, że zmiana działa.
+Ten dowód może obniżyć poziom ryzyka.
+Gdy pr-open przepisuje opis, zachowuje sekcję `### Video walkthrough`, bo zachowuje każdą sekcję, której sam nie napisał.
+
+## Powtórka po poprawkach
+
+Gdy nagranie pokazuje błąd, decyzja o poprawce należy do ciebie.
+Po poprawce poproś o powtórkę i nazwij każdą poprawkę.
+Skill wznawia subagenta nagrania, który wciąż ma test i stack.
+Ten nagrywa nowe ujęcie i zapisuje przyciętą klatkę dla każdej poprawki w `out/frames/fixes/`, żeby było widać ją na nagraniu.
+
+## Co zostawia
+
+Pliki robocze są w `~/.cache/walkthrough-video/<repo>/<feature-slug>/`, więc uruchomienie przetrwa restart komputera.
+Gdy ten folder istnieje, nowe uruchomienie wznawia pracę po ostatnim skończonym kroku.
+
+| Plik albo folder | Co zawiera |
+|---|---|
+| `requirements.md` | Wymagania i kryteria akceptacji, każde ze źródłem, oraz twoje decyzje |
+| `recast-notes.md` | Wersje playwright-recast i `@playwright/test` do uruchomienia oraz sprawdzenie maszyny |
+| `scenario.md` | Sceny, każda przypisana do wymagania, z logiem walidacji |
+| `recast/` | Test Playwright, jego setup, teardown i podstawione dane |
+| `teardown-ledger.jsonl` | Zmiany z ujęcia, które teardown musi jeszcze cofnąć |
+| `stack.log` | Wyjście lokalnego stacka, gdy uruchomił go skill |
+| `out/` | Wideo, napisy `.srt` i `.vtt` oraz przejrzane klatki |
+
+Tabela 1. Folder roboczy jednego walkthrough.
+
+Przy dostarczeniu skill usuwa `recast/.state/` i `recast/test-results/`, bo trace'y Playwrighta zawierają ciasteczka sesji.
+Gdy skill sam uruchomił lokalny stack, pyta, czy go zatrzymać.
+
+## Gdy uruchamia go inny agent
+
+walkthrough-video może zostać uruchomiony przez koordynatora albo skill od pull requestów.
+Wtedy nie może zapytać cię bezpośrednio, więc pytania wracają do tego agenta jako blok `Confirmation needed`, a agent pyta ciebie.
+Raport zawiera też id subagenta nagrania, żeby wywołujący mógł go wznowić do powtórki.
+Gdy wywołujący wskaże inne miejsce na wideo albo sam je dołącza, jego wybór wygrywa z domyślną sekcją.
+
+## Co może pójść źle
+
+- **Stack nie startuje przez brak zmiennych środowiskowych.** Krok nagrania uruchamia własny skrypt projektu do pobrania środowiska i nigdy nie wpisuje sekretów ręcznie. O tym, jak uruchomić, zasilić danymi i zatrzymać stack, dowiaduje się z plików `CLAUDE.md` projektu, więc trzymaj te kroki tam.
+- **Trzecie ujęcie dalej nie przechodzi sprawdzenia klatek.** Skill się zatrzymuje i zgłasza, które sprawdzenie nie przeszło, zamiast dostarczyć słabe wideo.
+- **Dane są we współdzielonej usłudze.** Skill nigdy tam nie zapisuje, chyba że wskażesz zasób. Podstawia dane w przeglądarce, a nagranie mówi o tym w napisie.
+
+## Następne kroki
+
+- Uruchom ponownie [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) na pull requeście, żeby etykieta ryzyka uwzględniła wideo.
+- Oddaj pull request [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/), który odpowiada na komentarze z review i trzyma CI na zielono do akceptacji.
+- Zobacz cały [etap review człowieka](/pl/lifecycle/human-review/).
