@@ -24,13 +24,14 @@ const TEMPLATE_SECTIONS = ['Issue', 'Description', 'Dependencies'];
 
 function parse(body) {
   const text = (body ?? '').trim();
+  const SECTION_END = '(?=\\n#+\\s|\\n\\[[^\\]]+\\]:\\s|$)';
   const section = (name) => {
-    const m = text.match(new RegExp(`(?:^|\\n)#+\\s*${name}[ \\t]*\\n([\\s\\S]*?)(?=\\n#+\\s|\\n\\[[^\\]]+\\]:\\s|$)`, 'i'));
+    const m = text.match(new RegExp(`(?:^|\\n)#+\\s*${name}[ \\t]*\\n([\\s\\S]*?)${SECTION_END}`, 'i'));
     return m ? m[1].trim() : null;
   };
   const without = (from, name) => {
     const at = from.search(new RegExp(`^## ${name}\\b`, 'm'));
-    return at < 0 ? from : from.slice(0, at) + from.slice(at).replace(new RegExp(`^## ${name}\\b[\\s\\S]*?(?=\\n#+\\s|\\n\\[[^\\]]+\\]:\\s|$)`), '');
+    return at < 0 ? from : from.slice(0, at) + from.slice(at).replace(new RegExp(`^## ${name}\\b[\\s\\S]*?${SECTION_END}`), '');
   };
   return {
     body: text,
@@ -151,7 +152,7 @@ export function proof() {
   const at = parsed.body.search(/^## Proof\b/m);
   const after = at < 0 ? '' : parsed.body.slice(at).replace(/^.*\n?/, '');
   const placed = /^## Risk\b/m.test(parsed.body) ? /^## Risk\b/.test(after.match(/^#+\s.*$/m)?.[0] ?? '') : !/^## /m.test(after);
-  const transcript = (read(manifest.entries.find((e) => e.kind === 'terminal').transcript) ?? '').split('\n')[0];
+  const transcriptFirstLine = (read(manifest.entries.find((e) => e.kind === 'terminal').transcript) ?? '').split('\n')[0];
   const details = section.match(/<details>[\s\S]*?<\/details>/)?.[0] ?? '';
   const creates = callsIn('pr-open-proof').filter((call) => call.startsWith('pr create'));
   const attaches = creates.length === 1 ? (creates[0].match(/(?:^|\s)--attach(?=[\s=])/g) ?? []).length : 0;
@@ -162,7 +163,7 @@ export function proof() {
     ...manifest.entries.map((e) => [squash(section).includes(squash(e.claim)), `the ${e.kind} claim is not in ## Proof`]),
     [/^\|\s*Screen\s*\|\s*375\s*\|\s*768\s*\|\s*1440\s*\|\s*$/m.test(section), 'no | Screen | 375 | 768 | 1440 | table header'],
     ...['Cart', 'Checkout'].map((screen) => [new RegExp(`^\\|\\s*${screen}\\s*\\|`, 'm').test(section), `no ${screen} row in the screenshot table`]),
-    [transcript !== '' && details.includes(transcript), 'the transcript is not inside <details>'],
+    [transcriptFirstLine !== '' && details.includes(transcriptFirstLine),'the transcript is not inside <details>'],
     [!/rewritten|Commits after this proof/i.test(section), 'a staleness or rewritten-history note on a fresh proof'],
     [(section.match(/https:\/\/github\.com\/user-attachments\/assets\/\d+/g) ?? []).length === 6, 'not six user-attachments URLs in ## Proof'],
     [!/(^|[\s(])\.\//m.test(section), 'a ./ reference is left in ## Proof'],

@@ -105,12 +105,17 @@ collect_attachments() {
 }
 
 # A body from stdin as GitHub stores it after the upload: each ./<name> of an attached file becomes
-# a user-attachments URL, numbered in --attach order.
+# a user-attachments URL, numbered in --attach order. Like gh, ./ resolves against the body's
+# directory ($1), so an attached file elsewhere leaves its ./<name> untouched.
 attached_body() {
-  local a names=()
-  for a in ${attachments[@]+"${attachments[@]}"}; do names+=("$(basename "$a")"); done
+  local body_dir a names=()
+  body_dir="$(cd "$1" && pwd)" || fail "$1: no such directory"
+  for a in ${attachments[@]+"${attachments[@]}"}; do
+    if [ "$(cd "$(dirname "$a")" && pwd)" = "$body_dir" ]; then names+=("$(basename "$a")"); else names+=(''); fi
+  done
   jq -R -s -j 'reduce range($ARGS.positional | length) as $i (.;
-      split("./" + $ARGS.positional[$i]) | join("https://github.com/user-attachments/assets/\($i + 1)"))' \
+      if $ARGS.positional[$i] == "" then . else
+        split("./" + $ARGS.positional[$i]) | join("https://github.com/user-attachments/assets/\($i + 1)") end)' \
     --args ${names[@]+"${names[@]}"}
 }
 
@@ -165,7 +170,8 @@ case "${1:-} ${2:-}" in
     [ -n "$body_file" ] || fail "pr create without --body-file"
     git ls-remote --exit-code origin "refs/heads/$head" > /dev/null 2>&1 || fail "head branch \"$head\" is not on the remote"
     key="$(printf '%s' "$head" | tr '/' '-')"
-    attached_body < "$body_file" > "$sandbox/gh-posted-pr-create-$key.md"
+    body_dir="$(dirname "$body_file")"
+    attached_body "$body_dir" < "$body_file" > "$sandbox/gh-posted-pr-create-$key.md"
     title="$(flag --title "$@")"
     base="$(flag --base "$@")"
     draft="$(case " $* " in *' --draft '*) echo true ;; *) echo false ;; esac)"
@@ -194,7 +200,8 @@ case "${1:-} ${2:-}" in
     body_file="$(flag --body-file "$@")"
     [ -n "$body_file" ] || body_file="$(flag -F "$@")"
     if [ -n "$body_file" ]; then
-      attached_body < "$body_file" > "$sandbox/gh-posted-pr-edit-$n.md"
+      body_dir="$(dirname "$body_file")"
+      attached_body "$body_dir" < "$body_file" > "$sandbox/gh-posted-pr-edit-$n.md"
       jq --rawfile body "$sandbox/gh-posted-pr-edit-$n.md" '.body = $body' "$dir/pr.json" > "$dir/pr.json.tmp" && mv "$dir/pr.json.tmp" "$dir/pr.json"
     fi
     inline="$(flag --body "$@")$(flag -b "$@")"
@@ -222,11 +229,11 @@ case "${1:-} ${2:-}" in
     dir="$(pr_dir "${3:-}")"
     n="$(basename "$dir")"
     shift 3
-    kind=comment body=''
+    kind=comment body='' body_dir="$PWD"
     while [ $# -gt 0 ]; do
       case "$1" in
-        --body-file|-F) body="$(cat "$2")"; shift ;;
-        --body-file=*) body="$(cat "${1#--body-file=}")" ;;
+        --body-file|-F) body="$(cat "$2")"; body_dir="$(dirname "$2")"; shift ;;
+        --body-file=*) body="$(cat "${1#--body-file=}")"; body_dir="$(dirname "${1#--body-file=}")" ;;
         --body|-b) body="$2"; shift ;;
         --body=*) body="${1#--body=}" ;;
         --edit-last) kind=edit-last ;;
@@ -235,7 +242,7 @@ case "${1:-} ${2:-}" in
       shift
     done
     [ -n "$body" ] || fail "pr comment without a body"
-    body="$(printf '%s' "$body" | attached_body)"
+    body="$(printf '%s' "$body" | attached_body "$body_dir")"
     echo "https://github.com/example/web/pull/$n#issuecomment-$(record_comment "$kind" "$n" "$body")"
     exit 0 ;;
 esac
