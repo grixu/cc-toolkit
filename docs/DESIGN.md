@@ -8,7 +8,7 @@ The tokens live in `brand/tokens.css`. The logo, its files and its rules are in 
 
 Use only the semantic tokens from `brand/tokens.css`. Never write a raw `oklch()`, hex or `rgb()` value in a component, and never add a token there that this file does not describe. A colour you need that is missing is a gap to raise, not a value to invent.
 
-Each colour token is a `light-dark()` pair, so a component never branches on the theme. The theme follows the system setting; `data-theme="light"` or `"dark"` on `<html>` overrides it.
+Each colour token is a `light-dark()` pair, so a component never branches on the theme. A token that shares another's value is an alias (`var(--muted)`), never a copied pair, so the two cannot drift apart by accident; give it its own pair only when the roles really need different colours. The theme follows the system setting; `data-theme="light"` or `"dark"` on `<html>` overrides it.
 
 | Token | Role |
 | --- | --- |
@@ -19,7 +19,7 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--heading` | h1–h4 and the display headline |
 | `--text` | Body text, list items, table cells |
 | `--muted` | Secondary text: metadata, nav items, hints, breadcrumbs |
-| `--caption` | Captions under figures, diagrams, tables and code blocks |
+| `--caption` | Captions under figures, diagrams, tables and code blocks (alias of `--muted`) |
 | `--quote` | Blockquote text |
 | `--quote-rule` | The blockquote's left rule (alias of `--secondary`) |
 | `--primary` | Links, the current nav item, the primary button fill, active tab underline |
@@ -29,7 +29,7 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--secondary` | Quote rules, the second highlight in a diagram, step markers |
 | `--focus` | Keyboard focus ring (alias of `--primary`) |
 | `--selection` | `::selection` background; selected text stays `--text` |
-| `--code-bg`, `--code-text`, `--code-muted` | Code blocks and inline code; `--code-muted` for comments and command output |
+| `--code-bg`, `--code-text`, `--code-muted` | Code blocks and inline code; `--code-muted` for comments and command output; `--code-text` is an alias of `--text` |
 | `--diagram-line` | Strokes and connectors in diagrams and illustrations |
 | `--info`, `--success`, `--warning`, `--danger` | Status tones: callout markers and titles, status words in command output |
 | `--scrim` | Backdrop behind a dialog |
@@ -76,7 +76,7 @@ Default                                     → --text
 - **Figures and diagrams:** shapes are filled with `--panel`, stroked with `--diagram-line` at 1.5 px and rounded with `--radius-inset`; connectors are 1.5 px `--diagram-line` lines ending in a filled `--diagram-line` arrowhead; text inside is 14 px (Small) in `--text`. Highlight at most one element with a 2 px `--primary` stroke (the element the figure is about) and one with a 2 px `--secondary` stroke or a `--secondary` step marker. Highlights are strokes, never fills.
 - **Captions** under figures, diagrams, code blocks and tables sit `--space-2` below the block, Caption style in `--caption`, starting with a capital and ending without a full stop when it is not a sentence. Number them by kind: "Figure 1.", "Listing 1.", "Table 1.".
 - **Blockquote attribution:** a `<footer>` inside the blockquote, Small in `--muted`, `--space-2` above.
-- **Tables:** the header row is Label style in `--muted` on `--tray`; cells are Small in `--text`; rows are separated by a 1 px `--border` rule and nothing else (no zebra stripes, no vertical rules); cell padding `--space-2` vertical and `--space-3` horizontal. Text aligns to the start; columns of numbers align to the end and use `tabular-nums`.
+- **Tables:** the header row is Label style in `--muted` on `--tray`; cells are Small in `--text`; rows are separated by a 1 px `--border` rule and nothing else (no zebra stripes, no vertical rules); cell padding `--space-2` vertical and `--space-3` horizontal. Text aligns to the start; columns of numbers align to the end and use `tabular-nums`. Every table sits in a `<div role="region" tabindex="0" aria-labelledby="…">` named by its caption, with `overflow-x: auto`, so a table wider than the screen scrolls on its own instead of the page, a keyboard can scroll it, and its end fades out over 24 px (`mask-image`) while there is more to the right.
 - **Navigation:** items are Small in `--muted`, hover `--text`. The current item has `aria-current="page"`, text in `--heading` and a 2 px `--primary` underline at the header's bottom edge (see Site header). No text underline in navigation.
 - **Status tones** mean a state, never a brand accent. Use them only in callouts and for status words in output (passed, failed, a review note), always next to a symbol or word that says the same thing, so the state never depends on colour alone. `--success` is close to `--primary` in hue; never put a success-coloured word where it could be mistaken for a link.
 - **Metadata next to a heading** (a date, a version, an author) never goes inside the heading element: put it on its own line directly below, Small in `--muted`, `--space-1` below the heading.
@@ -94,6 +94,8 @@ Checked contrast (WCAG 2.1 / APCA Lc), light theme then dark:
 | `--primary` on `--canvas` | 6.0:1 / 76 | 9.3:1 / −62 |
 | `--primary` on `--tray` | 5.4:1 / 69 | 7.9:1 / −61 |
 | `--on-primary` on `--primary` | 6.3:1 / −85 | 9.3:1 / 64 |
+| `--on-primary` on `--primary-hover` | 7.5:1 | 10.2:1 |
+| `--text` / `--muted` on `--tray-pressed` | 10.7:1 / 5.1:1 | 9.9:1 / 6.8:1 |
 | `--secondary` on `--canvas` (non-text) | 4.4:1 | 7.5:1 |
 | `--diagram-line` on `--canvas` (non-text) | 3.3:1 | 4.9:1 |
 | `--diagram-line` field ring on `--code-bg` / on `--panel` (non-text) | 3.1:1 / 3.6:1 | 5.1:1 / 4.5:1 |
@@ -188,7 +190,7 @@ Does the action run a command the user pastes into Claude Code?
 - **Shape:** `--radius-control` (2 px), height 40 px and `--space-4` side padding; the small size is 32 px and `--space-3`, with its hit area extended to 44 px by a 6 px `::after` above and below. Icons are 16 px with a `--space-2` gap. Labels never wrap.
 - **Why two faces:** secondary and ghost buttons are in Plex Mono so they read as tool controls next to code; the primary keeps Plex Sans 600 because it is the one call to action and must read as a sentence.
 - **Hover** (only under `@media (hover: hover) and (pointer: fine)`, so touch screens never keep a stuck state): primary `--primary-hover`, secondary and ghost `--tray`.
-- **Pressed:** `transform: scale(0.97)`.
+- **Pressed:** `transform: scale(0.97)`, the one press scale in the system, icon buttons included.
 - **Disabled:** `--tray` fill, `--muted` text, no ring, `cursor: not-allowed`; a disabled ghost has no fill. Prefer keeping a button enabled and explaining the problem on click.
 - **Loading:** keep the width (stack both labels in one grid cell and hide the inactive one) and show a 14 px spinner; never swap to a shorter label.
 - **Motion:** `background-color`, `color` and `box-shadow` over 150 ms `ease`; `transform` over 150 ms `ease-out`; under `prefers-reduced-motion` drop the `transform`.
@@ -220,8 +222,8 @@ Otherwise                                                      → no callout
 | Warning | `--warning` | `!` |
 | Danger | `--danger` | `✗` |
 
-- **Anatomy:** an `<aside role="note" aria-label="Warning">` (the kind's name) on `--panel`, with a 1 px `--border` ring and a 3 px inset rule in the tone on the inline start (`box-shadow: 0 0 0 1px var(--border), inset 3px 0 0 var(--tone)`), `--radius-control`, padding `--space-3` vertical and `--space-4` plus 3 px on the start.
-- **Title line:** Plex Mono 400 Small in the tone: the marker, a space, then the title. The title defaults to the kind's name ("Warning") and may be specific ("Danger: concurrent runs"). Never repeat the kind's name after the marker.
+- **Anatomy:** an `<aside role="note" aria-labelledby="…">` pointing at the title line's `id`, so a screen reader names it by the visible title once, on `--panel`, with a 1 px `--border` ring and a 3 px inset rule in the tone on the inline start (`box-shadow: 0 0 0 1px var(--border), inset 3px 0 0 var(--tone)`), `--radius-control`, padding `--space-3` vertical and `--space-4` plus 3 px on the start.
+- **Title line:** Plex Mono 400 Small in the tone: the marker in `<span aria-hidden="true">`, a space, then the title. The title defaults to the kind's name ("Warning") and may be specific ("Danger: concurrent runs"). Never repeat the kind's name after the marker.
 - **Body:** Small in `--text`, `--space-1` below the title, at most `--measure` wide, `text-wrap: pretty`. Inline code and links keep their usual style. One or two sentences; a callout that needs a list should be a section.
 - **Spacing:** a callout takes the paragraph rhythm, `--space-4` above and below, never `--space-6`.
 - **Limits:** at most one danger and two callouts of any kind per screen of text. Never stack two callouts directly, and never put one inside another panel: it would sit on `--panel` with no step left.
@@ -368,12 +370,12 @@ One rule for everything interactive that the sections above do not give its own 
 | Clickable card (whole card is one link) | `--tray` fill | `--tray-pressed` fill |
 | Menu row, option row, search result | `--tray` fill, text one step up (`--muted` → `--text`) | `--tray-pressed` fill, text `--heading` |
 | Navigation tab | text `--text` | text `--heading`, 2 px `--border` underline |
-| Icon button | `--tray` fill, icon `--text` | `--tray-pressed` fill, `scale(0.94)` |
+| Icon button | `--tray` fill, icon `--text` | `--tray-pressed` fill, `scale(0.97)` |
 | Link | 2 px underline | 2 px underline, `opacity: 0.75` |
 
 - **Hover only on fine pointers:** wrap every hover in `@media (hover: hover) and (pointer: fine)`, so a tap never leaves a stuck state. Pressed (`:active`) applies everywhere; on touch it is the only feedback.
 - **Shape stays:** a fill keeps the element's own radius (`--radius-panel` on cards, `--radius-inset` on results, `--radius-control` on option rows and icons, none on full-width menu rows). Nothing grows, lifts or casts a shadow on hover.
-- **Clickable card:** make the title the one link and stretch its hit area over the card (`a::after { content: ""; position: absolute; inset: 0 }`). Buttons and links inside the card, such as the command strip's Copy, sit above it with `position: relative` and keep their own states; hovering them does not fill the card.
+- **Clickable card:** make the title the one link and stretch its hit area over the card (`a::after { content: ""; position: absolute; inset: 0 }`). Buttons and links inside the card, such as the command strip's Copy, sit above it with `position: relative` and keep their own states; hovering them does not fill the card. Keyboard focus rings the whole card, because that is what a click hits: `a:focus-visible { outline: none }` and `a:focus-visible::after { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-panel) }`.
 - **Motion:** `background-color`, `color` and `box-shadow` over 150 ms `ease`; `transform` only on icon buttons, 150 ms `ease-out`, dropped under `prefers-reduced-motion`.
 - **Never:** hover or pressed on badges, callouts, code blocks or plain cards without a link. A fill on something that does nothing on click is a false promise.
 

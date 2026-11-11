@@ -12,7 +12,7 @@
   --heading: light-dark(oklch(0.2 0.012 150), oklch(0.96 0.008 150));    /* #121813 / #EEF3EF */
   --text:    light-dark(oklch(0.29 0.012 150), oklch(0.87 0.01 150));    /* #272D28 / #D0D6D1 */
   --muted:   light-dark(oklch(0.47 0.012 150), oklch(0.76 0.012 150));   /* #565D57 / #ACB3AD */
-  --caption: light-dark(oklch(0.47 0.012 150), oklch(0.76 0.012 150));   /* #565D57 / #ACB3AD */
+  --caption: var(--muted);
   --quote:   light-dark(oklch(0.37 0.012 150), oklch(0.83 0.01 150));    /* #3B423C / #C3C9C4 */
 
   /* Primary: bottle green from the logo's front plate, H 158 */
@@ -44,7 +44,7 @@
   --focus: var(--primary);
 
   --code-bg:    light-dark(oklch(0.94 0.008 150), oklch(0.135 0.01 150)); /* #E8EDE8 / #060906 */
-  --code-text:  light-dark(oklch(0.29 0.012 150), oklch(0.87 0.01 150));  /* #272D28 / #D0D6D1 */
+  --code-text:  var(--text);
   --code-muted: light-dark(oklch(0.47 0.012 150), oklch(0.74 0.012 150)); /* #565D57 / #A6ADA7 */
 
   --diagram-line: light-dark(oklch(0.62 0.012 150), oklch(0.6 0.012 150)); /* #818882 / #7B827C */
