@@ -25,6 +25,7 @@
 
   /* Mixing toward --heading darkens on light and lightens on dark, so --on-primary contrast only rises. */
   --primary-hover: color-mix(in oklch, var(--primary) 86%, var(--heading));
+  --tray-pressed: color-mix(in oklch, var(--tray), var(--border) 45%);
 
   /* Status: each tone is text-safe (≥ 5.2:1) on --canvas, --panel and its own -bg. */
   --info:       light-dark(oklch(0.5 0.1 240),     oklch(0.78 0.09 240));  /* #1F6A96 / #81BFEB */

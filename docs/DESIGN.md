@@ -24,6 +24,7 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--quote-rule` | The blockquote's left rule (alias of `--secondary`) |
 | `--primary` | Links, the current nav item, the primary button fill, active tab underline |
 | `--primary-hover` | Hover fill of the primary button |
+| `--tray-pressed` | Pressed fill of anything whose hover is `--tray` |
 | `--on-primary` | Text and icons on a `--primary` fill |
 | `--secondary` | Quote rules, the second highlight in a diagram, step markers |
 | `--focus` | Keyboard focus ring (alias of `--primary`) |
@@ -350,8 +351,27 @@ Below 600 px the header's menu button opens a drawer from the right. It is the o
 Correct: on a phone, the menu shows "Docs" marked with the green side bar and the plugin list below it.
 Incorrect: a drawer from the left. The menu button sits at the right end of the header, and the drawer should come from where the thumb tapped.
 
+### Hover and pressed
+
+One rule for everything interactive that the sections above do not give its own states: a hover fills with `--tray`, a press fills one step deeper with `--tray-pressed`. It is the rule secondary and ghost buttons already follow, so every control in the system answers a pointer the same way, and green stays reserved for the current item.
+
+| Element | Hover | Pressed |
+| --- | --- | --- |
+| Clickable card (whole card is one link) | `--tray` fill | `--tray-pressed` fill |
+| Menu row, option row, search result | `--tray` fill, text one step up (`--muted` → `--text`) | `--tray-pressed` fill, text `--heading` |
+| Navigation tab | text `--text` | text `--heading`, 2 px `--border` underline |
+| Icon button | `--tray` fill, icon `--text` | `--tray-pressed` fill, `scale(0.94)` |
+| Link | 2 px underline | 2 px underline, `opacity: 0.75` |
+
+- **Hover only on fine pointers:** wrap every hover in `@media (hover: hover) and (pointer: fine)`, so a tap never leaves a stuck state. Pressed (`:active`) applies everywhere; on touch it is the only feedback.
+- **Shape stays:** a fill keeps the element's own radius (`--radius-panel` on cards, `--radius-inset` on results, `--radius-control` on option rows and icons, none on full-width menu rows). Nothing grows, lifts or casts a shadow on hover.
+- **Clickable card:** make the title the one link and stretch its hit area over the card (`a::after { content: ""; position: absolute; inset: 0 }`). Buttons and links inside the card, such as the command strip's Copy, sit above it with `position: relative` and keep their own states; hovering them does not fill the card.
+- **Motion:** `background-color`, `color` and `box-shadow` over 150 ms `ease-out`; `transform` only on icon buttons, dropped under `prefers-reduced-motion`.
+- **Never:** hover or pressed on badges, callouts, code blocks or plain cards without a link. A fill on something that does nothing on click is a false promise.
+
+Correct: hovering a plugin card fills it `--tray`; hovering its Copy button fills only the button.
+Incorrect: a pressed nav tab with a `--primary` underline. For a moment it claims to be the current page before the page has changed.
+
 ## Not defined yet
 
-These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
-
-- Hover and pressed states for components other than links, navigation, buttons and fields.
+Every component the site uses so far has rules. When a page needs something not covered above, do not invent a style for it: raise it as a gap here, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
