@@ -1,6 +1,7 @@
 import { getCollection, type CollectionEntry } from 'astro:content'
 import { ui, type Lang } from './i18n'
 import { groupOrder } from './groups'
+import { pluginPath } from './lifecycle'
 
 export type SectionId = 'start' | 'lifecycle' | 'plugins' | 'changelog'
 
@@ -56,7 +57,7 @@ export async function sidebarFor(path: string, lang: Lang): Promise<{ label: str
   let label: string
   if (section === 'start') [prefix, label] = ['getting-started/', sections[0].label[lang]]
   else if (section === 'lifecycle') [prefix, label] = ['lifecycle/', sections[1].label[lang]]
-  else if (section === 'plugins' && plugin) [prefix, label] = [`plugins/${plugin}/`, `${plugin} docs`]
+  else if (section === 'plugins' && plugin) [prefix, label] = [pluginPath(plugin), `${plugin} docs`]
   else return null
 
   const orderOf = (p: { en: Entry }) => p.en.data.sidebar.order ?? UNORDERED

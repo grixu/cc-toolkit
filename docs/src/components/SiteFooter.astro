@@ -1,6 +1,6 @@
 ---
 import { ui, href, langOf } from '../lib/i18n'
-import { core } from '../lib/lifecycle'
+import { core, pluginPath, repoUrl } from '../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
 const t = ui[lang]
@@ -11,7 +11,7 @@ const t = ui[lang]
     <section>
       <p class="label">{t.plugins}</p>
       <ul>
-        {core.map((p) => <li><a href={href(`plugins/${p.name}/`, lang)}>{p.name}</a></li>)}
+        {core.map((p) => <li><a href={href(pluginPath(p.name), lang)}>{p.name}</a></li>)}
         <li><a href={href('plugins/', lang)}>{t.allPlugins}</a></li>
       </ul>
     </section>
@@ -21,7 +21,7 @@ const t = ui[lang]
         <li><a href={href('getting-started/installation/', lang)}>{t.install}</a></li>
         <li><a href={href('lifecycle/', lang)}>{t.lifecycle}</a></li>
         <li><a href={href('changelog/', lang)}>{t.changelog}</a></li>
-        <li><a href="https://github.com/grixu/cc-toolkit/blob/main/CONTRIBUTING.md">{t.contributing}</a></li>
+        <li><a href={`${repoUrl}/blob/main/CONTRIBUTING.md`}>{t.contributing}</a></li>
       </ul>
     </section>
     <section>

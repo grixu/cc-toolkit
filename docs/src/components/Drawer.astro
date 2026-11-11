@@ -2,7 +2,7 @@
 import Icon from './Icon.astro'
 import { ui, href, langOf, canonicalPath } from '../lib/i18n'
 import { sections, sectionOf } from '../lib/nav'
-import { plugins, marketplaceVersion } from '../lib/lifecycle'
+import { plugins, marketplaceVersion, pluginPath, repoUrl } from '../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
 const t = ui[lang]
@@ -22,12 +22,12 @@ const current = sectionOf(canonicalPath(Astro.url.pathname))
   </nav>
   <p class="label drawer-h">{t.plugins}</p>
   <ul class="drawer-plugins">
-    {plugins.map((p) => <li><a href={href(`plugins/${p.name}/`, lang)}>{p.name}</a></li>)}
+    {plugins.map((p) => <li><a href={href(pluginPath(p.name), lang)}>{p.name}</a></li>)}
     <li><a href={href('plugins/', lang)}>{t.allPlugins} →</a></li>
   </ul>
   <div class="drawer-bottom">
     <p class="caption">cc-toolkit {marketplaceVersion} · MIT</p>
-    <a class="icon-btn" href="https://github.com/grixu/cc-toolkit" aria-label={t.github}><Icon name="github" /></a>
+    <a class="icon-btn" href={repoUrl} aria-label={t.github}><Icon name="github" /></a>
   </div>
 </dialog>
 

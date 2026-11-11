@@ -2,6 +2,7 @@
 import Icon from '../Icon.astro'
 import { ui, href, langOf, canonicalPath } from '../../lib/i18n'
 import { sections, sectionOf } from '../../lib/nav'
+import { repoUrl } from '../../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
 const other = lang === 'en' ? 'pl' : 'en'
@@ -27,7 +28,7 @@ const current = sectionOf(path)
       <kbd class="keycap" data-keycap>⌘K</kbd>
     </button>
     <a class="lang" href={href(path, other)} hreflang={other} lang={other} aria-label={t.switchLang}>{t.otherShort}</a>
-    <a class="icon-btn hd-gh" href="https://github.com/grixu/cc-toolkit" aria-label={t.github}><Icon name="github" /></a>
+    <a class="icon-btn hd-gh" href={repoUrl} aria-label={t.github}><Icon name="github" /></a>
     <button class="icon-btn hd-menu" type="button" aria-label={t.menu} aria-expanded="false" aria-controls="drawer"><Icon name="menu" /></button>
   </div>
 </header>

@@ -29,7 +29,6 @@ const lang = langOf(Astro.url.pathname)
 const t = ui[lang]
 const s = skillById[skill]
 if (!s) throw new Error(`SkillFlow: unknown skill "${skill}"`)
-const fig = lang === 'pl' ? 'Rysunek' : 'Figure'
 const defaultCaption = lang === 'pl' ? `Co robi ${s.cmd}, od tego, co mu dajesz, do tego, co przekazuje dalej` : `What ${s.cmd} does, from what you give it to what it hands over`
 ---
 
@@ -68,5 +67,5 @@ const defaultCaption = lang === 'pl' ? `Co robi ${s.cmd}, od tego, co mu dajesz,
       </li>
     )}
   </ol>
-  <figcaption class="caption">{fig} {n}. {caption ?? defaultCaption}</figcaption>
+  <figcaption class="caption">{t.figure} {n}. {caption ?? defaultCaption}</figcaption>
 </figure>

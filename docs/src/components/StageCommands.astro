@@ -2,7 +2,7 @@
 import Cmd from './Cmd.astro'
 import Badge from './Badge.astro'
 import { ui, href, langOf } from '../lib/i18n'
-import { skills, stages, pluginByName, stagePath, stageById, shortName, type StageId } from '../lib/lifecycle'
+import { skills, stages, pluginByName, stagePath, stageById, shortName, pluginPath, pluginsIn, type StageId } from '../lib/lifecycle'
 
 interface Props {
   /** One stage's commands; without it, one row per stage. */
@@ -30,7 +30,7 @@ const caption = stage
           <tr>
             <td><a href={href(k.href, lang)}>{k.auto ? shortName(k) : <code><Cmd text={k.cmd} /></code>}</a>{k.auto && <> <Badge>{pl ? 'automatycznie' : 'automatic'}</Badge></>}{k.calledBy && <> <Badge>{pl ? 'przez' : 'via'} {k.calledBy}</Badge></>}</td>
             <td>{k.does[lang]}</td>
-            <td><a href={href(`plugins/${k.plugin}/`, lang)}>{k.plugin}</a>{!pluginByName[k.plugin].core && <span class="muted"> · {t.supporting}</span>}</td>
+            <td><a href={href(pluginPath(k.plugin), lang)}>{k.plugin}</a>{!pluginByName[k.plugin].core && <span class="muted"> · {t.supporting}</span>}</td>
           </tr>
         ))}
       </tbody>
@@ -43,7 +43,7 @@ const caption = stage
           <tr>
             <td><a href={href(stagePath(s.id), lang)}><span class="tnum">{s.n}</span> {s.title[lang]}</a></td>
             <td>{s.blurb[lang]}</td>
-            <td>{[...new Set(skills.filter((k) => k.stage === s.id).map((k) => k.plugin))].map((p, i) => <>{i > 0 && ', '}<a href={href(`plugins/${p}/`, lang)}>{p}</a></>)}</td>
+            <td>{pluginsIn(s.id).map((p, i) => <>{i > 0 && ', '}<a href={href(pluginPath(p), lang)}>{p}</a></>)}</td>
           </tr>
         ))}
       </tbody>
@@ -51,5 +51,5 @@ const caption = stage
   )}
 </div>
 <p class="caption table-caption" id={id}>
-  {pl ? 'Tabela' : 'Table'} {n}. {caption}
+  {t.table} {n}. {caption}
 </p>

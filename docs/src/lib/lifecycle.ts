@@ -71,6 +71,8 @@ export const cycle = stages.filter((s) => !s.outside)
 export const phase = { title: reviewAndTest, from: cycle.findIndex((s) => s.phase), to: cycle.length }
 export const stageById = Object.fromEntries(stages.map((s) => [s.id, s])) as Record<StageId, Stage>
 export const stagePath = (id: StageId) => `lifecycle/${stageById[id].slug}/`
+export const pluginPath = (name: string) => `plugins/${name}/`
+export const repoUrl = 'https://github.com/grixu/cc-toolkit'
 
 export type Skill = {
   id: string
@@ -183,6 +185,7 @@ export const core = plugins.filter((p) => p.core)
 export const supporting = plugins.filter((p) => !p.core)
 export const skillsOf = (plugin: string) => skills.filter((s) => s.plugin === plugin)
 export const stagesOf = (plugin: string) => stages.filter((st) => skillsOf(plugin).some((s) => s.stage === st.id))
+export const pluginsIn = (stage: StageId) => [...new Set(skills.filter((s) => s.stage === stage).map((s) => s.plugin))]
 export const lineStyle = (plugin: string) => (pluginByName[plugin]?.core ? `--pc: var(--line-${plugin})` : undefined)
 
 export type Release = { plugin: string; version: string; date: string; kind: string; text: string }

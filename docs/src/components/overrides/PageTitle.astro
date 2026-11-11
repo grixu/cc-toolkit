@@ -4,7 +4,7 @@ import Art from '../Art.astro'
 import Icon from '../Icon.astro'
 import { ui, href, langOf, canonicalPath, fmtDate } from '../../lib/i18n'
 import { sections, sectionOf, pluginOf, tocHeadings } from '../../lib/nav'
-import { pluginByName, releases, stagesOf, skillById, stageById, stagePath, stages, installPlugin, lineStyle } from '../../lib/lifecycle'
+import { pluginByName, releases, stagesOf, skillById, stageById, stagePath, stages, installPlugin, lineStyle, pluginPath } from '../../lib/lifecycle'
 
 const { entry, toc } = Astro.locals.starlightRoute
 const lang = langOf(Astro.url.pathname)
@@ -13,12 +13,12 @@ const path = canonicalPath(Astro.url.pathname)
 const section = sections.find((s) => s.id === sectionOf(path))
 const pluginName = pluginOf(path)
 const plugin = pluginName ? pluginByName[pluginName] : undefined
-const isOverview = !!plugin && path === `plugins/${pluginName}/`
+const isOverview = !!plugin && path === pluginPath(pluginName)
 const stage = stages.find((s) => path === stagePath(s.id))
 
 const crumbs: { label: string; path?: string }[] = []
 if (section && section.path !== path) crumbs.push({ label: section.label[lang], path: section.path })
-if (plugin && !isOverview) crumbs.push({ label: plugin.name, path: `plugins/${plugin.name}/` })
+if (plugin && !isOverview) crumbs.push({ label: plugin.name, path: pluginPath(plugin.name) })
 if (stage?.phase) crumbs.push({ label: stage.phase[lang] })
 crumbs.push({ label: isOverview ? plugin!.name : entry.data.title })
 

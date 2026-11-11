@@ -1,7 +1,7 @@
 ---
 import Badge from './Badge.astro'
 import { href, langOf, fmtDate } from '../lib/i18n'
-import { releases, badgeTone } from '../lib/lifecycle'
+import { releases, badgeTone, pluginPath } from '../lib/lifecycle'
 
 interface Props {
   /** Only this plugin's releases; without it, the newest across all plugins. */
@@ -17,7 +17,7 @@ const shownReleases = releases().filter((r) => !plugin || r.plugin === plugin).s
   {shownReleases.map((r) => (
     <li>
       <Badge tone={badgeTone[r.kind] ?? 'neutral'} inline={false}>{r.kind.toLowerCase()}</Badge>
-      <p class="news-t">{!plugin && <><a href={href(`plugins/${r.plugin}/`, lang)}>{r.plugin}</a>{' '}</>}<span class="tnum news-v">{r.version}</span> {r.text}</p>
+      <p class="news-t">{!plugin && <><a href={href(pluginPath(r.plugin), lang)}>{r.plugin}</a>{' '}</>}<span class="tnum news-v">{r.version}</span> {r.text}</p>
       <time class="caption tnum" datetime={r.date}>{fmtDate(r.date, lang, plugin ? 'long' : 'short')}</time>
     </li>
   ))}

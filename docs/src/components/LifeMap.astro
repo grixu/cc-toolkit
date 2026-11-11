@@ -1,6 +1,6 @@
 ---
 import { ui, href, langOf } from '../lib/i18n'
-import { cycle, phase, stageById, stagePath, skills, core, pluginByName, shortName, lineStyle, type Skill, type StageId } from '../lib/lifecycle'
+import { cycle, phase, stageById, stagePath, skills, core, pluginByName, shortName, lineStyle, pluginPath, type Skill, type StageId } from '../lib/lifecycle'
 
 interface Props {
   /** Zoom on one plugin: every other plugin is dimmed. */
@@ -162,7 +162,7 @@ const showMaintain = !onStages || onStages.has('maintain')
   <ul class="lmap-key" aria-label={t.pluginsOnMap}>
     {core.map((p) => (
       <li class:list={[{ 'is-dim': isPluginDimmed(p.name) }]} style={lineStyle(p.name)}>
-        <a href={link(`plugins/${p.name}/`)} data-key={p.name}><span class="swatch" aria-hidden="true"></span>{p.name}<span class="lmap-key-p">{p.promise[lang]}</span></a>
+        <a href={link(pluginPath(p.name))} data-key={p.name}><span class="swatch" aria-hidden="true"></span>{p.name}<span class="lmap-key-p">{p.promise[lang]}</span></a>
       </li>
     ))}
     <li class="lmap-key-aux"><span class="swatch swatch--aux" aria-hidden="true"></span>{t.supportingPlugins}</li>
@@ -185,7 +185,7 @@ const showMaintain = !onStages || onStages.has('maintain')
       ))}
     </ul>
   </aside>}
-  <figcaption class="caption">{lang === 'pl' ? 'Rysunek' : 'Figure'} {n}. {t.figureMap}</figcaption>
+  <figcaption class="caption">{t.figure} {n}. {t.figureMap}</figcaption>
 </figure>
 
 <script>
