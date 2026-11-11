@@ -231,7 +231,7 @@ Set the key in one of two ways:
 
 A key set or changed during a session takes effect after `/reload-plugins`.
 
-The [risk assessment docs](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/) explain what the **Risk** section shows, [how a level is computed](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/how-it-works/), [what partial and low-confidence results mean](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reliability/), and [every option, input and output field](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reference/). The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
+[The risk label](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/) explains what the **Risk** section shows, [How it works](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/how-it-works/) how a level is computed, [Reliability](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reliability/) what partial and low-confidence results mean, and the [Risk label reference](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reference/) every option, input and output field. The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
 
 ## Permissions
 
