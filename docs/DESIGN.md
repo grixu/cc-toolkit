@@ -263,7 +263,7 @@ One header on every page; the current section is marked like a tab.
 - **Logo:** the lockup, 28 px tall (see Surfaces); it links home with `aria-label="cc-toolkit home"`.
 - **Navigation:** `<nav aria-label="Main">`, items `--space-5` apart and stretched to the full bar height so the tab underline sits on the header's bottom edge. The current item: `--heading` text and `box-shadow: inset 0 -2px 0 var(--primary)`. Other items carry a transparent underline of the same size, so nothing shifts when the current item changes.
 - **Icon buttons:** 32 px square with a 44 px hit area, 18 px icon in `--muted`, hover `--text`, `--radius-control`, and an `aria-label`.
-- **Below 600 px:** the lockup becomes the mark alone (28 px), the navigation moves behind a menu icon button at the end, and the search trigger becomes its icon.
+- **Below 600 px:** the lockup becomes the mark alone (28 px), the navigation moves behind a menu icon button at the end (see Mobile menu), and the search trigger becomes its icon.
 - **Not sticky.** Docs pages are read top to bottom and the palette shortcut works from anywhere, so the header scrolls away.
 
 Correct: on any fd3 page, "docs" is the current item with the green underline.
@@ -280,11 +280,26 @@ The footer is where readers look for the plugin list, the licence and who made t
 Correct: the legal line keeps "Not affiliated with Anthropic" on every page.
 Incorrect: the footer links in `--primary`. A block of green links outweighs the page content above it.
 
+### Mobile menu
+
+Below 600 px the header's menu button opens a drawer from the right. It is the only navigation on phones, so it carries the sections, the plugin list and the footer's essentials.
+
+- **Trigger:** the header's menu icon button, `aria-label="Open menu"`, `aria-expanded` and `aria-controls` pointing at the drawer.
+- **Drawer:** a modal `<dialog>` pinned to the right edge, full height, 84% of the viewport width (at most 360 px), `--panel` fill, `--shadow-overlay`, no radius. The strip of page left of it stays visible under a `--scrim`, so the reader keeps their place; tapping it closes the drawer.
+- **Top bar:** 56 px, the same height as the header it covers, with a 1 px `--border` rule below it. The lockup (24 px) on the left links home; a close icon button (as in the header, `aria-label="Close menu"`) on the right sits where the menu button was.
+- **Sections:** a list of the header's navigation items, each 48 px tall with `--space-4` side padding, Body in `--muted`. The current item is `--heading` with `box-shadow: inset 2px 0 0 var(--primary)`: the tab underline turned to the side.
+- **Plugins:** a Label-style heading in `--muted`, then a two-column grid of plugin names in Plex Mono Small, `--muted`, at least 36 px tall each, ending with "All plugins →". Gap `--space-1` vertical and `--space-4` horizontal, `--space-5` above the group.
+- **Bottom bar:** pinned to the bottom above a 1 px `--border` rule, padding `--space-4`: the version and licence ("cc-toolkit 0.8.1 · MIT") in Caption, `--caption`, and the GitHub icon button.
+- **Behaviour:** focus moves to the close button, Tab stays inside, Esc or a tap on the scrim closes it, and focus returns to the menu button. The page behind does not scroll while it is open. Following a link closes it.
+- **Motion:** the drawer slides in from the right (`translateX(100%)` to `0`) and the scrim fades in, over 200 ms `ease-out`; closing takes 150 ms. Under `prefers-reduced-motion` both only fade.
+
+Correct: on a phone, the menu shows "Docs" marked with the green side bar and the plugin list below it.
+Incorrect: a drawer from the left. The menu button sits at the right end of the header, and the drawer should come from where the thumb tapped.
+
 ## Not defined yet
 
 These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
 
-- The mobile menu panel that the header's menu button opens.
 - Hover and pressed states for components other than links, navigation, buttons and fields.
 - Selects, checkboxes, radios and textareas.
 - Any use of the status `-bg` tints.
