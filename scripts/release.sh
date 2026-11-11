@@ -9,9 +9,11 @@ set -euo pipefail
 #
 # What it does:
 #   1. Validates the plugin exists and CHANGELOG has an [Unreleased] section
-#   2. Bumps the version in plugin.json and marketplace.json
+#   2. Bumps the version in plugin.json and marketplace.json, and bumps the
+#      marketplace's own version by the same level
 #   3. Stamps [Unreleased] in CHANGELOG.md with version + date
-#   4. Commits, tags (plugin-name/vX.Y.Z), and optionally pushes + creates GH release
+#   4. Commits, tags (plugin-name/vX.Y.Z and marketplace/vX.Y.Z), and optionally
+#      pushes + creates GH release
 #
 # Requirements: jq, git, gh (optional, for GitHub release)
 #
@@ -113,16 +115,23 @@ NEW_VERSION=$(bump_version "$CURRENT_VERSION" "$BUMP_TYPE")
 TAG_NAME="$PLUGIN_NAME/v$NEW_VERSION"
 TODAY=$(date +%Y-%m-%d)
 
-info "Plugin:  $PLUGIN_NAME"
-info "Version: $CURRENT_VERSION → $NEW_VERSION"
-info "Tag:     $TAG_NAME"
-info "Date:    $TODAY"
+CURRENT_MARKET_VERSION=$(jq -r '.version // empty' "$MARKETPLACE")
+[[ -n "$CURRENT_MARKET_VERSION" ]] || die "marketplace.json has no top-level version"
+NEW_MARKET_VERSION=$(bump_version "$CURRENT_MARKET_VERSION" "$BUMP_TYPE")
+MARKET_TAG="marketplace/v$NEW_MARKET_VERSION"
+
+info "Plugin:      $PLUGIN_NAME"
+info "Version:     $CURRENT_VERSION → $NEW_VERSION"
+info "Tag:         $TAG_NAME"
+info "Marketplace: $CURRENT_MARKET_VERSION → $NEW_MARKET_VERSION ($MARKET_TAG)"
+info "Date:        $TODAY"
 echo
 
-# Check tag doesn't already exist
-if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-  die "tag $TAG_NAME already exists"
-fi
+for tag in "$TAG_NAME" "$MARKET_TAG"; do
+  if git rev-parse "$tag" >/dev/null 2>&1; then
+    die "tag $tag already exists"
+  fi
+done
 
 # ── Confirm ──────────────────────────────────────────────────
 
@@ -143,8 +152,8 @@ mv "$PLUGIN_JSON.tmp" "$PLUGIN_JSON"
 
 # 2. Bump version in marketplace.json
 info "Updating marketplace.json"
-jq --arg name "$PLUGIN_NAME" --arg v "$NEW_VERSION" \
-  '(.plugins[] | select(.name == $name)).version = $v' \
+jq --arg name "$PLUGIN_NAME" --arg v "$NEW_VERSION" --arg mv "$NEW_MARKET_VERSION" \
+  '(.plugins[] | select(.name == $name)).version = $v | .version = $mv' \
   "$MARKETPLACE" > "$MARKETPLACE.tmp"
 mv "$MARKETPLACE.tmp" "$MARKETPLACE"
 
@@ -165,11 +174,13 @@ git commit -m "$(cat <<EOF
 release: $PLUGIN_NAME v$NEW_VERSION
 
 Bump $PLUGIN_NAME from $CURRENT_VERSION to $NEW_VERSION.
+Bump the marketplace from $CURRENT_MARKET_VERSION to $NEW_MARKET_VERSION.
 EOF
 )"
 
-info "Creating tag: $TAG_NAME"
+info "Creating tags: $TAG_NAME, $MARKET_TAG"
 git tag -a "$TAG_NAME" -m "$PLUGIN_NAME v$NEW_VERSION"
+git tag -a "$MARKET_TAG" -m "cc-toolkit marketplace v$NEW_MARKET_VERSION"
 
 # ── Optional: push & GitHub release ─────────────────────────
 
@@ -182,7 +193,7 @@ fi
 if [[ "$push_confirm" =~ ^[Yy]$ ]]; then
   info "Pushing commits and tag"
   git push
-  git push origin "$TAG_NAME"
+  git push origin "$TAG_NAME" "$MARKET_TAG"
 
   if command -v gh >/dev/null 2>&1; then
     info "Creating GitHub Release"
@@ -202,5 +213,5 @@ else
   echo
   info "Done! Commit and tag created locally."
   info "When ready, run:"
-  echo "  git push && git push origin $TAG_NAME"
+  echo "  git push && git push origin $TAG_NAME $MARKET_TAG"
 fi
