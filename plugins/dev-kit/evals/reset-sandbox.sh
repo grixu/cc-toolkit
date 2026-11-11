@@ -118,7 +118,7 @@ git -C .sandbox/pr-open-proof diff-tree --no-commit-id --name-only -r HEAD |
   jq -R -s --arg head "$proof_head" --arg media "$proof_media" '
     split("\n") | map(select(length > 0)) as $files
     | {version: 1, head: $head, base: "main", entries: [
-        {kind: "screenshots", claim: "The cart and checkout pages show the new order summary at every width.",
+        {kind: "screenshots", claim: "The CheckoutSummary component shows the order summary at every width.",
          head: $head, files: $files,
          media: [("Cart", "Checkout") as $screen | (375, 768, 1440) as $width
            | {path: "\($media)/\($screen)-\($width).png", screen: $screen, width: $width}]},
