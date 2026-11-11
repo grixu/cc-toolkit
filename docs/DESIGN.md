@@ -55,8 +55,9 @@ Is it a heading (h1–h4, display)?           → --heading
 Is it inside a blockquote?                  → --quote
 Is it a caption under a figure, diagram,
 table or code block?                        → --caption
+Is it the current nav item?                 → --heading (underline --primary)
 Is it secondary: metadata, nav, hint?       → --muted
-Is it a link or the current nav item?       → --primary
+Is it a link?                               → --primary
 Is it on a --primary fill?                  → --on-primary
 Default                                     → --text
 ```
@@ -75,7 +76,7 @@ Default                                     → --text
 - **Captions** under figures, diagrams, code blocks and tables sit `--space-2` below the block, Caption style in `--caption`, starting with a capital and ending without a full stop when it is not a sentence. Number them by kind: "Figure 1.", "Listing 1.", "Table 1.".
 - **Blockquote attribution:** a `<footer>` inside the blockquote, Small in `--muted`, `--space-2` above.
 - **Tables:** the header row is Label style in `--muted` on `--tray`; cells are Small in `--text`; rows are separated by a 1 px `--border` rule and nothing else (no zebra stripes, no vertical rules); cell padding `--space-2` vertical and `--space-3` horizontal. Text aligns to the start; columns of numbers align to the end and use `tabular-nums`.
-- **Navigation:** items are Small in `--muted`, hover `--text`, current item `--primary` with `aria-current="page"`. No underline in navigation.
+- **Navigation:** items are Small in `--muted`, hover `--text`. The current item has `aria-current="page"`, text in `--heading` and a 2 px `--primary` underline at the header's bottom edge (see Site header). No text underline in navigation.
 - **Status tones** mean a state, never a brand accent. Use them only in callouts and for status words in output (passed, failed, a review note), always next to a symbol or word that says the same thing, so the state never depends on colour alone. `--success` is close to `--primary` in hue; never put a success-coloured word where it could be mistaken for a link.
 - **Metadata next to a heading** (a date, a version, an author) never goes inside the heading element: put it on its own line directly below, Small in `--muted`, `--space-1` below the heading.
 
@@ -254,11 +255,36 @@ Developers expect documentation search behind a shortcut, so search opens a dial
 Correct: pressing `⌘K` on any page opens the palette with the cursor in the field.
 Incorrect: a 300 px search field in the header. It takes the space the navigation needs and still needs a results dropdown.
 
+### Site header
+
+One header on every page; the current section is marked like a tab.
+
+- **Bar:** 56 px tall, `--canvas` fill, a 1 px `--border` rule along the bottom (`box-shadow: 0 1px 0 var(--border)`), padding `0 var(--space-5)`. Order: logo, navigation, flexible space, then the tools (search trigger, GitHub icon) with a `--space-2` gap.
+- **Logo:** the lockup, 28 px tall (see Surfaces); it links home with `aria-label="cc-toolkit home"`.
+- **Navigation:** `<nav aria-label="Main">`, items `--space-5` apart and stretched to the full bar height so the tab underline sits on the header's bottom edge. The current item: `--heading` text and `box-shadow: inset 0 -2px 0 var(--primary)`. Other items carry a transparent underline of the same size, so nothing shifts when the current item changes.
+- **Icon buttons:** 32 px square with a 44 px hit area, 18 px icon in `--muted`, hover `--text`, `--radius-control`, and an `aria-label`.
+- **Below 600 px:** the lockup becomes the mark alone (28 px), the navigation moves behind a menu icon button at the end, and the search trigger becomes its icon.
+- **Not sticky.** Docs pages are read top to bottom and the palette shortcut works from anywhere, so the header scrolls away.
+
+Correct: on any fd3 page, "docs" is the current item with the green underline.
+Incorrect: the current item in `--primary` text as well. Green text next to a green underline marks it twice and reads as a link.
+
+### Site footer
+
+The footer is where readers look for the plugin list, the licence and who made the site.
+
+- **Frame:** a 1 px `--border` rule along the top, padding `--space-6` vertical and `--space-5` horizontal, `--canvas` fill.
+- **Columns:** a grid of link groups, `repeat(auto-fit, minmax(140px, 1fr))` with a `--space-5` gap: Plugins (the core plugins, then "All plugins"), Docs (Install, Changelog, Contributing) and grixu.dev (Blog, GitHub, Contact). Each group has a Label-style heading in `--muted` and a list of Small links in `--muted` with `--space-1` between them; hover `--text`. On phones the groups wrap to two columns, then one.
+- **Legal line:** spans all columns below a 1 px `--border` rule with `--space-4` above it; Caption in `--caption`: "© 2026 grixu.dev · cc-toolkit is MIT-licensed · Not affiliated with Anthropic". The last clause always stays, because the plugins extend Claude Code and readers should not mistake the site for Anthropic's.
+
+Correct: the legal line keeps "Not affiliated with Anthropic" on every page.
+Incorrect: the footer links in `--primary`. A block of green links outweighs the page content above it.
+
 ## Not defined yet
 
 These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
 
-- The site header's height and layout, and the footer.
+- The mobile menu panel that the header's menu button opens.
 - Hover and pressed states for components other than links, navigation, buttons and fields.
 - Selects, checkboxes, radios and textareas.
 - Any use of the status `-bg` tints.
