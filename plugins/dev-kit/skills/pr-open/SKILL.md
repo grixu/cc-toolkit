@@ -99,7 +99,7 @@ Keep the template's structure intact: every heading, in its order, and every che
 
 <claim>
 
-./<video>.mp4
+![](./<video>.mp4)
 
 <claim>
 
@@ -126,7 +126,7 @@ Keep the template's structure intact: every heading, in its order, and every che
 </details>
 ````
 
-  Render each entry in manifest order by its fields, never by `kind`: its `claim` as a plain paragraph, then the staleness `<sub>` line when step 2 found one, then its proof. Media with `width` make one table per entry, a row per `screen` and a column per width in ascending order, `—` in a cell with no shot. Media without `width` stand each on its own line: a video as the bare `./<name>` reference, an image as `![<screen or claim>](./<name>)`. A `transcript` becomes a `text` code block of the file's content, inside `<details>` only when it runs over 20 lines; use a longer fence when the transcript itself holds three backticks. Every `./<name>` is the unique name the medium gets in step 5's directory. The rewritten-history `<sub>` line appears once, directly under the heading, when any entry has history rewritten, and not at all otherwise. With more than 50 media in the section, it carries the first 50 in manifest order, and its last line says `<sub><n> more media follow in comments.</sub>`; step 5 posts the rest.
+  Render each entry in manifest order by its fields, never by `kind`: its `claim` as a plain paragraph, then the staleness `<sub>` line when step 2 found one, then its proof. Media with `width` make one table per entry, a row per `screen` and a column per width in ascending order, `—` in a cell with no shot. Media without `width` stand each on its own line: a video as `![](./<name>)` alone in its paragraph, which `gh` turns into a player, an image as `![<screen or claim>](./<name>)`. A `transcript` becomes a `text` code block of the file's content, inside `<details>` only when it runs over 20 lines; use a longer fence when the transcript itself holds three backticks. Every `./<name>` is the unique name the medium gets in step 5's directory. The rewritten-history `<sub>` line appears once, directly under the heading, when any entry has history rewritten, and not at all otherwise. With more than 50 media in the section, it carries the first 50 in manifest order, and its last line says `<sub><n> more media follow in comments.</sub>`; step 5 posts the rest.
 - With a risk result from step 2, append a `## Risk` section as the body's last section, also under a repository template, and leave it out otherwise. Link reference definitions that end a body (`[PL-1234]: https://…`, which tracker integrations append) stay below it. It does not count toward the length budget:
 
 ```markdown
