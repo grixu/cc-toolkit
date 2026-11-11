@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Conventions / Headline lines, `###` file headers, the Tally line) are gone; eval-19 checks the
   scope classification through `/start-cr` Step 1 in path mode.
 
+### Fixed
+
+- `severity.md` showed the `standards` bullet with a bare `L<lines>`; it now carries `path:L<lines>`,
+  the shape the Scanner contract requires, as the new `hookify` bullet does.
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

@@ -94,6 +94,8 @@ hunk by hunk with `<how_to_view>`:
 - **`new_text`, `new_string` and `content`** are one hunk's added lines, joined by newlines in
   file order. A fully added file (status `A`), an untracked one, and every file when
   `<diff_args>` is `none` are one Write: the whole file is the text.
+- **A fully deleted file (status `D`) is never matched.** Deleting a file takes no Edit or
+  Write, so no hook ever checked it; leave it out without a prose line.
 - **`old_text` and `old_string`** are the same hunk's removed lines. For a Write — a fully added
   or untracked file, or path mode — they are empty, not missing: a condition on them is checked
   against the empty string.
@@ -140,7 +142,12 @@ boy-scout block.
 - **A match the message plainly does not mean** — the pattern hits inside a comment, a string
   that documents the pattern, a test asserting the forbidden call is absent, or a fixture — is
   a `CANDIDATE` naming both readings. Hookify would still have fired on it; whether the rule
-  intends to is the merge's call.
+  intends to is the merge's call. It takes the contract's candidate shape, with the rule's
+  name in the rule slot and the severity it would carry:
+
+  ```
+  - `hookify` · <rule name> · `path:L<lines>` — <what matched, and where> (<rule file basename>, <severity if raised>) → <the two readings: what the rule fires on, what the message means>
+  ```
 - **A rule another lens's family also covers** — a hardcoded-secret rule beside `security` ·
   secret-in-source — is still raised here: the merge dedups on the shared site and keeps the
   higher grade. It is never a `HANDOFF`.

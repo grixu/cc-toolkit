@@ -166,7 +166,7 @@ the severity, the file's overall impression does not. A `standards` bullet has t
 exact shape:
 
 ```
-`standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <fix as a clause>
+`standards` · <slug> · <sev> · `path:L<lines>` — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <fix as a clause>
 ```
 
 The quoted rule and the file › section citation are mandatory — a `standards` finding
@@ -186,7 +186,7 @@ the hookify rule's `name`, verbatim. Severity comes from the rule's `action`:
 A `hookify` bullet has this exact shape:
 
 ```
-`hookify` · <rule name> · <sev> · L<lines> — "<quoted sentence of the rule's message>" (<rule file basename>) <what matched> → <fix as a clause>
+`hookify` · <rule name> · <sev> · `path:L<lines>` — "<quoted sentence of the rule's message>" (<rule file basename>) <what matched> → <fix as a clause>
 ```
 
 The quoted message and the rule file are mandatory — a `hookify` finding that cannot quote
