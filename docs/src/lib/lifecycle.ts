@@ -29,7 +29,7 @@ export const stages: Stage[] = [
     title: { en: 'Plan', pl: 'Planowanie' },
     blurb: {
       en: 'Every decision made and checked against the code before any is written.',
-      pl: 'Każda decyzja podjęta i sprawdzona z kodem, zanim powstanie choć linijka.',
+      pl: 'Każda decyzja podjęta i zweryfikowana względem kodu, zanim powstanie choć linijka.',
     },
   },
   {
@@ -60,8 +60,8 @@ export const stages: Stage[] = [
     id: 'human', n: '03c', slug: 'human-review', phase: reviewAndTest,
     title: { en: 'Human review', pl: 'Review człowieka' },
     blurb: {
-      en: 'Proof it works, a pull request a person can read, kept green until approved.',
-      pl: 'Dowód, że działa, pull request do przeczytania na jednym ekranie, zielony aż do akceptacji.',
+      en: 'Proof it works, a pull request a person can read in one screen, checks kept green and comments answered.',
+      pl: 'Dowód, że działa, pull request do przeczytania na jednym ekranie, zielone checki i odpowiedzi na komentarze.',
     },
   },
   {
@@ -114,11 +114,11 @@ export const skills: Skill[] = [
     feature: { en: 'risk label', pl: 'etykieta ryzyka' },
     does: { en: 'Open a pull request a reviewer can read in one screen', pl: 'Otwórz pull request do przeczytania na jednym ekranie' } },
   { id: 'pr-shepherd', plugin: 'dev-kit', cmd: '/dev-kit:pr-shepherd', stage: 'human', href: 'plugins/dev-kit/pr-shepherd/', main: true,
-    does: { en: 'Answer review comments and keep CI green until approved', pl: 'Odpowiadaj na komentarze i trzymaj CI na zielono do akceptacji' } },
+    does: { en: 'Answer review comments and keep CI green until checks pass and threads are settled', pl: 'Odpowiadaj na komentarze i trzymaj CI na zielono, aż checki przejdą, a wątki zostaną rozstrzygnięte' } },
   { id: 'ci-fix', plugin: 'dev-kit', cmd: '/dev-kit:ci-fix', stage: 'human', href: 'plugins/dev-kit/ci-fix/', calledBy: 'pr-shepherd',
     does: { en: 'Fix a red CI run at its root cause', pl: 'Napraw czerwone CI u źródła' } },
   { id: 'dep-upgrade-check', plugin: 'dev-kit', cmd: '/dev-kit:dep-upgrade-check', stage: 'maintain', href: 'plugins/dev-kit/dep-upgrade-check/',
-    does: { en: 'Find out whether an upgrade will break you', pl: 'Sprawdź, czy aktualizacja cię zepsuje' } },
+    does: { en: 'Find out whether an upgrade will break you', pl: 'Sprawdź, czy aktualizacja coś zepsuje' } },
 
   { id: 'codex-review', plugin: 'codex-plan-improver', cmd: '/codex-plan-improver:codex-review', stage: 'plan', href: 'plugins/codex-plan-improver/',
     does: { en: 'A second opinion on the plan from Codex', pl: 'Druga opinia o planie od Codexa' } },

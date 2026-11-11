@@ -11,9 +11,9 @@ import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
 Testy to drugi z trzech kroków Review i testów, trzeciego etapu [ADLC](/pl/lifecycle/).
-Sprawdzają, że zmiana działa w uruchomionej aplikacji, a nie tylko w kodzie.
+Sprawdzają, czy zmiana działa w uruchomionej aplikacji, a nie tylko w kodzie.
 
-## Co idzie źle bez tego etapu
+## Co idzie źle bez tego kroku
 
 Review czyta kod; nie powie ci, jak zachowuje się aplikacja.
 Testy jednostkowe przechodzą, review jest czyste, a funkcja i tak się sypie, gdy użytkownik przez nią przeklika albo zależność zwróci błąd.
@@ -21,10 +21,12 @@ A agent, który mówi „działa” bez komendy na poparcie, prosi reviewera, ż
 
 ## Kto co robi
 
-- **Agent** ustala, co przetestować, znajduje działające porty, ścieżki i użytkowników testowych, uruchamia każde sprawdzenie jako prawdziwą komendę i zapisuje wynik za każdym werdyktem.
-- **Ty** dajesz lokalne albo stagingowe środowisko i odpowiadasz na jedną rundę pytań: które zestawy uruchomić i jakie zmiany w środowisku agent może zrobić.
+- **Agent** ustala, co przetestować, i znajduje działające porty, ścieżki i użytkowników testowych. Uruchamia każde sprawdzenie jako prawdziwą komendę i zapisuje wynik za każdym werdyktem.
+- **Ty** wskazujesz lokalne albo stagingowe środowisko albo pozwalasz mu je uruchomić. Odpowiadasz na jego pytania: które zestawy uruchomić, jakie zmiany może zrobić i co możesz odblokować.
 
 ## Na mapie
+
+Podświetlona kolumna pokazuje, gdzie leży w cyklu.
 
 <LifeMap stage="test" animate={false} />
 
@@ -35,9 +37,9 @@ A agent, który mówi „działa” bez komendy na poparcie, prosi reviewera, ż
 1. **Zakres.** Czyta kryteria akceptacji ze specu, kod za wskazanym obszarem albo diff względem głównego brancha.
 2. **Rozpoznanie.** Ustala, co działa, i robi snapshot bieżącego stanu, żeby móc go potem przywrócić.
 3. **Wyprowadzenie.** Zamienia każde oczekiwane zachowanie w sprawdzenia API, UI i awarii, pogrupowane w zestawy.
-4. **Pytania.** Raz pyta, które zestawy uruchomić i jakie zmiany może zrobić.
+4. **Pytania.** Raz pyta, które zestawy uruchomić i jakie zmiany może zrobić. O zmianę, której wtedy nie uzgodnił, pyta w chwili, gdy jest potrzebna.
 5. **Przebieg.** Zestawy API i UI idą równolegle, potem osobno zestaw awarii.
-6. **Raport.** Każdy błąd jest powiązany z kryterium akceptacji i sklasyfikowany, obok zachowań, których nie dało się sprawdzić, i rejestru zmian, które zrobił i cofnął.
+6. **Raport.** Każdy błąd jest powiązany z kryterium akceptacji i sklasyfikowany. Raport wymienia też, czego nie dało się sprawdzić i co zmienił, a potem cofnął.
 
 tester się zatrzymuje, gdy bazowy URL wygląda na produkcję.
 Zgłasza problemy; nie poprawia twojego kodu.
@@ -49,7 +51,7 @@ Zgłasza problemy; nie poprawia twojego kodu.
 ## Co wchodzi, a co wychodzi
 
 - **Wchodzi:** branch, który się buduje, i jego spec albo diff.
-- **Wychodzi:** raport z testów z werdyktem i dowodem dla każdego sprawdzenia.
+- **Wychodzi:** raport z testów w sesji, z werdyktem i dowodem dla każdego sprawdzenia.
 
 ## Kiedy go pominąć
 

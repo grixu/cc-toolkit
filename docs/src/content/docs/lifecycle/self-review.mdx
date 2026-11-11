@@ -26,6 +26,8 @@ A single review pass also misses things: a reviewer who looks for bugs reads pas
 
 ## On the map
 
+The highlighted column shows where it sits in the cycle.
+
 <LifeMap stage="self" animate={false} />
 
 ## How it runs
@@ -33,10 +35,13 @@ A single review pass also misses things: a reviewer who looks for bugs reads pas
 [`/code-review:start-cr`](/plugins/code-review/start-cr/) runs the whole step:
 
 1. **Resolve the scope.** It finds the changed files against the base branch, or against a pull request's base.
-2. **Read the conventions.** It reads your project rules, such as `CLAUDE.md` and `.claude/rules/`, once for every lens. The rules you wrote in [Maintain](/lifecycle/maintain/) count here.
-3. **Pick the lenses.** The change decides which lenses run, never a preference. Most lenses run on every change; performance runs only on executable source files, the spec lens only on a spec you named or accepted, and the hookify lens only when the project has hookify rules.
+2. **Read the conventions.** It reads your project rules, such as `CLAUDE.md` and `.claude/rules/`, once for every lens. A finding that your rules allow is dropped.
+3. **Pick the lenses.** The change decides which lenses run, never a preference. Nine run on every change. Three depend on the input:
+   - performance runs only on executable source files;
+   - spec runs only on a spec you named or accepted;
+   - hookify runs only when the project's `.claude/` holds an enabled rule that checks file edits.
 4. **Scan.** One scanner agent per active lens judges the change against that lens's rules, all at the same time.
-5. **Merge.** Duplicate findings are merged, each one is graded against one severity table, and the result is one report grouped by file.
+5. **Merge.** Duplicates are merged and each finding is graded against one severity table. The result is one report grouped by file.
 6. **Apply.** One menu asks which fixes to apply and how to commit them.
 
 [`/fd3:implement`](/plugins/fd3/implement/) runs this review on every branch it builds, when you turn review on.

@@ -21,10 +21,12 @@ And an agent that says "it works" without a command behind it asks the reviewer 
 
 ## Who does what
 
-- **The agent** works out what to test, finds the live ports, routes and test users, runs each check as a real command, and records the output behind every verdict.
-- **You** provide a local or staging stack and answer one round of questions: which suites to run and which changes to your environment the agent may make.
+- **The agent** works out what to test and finds the live ports, routes and test users. It runs each check as a real command and records the output behind every verdict.
+- **You** point it at a local or staging stack, or let it start one. You answer its questions: which suites to run, which changes it may make, and what you can unlock.
 
 ## On the map
+
+The highlighted column shows where it sits in the cycle.
 
 <LifeMap stage="test" animate={false} />
 
@@ -33,11 +35,11 @@ And an agent that says "it works" without a command behind it asks the reviewer 
 [`/tester:run`](/plugins/tester/run/) runs the whole step:
 
 1. **Scope.** It reads the acceptance criteria from a spec, the code behind a named area, or the diff against the main branch.
-2. **Discover.** It finds what is running and takes a snapshot of the current state, so it can restore it later.
+2. **Discover.** It finds what is running and takes a snapshot of the current state to restore later.
 3. **Derive.** It turns each expected behavior into API, UI and fault checks, grouped into suites.
-4. **Ask.** It asks once which suites to run and which changes it may make.
+4. **Ask.** It asks once which suites to run and which changes it may make. A change it didn't clear then is asked about when it comes up.
 5. **Run.** API and UI suites run in parallel, then the fault suite runs on its own.
-6. **Report.** Each failure is tied to its acceptance criterion and classified, next to the behaviors it couldn't check and a ledger of what it changed and reverted.
+6. **Report.** Each failure is tied to its acceptance criterion and classified. The report also lists what it couldn't check, and what it changed and reverted.
 
 tester stops when a base URL looks like production.
 It reports problems; it doesn't fix your code.
@@ -49,7 +51,7 @@ It reports problems; it doesn't fix your code.
 ## What arrives and what leaves
 
 - **Arrives:** a branch that builds, and its spec or its diff.
-- **Leaves:** a test report with a verdict and the evidence for each check.
+- **Leaves:** a test report in the session, with a verdict and the evidence for each check.
 
 ## When to skip it
 

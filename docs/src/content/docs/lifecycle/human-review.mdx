@@ -1,6 +1,6 @@
 ---
 title: Human review
-description: Proof it works, a pull request a person can read, kept green until approved.
+description: Proof it works, a pull request a person can read in one screen, checks kept green and comments answered.
 group: cycle
 sidebar:
   label: 03c · Human review
@@ -21,21 +21,24 @@ And while the reviewer waits, a check goes red overnight and the comments wait f
 
 ## Who does what
 
-- **The agent** records proof that the change works, writes a description a reviewer can read in one screen, labels the risk, answers comments, and fixes failed checks.
-- **You** review the change and approve it. The approval is the one step the agent leaves to a person.
+- **The agent** records proof that the change works and writes a description a reviewer can read in one screen. It labels the risk, answers comments, and fixes failed checks.
+- **You** accept the video, review the change, and approve it. You also settle what the agent hands back: merge conflicts and comments that need a decision.
 
 ## On the map
+
+The highlighted column shows where it sits in the cycle.
 
 <LifeMap stage="human" animate={false} />
 
 ## How it runs
 
-Three skills from two plugins run in this order:
+Three skills from two plugins carry this step:
 
 1. **Prove it.** [`/pr-proof:walkthrough-video`](/plugins/pr-proof/walkthrough-video/) records a narrated video of the change working in your app. A defect it sees on camera goes to the top of its report. It attaches the video to a pull request that already exists; when there is none yet, it leaves the video in `~/Downloads/` for you to attach.
-2. **Open the pull request.** [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) fills the repository's template from the diff, with a short description and a before and after table. With a TypeSafe key, it adds a [risk label](/plugins/dev-kit/risk-assessment/), such as `risk: high`, so the reviewer knows how closely to look.
-3. **Keep it green.** [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) loops until every required check is green and no review thread is open. It fixes the comments it agrees with, answers the rest in the thread, and hands each red check to [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/).
+2. **Open the pull request.** [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) fills the repository's template from the diff, with a short description and a before and after table. With a TypeSafe key, it adds a [risk label](/plugins/dev-kit/risk-assessment/), such as `risk: high`. The label tells the reviewer how closely to look.
+3. **Keep it green.** [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) loops until every required check is green and every thread is resolved or handed to you. It fixes the comments it agrees with, answers the rest in the thread, and hands each red check to [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/).
 
+To get the video into the pull request, run `/dev-kit:pr-open` before pr-proof. Run it again after the video is attached, so the risk assessment reads it.
 You rarely run `ci-fix` by hand: pr-shepherd calls it when a check fails.
 
 ## What to run
@@ -45,4 +48,4 @@ You rarely run `ci-fix` by hand: pr-shepherd calls it when a check fails.
 ## What arrives and what leaves
 
 - **Arrives:** a reviewed and tested branch.
-- **Leaves:** an approved pull request with green checks, ready to merge. The merge closes the cycle, and the next change starts at [Plan](/lifecycle/plan/).
+- **Leaves:** a pull request with green checks and settled threads. Once you approve it, it's ready to merge. The merge closes the cycle, and the next change starts at [Plan](/lifecycle/plan/).

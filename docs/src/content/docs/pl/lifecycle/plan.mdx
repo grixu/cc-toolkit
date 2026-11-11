@@ -1,6 +1,6 @@
 ---
 title: Planowanie
-description: Każda decyzja podjęta i sprawdzona z kodem, zanim powstanie choć linijka.
+description: Każda decyzja podjęta i zweryfikowana względem kodu, zanim powstanie choć linijka.
 group: cycle
 sidebar:
   label: 01 · Planowanie
@@ -21,10 +21,12 @@ Planowanie przesuwa te decyzje na początek, gdzie zmiana jednej kosztuje zdanie
 
 ## Kto co robi
 
-- **Agent** sprawdza, co twój pomysł zakłada, z kodem, istniejącymi specami i lockfile'em. Sam ustala każdy fakt, który da się sprawdzić, a pyta cię tylko o to, czego nie da się.
+- **Agent** porównuje założenia twojego pomysłu z kodem, istniejącymi specami i lockfile'em. Sam ustala każdy fakt, który da się sprawdzić, a pyta cię tylko o to, czego nie da się.
 - **Ty** odpowiadasz w rundach wywiadu i potwierdzasz końcowe podsumowanie decyzji. Nic nie zostaje zapisane, zanim potwierdzisz.
 
 ## Na mapie
+
+Podświetlona kolumna pokazuje, gdzie leży w cyklu.
 
 <LifeMap stage="plan" animate={false} />
 
@@ -36,7 +38,7 @@ Większości zmian wystarcza [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/), k
 2. **Wywiad.** Każda runda zadaje wszystkie pytania, na które da się już odpowiedzieć. Każde pytanie ma dwie albo trzy opcje z kosztami i jedną rekomendowaną.
 3. **Potwierdzenie.** Potwierdzasz podsumowanie każdej decyzji, także tych, które agent podjął, choć nie odpowiedziałeś na nie wprost.
 4. **Zapis.** Subagent pisze spec z potwierdzonych notatek. Każdy element do zbudowania dostaje stały kod, na przykład `API-2`.
-5. **Walidacja.** Drugi subagent sprawdza każde twierdzenie specu z kodem i dopisuje werdykt. Powtarza to do trzech razy, dopóki werdykt brzmi `not ready`.
+5. **Walidacja.** Drugi subagent weryfikuje względem kodu każde kluczowe twierdzenie i dopisuje werdykt. Uruchamia się ponownie, do trzech przebiegów, dopóki werdykt brzmi `not ready` albo poprzedni przebieg zmienił spec.
 
 Dwa pluginy pomocnicze przydają się, gdy decyzja potrzebuje czegoś więcej niż kod:
 
@@ -52,7 +54,7 @@ Dwa pluginy pomocnicze przydają się, gdy decyzja potrzebuje czegoś więcej ni
 ## Co wchodzi, a co wychodzi
 
 - **Wchodzi:** pomysł, issue albo szkic planu.
-- **Wychodzi:** spec, którego ostatnia linia brzmi `Verdict: ready`, gotowy do pocięcia na zadania w [Budowie](/pl/lifecycle/build/).
+- **Wychodzi:** spec, którego ostatnia linia werdyktu brzmi `ready`, gotowy do pocięcia na zadania w [Budowie](/pl/lifecycle/build/).
 
 ## Kiedy go pominąć
 

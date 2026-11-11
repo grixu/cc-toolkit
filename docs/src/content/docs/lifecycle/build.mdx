@@ -21,10 +21,12 @@ Build cuts the spec into tasks small enough for one worktree each, and checks yo
 
 ## Who does what
 
-- **The agent** cuts the spec into tasks, builds them in parallel, merges each wave, and runs the build, typecheck, lint and test commands with up to three fix rounds per branch.
+- **The agent** cuts the spec into tasks, builds them in parallel, and merges each wave. It runs the build, typecheck, lint and test commands, with up to three fix rounds per branch.
 - **You** answer one batch of questions before the run, settle the items only a person can decide, and say yes before anything is pushed.
 
 ## On the map
+
+The highlighted column shows where it sits in the cycle.
 
 <LifeMap stage="build" animate={false} />
 
@@ -33,11 +35,11 @@ Build cuts the spec into tasks small enough for one worktree each, and checks yo
 The stage takes two fd3 commands, while hookify works in the background:
 
 1. **Split.** [`/fd3:split-to-tasks`](/plugins/fd3/split-to-tasks/) reads a spec whose verdict is `ready`. It cuts the work into task files, orders them by what depends on what, and groups them onto branches by rollout gate.
-2. **Ask.** [`/fd3:implement`](/plugins/fd3/implement/) asks one batch of questions: whether to review each branch, which base to start from, and the confirmations a task needs.
+2. **Ask.** [`/fd3:implement`](/plugins/fd3/implement/) asks one batch of questions. Among them: whether to review each branch, which base to use, and what a task needs confirmed.
 3. **Build in waves.** Every task whose dependencies are finished runs at once, each in its own worktree. At the end of a wave the task branches merge into their target branch.
 4. **Check.** Each branch runs the repository's checks, one branch at a time. Failures that were already on the base aren't blamed on the branch.
 5. **Review.** When you chose review, code-review reviews each branch and the fixable findings are fixed. This is the same review as [Self-review](/lifecycle/self-review/).
-6. **Settle and push.** You decide the human-in-the-loop (HIL) items in one batch, and repair runs apply your answers. Then you choose whether to push the branches and open the pull requests.
+6. **Settle and push.** You decide the human-in-the-loop (HIL) items in one batch. Answers that unblock tasks restart the run, and answers that change a built branch go to a repair run. Then you choose whether to push and open the pull requests.
 
 ### Your rules, enforced on every edit
 
@@ -61,4 +63,4 @@ A mismatch between the spec and what was built comes to you as a HIL item, and i
 ## When to skip it
 
 Skip the fd3 commands when you write the change yourself or in a single Claude Code session.
-The hookify rules still apply: they check every edit Claude makes, in any session.
+The hookify rules still apply: they check every edit Claude makes, in any session with hookify installed.

@@ -20,10 +20,12 @@ Neither waits for a stage of the cycle, so these plugins run whenever the need c
 
 ## Who does what
 
-- **The agent** finds the corrections in a session and proposes a rule for each, or maps every change in an upgrade to where your code uses the package.
+- **The agent** finds the corrections in a session and proposes a rule for each new one. For an upgrade, it maps every change to where your code uses the package.
 - **You** accept, change or skip each proposed rule, and decide whether to take an upgrade.
 
 ## On the map
+
+The highlighted column shows where it sits in the cycle.
 
 <LifeMap stage="maintain" animate={false} />
 
@@ -31,14 +33,14 @@ Neither waits for a stage of the cycle, so these plugins run whenever the need c
 
 Two plugins write rules, and the rules work in the other stages:
 
-- [`/session-learner:learn`](/plugins/session-learner/) reads the current session, finds the moments you corrected the agent, and proposes a change to `.claude/rules/`, `CLAUDE.md` or a hookify rule for each one. It shows one finding at a time and writes only what you accept.
+- [`/session-learner:learn`](/plugins/session-learner/) reads the current session, and finds the moments you corrected the agent. For each correction not documented yet, it proposes a change to `.claude/rules/`, `CLAUDE.md` or, when hookify is installed, a hookify rule. It shows one finding at a time and writes only what you accept.
 - [`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule from your description, or from the mistakes in the current conversation.
 
 The rules come back in the cycle:
 
-- Every session reads `CLAUDE.md` and the rules files, so every stage starts with them.
+- Every session reads `CLAUDE.md` and the rules files, so every stage starts with them. A rules file with `paths:` loads only for the files it names.
 - In [Build](/lifecycle/build/), hookify rules warn about or block an edit that breaks them.
-- In [Self-review](/lifecycle/self-review/), code-review reads your rules as conventions and holds the change to them. Its hookify lens replays your hookify rules over the diff, so it also catches what was written without the hooks.
+- In [Self-review](/lifecycle/self-review/), code-review reads your rules as conventions, so it doesn't flag what they allow. Its hookify lens replays your file-edit hookify rules over the diff, so it also catches what was written without the hooks.
 
 Run session-learner before `/compact` or `/clear`: it reads only the conversation still in context.
 

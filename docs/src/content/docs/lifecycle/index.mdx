@@ -22,7 +22,7 @@ Without a process for those two, four failures keep coming back:
 
 - **The agent guesses.** A one-line request leaves gaps, and the agent fills each one with an assumption that surfaces only in review.
 - **The context fills up.** One session for a large change gives the late tasks the least attention.
-- **The code is confident and wrong.** It builds and passes CI, but misses the spec, breaks a team rule or is unsafe, and the agent reports it as done.
+- **The code is confident and wrong.** It builds and passes CI. It still misses the spec, breaks a team rule or is unsafe, and the agent reports it as done.
 - **The reviewer drowns.** A person gets a large diff with no proof that it works and no hint where to look.
 
 The ADLC answers each failure with a stage, and each stage has a plugin.
@@ -31,6 +31,7 @@ The ADLC answers each failure with a stage, and each stage has a plugin.
 
 The map shows the cycle from left to right: Plan, Build, and Review & test in three steps.
 Each colored line is one core plugin, and each station is a skill.
+Gray stations belong to supporting plugins, and hookify's rule hooks run on their own, with no command.
 A merged pull request loops back to Plan for the next change.
 
 <LifeMap animate={false} />
@@ -40,7 +41,8 @@ A merged pull request loops back to Plan for the next change.
 ### Decide before the code exists
 
 A decision changed in planning costs a sentence; the same decision changed in review costs a branch.
-In [Plan](/lifecycle/plan/), `/fd3:build-spec` checks your idea against the code, interviews you until nothing is left to decide, and writes a spec it validates against the repository.
+In [Plan](/lifecycle/plan/), `/fd3:build-spec` checks your idea against the code and interviews you until nothing is left to decide.
+Then it writes a spec and validates it against the repository.
 
 ### One task, one context
 
@@ -65,12 +67,13 @@ A person's time is the scarcest resource in the cycle, so it gets a change that 
 ### People at the gates, not in the loop
 
 The agent doesn't stop to ask about what it can look up or check.
-It stops at a few fixed points where only you can decide: the interview, the questions before a run, the items only a person can settle, the push, and the approval.
+It stops at a few fixed points where only you can decide.
+These are the interview, the questions before a run, the fixes to apply, the items only a person can settle, the push, and the approval.
 
 ### Hand over files, not conversations
 
-No plugin reads another plugin's conversation.
-Each stage leaves a file or a branch, and the next stage starts from it: a spec, task files, branches, a review report, a test report, a pull request.
+No stage depends on another stage's conversation.
+Each stage leaves something the next one can read: a spec, task files, branches, a review report, a test report, a pull request.
 That's why you can start at any stage and stop at any stage.
 
 ### Every correction becomes a rule
@@ -78,17 +81,17 @@ That's why you can start at any stage and stop at any stage.
 A correction you type in chat is gone when the session ends.
 [Maintain](/lifecycle/maintain/) turns corrections into rules that every later session reads, so the same mistake doesn't come back.
 
-## Who does what in each stage
+## Who does what at each stage and step
 
 The agent does the work in every stage; you decide at the gates.
 
-| Stage | The agent | You | Leaves |
+| Stage or step | The agent | You | Leaves |
 |---|---|---|---|
 | [Plan](/lifecycle/plan/) | Checks the idea against the code, asks questions with a recommended answer, writes and validates the spec | Answer each round and confirm the summary of decisions | A spec with a `ready` verdict |
 | [Build](/lifecycle/build/) | Cuts the spec into tasks, builds them in parallel worktrees, runs the repository's checks and fixes failures | Answer one batch of questions, settle the items only a person can, approve the push | Branches, one per pull request |
 | [Self-review](/lifecycle/self-review/) | Reviews the change through every lens that applies and merges the findings into one report | Choose which fixes to apply | A review report and the fixes |
-| [Test](/lifecycle/test/) | Works out what to test, runs each check against the running app and records the evidence | Provide a local or staging stack and answer one round of questions | A test report with a verdict per check |
-| [Human review](/lifecycle/human-review/) | Records a walkthrough, opens the pull request with a risk label, answers comments and fixes CI | Review the change and approve it | An approved pull request with green checks |
+| [Test](/lifecycle/test/) | Works out what to test, runs each check against the running app and records the evidence | Point it at a local or staging stack, or let it start one, and answer its questions | A test report in the session, with a verdict per check |
+| [Human review](/lifecycle/human-review/) | Records a walkthrough, opens the pull request with a risk label, answers comments and fixes CI | Review and approve the change, and settle what the agent hands back | A pull request with green checks and settled threads, ready for approval |
 | [Maintain](/lifecycle/maintain/) | Checks dependency upgrades and finds the corrections in a session | Accept or skip each proposed rule | A verdict on the upgrade, or new rules |
 
 Table 1. What the agent does and what you decide in each stage
@@ -115,9 +118,11 @@ flowchart LR
 
 Figure 2. How a correction becomes a rule for the next change
 
-[`/session-learner:learn`](/plugins/session-learner/) proposes a change to `.claude/rules/`, `CLAUDE.md`, or a hookify rule for each correction, and writes only the ones you accept.
-[`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule directly from your description.
-code-review reads the same rules files as conventions, and its hookify lens replays your hookify rules over the diff, so Self-review holds the change to them too.
+[`/session-learner:learn`](/plugins/session-learner/) proposes a rule for each correction that isn't documented yet, and writes only the ones you accept.
+A rule goes to `.claude/rules/`, `CLAUDE.md`, or, when hookify is installed, a hookify rule.
+[`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule from your description.
+In Self-review, code-review reads your rules files as conventions, so it doesn't flag what they allow.
+Its hookify lens replays your file-edit hookify rules over the diff and reports each match.
 
 Dependency upgrades are the other half of Maintain.
 They arrive when their maintainers release them, not after a merge, so [`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/) runs whenever one arrives.

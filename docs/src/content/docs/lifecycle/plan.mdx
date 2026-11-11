@@ -26,6 +26,8 @@ Planning moves those decisions to the start, where changing one costs a sentence
 
 ## On the map
 
+The highlighted column shows where it sits in the cycle.
+
 <LifeMap stage="plan" animate={false} />
 
 ## How it runs
@@ -36,7 +38,7 @@ Most changes need only [`/fd3:build-spec`](/plugins/fd3/build-spec/), which runs
 2. **Interview.** Each round asks every question that can be answered now. Each question has two or three options with their costs and one recommended option.
 3. **Confirm.** You confirm a summary of every decision, including the ones the agent took that you never answered directly.
 4. **Write.** A sub-agent writes the spec from the confirmed notes. Each piece to build gets a permanent code, such as `API-2`.
-5. **Validate.** A second sub-agent checks every claim in the spec against the code and appends a verdict. It repeats this up to three times while the verdict is `not ready`.
+5. **Validate.** A second sub-agent checks every load-bearing claim against the code and appends a verdict. It runs again, up to three passes, while the verdict is `not ready` or the last pass edited the spec.
 
 Two supporting plugins help when a decision needs more than the code:
 
@@ -52,7 +54,7 @@ To argue an idea through without writing a spec, run only the interview with [`/
 ## What arrives and what leaves
 
 - **Arrives:** an idea, an issue or a rough plan.
-- **Leaves:** a spec whose last line reads `Verdict: ready`, ready to be cut into tasks in [Build](/lifecycle/build/).
+- **Leaves:** a spec whose latest verdict line reads `ready`, ready to be cut into tasks in [Build](/lifecycle/build/).
 
 ## When to skip it
 

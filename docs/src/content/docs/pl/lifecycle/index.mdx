@@ -17,12 +17,12 @@ Każdy etap ma potem własną stronę z krokami po kolei.
 ## Co się zmienia, gdy kod pisze agent
 
 W klasycznym cyklu wytwarzania oprogramowania (SDLC) pisanie kodu jest najwolniejszą częścią i cały proces jest ułożony wokół niego.
-Agent pisze kod w kilka minut, więc koszt przesuwa się w dwa miejsca: decyzję, co zbudować, i sprawdzenie, czy zbudowane jest dobre.
+Agent pisze kod w kilka minut, więc koszt przesuwa się w dwa miejsca: decyzję, co zbudować, i sprawdzenie, czy to, co zbudowano, jest poprawne.
 Bez procesu dla tych dwóch rzeczy wracają cztery porażki:
 
 - **Agent zgaduje.** Prośba w jednej linijce zostawia luki, a agent wypełnia każdą założeniem, które wychodzi na jaw dopiero w review.
 - **Kontekst się zapełnia.** Jedna sesja na dużą zmianę daje ostatnim zadaniom najmniej uwagi.
-- **Kod jest pewny siebie i błędny.** Buduje się i przechodzi CI, ale mija się ze specem, łamie regułę zespołu albo jest niebezpieczny, a agent zgłasza go jako gotowy.
+- **Kod jest pewny siebie i błędny.** Buduje się i przechodzi CI. Mimo to mija się ze specem, łamie regułę zespołu albo jest niebezpieczny, a agent zgłasza go jako gotowy.
 - **Reviewer tonie.** Człowiek dostaje duży diff bez dowodu, że działa, i bez wskazówki, gdzie patrzeć.
 
 ADLC odpowiada na każdą porażkę etapem, a każdy etap ma swój plugin.
@@ -31,6 +31,7 @@ ADLC odpowiada na każdą porażkę etapem, a każdy etap ma swój plugin.
 
 Mapa pokazuje cykl od lewej do prawej: Planowanie, Budowa oraz Review i testy w trzech krokach.
 Każda kolorowa linia to jeden główny plugin, a każda stacja to skill.
+Szare stacje należą do pluginów pomocniczych, a hooki reguł hookify działają same, bez komendy.
 Zmergowany pull request wraca do Planowania po następną zmianę.
 
 <LifeMap animate={false} />
@@ -40,7 +41,8 @@ Zmergowany pull request wraca do Planowania po następną zmianę.
 ### Decyzja, zanim powstanie kod
 
 Decyzja zmieniona przy planowaniu kosztuje zdanie; ta sama decyzja zmieniona w review kosztuje branch.
-W [Planowaniu](/pl/lifecycle/plan/) `/fd3:build-spec` sprawdza twój pomysł z kodem, wypytuje cię, aż nie zostanie nic do zdecydowania, i pisze spec, który waliduje z repozytorium.
+W [Planowaniu](/pl/lifecycle/plan/) `/fd3:build-spec` porównuje twój pomysł z kodem i wypytuje cię, aż nie zostanie nic do zdecydowania.
+Potem pisze spec i weryfikuje go względem repozytorium.
 
 ### Jedno zadanie, jeden kontekst
 
@@ -64,13 +66,14 @@ Czas człowieka to najrzadszy zasób w cyklu, więc dostaje zmianę, która prze
 
 ### Ludzie na bramkach, nie w pętli
 
-Agent nie zatrzymuje się, żeby pytać o to, co może sam sprawdzić.
-Zatrzymuje się w kilku stałych punktach, gdzie decydować możesz tylko ty: wywiad, pytania przed przebiegiem, sprawy, które rozstrzyga tylko człowiek, push i akceptacja.
+Agent nie zatrzymuje się, żeby pytać o to, co może sam ustalić albo sprawdzić.
+Zatrzymuje się w kilku stałych punktach, gdzie decydować możesz tylko ty.
+To wywiad, pytania przed przebiegiem, poprawki do zastosowania, sprawy, które rozstrzyga tylko człowiek, push i akceptacja.
 
 ### Przekazanie przez pliki, nie przez rozmowę
 
-Żaden plugin nie czyta rozmowy innego pluginu.
-Każdy etap zostawia plik albo branch, a następny zaczyna od niego: spec, pliki zadań, branche, raport z review, raport z testów, pull request.
+Żaden etap nie zależy od rozmowy innego etapu.
+Każdy etap zostawia coś, co następny może przeczytać: spec, pliki zadań, branche, raport z review, raport z testów, pull request.
 Dlatego możesz zacząć na dowolnym etapie i na dowolnym skończyć.
 
 ### Każda poprawka staje się regułą
@@ -78,17 +81,17 @@ Dlatego możesz zacząć na dowolnym etapie i na dowolnym skończyć.
 Poprawka wpisana w czacie znika, gdy sesja się kończy.
 [Utrzymanie](/pl/lifecycle/maintain/) zamienia poprawki w reguły, które czyta każda kolejna sesja, więc ten sam błąd nie wraca.
 
-## Kto co robi na każdym etapie
+## Kto co robi na każdym etapie i kroku
 
 Agent wykonuje pracę na każdym etapie; ty decydujesz na bramkach.
 
-| Etap | Agent | Ty | Zostawia |
+| Etap albo krok | Agent | Ty | Zostawia |
 |---|---|---|---|
 | [Planowanie](/pl/lifecycle/plan/) | Sprawdza pomysł z kodem, zadaje pytania z rekomendowaną odpowiedzią, pisze i waliduje spec | Odpowiadasz w każdej rundzie i potwierdzasz podsumowanie decyzji | Spec z werdyktem `ready` |
 | [Budowa](/pl/lifecycle/build/) | Tnie spec na zadania, buduje je równolegle w worktree, uruchamia walidację repozytorium i naprawia błędy | Odpowiadasz na jedną paczkę pytań, rozstrzygasz sprawy dla człowieka, zgadzasz się na push | Branche, po jednym na pull request |
 | [Self-review](/pl/lifecycle/self-review/) | Przegląda zmianę każdą pasującą soczewką i scala znaleziska w jeden raport | Wybierasz, które poprawki zastosować | Raport z review i poprawki |
-| [Testy](/pl/lifecycle/test/) | Ustala, co przetestować, uruchamia każde sprawdzenie na działającej aplikacji i zapisuje dowody | Dajesz lokalne albo stagingowe środowisko i odpowiadasz na jedną rundę pytań | Raport z werdyktem dla każdego sprawdzenia |
-| [Review człowieka](/pl/lifecycle/human-review/) | Nagrywa walkthrough, otwiera pull request z etykietą ryzyka, odpowiada na komentarze i naprawia CI | Przeglądasz zmianę i ją akceptujesz | Zaakceptowany pull request z zielonymi checkami |
+| [Testy](/pl/lifecycle/test/) | Ustala, co przetestować, uruchamia każde sprawdzenie na działającej aplikacji i zapisuje dowody | Wskazujesz lokalne albo stagingowe środowisko albo pozwalasz mu je uruchomić i odpowiadasz na jego pytania | Raport z testów w sesji, z werdyktem dla każdego sprawdzenia |
+| [Review człowieka](/pl/lifecycle/human-review/) | Nagrywa walkthrough, otwiera pull request z etykietą ryzyka, odpowiada na komentarze i naprawia CI | Przeglądasz i akceptujesz zmianę oraz rozstrzygasz to, co agent ci odda | Pull request z zielonymi checkami i rozstrzygniętymi wątkami, gotowy do akceptacji |
 | [Utrzymanie](/pl/lifecycle/maintain/) | Sprawdza aktualizacje zależności i znajduje poprawki z sesji | Akceptujesz albo pomijasz każdą proponowaną regułę | Werdykt o aktualizacji albo nowe reguły |
 
 Tabela 1. Co robi agent, a o czym decydujesz ty na każdym etapie
@@ -115,9 +118,11 @@ flowchart LR
 
 Rysunek 2. Jak poprawka staje się regułą dla następnej zmiany
 
-[`/session-learner:learn`](/pl/plugins/session-learner/) proponuje dla każdej poprawki zmianę w `.claude/rules/`, w `CLAUDE.md` albo regułę hookify, i zapisuje tylko te, które zaakceptujesz.
-[`/hookify:hookify`](/pl/plugins/hookify/hookify/) pisze regułę hookify prosto z twojego opisu.
-code-review czyta te same pliki reguł jako konwencje, a jego soczewka hookify odtwarza twoje reguły hookify na diffie, więc Self-review też trzyma zmianę w ich ramach.
+[`/session-learner:learn`](/pl/plugins/session-learner/) proponuje regułę dla każdej poprawki, której nie ma jeszcze w dokumentacji, i zapisuje tylko te, które zaakceptujesz.
+Reguła trafia do `.claude/rules/`, do `CLAUDE.md` albo, gdy hookify jest zainstalowany, do reguły hookify.
+[`/hookify:hookify`](/pl/plugins/hookify/hookify/) pisze regułę hookify z twojego opisu.
+W Self-review code-review czyta twoje pliki reguł jako konwencje, więc nie zgłasza tego, na co pozwalają.
+Jego soczewka hookify odtwarza na diffie twoje reguły hookify dla edycji plików i zgłasza każde dopasowanie.
 
 Drugą połową Utrzymania są aktualizacje zależności.
 Przychodzą, gdy wydadzą je ich opiekunowie, a nie po merge'u, więc [`/dev-kit:dep-upgrade-check`](/pl/plugins/dev-kit/dep-upgrade-check/) uruchamiasz wtedy, gdy któraś przyjdzie.
