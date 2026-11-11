@@ -31,6 +31,7 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--selection` | `::selection` background; selected text stays `--text` |
 | `--code-bg`, `--code-text`, `--code-muted` | Code blocks and inline code; `--code-muted` for comments and command output; `--code-text` is an alias of `--text` |
 | `--diagram-line` | Strokes and connectors in diagrams and illustrations |
+| `--line-fd3`, `--line-code-review`, `--line-tester`, `--line-pr-proof`, `--line-dev-kit` | Diagram palette: the line colour of each core plugin, on the lifecycle map and wherever a plugin is marked (swatch, card rule, skill-flow connector) |
 | `--info`, `--success`, `--warning`, `--danger` | Status tones: callout markers and titles, status words in command output |
 | `--scrim` | Backdrop behind a dialog |
 | `--shadow-overlay` | Ring and shadow of a dialog; the only drop shadow in the system |
@@ -74,6 +75,7 @@ Default                                     → --text
 - **Focus:** `outline: 2px solid var(--focus); outline-offset: 2px` on every interactive element.
 - **Blockquote:** `--quote` text on the current background, a 3 px `--quote-rule` on the inline start, `--space-4` padding on that side, no background and no italics. Italics are for emphasis inside text, and a whole italic paragraph is harder to read.
 - **Figures and diagrams:** shapes are filled with `--panel`, stroked with `--diagram-line` at 1.5 px and rounded with `--radius-inset`; connectors are 1.5 px `--diagram-line` lines ending in a filled `--diagram-line` arrowhead; text inside is 14 px (Small) in `--text`. Highlight at most one element with a 2 px `--primary` stroke (the element the figure is about) and one with a 2 px `--secondary` stroke or a `--secondary` step marker. Highlights are strokes, never fills.
+- **Diagram palette:** each of the five core plugins owns one `--line-*` colour, so a reader can follow a plugin from the lifecycle map to its card, its sidebar and its skill flows. The colours are graphics only: lines, station rings, 4 px swatches, 3 px inset rules and connectors, never text and never a fill larger than a station dot. A colour always sits next to the plugin's name, so it is never the only signal. Supporting plugins have no colour: they use `--diagram-line`. The palette is outside the two-colour rule above because it identifies plugins, not actions or emphasis; `--primary` still marks only what you can act on.
 - **Captions** under figures, diagrams, code blocks and tables sit `--space-2` below the block, Caption style in `--caption`, starting with a capital and ending without a full stop when it is not a sentence. Number them by kind: "Figure 1.", "Listing 1.", "Table 1.".
 - **Blockquote attribution:** a `<footer>` inside the blockquote, Small in `--muted`, `--space-2` above.
 - **Tables:** the header row is Label style in `--muted` on `--tray`; cells are Small in `--text`; rows are separated by a 1 px `--border` rule and nothing else (no zebra stripes, no vertical rules); cell padding `--space-2` vertical and `--space-3` horizontal. Text aligns to the start; columns of numbers align to the end and use `tabular-nums`. Every table sits in a `<div role="region" tabindex="0" aria-labelledby="…">` named by its caption, with `overflow-x: auto`, so a table wider than the screen scrolls on its own instead of the page, a keyboard can scroll it, and its end fades out over 24 px (`mask-image`) while there is more to the right.
@@ -98,6 +100,7 @@ Checked contrast (WCAG 2.1 / APCA Lc), light theme then dark:
 | `--text` / `--muted` on `--tray-pressed` | 10.7:1 / 5.1:1 | 9.9:1 / 6.8:1 |
 | `--secondary` on `--canvas` (non-text) | 4.4:1 | 7.5:1 |
 | `--diagram-line` on `--canvas` (non-text) | 3.3:1 | 4.9:1 |
+| `--line-fd3` / `-code-review` / `-tester` / `-pr-proof` / `-dev-kit` on `--canvas` (non-text) | 4.3 / 3.2 / 8.4 / 5.5 / 3.2:1 | 7.7 / 11.2 / 4.9 / 6.6 / 10.6:1 |
 | `--diagram-line` field ring on `--code-bg` / on `--panel` (non-text) | 3.1:1 / 3.6:1 | 5.1:1 / 4.5:1 |
 | `--code-text` on `--code-bg` | 11.8:1 / 89 | 13.5:1 / −81 |
 | `--code-muted` on `--code-bg` | 5.7:1 / 72 | 8.7:1 / −57 |
@@ -106,7 +109,7 @@ Checked contrast (WCAG 2.1 / APCA Lc), light theme then dark:
 | `--warning` on `--canvas` / on `--warning-bg` | 5.6:1 / 5.4:1 | 10.8:1 / 9.4:1 |
 | `--danger` on `--canvas` / on `--danger-bg` | 6.0:1 / 5.7:1 | 8.7:1 / 7.7:1 |
 
-All values are inside sRGB. Re-check this table when you change a token.
+All values are inside sRGB. Re-check this table when you change a token. The diagram palette also stays distinguishable under colour-vision deficiency: every pair, including `--primary` and `--secondary`, keeps at least ΔE_ok 6.3 under simulated protanopia and deuteranopia and 3.7 under tritanopia.
 
 ## Typography
 
@@ -423,6 +426,85 @@ One rule for everything interactive that the sections above do not give its own 
 
 Correct: hovering a plugin card fills it `--tray`; hovering its Copy button fills only the button.
 Incorrect: a pressed nav tab with a `--primary` underline. For a moment it claims to be the current page before the page has changed.
+
+### Lifecycle map
+
+The site's spine. It shows the development cycle (Plan, Build, then Review & test as Self-review, Test and Human review) as a transit map: each core plugin is a line in its `--line-*` colour, each skill a station on it, and a reader finds a plugin by where it works rather than by name.
+
+```
+Is the page about the whole toolkit?            → full map (landing, Lifecycle overview)
+Is it a plugin's overview or a placeholder?     → map zoomed to the plugin: its stations full, the rest at 0.18 opacity
+Is it a lifecycle stage page?                   → map zoomed to the stage: its band filled --tray, other stations dimmed
+Is it one skill's page?                         → no map: the skill flow below
+```
+
+- **Frame:** a `<figure>` on `--panel` with `--radius-panel` and a 1 px `--border` ring, captioned "Figure 1. …" like any figure. The inside is at least 980 px wide and scrolls horizontally on narrow screens, because a transit map squeezed to a phone loses its stations' labels.
+- **Stage header:** Label-style stage numbers (`01`, `02`, `03a`…) in `--muted` and stage titles in Small 600 `--heading`, each a link to its stage page. "Review & test" is one Label over its three columns, ruled with 1 px `--diagram-line`, and never spans Maintain.
+- **Lines and stations:** main-line segments 7 px, round caps; branches 4 px, dotted (`2 7`) when a skill is called by another rather than run by hand (ci-fix, called by pr-shepherd). Core stations are 3.5 px rings in the line colour on `--panel`; supporting plugins' stations are 1.5 px `--diagram-line` rings with no colour. Labels are Plex Mono 14 px in `--text`, one under or over each station, with a 12 px `--muted` subline for a feature ("+ risk label"). A dashed `--diagram-line` loop returns from the merge marker to the start, labelled "merged · next change".
+- **Interaction:** every station is a link to its skill's page with the station label as its name. Hovering a station fills its dot with the line colour and underlines its label. Hovering a plugin in the key under the map dims every other plugin to 0.15 opacity. Focus rings the station's hit area.
+- **Motion (full map only):** once the map scrolls into view, the change builds the line: the track dims to 0.25, a full-colour copy is revealed station by station over 1100 ms `cubic-bezier(0.65, 0, 0.35, 1)`, the current station's dot fills, grows to 11 px and sends out one ring in its line colour, and the artefact it leaves (`spec.md · ready`, `PR #142 · risk: medium`) fades in on one row below all labels, so it never covers a station. At the end the merge marker fills `--heading`, the line holds for a moment, then fades and the cycle restarts. There is no separate travelling dot. Under `prefers-reduced-motion` the line is full and still: no ring, no artefacts.
+- **Key:** under the map, one row per core plugin (4 px swatch, name in Plex Mono, its promise in `--muted`) and one entry for supporting plugins (an uncoloured ring).
+
+Correct: the landing map with fd3's blue line from build-spec to implement, handing over to code-review's line at start-cr.
+Incorrect: an orange dot travelling along the line with a floating label. It covers the next station's name, and `--secondary` beside five line colours reads as a sixth plugin.
+
+### Maintain band
+
+Maintenance is not a stage of the cycle: it happens whenever it is needed, and the toolkit has no deploy step to anchor it to. So it sits under the map, outside the cycle.
+
+- **Frame:** a panel with a 1 px inset `--border` ring, `--radius-panel`, `--space-4` padding and a faint 45° hatch of `--tray` lines, the one patterned surface in the system, so it reads as "off the line" next to the map.
+- **Header:** "Maintain" as a Label in `--heading`, linked to its stage page, then "outside the cycle, whenever it's needed" in Caption `--caption`.
+- **Items:** a grid of clickable tiles (`minmax(220px, 1fr)`), each on `--panel` with a 3 px inset rule in its plugin's line colour, or `--diagram-line` for a supporting plugin: the command in inline code, then one Small line on what it does. Hover and pressed follow Hover and pressed.
+
+Correct: `/dev-kit:dep-upgrade-check` with a teal rule next to `/hookify:hookify` with a grey one.
+Incorrect: dep-upgrade-check as a station after pr-shepherd. Upgrades do not follow a merge, and the line would claim they do.
+
+### Skill flow
+
+A skill page shows how that one skill runs, step by step, from what you give it to what it hands over. It is the map's third zoom level: the map shows where the skill sits, the flow what happens inside it.
+
+- **Stage row:** above the flow, the cycle's stages as a row of Small links in `--muted`; the skill's own stage is `--heading` with a 3 px underline in the plugin's line colour.
+- **Steps:** an ordered list on `--panel` (`--radius-panel`, 1 px `--border` ring, `--space-5` padding), laid out in a row when the container is wider than 940 px and as a column below that (a container query, so it follows the content column, not the viewport).
+- **Ends:** the first item is "You give it" and the last "Hands over to", both Label-style headings on a `--tray` tile with `--radius-inset`; the hand-over links to the next skill's page.
+- **Step:** a 28 px circular marker with the step number in Plex Mono Caption and a 2 px `--secondary` inset ring (the figure's one secondary step marker), the step name in Plex Sans 600 `--heading`, what it does in Small, and what it leaves as inline code with a 2 px inset rule in the line colour. Connectors are 2 px in the line colour, fading to `--diagram-line` before an end tile; an optional step has a dashed connector, a 1.5 px `--diagram-line` marker ring and "optional" in `--muted`.
+- **Motion:** steps rise 6 px and fade in once, 400 ms `cubic-bezier(0.23, 1, 0.32, 1)`, 70 ms apart; nothing under `prefers-reduced-motion`.
+
+Correct: build-spec's flow ending in "Hands over to · split-to-tasks".
+Incorrect: the flow drawn as a Mermaid flowchart. Mermaid cannot carry the plugin's line colour or link its ends, and its boxes are a second figure style on the same page.
+
+### Plugin card
+
+A card stands for one plugin on the landing page and in the catalog: what it promises, the skills it brings, and how to install it.
+
+- **Variants:** the core card (landing) has the plugin's illustration on top, then the name, the promise, a one-sentence description, its main skills as inline code and a command strip; the first two cards span three columns of six, the rest two. The catalog card has no illustration: name, a `supporting` neutral badge when it is not core, the description, the skills and the strip.
+- **Marking:** a 4 px swatch in the plugin's line colour before its name; a supporting plugin shows an uncoloured `--diagram-line` ring instead.
+- **States:** the whole card is one link (see Hover and pressed); the strip's Copy sits above it and keeps its own states.
+
+Correct: the fd3 card with its blue swatch and `/plugin install fd3@cc-toolkit` in the strip.
+Incorrect: a card with a "Learn more" button. The card is already the link, and the button is a second target pointing to the same page.
+
+### Plugin illustrations
+
+Each core plugin and the landing hero have an isometric line illustration, so a card is recognisable before its name is read.
+
+- **Paint:** shapes in `--panel` and `--tray`, ink lines in `--muted`, and one flat spot in the plugin's `--line-*` colour, at most about 15% of the drawing: the block fd3 builds, the face tester checks. The hero uses `--diagram-line` for its spot. This is the one exception to "highlights are strokes": an illustration is not a diagram and highlights nothing, and the spot is what ties the card to its line on the map. Diagrams stay stroke-only.
+- **Frame:** on `--panel` inside a 1 px `--border` ring with `--radius-panel`; square, 200 px beside a plugin's overview title and hidden below 760 px, 132 px tall on a card. Decorative, so `aria-hidden="true"` with no alt text.
+- **Source:** inline SVG with classes `p` (panel), `m` (tray), `i` (ink) and `a` (accent) mapped to tokens, so both themes follow without a second file. A new illustration is recoloured to these four classes before it ships.
+
+Correct: tester's clamped block with one violet face.
+Incorrect: an illustration in full colour from an image model. It ignores the theme and outweighs the text beside it.
+
+## Languages
+
+The site is in English and Polish, and every page exists in both.
+
+- **Paths:** English is the root locale (`/plugins/fd3/`), Polish lives under `/pl/` with the same slugs (`/pl/plugins/fd3/`). Slugs, anchors in links, commands, file names and code stay in English in both, so a link or a command copied from one version works in the other.
+- **Switch:** the header's language link (`PL` / `EN`, Plex Mono Small `--muted`, `hreflang` and `lang` set) goes to the same page in the other language.
+- **Missing translation:** a page with no Polish file falls back to English with a note callout at the top, "This page isn't translated yet". This is a stopgap, not a state to ship: a page and its translation land in the same change.
+- **Polish copy:** written for Polish readers, not translated word for word. Address the reader with "ty"; keep established English terms (pull request, branch, worktree, spec, review, commit) and decline them where Polish does; dates in the Polish format through `toLocaleDateString('pl-PL')`.
+
+Correct: `/pl/plugins/dev-kit/pr-open/` explaining the risk label in Polish, with `/dev-kit:pr-open` unchanged in its strip.
+Incorrect: a Polish slug such as `/pl/pluginy/dev-kit/`. The language switch and every cross-language link would need a mapping table.
 
 ## Not defined yet
 
