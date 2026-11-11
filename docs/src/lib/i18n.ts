@@ -1,5 +1,4 @@
 export type Lang = 'en' | 'pl'
-export const langs: Lang[] = ['en', 'pl']
 
 /** Site path without locale ("plugins/fd3/") → URL for a language. */
 export const href = (path: string, lang: Lang) => {
@@ -68,4 +67,3 @@ export const ui = {
     groups: { start: 'Na początek', guides: 'Przewodniki', concepts: 'Koncepcje', reference: 'Dokumentacja techniczna' },
   },
 } as const
-export type UI = (typeof ui)['en']

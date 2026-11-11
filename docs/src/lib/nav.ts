@@ -34,7 +34,7 @@ export type NavGroup = { key: GroupKey; label: string; pages: NavPage[] }
 
 type Entry = CollectionEntry<'docs'>
 const UNORDERED = Infinity
-export const entryPath = (e: Entry) => {
+const entryPath = (e: Entry) => {
   const id = e.id.replace(/^pl\//, '').replace(/(^|\/)index$/, '')
   return id === '' ? '' : `${id}/`
 }
@@ -43,7 +43,7 @@ let cache: Promise<Entry[]> | undefined
 const all = () => (cache ??= getCollection('docs'))
 
 /** The page in the reader's language when it exists, so labels follow the locale while the order follows English. */
-export async function localized(lang: Lang) {
+async function localized(lang: Lang) {
   const entries = await all()
   const en = entries.filter((e) => !e.id.startsWith('pl/'))
   const pl = new Map(entries.filter((e) => e.id.startsWith('pl/')).map((e) => [entryPath(e), e]))
