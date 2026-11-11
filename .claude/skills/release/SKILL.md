@@ -39,9 +39,9 @@ All five are `die` conditions inside the script; the only non-fatal item in the 
    (`jq -e '.version' .claude-plugin/marketplace.json`).
 3. Neither tag you are about to create exists: `<plugin>/vX.Y.Z` and
    `marketplace/vX.Y.Z`, the marketplace version bumped by the same level
-   (`git tag --list '<plugin>/*' 'marketplace/*' | tail -5`).
+   (`git tag --list '<plugin>/vX.Y.Z' 'marketplace/vX.Y.Z'` prints nothing).
 4. `jq` and `git` are on PATH. `gh` is **optional**: without it the script pushes the
-   commit and tag and prints `gh CLI not found — skipping GitHub Release`. Do not block
+   commit and both tags and prints `gh CLI not found — skipping GitHub Release`. Do not block
    a release on `gh`; just say the GitHub Release will be missing.
 5. `git diff --quiet -- plugins/<name> .claude-plugin/marketplace.json` is clean — the
    script dies on it, and that narrow pair is all it checks. It does not look at the
