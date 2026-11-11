@@ -1,5 +1,6 @@
 import { getCollection, type CollectionEntry } from 'astro:content'
 import { ui, type Lang } from './i18n'
+import { groupOrder } from './groups'
 
 export type SectionId = 'start' | 'lifecycle' | 'plugins' | 'changelog'
 
@@ -21,7 +22,6 @@ export const tocHeadings = (toc?: { items: TocItem[] }) => {
   return items.length >= MIN_TOC_HEADINGS ? items : []
 }
 
-const groupOrder = ['start', 'cycle', 'guides', 'concepts', 'reference', 'outside'] as const
 type GroupKey = (typeof groupOrder)[number]
 const groupLabels: Record<Lang, Record<GroupKey, string>> = {
   en: { ...ui.en.groups, cycle: 'The cycle', outside: 'Outside the cycle' },
