@@ -120,7 +120,7 @@ export function halve(part: Part): { parts: Part[]; truncatedHunks: number } {
 }
 
 // `diff --git a/<path> b/<path>` with renames off: both paths are the same, so the first half of the rest is it.
-function diffPath(text: string): string | undefined {
+export function diffPath(text: string): string | undefined {
   const head = text.split('\n', 1)[0]
   if (!head.startsWith('diff --git a/')) return undefined
   const rest = head.slice('diff --git '.length)
