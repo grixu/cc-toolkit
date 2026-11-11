@@ -24,7 +24,7 @@ Work dir: `~/.cache/walkthrough-video/<repo>/<feature-slug>/`, never under the s
 
 ## Dispatching a leg
 
-Every dispatch prompt carries: the brief's absolute path (`${CLAUDE_SKILL_DIR}/briefs/<leg>.md`) to read first, `${CLAUDE_SKILL_DIR}/briefs/rules.md` to read second, the skill dir `${CLAUDE_SKILL_DIR}` itself, which the briefs call `<this skill dir>`, the work dir, the inputs above, and the project's own hard rules from its `CLAUDE.md` files and memory (other sessions' Docker stacks, protected files, secret handling, git limits, what reaches shared services). Name things to look at, never conclusions to confirm: a claim another run or agent made goes in as "check whether…", not as a fact.
+Every dispatch prompt carries: the brief's absolute path (`${CLAUDE_SKILL_DIR}/briefs/<leg>.md`) to read first, `${CLAUDE_SKILL_DIR}/../../references/rules.md` to read second, the skill dir `${CLAUDE_SKILL_DIR}` itself, which the briefs call `<this skill dir>`, the work dir, the inputs above, and the project's own hard rules from its `CLAUDE.md` files and memory (other sessions' Docker stacks, protected files, secret handling, git limits, what reaches shared services). Name things to look at, never conclusions to confirm: a claim another run or agent made goes in as "check whether…", not as a fact.
 
 Dispatch with `run_in_background: true` (a boolean; a string runs the leg in the foreground and blocks you) and no `name`; keep the `agentId` the result returns. A leg that has written nothing to the work dir for 20 minutes is checked: read its last output, and dispatch a fresh one with the same brief when it died.
 
