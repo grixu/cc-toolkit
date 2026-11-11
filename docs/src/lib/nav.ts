@@ -53,11 +53,11 @@ async function localized(lang: Lang) {
 export async function sidebarFor(path: string, lang: Lang): Promise<{ label: string; groups: NavGroup[] } | null> {
   const section = sectionOf(path)
   const plugin = pluginOf(path)
+  const sec = sections.find((s) => s.id === section)
   let prefix: string
   let label: string
-  if (section === 'start') [prefix, label] = ['getting-started/', sections[0].label[lang]]
-  else if (section === 'lifecycle') [prefix, label] = ['lifecycle/', sections[1].label[lang]]
-  else if (section === 'plugins' && plugin) [prefix, label] = [pluginPath(plugin), `${plugin} docs`]
+  if (section === 'plugins' && plugin) [prefix, label] = [pluginPath(plugin), `${plugin} docs`]
+  else if (sec && (section === 'start' || section === 'lifecycle')) [prefix, label] = [sec.prefix, sec.label[lang]]
   else return null
 
   const orderOf = (p: { en: Entry }) => p.en.data.sidebar.order ?? UNORDERED

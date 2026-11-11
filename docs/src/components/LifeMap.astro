@@ -134,6 +134,7 @@ const showMaintain = !onStages || onStages.has('maintain')
           const l = labelPos(p)
           const isCore = pluginByName[s.plugin].core
           const i = order.indexOf(s.id)
+          const subLabel = [s.calledBy && !s.main && `${t.calledBy} ${s.calledBy}`, s.feature && `+ ${s.feature[lang]}`, !isCore && s.plugin].find(Boolean)
           return (
             <a
               href={link(s.href)}
@@ -148,9 +149,7 @@ const showMaintain = !onStages || onStages.has('maintain')
               {animate && i >= 0 && <circle class="lmap-halo" cx={p.x} cy={p.y} r="9" aria-hidden="true" />}
               <circle class="lmap-dot" cx={p.x} cy={p.y} r={isCore ? 8.5 : 6} />
               <text class="lmap-lab" x={l.x} y={l.y} text-anchor={l.anchor}>{shortName(s)}</text>
-              {s.calledBy && !s.main && <text class="lmap-sub" x={l.x} y={l.y + 16} text-anchor={l.anchor}>{t.calledBy} {s.calledBy}</text>}
-              {s.feature && <text class="lmap-sub" x={l.x} y={l.y + 16} text-anchor={l.anchor}>+ {s.feature[lang]}</text>}
-              {!isCore && <text class="lmap-sub" x={l.x} y={l.y + 16} text-anchor={l.anchor}>{s.plugin}</text>}
+              {subLabel && <text class="lmap-sub" x={l.x} y={l.y + 16} text-anchor={l.anchor}>{subLabel}</text>}
               {animate && i >= 0 && <text class="lmap-art" x={p.x} y={artifactY} text-anchor="middle" aria-hidden="true">{artifacts[s.id]}</text>}
             </a>
           )

@@ -185,6 +185,7 @@ export const core = plugins.filter((p) => p.core)
 export const supporting = plugins.filter((p) => !p.core)
 export const skillsOf = (plugin: string) => skills.filter((s) => s.plugin === plugin)
 export const stagesOf = (plugin: string) => stages.filter((st) => skillsOf(plugin).some((s) => s.stage === st.id))
+export const stageTitles = (plugin: string, lang: Lang) => stagesOf(plugin).map((s) => s.title[lang]).join(' · ')
 export const pluginsIn = (stage: StageId) => [...new Set(skills.filter((s) => s.stage === stage).map((s) => s.plugin))]
 export const lineStyle = (plugin: string) => (pluginByName[plugin]?.core ? `--pc: var(--line-${plugin})` : undefined)
 
