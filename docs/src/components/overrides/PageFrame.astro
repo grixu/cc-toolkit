@@ -8,9 +8,9 @@ import { sidebarFor } from '../../lib/nav'
 const { starlightRoute } = Astro.locals
 const lang = langOf(Astro.url.pathname)
 const path = canonicalPath(Astro.url.pathname)
-const hasSb = !starlightRoute.entry.data.landing && !!(await sidebarFor(path, lang))
-const hasToc = (starlightRoute.toc?.items ?? []).filter((i) => i.depth === 2).length >= 3
 const landing = !!starlightRoute.entry.data.landing
+const hasSb = !landing && !!(await sidebarFor(path, lang))
+const hasToc = (starlightRoute.toc?.items ?? []).filter((i) => i.depth === 2).length >= 3
 ---
 
 <slot name="header" />

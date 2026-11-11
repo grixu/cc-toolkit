@@ -213,7 +213,7 @@ export function commentBlocks(output) {
   });
 }
 
-const quoted = (output, c, quote) => commentBlocks(output).filter((b) => b.quote.includes(squash(quote)) && (!c.file || (b.file ?? '').endsWith(c.file)));
+const quoted = (output, c, quote) => commentBlocks(output).filter((b) => b.quote.includes(squash(quote)) && (!c.file || b.file.endsWith(c.file)));
 
 export function commentVerdict(output, { config: c = {} } = {}) {
   const fails = [];
@@ -236,7 +236,7 @@ export function commentKept(output, { config: c = {} } = {}) {
 }
 
 export function commentNotFlagged(output, { config: c = {} } = {}) {
-  const bad = commentBlocks(output).filter((b) => b.verdict && b.verdict !== 'KEEP' && list(c.mentions).some((p) => re(p).test(b.text)));
+  const bad = commentBlocks(output).filter((b) => b.verdict !== 'KEEP' && list(c.mentions).some((p) => re(p).test(b.text)));
   return bad.length ? result(false, `flagged: ${bad.map((b) => b.text.split('\n')[0].slice(0, 120)).join(' || ')}`) : result(true, 'not flagged');
 }
 

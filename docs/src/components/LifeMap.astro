@@ -72,14 +72,16 @@ const segmentDimClass = (plugin: string) => {
   return isPluginDimmed(plugin) || missingFromStage ? 'is-dim' : undefined
 }
 const onStages = focus ? new Set(skills.filter((s) => s.plugin === focus).map((s) => s.stage)) : stage ? new Set([stage]) : null
-const labelPos = (p: { x: number; y: number; labelSide: LabelSide }) =>
-  p.labelSide === 'above'
-    ? { x: p.x, y: p.y - 24, anchor: 'middle' }
-    : p.labelSide === 'below'
-      ? { x: p.x, y: p.y + 36, anchor: 'middle' }
-      : p.labelSide === 'left'
-        ? { x: p.x - 18, y: p.y + 5, anchor: 'end' }
-        : { x: p.x + 18, y: p.y + 5, anchor: 'start' }
+const labelOffsets: Record<LabelSide, { dx: number; dy: number; anchor: string }> = {
+  above: { dx: 0, dy: -24, anchor: 'middle' },
+  below: { dx: 0, dy: 36, anchor: 'middle' },
+  left: { dx: -18, dy: 5, anchor: 'end' },
+  right: { dx: 18, dy: 5, anchor: 'start' },
+}
+const labelPos = (p: { x: number; y: number; labelSide: LabelSide }) => {
+  const o = labelOffsets[p.labelSide]
+  return { x: p.x + o.dx, y: p.y + o.dy, anchor: o.anchor }
+}
 // One row below every label and sub-label, so an artifact never covers a neighbour's name.
 const artifactY = Y + 76
 const showMaintain = !onStages || onStages.has('maintain')
