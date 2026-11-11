@@ -13,7 +13,7 @@ dev-kit is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then ins
 
 ## Requirements
 
-- The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it.
+- The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it. A `## Proof` section in `pr-open` needs `gh` 2.99.0 or later, the first with `--attach`; an older `gh` fails `gh pr create` on that flag.
 - A GitHub repository. `ci-fix` and `pr-shepherd` handle GitHub Actions runs and GitHub check runs only.
 - To push a fix to a file under `.github/workflows/`, a token with the `workflow` scope.
 - For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
