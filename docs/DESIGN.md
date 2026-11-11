@@ -239,6 +239,33 @@ Use a text field only where the reader types something the site keeps or acts on
 - **Disabled:** `--tray` fill, no ring, `--muted` text. Prefer a read-only field, which can still be selected and copied.
 - **Width** follows the expected value, capped at 360 px; never stretch a short field to the column width.
 
+### Choice controls, select and textarea
+
+Checkboxes and radios are drawn as terminal glyphs, so filters and forms read like the command strip and command output beside them.
+
+```
+Can the reader pick more than one option?      → checkboxes
+One option from 2–5 that should all be visible → radios
+One option from 6 or more, or a long value     → select
+Free text longer than one line                 → textarea
+```
+
+| Control | Off | On | Mixed | Disabled |
+| --- | --- | --- | --- | --- |
+| Checkbox | `[ ]` | `[x]` | `[-]` (`indeterminate`) | glyph and label `--muted`, weight 400 |
+| Radio | `( )` | `(•)` | — | glyph and label `--muted`, weight 400 |
+
+- **Markup:** a real `<input type="checkbox">` or `radio`, visually hidden (`position: absolute; opacity: 0; width: 1px; height: 1px`), followed by an `aria-hidden="true"` glyph span, both inside one `<label>`. The input keeps keyboard, form and screen-reader behaviour; the glyph is only paint, so it must be updated from the input's state, never the other way round.
+- **Option row:** the whole label is clickable, at least 32 px tall, glyph and label `--space-2` apart, both in Plex Mono 400 Small. The glyph is `--code-muted` when off and `--primary` at weight 600 when on; the label stays `--text`. An optional count sits at the row's end in Caption, `--muted`, `tabular-nums`.
+- **Group:** a `<fieldset>` with a `<legend>` styled as the text-field label (Small, Plex Sans 600, `--heading`), `--space-2` below it; rows `--space-2` apart; groups `--space-5` apart.
+- **Focus:** the shared ring goes on the glyph (`input:focus-visible + .glyph`), with `--radius-control`, because the input itself is invisible.
+- **Select:** a native `<select>` with `appearance: none`, the text-field box (40 px, `--radius-control`, inset `--border` ring, hover and focus rings as a text field) on `--code-bg`, text in Plex Mono 400 at 16 px in `--code-text`, and a 12 px chevron in `--muted` 12 px from the end. The open list stays native: it is the only one that works on phones.
+- **Textarea:** the same box on `--code-bg`, Plex Mono 400 at 16 px in `--code-text`, padding `--space-2` vertical and `--space-3` horizontal, at least 104 px tall, `resize: vertical`. With a `maxlength`, show a counter below its end: Caption in Plex Mono, `--code-muted`, `tabular-nums`, as "39 / 500".
+- **16 px everywhere:** select and textarea keep 16 px text even in the mono face, because iOS Safari zooms into anything smaller.
+
+Correct: a plugin filter "Lifecycle stage" with `[x] Plan  1` rows and a `(•) Recently updated` sort.
+Incorrect: a toggle switch for a filter. A switch means "applies now" in settings; a filter is a choice in a list, and it breaks the glyph set.
+
 ### Search palette
 
 Developers expect documentation search behind a shortcut, so search opens a dialog instead of living as a field in the header.
@@ -301,5 +328,4 @@ Incorrect: a drawer from the left. The menu button sits at the right end of the 
 These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
 
 - Hover and pressed states for components other than links, navigation, buttons and fields.
-- Selects, checkboxes, radios and textareas.
 - Any use of the status `-bg` tints.
