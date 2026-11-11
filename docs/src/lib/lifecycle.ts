@@ -5,13 +5,7 @@ import type { Lang } from './i18n'
 type Localized = Record<Lang, string>
 
 const repo = resolve(process.cwd(), '..')
-const readJson = (path: string) => {
-  try {
-    return JSON.parse(readFileSync(resolve(repo, path), 'utf8'))
-  } catch {
-    return {}
-  }
-}
+const readJson = (path: string) => JSON.parse(readFileSync(resolve(repo, path), 'utf8'))
 
 export const marketplaceVersion: string = readJson('.claude-plugin/marketplace.json').version ?? ''
 export const installMarketplace = '/plugin marketplace add grixu/cc-toolkit'
@@ -196,17 +190,12 @@ export type Release = { plugin: string; version: string; date: string; kind: str
 export function releases(): Release[] {
   const out: Release[] = []
   for (const p of plugins) {
-    let md = ''
-    try {
-      md = readFileSync(resolve(repo, 'plugins', p.name, 'CHANGELOG.md'), 'utf8')
-    } catch {
-      continue
-    }
+    const md = readFileSync(resolve(repo, 'plugins', p.name, 'CHANGELOG.md'), 'utf8')
     const parts = md.split(/^## \[(\d[^\]]*)\] - (\d{4}-\d{2}-\d{2})\s*$/m)
     for (let i = 1; i < parts.length; i += 3) {
       const body = parts[i + 2] ?? ''
       const kind = body.match(/^### (\w+)/m)?.[1] ?? 'Changed'
-      const bullet = body.match(/^- ([\s\S]*?)(?=\n- |\n###|\n## |$)/m)?.[1] ?? ''
+      const bullet = body.match(/(?:^|\n)- ([\s\S]*?)(?=\n- |\n###|\n## |\n\n|$)/)?.[1] ?? ''
       out.push({
         plugin: p.name,
         version: parts[i],
