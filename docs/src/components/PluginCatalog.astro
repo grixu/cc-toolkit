@@ -7,7 +7,7 @@ import { plugins, stages, stagesOf, skillsOf, skills, installPlugin, cmdName } f
 const lang = langOf(Astro.url.pathname)
 const t = ui[lang]
 const pl = lang === 'pl'
-const L = {
+const labels = {
   filter: pl ? 'Filtruj pluginy' : 'Filter plugins',
   stage: pl ? 'Etap cyklu' : 'Lifecycle stage',
   kind: pl ? 'Rodzaj' : 'Kind',
@@ -20,9 +20,9 @@ const count = (id: string) => new Set(skills.filter((s) => s.stage === id).map((
 ---
 
 <div class="catalog-grid not-content">
-  <form class="filters" aria-label={L.filter}>
+  <form class="filters" aria-label={labels.filter}>
     <fieldset>
-      <legend>{L.stage}</legend>
+      <legend>{labels.stage}</legend>
       {stages.map((s) => (
         <label class="opt">
           <input type="checkbox" name="stage" value={s.id} />
@@ -33,14 +33,14 @@ const count = (id: string) => new Set(skills.filter((s) => s.stage === id).map((
       ))}
     </fieldset>
     <fieldset>
-      <legend>{L.kind}</legend>
+      <legend>{labels.kind}</legend>
       {(['all', 'core', 'aux'] as const).map((k) => (
-        <label class="opt"><input type="radio" name="kind" value={k} checked={k === 'all'} /><span class="glyph glyph--radio" aria-hidden="true"></span><span>{L[k]}</span></label>
+        <label class="opt"><input type="radio" name="kind" value={k} checked={k === 'all'} /><span class="glyph glyph--radio" aria-hidden="true"></span><span>{labels[k]}</span></label>
       ))}
     </fieldset>
   </form>
   <div>
-    <p class="caption catalog-count" aria-live="polite"><span data-count>{plugins.length}</span> {L.count}</p>
+    <p class="caption catalog-count" aria-live="polite"><span data-count>{plugins.length}</span> {labels.count}</p>
     <ul class="catalog-list">
       {plugins.map((p) => (
         <li class="card card--link ccard" data-stages={stagesOf(p.name).map((s) => s.id).join(' ')} data-kind={p.core ? 'core' : 'aux'} style={p.core ? `--pc: var(--line-${p.name})` : undefined}>

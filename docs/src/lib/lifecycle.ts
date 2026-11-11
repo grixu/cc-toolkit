@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Lang } from './i18n'
 
-type T = Record<Lang, string>
+type Localized = Record<Lang, string>
 
 const repo = resolve(process.cwd(), '..')
 const readJson = (path: string) => {
@@ -19,9 +19,9 @@ export const installPlugin = (name: string) => `/plugin install ${name}@cc-toolk
 
 export type StageId = 'plan' | 'build' | 'self' | 'test' | 'human' | 'maintain'
 
-export type Stage = { id: StageId; n: string; slug: string; title: T; blurb: T; phase?: T; outside?: boolean }
+export type Stage = { id: StageId; n: string; slug: string; title: Localized; blurb: Localized; phase?: Localized; outside?: boolean }
 
-const reviewAndTest: T = { en: 'Review & test', pl: 'Review i testy' }
+const reviewAndTest: Localized = { en: 'Review & test', pl: 'Review i testy' }
 
 export const stages: Stage[] = [
   {
@@ -83,7 +83,7 @@ export type Skill = {
   plugin: string
   cmd: string
   stage: StageId
-  does: T
+  does: Localized
   /** Site path without locale, ending in a slash. */
   href: string
   /** Part of the main line on the map, rather than a branch or a supporting station. */
@@ -91,7 +91,7 @@ export type Skill = {
   calledBy?: string
   /** Runs on its own through hooks; there is no command to type. */
   auto?: boolean
-  feature?: T
+  feature?: Localized
   label?: string
 }
 
@@ -136,7 +136,7 @@ export const shortName = (s: Skill) => s.label ?? s.cmd.split(':')[1] ?? s.cmd
 /** The skill part of a command, for lists that already name the plugin. */
 export const cmdName = (s: Skill) => s.cmd.split(':')[1] ?? shortName(s)
 
-export type Plugin = { name: string; core: boolean; promise: T; desc: T; version: string; cmd: string }
+export type Plugin = { name: string; core: boolean; promise: Localized; desc: Localized; version: string; cmd: string }
 
 const raw: Omit<Plugin, 'version' | 'cmd'>[] = [
   { name: 'fd3', core: true,

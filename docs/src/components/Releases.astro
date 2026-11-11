@@ -9,11 +9,11 @@ interface Props {
 }
 const { plugin, limit = 5 } = Astro.props
 const lang = langOf(Astro.url.pathname)
-const list = releases().filter((r) => !plugin || r.plugin === plugin).slice(0, limit)
+const shownReleases = releases().filter((r) => !plugin || r.plugin === plugin).slice(0, limit)
 ---
 
 <ol class="news not-content">
-  {list.map((r) => (
+  {shownReleases.map((r) => (
     <li>
       <span class={`badge badge--${badgeTone[r.kind] ?? 'neutral'}`}>{r.kind.toLowerCase()}</span>
       <p class="news-t">{!plugin && <><a href={href(`plugins/${r.plugin}/`, lang)}>{r.plugin}</a>{' '}</>}<span class="tnum news-v">{r.version}</span> {r.text}</p>

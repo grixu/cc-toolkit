@@ -30,9 +30,9 @@ const landing = !!starlightRoute.entry.data.landing
     const label = btn.querySelector<HTMLElement>('.strip-copy-l')!
     const idle = label.textContent
     let timer = 0
-    const fits = () => strip.toggleAttribute('data-overflow', code.scrollWidth > code.clientWidth + 1)
-    fits()
-    addEventListener('resize', fits)
+    const markOverflow = () => strip.toggleAttribute('data-overflow', code.scrollWidth > code.clientWidth + 1)
+    markOverflow()
+    addEventListener('resize', markOverflow)
     btn.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(btn.dataset.copy!)

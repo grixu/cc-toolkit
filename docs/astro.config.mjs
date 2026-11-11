@@ -5,7 +5,7 @@ import mermaid from 'astro-mermaid'
 import { satteri } from '@astrojs/markdown-satteri'
 import captions from './src/lib/captions.mjs'
 
-const o = (name) => `./src/components/overrides/${name}.astro`
+const overridePath = (name) => `./src/components/overrides/${name}.astro`
 
 export default defineConfig({
   site: 'https://cct.grixu.dev',
@@ -46,17 +46,17 @@ export default defineConfig({
         { tag: 'meta', attrs: { property: 'og:image', content: 'https://cct.grixu.dev/og.png' } },
       ],
       components: {
-        Head: o('Head'),
-        ThemeProvider: o('ThemeProvider'),
-        SkipLink: o('SkipLink'),
-        PageFrame: o('PageFrame'),
-        Header: o('Header'),
-        Sidebar: o('Sidebar'),
-        TwoColumnContent: o('TwoColumnContent'),
-        PageSidebar: o('PageSidebar'),
-        PageTitle: o('PageTitle'),
-        FallbackContentNotice: o('FallbackContentNotice'),
-        Footer: o('Footer'),
+        Head: overridePath('Head'),
+        ThemeProvider: overridePath('ThemeProvider'),
+        SkipLink: overridePath('SkipLink'),
+        PageFrame: overridePath('PageFrame'),
+        Header: overridePath('Header'),
+        Sidebar: overridePath('Sidebar'),
+        TwoColumnContent: overridePath('TwoColumnContent'),
+        PageSidebar: overridePath('PageSidebar'),
+        PageTitle: overridePath('PageTitle'),
+        FallbackContentNotice: overridePath('FallbackContentNotice'),
+        Footer: overridePath('Footer'),
       },
       // The frame builds its own per-section sidebar from page frontmatter; this list only feeds Starlight's internals.
       sidebar: [{ label: 'Docs', items: [{ autogenerate: { directory: '.' } }] }],

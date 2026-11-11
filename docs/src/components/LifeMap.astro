@@ -37,20 +37,21 @@ const artifacts: Record<string, string> = {
 }
 const order = Object.keys(artifacts)
 
-const pos: Record<string, { x: number; y: number; lab: 'a' | 'b' | 'r' | 'l' }> = {
-  'build-spec': { x: 120, y: Y, lab: 'b' },
-  'grill-topic': { x: 120, y: 62, lab: 'r' },
-  'split-to-tasks': { x: 275, y: Y, lab: 'a' },
-  implement: { x: 390, y: Y, lab: 'b' },
-  'start-cr': { x: 540, y: Y, lab: 'a' },
-  tester: { x: 740, y: Y, lab: 'b' },
-  'pr-proof': { x: 905, y: Y, lab: 'a' },
-  'pr-open': { x: 1005, y: Y, lab: 'b' },
-  'pr-shepherd': { x: 1110, y: Y, lab: 'a' },
-  'ci-fix': { x: 1110, y: 246, lab: 'l' },
-  'rule-hooks': { x: 300, y: 292, lab: 'r' },
-  research: { x: 50, y: 292, lab: 'r' },
-  'codex-review': { x: 50, y: 334, lab: 'r' },
+type LabelSide = 'above' | 'below' | 'right' | 'left'
+const pos: Record<string, { x: number; y: number; labelSide: LabelSide }> = {
+  'build-spec': { x: 120, y: Y, labelSide: 'below' },
+  'grill-topic': { x: 120, y: 62, labelSide: 'right' },
+  'split-to-tasks': { x: 275, y: Y, labelSide: 'above' },
+  implement: { x: 390, y: Y, labelSide: 'below' },
+  'start-cr': { x: 540, y: Y, labelSide: 'above' },
+  tester: { x: 740, y: Y, labelSide: 'below' },
+  'pr-proof': { x: 905, y: Y, labelSide: 'above' },
+  'pr-open': { x: 1005, y: Y, labelSide: 'below' },
+  'pr-shepherd': { x: 1110, y: Y, labelSide: 'above' },
+  'ci-fix': { x: 1110, y: 246, labelSide: 'left' },
+  'rule-hooks': { x: 300, y: 292, labelSide: 'right' },
+  research: { x: 50, y: 292, labelSide: 'right' },
+  'codex-review': { x: 50, y: 334, labelSide: 'right' },
 }
 const MERGE = 1172
 const START = 120
@@ -64,19 +65,19 @@ const segs = [
 const onMap = skills.filter((s) => pos[s.id])
 const maintain = skills.filter((s) => s.stage === 'maintain')
 
-const dimPlugin = (plugin?: string) => !!focus && plugin !== focus
-const dimSkill = (s: Skill) => (dimPlugin(s.plugin) || (!!stage && s.stage !== stage) ? 'is-dim' : undefined)
-const segDim = (plugin: string) => {
+const isPluginDimmed = (plugin?: string) => !!focus && plugin !== focus
+const skillDimClass = (s: Skill) => (isPluginDimmed(s.plugin) || (!!stage && s.stage !== stage) ? 'is-dim' : undefined)
+const segmentDimClass = (plugin: string) => {
   const missingFromStage = !!stage && !skills.some((s) => s.plugin === plugin && s.stage === stage && s.main)
-  return dimPlugin(plugin) || missingFromStage ? 'is-dim' : undefined
+  return isPluginDimmed(plugin) || missingFromStage ? 'is-dim' : undefined
 }
 const onStages = focus ? new Set(skills.filter((s) => s.plugin === focus).map((s) => s.stage)) : stage ? new Set([stage]) : null
-const labelPos = (p: { x: number; y: number; lab: string }) =>
-  p.lab === 'a'
+const labelPos = (p: { x: number; y: number; labelSide: LabelSide }) =>
+  p.labelSide === 'above'
     ? { x: p.x, y: p.y - 24, anchor: 'middle' }
-    : p.lab === 'b'
+    : p.labelSide === 'below'
       ? { x: p.x, y: p.y + 36, anchor: 'middle' }
-      : p.lab === 'l'
+      : p.labelSide === 'left'
         ? { x: p.x - 18, y: p.y + 5, anchor: 'end' }
         : { x: p.x + 18, y: p.y + 5, anchor: 'start' }
 // One row below every label and sub-label, so an artifact never covers a neighbour's name.
@@ -112,11 +113,11 @@ const showMaintain = !onStages || onStages.has('maintain')
         <path class="lmap-loop" d={`M ${MERGE} ${Y} H 1170 Q 1186 ${Y} 1186 ${Y + 16} V 360 Q 1186 372 1174 372 H 22 Q 12 372 12 360 V ${Y + 12} Q 12 ${Y} 24 ${Y} H 108`} aria-hidden="true" />
         <text class="lmap-note" x="600" y="366" text-anchor="middle" aria-hidden="true">{t.merged}</text>
 
-        <path class:list={['lmap-spur', segDim('fd3')]} style="--pc: var(--line-fd3)" data-plugin="fd3" d={`M 120 ${Y} V 62`} aria-hidden="true" />
-        <path class:list={['lmap-spur lmap-spur--called', segDim('dev-kit')]} style="--pc: var(--line-dev-kit)" data-plugin="dev-kit" d={`M 1110 ${Y} V 246`} aria-hidden="true" />
+        <path class:list={['lmap-spur', segmentDimClass('fd3')]} style="--pc: var(--line-fd3)" data-plugin="fd3" d={`M 120 ${Y} V 62`} aria-hidden="true" />
+        <path class:list={['lmap-spur lmap-spur--called', segmentDimClass('dev-kit')]} style="--pc: var(--line-dev-kit)" data-plugin="dev-kit" d={`M 1110 ${Y} V 246`} aria-hidden="true" />
         <g class:list={[{ 'lmap-track': animate }]}>
           {segs.map((s) => (
-            <path class:list={['lmap-seg', segDim(s.plugin)]} style={`--pc: var(--line-${s.plugin})`} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} aria-hidden="true" />
+            <path class:list={['lmap-seg', segmentDimClass(s.plugin)]} style={`--pc: var(--line-${s.plugin})`} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} aria-hidden="true" />
           ))}
         </g>
         {animate && (
@@ -134,7 +135,7 @@ const showMaintain = !onStages || onStages.has('maintain')
           return (
             <a
               href={link(s.href)}
-              class:list={['lmap-st', isCore ? 'is-core' : 'is-aux', { 'is-called': !!s.calledBy && !s.main }, dimSkill(s)]}
+              class:list={['lmap-st', isCore ? 'is-core' : 'is-aux', { 'is-called': !!s.calledBy && !s.main }, skillDimClass(s)]}
               style={isCore ? `--pc: var(--line-${s.plugin})` : undefined}
               data-plugin={s.plugin}
               data-step={i >= 0 ? i : undefined}
@@ -158,7 +159,7 @@ const showMaintain = !onStages || onStages.has('maintain')
 
   <ul class="lmap-key" aria-label={t.pluginsOnMap}>
     {core.map((p) => (
-      <li class:list={[{ 'is-dim': dimPlugin(p.name) }]} style={`--pc: var(--line-${p.name})`}>
+      <li class:list={[{ 'is-dim': isPluginDimmed(p.name) }]} style={`--pc: var(--line-${p.name})`}>
         <a href={link(`plugins/${p.name}/`)} data-key={p.name}><span class="swatch" aria-hidden="true"></span>{p.name}<span class="lmap-key-p">{p.promise[lang]}</span></a>
       </li>
     ))}
@@ -172,7 +173,7 @@ const showMaintain = !onStages || onStages.has('maintain')
     </p>
     <ul class="lc-maintain-list">
       {maintain.map((s) => (
-        <li class:list={[dimSkill(s)]} style={pluginByName[s.plugin].core ? `--pc: var(--line-${s.plugin})` : undefined}>
+        <li class:list={[skillDimClass(s)]} style={pluginByName[s.plugin].core ? `--pc: var(--line-${s.plugin})` : undefined}>
           <a href={link(s.href)}>
             <code>{shortName(s)}</code>
             <span class="lc-maintain-d">{s.does[lang]}</span>
@@ -196,7 +197,7 @@ const showMaintain = !onStages || onStages.has('maintain')
     const width = svg.viewBox.baseVal.width
     const bar = fig.querySelector<SVGRectElement>('.lmap-progress')!
     const merge = fig.querySelector<SVGElement>('[data-merge]')!
-    const list = [...fig.querySelectorAll<SVGElement>('[data-step]')].sort((a, b) => Number(a.dataset.step) - Number(b.dataset.step))
+    const steps = [...fig.querySelectorAll<SVGElement>('[data-step]')].sort((a, b) => Number(a.dataset.step) - Number(b.dataset.step))
     let timer = 0
     let i = -1
     let visible = false
@@ -205,32 +206,32 @@ const showMaintain = !onStages || onStages.has('maintain')
 
     function reset() {
       fig.dataset.phase = 'reset'
-      list.forEach((s) => s.classList.remove('is-lit', 'is-past'))
+      steps.forEach((s) => s.classList.remove('is-lit', 'is-past'))
       merge.classList.remove('is-lit')
       reach(0)
     }
 
     function tick() {
       i += 1
-      if (i === list.length) {
-        list.forEach((s) => s.classList.replace('is-lit', 'is-past'))
+      if (i === steps.length) {
+        steps.forEach((s) => s.classList.replace('is-lit', 'is-past'))
         merge.classList.add('is-lit')
         reach(width)
         timer = window.setTimeout(tick, REST)
         return
       }
-      if (i > list.length) {
+      if (i > steps.length) {
         i = -1
         reset()
         timer = window.setTimeout(tick, RESTART)
         return
       }
       delete fig.dataset.phase
-      list.forEach((s, j) => {
+      steps.forEach((s, j) => {
         s.classList.toggle('is-lit', j === i)
         s.classList.toggle('is-past', j < i)
       })
-      reach(Number(list[i].dataset.x))
+      reach(Number(steps[i].dataset.x))
       timer = window.setTimeout(tick, DWELL)
     }
 

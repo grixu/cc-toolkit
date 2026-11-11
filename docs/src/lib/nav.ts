@@ -73,7 +73,7 @@ export async function sidebarFor(path: string, lang: Lang): Promise<{ label: str
 export async function pagination(path: string, lang: Lang) {
   const sb = await sidebarFor(path, lang)
   if (!sb) return { prev: undefined, next: undefined }
-  const list = sb.groups.flatMap((g) => g.pages)
-  const i = list.findIndex((p) => p.path === path)
-  return { prev: i > 0 ? list[i - 1] : undefined, next: i >= 0 ? list[i + 1] : undefined }
+  const pages = sb.groups.flatMap((g) => g.pages)
+  const i = pages.findIndex((p) => p.path === path)
+  return { prev: i > 0 ? pages[i - 1] : undefined, next: i >= 0 ? pages[i + 1] : undefined }
 }

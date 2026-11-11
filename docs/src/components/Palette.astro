@@ -83,10 +83,10 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
     empty.hidden = rows.length > 0 || !words.length
     empty.querySelector('span')!.textContent = input.value
     sel = 0
-    mark()
+    syncSelection()
   }
 
-  function mark() {
+  function syncSelection() {
     const items = [...list.children] as HTMLElement[]
     items.forEach((r, i) => r.setAttribute('aria-selected', String(i === sel)))
     if (items[sel]) {
@@ -149,11 +149,11 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       sel = Math.min(sel + 1, rows.length - 1)
-      mark()
+      syncSelection()
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       sel = Math.max(sel - 1, 0)
-      mark()
+      syncSelection()
     } else if (e.key === 'Enter' && rows[sel]) {
       e.preventDefault()
       location.href = rows[sel].href
