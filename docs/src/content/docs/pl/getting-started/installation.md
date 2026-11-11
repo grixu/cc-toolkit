@@ -56,4 +56,4 @@ Uruchom `/reload-plugins` w otwartych sesjach albo je zrestartuj, żeby załadow
 ## Pluginy przemianowane i usunięte
 
 - `comment-review` i `quality-review` zastąpił [code-review](/pl/plugins/code-review/) i nie są już publikowane. Odinstaluj je, jeśli wciąż je masz, bo inaczej zobaczysz zdublowane nazwy skilli.
-- `feature-delivery` jest przestarzały. Używaj zamiast niego [fd3](/pl/plugins/fd3/).
+- `feature-delivery` został usunięty. Używaj zamiast niego [fd3](/pl/plugins/fd3/) i odinstaluj go, jeśli wciąż go masz.

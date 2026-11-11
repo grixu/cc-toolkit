@@ -88,11 +88,6 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 |---|---|---|
 | [session-learner](plugins/session-learner/README.md) | At the end of a session, finds where you had to correct or repeat yourself and proposes updates to `CLAUDE.md` or `.claude/rules/`, so the next session starts with that knowledge. You approve each change. | `/session-learner:learn` |
 
-### Deprecated
-
-- [feature-delivery](plugins/feature-delivery/README.md) is deprecated; use fd3 instead. The two share
-  no file formats, so finish a project in the plugin you started it with.
-
 ## Requirements
 
 Most plugins need only Claude Code. These need more:
@@ -118,6 +113,9 @@ in the Dynamic workflows row of `/config`.
 - `yt` was renamed to `scribe`. See the [scribe changelog](plugins/scribe/CHANGELOG.md).
 - `comment-review` and `quality-review` were replaced by `code-review` and are no longer published.
   Uninstall them if you still have them, or you will see duplicate skill names.
+- `feature-delivery` was removed; use fd3. The two share no file formats, so a project started in
+  feature-delivery has to be specified again with `/fd3:build-spec`. Uninstall it if you still
+  have it.
 
 ## Contributing
 

@@ -25,23 +25,6 @@
       ]
     },
     {
-      "name": "feature-delivery",
-      "source": "./plugins/feature-delivery",
-      "description": "Deprecated — use fd3. End-to-end feature delivery: requirements gathering, editing, status tracking, and implementation orchestration with parallel subagents",
-      "version": "1.1.0",
-      "author": {
-        "name": "Mateusz Gostański",
-        "email": "mg@grixu.dev"
-      },
-      "category": "productivity",
-      "tags": [
-        "requirements",
-        "specification",
-        "implementation",
-        "delivery"
-      ]
-    },
-    {
       "name": "hookify",
       "source": "./plugins/hookify",
       "description": "Easily create hooks to prevent unwanted behaviors by analyzing conversation patterns",

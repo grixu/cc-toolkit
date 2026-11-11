@@ -56,4 +56,4 @@ Run `/reload-plugins` in open sessions, or restart them, to load the new version
 ## Renamed and removed plugins
 
 - `comment-review` and `quality-review` were replaced by [code-review](/plugins/code-review/) and are no longer published. Uninstall them if you still have them, or you'll see duplicate skill names.
-- `feature-delivery` is deprecated. Use [fd3](/plugins/fd3/) instead.
+- `feature-delivery` was removed. Use [fd3](/plugins/fd3/) instead, and uninstall it if you still have it.
