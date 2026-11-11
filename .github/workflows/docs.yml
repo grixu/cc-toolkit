@@ -5,12 +5,22 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'brand/**'
+      - '.claude-plugin/**'
+      - 'plugins/*/.claude-plugin/**'
+      - 'plugins/*/CHANGELOG.md'
       - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'docs/**'
+      - 'brand/**'
+      - '.claude-plugin/**'
+      - 'plugins/*/.claude-plugin/**'
+      - 'plugins/*/CHANGELOG.md'
       - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/docs.yml'
 
 jobs:
