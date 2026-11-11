@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `pr-open`: reads the manifest the pr-proof plugin's skills write at `~/.cache/pr-proof/<repo>/<branch>/manifest.json` and adds a `## Proof` section just before `## Risk`: each entry's claim with its screenshots as a screen-by-width table, its video or image, or its terminal or API transcript as a code block (folded past 20 lines), a note when later commits changed the entry's files or history was rewritten since it was taken; media are attached with `gh --attach` and the body is re-read to confirm GitHub's `user-attachments` URLs replaced every `./` reference; past 50 media the rest go in marked `<!-- pr-proof:overflow -->` comments, which each run replaces; on an existing pull request the section is replaced, inserted or, for an empty manifest, removed; missing files and a manifest that does not parse or has an unknown `version` are named in the report; the section is outside the length budget
+
 ## [0.8.1] - 2026-11-10
 
 ### Fixed
