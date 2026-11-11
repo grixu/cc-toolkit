@@ -66,7 +66,7 @@ export function findings(output) {
       const m = l.line.match(FINDING);
       if (!m) return null;
       const arrow = l.line.indexOf('→');
-      const file = l.file ?? m[4].match(/`([^`\s]+?):L?\d/)?.[1] ?? null;
+      const file = m[4].match(/^`([^`\s]+?):L?\d/)?.[1] ?? l.file;
       return { family: m[1], rule: m[2], severity: m[3], text: l.line, fix: arrow < 0 ? '' : l.line.slice(arrow + 1), file };
     })
     .filter(Boolean);
