@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { endpointUrl } from '../hooks/jev.ts'
+import { endpointUrl, fileDiffs } from '../hooks/jev.ts'
 import { FACTS, aggregate, factQuestions, partState, signalOf } from '../hooks/signals.ts'
 
 const TOOL = 'mcp__pr-proof__proof_signals'
@@ -63,6 +63,13 @@ test('builds the endpoint URL from a base with or without the systemone path', (
   expect(endpointUrl(undefined)).toBe('https://api.typesafe.ai/v1/systemone')
   expect(endpointUrl('https://x.test/')).toBe('https://x.test/v1/systemone')
   expect(endpointUrl('https://x.test/v1/systemone')).toBe('https://x.test/v1/systemone')
+})
+
+test('splits and names a file whose quoted header git kept despite core.quotePath=false', () => {
+  const quoted = 'diff --git "a/say \\"hi\\"\\\\\\tż.txt" "b/say \\"hi\\"\\\\\\tż.txt"\n+x'
+  const files = fileDiffs(`diff --git a/plain.txt b/plain.txt\n+y\n${quoted}`)
+  expect(files.map((f) => f.path)).toEqual(['plain.txt', 'say "hi"\\\tż.txt'])
+  expect(files[1].text).toBe(quoted)
 })
 
 test('reads a probability at the thresholds as suggest or reject', () => {

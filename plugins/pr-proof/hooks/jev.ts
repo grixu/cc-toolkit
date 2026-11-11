@@ -122,15 +122,29 @@ export function halve(part: Part): { parts: Part[]; truncatedHunks: number } {
 }
 
 export function fileDiffs(diff: string, fallbackPath = ''): FileDiff[] {
-  return diff.split(/\n(?=diff --git a\/)/).map((text) => ({ path: diffPath(text) ?? fallbackPath, text }))
+  return diff.split(/\n(?=diff --git "?a\/)/).map((text) => ({ path: diffPath(text) ?? fallbackPath, text }))
 }
 
 // `diff --git a/<path> b/<path>` with renames off: both paths are the same, so the first half of the rest is it.
+// core.quotePath=false still leaves a path with `"`, `\` or a control character C-quoted on both sides.
 export function diffPath(text: string): string | undefined {
   const head = text.split('\n', 1)[0]
-  if (!head.startsWith('diff --git a/')) return undefined
   const rest = head.slice('diff --git '.length)
-  return rest.slice(2, 2 + (rest.length - 5) / 2)
+  if (head.startsWith('diff --git a/')) return rest.slice(2, 2 + (rest.length - 5) / 2)
+  if (head.startsWith('diff --git "a/')) return unquoteC(rest.slice(0, (rest.length - 1) / 2)).slice(2)
+  return undefined
+}
+
+const C_ESCAPES: Record<string, string> = { a: '\x07', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v' }
+
+// Octal escapes are UTF-8 bytes, so the path is rebuilt as percent-encoded bytes and decoded once.
+function unquoteC(quoted: string): string {
+  const encoded = quoted.slice(1, -1).replace(/\\([0-7]{3}|.)|[^\\]+/g, (match: string, escape?: string) => {
+    if (escape === undefined) return encodeURIComponent(match)
+    if (/^[0-7]{3}$/.test(escape)) return '%' + parseInt(escape, 8).toString(16).padStart(2, '0')
+    return encodeURIComponent(C_ESCAPES[escape] ?? escape)
+  })
+  return decodeURIComponent(encoded)
 }
 
 export async function pool<T, R>(items: T[], size: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
