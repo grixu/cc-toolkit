@@ -1,6 +1,6 @@
 ---
 import { ui, href, langOf } from '../lib/i18n'
-import { cycle, phase, stageById, stagePath, skills, core, pluginByName, shortName, type Skill, type StageId } from '../lib/lifecycle'
+import { cycle, phase, stageById, stagePath, skills, core, pluginByName, shortName, lineStyle, type Skill, type StageId } from '../lib/lifecycle'
 
 interface Props {
   /** Zoom on one plugin: every other plugin is dimmed. */
@@ -115,16 +115,16 @@ const showMaintain = !onStages || onStages.has('maintain')
         <path class="lmap-loop" d={`M ${MERGE} ${Y} H 1170 Q 1186 ${Y} 1186 ${Y + 16} V 360 Q 1186 372 1174 372 H 22 Q 12 372 12 360 V ${Y + 12} Q 12 ${Y} 24 ${Y} H 108`} aria-hidden="true" />
         <text class="lmap-note" x="600" y="366" text-anchor="middle" aria-hidden="true">{t.merged}</text>
 
-        <path class:list={['lmap-spur', segmentDimClass('fd3')]} style="--pc: var(--line-fd3)" data-plugin="fd3" d={`M 120 ${Y} V 62`} aria-hidden="true" />
-        <path class:list={['lmap-spur lmap-spur--called', segmentDimClass('dev-kit')]} style="--pc: var(--line-dev-kit)" data-plugin="dev-kit" d={`M 1110 ${Y} V 246`} aria-hidden="true" />
+        <path class:list={['lmap-spur', segmentDimClass('fd3')]} style={lineStyle('fd3')} data-plugin="fd3" d={`M 120 ${Y} V 62`} aria-hidden="true" />
+        <path class:list={['lmap-spur lmap-spur--called', segmentDimClass('dev-kit')]} style={lineStyle('dev-kit')} data-plugin="dev-kit" d={`M 1110 ${Y} V 246`} aria-hidden="true" />
         <g class:list={[{ 'lmap-track': animate }]}>
           {segs.map((s) => (
-            <path class:list={['lmap-seg', segmentDimClass(s.plugin)]} style={`--pc: var(--line-${s.plugin})`} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} aria-hidden="true" />
+            <path class:list={['lmap-seg', segmentDimClass(s.plugin)]} style={lineStyle(s.plugin)} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} aria-hidden="true" />
           ))}
         </g>
         {animate && (
           <g class="lmap-built" clip-path={`url(#${clipId})`} aria-hidden="true">
-            {segs.map((s) => <path class="lmap-seg" style={`--pc: var(--line-${s.plugin})`} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} />)}
+            {segs.map((s) => <path class="lmap-seg" style={lineStyle(s.plugin)} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} />)}
           </g>
         )}
         <rect class="lmap-merge" x={MERGE - 6} y={Y - 13} width="12" height="26" rx="6" aria-hidden="true" data-merge />
@@ -138,7 +138,7 @@ const showMaintain = !onStages || onStages.has('maintain')
             <a
               href={link(s.href)}
               class:list={['lmap-st', isCore ? 'is-core' : 'is-aux', { 'is-called': !!s.calledBy && !s.main }, skillDimClass(s)]}
-              style={isCore ? `--pc: var(--line-${s.plugin})` : undefined}
+              style={lineStyle(s.plugin)}
               data-plugin={s.plugin}
               data-step={i >= 0 ? i : undefined}
               data-x={p.x}
@@ -161,7 +161,7 @@ const showMaintain = !onStages || onStages.has('maintain')
 
   <ul class="lmap-key" aria-label={t.pluginsOnMap}>
     {core.map((p) => (
-      <li class:list={[{ 'is-dim': isPluginDimmed(p.name) }]} style={`--pc: var(--line-${p.name})`}>
+      <li class:list={[{ 'is-dim': isPluginDimmed(p.name) }]} style={lineStyle(p.name)}>
         <a href={link(`plugins/${p.name}/`)} data-key={p.name}><span class="swatch" aria-hidden="true"></span>{p.name}<span class="lmap-key-p">{p.promise[lang]}</span></a>
       </li>
     ))}
@@ -175,7 +175,7 @@ const showMaintain = !onStages || onStages.has('maintain')
     </p>
     <ul class="lc-maintain-list">
       {maintain.map((s) => (
-        <li class:list={[skillDimClass(s)]} style={pluginByName[s.plugin].core ? `--pc: var(--line-${s.plugin})` : undefined}>
+        <li class:list={[skillDimClass(s)]} style={lineStyle(s.plugin)}>
           <a href={link(s.href)}>
             <code>{shortName(s)}</code>
             <span class="lc-maintain-d">{s.does[lang]}</span>

@@ -1,4 +1,5 @@
 ---
+import Badge from './Badge.astro'
 import { href, langOf, fmtDate } from '../lib/i18n'
 import { releases, badgeTone } from '../lib/lifecycle'
 
@@ -15,7 +16,7 @@ const shownReleases = releases().filter((r) => !plugin || r.plugin === plugin).s
 <ol class="news not-content">
   {shownReleases.map((r) => (
     <li>
-      <span class={`badge badge--${badgeTone[r.kind] ?? 'neutral'}`}>{r.kind.toLowerCase()}</span>
+      <Badge tone={badgeTone[r.kind] ?? 'neutral'} inline={false}>{r.kind.toLowerCase()}</Badge>
       <p class="news-t">{!plugin && <><a href={href(`plugins/${r.plugin}/`, lang)}>{r.plugin}</a>{' '}</>}<span class="tnum news-v">{r.version}</span> {r.text}</p>
       <time class="caption tnum" datetime={r.date}>{fmtDate(r.date, lang, plugin ? 'long' : 'short')}</time>
     </li>

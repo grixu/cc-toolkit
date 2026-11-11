@@ -207,4 +207,4 @@ export function releases(): Release[] {
   }
   return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 }
-export const badgeTone: Record<string, string> = { Added: 'success', Changed: 'info', Fixed: 'info', Removed: 'danger', Deprecated: 'warning', Security: 'danger' }
+export const badgeTone: Record<string, 'success' | 'info' | 'warning' | 'danger'> = { Added: 'success', Changed: 'info', Fixed: 'info', Removed: 'danger', Deprecated: 'warning', Security: 'danger' }

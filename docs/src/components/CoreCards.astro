@@ -3,7 +3,7 @@ import Art from './Art.astro'
 import Strip from './Strip.astro'
 import Cmd from './Cmd.astro'
 import { ui, href, langOf } from '../lib/i18n'
-import { core, skillsOf, stagesOf, installPlugin, cmdName } from '../lib/lifecycle'
+import { core, skillsOf, stagesOf, installPlugin, cmdName, lineStyle } from '../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
 const t = ui[lang]
@@ -11,7 +11,7 @@ const t = ui[lang]
 
 <ul class="cards not-content">
   {core.map((p) => (
-    <li class="card card--link pcard" style={`--pc: var(--line-${p.name})`}>
+    <li class="card card--link pcard" style={lineStyle(p.name)}>
       <Art name={p.name} class="pcard-art" />
       <div class="pcard-body">
         <p class="label">{stagesOf(p.name).map((s) => s.title[lang]).join(' · ')}</p>

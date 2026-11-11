@@ -1,8 +1,9 @@
 ---
 import Strip from './Strip.astro'
 import Cmd from './Cmd.astro'
+import Badge from './Badge.astro'
 import { ui, href, langOf } from '../lib/i18n'
-import { plugins, stages, stagesOf, skillsOf, skills, installPlugin, cmdName } from '../lib/lifecycle'
+import { plugins, stages, stagesOf, skillsOf, skills, installPlugin, cmdName, lineStyle } from '../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
 const t = ui[lang]
@@ -43,10 +44,10 @@ const count = (id: string) => new Set(skills.filter((s) => s.stage === id).map((
     <p class="caption catalog-count" aria-live="polite"><span data-count>{plugins.length}</span> {labels.count}</p>
     <ul class="catalog-list">
       {plugins.map((p) => (
-        <li class="card card--link ccard" data-stages={stagesOf(p.name).map((s) => s.id).join(' ')} data-kind={p.core ? 'core' : 'aux'} style={p.core ? `--pc: var(--line-${p.name})` : undefined}>
+        <li class="card card--link ccard" data-stages={stagesOf(p.name).map((s) => s.id).join(' ')} data-kind={p.core ? 'core' : 'aux'} style={lineStyle(p.name)}>
           <div class="ccard-head">
             <h2 class="ccard-name"><span class:list={['swatch', { 'swatch--aux': !p.core }]} aria-hidden="true"></span><a href={href(`plugins/${p.name}/`, lang)}>{p.name}</a></h2>
-            {!p.core && <span class="badge badge--neutral">{t.supporting}</span>}
+            {!p.core && <Badge inline={false}>{t.supporting}</Badge>}
           </div>
           <p class="label">{stagesOf(p.name).map((s) => s.title[lang]).join(' · ')}</p>
           <p class="ccard-desc">{p.desc[lang]}</p>

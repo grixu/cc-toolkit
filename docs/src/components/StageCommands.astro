@@ -1,5 +1,6 @@
 ---
 import Cmd from './Cmd.astro'
+import Badge from './Badge.astro'
 import { ui, href, langOf } from '../lib/i18n'
 import { skills, stages, pluginByName, stagePath, stageById, shortName, type StageId } from '../lib/lifecycle'
 
@@ -27,7 +28,7 @@ const caption = stage
       <tbody>
         {here.map((k) => (
           <tr>
-            <td><a href={href(k.href, lang)}>{k.auto ? shortName(k) : <code><Cmd text={k.cmd} /></code>}</a>{k.auto && <> <span class="badge badge--neutral badge--inline">{pl ? 'automatycznie' : 'automatic'}</span></>}{k.calledBy && <> <span class="badge badge--neutral badge--inline">{pl ? 'przez' : 'via'} {k.calledBy}</span></>}</td>
+            <td><a href={href(k.href, lang)}>{k.auto ? shortName(k) : <code><Cmd text={k.cmd} /></code>}</a>{k.auto && <> <Badge>{pl ? 'automatycznie' : 'automatic'}</Badge></>}{k.calledBy && <> <Badge>{pl ? 'przez' : 'via'} {k.calledBy}</Badge></>}</td>
             <td>{k.does[lang]}</td>
             <td><a href={href(`plugins/${k.plugin}/`, lang)}>{k.plugin}</a>{!pluginByName[k.plugin].core && <span class="muted"> · {t.supporting}</span>}</td>
           </tr>
