@@ -84,7 +84,7 @@ Proof shows a reviewer that the change does what it claims, in a form they can c
 - **screenshots**: the change alters how a screen looks at rest: layout, styling, spacing, visible text, a new or changed component, page or state, or the rendering of an email. One still image per state can show it.
 - **video**: the change alters something a user does across steps in the UI: a new or changed flow, or an interaction whose result appears only after input such as a click, typing, pasting or a choice in a dialog. A still image of one state cannot show it.
 - **api**: the change alters what an HTTP or RPC endpoint returns to its caller: status, body, fields, error code or headers, which callers may read or write it, or a file a site serves.
-- **terminal**: the change alters what a command, script, migration, job, build, test runner or a log line prints or does when run from a terminal.
+- **terminal**: the change alters what a command, script, migration, job, build or a log line prints or does when run from a terminal.
 
 Choose **no proof** when the change does not affect program behaviour: documentation and its content, agent instructions and rules, comments, refactors that keep behaviour, dead-code removal, version bumps and changelogs, and local toolchain pins.
 
