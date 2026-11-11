@@ -1,0 +1,65 @@
+---
+title: code-review
+description: Reviews a change through up to eleven lenses at once and merges what they find into one graded report, before anyone else reads it.
+group: start
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+code-review runs one reviewer per lens over your change, all in parallel, and merges what they find into one report grouped by file.
+Every finding names its rule and gets its severity from one fixed table, so two runs over the same change are comparable.
+After the report, one menu asks which fixes to apply and how to commit them.
+Nothing is edited until you choose.
+
+## When to reach for it
+
+- **Before you open a pull request.** The agent reads its own branch the way a reviewer would, and fixes what it can before a person spends time on it.
+- **On a change made outside fd3.** [`/fd3:implement`](/plugins/fd3/implement/) already reviews every branch it builds, through the same lenses.
+- **On someone else's pull request.** The review drafts comments for the author instead of editing their branch.
+
+Claude Code's bundled `/code-review` skill shares the plugin's name.
+It is a single bug-hunting pass; this plugin grades every finding against a written rule.
+
+## Where it works
+
+<LifeMap focus="code-review" animate={false} />
+
+## What's in the plugin
+
+| Part | Who runs it | What it does |
+|---|---|---|
+| [`/code-review:start-cr`](/plugins/code-review/start-cr/) | you | Reviews a branch, a set of paths or a pull request, then offers the apply menu. |
+| `scanner` agent | `start-cr` and workflows | Judges the change against one lens's rules and writes that lens's findings to a file. |
+| `cr-prepare`, `cr-scan`, `cr-merge` | workflows such as `/fd3:implement` | The same review split into headless steps that ask nothing and edit nothing. |
+
+Table 1. The parts of code-review
+
+You only run `start-cr`.
+The headless skills are hidden from the `/` menu; the [reference](/plugins/code-review/reference/#headless-steps) lists their arguments for workflow authors.
+
+## Requirements
+
+- `git`: the change is read from git.
+- `python3`: a bundled script finds the changed files and the base branch.
+- The `Agent` tool in your session: each lens runs as its own sub-agent.
+- `gh`, only to review a GitHub pull request.
+
+## Quick start
+
+Review the changes on your current branch:
+
+<Strip cmd="/code-review:start-cr" />
+
+The [start-cr guide](/plugins/code-review/start-cr/) covers paths, another base, a spec and pull requests.
+[How it works](/plugins/code-review/how-it-works/) explains which lenses run and how their findings become one report.
+
+## Next steps
+
+- [Run your first review with `/code-review:start-cr`](/plugins/code-review/start-cr/).
+- After self-review, check the running app against the spec with [tester](/plugins/tester/).
+- Then open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/).
+- See where this stage sits in the cycle: [Self-review](/lifecycle/self-review/).

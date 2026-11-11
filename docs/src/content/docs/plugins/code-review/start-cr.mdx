@@ -1,0 +1,174 @@
+---
+title: /code-review:start-cr
+description: Review a branch, a set of files or a pull request through every active lens at once, then pick which fixes to apply.
+group: guides
+skill: start-cr
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+`/code-review:start-cr` reviews a change through every lens that applies to it, merges the findings into one report grouped by file, and offers one menu of fixes.
+It never edits code during the review, and it only starts when you call it.
+
+## When to run it
+
+- Your branch is ready and you want it reviewed before a person reads it.
+- You made a change outside fd3. After [`/fd3:implement`](/plugins/fd3/implement/), every branch is already reviewed.
+- You want to check a change against its spec.
+- You are a reviewer on someone else's pull request and want a draft review.
+
+## How it runs
+
+<SkillFlow
+  skill="start-cr"
+  input="A branch, paths or a pull request number"
+  steps={[
+    { name: 'Resolve scope', does: 'Finds the changed files once, against the base branch or the pull request.' },
+    { name: 'Read conventions', does: 'Reads your project rules and CODING_STANDARDS.md once, for every lens.', leaves: 'conventions.md' },
+    { name: 'Pick the lenses', does: 'Decides which lenses run from the files and the spec, never from a preference.', leaves: 'scope.json' },
+    { name: 'Scan', does: 'Runs one scanner agent per active lens, all in parallel.', leaves: '<lens>.md' },
+    { name: 'Merge', does: 'Dedups, re-grades every finding against one table and renders one report.' },
+    { name: 'Apply', does: 'One menu asks which fixes to apply and how to commit them.', optional: true },
+  ]}
+  next={['tester']}
+/>
+
+## Review your branch
+
+Run it with no arguments:
+
+<Strip cmd="/code-review:start-cr" />
+
+The review covers committed, uncommitted and untracked changes.
+It measures them against the first base that exists: the upstream branch, `origin/main`, `origin/master`, `main`, then `master`.
+
+- **Both committed and uncommitted changes:** it asks which to review, the uncommitted ones, the committed ones or both.
+- **One side is only lockfiles or generated output:** it reviews the other side without asking.
+- **Nothing against the chosen base, but commits against another:** this is how a branch pushed to its own remote counterpart looks. The review names the other base and offers to run again against it.
+
+To measure against another branch, pass `--base`:
+
+<Strip cmd="/code-review:start-cr --base develop" />
+
+If the current branch is someone else's open pull request, the review first asks whether to review it as its reviewer or to review the local changes.
+See [Review someone else's pull request](#review-someone-elses-pull-request).
+
+## Review specific files
+
+Pass file or directory paths to review them in full, not as a diff:
+
+<Strip cmd="/code-review:start-cr src/auth.ts src/billing/" />
+
+## Check the change against a spec
+
+Pass a local spec file to add the spec lens:
+
+<Strip cmd="/code-review:start-cr --spec docs/feature.md" />
+
+`--spec` takes a local file only.
+For a URL or a ticket ID, the review asks you for a local path and never fetches anything.
+
+Without `--spec`, the review looks for a spec on its own and offers it once:
+
+1. A spec-shaped Markdown file in the change: under `specs/`, `spec/`, `docs/adr/` or `tasks/`, or named `*SPEC*.md`, `*ADR*.md`, `*.spec.md` or `*-plan.md`. A spec wins over an ADR or a plan.
+2. A `SPEC.md` already in the repository whose name or directory matches the branch name.
+3. In the main worktree, a `SPEC.split.md` or task file that names the branch, and the `SPEC.md` beside it.
+
+The spec lens runs only if you accept the offer.
+
+## Review a pull request
+
+Pass the pull request number:
+
+<Strip cmd="/code-review:start-cr --pr 42" />
+
+The review fetches the pull request with `gh` and judges its head against its base, the way its reviewers see it.
+`--pr` takes no paths and no `--base`; `--spec` still works.
+
+When your checkout is not at the pull request's head, the review adds a detached worktree at `<repo>.worktrees/cr-pr-<number>` and does everything there, fixes included.
+Your checkout is never switched or stashed.
+After the commits, one more question asks whether to push them to the pull request's branch.
+A cross-repository pull request gets that offer only when it allows edits from maintainers.
+
+## Review someone else's pull request
+
+When the pull request's author is not your `gh` user, the review runs in reviewer mode.
+It edits, commits and pushes nothing, because the author decides what lands on their branch.
+Instead it drafts a review:
+
+- Every comment sits on a line inside a diff hunk, because GitHub accepts inline comments only there. A finding outside every hunk goes into the review body under its file.
+- The draft is in English. Each comment starts with a [Conventional Comments](https://conventionalcomments.org/) label from the finding's severity: `high` is `issue:`, `medium` is `suggestion:`, `nit` is `nitpick:`. A comment verdict is `issue:` when the comment contradicts the code (R9), and `suggestion:` otherwise.
+- A point another reviewer already raised on the same lines is left out, and the wrap-up names who raised it.
+- A fix that only replaces the commented lines ends with a `suggestion` block the author can commit in one click.
+
+A last question asks whether to post the draft as one `COMMENT` review or keep it as a file.
+The review never approves and never requests changes.
+
+## Read the report
+
+The report groups findings by file.
+Code findings and comment verdicts sit side by side, each in its own shape:
+
+```text
+- `security` · injection-sink · high · L70, L72 — `couponCode` from `req.query` reaches the raw WHERE string → bind it as a query parameter
+- `comments` · R1 · REMOVE · L17 — "// multiply by the rate" restates the line beneath it → delete these lines
+```
+
+Listing 1. A code finding and a comment verdict from one report
+
+- **Severity** is `high`, `medium` or `nit`. A `security`, `correctness`, `spec`, `coherence` or `assumptions` finding is never `nit`.
+- **Comment verdicts** are `KEEP`, `REMOVE`, `REWRITE`, `MOVE` or `ADD`.
+- **Not flagged** lists what looked like a problem but is not, and real problems no rule names.
+- **Boy-scout** holds optional fixes in code the change did not touch.
+- **Tally** ends the report: counts, the lenses that ran (`Lenses: L of 11`), each lens that did not run and why, and the skipped files.
+
+## Choose what to apply
+
+Right after the report, one menu offers only the groups that have findings:
+
+| Option | What it holds |
+|---|---|
+| Safe fixes | Mechanical edits: named constants, renames, guard clauses, blank lines, comment removals and rewrites. |
+| Walk the structural ones | Extractions, moves, splits, and every correctness, security, coherence, assumptions and performance fix that isn't report only. Each one gets its own yes. |
+| Boy-scout extras | Fixes outside the change. |
+| Report only | Change nothing. |
+
+Table 1. The apply menu
+
+Security fixes are never in the safe batch.
+When one of the other groups is empty, security fixes can get an option of their own, still walked one at a time.
+Spec findings describe work to do, so they are report only.
+
+The same menu asks how to commit what lands:
+
+- one commit per finding family, with each security fix in a commit of its own (recommended);
+- fixup commits onto the branch commits that introduced the edited lines, when the branch has commits of its own (folding them in with `git rebase -i --autosquash <base>` is your step);
+- one commit for everything;
+- no commit.
+
+Commits stage only the files the review edited, so your own uncommitted work stays out of them.
+After the edits, your build and tests run once.
+The wrap-up lists the commits made and every approved fix that was skipped or could not be applied as approved.
+
+:::caution
+When a fix removes a secret from the source, the secret itself stays valid. Rotating it is your step; the review can't do it.
+:::
+
+## What can go wrong
+
+- **No base branch is found.** The review says so and offers to review only the uncommitted changes, or you can pass `--base`.
+- **`gh` is missing or can't read the pull request.** With `--pr`, the review says why and stops. It never falls back to reviewing your local branch instead.
+- **No `Agent` tool in the session**, for example inside another agent or a workflow step. The review says so first and names the lenses that would not run. A workflow uses the [headless steps](/plugins/code-review/reference/#headless-steps) instead.
+- **A lens does not deliver.** The review runs that lens once more. If it fails again, the review asks whether to go on without it or stop. It never fills the gap with a reading of its own.
+- **An approved fix cannot be applied as approved**, for example because a hook blocks it. The review tells you what stopped it and what it would do instead, and never swaps in a different edit.
+- **A finding's line is off.** Line numbers are estimates. Before each edit the review finds the code by its content, and skips a finding whose code is not there.
+- **A long apply walk gets compacted.** The report and your selection are saved to a file in the session's scratch directory before any edit, and the wrap-up names it.
+
+## Next steps
+
+- Learn [which lenses run and how findings are merged](/plugins/code-review/how-it-works/).
+- Check the running app against the spec with [tester](/plugins/tester/).
+- Open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/).

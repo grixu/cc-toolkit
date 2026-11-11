@@ -1,0 +1,65 @@
+---
+title: code-review
+description: Przegląda zmianę maksymalnie jedenastoma soczewkami naraz i scala ich uwagi w jeden raport z ocenami, zanim przeczyta ją ktoś inny.
+group: start
+sidebar:
+  label: Przegląd
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+code-review uruchamia nad twoją zmianą osobnego recenzenta dla każdej soczewki, wszystkich równolegle, i scala ich uwagi w jeden raport pogrupowany według plików.
+Każda uwaga wskazuje swoją regułę, a jej wagę ustala jedna stała tabela, więc dwa przebiegi nad tą samą zmianą da się porównać.
+Po raporcie jedno menu pyta, które poprawki zastosować i jak je zacommitować.
+Nic nie zostaje zmienione, dopóki nie wybierzesz.
+
+## Kiedy po niego sięgnąć
+
+- **Zanim otworzysz pull request.** Agent czyta własny branch tak, jak zrobiłby to reviewer, i poprawia, co się da, zanim człowiek poświęci mu czas.
+- **Przy zmianie zrobionej poza fd3.** [`/fd3:implement`](/pl/plugins/fd3/implement/) sam przegląda każdy branch, który buduje, tymi samymi soczewkami.
+- **Przy cudzym pull requeście.** Review przygotowuje komentarze dla autora zamiast edytować jego branch.
+
+Wbudowany w Claude Code skill `/code-review` ma tę samą nazwę co plugin.
+To pojedyncze przejście w poszukiwaniu bugów; ten plugin ocenia każdą uwagę według spisanej reguły.
+
+## Gdzie działa
+
+<LifeMap focus="code-review" animate={false} />
+
+## Co jest w pluginie
+
+| Część | Kto uruchamia | Co robi |
+|---|---|---|
+| [`/code-review:start-cr`](/pl/plugins/code-review/start-cr/) | ty | Przegląda branch, wskazane ścieżki albo pull request, potem pokazuje menu poprawek. |
+| agent `scanner` | `start-cr` i workflowy | Ocenia zmianę według reguł jednej soczewki i zapisuje jej uwagi do pliku. |
+| `cr-prepare`, `cr-scan`, `cr-merge` | workflowy, np. `/fd3:implement` | To samo review rozbite na kroki bez interakcji, które o nic nie pytają i niczego nie edytują. |
+
+Tabela 1. Części pluginu code-review
+
+Ręcznie uruchamiasz tylko `start-cr`.
+Skille bez interakcji są ukryte w menu `/`; ich argumenty dla autorów workflowów opisuje [dokumentacja referencyjna](/pl/plugins/code-review/reference/#kroki-bez-interakcji).
+
+## Wymagania
+
+- `git`: zmiana jest czytana z gita.
+- `python3`: dołączony skrypt znajduje zmienione pliki i branch bazowy.
+- Narzędzie `Agent` w sesji: każda soczewka działa jako osobny subagent.
+- `gh`, tylko do review pull requesta z GitHuba.
+
+## Szybki start
+
+Przejrzyj zmiany na bieżącym branchu:
+
+<Strip cmd="/code-review:start-cr" />
+
+[Przewodnik po start-cr](/pl/plugins/code-review/start-cr/) opisuje ścieżki, inną bazę, spec i pull requesty.
+[Jak to działa](/pl/plugins/code-review/how-it-works/) wyjaśnia, które soczewki się uruchamiają i jak ich uwagi stają się jednym raportem.
+
+## Następne kroki
+
+- [Uruchom pierwsze review przez `/code-review:start-cr`](/pl/plugins/code-review/start-cr/).
+- Po self-review sprawdź działającą aplikację ze specem przy pomocy [testera](/pl/plugins/tester/).
+- Potem otwórz pull request przez [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).
+- Zobacz, gdzie ten etap leży w cyklu: [Self-review](/pl/lifecycle/self-review/).
