@@ -33,7 +33,7 @@ Each colour token is a `light-dark()` pair, so a component never branches on the
 | `--info`, `--success`, `--warning`, `--danger` | Status tones: callout markers and titles, status words in command output |
 | `--scrim` | Backdrop behind a dialog |
 | `--shadow-overlay` | Ring and shadow of a dialog; the only drop shadow in the system |
-| `--info-bg` … `--danger-bg` | Tinted fill for a status tone; reserved, no component uses it yet |
+| `--info-bg` … `--danger-bg` | Tinted fill for a status tone; only badges use it |
 
 ## Which background
 
@@ -226,6 +226,33 @@ Incorrect: a note saying "fd3 is great for big specs!" It holds nothing the read
 
 **Status words in command output** (inside a code block): `--success` for passed, `--danger` for failed, `--warning` for notes that need a look, each after its marker (`✓`, `✗`, `!`); durations and counts stay `--code-muted`.
 
+### Badges
+
+A badge is a one-word status attached to something else: a changelog entry, a plugin, a run, a flag in the text. It is the only place the status `-bg` tints are used, because a badge is small enough that the tint marks it without out-shouting the text.
+
+```
+Is it a status the reader acts on (broken, failed, going away)? → danger or warning
+Is it a good outcome or something new?                          → success
+Is it a change or a state in progress?                          → info
+Is it a plain fact without a status (beta, since 0.3)?          → neutral
+Is it longer than two words, or does it need a sentence?        → not a badge: a callout or the text itself
+```
+
+| Tone | Fill and text | Words |
+| --- | --- | --- |
+| Success | `--success-bg`, `--success` | added, new, passed |
+| Info | `--info-bg`, `--info` | changed, fixed, running |
+| Warning | `--warning-bg`, `--warning` | deprecated, needs review |
+| Danger | `--danger-bg`, `--danger` | breaking, failed, removed |
+| Neutral (default) | no fill, `--muted` text, 1 px inset `--border` ring | beta, skipped, since 0.3 |
+
+- **Shape:** an inline `<span>`, Caption in Plex Mono 400, lowercase, padding `4px 6px`, `--radius-control`, `white-space: nowrap`, `vertical-align: 1px` so it sits on the text's baseline. No icon and no marker: the word carries the status, so colour is never the only signal.
+- **Placement:** in a changelog it leads the entry, `--space-3` before the text, with a fixed `min-width: 9ch` so entries line up. Next to a name (plugin card, heading) it follows the name with a `--space-2` gap. In a table it is the whole cell. In running text it follows the thing it describes.
+- **Limits:** one badge per item. A plugin that is both new and beta shows only the badge that matters more to the reader (beta). Never make a badge a link or a button; it has no hover or pressed state.
+
+Correct: a changelog entry led by a `breaking` badge, then "Task files need a `branch` field".
+Incorrect: a `✓ passed` badge. The marker belongs to callouts and command output; inside a badge it says the status twice.
+
 ### Text fields
 
 Use a text field only where the reader types something the site keeps or acts on, such as a newsletter address. Search is not a text field on the page: it is the search palette below.
@@ -328,4 +355,3 @@ Incorrect: a drawer from the left. The menu button sits at the right end of the 
 These have no rules yet. Do not invent a style for them: raise each one as a gap, and add its rules under Components (when to use it versus the alternative, variants with the default marked, states, one correct and one incorrect example) before building it.
 
 - Hover and pressed states for components other than links, navigation, buttons and fields.
-- Any use of the status `-bg` tints.
