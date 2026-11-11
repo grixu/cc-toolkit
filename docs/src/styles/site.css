@@ -367,6 +367,8 @@ td code { white-space: nowrap; }
 .sl-markdown-content > :is(.sl-heading-wrapper.level-h3, .sl-heading-wrapper.level-h4, h3, h4) { margin-top: var(--space-6); }
 .sl-markdown-content > :is(.sl-heading-wrapper.level-h2, h2) + * { margin-top: var(--space-4); }
 .sl-markdown-content > :is(.sl-heading-wrapper.level-h3, .sl-heading-wrapper.level-h4, h3, h4) + * { margin-top: var(--space-2); }
+.sl-markdown-content > :is(p, ul, ol, dl) + :is(p, ul, ol, dl) { margin-top: var(--space-4); }
+.sl-markdown-content li > :is(p, ul, ol) + :is(p, ul, ol) { margin-top: var(--space-2); }
 .sl-markdown-content > :first-child { margin-top: 0; }
 .sl-markdown-content .sl-anchor-link { color: var(--muted); text-decoration: none; }
 .sl-markdown-content :is(ul, ol) { padding-left: 1.25em; }
@@ -377,6 +379,8 @@ td code { white-space: nowrap; }
 .sl-markdown-content .caption + * { margin-top: var(--space-6); }
 .sl-markdown-content > .not-content + * , .sl-markdown-content > * + .not-content { margin-top: var(--space-6); }
 .sl-markdown-content > .strip, .sl-markdown-content > * + .strip { margin-top: var(--space-4); max-width: 640px; }
+.sl-markdown-content > .strip + * { margin-top: var(--space-4); }
+.sl-markdown-content .strip > * { margin-top: 0; }
 .sl-markdown-content .starlight-aside { margin-top: var(--space-4); }
 .sl-markdown-content .starlight-aside + * { margin-top: var(--space-4); }
 .sl-markdown-content blockquote { border: 0; padding: 0 0 0 var(--space-4); box-shadow: inset 3px 0 0 var(--quote-rule); color: var(--quote); font-style: normal; background: none; }
