@@ -3,7 +3,7 @@ import Strip from '../Strip.astro'
 import Art from '../Art.astro'
 import Icon from '../Icon.astro'
 import { ui, href, langOf, canonicalPath, fmtDate } from '../../lib/i18n'
-import { sections, sectionOf, pluginOf } from '../../lib/nav'
+import { sections, sectionOf, pluginOf, tocHeadings } from '../../lib/nav'
 import { pluginByName, releases, stagesOf, skillById, stageById, stagePath, stages, installPlugin, lineStyle } from '../../lib/lifecycle'
 
 const { entry, toc } = Astro.locals.starlightRoute
@@ -25,7 +25,7 @@ crumbs.push({ label: isOverview ? plugin!.name : entry.data.title })
 const skill = entry.data.skill ? skillById[entry.data.skill] : undefined
 const where = plugin ? (skill ? [stageById[skill.stage]] : stagesOf(plugin.name)) : []
 const last = plugin ? releases().find((r) => r.plugin === plugin.name) : undefined
-const inline = (toc?.items ?? []).filter((i) => i.depth === 2)
+const inline = tocHeadings(toc)
 ---
 
 {!entry.data.landing && (
@@ -50,7 +50,7 @@ const inline = (toc?.items ?? []).filter((i) => i.depth === 2)
           <p class="hint">{t.firstTime} <a href={href('getting-started/installation/', lang)}>{t.addMarketplace}</a> {t.thenInstall}</p>
         </div>
       )}
-      {inline.length >= 3 && (
+      {inline.length > 0 && (
         <details class="toc-inline">
           <summary><span class="label">{t.onPage}</span><Icon name="chevron" size={12} /></summary>
           <ol>{inline.map((i) => <li><a href={`#${i.slug}`}>{i.text}</a></li>)}</ol>

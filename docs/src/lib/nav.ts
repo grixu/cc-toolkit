@@ -13,6 +13,14 @@ export const sections: { id: SectionId; path: string; prefix: string; label: Rec
 export const sectionOf = (path: string) => sections.find((s) => path.startsWith(s.prefix))?.id
 export const pluginOf = (path: string) => path.match(/^plugins\/([^/]+)\//)?.[1]
 
+type TocItem = { depth: number; slug: string; text: string; children: TocItem[] }
+const MIN_TOC_HEADINGS = 3
+// Starlight lists the page title as the first depth-2 entry, slug `_top`.
+export const tocHeadings = (toc?: { items: TocItem[] }) => {
+  const items = (toc?.items ?? []).filter((i) => i.depth === 2 && i.slug !== '_top')
+  return items.length >= MIN_TOC_HEADINGS ? items : []
+}
+
 const groupOrder = ['start', 'cycle', 'guides', 'concepts', 'reference', 'outside'] as const
 type GroupKey = (typeof groupOrder)[number]
 const groupLabels: Record<Lang, Record<GroupKey, string>> = {

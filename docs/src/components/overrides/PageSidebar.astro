@@ -1,11 +1,12 @@
 ---
 import { ui, langOf } from '../../lib/i18n'
+import { tocHeadings } from '../../lib/nav'
 
 const t = ui[langOf(Astro.url.pathname)]
-const items = (Astro.locals.starlightRoute.toc?.items ?? []).filter((i) => i.depth === 2)
+const items = tocHeadings(Astro.locals.starlightRoute.toc)
 ---
 
-{items.length >= 3 && (
+{items.length > 0 && (
   <nav class="toc" aria-labelledby="toc-h">
     <p class="label" id="toc-h">{t.onPage}</p>
     <ol>

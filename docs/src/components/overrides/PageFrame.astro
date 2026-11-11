@@ -3,14 +3,14 @@ import SiteFooter from '../SiteFooter.astro'
 import Drawer from '../Drawer.astro'
 import Palette from '../Palette.astro'
 import { canonicalPath, langOf } from '../../lib/i18n'
-import { sidebarFor } from '../../lib/nav'
+import { sidebarFor, tocHeadings } from '../../lib/nav'
 
 const { starlightRoute } = Astro.locals
 const lang = langOf(Astro.url.pathname)
 const path = canonicalPath(Astro.url.pathname)
 const landing = !!starlightRoute.entry.data.landing
 const hasSb = !landing && !!(await sidebarFor(path, lang))
-const hasToc = (starlightRoute.toc?.items ?? []).filter((i) => i.depth === 2).length >= 3
+const hasToc = tocHeadings(starlightRoute.toc).length > 0
 ---
 
 <slot name="header" />
