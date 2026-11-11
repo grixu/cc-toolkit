@@ -1,6 +1,6 @@
 ---
 title: Build
-description: The spec cut into tasks and built in parallel worktrees.
+description: The spec cut into tasks and built in parallel worktrees, with your rules enforced as the agent writes.
 group: cycle
 sidebar:
   label: 02 · Build
@@ -10,14 +10,44 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-## Why this stage
+Build is the second stage of the [ADLC](/lifecycle/).
+It turns a spec into branches that pass your repository's own checks, one branch per pull request.
+
+## What goes wrong without it
 
 A spec is too big to hand to one agent in one go: the context fills up and the late tasks get the least attention.
-Building cuts it into tasks small enough for one worktree each, orders them by what depends on what, and runs the independent ones side by side.
+And an agent that writes quickly also breaks a team rule quickly, many times over, before anyone reads the code.
+Build cuts the spec into tasks small enough for one worktree each, and checks your rules on every edit.
+
+## Who does what
+
+- **The agent** cuts the spec into tasks, builds them in parallel, merges each wave, and runs the build, typecheck, lint and test commands with up to three fix rounds per branch.
+- **You** answer one batch of questions before the run, settle the items only a person can decide, and say yes before anything is pushed.
 
 ## On the map
 
 <LifeMap stage="build" animate={false} />
+
+## How it runs
+
+The stage takes two fd3 commands, while hookify works in the background:
+
+1. **Split.** [`/fd3:split-to-tasks`](/plugins/fd3/split-to-tasks/) reads a spec whose verdict is `ready`. It cuts the work into task files, orders them by what depends on what, and groups them onto branches by rollout gate.
+2. **Ask.** [`/fd3:implement`](/plugins/fd3/implement/) asks one batch of questions: whether to review each branch, which base to start from, and the confirmations a task needs.
+3. **Build in waves.** Every task whose dependencies are finished runs at once, each in its own worktree. At the end of a wave the task branches merge into their target branch.
+4. **Check.** Each branch runs the repository's checks, one branch at a time. Failures that were already on the base aren't blamed on the branch.
+5. **Review.** When you chose review, code-review reviews each branch and the fixable findings are fixed. This is the same review as [Self-review](/lifecycle/self-review/).
+6. **Settle and push.** You decide the human-in-the-loop (HIL) items in one batch, and repair runs apply your answers. Then you choose whether to push the branches and open the pull requests.
+
+### Your rules, enforced on every edit
+
+[hookify](/plugins/hookify/) rules run as hooks on every tool call.
+A rule that matches the content of an edit shows the agent a warning, or blocks the edit so it never reaches the file.
+You don't have to watch each edit to keep a rule.
+Team rules (`.rule.md`) are committed, so every checkout of the repository has them.
+
+A spec that turns out to be wrong isn't edited during the build.
+A mismatch between the spec and what was built comes to you as a HIL item, and its route is `/fd3:build-spec <spec>`.
 
 ## What to run
 
@@ -25,5 +55,10 @@ Building cuts it into tasks small enough for one worktree each, orders them by w
 
 ## What arrives and what leaves
 
-- **Arrives:** a spec.
-- **Leaves:** branches, one per pull request, each validated by the repository's own checks.
+- **Arrives:** a spec with a `ready` verdict.
+- **Leaves:** branches, one per pull request, each validated by the repository's own checks, and reviewed when you chose review.
+
+## When to skip it
+
+Skip the fd3 commands when you write the change yourself or in a single Claude Code session.
+The hookify rules still apply: they check every edit Claude makes, in any session.

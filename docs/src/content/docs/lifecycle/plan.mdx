@@ -10,24 +10,51 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-## Why this stage
+Plan is the first stage of the [ADLC](/lifecycle/).
+It turns an idea, a ticket or a rough plan into a spec that every later stage builds from.
+
+## What goes wrong without it
 
 Give an agent a one-line request and it fills every gap with a guess.
 The guesses surface late, as rework in review.
 Planning moves those decisions to the start, where changing one costs a sentence instead of a branch.
 
+## Who does what
+
+- **The agent** checks what your idea claims against the code, the existing specs and the lockfile. It looks up every fact it can, and asks you only what it can't.
+- **You** answer the interview rounds and confirm the closing summary of decisions. Nothing is written until you confirm.
+
 ## On the map
 
 <LifeMap stage="plan" animate={false} />
+
+## How it runs
+
+Most changes need only [`/fd3:build-spec`](/plugins/fd3/build-spec/), which runs the whole stage:
+
+1. **Ground.** The agent fetches the repository and compares your idea with the code. Round 1 opens with every place the idea turned out to be wrong.
+2. **Interview.** Each round asks every question that can be answered now. Each question has two or three options with their costs and one recommended option.
+3. **Confirm.** You confirm a summary of every decision, including the ones the agent took that you never answered directly.
+4. **Write.** A sub-agent writes the spec from the confirmed notes. Each piece to build gets a permanent code, such as `API-2`.
+5. **Validate.** A second sub-agent checks every claim in the spec against the code and appends a verdict. It repeats this up to three times while the verdict is `not ready`.
+
+Two supporting plugins help when a decision needs more than the code:
+
+- [researcher](/plugins/researcher/) answers a question the code can't, with a report in which every claim cites a source.
+- [codex-plan-improver](/plugins/codex-plan-improver/) has OpenAI Codex review a plan and argue with it, up to five rounds.
+
+To argue an idea through without writing a spec, run only the interview with [`/fd3:grill-topic`](/plugins/fd3/grill-topic/).
 
 ## What to run
 
 <StageCommands stage="plan" />
 
-Most changes need only [`/fd3:build-spec`](/plugins/fd3/build-spec/).
-Reach for [researcher](/plugins/researcher/) when a decision depends on a fact the code cannot answer, and for [codex-plan-improver](/plugins/codex-plan-improver/) when you want a second model to challenge a plan.
-
 ## What arrives and what leaves
 
 - **Arrives:** an idea, an issue or a rough plan.
-- **Leaves:** a spec whose load-bearing claims were checked against the code, ready to be split into tasks.
+- **Leaves:** a spec whose last line reads `Verdict: ready`, ready to be cut into tasks in [Build](/lifecycle/build/).
+
+## When to skip it
+
+Skip Plan for a change with no decisions left in it, such as a one-line fix or a rename.
+Build needs a spec, but Review & test doesn't: make the change yourself, and code-review and tester read the diff instead.

@@ -10,14 +10,37 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-## Why this stage
+Test is the second of three steps in Review & test, the third stage of the [ADLC](/lifecycle/).
+It checks that the change works in the running app, not only in the code.
 
-A review reads the code; it cannot tell you the app behaves.
-Testing runs the app and checks it against what the spec or the diff promised, and records the command behind every verdict, so "it works" is something a reviewer can re-run instead of take on trust.
+## What goes wrong without it
+
+A review reads the code; it can't tell you the app behaves.
+Unit tests pass, the review is clean, and the feature still fails when a user clicks through it or a dependency returns an error.
+And an agent that says "it works" without a command behind it asks the reviewer to take that on trust.
+
+## Who does what
+
+- **The agent** works out what to test, finds the live ports, routes and test users, runs each check as a real command, and records the output behind every verdict.
+- **You** provide a local or staging stack and answer one round of questions: which suites to run and which changes to your environment the agent may make.
 
 ## On the map
 
 <LifeMap stage="test" animate={false} />
+
+## How it runs
+
+[`/tester:run`](/plugins/tester/run/) runs the whole step:
+
+1. **Scope.** It reads the acceptance criteria from a spec, the code behind a named area, or the diff against the main branch.
+2. **Discover.** It finds what is running and takes a snapshot of the current state, so it can restore it later.
+3. **Derive.** It turns each expected behavior into API, UI and fault checks, grouped into suites.
+4. **Ask.** It asks once which suites to run and which changes it may make.
+5. **Run.** API and UI suites run in parallel, then the fault suite runs on its own.
+6. **Report.** Each failure is tied to its acceptance criterion and classified, next to the behaviors it couldn't check and a ledger of what it changed and reverted.
+
+tester stops when a base URL looks like production.
+It reports problems; it doesn't fix your code.
 
 ## What to run
 
@@ -27,3 +50,8 @@ Testing runs the app and checks it against what the spec or the diff promised, a
 
 - **Arrives:** a branch that builds, and its spec or its diff.
 - **Leaves:** a test report with a verdict and the evidence for each check.
+
+## When to skip it
+
+Skip it for a change with no behavior to run, such as documentation or a refactor that unit tests already cover.
+Say so in the pull request, so the reviewer knows the app wasn't checked.

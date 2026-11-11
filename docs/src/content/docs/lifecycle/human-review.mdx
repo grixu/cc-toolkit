@@ -10,24 +10,39 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-## Why this stage
-
+Human review is the last of three steps in Review & test, and the last gate of the [ADLC](/lifecycle/).
 By now the change is reviewed and tested, and the one thing left is a person's approval.
-This stage makes that approval cheap: proof the change works before the reviewer opens it, a pull request they can read in one screen with a risk label that says how closely to look, and an agent that answers their comments and keeps CI green until they approve.
+
+## What goes wrong without it
+
+A reviewer who opens a pull request sees code and has to imagine what it does for a user.
+A large diff with no hint of its risk gets the same attention in every file, so the risky file gets too little.
+And while the reviewer waits, a check goes red overnight and the comments wait for answers.
+
+## Who does what
+
+- **The agent** records proof that the change works, writes a description a reviewer can read in one screen, labels the risk, answers comments, and fixes failed checks.
+- **You** review the change and approve it. The approval is the one step the agent leaves to a person.
 
 ## On the map
 
 <LifeMap stage="human" animate={false} />
 
+## How it runs
+
+Three skills from two plugins run in this order:
+
+1. **Prove it.** [`/pr-proof:walkthrough-video`](/plugins/pr-proof/walkthrough-video/) records a narrated video of the change working in your app. A defect it sees on camera goes to the top of its report. It attaches the video to a pull request that already exists; when there is none yet, it leaves the video in `~/Downloads/` for you to attach.
+2. **Open the pull request.** [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) fills the repository's template from the diff, with a short description and a before and after table. With a TypeSafe key, it adds a [risk label](/plugins/dev-kit/risk-assessment/), such as `risk: high`, so the reviewer knows how closely to look.
+3. **Keep it green.** [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) loops until every required check is green and no review thread is open. It fixes the comments it agrees with, answers the rest in the thread, and hands each red check to [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/).
+
+You rarely run `ci-fix` by hand: pr-shepherd calls it when a check fails.
+
 ## What to run
 
 <StageCommands stage="human" />
 
-Prove the change with [pr-proof](/plugins/pr-proof/), open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/), then let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) drive it.
-pr-proof attaches the video to a pull request that already exists; when there is none yet, it leaves the video in `~/Downloads/` for you to attach.
-You rarely run [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/) by hand: pr-shepherd calls it when a check fails.
-
 ## What arrives and what leaves
 
 - **Arrives:** a reviewed and tested branch.
-- **Leaves:** an approved pull request with green checks, ready to merge.
+- **Leaves:** an approved pull request with green checks, ready to merge. The merge closes the cycle, and the next change starts at [Plan](/lifecycle/plan/).

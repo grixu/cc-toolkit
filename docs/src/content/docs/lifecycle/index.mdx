@@ -1,6 +1,6 @@
 ---
-title: The lifecycle
-description: Every change goes through the same stages. Each stage has a plugin, and each plugin hands the next one a file.
+title: The agentic development lifecycle (ADLC)
+description: How a change ships when an agent writes the code and you make the decisions, and which plugins and skills carry each stage.
 group: start
 sidebar:
   label: Overview
@@ -10,23 +10,128 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-## The map
+cc-toolkit is built around the agentic development lifecycle (ADLC): the stages a change goes through when Claude Code writes the code and you make the decisions.
+This page explains the idea, shows where you take part, and maps each stage to the plugins and skills that carry it.
+Each stage then has its own page with the steps in order.
+
+## What changes when an agent writes the code
+
+In a classic software development lifecycle (SDLC), writing the code is the slow part, and the process is built around it.
+An agent writes code in minutes, so the cost moves to two places: deciding what to build, and checking that what was built is right.
+Without a process for those two, four failures keep coming back:
+
+- **The agent guesses.** A one-line request leaves gaps, and the agent fills each one with an assumption that surfaces only in review.
+- **The context fills up.** One session for a large change gives the late tasks the least attention.
+- **The code is confident and wrong.** It builds and passes CI, but misses the spec, breaks a team rule or is unsafe, and the agent reports it as done.
+- **The reviewer drowns.** A person gets a large diff with no proof that it works and no hint where to look.
+
+The ADLC answers each failure with a stage, and each stage has a plugin.
+
+## The ADLC map
+
+The map shows the cycle from left to right: Plan, Build, and Review & test in three steps.
+Each colored line is one core plugin, and each station is a skill.
+A merged pull request loops back to Plan for the next change.
 
 <LifeMap animate={false} />
 
-## The stages
+## The principles behind the stages
 
-<StageCommands />
+### Decide before the code exists
 
-Review & test is one phase in three steps.
-The agent reviews its own branch first, then checks that the running app does what the spec says, and only then asks a person to look.
-That order puts the cheap checks before the expensive one: a reviewer's time.
+A decision changed in planning costs a sentence; the same decision changed in review costs a branch.
+In [Plan](/lifecycle/plan/), `/fd3:build-spec` checks your idea against the code, interviews you until nothing is left to decide, and writes a spec it validates against the repository.
 
-Maintain is outside the cycle.
-Upgrading a dependency or teaching the agent a rule does not follow a merge; it happens whenever it is needed.
+### One task, one context
 
-## How plugins hand over
+An agent works best on a task that fits in its context.
+In [Build](/lifecycle/build/), `/fd3:split-to-tasks` cuts the spec into tasks, and `/fd3:implement` builds each one in its own git worktree, with independent tasks in parallel.
+
+### Rules hold while the agent writes
+
+A rule in `CLAUDE.md` is advice the agent can forget.
+A [hookify](/plugins/hookify/) rule is checked on every tool call, so an edit that breaks it gets a warning or is blocked before it lands.
+
+### The cheapest check runs first
+
+Review & test runs in three steps, from the cheapest to the most expensive: the agent reviews its own branch, then tests the running app, and only then asks a person.
+A person's time is the scarcest resource in the cycle, so it gets a change that already passed the other two.
+
+### Evidence instead of trust
+
+"It works" is a claim; a re-runnable command or a recording is evidence.
+[tester](/plugins/tester/) records the command behind every verdict, and [pr-proof](/plugins/pr-proof/) records a walkthrough video of the change for the reviewer.
+
+### People at the gates, not in the loop
+
+The agent doesn't stop to ask about what it can look up or check.
+It stops at a few fixed points where only you can decide: the interview, the questions before a run, the items only a person can settle, the push, and the approval.
+
+### Hand over files, not conversations
 
 No plugin reads another plugin's conversation.
-Each one leaves a file or a branch, and the next one starts from it: a spec, task files, branches, a review report, a test report, a pull request.
-That is why you can run any stage on its own, with or without the plugins before it.
+Each stage leaves a file or a branch, and the next stage starts from it: a spec, task files, branches, a review report, a test report, a pull request.
+That's why you can start at any stage and stop at any stage.
+
+### Every correction becomes a rule
+
+A correction you type in chat is gone when the session ends.
+[Maintain](/lifecycle/maintain/) turns corrections into rules that every later session reads, so the same mistake doesn't come back.
+
+## Who does what in each stage
+
+The agent does the work in every stage; you decide at the gates.
+
+| Stage | The agent | You | Leaves |
+|---|---|---|---|
+| [Plan](/lifecycle/plan/) | Checks the idea against the code, asks questions with a recommended answer, writes and validates the spec | Answer each round and confirm the summary of decisions | A spec with a `ready` verdict |
+| [Build](/lifecycle/build/) | Cuts the spec into tasks, builds them in parallel worktrees, runs the repository's checks and fixes failures | Answer one batch of questions, settle the items only a person can, approve the push | Branches, one per pull request |
+| [Self-review](/lifecycle/self-review/) | Reviews the change through every lens that applies and merges the findings into one report | Choose which fixes to apply | A review report and the fixes |
+| [Test](/lifecycle/test/) | Works out what to test, runs each check against the running app and records the evidence | Provide a local or staging stack and answer one round of questions | A test report with a verdict per check |
+| [Human review](/lifecycle/human-review/) | Records a walkthrough, opens the pull request with a risk label, answers comments and fixes CI | Review the change and approve it | An approved pull request with green checks |
+| [Maintain](/lifecycle/maintain/) | Checks dependency upgrades and finds the corrections in a session | Accept or skip each proposed rule | A verdict on the upgrade, or new rules |
+
+Table 1. What the agent does and what you decide in each stage
+
+## The commands in each stage
+
+<StageCommands n={2} />
+
+## The learning loop
+
+Maintain isn't a stage a change passes through; it feeds the cycle.
+A session in any stage can end with a lesson, and that lesson becomes a rule the next run reads.
+
+The following diagram shows how a correction becomes a rule:
+
+```mermaid
+flowchart LR
+  Session[A session in any stage] -->|you correct the agent| Learn[session-learner]
+  Learn --> Rules[Rules files and CLAUDE.md]
+  Learn --> Hooks[hookify rules]
+  Rules -->|read at the start of every session| Next[The next change]
+  Hooks -->|warn or block each edit| Next
+```
+
+Figure 2. How a correction becomes a rule for the next change
+
+[`/session-learner:learn`](/plugins/session-learner/) proposes a change to `.claude/rules/`, `CLAUDE.md`, or a hookify rule for each correction, and writes only the ones you accept.
+[`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule directly from your description.
+code-review reads the same rules files as conventions, so Self-review holds the change to them too.
+
+Dependency upgrades are the other half of Maintain.
+They arrive when their maintainers release them, not after a merge, so [`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/) runs whenever one arrives.
+
+## Start where your change is
+
+You don't have to start at Plan:
+
+- **You have an idea or a ticket.** Start at [Plan](/lifecycle/plan/) with `/fd3:build-spec`.
+- **You have a branch.** Start at [Self-review](/lifecycle/self-review/) with `/code-review:start-cr`.
+- **Your pull request is open and stuck on CI or comments.** Go to [Human review](/lifecycle/human-review/) and run `/dev-kit:pr-shepherd`.
+- **A dependency upgrade arrived.** Go to [Maintain](/lifecycle/maintain/) and run `/dev-kit:dep-upgrade-check`.
+
+## Next steps
+
+- Read [Plan](/lifecycle/plan/), the first stage of the cycle.
+- [Install the marketplace](/getting-started/installation/) and the plugins for the stages you need.

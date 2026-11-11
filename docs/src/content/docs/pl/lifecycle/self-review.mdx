@@ -10,22 +10,49 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-## Po co ten etap
+Self-review to pierwszy z trzech kroków Review i testów, trzeciego etapu [ADLC](/pl/lifecycle/).
+Agent czyta własną zmianę tak, jak zrobiłby to reviewer, i poprawia, co może, zanim człowiek poświęci jej czas.
 
-Kod, który przechodzi CI, wciąż może być błędny, niejasny albo niebezpieczny, a reviewer to najdroższe miejsce, żeby się o tym dowiedzieć.
-Self-review to pierwszy z trzech kroków fazy Review i testy: agent czyta własną zmianę kilkoma soczewkami naraz i poprawia, co się da, zanim człowiek poświęci jej czas.
+## Co idzie źle bez tego etapu
+
+Kod, który przechodzi CI, nadal może być błędny, niejasny albo niebezpieczny, a agent, który go napisał, zgłasza go jako gotowy.
+Reviewer to najdroższe miejsce, żeby się o tym dowiedzieć.
+Jedno przejście review też coś gubi: reviewer szukający bugów przeoczy mylący komentarz albo wyciek sekretu.
+
+## Kto co robi
+
+- **Agent** ustala, które soczewki pasują, uruchamia równolegle jednego reviewera na soczewkę i scala ich znaleziska w jeden raport oceniony według stałej tabeli.
+- **Ty** wybierasz, które poprawki zastosować i jak je zcommitować. Nic nie jest edytowane, zanim wybierzesz.
 
 ## Na mapie
 
 <LifeMap stage="self" animate={false} />
 
+## Jak to przebiega
+
+[`/code-review:start-cr`](/pl/plugins/code-review/start-cr/) prowadzi cały krok:
+
+1. **Zakres.** Znajduje zmienione pliki względem brancha bazowego albo bazy pull requesta.
+2. **Konwencje.** Raz, dla wszystkich soczewek, czyta reguły projektu, takie jak `CLAUDE.md` i `.claude/rules/`. Liczą się tu reguły, które zapisałeś w [Utrzymaniu](/pl/lifecycle/maintain/).
+3. **Wybór soczewek.** O tym, które soczewki działają, decyduje zmiana, nigdy preferencja. Większość soczewek działa przy każdej zmianie; performance tylko przy plikach z kodem wykonywalnym, a soczewka specu tylko przy specu, który podałeś albo zaakceptowałeś.
+4. **Skan.** Jeden agent-skaner na każdą aktywną soczewkę ocenia zmianę według jej reguł, wszystkie jednocześnie.
+5. **Scalenie.** Duplikaty są łączone, każde znalezisko dostaje ocenę z jednej tabeli ważności, a wynik to jeden raport pogrupowany według plików.
+6. **Zastosowanie.** Jedno menu pyta, które poprawki zastosować i jak je zcommitować.
+
+[`/fd3:implement`](/pl/plugins/fd3/implement/) robi ten review na każdym branchu, który buduje, gdy włączysz review.
+Po fd3 uruchamiasz go sam tylko przy zmianach zrobionych poza fd3.
+
 ## Co uruchomić
 
 <StageCommands stage="self" />
 
-[`/fd3:implement`](/pl/plugins/fd3/implement/) uruchamia to review na każdym branchu, który buduje, więc po fd3 odpalasz je sam tylko dla zmian zrobionych poza fd3.
-
 ## Co wchodzi, a co wychodzi
 
 - **Wchodzi:** branch albo pull request.
-- **Wychodzi:** jeden raport z ocenami i poprawki, które zdecydujesz się zastosować.
+- **Wychodzi:** jeden raport z ocenami i poprawki, które wybrałeś.
+
+## Na cudzym pull requeście
+
+Ta sama komenda działa jako pomocnik reviewera.
+Na pull requeście, którego nie napisałeś, niczego nie edytuje, tylko przygotowuje komentarze dla autora.
+[Review cudzego pull requesta](/pl/plugins/code-review/start-cr/#review-cudzego-pull-requesta) wyjaśnia, jak to działa.

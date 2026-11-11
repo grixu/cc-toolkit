@@ -24,13 +24,12 @@ Wiele skilli startuje też samo, gdy twoja prośba do nich pasuje, na przykład 
 
 ## Cykl
 
-Pluginy prowadzą zmianę za każdym razem przez te same etapy.
+Pluginy prowadzą zmianę za każdym razem przez te same etapy: agentowy cykl wytwarzania oprogramowania (ADLC).
+Każdy etap zostawia następnemu plik albo branch, więc możesz zacząć na dowolnym etapie i na dowolnym skończyć.
 
 <StageCommands />
 
-Żaden plugin nie czyta rozmowy innego pluginu.
-Każdy zostawia plik albo branch, a następny zaczyna od niego: spec, pliki zadań, branche, raport z review, pull request.
-Dlatego możesz zacząć na dowolnym etapie i na dowolnym skończyć.
+[Przegląd ADLC](/pl/lifecycle/) wyjaśnia, dlaczego etapy idą w tej kolejności i gdzie decydujesz.
 
 ## Od czego zacząć
 
