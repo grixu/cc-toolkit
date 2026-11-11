@@ -83,7 +83,7 @@ apply_commits() {
   done
 }
 
-for s in pr-open-feature pr-open-no-ticket pr-open-update-body; do
+for s in pr-open-feature pr-open-no-ticket pr-open-update-body pr-open-proof; do
   src="cases/$s"
   repo=".sandbox/$s"
   origin="$(pwd)/.sandbox/$s-origin.git"
@@ -104,6 +104,26 @@ for s in pr-open-feature pr-open-no-ticket pr-open-update-body; do
   git -C "$repo" switch -q -c "$(cat "$src/branch")"
   apply_commits "$repo" "$src/commits" "$origin"
 done
+
+# pr-open reads a branch's proof manifest from where pr-proof writes it under $HOME, named by the
+# origin's basename and the URL-encoded branch, so pr-open-proof's manifest has to live there too.
+proof_media="$(pwd)/.sandbox/pr-open-proof-proof"
+cp -R cases/pr-open-proof/proof "$proof_media"
+proof_cache="${HOME:?}/.cache/pr-proof/pr-open-proof-origin"
+rm -rf "$proof_cache"
+proof_manifest="$proof_cache/$(sed 's#/#%2F#g' cases/pr-open-proof/branch)/manifest.json"
+mkdir -p "$(dirname "$proof_manifest")"
+proof_head="$(git -C .sandbox/pr-open-proof rev-parse HEAD)"
+git -C .sandbox/pr-open-proof diff-tree --no-commit-id --name-only -r HEAD |
+  jq -R -s --arg head "$proof_head" --arg media "$proof_media" '
+    split("\n") | map(select(length > 0)) as $files
+    | {version: 1, head: $head, base: "main", entries: [
+        {kind: "screenshots", claim: "The cart and checkout pages show the new order summary at every width.",
+         head: $head, files: $files,
+         media: [("Cart", "Checkout") as $screen | (375, 768, 1440) as $width
+           | {path: "\($media)/\($screen)-\($width).png", screen: $screen, width: $width}]},
+        {kind: "terminal", claim: "The order-summary script prints the discounted total for a sample cart.",
+         head: $head, files: $files, transcript: "\($media)/terminal.txt"}]}' > "$proof_manifest"
 
 # A one-package repository whose lockfile pins <pkg>@<current>, for the scenarios picked at reset time.
 fresh_repo() {

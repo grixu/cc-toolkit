@@ -1,0 +1,25 @@
+$ pnpm order-summary --cart fixtures/cart-3-items.json
+
+> console@ order-summary /work/console
+> node scripts/order-summary.mjs --cart fixtures/cart-3-items.json
+
+Order summary
+-------------
+Item                         Qty    Unit     Line
+Merino crew sweater            1   89.00    89.00
+Canvas tote bag                2   24.50    49.00
+Wool socks, 3-pack             1   18.00    18.00
+-------------------------------------------------
+Subtotal                                   156.00
+Discount (WELCOME10)                       -15.60
+Shipping (standard, 3-5 days)                4.95
+VAT 23%, included                           27.18
+-------------------------------------------------
+Total                                      145.35
+Currency                                      EUR
+
+Checks
+  subtotal matches line items      ok
+  discount applied before shipping ok
+  total rounds to two decimals     ok
+Done in 0.41s

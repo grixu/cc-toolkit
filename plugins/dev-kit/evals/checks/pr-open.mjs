@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,14 +28,18 @@ function parse(body) {
     const m = text.match(new RegExp(`(?:^|\\n)#+\\s*${name}[ \\t]*\\n([\\s\\S]*?)(?=\\n#+\\s|\\n\\[[^\\]]+\\]:\\s|$)`, 'i'));
     return m ? m[1].trim() : null;
   };
-  const risk = text.search(/^## Risk\b/m);
+  const without = (from, name) => {
+    const at = from.search(new RegExp(`^## ${name}\\b`, 'm'));
+    return at < 0 ? from : from.slice(0, at) + from.slice(at).replace(new RegExp(`^## ${name}\\b[\\s\\S]*?(?=\\n#+\\s|\\n\\[[^\\]]+\\]:\\s|$)`), '');
+  };
   return {
     body: text,
     issue: section('Issue'),
     description: section('Description'),
     dependencies: section('Dependencies'),
-    // The Risk section has its own shape and is outside the length budget.
-    withoutRisk: risk < 0 ? text : text.slice(0, risk) + text.slice(risk).replace(/^## Risk\b[\s\S]*?(?=\n#+\s|\n\[[^\]]+\]:\s|$)/, ''),
+    proof: section('Proof'),
+    // Risk and Proof have their own shapes and are outside the length budget.
+    budgeted: without(without(text, 'Risk'), 'Proof'),
   };
 }
 
@@ -63,7 +68,7 @@ function bodyChecks(parsed) {
     [!/<!--/.test(body), 'an HTML comment is left in the body (not MDX-safe)'],
     [!/[<{]/.test(prose(body)), 'a bare < or { in prose (not MDX-safe)'],
     [
-      parsed.withoutRisk.split('\n').filter((l) => l.trim()).length <= MAX_BODY_LINES,
+      parsed.budgeted.split('\n').filter((l) => l.trim()).length <= MAX_BODY_LINES,
       `body over ${MAX_BODY_LINES} non-blank lines`,
     ],
     [!/^#+\s*(Summary|Changes)\b/im.test(description ?? ''), 'Summary/Changes sub-heading in Description'],
@@ -120,6 +125,50 @@ export function noTicket() {
     [/^-\s*none\b/im.test(parsed.dependencies ?? ''), 'Dependencies is not "- None"'],
     [/vitest/i.test(parsed.description ?? ''), 'Testing does not name the Vitest run the user reported'],
     [conventional(meta?.title, '') && !/PL-/.test(meta?.title ?? ''), `title "${meta?.title}" is not Conventional Commits or carries a ticket`],
+  ]);
+}
+
+const PROOF_MANIFEST = path.join(os.homedir(), '.cache/pr-proof/pr-open-proof-origin/feat%2Fcheckout-summary/manifest.json');
+const squash = (text) => text.replace(/\s+/g, ' ').trim();
+
+// Every scenario of a trial shares gh-calls.log, so only the calls made in this checkout count.
+function callsIn(checkout) {
+  const dir = path.join(sandbox, checkout);
+  return (read(path.join(sandbox, 'gh-calls.log')) ?? '')
+    .split('\n')
+    .map((line) => line.match(/^(.*) # in (.*)$/))
+    .filter((m) => m && (m[2] === dir || m[2].startsWith(`${dir}/`)))
+    .map((m) => m[1]);
+}
+
+export function proof() {
+  const { body } = created('feat/checkout-summary');
+  if (body === null) return { pass: false, score: 0, reason: 'no PR was created for feat/checkout-summary' };
+  const manifest = JSON.parse(read(PROOF_MANIFEST) ?? 'null');
+  if (manifest === null) return { pass: false, score: 0, reason: `fixture problem: no manifest at ${PROOF_MANIFEST}` };
+  const parsed = parse(body);
+  const section = parsed.proof ?? '';
+  const at = parsed.body.search(/^## Proof\b/m);
+  const after = at < 0 ? '' : parsed.body.slice(at).replace(/^.*\n?/, '');
+  const placed = /^## Risk\b/m.test(parsed.body) ? /^## Risk\b/.test(after.match(/^#+\s.*$/m)?.[0] ?? '') : !/^## /m.test(after);
+  const transcript = (read(manifest.entries.find((e) => e.kind === 'terminal').transcript) ?? '').split('\n')[0];
+  const details = section.match(/<details>[\s\S]*?<\/details>/)?.[0] ?? '';
+  const creates = callsIn('pr-open-proof').filter((call) => call.startsWith('pr create'));
+  const attaches = creates.length === 1 ? (creates[0].match(/(?:^|\s)--attach(?=[\s=])/g) ?? []).length : 0;
+  return score([
+    ...bodyChecks(parsed),
+    [at >= 0, 'no ## Proof section'],
+    [placed, '## Proof is not just before ## Risk, or not the last ## section without one'],
+    ...manifest.entries.map((e) => [squash(section).includes(squash(e.claim)), `the ${e.kind} claim is not in ## Proof`]),
+    [/^\|\s*Screen\s*\|\s*375\s*\|\s*768\s*\|\s*1440\s*\|\s*$/m.test(section), 'no | Screen | 375 | 768 | 1440 | table header'],
+    ...['Cart', 'Checkout'].map((screen) => [new RegExp(`^\\|\\s*${screen}\\s*\\|`, 'm').test(section), `no ${screen} row in the screenshot table`]),
+    [transcript !== '' && details.includes(transcript), 'the transcript is not inside <details>'],
+    [!/rewritten|Commits after this proof/i.test(section), 'a staleness or rewritten-history note on a fresh proof'],
+    [(section.match(/https:\/\/github\.com\/user-attachments\/assets\/\d+/g) ?? []).length === 6, 'not six user-attachments URLs in ## Proof'],
+    [!/(^|[\s(])\.\//m.test(section), 'a ./ reference is left in ## Proof'],
+    [creates.length === 1, `${creates.length} pr create calls in the checkout, expected 1`],
+    [attaches === 6, `pr create carried ${attaches} --attach arguments, expected 6`],
+    [!creates.some((call) => /--attach[=\s]\S*terminal\.txt/.test(call)), 'the transcript was attached instead of inlined'],
   ]);
 }
 
