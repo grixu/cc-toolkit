@@ -96,6 +96,7 @@ Checked contrast (WCAG 2.1 / APCA Lc), light theme then dark:
 | `--on-primary` on `--primary` | 6.3:1 / −85 | 9.3:1 / 64 |
 | `--secondary` on `--canvas` (non-text) | 4.4:1 | 7.5:1 |
 | `--diagram-line` on `--canvas` (non-text) | 3.3:1 | 4.9:1 |
+| `--diagram-line` field ring on `--code-bg` / on `--panel` (non-text) | 3.1:1 / 3.6:1 | 5.1:1 / 4.5:1 |
 | `--code-text` on `--code-bg` | 11.8:1 / 89 | 13.5:1 / −81 |
 | `--code-muted` on `--code-bg` | 5.7:1 / 72 | 8.7:1 / −57 |
 | `--info` on `--canvas` / on `--info-bg` | 5.4:1 / 5.2:1 | 9.7:1 / 8.5:1 |
@@ -124,7 +125,7 @@ Three faces and nothing else. Chakra Petch is the brand voice, the same face as 
 | Code | blocks | Plex Mono 400 | `--text-code` 14 px | `--leading-code` 1.6 | 0 |
 | Inline code | inside text | Plex Mono 400 | 0.875em | inherit | 0 |
 
-Chakra Petch stops at H2 because its squared counters close up below 20 px and slow reading. A small uppercase kicker above a heading is a Label, never a smaller heading.
+Chakra Petch stops at H2 because its squared counters close up below 20 px and slow reading. The one exception is Label: uppercase letters with +0.08em tracking keep their counters open at 12 px, and a Label is a word or two, never a sentence. A small uppercase kicker above a heading is a Label, never a smaller heading.
 
 - **Never go below 12 px.** Body text is 16 px; inputs are 16 px on phones, because iOS Safari zooms into any smaller field.
 - **Use only the size tokens.** A size outside the table is a gap to raise.
@@ -136,6 +137,8 @@ Chakra Petch stops at H2 because its squared counters close up below 20 px and s
 - Set `font-synthesis: none` and `-webkit-font-smoothing: antialiased` once on `:root`, so a missing weight shows as an obvious error instead of a faked bold.
 
 **Loading:** self-host with Fontsource: `@fontsource/chakra-petch` (600), `@fontsource-variable/ibm-plex-sans` (400–600, normal and italic), `@fontsource/ibm-plex-mono` (400), subsets `latin` and `latin-ext` (Polish needs the second), woff2 only. Never link Google Fonts: the embed sends every visitor's IP to Google, which GDPR does not allow without consent.
+
+**No layout shift on load:** preload the two faces above the fold, Chakra Petch 600 and Plex Sans (`<link rel="preload" as="font" type="font/woff2" crossorigin>`), and keep Fontsource's `font-display: swap`. Give each family a metric-matched fallback `@font-face` over a local system face with `size-adjust`, `ascent-override` and `descent-override`, listed right after it in the font stack, because Chakra Petch is much wider than any system sans and headings would otherwise reflow when it arrives.
 
 ## Spacing and rhythm
 
@@ -188,10 +191,12 @@ Does the action run a command the user pastes into Claude Code?
 - **Pressed:** `transform: scale(0.97)`.
 - **Disabled:** `--tray` fill, `--muted` text, no ring, `cursor: not-allowed`; a disabled ghost has no fill. Prefer keeping a button enabled and explaining the problem on click.
 - **Loading:** keep the width (stack both labels in one grid cell and hide the inactive one) and show a 14 px spinner; never swap to a shorter label.
-- **Motion:** `background-color`, `color`, `box-shadow` and `transform` over 150 ms `ease-out`; under `prefers-reduced-motion` drop the `transform`.
+- **Motion:** `background-color`, `color` and `box-shadow` over 150 ms `ease`; `transform` over 150 ms `ease-out`; under `prefers-reduced-motion` drop the `transform`.
 - **Focus:** the shared ring, `2px solid var(--focus)` with a 2 px offset.
 
-**Command strip:** `--code-bg` fill, 1 px `--border` ring, `--radius-inset`, height 44 px (36 px in a card), padding `--space-3` on the start and 4 px on the end. The command is Plex Mono 400 Small in `--code-text`, prefixed by `> ` in `--code-muted`, on one line that scrolls horizontally and never wraps or truncates, because a cut command pastes broken. The Copy button is a secondary button 4 px inside the strip's end (36 px tall, 28 px in a card); after copying, its label reads "Copied" for 2 s at the same width. In a card the strip spans the card width.
+**Command strip:** `--code-bg` fill, 1 px `--border` ring, `--radius-inset`, height 44 px (36 px in a card), padding `--space-3` on the start and 4 px on the end. The command is Plex Mono 400 Small in `--code-text`, prefixed by `> ` in `--code-muted`, on one line that scrolls horizontally and never wraps or truncates, because a cut command pastes broken. The scrolling region has `tabindex="0"` and `aria-label="Install command"`, so a keyboard can scroll it, and when the command overflows its end fades out over 24 px (`mask-image`) to show there is more.
+
+The Copy button is a secondary button 4 px inside the strip's end (36 px tall, 28 px in a card, both with the hit area extended to 44 px like the small button). After copying, its label reads "Copied" for 2 s at the same width, and the same word is announced through a visually hidden `aria-live="polite"` region next to it. If the clipboard refuses (no HTTPS, no permission), the label reads "Select and copy" and the command text is selected, so the reader can press ⌘C. In a card the strip spans the card width.
 
 Correct: a plugin card with a command strip for `/plugin install fd3@cc-toolkit` and a ghost "Changelog" link below it.
 Incorrect: a green "Install" button that opens a modal with the command. It adds a step and a second primary fill, and hides what will actually run.
@@ -247,7 +252,7 @@ Is it longer than two words, or does it need a sentence?        → not a badge:
 | Danger | `--danger-bg`, `--danger` | breaking, failed, removed |
 | Neutral (default) | no fill, `--muted` text, 1 px inset `--border` ring | beta, skipped, since 0.3 |
 
-- **Shape:** an inline `<span>`, Caption in Plex Mono 400, lowercase, padding `4px 6px`, `--radius-control`, `white-space: nowrap`, `vertical-align: 1px` so it sits on the text's baseline. No icon and no marker: the word carries the status, so colour is never the only signal.
+- **Shape:** an inline `<span>`, Caption in Plex Mono 400, lowercase, padding `4px 6px`, `--radius-control`, `white-space: nowrap`, `vertical-align: 1px` so it sits on the text's baseline. In running text use `line-height: 1` and padding `2px 6px`, so the badge fits inside the 1.6 line box and the paragraph keeps an even rhythm; the taller `4px 6px` is for changelog entries, cards and table cells. No icon and no marker: the word carries the status, so colour is never the only signal.
 - **Placement:** in a changelog it leads the entry, `--space-3` before the text, with a fixed `min-width: 9ch` so entries line up. Next to a name (plugin card, heading) it follows the name with a `--space-2` gap. In a table it is the whole cell. In running text it follows the thing it describes.
 - **Limits:** one badge per item. A plugin that is both new and beta shows only the badge that matters more to the reader (beta). Never make a badge a link or a button; it has no hover or pressed state.
 
@@ -258,13 +263,16 @@ Incorrect: a `✓ passed` badge. The marker belongs to callouts and command outp
 
 Use a text field only where the reader types something the site keeps or acts on, such as a newsletter address. Search is not a text field on the page: it is the search palette below.
 
-- **Anatomy:** a visible `<label>` above the field (Small, Plex Sans 600, `--heading`), `--space-1` gap, then the field, then an optional hint or error. The placeholder is an example value in `--muted`, never the label: it disappears as soon as the reader types.
-- **Field:** height 40 px, padding `0 var(--space-3)`, `--panel` fill, a 1 px inset `--border` ring (`box-shadow: inset 0 0 0 1px var(--border)`), `--radius-control`. Text is Plex Sans 400 at 16 px on every screen, because iOS Safari zooms into anything smaller. A leading icon is 16 px in `--muted` with a `--space-2` gap.
-- **Hover** (fine pointers only): the ring turns `--diagram-line`.
+Every field the reader types into (text field, select, textarea) is the same box: `--code-bg` and Plex Mono, so a form reads like the command strip and the `[x]` controls beside it. Labels, hints and the surrounding text stay in Plex Sans.
+
+- **Anatomy:** a visible `<label>` above the field (Small, Plex Sans 600, `--heading`), `--space-1` gap, then the field, then an optional hint or error. The placeholder is an example value in `--code-muted`, never the label: it disappears as soon as the reader types.
+- **Field:** height 40 px, padding `0 var(--space-3)`, `--code-bg` fill, a 1 px inset `--diagram-line` ring (`box-shadow: inset 0 0 0 1px var(--diagram-line)`), `--radius-control`. Text is Plex Mono 400 at 16 px in `--code-text` on every screen, because iOS Safari zooms into anything smaller. A leading icon is 16 px in `--muted` with a `--space-2` gap.
+- **Why `--diagram-line`, not `--border`:** a field's edge is the only thing that shows it is a field, so it needs 3:1 (WCAG 1.4.11). `--border` reaches 1.3:1 on `--code-bg`, and the fill alone differs from the page by 1.1:1.
+- **Hover** (fine pointers only): the ring turns `--muted`.
 - **Focus:** the ring turns `--focus` and gains a 1 px outer ring (`inset 0 0 0 1px var(--focus), 0 0 0 1px var(--focus)`). This replaces the shared outline for fields, because an outline 2 px away from a field's own ring reads as two boxes.
 - **Hint:** Caption in `--muted`, below the field.
 - **Invalid:** set `aria-invalid="true"` and link the message with `aria-describedby`. The ring turns `--danger`, and the message replaces the hint: Caption in Plex Mono, `--danger`, prefixed `✗ `, saying how to fix it ("Add a domain, e.g. example.com"), not that it is wrong. Validate on blur and on submit, never on every keystroke.
-- **Disabled:** `--tray` fill, no ring, `--muted` text. Prefer a read-only field, which can still be selected and copied.
+- **Disabled:** no fill, a 1 px inset `--border` ring, `--muted` text, `cursor: not-allowed`. Not `--tray`: on the light theme it is within a hair of `--code-bg` and a disabled field would look enabled. Prefer a read-only field, which can still be selected and copied.
 - **Width** follows the expected value, capped at 360 px; never stretch a short field to the column width.
 
 ### Choice controls, select and textarea
@@ -280,16 +288,15 @@ Free text longer than one line                 → textarea
 
 | Control | Off | On | Mixed | Disabled |
 | --- | --- | --- | --- | --- |
-| Checkbox | `[ ]` | `[x]` | `[-]` (`indeterminate`) | glyph and label `--muted`, weight 400 |
-| Radio | `( )` | `(•)` | — | glyph and label `--muted`, weight 400 |
+| Checkbox | `[ ]` | `[x]` | `[-]` (`indeterminate`) | glyph and label `--muted` |
+| Radio | `( )` | `(•)` | — | glyph and label `--muted` |
 
 - **Markup:** a real `<input type="checkbox">` or `radio`, visually hidden (`position: absolute; opacity: 0; width: 1px; height: 1px`), followed by an `aria-hidden="true"` glyph span, both inside one `<label>`. The input keeps keyboard, form and screen-reader behaviour; the glyph is only paint, so it must be updated from the input's state, never the other way round.
-- **Option row:** the whole label is clickable, at least 32 px tall, glyph and label `--space-2` apart, both in Plex Mono 400 Small. The glyph is `--code-muted` when off and `--primary` at weight 600 when on; the label stays `--text`. An optional count sits at the row's end in Caption, `--muted`, `tabular-nums`.
+- **Option row:** the whole label is clickable, at least 32 px tall on fine pointers and 44 px under `@media (pointer: coarse)`, glyph and label `--space-2` apart, both in Plex Mono 400 Small. The glyph is `--code-muted` when off and `--primary` when on; the label stays `--text`. The glyph changes colour only, never weight: only Plex Mono 400 is loaded, and `font-synthesis: none` would silently ignore a bolder one. An optional count sits at the row's end in Caption, `--muted`, `tabular-nums`.
 - **Group:** a `<fieldset>` with a `<legend>` styled as the text-field label (Small, Plex Sans 600, `--heading`), `--space-2` below it; rows `--space-2` apart; groups `--space-5` apart.
 - **Focus:** the shared ring goes on the glyph (`input:focus-visible + .glyph`), with `--radius-control`, because the input itself is invisible.
-- **Select:** a native `<select>` with `appearance: none`, the text-field box (40 px, `--radius-control`, inset `--border` ring, hover and focus rings as a text field) on `--code-bg`, text in Plex Mono 400 at 16 px in `--code-text`, and a 12 px chevron in `--muted` 12 px from the end. The open list stays native: it is the only one that works on phones.
-- **Textarea:** the same box on `--code-bg`, Plex Mono 400 at 16 px in `--code-text`, padding `--space-2` vertical and `--space-3` horizontal, at least 104 px tall, `resize: vertical`. With a `maxlength`, show a counter below its end: Caption in Plex Mono, `--code-muted`, `tabular-nums`, as "39 / 500".
-- **16 px everywhere:** select and textarea keep 16 px text even in the mono face, because iOS Safari zooms into anything smaller.
+- **Select:** a native `<select>` with `appearance: none` in the text-field box, with all its states, and a 12 px chevron in `--muted` 12 px from the end. The open list stays native: it is the only one that works on phones.
+- **Textarea:** the text-field box with all its states, padding `--space-2` vertical and `--space-3` horizontal, at least 104 px tall, `resize: vertical`. With a `maxlength`, show a counter below its end: Caption in Plex Mono, `--code-muted`, `tabular-nums`, as "39 / 500".
 
 Correct: a plugin filter "Lifecycle stage" with `[x] Plan  1` rows and a `(•) Recently updated` sort.
 Incorrect: a toggle switch for a filter. A switch means "applies now" in settings; a filter is a choice in a list, and it breaks the glyph set.
@@ -298,14 +305,14 @@ Incorrect: a toggle switch for a filter. A switch means "applies now" in setting
 
 Developers expect documentation search behind a shortcut, so search opens a dialog instead of living as a field in the header.
 
-- **Trigger:** a button in the header, styled as a field 32 px tall: a 16 px search icon, "Search" in Plex Mono Small `--muted`, and the shortcut in a key cap. The key cap reads `⌘K` on macOS and `Ctrl K` elsewhere: Caption in Plex Mono, `--code-muted` on `--code-bg`, a 1 px `--border` ring, `--radius-control`, padding `3px 5px`. Below 600 px viewport width the trigger is the icon alone with `aria-label="Search docs"`.
+- **Trigger:** a button in the header, styled as a field 32 px tall: a 16 px search icon, "Search" in Plex Mono Small `--muted`, and the shortcut in a key cap. The key cap reads `⌘K` on macOS and `Ctrl K` elsewhere: Caption in Plex Mono, `--code-muted` on `--code-bg`, a 1 px `--border` ring, `--radius-control`, padding `3px 5px`. Its hit area is extended to 44 px like the small button. Below 600 px viewport width the trigger is the icon alone with `aria-label="Search docs"`.
 - **Opening:** the trigger, `⌘K` / `Ctrl K`, or `/` when focus is not in a field. The dialog is a modal `<dialog>`: focus moves into its field, Tab stays inside it, and on close focus returns to the trigger.
 - **Dialog:** over a `--scrim` backdrop, 12vh from the top, at most 520 px wide (the viewport minus `--space-4` on each side on phones); `--panel`, `--radius-panel`, `--shadow-overlay`, 4 px padding.
-- **Field in the dialog:** 48 px tall, no ring, a 1 px `--border` rule below it; otherwise as a text field.
+- **Field in the dialog:** 48 px tall, no fill and no ring, a 1 px `--border` rule below it, because the dialog's own edge already frames it; otherwise as a text field.
 - **Results:** a `role="listbox"` driven by `aria-activedescendant` from the field. Each option has the page path as its title (Small, Plex Sans 600, `--heading`, sections joined by ` › `) and one line of context (Caption, `--muted`). The matched term is `<mark>` in `--primary` at weight 600 with no background. Padding `--space-2` vertical and `--space-3` horizontal, `--radius-inset`; the active option has a `--tray` fill.
 - **Keys:** ↑ and ↓ move the active option, Enter opens it, Esc closes. A footer row repeats them: Caption in Plex Mono, `--code-muted`, above a 1 px `--border` rule.
 - **Empty and no-result states:** with no query, show the five most visited pages; with no match, one line "No results for ‘query’" in `--muted` and a link to the plugin index.
-- **Motion:** the dialog fades in and scales from 0.98 over 150 ms `ease-out` and closes without animation; under `prefers-reduced-motion` it only fades.
+- **Motion:** none. The palette opens and closes instantly, because it is mostly opened from the keyboard many times a day, and any animation there reads as lag.
 
 Correct: pressing `⌘K` on any page opens the palette with the cursor in the field.
 Incorrect: a 300 px search field in the header. It takes the space the navigation needs and still needs a results dropdown.
@@ -314,7 +321,8 @@ Incorrect: a 300 px search field in the header. It takes the space the navigatio
 
 One header on every page; the current section is marked like a tab.
 
-- **Bar:** 56 px tall, `--canvas` fill, a 1 px `--border` rule along the bottom (`box-shadow: 0 1px 0 var(--border)`), padding `0 var(--space-5)`. Order: logo, navigation, flexible space, then the tools (search trigger, GitHub icon) with a `--space-2` gap.
+- **Bar:** 56 px tall, `--canvas` fill, a 1 px `--border` rule along the bottom (`box-shadow: 0 1px 0 var(--border)`), padding `0 var(--space-5)`. Order: logo, navigation, flexible space, then the tools (search trigger, GitHub icon) with a `--space-3` gap, so their 44 px hit areas do not overlap.
+- **Skip link:** the first element in the page is a "Skip to content" link to `<main id="content">`, visually hidden until focused, then shown at the header's start as a secondary button.
 - **Logo:** the lockup, 28 px tall (see Surfaces); it links home with `aria-label="cc-toolkit home"`.
 - **Navigation:** `<nav aria-label="Main">`, items `--space-5` apart and stretched to the full bar height so the tab underline sits on the header's bottom edge. The current item: `--heading` text and `box-shadow: inset 0 -2px 0 var(--primary)`. Other items carry a transparent underline of the same size, so nothing shifts when the current item changes.
 - **Icon buttons:** 32 px square with a 44 px hit area, 18 px icon in `--muted`, hover `--text`, `--radius-control`, and an `aria-label`.
@@ -329,7 +337,7 @@ Incorrect: the current item in `--primary` text as well. Green text next to a gr
 The footer is where readers look for the plugin list, the licence and who made the site.
 
 - **Frame:** a 1 px `--border` rule along the top, padding `--space-6` vertical and `--space-5` horizontal, `--canvas` fill.
-- **Columns:** a grid of link groups, `repeat(auto-fit, minmax(140px, 1fr))` with a `--space-5` gap: Plugins (the core plugins, then "All plugins"), Docs (Install, Changelog, Contributing) and grixu.dev (Blog, GitHub, Contact). Each group has a Label-style heading in `--muted` and a list of Small links in `--muted` with `--space-1` between them; hover `--text`. On phones the groups wrap to two columns, then one.
+- **Columns:** a grid of link groups, `repeat(auto-fit, minmax(140px, 1fr))` with a `--space-5` gap: Plugins (the core plugins, then "All plugins"), Docs (Install, Changelog, Contributing) and grixu.dev (Blog, GitHub, Contact). Each group has a Label-style heading in `--muted` and a list of Small links in `--muted` with `--space-1` between them; hover `--text`. Under `@media (pointer: coarse)` each link is a block at least 44 px tall. On phones the groups wrap to two columns, then one.
 - **Legal line:** spans all columns below a 1 px `--border` rule with `--space-4` above it; Caption in `--caption`: "© 2026 grixu.dev · cc-toolkit is MIT-licensed · Not affiliated with Anthropic". The last clause always stays, because the plugins extend Claude Code and readers should not mistake the site for Anthropic's.
 
 Correct: the legal line keeps "Not affiliated with Anthropic" on every page.
@@ -343,10 +351,10 @@ Below 600 px the header's menu button opens a drawer from the right. It is the o
 - **Drawer:** a modal `<dialog>` pinned to the right edge, full height, 84% of the viewport width (at most 360 px), `--panel` fill, `--shadow-overlay`, no radius. The strip of page left of it stays visible under a `--scrim`, so the reader keeps their place; tapping it closes the drawer.
 - **Top bar:** 56 px, the same height as the header it covers, with a 1 px `--border` rule below it. The lockup (24 px) on the left links home; a close icon button (as in the header, `aria-label="Close menu"`) on the right sits where the menu button was.
 - **Sections:** a list of the header's navigation items, each 48 px tall with `--space-4` side padding, Body in `--muted`. The current item is `--heading` with `box-shadow: inset 2px 0 0 var(--primary)`: the tab underline turned to the side.
-- **Plugins:** a Label-style heading in `--muted`, then a two-column grid of plugin names in Plex Mono Small, `--muted`, at least 36 px tall each, ending with "All plugins →". Gap `--space-1` vertical and `--space-4` horizontal, `--space-5` above the group.
+- **Plugins:** a Label-style heading in `--muted`, then a two-column grid of plugin names in Plex Mono Small, `--muted`, at least 44 px tall each, ending with "All plugins →". Gap `--space-1` vertical and `--space-4` horizontal, `--space-5` above the group.
 - **Bottom bar:** pinned to the bottom above a 1 px `--border` rule, padding `--space-4`: the version and licence ("cc-toolkit 0.8.1 · MIT") in Caption, `--caption`, and the GitHub icon button.
 - **Behaviour:** focus moves to the close button, Tab stays inside, Esc or a tap on the scrim closes it, and focus returns to the menu button. The page behind does not scroll while it is open. Following a link closes it.
-- **Motion:** the drawer slides in from the right (`translateX(100%)` to `0`) and the scrim fades in, over 200 ms `ease-out`; closing takes 150 ms. Under `prefers-reduced-motion` both only fade.
+- **Motion:** the drawer slides in from the right (`translateX(100%)` to `0`) and the scrim fades in, over 200 ms `cubic-bezier(0.32, 0.72, 0, 1)`; closing takes 150 ms on the same curve. Use transitions, not keyframes, so a quick tap mid-slide reverses it. A `<dialog>` only animates its exit with `transition-behavior: allow-discrete` on `display` and `overlay`, and its entry with `@starting-style`; without them it vanishes at once. Under `prefers-reduced-motion` both only fade.
 
 Correct: on a phone, the menu shows "Docs" marked with the green side bar and the plugin list below it.
 Incorrect: a drawer from the left. The menu button sits at the right end of the header, and the drawer should come from where the thumb tapped.
@@ -366,7 +374,7 @@ One rule for everything interactive that the sections above do not give its own 
 - **Hover only on fine pointers:** wrap every hover in `@media (hover: hover) and (pointer: fine)`, so a tap never leaves a stuck state. Pressed (`:active`) applies everywhere; on touch it is the only feedback.
 - **Shape stays:** a fill keeps the element's own radius (`--radius-panel` on cards, `--radius-inset` on results, `--radius-control` on option rows and icons, none on full-width menu rows). Nothing grows, lifts or casts a shadow on hover.
 - **Clickable card:** make the title the one link and stretch its hit area over the card (`a::after { content: ""; position: absolute; inset: 0 }`). Buttons and links inside the card, such as the command strip's Copy, sit above it with `position: relative` and keep their own states; hovering them does not fill the card.
-- **Motion:** `background-color`, `color` and `box-shadow` over 150 ms `ease-out`; `transform` only on icon buttons, dropped under `prefers-reduced-motion`.
+- **Motion:** `background-color`, `color` and `box-shadow` over 150 ms `ease`; `transform` only on icon buttons, 150 ms `ease-out`, dropped under `prefers-reduced-motion`.
 - **Never:** hover or pressed on badges, callouts, code blocks or plain cards without a link. A fill on something that does nothing on click is a false promise.
 
 Correct: hovering a plugin card fills it `--tray`; hovering its Copy button fills only the button.
