@@ -34,7 +34,7 @@ A single review pass also misses things: a reviewer who looks for bugs reads pas
 
 1. **Resolve the scope.** It finds the changed files against the base branch, or against a pull request's base.
 2. **Read the conventions.** It reads your project rules, such as `CLAUDE.md` and `.claude/rules/`, once for every lens. The rules you wrote in [Maintain](/lifecycle/maintain/) count here.
-3. **Pick the lenses.** The change decides which lenses run, never a preference. Most lenses run on every change; performance runs only on executable source files, and the spec lens only on a spec you named or accepted.
+3. **Pick the lenses.** The change decides which lenses run, never a preference. Most lenses run on every change; performance runs only on executable source files, the spec lens only on a spec you named or accepted, and the hookify lens only when the project has hookify rules.
 4. **Scan.** One scanner agent per active lens judges the change against that lens's rules, all at the same time.
 5. **Merge.** Duplicate findings are merged, each one is graded against one severity table, and the result is one report grouped by file.
 6. **Apply.** One menu asks which fixes to apply and how to commit them.

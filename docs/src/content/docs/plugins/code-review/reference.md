@@ -97,7 +97,7 @@ Table 5. The headless steps
 
 - **Scope:** committed changes only, against `--base`. Uncommitted work belongs to whoever has the checkout open.
 - **Asks nothing, edits nothing.** Each skill writes only into the context directory and returns a closing block with a status.
-- **Lens names** are the rules files' basenames: `comments`, `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`.
+- **Lens names** are the rules files' basenames: `comments`, `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, `hookify`.
 - **`--spec-focus "DB-1,D3"`** names, by element code or decision ID, the part of the spec the change implements. It needs `--spec`. The spec and correctness lenses judge the change against those elements first.
 - **A lens list** (`--lens comments,security`) runs the lenses one after another in one agent. It pays the start-up reading once, but later lenses read with the earlier ones in context, and their agreement doesn't count as convergence. Coherence and assumptions run as their own agents on a large change. `/fd3:implement` uses one agent for all lenses on a change of three judged files or fewer.
 

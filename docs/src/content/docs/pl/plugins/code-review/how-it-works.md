@@ -40,7 +40,7 @@ Rysunek 1. Jedno review, od zmienionych plików do menu poprawek
 ## Soczewki
 
 Soczewka to jeden zestaw spisanych reguł.
-Jest ich jedenaście: dziewięć rusza przy każdej zmianie kodu, dwie zależą od wejścia.
+Jest ich dwanaście: dziewięć rusza przy każdej zmianie kodu, dwie zależą od wejścia, a jedna od projektu.
 
 | Soczewka | Kiedy rusza | Czego szuka |
 |---|---|---|
@@ -55,18 +55,20 @@ Jest ich jedenaście: dziewięć rusza przy każdej zmianie kodu, dwie zależą 
 | assumptions | zawsze | Kodu, który polega na zachowaniu biblioteki, runtime'u, CI albo platformy sprzecznym z zainstalowanym źródłem lub zablokowaną wersją, i dublerów testowych, do których prawdziwa zależność by nie pasowała. |
 | performance | w zmianie jest kod wykonywalny | Wywołań N+1, nieograniczonych pobrań, blokujących wywołań na ścieżkach async, zbędnych renderów Reacta, zapytań po nieindeksowanych kolumnach. |
 | spec | wskazano spec | Linii specu, których nic nie implementuje, implementacji błędnych albo częściowych i zachowań, o które spec nie prosił. |
+| hookify | projekt ma reguły hookify | Dodanych linii, przed którymi własne reguły `file` projektu w [hookify](/pl/plugins/hookify/) by ostrzegły albo które by zablokowały, odtworzonych na diffie. |
 
-Tabela 1. Jedenaście soczewek i kiedy każda rusza
+Tabela 1. Dwanaście soczewek i kiedy każda rusza
 
 ### Jak wejście je włącza
 
 - **performance** rusza, gdy w zmianie jest kod wykonywalny. Testy, helpery testowe, kod infrastruktury, pliki `.sh` i moduły `*.config.*` się nie liczą.
 - **spec** rusza, gdy `--spec` wskazuje czytelny lokalny plik albo gdy przyjmiesz spec znaleziony przez review w zmianie.
+- **hookify** rusza, gdy folder `.claude/` checkoutu zawiera pliki reguł hookify (`hookify.*.rule.md` albo `hookify.*.local.md`) z co najmniej jedną włączoną regułą dla edycji plików. Uwaga z reguły `block` ma wagę `high`, z każdej innej `medium`.
 - **objects & patterns** jest wyłączona, gdy każdy plik, który by czytała, to kod infrastruktury, bo jej reguły nie mają tam odpowiednika.
 - **Soczewka bez własnych plików jest wyłączona.** Zmiana samych polityk dostępu uruchamia tylko security, assumptions i coherence. Zmiana samych dokumentów, changesetów albo danych konfiguracyjnych uruchamia tylko coherence, która czyta z repozytorium kod opisywany przez każde twierdzenie.
 
 Gdy spec jest aktywny, każda z tych soczewek rusza razem ze spec.
-Tally w raporcie liczy soczewki, które ruszyły (`Lenses: L of 11`), i wymienia każdą, która nie ruszyła, z powodem.
+Tally w raporcie liczy soczewki, które ruszyły (`Lenses: L of 12`), i wymienia każdą, która nie ruszyła, z powodem.
 
 ### Co czyta każda soczewka
 

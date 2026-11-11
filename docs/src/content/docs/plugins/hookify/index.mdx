@@ -14,21 +14,22 @@ hookify turns your description, or a mistake Claude just made, into a small Mark
 Its built-in hooks read those files on every tool call, prompt, and end of turn, and show a warning or block the action.
 
 hookify is a fork of the official [hookify plugin](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify).
-It adds team and global rules, clearer block output, a review of your diff against the rules, and fixes to prompt, stop, and file matching.
+It adds team and global rules, clearer block output, and fixes to prompt, stop, and file matching.
+To check a diff that is already written against your rules, run [code-review](/plugins/code-review/): its hookify lens turns on when the project has hookify rules.
 
 ## Where it works
 
 <LifeMap focus="hookify" animate={false} />
 
-hookify sits in [Maintain](/lifecycle/maintain/), outside the cycle.
-Write a rule the moment Claude repeats a mistake, whatever stage you're in.
+hookify works in two places.
+You write a rule in [Maintain](/lifecycle/maintain/), outside the cycle, the moment Claude repeats a mistake, whatever stage you're in.
+The rule is enforced in [Build](/lifecycle/build/): the hooks check every edit the agent makes, and warn about or block one that breaks the rule.
 
 ## What you can do with it
 
 | Command | What it does |
 |---|---|
 | [`/hookify:hookify [behavior]`](/plugins/hookify/hookify/) | Creates rules from your description. Without arguments, it scans the conversation for things you corrected. |
-| [`/hookify:review-changes`](/plugins/hookify/review-changes/) | Checks your committed and uncommitted changes against your enabled `file` and `all` rules, and reports violations per rule. |
 | [`/hookify:list`](/plugins/hookify/reference/#hookifylist) | Lists every rule with its event, status, and source file. |
 | [`/hookify:configure`](/plugins/hookify/reference/#hookifyconfigure) | Lets you pick rules to enable or disable. |
 | [`/hookify:help`](/plugins/hookify/reference/#hookifyhelp) | Explains hookify inside Claude Code. |
@@ -91,6 +92,5 @@ hookify fails open. If Python is missing or a hook crashes, the action goes ahea
 ## Next steps
 
 - [Create a rule with `/hookify:hookify`](/plugins/hookify/hookify/): from a sentence or from the mistakes in the current conversation.
-- [Review your changes against the rules](/plugins/hookify/review-changes/): find violations already in your diff.
 - [session-learner](/plugins/session-learner/): turn a whole session's corrections into rules, some of them hookify rules.
 

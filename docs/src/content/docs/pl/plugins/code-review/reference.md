@@ -98,7 +98,7 @@ Tabela 5. Kroki bez interakcji
 
 - **Zakres:** tylko zmiany zacommitowane, względem `--base`. Niezacommitowana praca należy do tego, kto ma checkout otwarty.
 - **O nic nie pytają, niczego nie edytują.** Każdy skill pisze tylko do katalogu kontekstu i zwraca blok zamykający ze statusem.
-- **Nazwy soczewek** to nazwy plików reguł bez rozszerzenia: `comments`, `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`.
+- **Nazwy soczewek** to nazwy plików reguł bez rozszerzenia: `comments`, `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, `hookify`.
 - **`--spec-focus "DB-1,D3"`** wskazuje kodami elementów albo identyfikatorami decyzji część specu, którą implementuje zmiana. Wymaga `--spec`. Soczewki spec i correctness oceniają zmianę najpierw względem tych elementów.
 - **Lista soczewek** (`--lens comments,security`) uruchamia soczewki jedna po drugiej w jednym agencie. Początkowe czytanie płaci się raz, ale późniejsze soczewki czytają z wcześniejszymi w kontekście, a ich zgodność nie liczy się jako zbieżność. Przy dużej zmianie coherence i assumptions działają jako osobne agenty. `/fd3:implement` używa jednego agenta na wszystkie soczewki, gdy zmiana ma najwyżej trzy oceniane pliki.
 

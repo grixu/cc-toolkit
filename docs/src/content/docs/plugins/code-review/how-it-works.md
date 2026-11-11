@@ -40,7 +40,7 @@ Figure 1. One review, from the changed files to the apply menu
 ## The lenses
 
 A lens is one cluster of written rules.
-There are eleven: nine run on any change of code, and two depend on the input.
+There are twelve: nine run on any change of code, two depend on the input, and one depends on the project.
 
 | Lens | Runs | Looks for |
 |---|---|---|
@@ -55,18 +55,20 @@ There are eleven: nine run on any change of code, and two depend on the input.
 | assumptions | always | Code relying on library, runtime, CI or platform behavior that the installed source or the locked version contradicts, and test doubles the real dependency wouldn't match. |
 | performance | executable source in the change | N+1 calls, unbounded fetches, blocking calls on async paths, wasted React renders, queries on unindexed columns. |
 | spec | a spec is named | Spec lines nothing implements, implemented wrongly or only partly, and behavior the spec never asked for. |
+| hookify | the project has hookify rules | Added lines that the project's own [hookify](/plugins/hookify/) `file` rules would have warned about or blocked, replayed over the diff. |
 
-Table 1. The eleven lenses and when each runs
+Table 1. The twelve lenses and when each runs
 
 ### How the input gates them
 
 - **performance** runs when the change has executable source. Tests, test helpers, infrastructure code, `.sh` files and `*.config.*` modules don't count.
 - **spec** runs when `--spec` names a readable local file, or when you accept the spec the review found in the change.
+- **hookify** runs when the checkout's `.claude/` folder holds hookify rule files (`hookify.*.rule.md` or `hookify.*.local.md`) with at least one enabled rule for file edits. A `block` rule's finding is `high`; any other rule's is `medium`.
 - **objects & patterns** is off when every file it would read is infrastructure code, because its rules have no counterpart there.
 - **A lens with no files of its own is off.** A change of access policies only runs security, assumptions and coherence. A change of documents, changesets or config data only runs coherence, which reads the code each claim describes from the repository.
 
 Each of these lenses still runs alongside spec when a spec is active.
-The report's tally counts the lenses that ran (`Lenses: L of 11`) and names every lens that didn't, with its reason.
+The report's tally counts the lenses that ran (`Lenses: L of 12`) and names every lens that didn't, with its reason.
 
 ### What each lens reads
 

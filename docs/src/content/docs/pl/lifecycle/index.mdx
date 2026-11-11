@@ -117,7 +117,7 @@ Rysunek 2. Jak poprawka staje się regułą dla następnej zmiany
 
 [`/session-learner:learn`](/pl/plugins/session-learner/) proponuje dla każdej poprawki zmianę w `.claude/rules/`, w `CLAUDE.md` albo regułę hookify, i zapisuje tylko te, które zaakceptujesz.
 [`/hookify:hookify`](/pl/plugins/hookify/hookify/) pisze regułę hookify prosto z twojego opisu.
-code-review czyta te same pliki reguł jako konwencje, więc Self-review też trzyma zmianę w ich ramach.
+code-review czyta te same pliki reguł jako konwencje, a jego soczewka hookify odtwarza twoje reguły hookify na diffie, więc Self-review też trzyma zmianę w ich ramach.
 
 Drugą połową Utrzymania są aktualizacje zależności.
 Przychodzą, gdy wydadzą je ich opiekunowie, a nie po merge'u, więc [`/dev-kit:dep-upgrade-check`](/pl/plugins/dev-kit/dep-upgrade-check/) uruchamiasz wtedy, gdy któraś przyjdzie.

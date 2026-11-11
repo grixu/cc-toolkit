@@ -34,7 +34,7 @@ Jedno przejście review też coś gubi: reviewer szukający bugów przeoczy myl�
 
 1. **Zakres.** Znajduje zmienione pliki względem brancha bazowego albo bazy pull requesta.
 2. **Konwencje.** Raz, dla wszystkich soczewek, czyta reguły projektu, takie jak `CLAUDE.md` i `.claude/rules/`. Liczą się tu reguły, które zapisałeś w [Utrzymaniu](/pl/lifecycle/maintain/).
-3. **Wybór soczewek.** O tym, które soczewki działają, decyduje zmiana, nigdy preferencja. Większość soczewek działa przy każdej zmianie; performance tylko przy plikach z kodem wykonywalnym, a soczewka specu tylko przy specu, który podałeś albo zaakceptowałeś.
+3. **Wybór soczewek.** O tym, które soczewki działają, decyduje zmiana, nigdy preferencja. Większość soczewek działa przy każdej zmianie; performance tylko przy plikach z kodem wykonywalnym, soczewka specu tylko przy specu, który podałeś albo zaakceptowałeś, a soczewka hookify tylko wtedy, gdy projekt ma reguły hookify.
 4. **Skan.** Jeden agent-skaner na każdą aktywną soczewkę ocenia zmianę według jej reguł, wszystkie jednocześnie.
 5. **Scalenie.** Duplikaty są łączone, każde znalezisko dostaje ocenę z jednej tabeli ważności, a wynik to jeden raport pogrupowany według plików.
 6. **Zastosowanie.** Jedno menu pyta, które poprawki zastosować i jak je zcommitować.

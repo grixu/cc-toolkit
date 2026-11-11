@@ -223,4 +223,4 @@ To edit or delete a rule, edit or delete its file. There is no command for it.
 ## Next steps
 
 - [Create a rule with `/hookify:hookify`](/plugins/hookify/hookify/).
-- [Review your changes against the rules](/plugins/hookify/review-changes/).
+- [Review a change with code-review](/plugins/code-review/start-cr/), whose hookify lens checks the diff against these rules.

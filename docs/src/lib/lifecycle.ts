@@ -128,8 +128,6 @@ export const skills: Skill[] = [
     does: { en: 'A rule that stops a repeated mistake', pl: 'Reguła, która zatrzymuje powtarzany błąd' } },
   { id: 'rule-hooks', plugin: 'hookify', cmd: 'hooks', label: 'rule hooks', stage: 'build', href: 'plugins/hookify/', auto: true,
     does: { en: 'Warn or block an edit that breaks your rules, as the agent writes it', pl: 'Ostrzeż albo zablokuj edycję łamiącą twoje reguły, w chwili gdy agent ją pisze' } },
-  { id: 'review-changes', plugin: 'hookify', cmd: '/hookify:review-changes', stage: 'maintain', href: 'plugins/hookify/review-changes/',
-    does: { en: 'Check a diff against your rules', pl: 'Sprawdź diff z twoimi regułami' } },
   { id: 'learn', plugin: 'session-learner', cmd: '/session-learner:learn', stage: 'maintain', href: 'plugins/session-learner/',
     does: { en: "Turn a session's corrections into rules", pl: 'Zamień poprawki z sesji w reguły' } },
 ]
@@ -150,8 +148,8 @@ const raw: Omit<Plugin, 'version' | 'cmd'>[] = [
   { name: 'code-review', core: true,
     promise: { en: 'The agent reviews itself', pl: 'Agent przegląda sam siebie' },
     desc: {
-      en: 'Reviews a change through up to eleven lenses at once and merges them into one graded report, before anyone else reads it.',
-      pl: 'Przegląda zmianę maksymalnie jedenastoma soczewkami naraz i scala je w jeden raport z ocenami, zanim przeczyta ją ktoś inny.',
+      en: 'Reviews a change through up to twelve lenses at once and merges them into one graded report, before anyone else reads it.',
+      pl: 'Przegląda zmianę maksymalnie dwunastoma soczewkami naraz i scala je w jeden raport z ocenami, zanim przeczyta ją ktoś inny.',
     } },
   { name: 'tester', core: true,
     promise: { en: 'Does it work when it runs?', pl: 'Czy działa po uruchomieniu?' },

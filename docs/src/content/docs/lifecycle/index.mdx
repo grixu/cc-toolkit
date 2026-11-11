@@ -117,7 +117,7 @@ Figure 2. How a correction becomes a rule for the next change
 
 [`/session-learner:learn`](/plugins/session-learner/) proposes a change to `.claude/rules/`, `CLAUDE.md`, or a hookify rule for each correction, and writes only the ones you accept.
 [`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule directly from your description.
-code-review reads the same rules files as conventions, so Self-review holds the change to them too.
+code-review reads the same rules files as conventions, and its hookify lens replays your hookify rules over the diff, so Self-review holds the change to them too.
 
 Dependency upgrades are the other half of Maintain.
 They arrive when their maintainers release them, not after a merge, so [`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/) runs whenever one arrives.

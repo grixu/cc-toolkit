@@ -223,4 +223,4 @@ O szczegół, którego nie obejmuje, sięga do pełnej referencji składni regu�
 ## Następne kroki
 
 - [Utwórz regułę przez `/hookify:hookify`](/pl/plugins/hookify/hookify/).
-- [Sprawdź zmiany z regułami](/pl/plugins/hookify/review-changes/).
+- [Przejrzyj zmianę w code-review](/pl/plugins/code-review/start-cr/), którego soczewka hookify sprawdza diff z tymi regułami.

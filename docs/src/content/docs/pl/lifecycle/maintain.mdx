@@ -38,7 +38,7 @@ Reguły wracają do cyklu:
 
 - Każda sesja czyta `CLAUDE.md` i pliki reguł, więc każdy etap zaczyna z nimi.
 - W [Budowie](/pl/lifecycle/build/) reguły hookify ostrzegają przed edycją, która je łamie, albo ją blokują.
-- W [Self-review](/pl/lifecycle/self-review/) code-review czyta twoje reguły jako konwencje i trzyma zmianę w ich ramach.
+- W [Self-review](/pl/lifecycle/self-review/) code-review czyta twoje reguły jako konwencje i trzyma zmianę w ich ramach. Jego soczewka hookify odtwarza twoje reguły hookify na diffie, więc wyłapuje też to, co powstało bez hooków.
 
 Uruchom session-learner przed `/compact` albo `/clear`: czyta tylko rozmowę, która jest jeszcze w kontekście.
 

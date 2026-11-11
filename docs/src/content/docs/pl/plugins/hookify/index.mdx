@@ -14,21 +14,22 @@ hookify zamienia twój opis albo błąd, który Claude właśnie popełnił, w m
 Wbudowane hooki czytają te pliki przy każdym wywołaniu narzędzia, prompcie i końcu tury, a potem pokazują ostrzeżenie albo blokują akcję.
 
 hookify to fork oficjalnego [pluginu hookify](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify).
-Dodaje reguły zespołowe i globalne, czytelniejszy komunikat o blokadzie, przegląd diffu pod kątem reguł oraz poprawki dopasowania promptów, zakończeń tury i plików.
+Dodaje reguły zespołowe i globalne, czytelniejszy komunikat o blokadzie oraz poprawki dopasowania promptów, zakończeń tury i plików.
+Żeby sprawdzić z regułami diff, który już powstał, uruchom [code-review](/pl/plugins/code-review/): jego soczewka hookify włącza się, gdy projekt ma reguły hookify.
 
 ## Gdzie działa
 
 <LifeMap focus="hookify" animate={false} />
 
-hookify należy do etapu [Utrzymanie](/pl/lifecycle/maintain/), poza cyklem.
-Napisz regułę w chwili, gdy Claude powtórzy błąd, niezależnie od etapu pracy.
+hookify działa w dwóch miejscach.
+Regułę piszesz w [Utrzymaniu](/pl/lifecycle/maintain/), poza cyklem, w chwili gdy Claude powtórzy błąd, niezależnie od etapu pracy.
+Egzekwuje się ona w [Budowie](/pl/lifecycle/build/): hooki sprawdzają każdą edycję agenta i ostrzegają albo blokują tę, która łamie regułę.
 
 ## Co możesz z nim zrobić
 
 | Komenda | Co robi |
 |---|---|
 | [`/hookify:hookify [behavior]`](/pl/plugins/hookify/hookify/) | Tworzy reguły z twojego opisu. Bez argumentów przegląda rozmowę w poszukiwaniu twoich poprawek. |
-| [`/hookify:review-changes`](/pl/plugins/hookify/review-changes/) | Sprawdza zmiany zacommitowane i niezacommitowane z twoimi włączonymi regułami `file` i `all` i raportuje naruszenia dla każdej reguły. |
 | [`/hookify:list`](/pl/plugins/hookify/reference/#hookifylist) | Wypisuje wszystkie reguły z ich zdarzeniem, stanem i plikiem źródłowym. |
 | [`/hookify:configure`](/pl/plugins/hookify/reference/#hookifyconfigure) | Pozwala wybrać reguły do włączenia albo wyłączenia. |
 | [`/hookify:help`](/pl/plugins/hookify/reference/#hookifyhelp) | Wyjaśnia działanie hookify w Claude Code. |
@@ -91,5 +92,4 @@ Przy błędzie hookify niczego nie blokuje. Jeśli brakuje Pythona albo hook si�
 ## Następne kroki
 
 - [Utwórz regułę przez `/hookify:hookify`](/pl/plugins/hookify/hookify/): z jednego zdania albo z błędów w bieżącej rozmowie.
-- [Sprawdź zmiany z regułami](/pl/plugins/hookify/review-changes/): znajdź naruszenia, które już są w twoim diffie.
 - [session-learner](/pl/plugins/session-learner/): zamień poprawki z całej sesji w reguły, w tym reguły hookify.

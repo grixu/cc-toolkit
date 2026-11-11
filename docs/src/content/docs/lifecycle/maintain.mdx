@@ -38,7 +38,7 @@ The rules come back in the cycle:
 
 - Every session reads `CLAUDE.md` and the rules files, so every stage starts with them.
 - In [Build](/lifecycle/build/), hookify rules warn about or block an edit that breaks them.
-- In [Self-review](/lifecycle/self-review/), code-review reads your rules as conventions and holds the change to them.
+- In [Self-review](/lifecycle/self-review/), code-review reads your rules as conventions and holds the change to them. Its hookify lens replays your hookify rules over the diff, so it also catches what was written without the hooks.
 
 Run session-learner before `/compact` or `/clear`: it reads only the conversation still in context.
 
