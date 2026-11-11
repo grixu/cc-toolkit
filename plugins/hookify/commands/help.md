@@ -82,8 +82,6 @@ Operators: `regex_match` (the default, case-insensitive), `contains`, `not_conta
   when you give no argument
 - **`/hookify:list`**: list every configured rule
 - **`/hookify:configure`**: switch rules on or off
-- **`/hookify:review-changes`**: check your diff against the enabled `file` and `all` rules and report
-  violations per rule
 - **`/hookify:help`**: this page
 
 ## Examples
