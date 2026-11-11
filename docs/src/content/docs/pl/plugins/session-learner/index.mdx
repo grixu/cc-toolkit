@@ -1,0 +1,115 @@
+---
+title: session-learner
+description: Znajduje w sesji miejsca, w których coś poprawiasz albo powtarzasz, i zamienia każde z nich w regułę projektu, zapisaną dopiero po twojej akceptacji.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Poprawki, które dajesz Claude'owi, znikają razem z końcem sesji, więc następna sesja powtarza te same błędy.
+session-learner wyszukuje takie momenty w rozmowie i dla każdego proponuje zmianę w regułach projektu.
+Każda propozycja cytuje fragment rozmowy, który ją uzasadnia.
+Zapisuje tylko zmiany, które zaakceptujesz.
+
+## Gdzie działa
+
+<LifeMap focus="session-learner" animate={false} />
+
+session-learner należy do [Utrzymania](/pl/lifecycle/maintain/), poza cyklem.
+Nie jest przypisany do żadnego etapu: uruchom go, gdy sesja nauczyła agenta czegoś, co powinna znać następna.
+
+## Kiedy go uruchomić
+
+Uruchom go w sesji, z której chcesz wyciągnąć wnioski, przed `/compact` albo `/clear`:
+
+<Strip cmd="/session-learner:learn" />
+
+Czyta tylko rozmowę, która wciąż jest w kontekście, więc po wyczyszczeniu albo kompaktowaniu sesji nie ma już z czego się uczyć.
+Uruchamiają go też frazy takie jak „what did we learn”, „update rules”, „session review” czy „capture learnings”.
+
+W krótkiej sesji (mniej niż pięć wymian) często nie ma czego znaleźć.
+Wtedy mówi to wprost, zamiast wymyślać wnioski.
+
+## Co czyta
+
+Zanim zajrzy do rozmowy, mapuje dokumentację, którą projekt już ma:
+
+- pliki `.claude/rules/*.md`,
+- `CLAUDE.md` w katalogu głównym projektu, w podkatalogach i w `.claude/`,
+- pliki `AGENTS.md`, jeśli istnieją,
+- auto memory projektu (`MEMORY.md` w `~/.claude/projects/`),
+- reguły hookify (`.claude/hookify.*.md`) albo sam plugin hookify.
+
+Gdy projekt nie ma żadnego z tych plików, proponuje utworzenie pierwszego pliku w `.claude/rules/` albo `CLAUDE.md`.
+
+Potem szuka w rozmowie tarcia: poprawek, powtarzanych poleceń, nowych wzorców, nieaktualnej albo błędnej dokumentacji, brakującego pokrycia i powtarzających się błędów.
+Odrzuca wniosek, gdy dokumentacja już go obejmuje albo gdy to osobista preferencja, a nie coś potrzebnego zespołowi.
+Przed zaproponowaniem wniosku czyta plik docelowy jeszcze raz, żeby nie wróciło nic, co jest już opisane pod innym nagłówkiem.
+
+## Gdzie zapisuje reguły
+
+Każdy wniosek trafia do jednego miejsca:
+
+| Cel | Do czego | Wspólne dla zespołu? |
+|---|---|---|
+| `.claude/rules/<topic>.md` | Konwencje, pułapki i decyzje architektoniczne. Preferowany cel. | Tak, po commicie |
+| `CLAUDE.md` | Ogólne instrukcje projektu | Tak, po commicie |
+| Reguła hookify (`.claude/hookify.*.md`) | Powtarzany błąd, który wyrażenie regularne wyłapie bez fałszywych alarmów | Tylko plik `.rule.md`; plik `.local.md` zostaje prywatny |
+
+Tabela 1. Gdzie session-learner zapisuje każdy rodzaj wniosku.
+
+Nowy plik reguł dostaje frontmatter `paths:`, gdy reguła dotyczy części kodu, a nie dostaje go, gdy dotyczy całego projektu.
+Pliki mają zostać poniżej około 200 linii: gdy cel miałby je przekroczyć, proponuje nowy plik tematyczny.
+Nigdy nie nadpisuje istniejącej treści i nigdy nie zapisuje do auto memory.
+
+Regułę hookify proponuje tylko wtedy, gdy hookify jest zainstalowany, a ten sam błąd pojawił się w co najmniej dwóch miejscach.
+Po akceptacji przekazuje regułę do [`/hookify:hookify`](/pl/plugins/hookify/hookify/), który ją tworzy.
+
+## Jak zatwierdzasz zmiany
+
+Pokazuje jeden wniosek naraz.
+Każdy wniosek wskazuje plik docelowy, pokazuje proponowane linie wśród istniejących i cytuje rozmowę jako dowód:
+
+```
+Finding 2/4: correction
+Target: .claude/rules/api.md  (Add)
+  ...existing lines...
++ Return 404, not 403, when the resource belongs to another tenant.
+  ...existing lines...
+Evidence: "no, other tenants' resources must look like they don't exist"
+Accept / Modify / Skip / Auto-memory?
+```
+
+Przy każdym wniosku wybierz jedną odpowiedź:
+
+- **Accept** zapisuje zmianę tak, jak ją zaproponowano.
+- **Modify** pyta o twoje sformułowanie i zapisuje je zamiast propozycji.
+- **Skip** odrzuca wniosek. Jeśli wzorzec się powtórzy, wróci w którejś z kolejnych sesji.
+- **Auto-memory** niczego nie zapisuje. Oznacza wniosek jako trafny, ale osobisty, i zostawia go wbudowanej pamięci Claude Code.
+
+Kandydaci na reguły hookify i wnioski przenoszone z auto memory do pliku reguł mają tylko Accept albo Skip.
+Gdy dwa wnioski sobie przeczą, pokazuje oba i prosi o rozstrzygnięcie konfliktu.
+Przy więcej niż 10 wnioskach najpierw wybierasz, które pliki docelowe chcesz przejrzeć.
+
+Po ostatnim wniosku nanosi zaakceptowane zmiany jako punktowe edycje.
+Potem wypisuje podsumowanie: co zmieniło się w którym pliku, co trafiło do auto memory i co pominięto.
+Nie robi commita: przejrzyj zmiany i zrób commit, żeby trafiły do zespołu.
+
+:::tip
+Gdy wniosek przechodzi z auto memory do pliku reguł, stary wpis w pamięci zostaje.
+Podsumowanie przypomina, żeby usunąć go przez `/memory`.
+:::
+
+## Wymagania
+
+Nic poza Claude Code.
+Plugin [hookify](/pl/plugins/hookify/) jest opcjonalny: bez niego powtarzany błąd staje się regułą opisową, a nie hookiem.
+
+## Następne kroki
+
+- [hookify](/pl/plugins/hookify/): napisz ręcznie regułę, która ostrzega przed powtarzanym błędem albo go blokuje.
+- [Utrzymanie](/pl/lifecycle/maintain/): pozostałe pluginy działające poza cyklem.
+- [Planowanie](/pl/lifecycle/plan/): zacznij następną zmianę z nowymi regułami na miejscu.
