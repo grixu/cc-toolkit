@@ -19,6 +19,8 @@ Settle these from the arguments, or from what `prepare-proof` passes; ask the us
 
 Never start, seed or stop a stack, not even when no URL answers: ask for the URL instead, or report that the app is not reachable.
 
+Refuse on the default branch or a detached HEAD: the manifest path needs a branch.
+
 Work dir: the manifest's directory, `~/.cache/pr-proof/<repo>/<branch>/`, computed as the rules' manifest section shows. Shots go to `<work dir>/screenshots/`.
 
 ## Steps
