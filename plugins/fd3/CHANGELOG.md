@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The README and the task template described `done` as "nothing left for a human". Under review
+  `yes` a branch reaches `done` while findings left open wait in the run's report; only a `gated`
+  review's findings keep it `merged`. Both now say so.
+
+### Removed
+
+- The README's section comparing fd3 with the deprecated `feature-delivery` plugin, which is no
+  longer in the marketplace.
+
 ## [0.5.2] - 2026-10-28
 
 ### Fixed
