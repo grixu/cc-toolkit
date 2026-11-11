@@ -2,7 +2,7 @@
 import Strip from './Strip.astro'
 import Cmd from './Cmd.astro'
 import { ui, href, langOf } from '../lib/i18n'
-import { plugins, stages, stagesOf, skillsOf, skills, installPlugin } from '../lib/lifecycle'
+import { plugins, stages, stagesOf, skillsOf, skills, installPlugin, cmdName } from '../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
 const t = ui[lang]
@@ -50,7 +50,7 @@ const count = (id: string) => new Set(skills.filter((s) => s.stage === id).map((
           </div>
           <p class="label">{stagesOf(p.name).map((s) => s.title[lang]).join(' · ')}</p>
           <p class="ccard-desc">{p.desc[lang]}</p>
-          <p class="ccard-skills">{skillsOf(p.name).map((s, i) => <>{i > 0 && ' · '}<code><Cmd text={s.cmd.split(':')[1]} /></code></>)}</p>
+          <p class="ccard-skills">{skillsOf(p.name).map((s, i) => <>{i > 0 && ' · '}<code><Cmd text={cmdName(s)} /></code></>)}</p>
           <Strip cmd={installPlugin(p.name)} inCard />
         </li>
       ))}

@@ -1,7 +1,7 @@
 ---
 import Cmd from './Cmd.astro'
 import { ui, href, langOf } from '../lib/i18n'
-import { skills, stages, pluginByName, stagePath, stageById, type StageId } from '../lib/lifecycle'
+import { skills, stages, pluginByName, stagePath, stageById, shortName, type StageId } from '../lib/lifecycle'
 
 interface Props {
   /** One stage's commands; without it, one row per stage. */
@@ -23,7 +23,7 @@ const here = stage ? skills.filter((k) => k.stage === stage) : []
       <tbody>
         {here.map((k) => (
           <tr>
-            <td><a href={href(k.href, lang)}><code><Cmd text={k.cmd} /></code></a>{k.calledBy && <> <span class="badge badge--neutral badge--inline">{pl ? 'przez' : 'via'} {k.calledBy}</span></>}</td>
+            <td><a href={href(k.href, lang)}>{k.auto ? shortName(k) : <code><Cmd text={k.cmd} /></code>}</a>{k.auto && <> <span class="badge badge--neutral badge--inline">{pl ? 'automatycznie' : 'automatic'}</span></>}{k.calledBy && <> <span class="badge badge--neutral badge--inline">{pl ? 'przez' : 'via'} {k.calledBy}</span></>}</td>
             <td>{k.does[lang]}</td>
             <td><a href={href(`plugins/${k.plugin}/`, lang)}>{k.plugin}</a>{!pluginByName[k.plugin].core && <span class="muted"> · {t.supporting}</span>}</td>
           </tr>

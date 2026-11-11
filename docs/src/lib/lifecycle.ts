@@ -89,6 +89,8 @@ export type Skill = {
   /** Part of the main line on the map, rather than a branch or a supporting station. */
   main?: boolean
   calledBy?: string
+  /** Runs on its own through hooks; there is no command to type. */
+  auto?: boolean
   feature?: T
   label?: string
 }
@@ -124,6 +126,8 @@ export const skills: Skill[] = [
     does: { en: 'A cited report on an open question', pl: 'Raport ze źródłami na otwarte pytanie' } },
   { id: 'hookify', plugin: 'hookify', cmd: '/hookify:hookify', stage: 'maintain', href: 'plugins/hookify/hookify/',
     does: { en: 'A rule that stops a repeated mistake', pl: 'Reguła, która zatrzymuje powtarzany błąd' } },
+  { id: 'rule-hooks', plugin: 'hookify', cmd: 'hooks', label: 'rule hooks', stage: 'build', href: 'plugins/hookify/', auto: true,
+    does: { en: 'Warn or block an edit that breaks your rules, as the agent writes it', pl: 'Ostrzeż albo zablokuj edycję łamiącą twoje reguły, w chwili gdy agent ją pisze' } },
   { id: 'review-changes', plugin: 'hookify', cmd: '/hookify:review-changes', stage: 'maintain', href: 'plugins/hookify/review-changes/',
     does: { en: 'Check a diff against your rules', pl: 'Sprawdź diff z twoimi regułami' } },
   { id: 'learn', plugin: 'session-learner', cmd: '/session-learner:learn', stage: 'maintain', href: 'plugins/session-learner/',
@@ -131,6 +135,8 @@ export const skills: Skill[] = [
 ]
 export const skillById = Object.fromEntries(skills.map((s) => [s.id, s])) as Record<string, Skill>
 export const shortName = (s: Skill) => s.label ?? s.cmd.split(':')[1] ?? s.cmd
+/** The skill part of a command, for lists that already name the plugin. */
+export const cmdName = (s: Skill) => s.cmd.split(':')[1] ?? shortName(s)
 
 export type Plugin = { name: string; core: boolean; promise: T; desc: T; version: string; cmd: string }
 

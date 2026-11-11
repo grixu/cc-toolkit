@@ -1,7 +1,7 @@
 ---
 import Icon from './Icon.astro'
 import { ui, href, langOf } from '../lib/i18n'
-import { plugins, skills } from '../lib/lifecycle'
+import { plugins, skills, cmdName } from '../lib/lifecycle'
 import { sections } from '../lib/nav'
 
 const lang = langOf(Astro.url.pathname)
@@ -11,7 +11,7 @@ const quick = [
   ...plugins.map((p) => ({ title: `${pluginsLabel} › ${p.name}`, ctx: p.desc[lang], href: href(`plugins/${p.name}/`, lang), hay: `${p.name} ${p.desc.en} ${p.desc.pl} ${p.cmd}` })),
   ...skills
     .filter((s) => s.href !== `plugins/${s.plugin}/`)
-    .map((s) => ({ title: `${pluginsLabel} › ${s.plugin} › ${s.cmd.split(':')[1]}`, ctx: s.does[lang], href: href(s.href, lang), hay: `${s.cmd} ${s.does.en} ${s.does.pl}` })),
+    .map((s) => ({ title: `${pluginsLabel} › ${s.plugin} › ${cmdName(s)}`, ctx: s.does[lang], href: href(s.href, lang), hay: `${s.cmd} ${s.does.en} ${s.does.pl}` })),
 ]
 const popular = ['plugins/fd3/', 'plugins/fd3/build-spec/', 'plugins/code-review/start-cr/', 'plugins/dev-kit/pr-open/', 'lifecycle/'].map((p) => href(p, lang))
 const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/\/$/, ''), s.label[lang]]))
