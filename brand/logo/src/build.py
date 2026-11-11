@@ -110,8 +110,9 @@ def mark(ground, height, x=0.0, y=0.0):
 
 def mark_classed(height):
     """The mark with one class per face colour, for the favicon that follows the colour scheme."""
-    k = height / MARK_BOX[3]
-    return [f'<path class="{role[0]}{face[0]}" d="{_d(r, k, 0, 0)}"/>' for role, face, r in FACES]
+    k, sw = height / MARK_BOX[3], height / 200
+    return [f'<path class="{role[0]}{face[0]}" d="{_d(r, k, 0, 0)}" stroke-width="{sw:.2f}" stroke-linejoin="round"/>'
+            for role, face, r in FACES]
 
 
 def mark_mono(fill, height, mask_id):
@@ -245,10 +246,12 @@ def post():
 
 def favicon_svg():
     side = 64
-    mh = side / MARK_RATIO
-    rules = lambda g: " ".join(f".{r[0]}{f[0]}{{fill:{hexes(g)[r][f]}}}" for r in ("stone", "accent") for f in ("top", "left", "right"))
+    mh = side * min(1, 1 / MARK_RATIO)
+    rules = lambda g: " ".join(f".{r[0]}{f[0]}{{fill:{hexes(g)[r][f]};stroke:{hexes(g)[r][f]}}}"
+                               for r in ("stone", "accent") for f in ("top", "left", "right"))
     style = f"<style>{rules('light')} @media (prefers-color-scheme: dark) {{ {rules('dark')} }}</style>"
-    return svg(side, side, [style, f'<g transform="translate(0 {(side - mh) / 2:.2f})">'] + mark_classed(mh) + ["</g>"])
+    shift = f"translate({(side - mh * MARK_RATIO) / 2:.2f} {(side - mh) / 2:.2f})"
+    return svg(side, side, [style, f'<g transform="{shift}">'] + mark_classed(mh) + ["</g>"])
 
 
 

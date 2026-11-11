@@ -1,17 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64.00 64.00">
-<style>.st{fill:#C2CFBF} .sl{fill:#8C9689} .sr{fill:#5F665D} .at{fill:#367154} .al{fill:#25523C} .ar{fill:#173828} @media (prefers-color-scheme: dark) { .st{fill:#A9B5A7} .sl{fill:#7A8378} .sr{fill:#545A52} .at{fill:#79D4A1} .al{fill:#60AB81} .ar{fill:#488362} }</style>
-<g transform="translate(0 -2.54)">
-<path class="st" d="M27.83,0.00 L32.28,2.57 L4.45,18.64 L0.00,16.07Z"/>
-<path class="sr" d="M32.28,34.70 L4.45,50.77 L4.45,18.64 L32.28,2.57Z"/>
-<path class="sl" d="M0.00,48.20 L4.45,50.77 L4.45,18.64 L0.00,16.07Z"/>
-<path class="st" d="M38.40,6.10 L42.85,8.68 L15.03,24.74 L10.57,22.17Z"/>
-<path class="sr" d="M42.85,40.81 L15.03,56.87 L15.03,24.74 L42.85,8.68Z"/>
-<path class="sl" d="M10.57,54.30 L15.03,56.87 L15.03,24.74 L10.57,22.17Z"/>
-<path class="st" d="M48.97,12.21 L53.43,14.78 L25.60,30.85 L21.15,28.28Z"/>
-<path class="sr" d="M53.43,46.91 L25.60,62.98 L25.60,30.85 L53.43,14.78Z"/>
-<path class="sl" d="M21.15,60.41 L25.60,62.98 L25.60,30.85 L21.15,28.28Z"/>
-<path class="at" d="M59.55,18.31 L64.00,20.89 L36.17,36.95 L31.72,34.38Z"/>
-<path class="ar" d="M64.00,53.02 L36.17,69.08 L36.17,36.95 L64.00,20.89Z"/>
-<path class="al" d="M31.72,66.51 L36.17,69.08 L36.17,36.95 L31.72,34.38Z"/>
+<style>.st{fill:#C2CFBF;stroke:#C2CFBF} .sl{fill:#8C9689;stroke:#8C9689} .sr{fill:#5F665D;stroke:#5F665D} .at{fill:#367154;stroke:#367154} .al{fill:#25523C;stroke:#25523C} .ar{fill:#173828;stroke:#173828} @media (prefers-color-scheme: dark) { .st{fill:#A9B5A7;stroke:#A9B5A7} .sl{fill:#7A8378;stroke:#7A8378} .sr{fill:#545A52;stroke:#545A52} .at{fill:#79D4A1;stroke:#79D4A1} .al{fill:#60AB81;stroke:#60AB81} .ar{fill:#488362;stroke:#488362} }</style>
+<g transform="translate(2.35 0.00)">
+<path class="st" d="M25.78,0.00 L29.90,2.38 L4.12,17.27 L0.00,14.88Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="sr" d="M29.90,32.15 L4.12,47.03 L4.12,17.27 L29.90,2.38Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="sl" d="M0.00,44.65 L4.12,47.03 L4.12,17.27 L0.00,14.88Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="st" d="M35.58,5.66 L39.70,8.04 L13.92,22.92 L9.80,20.54Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="sr" d="M39.70,37.80 L13.92,52.69 L13.92,22.92 L39.70,8.04Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="sl" d="M9.80,50.31 L13.92,52.69 L13.92,22.92 L9.80,20.54Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="st" d="M45.37,11.31 L49.50,13.69 L23.72,28.58 L19.59,26.20Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="sr" d="M49.50,43.46 L23.72,58.34 L23.72,28.58 L49.50,13.69Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="sl" d="M19.59,55.96 L23.72,58.34 L23.72,28.58 L19.59,26.20Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="at" d="M55.17,16.97 L59.29,19.35 L33.51,34.23 L29.39,31.85Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="ar" d="M59.29,49.12 L33.51,64.00 L33.51,34.23 L59.29,19.35Z" stroke-width="0.32" stroke-linejoin="round"/>
+<path class="al" d="M29.39,61.62 L33.51,64.00 L33.51,34.23 L29.39,31.85Z" stroke-width="0.32" stroke-linejoin="round"/>
 </g>
 </svg>
