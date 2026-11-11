@@ -32,6 +32,10 @@ NAME="([A-Za-z0-9_.-]*${KW}[A-Za-z0-9_.-]*)"
 # A token must not continue an identifier, or "mask-runner-config-loader" would match sk-.
 B='(^|[^A-Za-z0-9_-])'
 DQ='"([^"\\]|\\.)*"'
+PEM_BEGIN='-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----'
+PEM_END='-----END [A-Z0-9 ]*PRIVATE KEY-----'
+# A block opens only on a BEGIN line with no END after it; otherwise a one-line key would mask the rest of the file.
+PEM_OPEN="${PEM_BEGIN}([^-]|-{1,4}[^-])*-{0,4}\$"
 
 # LC_ALL=C: BSD sed rejects bytes that are invalid in the current locale, and C keeps the ranges ASCII.
 export LC_ALL=C
@@ -40,6 +44,16 @@ TMP=$(mktemp "${OUT}.XXXXXX")
 trap 'rm -f "$TMP"' EXIT
 
 sed -E \
+  -e "s/(${PEM_BEGIN}).*(${PEM_END})/\\1***\\2/g" \
+  -e "/${PEM_OPEN}/,/${PEM_END}/{" \
+  -e "/${PEM_BEGIN}|${PEM_END}/!s/.*/***/" \
+  -e "}" \
+  -e "s|([A-Za-z][A-Za-z0-9+.-]*://)[^/[:space:]@\"']+@|\\1***@|g" \
+  -e "s/${B}xox[abp]-[A-Za-z0-9-]+/\\1***/g" \
+  -e "s/${B}AIza[0-9A-Za-z_-]{35}/\\1***/g" \
+  -e "s/${B}(--$(ci password))[[:space:]]+${DQ}/\\1\\2 \"***\"/g" \
+  -e "s/${B}(--$(ci password))[[:space:]]+'[^']*'/\\1\\2 '***'/g" \
+  -e "s/${B}(--$(ci password))[[:space:]]+[^\"'[:space:]][^[:space:]]*/\\1\\2 ***/g" \
   -e "s/($(ci bearer))[[:space:]]+[^[:space:]\"',;]+/\\1 ***/g" \
   -e "s/${B}gh[pousr]_[A-Za-z0-9]+/\\1***/g" \
   -e "s/${B}github_pat_[A-Za-z0-9_]+/\\1***/g" \
