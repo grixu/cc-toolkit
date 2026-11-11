@@ -280,5 +280,5 @@ clean review.
 
 - `evals/`: a promptfoo eval suite, used for development. See `evals/README.md`.
 - `CONTEXT.md`: the plugin's glossary.
-- `docs/adr/`: the design decisions behind the lens split, the active lens set, and the coherence
-  and assumptions lenses.
+- `docs/adr/`: the design decisions behind the lens split, the active lens set, the coherence
+  and assumptions lenses, and the hookify lens.

@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   finding's rule is the hookify rule's `name`, it quotes the rule's message, and its severity is
   `high` for `action: block` and `medium` otherwise. It replaces the hookify plugin's
   `review-changes` skill. The report's tally reads `Lenses: L of 12`. Eval-43 and eval-44 cover it
+- ADR 0004 records the hookify lens: why the review moved out of the hookify plugin, the gate,
+  severity by `action`, and its known edge cases
 
 ### Removed
 
