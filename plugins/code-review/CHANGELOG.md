@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `hookify` lens, active only when the checkout keeps hookify rule files in its `.claude/`
+  (`hookify.*.local.md` or `hookify.*.rule.md`) with an enabled `file` or `all` rule. It replays
+  those rules over the diff hunk by hunk, the way hookify's hooks check each edit: `.local.md`
+  overrides by `name` as at runtime, `bash`, `prompt` and `stop` rules and `~/.claude/` rules are
+  left out, and a rule whose only condition is the file path is raised only when the added lines
+  do what its message warns against. Like `standards`, the `hookify` family has no fixed rows: a
+  finding's rule is the hookify rule's `name`, it quotes the rule's message, and its severity is
+  `high` for `action: block` and `medium` otherwise. It replaces the hookify plugin's
+  `review-changes` skill. The report's tally reads `Lenses: L of 12`
+
 ### Removed
 
 - The standalone `comment-review` and `quality-review` skills. They judged the same rules files as

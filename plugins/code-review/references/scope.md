@@ -37,7 +37,8 @@ license/SPDX headers.
 
 Note every skipped file in one line, so coverage stays honest. Skipped is not unread:
 the `coherence` and `spec` lenses read skipped files for what they claim about the code,
-and grade no craft in them.
+the `hookify` lens checks them against the project's hookify rules, and none of the three
+grades craft in them.
 
 **CI workflow definitions are not skipped — they are `policy` files.** A changed
 `.github/workflows/*.yml` or `.gitlab-ci.yml` routinely carries a real exposure — a
@@ -103,6 +104,9 @@ These consumers depend on this list:
   and `.env.dist` — and minus the active spec: a doc, a changeset, a migration or a compose
   file is one side of the seam it judges. A real env file in the change is never Read; the lens
   may only Grep it for key names. A change of skipped files alone still runs it;
+- the **`hookify` lens**, when the checkout carries hookify rule files, receives the same
+  list as `coherence` with the active spec kept: a hookify rule matches a file by its path,
+  whatever its kind, so a Markdown file or a config file is as much its subject as source;
 - the **`performance` lens** receives only the `source` files, minus `.sh` files and
   `*.config.*` modules (build and tool configuration runs once, never per request) — and is not
   dispatched at all when that subset is empty (a tests-only or IaC-only change has no

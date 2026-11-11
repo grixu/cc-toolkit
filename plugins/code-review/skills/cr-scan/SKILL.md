@@ -19,10 +19,10 @@ lens named by `--lens`. Read that contract completely before anything else: it i
 definition of what you judge, how you grade, and the shape you return.
 
 Read every file this skill names — the contract, each rules file, `scope.json`, `conventions.md`,
-`standards.md`, the spec — with the `Read` tool, one call per file. A `cat` chain through `Bash`
+`standards.md`, the spec, the hookify rule files — with the `Read` tool, one call per file. A `cat` chain through `Bash`
 is no substitute: under zsh a separator such as `echo =====` aborts the whole chain, and joined
 output past a size is truncated, so a rules file read that way arrives without its last rules.
-`Bash` is for `git`.
+`Bash` is for `git`, and for the `hookify` lens's one `python3 -c` regex test its rules file names.
 
 `--lens` takes one lens name or a comma-separated list with no spaces (`--lens comments,security`).
 A single name is a single-lens run. With a list, you are that Scanner once per listed lens, in the
@@ -45,6 +45,7 @@ The contract's brief arrives as files, not as a message. Assemble it slot by slo
 | `<conventions>` | `conventions.md`, verbatim |
 | `<standards>` | your lens's section of `standards.md`, or all of it when it has no sections |
 | `<spec>` | `spec` and `correctness` lenses: the file `scope.json` names, read in full — or, when `spec_focus` lists codes, the focus list with the file read as your rules file's spec-focus paragraph says; `coherence`: that path alone, the file it leaves to `spec`; omitted for every other lens, and when `spec` is `null` |
+| `<hookify_rules>` | `hookify` lens only: the `hookify` list in `scope.json`; omitted for every other lens |
 
 `<checkout>` is `scope.json`'s `checkout`; every path in `files` is relative to it. A lens listed
 under `lenses.inactive` is not judged: write its output file with the header alone, ending
@@ -80,7 +81,8 @@ With a list, judge each lens as if it were the only one:
 
 - **One lens at a time, in the listed order.** Before each lens, read its rules file completely
   again and assemble its brief from the table above — its own `<files>`, its own `<standards>`
-  slice, `<spec>` only for `spec`, `correctness` and `coherence` — even when an earlier lens already read the
+  slice, `<spec>` only for `spec`, `correctness` and `coherence`, `<hookify_rules>` only for
+  `hookify` — even when an earlier lens already read the
   same text. Judge only that lens's families.
 - **Nothing crosses between lenses.** A finding, candidate or handoff an earlier lens wrote is not
   evidence for this one, and never appears in this lens's file unless this lens's own rules raise
