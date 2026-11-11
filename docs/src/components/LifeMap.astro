@@ -77,7 +77,7 @@ const labelPos = (p: { x: number; y: number; lab: string }) =>
         : { x: p.x + 18, y: p.y + 5, anchor: 'start' }
 // One row below every label and sub-label, so an artifact never covers a neighbour's name.
 const artifactY = Y + 76
-const maintainDim = (focus && !onStages?.has('maintain')) || (stage && stage !== 'maintain')
+const showMaintain = !onStages || onStages.has('maintain')
 ---
 
 <figure class:list={['lc', { 'lc--zoom': !!(focus || stage) }]} data-animate={animate ? '' : undefined}>
@@ -161,7 +161,7 @@ const maintainDim = (focus && !onStages?.has('maintain')) || (stage && stage !==
     <li class="lmap-key-aux"><span class="swatch swatch--aux" aria-hidden="true"></span>{t.supportingPlugins}</li>
   </ul>
 
-  <aside class:list={['lc-maintain', { 'is-dim': maintainDim }]} aria-labelledby={`${clipId}-m`}>
+  {showMaintain && <aside class="lc-maintain" aria-labelledby={`${clipId}-m`}>
     <p class="lc-maintain-h">
       <a id={`${clipId}-m`} class="lc-maintain-t" href={link(stagePath('maintain'))}>{stageById.maintain.title[lang]}</a>
       <span class="lc-maintain-s">{t.outside}</span>
@@ -177,7 +177,7 @@ const maintainDim = (focus && !onStages?.has('maintain')) || (stage && stage !==
         </li>
       ))}
     </ul>
-  </aside>
+  </aside>}
   <figcaption class="caption">{lang === 'pl' ? 'Rysunek' : 'Figure'} {n}. {t.figureMap}</figcaption>
 </figure>
 
