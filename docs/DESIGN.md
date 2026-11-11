@@ -361,6 +361,48 @@ Below 600 px the header's menu button opens a drawer from the right. It is the o
 Correct: on a phone, the menu shows "Docs" marked with the green side bar and the plugin list below it.
 Incorrect: a drawer from the left. The menu button sits at the right end of the header, and the drawer should come from where the thumb tapped.
 
+### Docs sidebar
+
+On a plugin's docs pages a sidebar lists that plugin's pages, so the reader sees where the current page sits and what comes next. The site sections stay in the header; the sidebar never repeats them.
+
+- **Layout:** from 900 px viewport width the page is a grid of a 232 px sidebar and the content column, `--space-6` apart. The sidebar is `position: sticky; top: 0`, at most `100dvh` tall with its own vertical scroll, because the header scrolls away and a long list must stay reachable.
+- **Markup:** `<nav aria-label="fd3 docs">` (the plugin's name), one `<ul>` per group, each led by a Label-style heading in `--muted` (`--space-5` above it, `--space-2` below; none above the first).
+- **Rail:** each group's list has a 1 px `--border` rail on the inline start (`box-shadow: inset 1px 0 0 var(--border)`). Links are Small in Plex Sans 400, `--muted`, at least 32 px tall, `--space-4` from the rail, with no underline.
+- **Current page:** `aria-current="page"`, text `--heading` and a 2 px `--primary` segment on the rail (`box-shadow: inset 2px 0 0 var(--primary)`): the same side bar as the mobile menu. Weight stays 400, so nothing reflows when the current page changes.
+- **Hover** (fine pointers only): text `--text`, no fill. Pressed: text `--heading`. The rail is reserved for the current page.
+- **Below 900 px:** the sidebar moves above the content as a `<details>` bar, 48 px tall with a 1 px `--border` rule below it: "Pages ·" in `--muted`, then the current page's title in Plex Mono Small `--heading`, and a chevron in `--muted` at the end. Open, it shows the same list with rows at least 44 px tall. Following a link closes it.
+
+Correct: the fd3 sidebar with Start, Guides and Reference, "implement" marked by the green segment.
+Incorrect: the current page in `--primary` text. Green text plus the green segment marks it twice, and green text in a list of links reads as one more link.
+
+### Table of contents
+
+A docs page with at least three H2s gets an "On this page" list of its H2s and H3s, so the reader can see the page's shape and jump within it. Shorter pages get none; two links are not worth a column.
+
+- **Layout:** from 1200 px viewport width it is a third grid column, 200 px wide and `--space-6` from the content, `position: sticky; top: var(--space-5)`. Between 900 and 1200 px there is no room for it beside the sidebar, so it takes the below-900 px form.
+- **Markup:** `<nav aria-labelledby>` pointing at a Label-style "On this page" heading in `--muted`, then an `<ol>` of H2 links with a nested `<ol>` of H3 links. H4 and below never appear.
+- **Rail:** the outer list has the same 1 px `--border` rail as the sidebar (`box-shadow: inset 1px 0 0 var(--border)`). Links are Small in Plex Sans 400, `--muted`, line-height 1.35, `6px` block padding, `--space-4` from the rail; H3 links add `--space-3`. No underline.
+- **Current section:** the section being read gets `aria-current="true"`, text `--heading` and a 2 px `--diagram-line` segment on the rail. The segment is grey on purpose: green already marks the current page in the sidebar, and two green markers on one screen compete. It is the last heading whose top has passed 25% of the viewport height, tracked with an `IntersectionObserver`; before the first H2 nothing is current.
+- **Hover** (fine pointers only): text `--text`. Pressed: text `--heading`.
+- **Jumping:** every heading has an `id` and `scroll-margin-top: var(--space-5)`. Scrolling is smooth (`scroll-behavior: smooth`) except under `prefers-reduced-motion`, and following a link moves focus to the heading (`tabindex="-1"`) so keyboard reading continues from there.
+- **Below 1200 px:** the list moves into the article, under the lead, as a `<details>` closed by default, with a 1 px `--border` rule above and below. The summary is the Label "On this page" with a chevron, 44 px tall; open, rows are at least 44 px. No current section is marked, because the list is out of view while reading.
+
+Correct: on a long guide, "Merging a wave" in `--heading` with a grey segment on the right-hand rail while the sidebar marks "implement" in green.
+Incorrect: a green segment in the table of contents. With the sidebar's green segment the screen has two "you are here" markers and the reader cannot tell which is the page.
+
+### Pagination
+
+Every docs page that has a neighbour in the sidebar's order ends with links to the previous and next page, so a reader going through a guide never has to find the sidebar again. The order is the sidebar's, across groups; the first page has no "Previous" and the last no "Next".
+
+- **Markup:** `<nav aria-label="Pages">` after the article's last block, `--space-7` below it, with two links carrying `rel="prev"` and `rel="next"`. A missing side leaves its grid cell empty, so "Next" stays on the right.
+- **Layout:** a two-column grid, `--space-4` apart, as wide as the content column (`--measure`). Below 600 px the links stack, "Previous" above "Next", both left-aligned.
+- **Card:** each link is a whole clickable card: padding `--space-4`, a 1 px `--border` ring (`box-shadow: inset 0 0 0 1px var(--border)`), `--radius-panel`, at least 44 px tall. Inside, top to bottom: "Previous" or "Next" as a Label in `--muted`, the page title in Plex Sans 600 Body, `--heading`, and the page's sidebar group in Caption, `--caption`. "Next" aligns right on wide screens.
+- **No arrows or icons:** the Label already says the direction.
+- **States:** hover and pressed follow the clickable-card rule in Hover and pressed (`--tray`, then `--tray-pressed`); focus rings the whole card.
+
+Correct: at the end of "implement", "Previous · split-to-tasks" and "Next · validate-spec", both in the Guides group.
+Incorrect: the next page's title in `--primary`. The card is already the link; a green title makes it one more link inside a link.
+
 ### Hover and pressed
 
 One rule for everything interactive that the sections above do not give its own states: a hover fills with `--tray`, a press fills one step deeper with `--tray-pressed`. It is the rule secondary and ghost buttons already follow, so every control in the system answers a pointer the same way, and green stays reserved for the current item.
