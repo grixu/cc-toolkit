@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   do what its message warns against. Like `standards`, the `hookify` family has no fixed rows: a
   finding's rule is the hookify rule's `name`, it quotes the rule's message, and its severity is
   `high` for `action: block` and `medium` otherwise. It replaces the hookify plugin's
-  `review-changes` skill. The report's tally reads `Lenses: L of 12`
+  `review-changes` skill. The report's tally reads `Lenses: L of 12`. Eval-43 and eval-44 cover it
 
 ### Removed
 

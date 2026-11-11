@@ -336,4 +336,17 @@ cp -R "$assumptions" "$injection"
 cp cases/injection/fetchkit-README.md "$injection/node_modules/@acme/fetchkit/README.md"
 cat cases/injection/redirect-note.js >> "$injection/node_modules/@acme/fetchkit/lib/redirect.js"
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions, $(pwd)/$injection"
+# evals 43-44: a branch above main whose base commits the hookify rule files in .claude/, so the
+# lens replays them over main..HEAD hunk by hunk, removed lines included.
+hookify=.sandbox/hookify
+mkdir -p "$hookify"
+cp -R cases/hookify/base/. "$hookify/"
+git -C "$hookify" init -q -b main
+git -C "$hookify" add -A
+commit "$hookify" 'feat: order sync and the legacy adapter'
+git -C "$hookify" switch -q -c feat/payments
+cp -R cases/hookify/head/. "$hookify/"
+git -C "$hookify" add -A
+commit "$hookify" 'feat: payments client, order export and the release script'
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions, $(pwd)/$injection, $(pwd)/$hookify"

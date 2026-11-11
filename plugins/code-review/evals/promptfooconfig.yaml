@@ -54,6 +54,9 @@ prompts:
   # The assumptions lens, over a repository with its dependencies installed.
   - id: file://prompts/assumptions.txt
     label: assumptions-track
+  # The hookify lens, over a branch whose base commits the project's hookify rule files.
+  - id: file://prompts/hookify.txt
+    label: hookify-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -1395,3 +1398,108 @@ tests:
         config: { families: [coherence], severities: [high, medium], rules: true }
       - type: javascript
         value: file://checks/handoff-families.mjs
+
+  - description: 'eval-43 hookify-recall (hookify/ a block rule on an added file, a warn rule over two hunks)'
+    prompts: [hookify-track]
+    vars:
+      # hookify/DEFECTS.md lists every rule, how it settles, and what hookify's own engine fires on.
+      checkout: plugins/code-review/evals/.sandbox/hookify
+      file: src/payments/client.ts src/orders/sync.ts
+      rules: >-
+        .claude/hookify.warn-typescript-any.local.md
+        .claude/hookify.block-force-push.rule.md
+        .claude/hookify.block-hardcoded-token.rule.md
+        .claude/hookify.warn-config-secrets.rule.md
+        .claude/hookify.warn-console-log.rule.md
+        .claude/hookify.warn-raw-sql.rule.md
+        .claude/hookify.warn-todo.rule.md
+        .claude/hookify.warn-typescript-any.rule.md
+    # The lens reads its hunks with git diff and settles a regex with python3: both need Bash.
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: 'Lens: hookify · files judged: \d+ of \d+'
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: block-hardcoded-token, under: payments/client.ts, lines: [1], severity: high }
+      # the quoted message and the rule file are what make it a hookify finding
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: block-hardcoded-token, under: payments/client.ts, all: ['"[^"]*environment variables[^"]*"', 'hookify\.block-hardcoded-token\.rule\.md'] }
+      # no action reads as warn; two hunks of one file are one bullet
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: warn-console-log, under: orders/sync.ts, lines: [7, 25], severity: medium }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: warn-console-log, under: orders/sync.ts, all: ['"[^"]*logger[^"]*"', 'hookify\.warn-console-log\.rule\.md'] }
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: hookify, pattern: '^- `hookify` · [a-z]+(-[a-z]+)* · (high|medium) · `[\w./-]+:L\d+[^`]*` — "[^"]+" \(hookify\.[\w-]+\.(rule|local)\.md\) .+ → .+' }
+      # rule slugs are the project's own names, so only the family and severity are fixed
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [hookify], severities: [high, medium] }
+      - type: javascript
+        value: file://checks/handoff-families.mjs
+
+  - description: 'eval-44 hookify-calibration (hookify/ removed lines, shadowed, disabled, bash and anchored rules, path-only, comment and test matches)'
+    prompts: [hookify-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/hookify
+      file: >-
+        src/orders/legacy.ts
+        src/reports/export.ts
+        scripts/release.sh
+        config/app.yaml
+        src/payments/keys.ts
+        src/orders/sync.test.ts
+      rules: >-
+        .claude/hookify.warn-typescript-any.local.md
+        .claude/hookify.block-force-push.rule.md
+        .claude/hookify.block-hardcoded-token.rule.md
+        .claude/hookify.warn-config-secrets.rule.md
+        .claude/hookify.warn-console-log.rule.md
+        .claude/hookify.warn-raw-sql.rule.md
+        .claude/hookify.warn-todo.rule.md
+        .claude/hookify.warn-typescript-any.rule.md
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: 'Lens: hookify · files judged: \d+ of \d+'
+      # the key and the console.log sit in removed lines only
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: legacy.ts }
+      # shadowed any rule, disabled TODO rule, ^src/-anchored raw-SQL rule
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: export.ts }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: release.sh }
+      # a path-only rule whose added line commits no credential
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: app.yaml }
+      # hookify fires on a comment and on a test asserting absence: candidates, not findings
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: keys.ts }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: sync.test.ts }
+      - type: regex
+        value: 'CANDIDATES[\s\S]*keys\.ts'
+      - type: regex
+        value: 'CANDIDATES[\s\S]*sync\.test\.ts'
+      # the closing line names each rule set aside with its reason
+      - type: regex
+        value: 'block-force-push[\s\S]{0,80}bash'
+      - type: regex
+        value: 'warn-todo[\s\S]{0,80}(disabled|enabled: false)'
+      - type: regex
+        value: 'warn-typescript-any[\s\S]{0,80}(shadow|\.local)'
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [hookify], severities: [high, medium] }
