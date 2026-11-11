@@ -1,0 +1,103 @@
+---
+title: /hookify:hookify
+description: Create a rule that warns about or blocks a behavior, from one sentence or from the corrections in the current conversation.
+group: guides
+skill: hookify
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Reach for `/hookify:hookify` when Claude does something you've already told it not to do, or something you never want it to do.
+It writes one rule file per behavior you pick, and the rule applies on the next tool call.
+
+## How it runs
+
+<SkillFlow
+  skill="hookify"
+  input="A behavior to stop, or nothing: then the current conversation"
+  steps={[
+    { name: 'Gather', does: 'Reads your description, or has a subagent scan the conversation for corrections.' },
+    { name: 'Choose', does: 'You pick the behaviors to turn into rules, up to four at a time.' },
+    { name: 'Ask', does: 'You choose warn or block, team or personal, and refine the patterns.' },
+    { name: 'Write', does: 'Writes one rule file per behavior in the project’s .claude folder.', leaves: '.claude/hookify.<name>.rule.md or .local.md' },
+  ]}
+/>
+
+## Create a rule from a sentence
+
+Describe the behavior after the command:
+
+<Strip cmd="/hookify:hookify Warn me when I use console.log" />
+
+Claude still reads your last 10 to 15 messages for examples of the behavior, so the pattern matches what actually happened.
+Then it asks you:
+
+1. Which behaviors to turn into rules.
+2. Whether each rule warns or blocks.
+3. Whether the rule is for the team or for you.
+4. Which patterns trigger it. It shows the patterns it found, and you can refine them or add more.
+
+## Create rules from the conversation
+
+Run the command without arguments after a session in which you corrected Claude:
+
+<Strip cmd="/hookify:hookify" />
+
+A subagent reads your recent messages and looks for four signals:
+
+- explicit requests, such as "don't do X" or "stop doing Y"
+- corrections and reverts of Claude's changes
+- frustrated reactions, such as "why did you do X?" or "I didn't ask for that"
+- the same problem more than once
+
+For each issue, it reports the tool involved, a pattern to match, what happened, and a severity.
+It focuses on the last 20 to 30 messages.
+Then you get the same four questions as above.
+
+## What it writes
+
+Each rule goes to the `.claude/` folder of the directory where you started Claude Code:
+
+| Your choice | File | Commit it? |
+|---|---|---|
+| Team rule | `.claude/hookify.<name>.rule.md` | Yes |
+| Personal rule | `.claude/hookify.<name>.local.md` | No. Add `.claude/*.local.md` to your `.gitignore` |
+
+Table 1. Where `/hookify:hookify` writes a rule.
+
+Names are kebab-case and start with a verb, such as `block-dangerous-rm`, `warn-console-log`, or `require-tests-before-stop`.
+Claude lists the files it created and what each one triggers on.
+
+`/hookify:hookify` writes project rules only.
+To apply a rule in every project, create it by hand in `~/.claude/hookify.<name>.local.md`.
+
+## Check that the rule fires
+
+Ask Claude to do the thing the rule covers.
+A `block` rule on `bash` denies the command, and you see `Hookify: Blocked operation by rule: <name>`.
+A `warn` rule shows its message and lets the action run.
+
+If nothing happens:
+
+1. Run `/hookify:list`. If the rule is missing, check the file name and the folder.
+2. Check that the rule says `enabled: true`, and that no rule higher in the [priority order](/plugins/hookify/reference/#where-rules-live) has the same `name`.
+3. Test the pattern on a sample string:
+
+   ```sh
+   python3 -c "import re; print(re.search(r'rm\s+-rf', 'rm -rf x', re.I))"
+   ```
+
+   It prints `None` when the pattern doesn't match.
+
+:::tip
+If a block is too strict, change `action: block` to `action: warn` in the rule file, or make the pattern more specific. The change applies on the next tool call.
+:::
+
+## Next steps
+
+- [Review your changes against the rules](/plugins/hookify/review-changes/): find what your new rule would have caught in the diff.
+- [Rule file reference](/plugins/hookify/reference/): every field, event, and operator, for rules you edit by hand.
+- [session-learner](/plugins/session-learner/): collect a whole session's corrections, and hand the repeated errors to hookify.

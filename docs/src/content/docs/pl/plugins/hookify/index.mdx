@@ -1,0 +1,95 @@
+---
+title: hookify
+description: Zamienia „nie rób X” w regułę, którą Claude Code egzekwuje ostrzeżeniem albo blokadą, bez edycji ustawień i pisania skryptów hooków.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Kiedy Claude powtarza błąd, poprawka na czacie nie powstrzyma go następnym razem.
+hookify zamienia twój opis albo błąd, który Claude właśnie popełnił, w mały plik reguły w Markdownie.
+Wbudowane hooki czytają te pliki przy każdym wywołaniu narzędzia, prompcie i końcu tury, a potem pokazują ostrzeżenie albo blokują akcję.
+
+hookify to fork oficjalnego [pluginu hookify](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify).
+Dodaje reguły zespołowe i globalne, czytelniejszy komunikat o blokadzie, przegląd diffu pod kątem reguł oraz poprawki dopasowania promptów, zakończeń tury i plików.
+
+## Gdzie działa
+
+<LifeMap focus="hookify" animate={false} />
+
+hookify należy do etapu [Utrzymanie](/pl/lifecycle/maintain/), poza cyklem.
+Napisz regułę w chwili, gdy Claude powtórzy błąd, niezależnie od etapu pracy.
+
+## Co możesz z nim zrobić
+
+| Komenda | Co robi |
+|---|---|
+| [`/hookify:hookify [behavior]`](/pl/plugins/hookify/hookify/) | Tworzy reguły z twojego opisu. Bez argumentów przegląda rozmowę w poszukiwaniu twoich poprawek. |
+| [`/hookify:review-changes`](/pl/plugins/hookify/review-changes/) | Sprawdza zmiany zacommitowane i niezacommitowane z twoimi włączonymi regułami `file` i `all` i raportuje naruszenia dla każdej reguły. |
+| [`/hookify:list`](/pl/plugins/hookify/reference/#hookifylist) | Wypisuje wszystkie reguły z ich zdarzeniem, stanem i plikiem źródłowym. |
+| [`/hookify:configure`](/pl/plugins/hookify/reference/#hookifyconfigure) | Pozwala wybrać reguły do włączenia albo wyłączenia. |
+| [`/hookify:help`](/pl/plugins/hookify/reference/#hookifyhelp) | Wyjaśnia działanie hookify w Claude Code. |
+
+Tabela 1. Komendy, które dodaje hookify.
+
+Hooki reguł nie potrzebują komendy.
+Uruchamiają się same i stosują reguły pasujące do zdarzenia.
+
+## Wypróbuj w minutę
+
+1. Poproś o regułę:
+
+   <Strip cmd="/hookify:hookify Block rm -rf" />
+
+   Claude pyta, czy ostrzegać, czy blokować, i czy reguła jest dla zespołu, czy tylko dla ciebie, a potem zapisuje `.claude/hookify.block-rm-rf.rule.md` albo `.claude/hookify.block-rm-rf.local.md`.
+
+2. Poproś Claude’a: `Run rm -rf /tmp/hookify-test`.
+
+   Restart nie jest potrzebny. Claude Code pokazuje `Hookify: Blocked operation by rule: block-rm-rf`, a komenda się nie wykonuje.
+   Claude dostaje treść reguły jako powód.
+
+Żeby zmienić albo usunąć regułę, edytuj albo usuń jej plik.
+Zmiana działa od następnego wywołania narzędzia.
+
+## Jak wygląda reguła
+
+Reguła to plik Markdown w `.claude/`.
+Frontmatter mówi, kiedy reguła się uruchamia, a treść to komunikat, który widzi Claude:
+
+```markdown
+---
+name: block-dangerous-rm
+enabled: true
+event: bash
+pattern: rm\s+-rf
+action: block
+---
+
+**Dangerous rm command detected!**
+
+This command could delete important files.
+```
+
+Listing 1. `examples/dangerous-rm.rule.md`, skrócony
+
+Plik `.rule.md` to reguła zespołowa, którą commitujesz.
+Plik `.local.md` jest tylko twój: w tym projekcie albo w `~/.claude/` dla wszystkich projektów.
+[Dokumentacja referencyjna](/pl/plugins/hookify/reference/) opisuje każde pole, zdarzenie i operator.
+
+## Wymagania
+
+hookify potrzebuje Pythona 3.9 lub nowszego, dostępnego jako `python3` w `PATH`.
+Nie ma innych zależności.
+
+:::caution
+Przy błędzie hookify niczego nie blokuje. Jeśli brakuje Pythona albo hook się wywróci, akcja się wykonuje, a Claude Code pokazuje komunikat `Hookify error`.
+:::
+
+## Następne kroki
+
+- [Utwórz regułę przez `/hookify:hookify`](/pl/plugins/hookify/hookify/): z jednego zdania albo z błędów w bieżącej rozmowie.
+- [Sprawdź zmiany z regułami](/pl/plugins/hookify/review-changes/): znajdź naruszenia, które już są w twoim diffie.
+- [session-learner](/pl/plugins/session-learner/): zamień poprawki z całej sesji w reguły, w tym reguły hookify.

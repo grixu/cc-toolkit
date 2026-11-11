@@ -1,0 +1,103 @@
+---
+title: /hookify:hookify
+description: Utwórz regułę, która ostrzega przed zachowaniem albo je blokuje, z jednego zdania albo z poprawek w bieżącej rozmowie.
+group: guides
+skill: hookify
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Sięgnij po `/hookify:hookify`, gdy Claude robi coś, czego już mu zabroniono, albo coś, czego nigdy nie powinien robić.
+Komenda zapisuje jeden plik reguły na każde wybrane zachowanie, a reguła działa od następnego wywołania narzędzia.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="hookify"
+  input="Zachowanie do zatrzymania albo nic: wtedy bieżąca rozmowa"
+  steps={[
+    { name: 'Zbieranie', does: 'Czyta twój opis albo zleca subagentowi przejrzenie rozmowy w poszukiwaniu poprawek.' },
+    { name: 'Wybór', does: 'Wybierasz zachowania, z których powstaną reguły, do czterech naraz.' },
+    { name: 'Pytania', does: 'Wybierasz ostrzeżenie albo blokadę, zespół albo siebie i doprecyzowujesz wzorce.' },
+    { name: 'Zapis', does: 'Zapisuje jeden plik reguły na zachowanie w folderze .claude projektu.', leaves: '.claude/hookify.<name>.rule.md albo .local.md' },
+  ]}
+/>
+
+## Reguła z jednego zdania
+
+Opisz zachowanie po komendzie:
+
+<Strip cmd="/hookify:hookify Warn me when I use console.log" />
+
+Claude i tak czyta twoje ostatnie 10–15 wiadomości w poszukiwaniu przykładów tego zachowania, żeby wzorzec pasował do tego, co naprawdę się stało.
+Potem pyta:
+
+1. Z których zachowań zrobić reguły.
+2. Czy każda reguła ma ostrzegać, czy blokować.
+3. Czy reguła jest dla zespołu, czy dla ciebie.
+4. Jakie wzorce ją uruchamiają. Pokazuje znalezione wzorce, a ty możesz je poprawić albo dodać nowe.
+
+## Reguły z rozmowy
+
+Uruchom komendę bez argumentów po sesji, w której poprawiasz Claude’a:
+
+<Strip cmd="/hookify:hookify" />
+
+Subagent czyta twoje ostatnie wiadomości i szuka czterech sygnałów:
+
+- wprost wyrażonych próśb, takich jak „nie rób X” albo „przestań robić Y”
+- poprawek i cofnięć zmian Claude’a
+- reakcji pełnych frustracji, takich jak „po co to?” albo „nie o to chodziło”
+- tego samego problemu więcej niż raz
+
+Dla każdego problemu podaje użyte narzędzie, wzorzec do dopasowania, opis zdarzenia i wagę.
+Skupia się na ostatnich 20–30 wiadomościach.
+Potem dostajesz te same cztery pytania co wyżej.
+
+## Co zapisuje
+
+Każda reguła trafia do folderu `.claude/` w katalogu, w którym uruchomiono Claude Code:
+
+| Twój wybór | Plik | Commitować? |
+|---|---|---|
+| Reguła zespołowa | `.claude/hookify.<name>.rule.md` | Tak |
+| Reguła osobista | `.claude/hookify.<name>.local.md` | Nie. Dodaj `.claude/*.local.md` do `.gitignore` |
+
+Tabela 1. Gdzie `/hookify:hookify` zapisuje regułę.
+
+Nazwy są w kebab-case i zaczynają się od czasownika, na przykład `block-dangerous-rm`, `warn-console-log` albo `require-tests-before-stop`.
+Na koniec Claude wypisuje utworzone pliki i to, na co każdy z nich reaguje.
+
+`/hookify:hookify` zapisuje tylko reguły projektu.
+Żeby reguła działała we wszystkich projektach, utwórz ją ręcznie w `~/.claude/hookify.<name>.local.md`.
+
+## Sprawdź, czy reguła działa
+
+Poproś Claude’a o to, czego dotyczy reguła.
+Reguła `block` na zdarzeniu `bash` odrzuca komendę, a ty widzisz `Hookify: Blocked operation by rule: <name>`.
+Reguła `warn` pokazuje swój komunikat i pozwala wykonać akcję.
+
+Jeśli nic się nie dzieje:
+
+1. Uruchom `/hookify:list`. Jeśli reguły nie ma na liście, sprawdź nazwę pliku i folder.
+2. Sprawdź, czy reguła ma `enabled: true` i czy żadna reguła wyżej w [kolejności priorytetów](/pl/plugins/hookify/reference/#gdzie-są-reguły) nie ma tego samego `name`.
+3. Przetestuj wzorzec na przykładowym tekście:
+
+   ```sh
+   python3 -c "import re; print(re.search(r'rm\s+-rf', 'rm -rf x', re.I))"
+   ```
+
+   Wypisuje `None`, gdy wzorzec nie pasuje.
+
+:::tip
+Jeśli blokada jest zbyt surowa, zmień w pliku reguły `action: block` na `action: warn` albo zawęź wzorzec. Zmiana działa od następnego wywołania narzędzia.
+:::
+
+## Następne kroki
+
+- [Sprawdź zmiany z regułami](/pl/plugins/hookify/review-changes/): zobacz, co nowa reguła wyłapałaby w diffie.
+- [Dokumentacja pliku reguły](/pl/plugins/hookify/reference/): każde pole, zdarzenie i operator dla reguł edytowanych ręcznie.
+- [session-learner](/pl/plugins/session-learner/): zbierz poprawki z całej sesji i przekaż powtarzane błędy do hookify.
