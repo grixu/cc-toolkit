@@ -23,6 +23,7 @@ Work dir: the manifest's directory, `~/.cache/pr-proof/<repo>/<branch>/`, comput
 3. **Judge each kind** on its own, as the next section says, then set the signals beside your decisions:
    - A kind whose signal is `suggest` that you do not plan, or whose signal is `reject` that you do plan, is an overrule: state its reason in one line.
    - `uncertain` is your call.
+   - Jev's terminal question also counts what a test run prints, so a `suggest` for `terminal` that comes only from test changes is an expected overrule: tests never call for a kind by themselves.
    - `suppressed` true means Jev reads the change as not affecting program behaviour. Planning any kind against it is an overrule too.
 
    When no kind applies, the plan is **no proof**.
