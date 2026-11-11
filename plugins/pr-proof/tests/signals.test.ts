@@ -20,7 +20,6 @@ function fakeProcess(files: File[], sleeps: string[][] = []) {
     }
     const args = argv.slice(1)
     if (args[0] === 'rev-parse') return { value: { exitCode: args[3] === 'origin/main^{commit}' ? 0 : 1, stdout: '', stderr: '' } }
-    if (args[0] === 'log') return ok('abc123 feat: restyle the login page\n')
     if (args.includes('--stat=200')) return ok(files.map((f) => ` ${f.path} | 1 +`).join('\n'))
     if (args.includes('--numstat')) return ok(files.map((f) => `${f.binary ? '-' : '1'}\t${f.binary ? '-' : '0'}\t${f.path}\0`).join(''))
     const pathspec = args[args.length - 1]
@@ -102,8 +101,7 @@ test('a change without behaviour in any part suppresses the kinds but keeps thei
 
 test('puts prose apart from the diff, keeping agent instructions in it', () => {
   const diff = [fileDiff('src/a.ts', '+a()'), fileDiff('docs/guide.md', '+guide'), fileDiff('CLAUDE.md', '+rule')].join('\n')
-  const state = partState({ files: ['src/a.ts', 'docs/guide.md', 'CLAUDE.md'], diff }, { commits: 'abc fix', diffstat: 'stat' })
-  expect(state.commits).toBe('abc fix')
+  const state = partState({ files: ['src/a.ts', 'docs/guide.md', 'CLAUDE.md'], diff }, { diffstat: 'stat' })
   expect(state.diffstat).toBe('stat')
   expect(state.diff).toContain('+a()')
   expect(state.diff).toContain('+rule')
@@ -132,7 +130,7 @@ test('asks about the diff without lockfiles and binaries and returns signals', a
   expect(requests[0].init.headers.authorization).toBe('Bearer secret')
   expect(body.model).toBe('jev-1.14.0')
   expect(Object.keys(body.state).sort()).toEqual(['commits', 'diff', 'diffstat', 'files'])
-  expect(body.state.commits).toContain('restyle the login page')
+  expect(body.state.commits).toBe('')
   expect(body.state.files).toEqual(['src/Login.tsx'])
   expect(body.state.diff).toContain('Button')
   expect(body.state.diff).not.toContain('pnpm-lock.yaml')

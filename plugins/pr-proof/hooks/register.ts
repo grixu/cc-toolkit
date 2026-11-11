@@ -1,5 +1,4 @@
 import {
-  COMMITS_CHAR_BUDGET,
   CONCURRENCY,
   DIFFSTAT_CHAR_BUDGET,
   MAX_SPLIT_DEPTH,
@@ -26,10 +25,10 @@ import { aggregate, factQuestions, missingFact, partState, type Answers } from '
 
 const TOOL = 'proof_signals'
 const DEFAULT_MODEL = 'jev-1.14.0'
-// Commits and diffstat travel in every part, so the diff gets what is left of the state.
-const DIFF_CHAR_BUDGET = STATE_CHAR_BUDGET - COMMITS_CHAR_BUDGET - DIFFSTAT_CHAR_BUDGET
+// The diffstat travels in every part, so the diff gets what is left of the state.
+const DIFF_CHAR_BUDGET = STATE_CHAR_BUDGET - DIFFSTAT_CHAR_BUDGET
 const DESCRIPTION =
-  "Ask the TypeSafe Jev model which kinds of proof a branch's change needs. Sends the commits, diffstat and diff of <base>...HEAD, without lockfiles and generated files, and returns JSON: for screenshots, video, api and terminal a signal (suggest, reject or uncertain) with its probability, whether the change affects program behaviour at all and whether that suppresses the others, the Jev model that answered, and how much of the diff was assessed. Call it when planning proof for a pull request."
+  "Ask the TypeSafe Jev model which kinds of proof a branch's change needs. Sends the diffstat and diff of <base>...HEAD, without lockfiles and generated files, and returns JSON: for screenshots, video, api and terminal a signal (suggest, reject or uncertain) with its probability, whether the change affects program behaviour at all and whether that suppresses the others, the Jev model that answered, and how much of the diff was assessed. Call it when planning proof for a pull request."
 
 export function register(on, options) {
   on('session.start', async ($, e, next) => {
@@ -77,9 +76,8 @@ export async function proofSignals($, base: unknown, options) {
   const ref = await resolveBase($, base)
   const range = `${ref}...HEAD`
   // --no-relative: a user's diff.relative=true would limit the diff to the current directory.
-  const [commits, diffstat, numstat] = await Promise.all([
-    git($, ['log', '--no-color', '--format=%h %s%n%b', `${ref}..HEAD`]),
-    git($, ['diff', '--no-relative', '--stat=200', '--no-color', range]),
+  const [diffstat, numstat] = await Promise.all([
+    git($,['diff', '--no-relative', '--stat=200', '--no-color', range]),
     git($, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
   ])
 
@@ -103,7 +101,7 @@ export async function proofSignals($, base: unknown, options) {
     questions: factQuestions(),
     limit: limiter(CONCURRENCY),
   }
-  const context = { commits: clip(commits.trim(), COMMITS_CHAR_BUDGET), diffstat: clip(diffstat.trimEnd(), DIFFSTAT_CHAR_BUDGET) }
+  const context = { diffstat: clip(diffstat.trimEnd(), DIFFSTAT_CHAR_BUDGET) }
   let truncatedHunks = plan.truncatedHunks
 
   const ask = async (part: Part, depth: number): Promise<{ model: string; answers: Answers }[]> => {

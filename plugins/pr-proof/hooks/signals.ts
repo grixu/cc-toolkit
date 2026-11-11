@@ -5,10 +5,14 @@ export const REJECT_AT = 0.3
 
 export const FACTS = {
   appearance_changed: '`diff` changes how a screen looks to a user, such as layout, styling or visible text.',
-  ui_flow_changed: '`diff` changes an interaction or flow a user goes through in the UI.',
-  endpoint_response_changed: '`diff` changes what an HTTP or RPC endpoint returns to its caller.',
-  command_output_changed: '`diff` changes the output of a command, script, migration or job.',
-  no_behavior_change: 'The change in `diff` does not affect program behaviour.',
+  ui_flow_changed:
+    '`diff` changes what a user does across steps in the UI, or how the UI responds to a click, typing or other input. A change to layout, styling or text alone is not this.',
+  endpoint_response_changed:
+    '`diff` changes what an HTTP or RPC endpoint returns to its caller: its status, body, fields, error codes or headers, or which callers it allows.',
+  command_output_changed:
+    '`diff` changes what a command, script, migration, job, build or test run prints, logs or does when started from a terminal, including through the configuration or environment it reads. Code that only serves HTTP requests or renders a UI is not this.',
+  no_behavior_change:
+    'The change in `diff` leaves what the program does unchanged, as with documentation, comments, agent instructions, version bumps, removal of unreachable code or refactors that keep behaviour.',
 }
 
 export const KIND_OF_FACT = {
@@ -38,8 +42,9 @@ export function missingFact(answers: Answers): string | undefined {
 }
 
 // Prose sits apart from `diff`, since a doc describing a change reads to Jev as code making it; agent instructions
-// stay in `diff` because they direct an agent.
-export function partState(part: Part, context: { commits: string; diffstat: string }) {
+// stay in `diff` because they direct an agent. `commits` goes empty because commit messages argue for the change and
+// pulled Jev's answers away from the labels; the field stays because the measured state kept it.
+export function partState(part: Part, context: { diffstat: string }) {
   const code: string[] = []
   const prose: string[] = []
   for (const text of part.diff.split(/\n(?=diff --git a\/)/)) {
@@ -47,7 +52,7 @@ export function partState(part: Part, context: { commits: string; diffstat: stri
     ;(PROSE_FILE.test(path) && !AGENT_FILE.test(path) ? prose : code).push(text)
   }
   return {
-    commits: context.commits,
+    commits: '',
     diffstat: context.diffstat,
     files: part.files,
     diff: code.join('\n'),
