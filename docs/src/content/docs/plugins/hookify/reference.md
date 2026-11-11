@@ -208,8 +208,8 @@ It changes only the `enabled` line.
 
 ### `/hookify:help`
 
-Explains inside Claude Code how hookify works, where rules live, and how to write a pattern.
-It shows only the simple `pattern` form and doesn't list `/hookify:review-changes`, so use this page for `conditions` and `tool_matcher`.
+Explains inside Claude Code how hookify works: events, rule locations, the frontmatter keys, what a match does, the commands, examples and troubleshooting.
+For a detail it doesn't cover, it reads the plugin's full rule-syntax reference, the same content as this page.
 
 To edit or delete a rule, edit or delete its file. There is no command for it.
 

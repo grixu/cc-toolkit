@@ -208,8 +208,8 @@ Zmienia tylko linię `enabled`.
 
 ### `/hookify:help`
 
-Wyjaśnia w Claude Code, jak działa hookify, gdzie są reguły i jak napisać wzorzec.
-Pokazuje tylko prostą postać z `pattern` i nie wymienia `/hookify:review-changes`, więc `conditions` i `tool_matcher` sprawdzaj na tej stronie.
+Wyjaśnia w Claude Code, jak działa hookify: zdarzenia, miejsca reguł, klucze frontmattera, skutek dopasowania, komendy, przykłady i rozwiązywanie problemów.
+O szczegół, którego nie obejmuje, sięga do pełnej referencji składni reguł z pluginu, tej samej treści co ta strona.
 
 Żeby edytować albo usunąć regułę, edytuj albo usuń jej plik. Nie ma do tego komendy.
 

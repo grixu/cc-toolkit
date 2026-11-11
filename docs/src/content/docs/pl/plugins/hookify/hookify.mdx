@@ -46,7 +46,8 @@ Uruchom komendę bez argumentów po sesji, w której poprawiasz Claude’a:
 
 <Strip cmd="/hookify:hookify" />
 
-Subagent czyta twoje ostatnie wiadomości i szuka czterech sygnałów:
+Claude kopiuje twoje ostatnie 20–30 wiadomości, z linijką o tym, co zrobił przed każdą, i przekazuje je agentowi `conversation-analyzer` z pluginu.
+Agent szuka czterech sygnałów:
 
 - wprost wyrażonych próśb, takich jak „nie rób X” albo „przestań robić Y”
 - poprawek i cofnięć zmian Claude’a
@@ -54,7 +55,6 @@ Subagent czyta twoje ostatnie wiadomości i szuka czterech sygnałów:
 - tego samego problemu więcej niż raz
 
 Dla każdego problemu podaje użyte narzędzie, wzorzec do dopasowania, opis zdarzenia i wagę.
-Skupia się na ostatnich 20–30 wiadomościach.
 Potem dostajesz te same cztery pytania co wyżej.
 
 ## Co zapisuje

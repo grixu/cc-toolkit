@@ -46,7 +46,8 @@ Run the command without arguments after a session in which you corrected Claude:
 
 <Strip cmd="/hookify:hookify" />
 
-A subagent reads your recent messages and looks for four signals:
+Claude copies your last 20 to 30 messages, with a line on what it did before each, to the plugin's `conversation-analyzer` agent.
+The agent looks for four signals:
 
 - explicit requests, such as "don't do X" or "stop doing Y"
 - corrections and reverts of Claude's changes
@@ -54,7 +55,6 @@ A subagent reads your recent messages and looks for four signals:
 - the same problem more than once
 
 For each issue, it reports the tool involved, a pattern to match, what happened, and a severity.
-It focuses on the last 20 to 30 messages.
 Then you get the same four questions as above.
 
 ## What it writes

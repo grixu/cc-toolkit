@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `/hookify:help` matches the current rule format: it covers `conditions`, `tool_matcher`, what a match does per event and `/hookify:review-changes`, and its "require tests" example uses a `transcript` condition instead of a stop `pattern` that never matched.
+- `/hookify:hookify` without arguments launches the plugin's `conversation-analyzer` agent, which its text named, instead of a `general-purpose` agent with an inline prompt, and passes it the recent messages it analyzes.
 - `prompt` rules now match the submitted prompt. The engine read `user_prompt`, but Claude Code sends the text as `prompt`; a simple `pattern:` and a `field: prompt` or `field: user_prompt` condition all read it now.
 - `file` rules with a simple `pattern:` (or a `new_text` condition) now see the content of `Write` calls. Before, `new_text` read only Edit's `new_string`, so new files were never checked.
 - The "require tests before stopping" example (README and `examples/require-tests-stop.local.md`) blocked every stop: `not_contains` compares literal text, so `npm test|pytest|cargo test` never matched. It now uses a negative-lookahead `regex_match` that looks for a Bash call running one of those commands.
