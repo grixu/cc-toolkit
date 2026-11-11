@@ -24,6 +24,7 @@ export type NavPage = { path: string; label: string; group: string }
 export type NavGroup = { key: GroupKey; label: string; pages: NavPage[] }
 
 type Entry = CollectionEntry<'docs'>
+const UNORDERED = Infinity
 export const entryPath = (e: Entry) => {
   const id = e.id.replace(/^pl\//, '').replace(/(^|\/)index$/, '')
   return id === '' ? '' : `${id}/`
@@ -50,13 +51,15 @@ export async function sidebarFor(path: string, lang: Lang): Promise<{ label: str
   else if (section === 'plugins' && plugin) [prefix, label] = [`plugins/${plugin}/`, `${plugin} docs`]
   else return null
 
+  const orderOf = (p: { en: Entry }) => p.en.data.sidebar.order ?? UNORDERED
+  const groupOf = (p: { en: Entry; path: string }) => p.en.data.group ?? (p.path === prefix ? 'start' : 'guides')
   const pages = (await localized(lang))
     .filter((p) => p.path.startsWith(prefix))
-    .sort((a, b) => (a.en.data.sidebar.order ?? 999) - (b.en.data.sidebar.order ?? 999) || a.path.localeCompare(b.path))
+    .sort((a, b) => orderOf(a) - orderOf(b) || a.path.localeCompare(b.path))
 
   const groups: NavGroup[] = []
   for (const key of groupOrder) {
-    const inGroup = pages.filter((p) => (p.en.data.group ?? (p.path === prefix ? 'start' : 'guides')) === key)
+    const inGroup = pages.filter((p) => groupOf(p) === key)
     if (!inGroup.length) continue
     groups.push({
       key,

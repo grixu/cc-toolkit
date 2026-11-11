@@ -53,14 +53,15 @@ const landing = !!starlightRoute.entry.data.landing
 
   const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('.toc [data-toc]')]
   if (tocLinks.length) {
+    const ACTIVE_LINE = 0.25
     const heads = tocLinks.map((a) => document.getElementById(a.dataset.toc!)).filter((h): h is HTMLElement => !!h)
     const update = () => {
-      const line = innerHeight * 0.25
+      const line = innerHeight * ACTIVE_LINE
       let cur: HTMLElement | undefined
       for (const h of heads) if (h.getBoundingClientRect().top <= line) cur = h
       tocLinks.forEach((a) => (a.dataset.toc === cur?.id ? a.setAttribute('aria-current', 'true') : a.removeAttribute('aria-current')))
     }
-    const io = new IntersectionObserver(update, { rootMargin: '0px 0px -75% 0px' })
+    const io = new IntersectionObserver(update, { rootMargin: `0px 0px -${(1 - ACTIVE_LINE) * 100}% 0px` })
     heads.forEach((h) => io.observe(h))
     addEventListener('scroll', update, { passive: true })
     update()

@@ -14,6 +14,10 @@ const t = ui[lang]
 const pl = lang === 'pl'
 const id = `stage-table-${stage ?? 'all'}`
 const here = stage ? skills.filter((k) => k.stage === stage) : []
+const stageTitle = stage && stageById[stage].title[lang]
+const caption = stage
+  ? pl ? `Komendy na etapie ${stageTitle}` : `Commands in the ${stageTitle} stage`
+  : pl ? 'Etapy i pluginy, które na nich działają' : 'The stages and the plugins that work in each'
 ---
 
 <div class="table-wrap not-content" role="region" tabindex="0" aria-labelledby={id}>
@@ -46,5 +50,5 @@ const here = stage ? skills.filter((k) => k.stage === stage) : []
   )}
 </div>
 <p class="caption table-caption" id={id}>
-  {pl ? 'Tabela' : 'Table'} {n}. {stage ? (pl ? `Komendy na etapie ${stageById[stage].title.pl}` : `Commands in the ${stageById[stage].title.en} stage`) : pl ? 'Etapy i pluginy, które na nich działają' : 'The stages and the plugins that work in each'}
+  {pl ? 'Tabela' : 'Table'} {n}. {caption}
 </p>

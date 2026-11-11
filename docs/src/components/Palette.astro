@@ -48,13 +48,17 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
   let opener: HTMLElement | null = null
   let pagefind: Promise<Pagefind | null> | undefined
   let seq = 0
+  const MAX_QUICK_ROWS = 5
+  const MAX_SEARCH_ROWS = 8
 
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
+
   const markWords = (text: string, words: string[]) => {
     let html = esc(text)
     for (const w of words) html = html.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>')
     return html
   }
+
   const loadPagefind = () =>
     (pagefind ??= import(/* @vite-ignore */ `${location.origin}/pagefind/pagefind.js`).then((m) => m as Pagefind).catch(() => null))
 
@@ -81,6 +85,7 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
     sel = 0
     mark()
   }
+
   function mark() {
     const items = [...list.children] as HTMLElement[]
     items.forEach((r, i) => r.setAttribute('aria-selected', String(i === sel)))
@@ -89,22 +94,23 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
       input.setAttribute('aria-activedescendant', items[sel].id)
     } else input.removeAttribute('aria-activedescendant')
   }
+
   async function query() {
     const q = input.value.trim()
     const words = q.toLowerCase().split(/\s+/).filter(Boolean)
     const mine = ++seq
     if (!words.length) {
       rows = popular.map((h) => quick.find((r) => r.href === h)).filter((r): r is Row & { hay: string } => !!r)
-      if (rows.length < popular.length) rows = quick.slice(0, 5)
+      if (rows.length < popular.length) rows = quick.slice(0, MAX_QUICK_ROWS)
       return render(words)
     }
-    const local = quick.filter((r) => words.every((w) => r.hay.toLowerCase().includes(w))).slice(0, 5)
+    const local = quick.filter((r) => words.every((w) => r.hay.toLowerCase().includes(w))).slice(0, MAX_QUICK_ROWS)
     rows = local
     render(words)
     const pf = await loadPagefind()
     const found = await pf?.search(q)
     if (!found || mine !== seq) return
-    const data = await Promise.all(found.results.slice(0, 8).map((r) => r.data()))
+    const data = await Promise.all(found.results.slice(0, MAX_SEARCH_ROWS).map((r) => r.data()))
     if (mine !== seq) return
     const seen = new Set(local.map((r) => r.href))
     rows = [
@@ -115,6 +121,7 @@ const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/
     ]
     render(words)
   }
+
   function open() {
     if (pal.open) return
     opener = document.activeElement as HTMLElement

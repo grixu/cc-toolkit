@@ -18,6 +18,7 @@ const link = (p: string) => href(p, lang)
 const clipId = `lmap-clip-${Math.random().toString(36).slice(2, 8)}`
 
 const Y = 150
+const H = 380
 // Human review holds three stations, so it gets the widest column.
 const widths: Record<string, number> = { plan: 220, build: 220, self: 200, test: 200, human: 360 }
 const xs = cycle.reduce<number[]>((acc, _s, i) => [...acc, i === 0 ? 0 : acc[i - 1] + widths[cycle[i - 1].id]], [])
@@ -65,8 +66,10 @@ const maintain = skills.filter((s) => s.stage === 'maintain')
 
 const dimPlugin = (plugin?: string) => !!focus && plugin !== focus
 const dimSkill = (s: Skill) => (dimPlugin(s.plugin) || (!!stage && s.stage !== stage) ? 'is-dim' : undefined)
-const segDim = (plugin: string) =>
-  dimPlugin(plugin) || (stage && !skills.some((s) => s.plugin === plugin && s.stage === stage && s.main)) ? 'is-dim' : undefined
+const segDim = (plugin: string) => {
+  const missingFromStage = !!stage && !skills.some((s) => s.plugin === plugin && s.stage === stage && s.main)
+  return dimPlugin(plugin) || missingFromStage ? 'is-dim' : undefined
+}
 const onStages = focus ? new Set(skills.filter((s) => s.plugin === focus).map((s) => s.stage)) : stage ? new Set([stage]) : null
 const labelPos = (p: { x: number; y: number; lab: string }) =>
   p.lab === 'a'
@@ -93,17 +96,17 @@ const showMaintain = !onStages || onStages.has('maintain')
           </a>
         ))}
       </div>
-      <svg class="lmap-svg" viewBox={`0 0 ${W} 380`} role="img" aria-label={t.mapLabel}>
+      <svg class="lmap-svg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.mapLabel}>
         {animate && (
           <defs>
             <clipPath id={clipId}>
-              <rect class="lmap-progress" x="0" y="0" width={W} height="380" />
+              <rect class="lmap-progress" x="0" y="0" width={W} height={H} />
             </clipPath>
           </defs>
         )}
         <g aria-hidden="true">
-          {cycle.map((s, i) => <rect x={xs[i]} y="0" width={widths[s.id]} height="380" class:list={['lmap-band', { 'is-on': onStages?.has(s.id) }]} />)}
-          {xs.slice(1).map((x) => <line x1={x} y1="0" x2={x} y2="380" class="lmap-rule" />)}
+          {cycle.map((s, i) => <rect x={xs[i]} y="0" width={widths[s.id]} height={H} class:list={['lmap-band', { 'is-on': onStages?.has(s.id) }]} />)}
+          {xs.slice(1).map((x) => <line x1={x} y1="0" x2={x} y2={H} class="lmap-rule" />)}
         </g>
 
         <path class="lmap-loop" d={`M ${MERGE} ${Y} H 1170 Q 1186 ${Y} 1186 ${Y + 16} V 360 Q 1186 372 1174 372 H 22 Q 12 372 12 360 V ${Y + 12} Q 12 ${Y} 24 ${Y} H 108`} aria-hidden="true" />
@@ -186,6 +189,7 @@ const showMaintain = !onStages || onStages.has('maintain')
   const reduce = matchMedia('(prefers-reduced-motion: reduce)')
   const DWELL = 1900
   const REST = 2400
+  const RESTART = 900
 
   document.querySelectorAll<HTMLElement>('.lc[data-animate]').forEach((fig) => {
     const svg = fig.querySelector<SVGSVGElement>('.lmap-svg')!
@@ -198,12 +202,14 @@ const showMaintain = !onStages || onStages.has('maintain')
     let visible = false
 
     const reach = (x: number) => bar.style.setProperty('--to', String(x / width))
+
     function reset() {
       fig.dataset.phase = 'reset'
       list.forEach((s) => s.classList.remove('is-lit', 'is-past'))
       merge.classList.remove('is-lit')
       reach(0)
     }
+
     function tick() {
       i += 1
       if (i === list.length) {
@@ -216,7 +222,7 @@ const showMaintain = !onStages || onStages.has('maintain')
       if (i > list.length) {
         i = -1
         reset()
-        timer = window.setTimeout(tick, 900)
+        timer = window.setTimeout(tick, RESTART)
         return
       }
       delete fig.dataset.phase
@@ -227,12 +233,14 @@ const showMaintain = !onStages || onStages.has('maintain')
       reach(Number(list[i].dataset.x))
       timer = window.setTimeout(tick, DWELL)
     }
+
     const start = () => {
       if (!reduce.matches && visible && !timer) {
         fig.dataset.running = ''
         tick()
       }
     }
+
     const stop = () => {
       clearTimeout(timer)
       timer = 0

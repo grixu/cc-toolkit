@@ -19,6 +19,7 @@ const FINDING = /^-\s+`([a-z]+)`\s*·\s*([\w-]+)\s*·\s*([A-Za-z]+)\s*·\s*(.*)$
 const SIDE = /^\s*(?:#+\s*|\*\*)?(HANDOFF|CANDIDATES)\b/;
 const NOT_FLAGGED = /^\s*(?:\*\*)?(?:Considered but )?not flagged\b/i;
 const BOY_SCOUT = /^\s*(?:\*\*)?Boy-scout\b/i;
+const LENS_HEADER = /^\s*(?:\*\*)?Lens:/;
 
 const result = (pass, reason) => ({ pass, score: pass ? 1 : 0, reason });
 const re = (p) => (p instanceof RegExp ? p : new RegExp(p, 'i'));
@@ -37,7 +38,7 @@ export function sections(output) {
     const next = lines.slice(i + 1).find((l) => l.trim());
     if (/^```/.test(line.trim()) && next && SIDE.test(next)) state = 'side';
     else if (SIDE.test(line)) state = 'side';
-    else if (/^\s*(?:\*\*)?Lens:/.test(line)) {
+    else if (LENS_HEADER.test(line)) {
       state = 'main';
       file = null;
     } else if (NOT_FLAGGED.test(line)) state = 'notFlagged';
