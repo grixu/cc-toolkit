@@ -1,0 +1,30 @@
+---
+import { href, langOf } from '../lib/i18n'
+import { supporting, stagesOf } from '../lib/lifecycle'
+
+interface Props {
+  /** Table number in the caption. */
+  n?: number
+}
+const { n = 1 } = Astro.props
+const lang = langOf(Astro.url.pathname)
+const head = lang === 'pl' ? ['Plugin', 'Co robi', 'Etap'] : ['Plugin', 'What it does', 'Stage']
+const caption = lang === 'pl' ? `Tabela ${n}. Pluginy pomocnicze i etapy, na których działają` : `Table ${n}. Supporting plugins and the stages they work in`
+const id = `supporting-${n}`
+---
+
+<div class="table-wrap not-content" role="region" tabindex="0" aria-labelledby={id}>
+  <table>
+    <thead><tr>{head.map((h) => <th scope="col">{h}</th>)}</tr></thead>
+    <tbody>
+      {supporting.map((p) => (
+        <tr>
+          <td><a href={href(`plugins/${p.name}/`, lang)}><code>{p.name}</code></a></td>
+          <td>{p.desc[lang]}</td>
+          <td>{stagesOf(p.name).map((x) => x.title[lang]).join(', ')}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+<p class="caption table-caption" id={id}>{caption}</p>

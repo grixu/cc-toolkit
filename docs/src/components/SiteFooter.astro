@@ -1,0 +1,37 @@
+---
+import { ui, href, langOf } from '../lib/i18n'
+import { core } from '../lib/lifecycle'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+---
+
+<footer class="ft">
+  <div class="ft-cols">
+    <section>
+      <p class="label">{t.plugins}</p>
+      <ul>
+        {core.map((p) => <li><a href={href(`plugins/${p.name}/`, lang)}>{p.name}</a></li>)}
+        <li><a href={href('plugins/', lang)}>{t.allPlugins}</a></li>
+      </ul>
+    </section>
+    <section>
+      <p class="label">{t.docs}</p>
+      <ul>
+        <li><a href={href('getting-started/installation/', lang)}>{t.install}</a></li>
+        <li><a href={href('lifecycle/', lang)}>{t.lifecycle}</a></li>
+        <li><a href={href('changelog/', lang)}>{t.changelog}</a></li>
+        <li><a href="https://github.com/grixu/cc-toolkit/blob/main/CONTRIBUTING.md">{t.contributing}</a></li>
+      </ul>
+    </section>
+    <section>
+      <p class="label">grixu.dev</p>
+      <ul>
+        <li><a href="https://grixu.dev">{t.blog}</a></li>
+        <li><a href="https://github.com/grixu">GitHub</a></li>
+        <li><a href="https://grixu.dev/contact">{t.contact}</a></li>
+      </ul>
+    </section>
+  </div>
+  <p class="ft-legal">{t.legal}</p>
+</footer>

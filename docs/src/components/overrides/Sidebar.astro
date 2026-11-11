@@ -1,0 +1,37 @@
+---
+import Icon from '../Icon.astro'
+import { ui, href, langOf, canonicalPath } from '../../lib/i18n'
+import { sidebarFor } from '../../lib/nav'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const path = canonicalPath(Astro.url.pathname)
+const sb = await sidebarFor(path, lang)
+const current = sb?.groups.flatMap((g) => g.pages).find((p) => p.path === path)
+---
+
+{sb && (
+  <>
+    <details class="sb-bar">
+      <summary><span>{t.pages} ·</span> <span class="sb-bar-v">{current?.label ?? sb.label}</span><Icon name="chevron" size={12} /></summary>
+      <nav aria-label={sb.label} class="sb-list">
+        {sb.groups.map((g) => (
+          <>
+            <p class="label sb-h">{g.label}</p>
+            <ul>{g.pages.map((p) => <li><a href={href(p.path, lang)} aria-current={p.path === path ? 'page' : undefined}>{p.label}</a></li>)}</ul>
+          </>
+        ))}
+      </nav>
+    </details>
+    <aside class="sb">
+      <nav aria-label={sb.label} class="sb-list">
+        {sb.groups.map((g) => (
+          <>
+            <p class="label sb-h">{g.label}</p>
+            <ul>{g.pages.map((p) => <li><a href={href(p.path, lang)} aria-current={p.path === path ? 'page' : undefined}>{p.label}</a></li>)}</ul>
+          </>
+        ))}
+      </nav>
+    </aside>
+  </>
+)}

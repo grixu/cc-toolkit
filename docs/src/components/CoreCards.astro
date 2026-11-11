@@ -1,0 +1,28 @@
+---
+import Art from './Art.astro'
+import Strip from './Strip.astro'
+import Cmd from './Cmd.astro'
+import { ui, href, langOf } from '../lib/i18n'
+import { core, skillsOf, stagesOf, installPlugin } from '../lib/lifecycle'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+---
+
+<ul class="cards not-content">
+  {core.map((p) => (
+    <li class="card card--link pcard" style={`--pc: var(--line-${p.name})`}>
+      <Art name={p.name} class="pcard-art" />
+      <div class="pcard-body">
+        <p class="label">{stagesOf(p.name).map((s) => s.title[lang]).join(' · ')}</p>
+        <h3 class="pcard-name"><span class="swatch" aria-hidden="true"></span><a href={href(`plugins/${p.name}/`, lang)}>{p.name}</a></h3>
+        <p class="pcard-desc">{p.desc[lang]}</p>
+        <p class="pcard-skills">{skillsOf(p.name).map((s, i) => <>{i > 0 && ' · '}<code><Cmd text={s.cmd.split(':')[1]} /></code></>)}</p>
+        <div class="pcard-foot">
+          <Strip cmd={installPlugin(p.name)} inCard />
+          <a class="btn btn--ghost btn--sm" href={`${href('changelog/', lang)}#${p.name}`}>{t.changelog}</a>
+        </div>
+      </div>
+    </li>
+  ))}
+</ul>

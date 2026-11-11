@@ -1,0 +1,156 @@
+---
+import Icon from './Icon.astro'
+import { ui, href, langOf } from '../lib/i18n'
+import { plugins, skills } from '../lib/lifecycle'
+import { sections } from '../lib/nav'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const pluginsLabel = sections.find((s) => s.id === 'plugins')!.label[lang]
+const quick = [
+  ...plugins.map((p) => ({ title: `${pluginsLabel} › ${p.name}`, ctx: p.desc[lang], href: href(`plugins/${p.name}/`, lang), hay: `${p.name} ${p.desc.en} ${p.desc.pl} ${p.cmd}` })),
+  ...skills
+    .filter((s) => s.href !== `plugins/${s.plugin}/`)
+    .map((s) => ({ title: `${pluginsLabel} › ${s.plugin} › ${s.cmd.split(':')[1]}`, ctx: s.does[lang], href: href(s.href, lang), hay: `${s.cmd} ${s.does.en} ${s.does.pl}` })),
+]
+const popular = ['plugins/fd3/', 'plugins/fd3/build-spec/', 'plugins/code-review/start-cr/', 'plugins/dev-kit/pr-open/', 'lifecycle/'].map((p) => href(p, lang))
+const sectionLabels = Object.fromEntries(sections.map((s) => [s.prefix.replace(/\/$/, ''), s.label[lang]]))
+---
+
+<dialog class="pal" aria-label={t.searchDocs} data-sections={JSON.stringify(sectionLabels)} data-popular={JSON.stringify(popular)}>
+  <div class="pal-field">
+    <Icon name="search" size={16} />
+    <input type="text" class="pal-input" role="combobox" aria-expanded="true" aria-controls="pal-list" aria-autocomplete="list" aria-label={t.searchDocs} placeholder={t.searchPh} autocomplete="off" spellcheck="false" />
+  </div>
+  <ul class="pal-list" id="pal-list" role="listbox" aria-label={t.results}></ul>
+  <p class="pal-empty" hidden>{t.noResults} ‘<span></span>’. <a href={href('plugins/', lang)}>{t.browsePlugins}</a></p>
+  <p class="pal-keys" aria-hidden="true">{t.keys}</p>
+  <script type="application/json" class="pal-quick" set:html={JSON.stringify(quick)} />
+</dialog>
+
+<script>
+  type Row = { title: string; ctx: string; href: string; html?: string }
+  type PagefindResult = { data: () => Promise<{ url: string; excerpt: string; meta: { title?: string } }> }
+  type Pagefind = { search: (q: string) => Promise<{ results: PagefindResult[] } | null> }
+
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
+  document.querySelectorAll('[data-keycap]').forEach((k) => (k.textContent = isMac ? '⌘K' : 'Ctrl K'))
+
+  const pal = document.querySelector<HTMLDialogElement>('.pal')!
+  const input = pal.querySelector<HTMLInputElement>('.pal-input')!
+  const list = pal.querySelector<HTMLUListElement>('.pal-list')!
+  const empty = pal.querySelector<HTMLElement>('.pal-empty')!
+  const quick: (Row & { hay: string })[] = JSON.parse(pal.querySelector('.pal-quick')!.textContent!)
+  const popular: string[] = JSON.parse(pal.dataset.popular!)
+  const sectionLabels: Record<string, string> = JSON.parse(pal.dataset.sections!)
+  let rows: Row[] = []
+  let sel = 0
+  let opener: HTMLElement | null = null
+  let pagefind: Promise<Pagefind | null> | undefined
+  let seq = 0
+
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
+  const markWords = (text: string, words: string[]) => {
+    let html = esc(text)
+    for (const w of words) html = html.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>')
+    return html
+  }
+  const loadPagefind = () =>
+    (pagefind ??= import(/* @vite-ignore */ `${location.origin}/pagefind/pagefind.js`).then((m) => m as Pagefind).catch(() => null))
+
+  const trail = (url: string, title: string) => {
+    const parts = new URL(url, location.origin).pathname.replace(/^\/pl(?=\/)/, '').split('/').filter(Boolean)
+    const head = sectionLabels[parts[0]]
+    const mid = parts[0] === 'plugins' && parts.length > 2 ? [parts[1]] : []
+    return [head, ...mid, title].filter(Boolean).join(' › ')
+  }
+
+  function render(words: string[]) {
+    list.replaceChildren(
+      ...rows.map((r, i) => {
+        const li = document.createElement('li')
+        li.id = `pal-${i}`
+        li.setAttribute('role', 'option')
+        li.innerHTML = `<span class="pal-title">${markWords(r.title, words)}</span><span class="pal-ctx">${r.html ?? esc(r.ctx)}</span>`
+        li.addEventListener('click', () => (location.href = r.href))
+        return li
+      }),
+    )
+    empty.hidden = rows.length > 0 || !words.length
+    empty.querySelector('span')!.textContent = input.value
+    sel = 0
+    mark()
+  }
+  function mark() {
+    const items = [...list.children] as HTMLElement[]
+    items.forEach((r, i) => r.setAttribute('aria-selected', String(i === sel)))
+    if (items[sel]) {
+      items[sel].scrollIntoView({ block: 'nearest' })
+      input.setAttribute('aria-activedescendant', items[sel].id)
+    } else input.removeAttribute('aria-activedescendant')
+  }
+  async function query() {
+    const q = input.value.trim()
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean)
+    const mine = ++seq
+    if (!words.length) {
+      rows = popular.map((h) => quick.find((r) => r.href === h)).filter((r): r is Row & { hay: string } => !!r)
+      if (rows.length < popular.length) rows = quick.slice(0, 5)
+      return render(words)
+    }
+    const local = quick.filter((r) => words.every((w) => r.hay.toLowerCase().includes(w))).slice(0, 5)
+    rows = local
+    render(words)
+    const pf = await loadPagefind()
+    const found = await pf?.search(q)
+    if (!found || mine !== seq) return
+    const data = await Promise.all(found.results.slice(0, 8).map((r) => r.data()))
+    if (mine !== seq) return
+    const seen = new Set(local.map((r) => r.href))
+    rows = [
+      ...local,
+      ...data
+        .filter((d) => !seen.has(d.url))
+        .map((d) => ({ title: trail(d.url, d.meta.title ?? d.url), ctx: '', html: d.excerpt, href: d.url })),
+    ]
+    render(words)
+  }
+  function open() {
+    if (pal.open) return
+    opener = document.activeElement as HTMLElement
+    pal.showModal()
+    input.value = ''
+    void query()
+    input.focus()
+    void loadPagefind()
+  }
+  pal.addEventListener('close', () => opener?.focus())
+  document.querySelectorAll('[data-open-palette]').forEach((b) => b.addEventListener('click', open))
+  document.addEventListener('keydown', (e) => {
+    const tgt = e.target as HTMLElement
+    const inField = /^(INPUT|TEXTAREA|SELECT)$/.test(tgt.tagName) || tgt.isContentEditable
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault()
+      open()
+    } else if (e.key === '/' && !inField && !pal.open) {
+      e.preventDefault()
+      open()
+    }
+  })
+  input.addEventListener('input', () => void query())
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      sel = Math.min(sel + 1, rows.length - 1)
+      mark()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      sel = Math.max(sel - 1, 0)
+      mark()
+    } else if (e.key === 'Enter' && rows[sel]) {
+      e.preventDefault()
+      location.href = rows[sel].href
+    }
+  })
+  pal.addEventListener('click', (e) => e.target === pal && pal.close())
+</script>

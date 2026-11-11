@@ -1,0 +1,20 @@
+---
+import { ui, langOf } from '../lib/i18n'
+
+interface Props {
+  cmd: string
+  inCard?: boolean
+  /** Accessible name of the scrolling command; defaults to "Install command". */
+  label?: string
+}
+const t = ui[langOf(Astro.url.pathname)]
+const { cmd, inCard = false, label = cmd.startsWith('/plugin ') ? t.installCmd : t.command } = Astro.props
+---
+
+<div class:list={['strip', { 'strip--card': inCard }]}>
+  <div class="strip-cmd" tabindex="0" aria-label={label}><span class="strip-p" aria-hidden="true">&gt; </span>{cmd}</div>
+  <button class:list={['btn btn--secondary strip-copy', { 'btn--sm': inCard }]} type="button" data-copy={cmd} data-done={t.copied} data-fail={t.selectCopy}>
+    <span class="strip-copy-l">{t.copy}</span><span class="strip-copy-w" aria-hidden="true">{t.copied}</span>
+  </button>
+  <span class="strip-live vh" aria-live="polite"></span>
+</div>

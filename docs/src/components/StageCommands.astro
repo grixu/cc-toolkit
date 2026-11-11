@@ -1,0 +1,50 @@
+---
+import Cmd from './Cmd.astro'
+import { ui, href, langOf } from '../lib/i18n'
+import { skills, stages, pluginByName, stagePath, stageById, type StageId } from '../lib/lifecycle'
+
+interface Props {
+  /** One stage's commands; without it, one row per stage. */
+  stage?: StageId
+  n?: number
+}
+const { stage, n = 1 } = Astro.props
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const pl = lang === 'pl'
+const id = `stage-table-${stage ?? 'all'}`
+const here = stage ? skills.filter((k) => k.stage === stage) : []
+---
+
+<div class="table-wrap not-content" role="region" tabindex="0" aria-labelledby={id}>
+  {stage ? (
+    <table>
+      <thead><tr><th scope="col">{t.command}</th><th scope="col">{pl ? 'Co robi' : 'What it does'}</th><th scope="col">Plugin</th></tr></thead>
+      <tbody>
+        {here.map((k) => (
+          <tr>
+            <td><a href={href(k.href, lang)}><code><Cmd text={k.cmd} /></code></a>{k.calledBy && <> <span class="badge badge--neutral badge--inline">{pl ? 'przez' : 'via'} {k.calledBy}</span></>}</td>
+            <td>{k.does[lang]}</td>
+            <td><a href={href(`plugins/${k.plugin}/`, lang)}>{k.plugin}</a>{!pluginByName[k.plugin].core && <span class="muted"> · {t.supporting}</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <table>
+      <thead><tr><th scope="col">{pl ? 'Etap' : 'Stage'}</th><th scope="col">{pl ? 'Co się dzieje' : 'What happens'}</th><th scope="col">{t.plugins}</th></tr></thead>
+      <tbody>
+        {stages.map((s) => (
+          <tr>
+            <td><a href={href(stagePath(s.id), lang)}><span class="tnum">{s.n}</span> {s.title[lang]}</a></td>
+            <td>{s.blurb[lang]}</td>
+            <td>{[...new Set(skills.filter((k) => k.stage === s.id).map((k) => k.plugin))].map((p, i) => <>{i > 0 && ', '}<a href={href(`plugins/${p}/`, lang)}>{p}</a></>)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</div>
+<p class="caption table-caption" id={id}>
+  {pl ? 'Tabela' : 'Table'} {n}. {stage ? (pl ? `Komendy na etapie ${stageById[stage].title.pl}` : `Commands in the ${stageById[stage].title.en} stage`) : pl ? 'Etapy i pluginy, które na nich działają' : 'The stages and the plugins that work in each'}
+</p>

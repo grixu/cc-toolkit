@@ -1,0 +1,9 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro'
+import chakra from '@fontsource/chakra-petch/files/chakra-petch-latin-600-normal.woff2?url'
+import plexSans from '@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2?url'
+---
+
+<Default />
+<link rel="preload" as="font" type="font/woff2" href={chakra} crossorigin />
+<link rel="preload" as="font" type="font/woff2" href={plexSans} crossorigin />

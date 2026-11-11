@@ -1,0 +1,76 @@
+---
+import SiteFooter from '../SiteFooter.astro'
+import Drawer from '../Drawer.astro'
+import Palette from '../Palette.astro'
+import { canonicalPath, langOf } from '../../lib/i18n'
+import { sidebarFor } from '../../lib/nav'
+
+const { starlightRoute } = Astro.locals
+const lang = langOf(Astro.url.pathname)
+const path = canonicalPath(Astro.url.pathname)
+const hasSb = !starlightRoute.entry.data.landing && !!(await sidebarFor(path, lang))
+const hasToc = (starlightRoute.toc?.items ?? []).filter((i) => i.depth === 2).length >= 3
+const landing = !!starlightRoute.entry.data.landing
+---
+
+<slot name="header" />
+<div class:list={['page', { 'has-sb': hasSb, 'has-toc': hasToc, 'page--landing': landing }]}>
+  {hasSb && <slot name="sidebar" />}
+  <slot />
+</div>
+<SiteFooter />
+<Drawer />
+<Palette />
+
+<script>
+  document.querySelectorAll<HTMLElement>('.strip').forEach((strip) => {
+    const btn = strip.querySelector<HTMLButtonElement>('.strip-copy')!
+    const live = strip.querySelector<HTMLElement>('.strip-live')!
+    const code = strip.querySelector<HTMLElement>('.strip-cmd')!
+    const label = btn.querySelector<HTMLElement>('.strip-copy-l')!
+    const idle = label.textContent
+    let timer = 0
+    const fits = () => strip.toggleAttribute('data-overflow', code.scrollWidth > code.clientWidth + 1)
+    fits()
+    addEventListener('resize', fits)
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy!)
+        label.textContent = btn.dataset.done!
+      } catch {
+        label.textContent = btn.dataset.fail!
+        getSelection()?.selectAllChildren(code)
+      }
+      live.textContent = label.textContent
+      clearTimeout(timer)
+      timer = window.setTimeout(() => (label.textContent = idle), 2000)
+    })
+  })
+
+  document.querySelectorAll<HTMLDetailsElement>('.sb-bar, .toc-inline').forEach((d) =>
+    d.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => (d.open = false))),
+  )
+
+  const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('.toc [data-toc]')]
+  if (tocLinks.length) {
+    const heads = tocLinks.map((a) => document.getElementById(a.dataset.toc!)).filter((h): h is HTMLElement => !!h)
+    const update = () => {
+      const line = innerHeight * 0.25
+      let cur: HTMLElement | undefined
+      for (const h of heads) if (h.getBoundingClientRect().top <= line) cur = h
+      tocLinks.forEach((a) => (a.dataset.toc === cur?.id ? a.setAttribute('aria-current', 'true') : a.removeAttribute('aria-current')))
+    }
+    const io = new IntersectionObserver(update, { rootMargin: '0px 0px -75% 0px' })
+    heads.forEach((h) => io.observe(h))
+    addEventListener('scroll', update, { passive: true })
+    update()
+  }
+  document.querySelectorAll<HTMLAnchorElement>('.toc a, .toc-inline a').forEach((a) =>
+    a.addEventListener('click', () => {
+      const h = document.getElementById(decodeURIComponent(a.hash.slice(1)))
+      if (!h) return
+      h.setAttribute('tabindex', '-1')
+      requestAnimationFrame(() => h.focus({ preventScroll: true }))
+    }),
+  )
+</script>

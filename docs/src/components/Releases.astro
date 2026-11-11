@@ -1,0 +1,23 @@
+---
+import { href, langOf, fmtDate } from '../lib/i18n'
+import { releases, badgeTone } from '../lib/lifecycle'
+
+interface Props {
+  /** Only this plugin's releases; without it, the newest across all plugins. */
+  plugin?: string
+  limit?: number
+}
+const { plugin, limit = 5 } = Astro.props
+const lang = langOf(Astro.url.pathname)
+const list = releases().filter((r) => !plugin || r.plugin === plugin).slice(0, limit)
+---
+
+<ol class="news not-content">
+  {list.map((r) => (
+    <li>
+      <span class={`badge badge--${badgeTone[r.kind] ?? 'neutral'}`}>{r.kind.toLowerCase()}</span>
+      <p class="news-t">{!plugin && <><a href={href(`plugins/${r.plugin}/`, lang)}>{r.plugin}</a>{' '}</>}<span class="tnum news-v">{r.version}</span> {r.text}</p>
+      <time class="caption tnum" datetime={r.date}>{fmtDate(r.date, lang, plugin ? 'long' : 'short')}</time>
+    </li>
+  ))}
+</ol>

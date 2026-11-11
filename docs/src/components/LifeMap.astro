@@ -1,0 +1,266 @@
+---
+import { ui, href, langOf } from '../lib/i18n'
+import { cycle, phase, stageById, stagePath, skills, core, pluginByName, shortName, type Skill, type StageId } from '../lib/lifecycle'
+
+interface Props {
+  /** Zoom on one plugin: every other plugin is dimmed. */
+  focus?: string
+  /** Zoom on one stage: stations outside it are dimmed. */
+  stage?: StageId
+  animate?: boolean
+  /** Figure number in the caption. */
+  n?: number
+}
+const { focus, stage, animate = !focus && !stage, n = 1 } = Astro.props
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const link = (p: string) => href(p, lang)
+const clipId = `lmap-clip-${Math.random().toString(36).slice(2, 8)}`
+
+const Y = 150
+// Human review holds three stations, so it gets the widest column.
+const widths: Record<string, number> = { plan: 220, build: 220, self: 200, test: 200, human: 360 }
+const xs = cycle.reduce<number[]>((acc, _s, i) => [...acc, i === 0 ? 0 : acc[i - 1] + widths[cycle[i - 1].id]], [])
+const W = xs[xs.length - 1] + widths[cycle[cycle.length - 1].id]
+const cols = cycle.map((s) => `${widths[s.id]}fr`).join(' ')
+
+const artifacts: Record<string, string> = {
+  'build-spec': 'spec.md · ready',
+  'split-to-tasks': 'tasks/ · 6 tasks',
+  implement: '3 branches · green',
+  'start-cr': 'cr-report.md · 4 fixed',
+  tester: '14 passed',
+  'pr-proof': 'walkthrough.mp4',
+  'pr-open': 'PR #142 · risk: medium',
+  'pr-shepherd': 'approved · CI green',
+}
+const order = Object.keys(artifacts)
+
+const pos: Record<string, { x: number; y: number; lab: 'a' | 'b' | 'r' | 'l' }> = {
+  'build-spec': { x: 120, y: Y, lab: 'b' },
+  'grill-topic': { x: 120, y: 62, lab: 'r' },
+  'split-to-tasks': { x: 275, y: Y, lab: 'a' },
+  implement: { x: 390, y: Y, lab: 'b' },
+  'start-cr': { x: 540, y: Y, lab: 'a' },
+  tester: { x: 740, y: Y, lab: 'b' },
+  'pr-proof': { x: 905, y: Y, lab: 'a' },
+  'pr-open': { x: 1005, y: Y, lab: 'b' },
+  'pr-shepherd': { x: 1110, y: Y, lab: 'a' },
+  'ci-fix': { x: 1110, y: 246, lab: 'l' },
+  research: { x: 50, y: 292, lab: 'r' },
+  'codex-review': { x: 50, y: 334, lab: 'r' },
+}
+const MERGE = 1172
+const START = 120
+const segs = [
+  { plugin: 'fd3', x1: START, x2: 440 },
+  { plugin: 'code-review', x1: 440, x2: 640 },
+  { plugin: 'tester', x1: 640, x2: 840 },
+  { plugin: 'pr-proof', x1: 840, x2: 955 },
+  { plugin: 'dev-kit', x1: 955, x2: MERGE },
+]
+const onMap = skills.filter((s) => pos[s.id])
+const maintain = skills.filter((s) => s.stage === 'maintain')
+
+const dimPlugin = (plugin?: string) => !!focus && plugin !== focus
+const dimSkill = (s: Skill) => (dimPlugin(s.plugin) || (!!stage && s.stage !== stage) ? 'is-dim' : undefined)
+const segDim = (plugin: string) =>
+  dimPlugin(plugin) || (stage && !skills.some((s) => s.plugin === plugin && s.stage === stage && s.main)) ? 'is-dim' : undefined
+const onStages = focus ? new Set(skills.filter((s) => s.plugin === focus).map((s) => s.stage)) : stage ? new Set([stage]) : null
+const labelPos = (p: { x: number; y: number; lab: string }) =>
+  p.lab === 'a'
+    ? { x: p.x, y: p.y - 24, anchor: 'middle' }
+    : p.lab === 'b'
+      ? { x: p.x, y: p.y + 36, anchor: 'middle' }
+      : p.lab === 'l'
+        ? { x: p.x - 18, y: p.y + 5, anchor: 'end' }
+        : { x: p.x + 18, y: p.y + 5, anchor: 'start' }
+// One row below every label and sub-label, so an artifact never covers a neighbour's name.
+const artifactY = Y + 76
+const maintainDim = (focus && !onStages?.has('maintain')) || (stage && stage !== 'maintain')
+---
+
+<figure class:list={['lc', { 'lc--zoom': !!(focus || stage) }]} data-animate={animate ? '' : undefined}>
+  <div class="lmap-scroll" role="region" tabindex="0" aria-label={t.mapLabel}>
+    <div class="lmap-in">
+      <div class="lmap-stages" style={`grid-template-columns: ${cols}`}>
+        <span class="label lmap-phase" style={`grid-column: ${phase.from + 1} / ${phase.to + 1}`}>{phase.title[lang]}</span>
+        {cycle.map((s) => (
+          <a href={link(stagePath(s.id))} class:list={['lmap-stage', { 'is-on': onStages?.has(s.id), 'is-dim': onStages && !onStages.has(s.id) }]}>
+            <span class="lmap-n tnum">{s.n}</span>
+            <span class="lmap-t">{s.title[lang]}</span>
+          </a>
+        ))}
+      </div>
+      <svg class="lmap-svg" viewBox={`0 0 ${W} 380`} role="img" aria-label={t.mapLabel}>
+        {animate && (
+          <defs>
+            <clipPath id={clipId}>
+              <rect class="lmap-progress" x="0" y="0" width={W} height="380" />
+            </clipPath>
+          </defs>
+        )}
+        <g aria-hidden="true">
+          {cycle.map((s, i) => <rect x={xs[i]} y="0" width={widths[s.id]} height="380" class:list={['lmap-band', { 'is-on': onStages?.has(s.id) }]} />)}
+          {xs.slice(1).map((x) => <line x1={x} y1="0" x2={x} y2="380" class="lmap-rule" />)}
+        </g>
+
+        <path class="lmap-loop" d={`M ${MERGE} ${Y} H 1170 Q 1186 ${Y} 1186 ${Y + 16} V 360 Q 1186 372 1174 372 H 22 Q 12 372 12 360 V ${Y + 12} Q 12 ${Y} 24 ${Y} H 108`} aria-hidden="true" />
+        <text class="lmap-note" x="600" y="366" text-anchor="middle" aria-hidden="true">{t.merged}</text>
+
+        <path class:list={['lmap-spur', segDim('fd3')]} style="--pc: var(--line-fd3)" data-plugin="fd3" d={`M 120 ${Y} V 62`} aria-hidden="true" />
+        <path class:list={['lmap-spur lmap-spur--called', segDim('dev-kit')]} style="--pc: var(--line-dev-kit)" data-plugin="dev-kit" d={`M 1110 ${Y} V 246`} aria-hidden="true" />
+        <g class:list={[{ 'lmap-track': animate }]}>
+          {segs.map((s) => (
+            <path class:list={['lmap-seg', segDim(s.plugin)]} style={`--pc: var(--line-${s.plugin})`} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} aria-hidden="true" />
+          ))}
+        </g>
+        {animate && (
+          <g class="lmap-built" clip-path={`url(#${clipId})`} aria-hidden="true">
+            {segs.map((s) => <path class="lmap-seg" style={`--pc: var(--line-${s.plugin})`} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} />)}
+          </g>
+        )}
+        <rect class="lmap-merge" x={MERGE - 6} y={Y - 13} width="12" height="26" rx="6" aria-hidden="true" data-merge />
+
+        {onMap.map((s) => {
+          const p = pos[s.id]
+          const l = labelPos(p)
+          const isCore = pluginByName[s.plugin].core
+          const i = order.indexOf(s.id)
+          return (
+            <a
+              href={link(s.href)}
+              class:list={['lmap-st', isCore ? 'is-core' : 'is-aux', { 'is-called': !!s.calledBy && !s.main }, dimSkill(s)]}
+              style={isCore ? `--pc: var(--line-${s.plugin})` : undefined}
+              data-plugin={s.plugin}
+              data-step={i >= 0 ? i : undefined}
+              data-x={p.x}
+              aria-label={`${s.cmd}: ${s.does[lang]}`}
+            >
+              <circle class="lmap-hit" cx={p.x} cy={p.y} r="22" />
+              {animate && i >= 0 && <circle class="lmap-halo" cx={p.x} cy={p.y} r="9" aria-hidden="true" />}
+              <circle class="lmap-dot" cx={p.x} cy={p.y} r={isCore ? 8.5 : 6} />
+              <text class="lmap-lab" x={l.x} y={l.y} text-anchor={l.anchor}>{shortName(s)}</text>
+              {s.calledBy && !s.main && <text class="lmap-sub" x={l.x} y={l.y + 16} text-anchor={l.anchor}>{t.calledBy} {s.calledBy}</text>}
+              {s.feature && <text class="lmap-sub" x={l.x} y={l.y + 16} text-anchor={l.anchor}>+ {s.feature[lang]}</text>}
+              {!isCore && <text class="lmap-sub" x={l.x} y={l.y + 16} text-anchor={l.anchor}>{s.plugin}</text>}
+              {animate && i >= 0 && <text class="lmap-art" x={p.x} y={artifactY} text-anchor="middle" aria-hidden="true">{artifacts[s.id]}</text>}
+            </a>
+          )
+        })}
+      </svg>
+    </div>
+  </div>
+
+  <ul class="lmap-key" aria-label={t.pluginsOnMap}>
+    {core.map((p) => (
+      <li class:list={[{ 'is-dim': dimPlugin(p.name) }]} style={`--pc: var(--line-${p.name})`}>
+        <a href={link(`plugins/${p.name}/`)} data-key={p.name}><span class="swatch" aria-hidden="true"></span>{p.name}<span class="lmap-key-p">{p.promise[lang]}</span></a>
+      </li>
+    ))}
+    <li class="lmap-key-aux"><span class="swatch swatch--aux" aria-hidden="true"></span>{t.supportingPlugins}</li>
+  </ul>
+
+  <aside class:list={['lc-maintain', { 'is-dim': maintainDim }]} aria-labelledby={`${clipId}-m`}>
+    <p class="lc-maintain-h">
+      <a id={`${clipId}-m`} class="lc-maintain-t" href={link(stagePath('maintain'))}>{stageById.maintain.title[lang]}</a>
+      <span class="lc-maintain-s">{t.outside}</span>
+    </p>
+    <ul class="lc-maintain-list">
+      {maintain.map((s) => (
+        <li class:list={[dimSkill(s)]} style={pluginByName[s.plugin].core ? `--pc: var(--line-${s.plugin})` : undefined}>
+          <a href={link(s.href)}>
+            <code>{shortName(s)}</code>
+            <span class="lc-maintain-d">{s.does[lang]}</span>
+            <span class="caption">{s.plugin}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </aside>
+  <figcaption class="caption">{lang === 'pl' ? 'Rysunek' : 'Figure'} {n}. {t.figureMap}</figcaption>
+</figure>
+
+<script>
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)')
+  const DWELL = 1900
+  const REST = 2400
+
+  document.querySelectorAll<HTMLElement>('.lc[data-animate]').forEach((fig) => {
+    const svg = fig.querySelector<SVGSVGElement>('.lmap-svg')!
+    const width = svg.viewBox.baseVal.width
+    const bar = fig.querySelector<SVGRectElement>('.lmap-progress')!
+    const merge = fig.querySelector<SVGElement>('[data-merge]')!
+    const list = [...fig.querySelectorAll<SVGElement>('[data-step]')].sort((a, b) => Number(a.dataset.step) - Number(b.dataset.step))
+    let timer = 0
+    let i = -1
+    let visible = false
+
+    const reach = (x: number) => bar.style.setProperty('--to', String(x / width))
+    function reset() {
+      fig.dataset.phase = 'reset'
+      list.forEach((s) => s.classList.remove('is-lit', 'is-past'))
+      merge.classList.remove('is-lit')
+      reach(0)
+    }
+    function tick() {
+      i += 1
+      if (i === list.length) {
+        list.forEach((s) => s.classList.replace('is-lit', 'is-past'))
+        merge.classList.add('is-lit')
+        reach(width)
+        timer = window.setTimeout(tick, REST)
+        return
+      }
+      if (i > list.length) {
+        i = -1
+        reset()
+        timer = window.setTimeout(tick, 900)
+        return
+      }
+      delete fig.dataset.phase
+      list.forEach((s, j) => {
+        s.classList.toggle('is-lit', j === i)
+        s.classList.toggle('is-past', j < i)
+      })
+      reach(Number(list[i].dataset.x))
+      timer = window.setTimeout(tick, DWELL)
+    }
+    const start = () => {
+      if (!reduce.matches && visible && !timer) {
+        fig.dataset.running = ''
+        tick()
+      }
+    }
+    const stop = () => {
+      clearTimeout(timer)
+      timer = 0
+    }
+    new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting
+      visible ? start() : stop()
+    }, { threshold: 0.35 }).observe(fig)
+  })
+
+  // A zoomed map is wider than the content column, so open it scrolled to the stations it is about.
+  document.querySelectorAll<HTMLElement>('.lc--zoom').forEach((fig) => {
+    const scroller = fig.querySelector<HTMLElement>('.lmap-scroll')!
+    const svg = fig.querySelector<SVGSVGElement>('.lmap-svg')!
+    const on = [...fig.querySelectorAll<SVGElement>('.lmap-st:not(.is-dim)')].map((s) => Number(s.dataset.x))
+    if (!on.length || scroller.scrollWidth <= scroller.clientWidth) return
+    const scale = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width
+    const mid = ((Math.min(...on) + Math.max(...on)) / 2) * scale + svg.getBoundingClientRect().left - scroller.getBoundingClientRect().left
+    scroller.scrollLeft = mid - scroller.clientWidth / 2
+  })
+
+  document.querySelectorAll<HTMLElement>('.lc').forEach((fig) =>
+    fig.querySelectorAll<HTMLElement>('[data-key]').forEach((a) => {
+      const on = () => (fig.dataset.hover = a.dataset.key)
+      const off = () => delete fig.dataset.hover
+      a.addEventListener('pointerenter', on)
+      a.addEventListener('pointerleave', off)
+      a.addEventListener('focus', on)
+      a.addEventListener('blur', off)
+    }),
+  )
+</script>

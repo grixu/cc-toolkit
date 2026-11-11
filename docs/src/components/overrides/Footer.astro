@@ -1,0 +1,27 @@
+---
+import { ui, href, langOf, canonicalPath } from '../../lib/i18n'
+import { pagination } from '../../lib/nav'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const { prev, next } = Astro.locals.starlightRoute.entry.data.landing ? {} : await pagination(canonicalPath(Astro.url.pathname), lang)
+---
+
+{(prev || next) && (
+  <nav class="pager" aria-label={t.pages}>
+    {prev && (
+      <div class="card card--link pager-prev">
+        <p class="label">{t.prev}</p>
+        <a class="pager-t" href={href(prev.path, lang)} rel="prev">{prev.label}</a>
+        <p class="caption">{prev.group}</p>
+      </div>
+    )}
+    {next && (
+      <div class="card card--link pager-next">
+        <p class="label">{t.next}</p>
+        <a class="pager-t" href={href(next.path, lang)} rel="next">{next.label}</a>
+        <p class="caption">{next.group}</p>
+      </div>
+    )}
+  </nav>
+)}
