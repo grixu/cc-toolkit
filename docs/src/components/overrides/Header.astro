@@ -1,7 +1,8 @@
 ---
+import SectionLinks from '../SectionLinks.astro'
 import Icon from '../Icon.astro'
 import { ui, href, langOf, canonicalPath } from '../../lib/i18n'
-import { sections, sectionOf } from '../../lib/nav'
+import { sectionOf } from '../../lib/nav'
 import { repoUrl } from '../../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
@@ -19,7 +20,7 @@ const current = sectionOf(path)
     <img class="only-dark hd-mark" src="/brand/mark-on-dark.svg" alt="cc-toolkit" height="28" width="28" />
   </a>
   <nav class="hd-nav" aria-label={t.main}>
-    {sections.map((s) => <a href={href(s.path, lang)} aria-current={s.id === current ? 'page' : undefined}>{s.label[lang]}</a>)}
+    <SectionLinks current={current} lang={lang} />
   </nav>
   <div class="hd-tools">
     <button class="search-trigger" type="button" data-open-palette aria-label={t.searchDocs}>

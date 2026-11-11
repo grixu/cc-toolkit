@@ -1,7 +1,8 @@
 ---
+import SectionLinks from './SectionLinks.astro'
 import Icon from './Icon.astro'
 import { ui, href, langOf, canonicalPath } from '../lib/i18n'
-import { sections, sectionOf } from '../lib/nav'
+import { sectionOf } from '../lib/nav'
 import { plugins, marketplaceVersion, pluginPath, repoUrl } from '../lib/lifecycle'
 
 const lang = langOf(Astro.url.pathname)
@@ -18,7 +19,7 @@ const current = sectionOf(canonicalPath(Astro.url.pathname))
     <button class="icon-btn" type="button" data-close-drawer aria-label={t.close}><Icon name="close" /></button>
   </div>
   <nav class="drawer-sections" aria-label={t.main}>
-    {sections.map((s) => <a href={href(s.path, lang)} aria-current={s.id === current ? 'page' : undefined}>{s.label[lang]}</a>)}
+    <SectionLinks current={current} lang={lang} />
   </nav>
   <p class="label drawer-h">{t.plugins}</p>
   <ul class="drawer-plugins">
