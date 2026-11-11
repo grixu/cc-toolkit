@@ -10,7 +10,7 @@ export const collections = {
       extend: z.object({
         /** Sidebar group inside a section; a section's index defaults to start, other pages to guides. */
         group: z.enum(['start', 'cycle', 'guides', 'concepts', 'reference', 'outside']).optional(),
-        /** A skill id from src/lib/lifecycle.ts: the page header shows that skill's stage. */
+        /** A lifecycle skill id: the page header shows that skill's stage. */
         skill: z.string().optional(),
         /** The landing page: the frame draws no title block. */
         landing: z.boolean().optional(),

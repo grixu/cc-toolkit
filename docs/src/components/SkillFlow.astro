@@ -13,7 +13,7 @@ interface Step {
   optional?: boolean
 }
 interface Props {
-  /** Skill id from src/lib/lifecycle.ts. */
+  /** A lifecycle skill id; an unknown one fails the build. */
   skill: string
   /** What the reader hands the skill. */
   input: string

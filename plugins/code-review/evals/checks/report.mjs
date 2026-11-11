@@ -1,5 +1,5 @@
 // Deterministic asserts over the shape a Scanner's final message has to take: the finding bullet
-// shape and the `comments` lens verdict bullets. Each named export is a
+// shape and the `comments` lens verdict bullets. Each export returning { pass, score, reason } is a
 // promptfoo javascript assert, `file://checks/report.mjs:<name>`, configured by its `config:`.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -179,7 +179,7 @@ export function cleanVerdict(output) {
   return result(true, 'no high or medium finding');
 }
 
-// ---- comments lens: one block per verdict bullet, its indented continuation lines included.
+// A verdict bullet and its indented continuation lines form one block, in this shape:
 // `comments` · R# · VERDICT · `path:line` · "verbatim comment" — reason → fix; ADD has no quote.
 
 const VERDICT_LINE = /^-\s+`comments`\s*·\s*(R\d+(?:\s*[,/]\s*R\d+)*)\s*·\s*\**(KEEP|REMOVE|REWRITE|MOVE|ADD)\**\s*·\s*`([^`]+?)(?::L?\d[^`]*)?`(.*)$/;

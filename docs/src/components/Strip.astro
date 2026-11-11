@@ -4,7 +4,7 @@ import { ui, langOf } from '../lib/i18n'
 interface Props {
   cmd: string
   inCard?: boolean
-  /** Accessible name of the scrolling command; defaults to "Install command". */
+  /** Accessible name of the scrolling command; defaults to "Install command" for a /plugin command, else "Command". */
   label?: string
 }
 const t = ui[langOf(Astro.url.pathname)]
