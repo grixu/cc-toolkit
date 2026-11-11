@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The README and the task template described `done` as "nothing left for a human". Under review
   `yes` a branch reaches `done` while findings left open wait in the run's report; only a `gated`
   review's findings keep it `merged`. Both now say so.
+- The README and `implement-tasks` put the review at nine to eleven lens agents; with
+  code-review's new `hookify` lens the top is twelve.
 
 ### Removed
 
