@@ -29,7 +29,7 @@ ci() {
 
 KW="($(ci token)|$(ci secret)|$(ci password)|$(ci passwd)|$(ci api)[_-]?$(ci key)|$(ci authorization)|$(ci cookie))"
 NAME="([A-Za-z0-9_.-]*${KW}[A-Za-z0-9_.-]*)"
-# A token must not continue an identifier, or "task-runner" would match sk-.
+# A token must not continue an identifier, or "mask-runner-config-loader" would match sk-.
 B='(^|[^A-Za-z0-9_-])'
 DQ='"([^"\\]|\\.)*"'
 

@@ -51,7 +51,7 @@ export function register(on, options) {
     return next(e)
   })
 
-  on('tool.call', { tool: 'mcp__pr-proof__proof_signals' }, async ($, e) => {
+  on('tool.call', { tool: `mcp__pr-proof__${TOOL}` }, async ($, e) => {
     try {
       return { result: JSON.stringify(await proofSignals($, e.base, options), null, 2) }
     } catch (error) {
@@ -68,7 +68,7 @@ async function apiKey($, options): Promise<string> {
   return trimmedOption(options?.typesafe_api_key, '') || trimmedOption(await $.env.get('TYPESAFE_API_KEY'), '')
 }
 
-export async function proofSignals($, base: unknown, options) {
+async function proofSignals($, base: unknown, options) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
   const key = await apiKey($, options)
   if (!key) throw new Error('no TypeSafe API key; set TYPESAFE_API_KEY or the pr-proof option typesafe_api_key')
@@ -81,10 +81,7 @@ export async function proofSignals($, base: unknown, options) {
     git($, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
   ])
 
-  const entries = numstat.split('\0').filter(Boolean).map((line) => {
-    const [added, , ...path] = line.split('\t')
-    return { path: path.join('\t'), binary: added === '-' }
-  })
+  const entries = changedEntries(numstat)
   if (!entries.length) throw new Error(`no changes between ${ref} and HEAD`)
   const reviewable = entries.filter((f) => !f.binary && !isExcluded(f.path)).map((f) => f.path)
   const filesExcluded = entries.length - reviewable.length
@@ -102,30 +99,10 @@ export async function proofSignals($, base: unknown, options) {
     limit: limiter(CONCURRENCY),
   }
   const context = { diffstat: clip(diffstat.trimEnd(), DIFFSTAT_CHAR_BUDGET) }
-  let truncatedHunks = plan.truncatedHunks
 
-  const ask = async (part: Part, depth: number): Promise<{ model: string; answers: Answers }[]> => {
-    const body = JSON.stringify({ model: request.model, state: partState(part, context), questions: request.questions })
-    const res = await send($, request, body)
-    if (!res.ok) {
-      if (depth < MAX_SPLIT_DEPTH && tooLong(res)) {
-        const halves = halve(part)
-        if (halves.parts.some((h) => h.diff.length < part.diff.length)) {
-          truncatedHunks += halves.truncatedHunks
-          const answered: { model: string; answers: Answers }[] = []
-          for (const h of halves.parts) answered.push(...(await ask(h, depth + 1)))
-          return answered
-        }
-      }
-      throw new Error(httpError(res.status, res.text))
-    }
-    const data = JSON.parse(res.text)
-    const answers: Answers = data.answers ?? {}
-    const missing = missingFact(answers)
-    if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}"`)
-    return [{ model: data.model, answers }]
-  }
-  const results = (await pool(plan.parts, CONCURRENCY, (part) => ask(part, 0))).flat()
+  const asked = await pool(plan.parts, CONCURRENCY, (part) => askPart($, request, context, part, 0))
+  const results = asked.flatMap((a) => a.answered)
+  const truncatedHunks = asked.reduce((sum, a) => sum + a.truncatedHunks, plan.truncatedHunks)
 
   const filesNotAssessed = plan.skippedFiles.length + unread.length
   return {
@@ -139,4 +116,45 @@ export async function proofSignals($, base: unknown, options) {
       partial: filesNotAssessed > 0 || truncatedHunks > 0,
     },
   }
+}
+
+function changedEntries(numstat: string): { path: string; binary: boolean }[] {
+  return numstat.split('\0').filter(Boolean).map((line) => {
+    const [added, , ...path] = line.split('\t')
+    return { path: path.join('\t'), binary: added === '-' }
+  })
+}
+
+type Answered = { model: string; answers: Answers }
+
+async function askPart(
+  $,
+  request: JevRequest,
+  context: { diffstat: string },
+  part: Part,
+  depth: number,
+): Promise<{ answered: Answered[]; truncatedHunks: number }> {
+  const body = JSON.stringify({ model: request.model, state: partState(part, context), questions: request.questions })
+  const res = await send($, request, body)
+  if (!res.ok) {
+    if (depth < MAX_SPLIT_DEPTH && tooLong(res)) {
+      const halves = halve(part)
+      if (halves.parts.some((h) => h.diff.length < part.diff.length)) {
+        const answered: Answered[] = []
+        let truncatedHunks = halves.truncatedHunks
+        for (const h of halves.parts) {
+          const sub = await askPart($, request, context, h, depth + 1)
+          answered.push(...sub.answered)
+          truncatedHunks += sub.truncatedHunks
+        }
+        return { answered, truncatedHunks }
+      }
+    }
+    throw new Error(httpError(res.status, res.text))
+  }
+  const data = JSON.parse(res.text)
+  const answers: Answers = data.answers ?? {}
+  const missing = missingFact(answers)
+  if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}"`)
+  return { answered: [{ model: data.model, answers }], truncatedHunks: 0 }
 }

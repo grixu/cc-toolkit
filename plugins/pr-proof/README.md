@@ -45,7 +45,7 @@ dev-kit's `pr-open` reads the manifest and writes a `## Proof` section into the 
 
 ## Tool: `proof_signals`
 
-`mcp__pr-proof__proof_signals` asks TypeSafe's Jev model which kinds of proof a change needs. It takes `{ base }`, the branch the change merges into, sends the commits, the diffstat and the diff of `<base>...HEAD`, and returns, for each of `screenshots`, `video`, `api` and `terminal`, a signal (`suggest`, `reject` or `uncertain`) with its probability. It also says whether the change affects behaviour at all, and how much of the diff it assessed. A failure returns `Proof signals unavailable: <reason>`.
+`mcp__pr-proof__proof_signals` asks TypeSafe's Jev model which kinds of proof a change needs. It takes `{ base }`, the branch the change merges into, sends the diffstat and the diff of `<base>...HEAD`, and returns, for each of `screenshots`, `video`, `api` and `terminal`, a signal (`suggest`, `reject` or `uncertain`) with its probability. It also says whether the change affects behaviour at all, and how much of the diff it assessed. A failure returns `Proof signals unavailable: <reason>`.
 
 The tool exists only when a key is set. With no key it is not registered and nothing leaves the machine; `prepare-proof` then judges from the diff alone.
 

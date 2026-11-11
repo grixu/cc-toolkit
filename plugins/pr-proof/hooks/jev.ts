@@ -4,13 +4,16 @@
 export const STATE_CHAR_BUDGET = 72_000 // the whole state: diff + commits + diffstat
 export const COMMITS_CHAR_BUDGET = 8_000
 export const DIFFSTAT_CHAR_BUDGET = 4_000
-export const MAX_PARTS = 8 // dev-kit uses 32; the confirmed cost figure assumes 8
+export const MAX_PARTS = 8 // the confirmed cost figure assumes 8
 export const CONCURRENCY = 4
 export const MAX_ATTEMPTS = 3
 export const MAX_SPLIT_DEPTH = 3
 
 const CUT_HUNK = '\n[… hunk cut to fit the request]'
 const MAX_RETRY_DELAY_MS = 10_000
+const RETRYABLE = new Set([429, 500, 502, 503, 504, 529])
+const DEFAULT_TYPESAFE_ENDPOINT = 'https://api.typesafe.ai'
+const SYSTEMONE_PATH = '/v1/systemone'
 
 const EXCLUDED_FILE = [
   /(^|\/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lockb?|composer\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|go\.sum|flake\.lock)$/,
@@ -48,36 +51,6 @@ export function clip(text: string, max: number): string {
   return text.length <= max ? text : text.slice(0, max) + '\n[… cut to fit the request]'
 }
 
-// A file's diff split at its hunks, each piece keeping the file header so it reads on its own.
-function hunks(file: FileDiff, budget: number): { pieces: string[]; truncated: number } {
-  const lines = file.text.split('\n')
-  const first = lines.findIndex((l) => l.startsWith('@@'))
-  if (first < 0) return { pieces: [file.text.slice(0, budget)], truncated: file.text.length > budget ? 1 : 0 }
-  const head = lines.slice(0, first).join('\n') + '\n'
-  const blocks: string[] = []
-  for (const line of lines.slice(first)) {
-    if (line.startsWith('@@') || !blocks.length) blocks.push(line)
-    else blocks[blocks.length - 1] += '\n' + line
-  }
-  const room = budget - head.length
-  const pieces: string[] = []
-  let truncated = 0
-  let current = ''
-  for (let block of blocks) {
-    if (block.length > room) {
-      truncated += 1
-      block = block.slice(0, room - CUT_HUNK.length) + CUT_HUNK
-    }
-    if (current && current.length + block.length + 1 > room) {
-      pieces.push(head + current)
-      current = ''
-    }
-    current += (current ? '\n' : '') + block
-  }
-  if (current) pieces.push(head + current)
-  return { pieces, truncated }
-}
-
 export function split(files: FileDiff[], budget: number, maxParts = MAX_PARTS): Split {
   const parts: Part[] = []
   const skippedFiles: string[] = []
@@ -111,12 +84,45 @@ export function split(files: FileDiff[], budget: number, maxParts = MAX_PARTS): 
   return { parts, skippedFiles, truncatedHunks }
 }
 
-// A request Jev refused as too long, split in two at file and hunk boundaries. Code tokenizes at 2.7 to 3.8 chars
-// a token depending on the language, so a char budget cannot guarantee the token limit on its own.
+// A file's diff split at its hunks, each piece keeping the file header so it reads on its own.
+function hunks(file: FileDiff, budget: number): { pieces: string[]; truncated: number } {
+  const lines = file.text.split('\n')
+  const first = lines.findIndex((l) => l.startsWith('@@'))
+  if (first < 0) return { pieces: [file.text.slice(0, budget)], truncated: file.text.length > budget ? 1 : 0 }
+  const head = lines.slice(0, first).join('\n') + '\n'
+  const blocks: string[] = []
+  for (const line of lines.slice(first)) {
+    if (line.startsWith('@@') || !blocks.length) blocks.push(line)
+    else blocks[blocks.length - 1] += '\n' + line
+  }
+  const room = budget - head.length
+  const pieces: string[] = []
+  let truncated = 0
+  let current = ''
+  for (let block of blocks) {
+    if (block.length > room) {
+      truncated += 1
+      block = block.slice(0, room - CUT_HUNK.length) + CUT_HUNK
+    }
+    if (current && current.length + block.length + 1 > room) {
+      pieces.push(head + current)
+      current = ''
+    }
+    current += (current ? '\n' : '') + block
+  }
+  if (current) pieces.push(head + current)
+  return { pieces, truncated }
+}
+
+// A request Jev refused as too long, re-split at half its size along file and hunk boundaries. Code tokenizes at
+// 2.7 to 3.8 chars a token depending on the language, so a char budget cannot guarantee the token limit on its own.
 export function halve(part: Part): { parts: Part[]; truncatedHunks: number } {
-  const files = part.diff.split(/\n(?=diff --git a\/)/).map((text) => ({ path: diffPath(text) ?? part.files[0] ?? '', text }))
-  const s = split(files, Math.ceil(part.diff.length / 2), Infinity)
+  const s = split(fileDiffs(part.diff, part.files[0] ?? ''), Math.ceil(part.diff.length / 2), Infinity)
   return { parts: s.parts, truncatedHunks: s.truncatedHunks }
+}
+
+export function fileDiffs(diff: string, fallbackPath = ''): FileDiff[] {
+  return diff.split(/\n(?=diff --git a\/)/).map((text) => ({ path: diffPath(text) ?? fallbackPath, text }))
 }
 
 // `diff --git a/<path> b/<path>` with renames off: both paths are the same, so the first half of the rest is it.
@@ -140,8 +146,6 @@ export async function pool<T, R>(items: T[], size: number, fn: (item: T, index: 
   return results
 }
 
-export const RETRYABLE = new Set([429, 500, 502, 503, 504, 529])
-
 export function retryDelay(headers: Record<string, string> | undefined, attempt: number): number {
   const after = Number(headers?.['retry-after'])
   const ms = Number.isFinite(after) && after > 0 ? after * 1000 : 1000 * 2 ** (attempt - 1)
@@ -154,8 +158,8 @@ export function isSafeRef(ref: unknown): ref is string {
 }
 
 export function endpointUrl(endpoint: unknown): string {
-  const base = trimmedOption(endpoint, 'https://api.typesafe.ai').replace(/\/+$/, '')
-  return base.endsWith('/v1/systemone') ? base : base + '/v1/systemone'
+  const base = trimmedOption(endpoint, DEFAULT_TYPESAFE_ENDPOINT).replace(/\/+$/, '')
+  return base.endsWith(SYSTEMONE_PATH) ? base : base + SYSTEMONE_PATH
 }
 
 export function httpError(status: number, body: string): string {
@@ -209,7 +213,8 @@ export const tooLong = (res) => res.status === 400 && String(res.text).includes(
 
 export async function git($, args: string[]): Promise<string> {
   const r = await $.process.run(['git', ...args], { timeoutMs: 60_000 })
-  if (r.exitCode !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr.trim().slice(0, 300)}`)
+  const subcommand = args[args[0] === '-c' ? 2 : 0]
+  if (r.exitCode !== 0) throw new Error(`git ${subcommand} failed: ${r.stderr.trim().slice(0, 300)}`)
   return r.stdout
 }
 
@@ -232,8 +237,9 @@ export async function readDiffs($, range: string, paths: string[], budget: numbe
       unread.push(path)
       continue
     }
-    // The paths are relative to the repository root, and the session may sit in a subdirectory.
-    const diff = await git($, ['diff', '--no-relative', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
+    // The paths are relative to the repository root, and the session may sit in a subdirectory. A quoted header
+    // would hide a non-ASCII path from diffPath and glue its file to the one before it.
+    const diff = await git($, ['-c', 'core.quotePath=false', 'diff','--no-relative', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
     const text = diff.trimEnd()
     charsRead += text.length
     files.push({ path, text })

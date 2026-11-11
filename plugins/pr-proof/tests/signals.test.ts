@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
+import { endpointUrl } from '../hooks/jev.ts'
 import { FACTS, aggregate, factQuestions, partState, signalOf } from '../hooks/signals.ts'
 
 const TOOL = 'mcp__pr-proof__proof_signals'
@@ -10,7 +11,6 @@ const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '' } })
 const fileDiff = (path: string, body: string) =>
   `diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n@@ -1,1 +1,2 @@\n${body}`
 
-// Records every `sleep` the retry wait runs, so a test can read its argv.
 function fakeProcess(files: File[], sleeps: string[][] = []) {
   return ($, e) => {
     const argv: string[] = e.argv
@@ -34,30 +34,35 @@ function jevAnswer(facts: Facts = {}) {
   return { status: 200, ok: true, headers: {}, text: JSON.stringify({ model: 'jev-1.14.0', answers, usage: {} }) }
 }
 
+function jevFailure(status: number, text: string, headers: Record<string, string> = {}) {
+  return { status, ok: false, headers, text }
+}
+
 const UI_CHANGE = [{ path: 'src/Login.tsx', text: fileDiff('src/Login.tsx', '+<Button color="blue" />') }]
 
-test('registers the tool only when a key is set', async ($, on) => {
-  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
-  const registered: string[] = []
-  on('tool.register', ($, e) => {
-    registered.push(e.name)
-    return { value: { tool: TOOL } }
-  })
-  on('session.start', () => ({ cwd: '/work' }))
-  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
-  expect(registered).toEqual(['proof_signals'])
-})
+for (const { env, expected } of [
+  { env: { TYPESAFE_API_KEY: 'secret' }, expected: ['proof_signals'] },
+  { env: {}, expected: [] },
+]) {
+  test(`registers ${JSON.stringify(expected)} with the environment ${JSON.stringify(env)}`, async ($, on) => {
+    mock.env(on, env)
+    const registered: string[] = []
+    on('tool.register', ($, e) => {
+      registered.push(e.name)
+      return { value: { tool: TOOL } }
+    })
+    on('session.start', () => ({ cwd: '/work' }))
 
-test('without a key the tool is not registered', async ($, on) => {
-  mock.env(on, {})
-  const registered: string[] = []
-  on('tool.register', ($, e) => {
-    registered.push(e.name)
-    return { value: { tool: TOOL } }
+    await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+    expect(registered).toEqual(expected)
   })
-  on('session.start', () => ({ cwd: '/work' }))
-  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
-  expect(registered).toEqual([])
+}
+
+test('builds the endpoint URL from a base with or without the systemone path', () => {
+  expect(endpointUrl(undefined)).toBe('https://api.typesafe.ai/v1/systemone')
+  expect(endpointUrl('https://x.test/')).toBe('https://x.test/v1/systemone')
+  expect(endpointUrl('https://x.test/v1/systemone')).toBe('https://x.test/v1/systemone')
 })
 
 test('reads a probability at the thresholds as suggest or reject', () => {
@@ -151,11 +156,13 @@ test('runs every git diff without diff.relative', async ($, on) => {
   const diffs: string[][] = []
   const git = fakeProcess(UI_CHANGE)
   on('process.run', ($, e) => {
-    if (e.argv[1] === 'diff') diffs.push(e.argv)
+    if (e.argv.includes('diff')) diffs.push(e.argv)
     return git($, e)
   })
   on('http.fetch', () => ({ value: jevAnswer() }))
+
   await $.tool.call({ tool: TOOL, base: 'main' })
+
   expect(diffs.length).toBe(3)
   expect(diffs.every((argv) => argv.includes('--no-relative'))).toBe(true)
 })
@@ -163,8 +170,10 @@ test('runs every git diff without diff.relative', async ($, on) => {
 test('reports a rejected key as unavailable', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'bad' })
   on('process.run', fakeProcess(UI_CHANGE))
-  on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: 'unauthorized' } }))
+  on('http.fetch', () => ({ value: jevFailure(401, 'unauthorized') }))
+
   const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
   expect(out.result).toMatch(/^Proof signals unavailable: TypeSafe rejected the API key \(HTTP 401\)/)
 })
 
@@ -172,62 +181,153 @@ test('reports an answer without a number as unavailable', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   on('process.run', fakeProcess(UI_CHANGE))
   on('http.fetch', () => ({ value: jevAnswer({ ui_flow_changed: Number.NaN }) }))
+
   const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
   expect(out.result).toMatch(/^Proof signals unavailable: TypeSafe returned no numeric answer for "ui_flow_changed"/)
 })
 
 test('reports a git failure as unavailable', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
-  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: 'fatal: not a git repository' } }))
+  on('process.run', ($, e) =>
+    e.argv.includes('diff') ? { value: { exitCode: 128, stdout: '', stderr: 'fatal: bad revision' } } : ok(''),
+  )
+
   const out = await $.tool.call({ tool: TOOL, base: 'main' })
-  expect(out.result).toMatch(/^Proof signals unavailable: base branch "main" not found/)
+
+  expect(out.result).toMatch(/^Proof signals unavailable: git diff failed: fatal: bad revision/)
 })
 
-test('refuses a base that git could read as an option', async ($, on) => {
-  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
-  const out = await $.tool.call({ tool: TOOL, base: '--output=/tmp/x' })
-  expect(out.result).toMatch(/^Proof signals unavailable: `base` must be a branch name/)
-})
+for (const base of ['--output=/tmp/x', 'main..evil']) {
+  test(`refuses the base ${base}, which git could read as an option or a range`, async ($, on) => {
+    mock.env(on, { TYPESAFE_API_KEY: 'secret' })
 
-test('reports a change of only lockfiles as unavailable', async ($, on) => {
-  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
-  on('process.run', fakeProcess([{ path: 'pnpm-lock.yaml', text: fileDiff('pnpm-lock.yaml', '+lock') }]))
-  const out = await $.tool.call({ tool: TOOL, base: 'main' })
-  expect(out.result).toMatch(/^Proof signals unavailable: no reviewable text files/)
-})
+    const out = await $.tool.call({ tool: TOOL, base })
+
+    expect(out.result).toMatch(/^Proof signals unavailable: `base` must be a branch name/)
+  })
+}
+
+for (const { name, files, reason } of [
+  { name: 'only lockfiles', files: [{ path: 'pnpm-lock.yaml', text: fileDiff('pnpm-lock.yaml', '+lock') }], reason: /no reviewable text files/ },
+  { name: 'no files', files: [], reason: /no changes between origin\/main and HEAD/ },
+  { name: 'only an empty diff', files: [{ path: 'run.sh', text: '' }], reason: /no reviewable text diff: only mode changes or empty files/ },
+]) {
+  test(`reports a change of ${name} as unavailable`, async ($, on) => {
+    mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+    on('process.run', fakeProcess(files))
+
+    const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+    expect(out.result).toMatch(new RegExp('^Proof signals unavailable: ' + reason.source))
+  })
+}
 
 test('waits for a retry in a sleep process, not on the clock', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   const sleeps: string[][] = []
   on('process.run', fakeProcess(UI_CHANGE, sleeps))
+  let clockSleeps = 0
+  on('clock.sleep', () => {
+    clockSleeps += 1
+    return { value: undefined }
+  })
   let calls = 0
   on('http.fetch', () => {
     calls += 1
-    return { value: calls === 1 ? { status: 503, ok: false, headers: {}, text: 'unavailable' } : jevAnswer({ appearance_changed: 0.9 }) }
+    return { value: calls === 1 ? jevFailure(503, 'unavailable') : jevAnswer({ appearance_changed: 0.9 }) }
   })
 
   const out = await $.tool.call({ tool: TOOL, base: 'main' })
 
   expect(calls).toBe(2)
   expect(sleeps).toEqual([['sleep', '1']])
+  expect(clockSleeps).toBe(0)
   expect(out.result).not.toContain('unavailable')
   expect(JSON.parse(out.result).signals.screenshots.signal).toBe('suggest')
 })
 
-test('waits a fractional retry-after in seconds', async ($, on) => {
+for (const { retryAfter, seconds } of [
+  { retryAfter: '0.5', seconds: '0.5' },
+  { retryAfter: '30', seconds: '10' },
+  { retryAfter: '0', seconds: '1' },
+]) {
+  test(`waits ${seconds} s for a retry-after of ${retryAfter}`, async ($, on) => {
+    mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+    const sleeps: string[][] = []
+    on('process.run', fakeProcess(UI_CHANGE, sleeps))
+    let calls = 0
+    on('http.fetch', () => {
+      calls += 1
+      return { value: calls === 1 ? jevFailure(503, 'unavailable', { 'retry-after': retryAfter }) : jevAnswer() }
+    })
+
+    const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+    expect(sleeps).toEqual([['sleep', seconds]])
+    expect(JSON.parse(out.result).model).toBe('jev-1.14.0')
+  })
+}
+
+test('gives up after three attempts at a request that keeps failing', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   const sleeps: string[][] = []
   on('process.run', fakeProcess(UI_CHANGE, sleeps))
   let calls = 0
   on('http.fetch', () => {
     calls += 1
-    return { value: calls === 1 ? { status: 503, ok: false, headers: { 'retry-after': '0.5' }, text: 'unavailable' } : jevAnswer() }
+    return { value: jevFailure(503, 'unavailable') }
   })
 
   const out = await $.tool.call({ tool: TOOL, base: 'main' })
 
-  expect(sleeps).toEqual([['sleep', '0.5']])
-  expect(JSON.parse(out.result).model).toBe('jev-1.14.0')
+  expect(calls).toBe(3)
+  expect(sleeps).toEqual([['sleep', '1'], ['sleep', '2']])
+  expect(out.result).toMatch(/^Proof signals unavailable: TypeSafe answered HTTP 503/)
+})
+
+test('cuts a hunk longer than the budget and marks the coverage partial', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeProcess([{ path: 'big.ts', text: fileDiff('big.ts', '+x'.repeat(40_000)) }]))
+  on('http.fetch', () => ({ value: jevAnswer() }))
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main' })).result)
+
+  expect(report.coverage).toEqual({ parts: 1, filesNotAssessed: 0, filesExcluded: 0, truncatedHunks: 1, partial: true })
+})
+
+test('reports the files beyond the request cap as not assessed', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  const files = Array.from({ length: 10 }, (_, i) => ({ path: `f${i}.ts`, text: fileDiff(`f${i}.ts`, '+x'.repeat(30_000)) }))
+  on('process.run', fakeProcess(files))
+  let requests = 0
+  on('http.fetch', () => {
+    requests += 1
+    return { value: jevAnswer() }
+  })
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main' })).result)
+
+  expect(requests).toBe(8)
+  expect(report.coverage).toEqual({ parts: 8, filesNotAssessed: 2, filesExcluded: 0, truncatedHunks: 0, partial: true })
+})
+
+test('stops halving at the split depth when every request is too long', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  const files = Array.from({ length: 16 }, (_, i) => ({ path: `f${i}.ts`, text: fileDiff(`f${i}.ts`, '+x'.repeat(500)) }))
+  on('process.run', fakeProcess(files))
+  let requests = 0
+  on('http.fetch', () => {
+    requests += 1
+    return { value: jevFailure(400, '{"error":{"code":"max_tokens_exceeded"}}') }
+  })
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+  expect(requests).toBe(4)
+  expect(out.result).toBe(
+    'Proof signals unavailable: A request was longer than the Jev model accepts (HTTP 400 max_tokens_exceeded).',
+  )
 })
 
 test('halves a part Jev refuses as too long and aggregates the halves', async ($, on) => {
@@ -237,7 +337,7 @@ test('halves a part Jev refuses as too long and aggregates the halves', async ($
   on('http.fetch', ($, e) => {
     requests += 1
     const { diff } = JSON.parse(e.init.body).state
-    if (diff.length > 10_000) return { value: { status: 400, ok: false, headers: {}, text: '{"error":{"code":"max_tokens_exceeded"}}' } }
+    if (diff.length > 10_000) return { value: jevFailure(400, '{"error":{"code":"max_tokens_exceeded"}}') }
     return { value: jevAnswer(diff.includes('+b') ? { command_output_changed: 0.8, no_behavior_change: 0.1 } : { no_behavior_change: 0.9 }) }
   })
 

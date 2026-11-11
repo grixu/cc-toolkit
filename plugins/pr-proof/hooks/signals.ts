@@ -1,4 +1,4 @@
-import { AGENT_FILE, PROSE_FILE, diffPath, type Part } from './jev.ts'
+import { AGENT_FILE, PROSE_FILE, fileDiffs, type Part } from './jev.ts'
 
 export const SUGGEST_AT = 0.7
 export const REJECT_AT = 0.3
@@ -23,7 +23,7 @@ export const KIND_OF_FACT = {
 } as const
 
 export type Signal = 'suggest' | 'reject' | 'uncertain'
-export type Sig = { signal: Signal; p: number }
+export type ScoredSignal = { signal: Signal; p: number }
 export type Kind = (typeof KIND_OF_FACT)[keyof typeof KIND_OF_FACT]
 export type Answers = Record<string, { noul?: number }>
 
@@ -47,8 +47,7 @@ export function missingFact(answers: Answers): string | undefined {
 export function partState(part: Part, context: { diffstat: string }) {
   const code: string[] = []
   const prose: string[] = []
-  for (const text of part.diff.split(/\n(?=diff --git a\/)/)) {
-    const path = diffPath(text) ?? ''
+  for (const { path, text } of fileDiffs(part.diff)) {
     ;(PROSE_FILE.test(path) && !AGENT_FILE.test(path) ? prose : code).push(text)
   }
   return {
@@ -61,12 +60,12 @@ export function partState(part: Part, context: { diffstat: string }) {
 }
 
 // A kind counts when any part shows it, while one docs-only part must not suppress the proof another part needs.
-export function aggregate(parts: Answers[]): { signals: Record<Kind, Sig>; noBehaviorChange: Sig; suppressed: boolean } {
-  const sig = (p: number): Sig => ({ signal: signalOf(p), p })
+export function aggregate(parts: Answers[]): { signals: Record<Kind, ScoredSignal>; noBehaviorChange: ScoredSignal; suppressed: boolean } {
+  const sig = (p: number): ScoredSignal => ({ signal: signalOf(p), p })
   const values = (key: string) => parts.map((a) => a[key]!.noul!)
   const signals = Object.fromEntries(
     Object.entries(KIND_OF_FACT).map(([fact, kind]) => [kind, sig(Math.max(...values(fact)))]),
-  ) as Record<Kind, Sig>
+  ) as Record<Kind, ScoredSignal>
   const noBehaviorChange = sig(Math.min(...values('no_behavior_change')))
   return { signals, noBehaviorChange, suppressed: noBehaviorChange.signal === 'suggest' }
 }
