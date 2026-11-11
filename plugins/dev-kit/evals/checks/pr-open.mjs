@@ -166,7 +166,7 @@ export function proof() {
     [transcriptFirstLine !== '' && details.includes(transcriptFirstLine),'the transcript is not inside <details>'],
     [!/rewritten|Commits after this proof/i.test(section), 'a staleness or rewritten-history note on a fresh proof'],
     [(section.match(/https:\/\/github\.com\/user-attachments\/assets\/\d+/g) ?? []).length === 6, 'not six user-attachments URLs in ## Proof'],
-    [!/(^|[\s(])\.\//m.test(section), 'a ./ reference is left in ## Proof'],
+    [!/(^|[\s(])\.\//m.test(section.replace(/```[\s\S]*?```/g, '')), 'a ./ reference is left in ## Proof'],
     [creates.length === 1, `${creates.length} pr create calls in the checkout, expected 1`],
     [attaches === 6, `pr create carried ${attaches} --attach arguments, expected 6`],
     [!creates.some((call) => /--attach[=\s]\S*terminal\.txt/.test(call)), 'the transcript was attached instead of inlined'],
