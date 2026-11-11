@@ -1,7 +1,7 @@
 """Writes every cc-toolkit logo asset: SVG sources, then PNG/ICO rasters rendered by headless Chrome.
 
 Run from the repo root: uv run --with fonttools python3 brand/logo/src/build.py
-Needs Google Chrome and ImageMagick (`magick`) on the machine.
+Runs on macOS only: needs Google Chrome in /Applications and ImageMagick (`magick`) on PATH.
 """
 import math
 import re
