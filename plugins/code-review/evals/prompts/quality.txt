@@ -1,6 +1,0 @@
-Use the `code-review:quality-review` skill to review {{file}}.
-
-Review the file path(s) above for code quality and craft, tagging each finding with
-its family (readability, tests, naming, module, objects, patterns, simplicity,
-standards) and rule. Report only: do not edit any files, do not offer an apply menu,
-and do not call AskUserQuestion — the finished review report is your final message.

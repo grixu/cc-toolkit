@@ -1,5 +1,5 @@
-// Deterministic asserts over the shape a review's final message has to take: the quality-review
-// skeleton, the scanner bullet shape and the comment-review verdict list. Each named export is a
+// Deterministic asserts over the shape a Scanner's final message has to take: the finding bullet
+// shape and the `comments` lens verdict bullets. Each named export is a
 // promptfoo javascript assert, `file://checks/report.mjs:<name>`, configured by its `config:`.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,7 +19,6 @@ const FINDING = /^-\s+`([a-z]+)`\s*·\s*([\w-]+)\s*·\s*([A-Za-z]+)\s*·\s*(.*)$
 const SIDE = /^\s*(?:#+\s*|\*\*)?(HANDOFF|CANDIDATES)\b/;
 const NOT_FLAGGED = /^\s*(?:\*\*)?(?:Considered but )?not flagged\b/i;
 const BOY_SCOUT = /^\s*(?:\*\*)?Boy-scout\b/i;
-const TALLY = /^\s*(?:\*\*)?Tally\b/i;
 
 const result = (pass, reason) => ({ pass, score: pass ? 1 : 0, reason });
 const re = (p) => (p instanceof RegExp ? p : new RegExp(p, 'i'));
@@ -38,9 +37,11 @@ export function sections(output) {
     const next = lines.slice(i + 1).find((l) => l.trim());
     if (/^```/.test(line.trim()) && next && SIDE.test(next)) state = 'side';
     else if (SIDE.test(line)) state = 'side';
-    else if (NOT_FLAGGED.test(line)) state = 'notFlagged';
+    else if (/^\s*(?:\*\*)?Lens:/.test(line)) {
+      state = 'main';
+      file = null;
+    } else if (NOT_FLAGGED.test(line)) state = 'notFlagged';
     else if (BOY_SCOUT.test(line)) state = 'boyScout';
-    else if (TALLY.test(line)) state = 'tally';
     else if (/^#{2,3}\s/.test(line)) {
       state = 'main';
       const h = line.match(/^###\s+(.*)$/);
@@ -64,7 +65,8 @@ export function findings(output) {
       const m = l.line.match(FINDING);
       if (!m) return null;
       const arrow = l.line.indexOf('→');
-      return { family: m[1], rule: m[2], severity: m[3], text: l.line, fix: arrow < 0 ? '' : l.line.slice(arrow + 1), file: l.file };
+      const file = l.file ?? m[4].match(/`([^`\s]+?):L?\d/)?.[1] ?? null;
+      return { family: m[1], rule: m[2], severity: m[3], text: l.line, fix: arrow < 0 ? '' : l.line.slice(arrow + 1), file };
     })
     .filter(Boolean);
 }
@@ -164,34 +166,6 @@ export function notFlaggedNames(output, { config: c = {} } = {}) {
     : result(true, `Not flagged names ${patterns.length - missing.length} of ${patterns.length} look-alikes`);
 }
 
-export function skeletonPreamble(output) {
-  const lines = output.split('\n');
-  const conv = lines.findIndex((l) => /^\*\*Conventions:\*\*/.test(l));
-  const head = lines.findIndex((l) => /^\*\*Headline:\*\*/.test(l));
-  const firstFile = lines.findIndex((l) => /^###\s/.test(l));
-  if (conv < 0) return result(false, 'no **Conventions:** line');
-  if (head < 0) return result(false, 'no **Headline:** line');
-  if (head < conv) return result(false, 'the Headline comes before the Conventions line');
-  if (firstFile >= 0 && head > firstFile) return result(false, 'the Headline comes after the first file header');
-  return result(true, 'Conventions then Headline open the report');
-}
-
-export function fileHeaders(output) {
-  const bad = output
-    .split('\n')
-    .filter((l) => /^###\s/.test(l))
-    .filter((l) => !/^###\s+`?[\w.@/-]+\.[\w]+`?\s*$/.test(l));
-  return bad.length ? result(false, `### headers that are not file paths: ${bad.join(' || ')}`) : result(true, 'every ### header is a file path');
-}
-
-export function findingBullets(output) {
-  const bad = sections(output)
-    .filter((l) => l.state === 'main' && l.file)
-    .map((l) => l.line)
-    .filter((l) => /^\s*\d+[.)]\s/.test(l) || /^\s*-\s+\*\*/.test(l) || /^\s*-{3,}\s*$/.test(l));
-  return bad.length ? result(false, `numbered, bolded or ruled finding entries: ${bad.map((l) => l.slice(0, 100)).join(' || ')}`) : result(true, 'each finding is a plain bullet');
-}
-
 export function collapsedRepeats(output, { config: c = {} } = {}) {
   const perFile = {};
   for (const f of findings(output).filter((f) => f.rule === c.rule)) perFile[f.file] = (perFile[f.file] ?? 0) + 1;
@@ -199,92 +173,41 @@ export function collapsedRepeats(output, { config: c = {} } = {}) {
   return bad.length ? result(false, `${c.rule} raised as ${bad.map(([f, n]) => `${n} bullets in ${f}`).join(', ')}`) : result(true, `${c.rule} sites are collapsed into one bullet per file`);
 }
 
-const tallyCounts = (output) => {
-  const m = output.match(/\*\*Tally:?\*\*:?\s*(\d+) findings? · (\d+) high · (\d+) medium · (\d+) nit/);
-  return m ? { high: Number(m[2]), medium: Number(m[3]) } : null;
-};
-
-export function headlineHonest(output) {
-  const headline = output.match(/^\*\*Headline:\*\*(.*)$/m)?.[1];
-  if (headline === undefined) return result(false, 'no **Headline:** line');
-  const t = tallyCounts(output);
-  const serious = findings(output).some((f) => f.severity === 'high' || f.severity === 'medium') || (t && t.high + t.medium > 0);
-  if (!serious) return result(true, 'no high or medium finding, any headline goes');
-  const clean = headline.match(/\bclean(ly)?\b|well[- ]structured|cosmetic|nits?[- ]only|only (cosmetic )?nits/i);
-  return clean ? result(false, `the headline calls a change with a high/medium finding "${clean[0]}": ${headline.trim()}`) : result(true, 'the headline does not call the change clean');
-}
-
 export function cleanVerdict(output) {
   const serious = findings(output).filter((f) => f.severity === 'high' || f.severity === 'medium');
   if (serious.length) return result(false, `high/medium findings: ${serious.map((f) => f.text.slice(0, 120)).join(' || ')}`);
-  const t = tallyCounts(output);
-  if (t && t.high + t.medium > 0) return result(false, `the tally counts ${t.high} high and ${t.medium} medium`);
   return result(true, 'no high or medium finding');
 }
 
-const skippedText = (output) => {
-  const i = output.search(/Skipped\b/);
-  return i < 0 ? '' : output.slice(i);
-};
+// ---- comments lens: one block per verdict bullet, its indented continuation lines included.
+// `comments` · R# · VERDICT · `path:line` · "verbatim comment" — reason → fix; ADD has no quote.
 
-export function skippedNames(output, { config: c = {} } = {}) {
-  const text = skippedText(output);
-  const missing = list(c.patterns).filter((p) => !re(p).test(text));
-  return missing.length ? result(false, `not listed as skipped: ${missing.join(', ')}`) : result(true, 'listed as skipped');
-}
-
-export function notSkipped(output, { config: c = {} } = {}) {
-  const text = skippedText(output);
-  const hit = list(c.patterns).filter((p) => re(p).test(text));
-  return hit.length ? result(false, `listed as skipped: ${hit.join(', ')}`) : result(true, 'none listed as skipped');
-}
-
-export function fileReviewed(output, { config: c = {} } = {}) {
-  const missing = list(c.files).filter(
-    (name) => !output.split('\n').some((l) => /^###\s/.test(l) && l.replace(/[`*]/g, '').trim().endsWith(name)) && !findings(output).some((f) => f.text.includes(name)),
-  );
-  return missing.length ? result(false, `no file header or finding for: ${missing.join(', ')}`) : result(true, 'every file is judged');
-}
-
-// ---- comment-review: one block per top-level bullet, its indented continuation lines included.
-
-const VERDICT = /\*\*(KEEP|REMOVE|REWRITE|MOVE|ADD)\*\*/;
-const VERDICT_BARE = /\b(KEEP|REMOVE|REWRITE|MOVE|ADD)\b/;
+const VERDICT_LINE = /^-\s+`comments`\s*·\s*(R\d+(?:\s*[,/]\s*R\d+)*)\s*·\s*\**(KEEP|REMOVE|REWRITE|MOVE|ADD)\**\s*·\s*`([^`]+?)(?::L?\d[^`]*)?`(.*)$/;
 const COMMENT_MARK = /^(\/\/|#|\/\*|\*|--|<!--)/;
 
 export function commentBlocks(output) {
   const blocks = [];
-  let file = null;
   let cur = null;
   for (const line of output.split('\n')) {
-    const h = line.match(/^###\s+(.*)$/);
-    if (h) {
-      file = h[1].replace(/[`*]/g, '').trim();
-      cur = null;
-      continue;
-    }
-    if (/^-\s/.test(line)) {
-      cur = { file, lines: [line] };
+    const m = line.match(VERDICT_LINE);
+    if (m) {
+      cur = { m, lines: [line] };
       blocks.push(cur);
     } else if (cur && (/^\s+\S/.test(line) || !line.trim())) cur.lines.push(line);
     else cur = null;
   }
-  return blocks.map((b) => {
-    const text = b.lines.join('\n').trimEnd();
-    const vm = text.match(VERDICT) ?? text.match(VERDICT_BARE);
-    const after = vm ? text.slice(vm.index + vm[0].length) : '';
-    const paren = after.match(/^\s*\(([^)]*)\)/)?.[1] ?? b.lines[0].match(/\((R\d+[^)]*)\)/)?.[1] ?? '';
+  return blocks.map(({ m, lines }) => {
+    const text = lines.join('\n').trimEnd();
     const arrow = text.indexOf('→');
-    const fixParts = [arrow < 0 ? '' : text.slice(arrow + 1), ...[...text.matchAll(/\bFix\b[^:\n]*:(.*)$/gm)].map((m) => m[1])];
-    const fix = fixParts.join('\n');
+    const fix = arrow < 0 ? '' : text.slice(arrow + 1);
     return {
-      file: b.file,
+      file: m[3],
       text,
-      quote: squash(b.lines[0].match(/`([^`]+)`/)?.[1] ?? ''),
-      verdict: vm?.[1] ?? null,
-      rules: [...paren.matchAll(/\bR(\d+)\b/g)].map((m) => `R${m[1]}`),
+      quote: squash(m[4].match(/^\s*·\s*"(.*?)"\s*—\s/)?.[1] ?? m[4].match(/^\s*·\s*"(.*)"/)?.[1] ?? ''),
+      verdict: m[2],
+      rules: [...m[1].matchAll(/R\d+/g)].map((r) => r[0]),
       fix,
-      replacements: [...fix.matchAll(/`([^`]+)`/g)].map((m) => m[1]).filter((s) => COMMENT_MARK.test(s.trim())),
+      replacements: [...fix.matchAll(/`([^`]+)`/g)].map((r) => r[1]).filter((s) => COMMENT_MARK.test(s.trim())),
     };
   });
 }

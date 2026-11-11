@@ -1,6 +1,8 @@
 # start-cr fans out to five lens-granular scanners reading per-lens rules files
 
-Status: accepted
+Status: accepted. The standalone `comment-review` and `quality-review` skills were removed
+later: every lens runs only through a Scanner, and `references/severity.md` holds the one
+severity index.
 
 The `code-review` plugin merges `comment-review` and `quality-review` under one
 orchestrator command, `start-cr`, which always dispatches exactly five parallel
@@ -34,4 +36,4 @@ mapping between them), ending in a single risk-cut apply menu.
 - A lens regrouping (e.g. back to thematic scanners) means cutting rules
   files apart — the file boundary is the lens boundary.
 - The severity table rows travel with their lens file; the master index
-  table stays in quality-review's SKILL.md and must be kept in sync.
+  table lives in `references/severity.md` and must be kept in sync.

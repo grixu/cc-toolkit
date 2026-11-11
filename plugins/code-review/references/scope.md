@@ -1,8 +1,7 @@
 # Review scope policy — what gets judged, what gets skipped, what a language changes
 
-Shared by `/start-cr` and the standalone `comment-review` / `quality-review` skills, so
-the three agree on coverage. How the file list is *resolved* (the diff script, the
-scope choice) stays in each surface; this file covers what to do with the list once you
+Shared by `/start-cr` and `cr-prepare`, so the two agree on coverage. How the file list
+is *resolved* (the diff script, the scope choice) stays in each surface; this file covers what to do with the list once you
 have it: which files are in, which are skipped, what kind each in-scope file is, which
 families or rules a language clears, and which project files override — or generate —
 findings.

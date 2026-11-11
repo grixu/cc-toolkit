@@ -169,19 +169,6 @@ branch is writable from here.
 Before applying anything, the review saves the report and your selection to the session's scratch
 directory, so a long apply walk survives a context compaction.
 
-## Single-lens reviews
-
-Two skills run a lighter review with a single reviewer and no parallel fan-out:
-
-```
-/code-review:comment-review     # comments only
-/code-review:quality-review     # code craft only: no comments, correctness, security, coherence, assumptions, performance or spec
-```
-
-Claude can also start them on its own when you ask for a comment review or a quality review in
-plain words. Both take the same paths and `--base` option as `/code-review:start-cr` and use the
-same rule files.
-
 ## Customize with your project's rules
 
 The review reads your conventions before it judges anything. Two kinds of files matter.
@@ -275,11 +262,6 @@ its own closing block, in the listed order, so `cr-merge` works the same either 
 They review committed changes only, never edit the checkout, and never ask anything. An empty
 change or a lens that did not report comes back as a status (`empty`, `incomplete`), never as a
 clean review.
-
-## Upgrading from comment-review or quality-review
-
-This plugin replaces the separate `comment-review` and `quality-review` plugins, which the
-marketplace no longer lists. Uninstall them, or you will see two copies of each skill.
 
 ## Development
 

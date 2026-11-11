@@ -2,7 +2,6 @@
 
 Merged review plugin: one orchestrator fans out parallel scanners over a change,
 each scanner judging a fixed rule subset; findings are merged into one report.
-Successor of the `comment-review` and `quality-review` plugins.
 
 ## Language
 
@@ -15,7 +14,7 @@ One parallel review subagent running exactly one Lens — the `code-review:scann
 _Avoid_: role, reviewer, worker
 
 **Lens**:
-One of the eleven rule clusters: comments (`R1`–`R12`), readability & tests, naming & module, objects & patterns, simplicity & types, correctness, security, coherence, assumptions, performance, spec. Six sit beyond the craft five: correctness, security, coherence and assumptions (always on), and two gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user). Comments is a Lens like any other, not a special case; the six added Lenses have no standalone skill.
+One of the eleven rule clusters: comments (`R1`–`R12`), readability & tests, naming & module, objects & patterns, simplicity & types, correctness, security, coherence, assumptions, performance, spec. Six sit beyond the craft five: correctness, security, coherence and assumptions (always on), and two gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user). Comments is a Lens like any other, not a special case. No Lens has a standalone skill: every one runs through a Scanner.
 _Avoid_: theme, dimension
 
 **Rules file**:
@@ -48,21 +47,20 @@ _Avoid_: lens selection (the user never picks), enabled lenses
 ## Relationships
 
 - **start-cr** fans out to the **Active lens set** — up to 11 **Scanners**, one per active **Lens**
-- Every **Lens** has exactly one **Rules file**; a craft Lens's file is read by both its standalone skill and **start-cr**, a gated Lens's file by **start-cr** only
+- Every **Lens** has exactly one **Rules file**; the Scanner is its only reader
 - Conventions suppress, **Standards files** generate: a convention file turns a would-be **Finding** into a non-finding, a **Standards file** produces `standards` **Findings**
 - Every **Scanner** reads the **Standards file** pair and raises `standards` **Findings** only inside its own Lens's subject
-- The six added **Lenses** (correctness, security, coherence, assumptions, performance, spec) have no standalone skill
+- No **Lens** has a standalone skill; a single-lens run is `cr-scan` with one `--lens`
 - **coherence** also reads the skipped files (documents, config data, migrations), never lockfiles, generated output or real `.env*` files (templates such as `.env.example` stay; a real one is Grepped for key names only); **assumptions** reads the installed dependency source and lockfile as evidence, never as files it judges
 - An accepted ADR, `CONTEXT.md` or a decision document in the diff generates `coherence` · invariant-breach **Findings**; `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` and `.claude/rules` stay suppress-only
 - A **Scanner** returns **Findings**/**Verdicts** only; the **Orchestrator** merges, dedups, and re-grades severity centrally
 - A **Scanner** detects; the **Orchestrator** filters. Uncertainty travels as a **Candidate** rather than being dropped at detection, so the filter decides it with the whole review in view
-- The skills `comment-review` and `quality-review` stay independently invocable alongside **start-cr**
 - The **start-cr** report groups by **file**, not by Scanner; **Findings** and **Verdicts** keep their own vocabularies side by side (no severity↔verdict mapping)
 
 ## Example dialogue
 
 > **Dev:** "Can I run just the comment **Scanner**?"
-> **Domain expert:** "Invoke the `comment-review` skill directly — **start-cr** always runs its whole **Active lens set**; a **Scanner** is its internal unit of fan-out, not a user-facing switch. The set is decided by the change and by whether a spec file is named, never by picking lenses."
+> **Domain expert:** "No — **start-cr** always runs its whole **Active lens set**; a **Scanner** is its internal unit of fan-out, not a user-facing switch. The set is decided by the change and by whether a spec file is named, never by picking lenses."
 
 ## Flagged ambiguities
 

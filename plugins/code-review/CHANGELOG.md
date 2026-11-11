@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The standalone `comment-review` and `quality-review` skills. They judged the same rules files as
+  the `comments` lens and the four craft lenses, so every lens now runs one way: through a Scanner,
+  from `/code-review:start-cr` or the headless `cr-prepare` → `cr-scan` → `cr-merge` steps. The
+  comment rules file now carries the deletion test and the KEEP-when-unsure default the skill held.
+
+### Changed
+
+- The comment, quality and standards eval tracks emulate the Scanner brief, like the other lens
+  tracks, instead of triggering the removed skills. Assertions on the skills' report skeleton
+  (Conventions / Headline lines, `###` file headers, the Tally line) are gone; eval-19 checks the
+  scope classification through `/start-cr` Step 1 in path mode.
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

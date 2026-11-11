@@ -1,8 +1,7 @@
 # code-review — promptfoo eval suite
 
-Repeatable [promptfoo](https://www.promptfoo.dev/) evals for the `comment-review`
-and `quality-review` skills and for the scanner-only lenses (`correctness`, `security`,
-`coherence`, `assumptions`, `performance`, `spec`). Each test runs the **real plugin** (loaded as a local plugin
+Repeatable [promptfoo](https://www.promptfoo.dev/) evals for every lens of the code-review
+plugin, the headless skills and `/start-cr`'s own steps. Each test runs the **real plugin** (loaded as a local plugin
 through the Claude Agent SDK) against a fixture and grades its output — comment
 verdicts (KEEP / REMOVE / REWRITE / MOVE / ADD, rules R1–R12) on the comment track,
 and findings tagged `family` · rule · severity on the quality, scanner, and standards
@@ -15,12 +14,12 @@ This is dev tooling — it is **not** shipped as part of the plugin runtime.
 ```
 evals/
   promptfooconfig.yaml     # provider + tests + assertions (all tracks)
-  prompts/review.txt       # natural-language trigger — comment track
-  prompts/quality.txt      # natural-language trigger — quality track
+  prompts/comments.txt     # scanner brief — comments lens
+  prompts/craft.txt        # scanner brief — the four craft lenses in turn ({{standards}} adds the CODING_STANDARDS pair)
   prompts/security.txt     # scanner brief — security lens
   prompts/performance.txt  # scanner brief — performance lens
   prompts/spec.txt         # scanner brief — spec lens ({{spec}} carries the spec path)
-  prompts/standards.txt    # quality trigger with the standards fixture dir as repo root
+  prompts/scope-paths.txt  # start-cr Step 1 over named paths, with the kinds and lens set — eval-19
   cases/                   # inputs, kept out of fixtures/ (test kind in scope.md); cases/spec-conformance/ and cases/standards/ are multi-file
   scope-mix/               # eval-19 input, kept out of fixtures/ so its paths classify by kind
   comment-track/           # evals 0–4 inputs, kept out of fixtures/ so R11's test-file bar does not apply
@@ -35,7 +34,7 @@ evals/
   prompts/pr-draft.txt     # start-cr --pr Step 1, then Step 4 on over lens files on disk — eval-27
   prompts/scope-question.txt # start-cr Step 1 with no path arguments, committed and uncommitted changes — evals 29–30, 33
   prompts/pr-detect.txt    # start-cr Step 1 with no arguments, on a branch that is someone else's PR — evals 31–32
-  checks/report.mjs        # code asserts over the final message: finding bullets, comment verdicts, the quality skeleton
+  checks/report.mjs        # code asserts over the final message: finding bullets and comment verdicts
   checks/menu-and-commits.mjs # eval-26: the apply menu and commit question from the tool calls, the commits from git
   checks/pr-draft.mjs      # eval-27: the reviewer-mode draft, its hunks, and when the gh stand-in got a POST
   checks/untrusted-text.mjs # evals 41–42: what the tool calls ran, read and met — a planted command, a forbidden file, a kept-out value
@@ -52,7 +51,7 @@ scripts live at the **repo root** (`package.json`, single shared `node_modules`)
 not per-plugin.
 
 Each test binds to one prompt label (`comment-track`, `quality-track`,
-`security-track`, `performance-track`, `spec-track`, `standards-track`), so the
+`security-track`, `performance-track`, `spec-track`, `scope-track` and the rest), so the
 tracks don't cross-run (promptfoo otherwise matrices every test against every prompt).
 
 | Test | Track | Fixture(s) | Focus | Asserts (code / rubric) |
@@ -62,7 +61,7 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-2 | comment | `comment-track/dlq-codes.ts` + `dlq.handler.ts` | R12 misplaced/duplicated rationale (REMOVE vs MOVE) | 8 / 0 |
 | eval-3 | comment | `comment-track/payment-validator.ts` | R4 spec-id pointers (REMOVE/REWRITE), token-stripping | 12 / 0 |
 | eval-4 | comment | `comment-track/host-allowlist.ts` | R4 spec-ids embedded mid-sentence → REWRITE, keep the WHY | 4 / 2 |
-| eval-5 | quality | `quality-vocabulary.ts` | severity verbatim from the table, repeats collapsed, headline honesty | 10 / 0 |
+| eval-5 | quality | `quality-vocabulary.ts` | severity verbatim from the table, repeats collapsed, no fenced code | 6 / 0 |
 | eval-6 | quality | `quality-recall.ts` | recall gate — a seeded high + medium + nit across three families must all surface | 6 / 0 |
 | eval-7 | quality | `quality-calibration.ts` | noise gate — five documented look-alikes must stay non-findings | 8 / 0 |
 | eval-8 | quality | `quality-recall-2.ts` + `quality-recall-2.model.ts` | folded rules recall — `pass-through`, `canonical-helper` (cross-file), `feature-envy`, `message-chain` | 10 / 0 |
@@ -72,11 +71,11 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-12 | performance | `performance-recall.ts` | `n-plus-one` with all four evidence items, `unbounded-fetch`; no "could be slow" | 8 / 2 |
 | eval-13 | performance | `performance-calibration.ts` | enum loop, `take`/`skip` page, module-level `readFileSync` stay non-findings | 7 / 0 |
 | eval-14 | spec | `spec-conformance/feature-spec.md` + `spec-conformance/feature-impl.ts` | one MISSING (under the spec path), one WRONG, one scope-creep, "3 of 5 requirements met" | 13 / 0 |
-| eval-15 | standards | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, a craft "prefer" rule → nit, vague prose ignored | 10 / 0 |
+| eval-15 | quality | `standards/CODING_STANDARDS*.md` + `standards/service.ts` | MUST → high with quoted rule, `.local`-relaxed SHOULD suppressed, a craft "prefer" rule → nit, vague prose ignored | 10 / 0 |
 | eval-16 | security | `iac-exposure.tf` | `iac-exposure` recall: generated key in state and on disk, plaintext default + unmarked output, `allUsers` invoker, `0.0.0.0/0` on 5432, repo-only OIDC condition; four public-by-design look-alikes stay non-findings | 10 / 0 |
 | eval-17 | security (diff) | `access-widening.diff` | `access-widening` from the `-`/`+` sides: widened scope, dropped owner predicate, lost `requireAuth`, lost `tenant_id`; the two tightening hunks stay non-findings | 7 / 0 |
 | eval-18 | security | `tenant-guard.ts` + `tenant-guard.test.ts` | a sound guard stays clean; the tests' unexercised boundary goes to `tests` · test-fidelity as a HANDOFF, never a `security` finding | 4 / 1 |
-| eval-19 | quality | `scope-mix/` | scope by file kind: `.mjs`/`.cjs` reviewed as source, an e2e spec as a test file, the CI workflow left to the security lens, `notes.txt` skipped | 9 / 0 |
+| eval-19 | scope | `scope-mix/` | `/start-cr` Step 1 over named paths: `.mjs`/`.cjs` kind `source`, an e2e spec kind `test`, the CI workflow kind `policy` and given to `security` alone, `notes.txt` skipped with `/security-review` named | 10 / 0 |
 | eval-20 | headless | `.sandbox/headless` | `cr-prepare` → `cr-scan` per lens → `cr-merge`: every lens file, the merged finding shape, the Reconciliation arithmetic | 1 / 0 |
 | eval-21 | correctness | `correctness/order-sync.ts` (`DEFECTS.md` beside it) | `off-by-one` + `swallowed-error`, exhaustive `never` default and best-effort catch left alone, HANDOFF families from the fixed table | 10 / 0 |
 | eval-22 | headless | `.sandbox/headless-skipped` | a docs-only commit makes `cr-prepare` return `ready` with 0 judged files and `coherence` the only active lens, over the three skipped files | 1 / 0 |
@@ -103,10 +102,10 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 
 ### Grading
 
-Code first: 276 of the 283 asserts are `regex`, `not-regex` or `javascript`. Most read the
-final message through `checks/report.mjs`. It parses the fixed shapes the skills prescribe:
-`` `family` · rule · severity · L… `` findings, ``L… · `quote` — **VERDICT** (R#)`` comment
-verdicts, and the Conventions / Headline / `###` path / Tally skeleton. It grades only the
+Code first: 273 of the 280 asserts are `regex`, `not-regex` or `javascript`. Most read the
+final message through `checks/report.mjs`. It parses the fixed shapes the scanner contract
+prescribes: `` `family` · rule · severity · `path:L…` `` findings and
+`` `comments` · R# · VERDICT · `path:line` · "quote" `` comment verdicts. It grades only the
 sections the contract governs, never `HANDOFF` or `CANDIDATES`. Each assert checks one
 dimension. The suite had 115 `llm-rubric` asserts and now has 7. Every code assert was run
 against the 85 saved outputs (`.results/latest.json`, the `.results/runs/` archive, the
@@ -129,16 +128,16 @@ security and performance lenses, eval-34/35, eval-36/37 and eval-38/39 for the `
 
 ### Scanner track
 
-`security`, `performance`, `spec`, `correctness`, `coherence` and `assumptions` exist only
-inside `/start-cr` — they have no standalone skill to trigger by description, and the Agent
-SDK rejects a prompt that starts with `/`, so `/start-cr` itself cannot be invoked from a
-promptfoo prompt. The scanner prompts therefore **emulate the orchestrator's Scanner brief** in
-natural language: act as the `<lens>` scanner, read `references/rules/<lens>.md` and
-`references/severity.md` completely, review the file in path mode, return findings
-only in the brief's exact bullet shape, write nothing. What they measure is the rules
-file plus the brief contract; the dispatch/merge mechanics of `start-cr.md` are out of
-reach here. The prompts avoid the `quality-review`/`comment-review` trigger words so
-those skills do not fire on top of the brief.
+Every lens runs only through a Scanner — no lens has a standalone skill to trigger by
+description — and the Agent SDK rejects a prompt that starts with `/`, so `/start-cr` itself
+cannot be invoked from a promptfoo prompt. The lens prompts therefore **emulate the
+orchestrator's Scanner brief** in natural language: act as the `<lens>` scanner, read
+`references/rules/<lens>.md`, `references/severity.md` and the scanner contract completely,
+review the files in path mode, return findings (or, for `comments`, verdicts) only in the
+contract's exact bullet shape, write nothing. The comment track does this for the `comments`
+lens and the quality track for the four craft lenses in turn, as `cr-scan` runs a lens list.
+What they measure is the rules file plus the brief contract; the dispatch/merge mechanics of
+`start-cr.md` are out of reach here.
 
 ### start-cr track
 
@@ -155,9 +154,10 @@ that option to its files and to the commit mode it picked, and grade the commits
 The branch has commits above its base, so the "Fixup only when the branch has commits" half of
 the commit-mode check cannot fail here; it guards a future sandbox without them.
 
-The standards test rides the quality track (`standards.txt` opens with the
-`quality review` trigger) and tells the skill to treat `cases/standards/` as the
-repository root for the `CODING_STANDARDS.md` + `.local.md` pair.
+The standards test rides the quality track: its `standards` var makes `craft.txt` read the
+`CODING_STANDARDS.md` + `.local.md` pair from `cases/standards/` as the standards slot. eval-19
+runs `/start-cr` Step 1 over named paths (`scope-paths.txt`), since a Scanner never classifies
+files — it receives its `<files>` already cut by kind.
 
 ## Prerequisites
 
@@ -274,24 +274,15 @@ dir is readable with Read, not from sandboxed Bash.
   | eval-14 | 7/7 | after tightening spec line 5 to "called with an empty list" — the scanner read "no orders to export" as post-filter and raised a defensible `partial-requirement` |
   | eval-15 | 6/6 | |
 
-  Per-test cost on the quality track is now ~$0.40–0.55 (the skill reads six reference
-  files and Greps one hop); the scanner track is ~$0.10–0.19. The comment track
+  Per-test cost on the quality track was ~$0.40–0.55 on the removed skill (it read six
+  reference files and Greps one hop); the scanner track is ~$0.10–0.19. The comment track
   (eval-0…4) was not re-measured on this date.
 
-- **eval-5 is flaky; eval-6 and eval-7 are not.** Across five post-pass runs, eval-6
-  (recall) scored 5/5 and eval-7 (calibration) 7/7 on **both** models, every time.
-  eval-5 ranged **4/8 to 7/8** with no stable model split — opus-5 produced a
-  textbook-perfect skeleton in one run and a prose summary in the next, from an
-  identical config. What moves is only the report *chrome*: the `Conventions` /
-  `Headline` lines and the file-path `###` headers. The findings themselves — families,
-  rules, severities — are correct in every run.
-
-  The skeleton is now graded in code (`skeletonPreamble`, `fileHeaders`, `findingBullets`,
-  `noCodeBlocks`, `headlineHonest`), which removes the judge's noise but not the model's.
-  So treat eval-5's skeleton assertions as **indicative, not a pass/fail gate**, unless
-  you run `--trials 3` and compare rates. Skeleton adherence in `quality-review` is a
-  known open weakness: the Opus 5 prompt pass removed fenced code blocks from the report
-  reliably, but did not make the header/preamble structure deterministic.
+- **eval-6 and eval-7 were stable on the removed skill.** Across five runs eval-6 (recall)
+  scored 5/5 and eval-7 (calibration) 7/7 on both models. The removed `quality-review`
+  skill's flaky part was its report skeleton, which the Scanner brief does not produce, so
+  those asserts are gone. None of the measured scores below has been re-measured on the
+  Scanner-brief prompts.
 
 - Two assertions are instructive:
   - *eval-3 `§4.1`* is a genuine judgment boundary — after the spec-id is stripped
@@ -310,28 +301,14 @@ dir is readable with Read, not from sandboxed Bash.
   occasionally wraps the verdict in prose and promptfoo cannot extract the JSON. For a
   faster/cheaper grader, set `ANTHROPIC_API_KEY` and change
   `defaultTest.options.provider` to `anthropic:messages:claude-opus-4-8`.
-- **Plugin path and skill trigger (SDK 0.3.252 / promptfoo 0.122.2, 2026-09-02).**
-  Two things changed under a fresh `pnpm install` and both silently zeroed the quality
-  track (the model answered from general knowledge — "patterns / duplication",
-  severity "Low" — with no rules file read):
-  - `plugins[].path` resolves relative to **this config file**, not `working_dir`;
-    `plugins/code-review` loaded nothing, `..` loads the plugin. Verified with a
-    one-turn "list your skills" probe.
-  - Plugin skills now surface through the **`Skill` tool** (`metadata.skillCalls` is
-    populated), and the bare `quality review <path>` opener no longer makes the model
-    invoke one. The quality/standards prompts therefore name the skill
-    (`Use the \`code-review:quality-review\` skill …`) and say **report only — no apply
-    menu, no `AskUserQuestion`**; without that line the skill's Step 6 menu fires,
-    `ask_user_question: first_option` picks "Safe fixes", and the final message (the
-    only thing promptfoo grades) becomes "I have no Edit tool" instead of the report.
-    `prompts/review.txt` (comment track) still uses the old opener and was **not**
-    re-measured under this SDK — expect it to need the same treatment.
-- **`skill-used` is still not asserted.** Each test asserts (via `regex`) that the
-  report uses the skill's own output shape — the comment track's full `Tally` line, the
-  backticked family labels on the quality/scanner tracks — since output of that shape
-  requires the rules to have been read. eval-7/9 (clean quality fixtures) proxy on the
-  quality `Tally` line, eval-11/13 (clean scanner fixtures) on the `Not flagged` line the brief asks
-  for.
+- **Plugin path (SDK 0.3.252 / promptfoo 0.122.2, 2026-09-02).** `plugins[].path`
+  resolves relative to **this config file**, not `working_dir`; `plugins/code-review` loaded
+  nothing, `..` loads the plugin. Verified with a one-turn "list your skills" probe.
+- **`skill-used` is not asserted.** Each test asserts (via `regex`) that the output has the
+  contract's own shape — the `Lens:` header line, the backticked family labels — since output
+  of that shape requires the rules to have been read. eval-7/9/39 (clean quality fixtures)
+  proxy on all four craft `Lens:` headers, eval-11/13 (clean scanner fixtures) on the
+  `Not flagged` line the brief asks for.
 - `setting_sources: []` keeps this repo's `CLAUDE.md`/hooks out of the run, so
   results reflect the skill, not the surrounding harness.
 
@@ -339,7 +316,8 @@ dir is readable with Read, not from sandboxed Bash.
 
 Fixtures `payment-validator.ts` and `host-allowlist.ts` and their assertions come
 from the skill-creator workspace
-(`../skills/comment-review-workspace/`, evals 3 & 4). Fixtures
+(`comment-review-workspace/`, evals 3 & 4, from the time the comments lens was a
+standalone skill). Fixtures
 `datadog-integration.tf`, `scheduler.ts`, `dlq-codes.ts`, `dlq.handler.ts` were
 reconstructed from the assertion lists in that workspace's
 `skill-snapshot/evals/evals.json` (evals 0/1/2), whose original fixtures were no
