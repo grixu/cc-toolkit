@@ -60,14 +60,15 @@ The passes run in a fixed order, structure before words:
 claude plugin eval plugins/anti-slop --scaffold --trust-plugin --allow-tools Bash Write Edit
 ```
 
-Seven cases in `evals/`, each also run without the plugin to show what it adds:
+Eight cases in `evals/`, each also run without the plugin to show what it adds:
 - fidelity against a source commit;
 - a plain PR body left untouched;
 - file mode on a bilingual code-story chapter;
 - Polish officialese;
 - an instruction hidden in the text;
 - a translation request that must not trigger the skill;
-- the embedded-mode contract `pr-open` relies on.
+- the embedded-mode contract `pr-open` relies on;
+- embedded mode that goes straight on to the caller's next step.
 
 Graders are regexes and tool checks, no model judge.
 
