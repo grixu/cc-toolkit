@@ -54,6 +54,23 @@ The passes run in a fixed order, structure before words:
 
 `scripts/scan.mjs <file> [--lang en|pl]` lists the mechanical tells with line and column. It skips code, markup and URLs, and always exits 0: its hits are leads for the model, not verdicts.
 
+## Evals
+
+```
+claude plugin eval plugins/anti-slop --scaffold --trust-plugin --allow-tools Bash Write Edit
+```
+
+Seven cases in `evals/`, each also run without the plugin to show what it adds:
+- fidelity against a source commit;
+- a plain PR body left untouched;
+- file mode on a bilingual code-story chapter;
+- Polish officialese;
+- an instruction hidden in the text;
+- a translation request that must not trigger the skill;
+- the embedded-mode contract `pr-open` relies on.
+
+Graders are regexes and tool checks, no model judge.
+
 ## Sources
 
 Merged from four MIT-licensed skills, credited in `skills/anti-slop/NOTICE.md`:

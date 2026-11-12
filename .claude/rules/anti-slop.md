@@ -33,3 +33,7 @@ The scan reports leads; `SKILL.md` says the model judges each one. Keep it advis
 ## Callers
 
 `code-story` (file mode on its chapters) and `dev-kit:pr-open` (embedded mode on the PR body) depend on this plugin. They rely on two contracts: embedded mode returns only text, and file mode leaves code, markup and link targets byte for byte. Changing either is a breaking change for both callers.
+
+## Evals
+
+`evals/` holds a `claude plugin eval` suite. A behaviour change to the skill comes with a case that fails before it and passes after, and the README's eval command must keep passing. Grade with regexes over the edited file and tool checks. Keep model judges out until one has been validated against hand labels.
