@@ -19,7 +19,8 @@ is waiting for:
 
 - Claude Code with mods turned on; tested on 2.1.322. On a Team or Enterprise plan, an admin
   setting such as `allowManagedModsOnly` can turn off mods you install, and then nothing plays.
-- A sound output. Claude Code plays the clips with the platform's own player (`afplay` on macOS).
+- macOS. Claude Code plays the clips with `afplay`; a Linux or Windows terminal has no player, so
+  nothing plays.
 
 ## Installation
 
