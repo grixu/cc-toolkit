@@ -1,21 +1,14 @@
-import { httpError, readResponse, requestInit, type Backend } from './backend.ts'
-
-// Jev client helpers copied from dev-kit's hooks at e20a572: a plugin cannot import another plugin's files, and a
-// symlink breaks under --plugin-dir and local-path marketplaces. A fix to the originals has to be copied here by hand.
+// Diff helpers copied from dev-kit's hooks at e20a572: a plugin cannot import another plugin's files, and a symlink
+// breaks under --plugin-dir and local-path marketplaces. A fix to the originals has to be copied here by hand.
 
 export const STATE_CHAR_BUDGET = 72_000 // the whole state: diff + commits + diffstat
 export const COMMITS_CHAR_BUDGET = 8_000
 export const DIFFSTAT_CHAR_BUDGET = 4_000
 export const MAX_PARTS = 8 // the confirmed cost figure assumes 8
 export const CONCURRENCY = 4
-export const MAX_ATTEMPTS = 3
 export const MAX_SPLIT_DEPTH = 3
 
 const CUT_HUNK = '\n[… hunk cut to fit the request]'
-const MAX_RETRY_DELAY_MS = 10_000
-const RETRYABLE = new Set([429, 500, 502, 503, 504, 529])
-const DEFAULT_TYPESAFE_ENDPOINT = 'https://api.typesafe.ai'
-const SYSTEMONE_PATH = '/v1/systemone'
 
 const EXCLUDED_FILE = [
   /(^|\/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lockb?|composer\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|go\.sum|flake\.lock)$/,
@@ -37,9 +30,6 @@ export type Split = {
   skippedFiles: string[]
   truncatedHunks: number
 }
-
-export type JevRequest = { backend: Backend; questions: Record<string, unknown>; limit: Limit }
-export type Limit = <T>(fn: () => Promise<T>) => Promise<T>
 
 export function isExcluded(path: string): boolean {
   return EXCLUDED_FILE.some((re) => re.test(path))
@@ -162,53 +152,9 @@ export async function pool<T, R>(items: T[], size: number, fn: (item: T, index: 
   return results
 }
 
-export function retryDelay(headers: Record<string, string> | undefined, attempt: number): number {
-  const after = Number(headers?.['retry-after'])
-  const ms = Number.isFinite(after) && after > 0 ? after * 1000 : 1000 * 2 ** (attempt - 1)
-  return Math.min(ms, MAX_RETRY_DELAY_MS)
-}
-
 // Refs come from the model, so reject anything git could read as an option or a revision expression.
 export function isSafeRef(ref: unknown): ref is string {
   return typeof ref === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(ref) && !ref.includes('..')
-}
-
-export function endpointUrl(endpoint: unknown): string {
-  const base = trimmedOption(endpoint, DEFAULT_TYPESAFE_ENDPOINT).replace(/\/+$/, '')
-  return base.endsWith(SYSTEMONE_PATH) ? base : base + SYSTEMONE_PATH
-}
-
-// Every pool shares one cap, so nested pools still hold Jev to CONCURRENCY requests in flight.
-export function limiter(size: number): Limit {
-  let active = 0
-  const waiting: (() => void)[] = []
-  return async (fn) => {
-    if (active >= size) await new Promise<void>((resolve) => waiting.push(resolve))
-    else active++
-    try {
-      return await fn()
-    } finally {
-      const next = waiting.shift()
-      if (next) next()
-      else active--
-    }
-  }
-}
-
-export async function post($, request: JevRequest, body: string) {
-  const res = await send($, request, body)
-  if (!res.ok) throw new Error(httpError(request.backend, res.status, res.text))
-  return res
-}
-
-export async function send($, request: JevRequest, body: string) {
-  for (let attempt = 1; ; attempt++) {
-    const res = await request.limit(() => $.http.fetch(request.backend.url, requestInit(request.backend, body)))
-    if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) return readResponse(request.backend, res)
-    // $.clock.sleep counts toward the hook's 10 s budget, while time inside a process does not; the retry follows
-    // whatever the exit code.
-    await $.process.run(['sleep', String(retryDelay(res.headers, attempt) / 1000)], { timeoutMs: 30_000 })
-  }
 }
 
 // The session's working directory follows the model's `cd`, which can leave the repository for a scratchpad or a

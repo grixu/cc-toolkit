@@ -1,6 +1,8 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { GEMINI_URL, backendFor, chooseBackends, toGemini, tooLong } from '../hooks/backend.ts'
-import { endpointUrl, fileDiffs } from '../hooks/jev.ts'
+import { fileDiffs } from '../hooks/jev.ts'
+import { GEMINI_URL } from '../hooks/providers/gemini.ts'
+import { chooseBackends } from '../hooks/providers/index.ts'
+import { typesafeEndpoint } from '../hooks/providers/typesafe.ts'
 import { FACTS, aggregate, factQuestions, partState, signalOf } from '../hooks/signals.ts'
 
 const TOOL = 'mcp__pr-proof__proof_signals'
@@ -64,9 +66,9 @@ for (const { env, expected } of [
 }
 
 test('builds the endpoint URL from a base with or without the systemone path', () => {
-  expect(endpointUrl(undefined)).toBe('https://api.typesafe.ai/v1/systemone')
-  expect(endpointUrl('https://x.test/')).toBe('https://x.test/v1/systemone')
-  expect(endpointUrl('https://x.test/v1/systemone')).toBe('https://x.test/v1/systemone')
+  expect(typesafeEndpoint(undefined)).toBe('https://api.typesafe.ai/v1/systemone')
+  expect(typesafeEndpoint('https://x.test/')).toBe('https://x.test/v1/systemone')
+  expect(typesafeEndpoint('https://x.test/v1/systemone')).toBe('https://x.test/v1/systemone')
 })
 
 test('splits and names a file whose quoted header git kept despite core.quotePath=false', () => {
@@ -85,14 +87,16 @@ test('reads a probability at the thresholds as suggest or reject', () => {
   expect(signalOf(1)).toBe('suggest')
 })
 
-test('asks the five facts as noul questions', () => {
-  const q = factQuestions() as Record<string, { type: string; instructions: string }>
+test('asks the five facts as yes/no questions', () => {
+  const q = factQuestions()
   expect(Object.keys(q)).toEqual(['appearance_changed', 'ui_flow_changed', 'endpoint_response_changed', 'command_output_changed', 'no_behavior_change'])
-  expect(Object.values(q).every((x) => x.type === 'noul')).toBe(true)
+  expect(Object.values(q).every((x) => x.type === 'binary')).toBe(true)
 })
 
+const yes = (p: number) => ({ type: 'binary' as const, p })
+
 test('takes the maximum across parts for a kind and the minimum for no behaviour change', () => {
-  const part = (f: Record<string, number>) => Object.fromEntries(Object.entries(f).map(([k, noul]) => [k, { noul }]))
+  const part = (f: Record<string, number>) => Object.fromEntries(Object.entries(f).map(([k, p]) => [k, yes(p)]))
   const result = aggregate([
     part({ appearance_changed: 0.9, ui_flow_changed: 0.2, endpoint_response_changed: 0.1, command_output_changed: 0.5, no_behavior_change: 0.95 }),
     part({ appearance_changed: 0.1, ui_flow_changed: 0.4, endpoint_response_changed: 0.2, command_output_changed: 0.1, no_behavior_change: 0.2 }),
@@ -108,8 +112,8 @@ test('takes the maximum across parts for a kind and the minimum for no behaviour
 })
 
 test('a change without behaviour in any part suppresses the kinds but keeps their values', () => {
-  const answers = { appearance_changed: { noul: 0.8 }, ui_flow_changed: { noul: 0.1 }, endpoint_response_changed: { noul: 0.1 }, command_output_changed: { noul: 0.1 }, no_behavior_change: { noul: 0.75 } }
-  const result = aggregate([answers, { ...answers, no_behavior_change: { noul: 0.9 } }])
+  const answers = { appearance_changed: yes(0.8), ui_flow_changed: yes(0.1), endpoint_response_changed: yes(0.1), command_output_changed: yes(0.1), no_behavior_change: yes(0.75) }
+  const result = aggregate([answers, { ...answers, no_behavior_change: yes(0.9) }])
   expect(result.suppressed).toBe(true)
   expect(result.noBehaviorChange).toEqual({ signal: 'suggest', p: 0.75 })
   expect(result.signals.screenshots).toEqual({ signal: 'suggest', p: 0.8 })
@@ -410,34 +414,6 @@ test('picks the backend with a key, asks when both have one, and honours an expl
   expect(chooseBackends({ decision_backend: 'both', primary_backend: 'gemini' }, undefined, KEYS, 'pr-proof')).toEqual(['gemini', 'typesafe'])
   expect(() => chooseBackends({ decision_backend: 'gemini' }, undefined, { typesafe: 't', gemini: '' }, 'pr-proof')).toThrow(/GEMINI_DECISIONS_API_KEY/)
   expect(() => chooseBackends({}, 'jev', KEYS, 'pr-proof')).toThrow(/auto, typesafe, gemini or both/)
-})
-
-test('translates a Jev body into a Decisions request', () => {
-  const body = JSON.stringify({
-    model: 'jev-1.14.0',
-    state: { diff: '+a', files: ['a.ts'] },
-    questions: {
-      yes: { type: 'noul', instructions: 'Is it?', criteria: { true: 'It is.', false: 'It is not.' } },
-      bare: { type: 'noul', instructions: 'Bare?' },
-      level: { type: 'score', instructions: 'How much?', criteria: ['None', { what: 'Some.', not_for: 'All.' }] },
-    },
-  })
-  const out = JSON.parse(toGemini(body))
-  expect(out.model).toBe('gemini-decision-1')
-  expect(JSON.parse(out.input)).toEqual({ diff: '+a', files: ['a.ts'] })
-  expect('state' in out).toBe(false)
-  expect(out.questions.yes.criteria).toEqual({ true_description: 'It is.', false_description: 'It is not.' })
-  expect(out.questions.bare).toEqual({ type: 'noul', instructions: 'Bare?' })
-  expect(out.questions.level.criteria).toEqual(['None', 'Some. This level is not for: All.'])
-})
-
-test("reads each backend's too-long refusal", () => {
-  const gemini = backendFor('gemini', 'g', { url: 'u', model: 'm' })
-  const typesafe = backendFor('typesafe', 't', { url: 'u', model: 'm' })
-  const geminiText = '{"error":{"message":"The input token count exceeds the maximum number of tokens allowed 262144.","code":"invalid_request"}}'
-  expect(tooLong(gemini, { status: 400, text: geminiText })).toBe(true)
-  expect(tooLong(typesafe, { status: 400, text: geminiText })).toBe(false)
-  expect(tooLong(typesafe, { status: 400, text: '{"error":{"code":"max_tokens_exceeded"}}' })).toBe(true)
 })
 
 test('asks Gemini with its key, URL and body, and reports its model', async ($, on) => {

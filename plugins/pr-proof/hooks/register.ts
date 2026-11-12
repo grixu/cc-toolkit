@@ -1,41 +1,26 @@
+import { DecisionError, ask, limiter, type Answers, type DecisionProvider, type Limit } from './decision.ts'
 import {
   CONCURRENCY,
   DIFFSTAT_CHAR_BUDGET,
   MAX_SPLIT_DEPTH,
   STATE_CHAR_BUDGET,
   clip,
-  endpointUrl,
   git,
   halve,
   isExcluded,
   isSafeRef,
-  limiter,
   pool,
   readDiffs,
   repoRoot,
   resolveBase,
-  send,
   split,
   trimmedOption,
-  type JevRequest,
   type Part,
 } from './jev.ts'
-import {
-  MODES,
-  appendLine,
-  backendFor,
-  backendKeys,
-  chooseBackends,
-  choiceNeeded,
-  hasAnyKey,
-  httpError,
-  tooLong,
-  type BackendName,
-} from './backend.ts'
-import { aggregate, factQuestions, missingFact, partState, type Answers } from './signals.ts'
+import { MODES, appendLine, chooseBackends, choiceNeeded, createProvider, hasAnyKey, providerKeys, type ProviderName } from './providers/index.ts'
+import { aggregate, factQuestions, missingFact, partState } from './signals.ts'
 
 const TOOL = 'proof_signals'
-const DEFAULT_MODEL = 'jev-1.14.0'
 // The diffstat travels in every part, so the diff gets what is left of the state.
 const DIFF_CHAR_BUDGET = STATE_CHAR_BUDGET - DIFFSTAT_CHAR_BUDGET
 const DESCRIPTION =
@@ -45,7 +30,7 @@ const COMPARE_LOG = '.cache/pr-proof/compare.jsonl'
 export function register(on, options) {
   on('session.start', async ($, e, next) => {
     // Without a key nothing may leave the machine, so the tool does not exist at all.
-    if (hasAnyKey(await backendKeys($, options))) {
+    if (hasAnyKey(await providerKeys($, options))) {
       try {
         await $.tool.register({
           name: TOOL,
@@ -86,7 +71,7 @@ function unavailable(reason: string) {
 
 async function proofSignals($, base: unknown, requested: unknown, options) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
-  const keys = await backendKeys($, options)
+  const keys = await providerKeys($, options)
   const chosen = chooseBackends(options, requested, keys, 'pr-proof')
   if (chosen === 'choose') return choiceNeeded(`mcp__pr-proof__${TOOL}`)
 
@@ -110,22 +95,21 @@ async function proofSignals($, base: unknown, requested: unknown, options) {
   if (!plan.parts.length) throw new Error('no reviewable text diff: only mode changes or empty files')
 
   const context = { diffstat: clip(diffstat.trimEnd(), DIFFSTAT_CHAR_BUDGET) }
-  const typesafe = { url: endpointUrl(options?.typesafe_endpoint), model: trimmedOption(options?.typesafe_model, DEFAULT_MODEL) }
   const coverage = (parts: number, truncatedHunks: number) => {
     const filesNotAssessed = plan.skippedFiles.length + unread.length
     return { parts, filesNotAssessed, filesExcluded, truncatedHunks, partial: filesNotAssessed > 0 || truncatedHunks > 0 }
   }
-  const ask = async (name: BackendName) => {
-    // Each backend gets its own cap: their rate limits are separate.
-    const request: JevRequest = { backend: backendFor(name, keys[name], typesafe), questions: factQuestions(), limit: limiter(CONCURRENCY) }
-    const asked = await pool(plan.parts, CONCURRENCY, (part) => askPart($, request, context, part, 0))
+  const run = async (name: ProviderName) => {
+    // Each provider gets its own cap: their rate limits are separate.
+    const asking: Asking = { provider: createProvider(name, keys, options), limit: limiter(CONCURRENCY) }
+    const asked = await pool(plan.parts, CONCURRENCY, (part) => askPart($, asking, context, part, 0))
     const results = asked.flatMap((a) => a.answered)
     const truncatedHunks = asked.reduce((sum, a) => sum + a.truncatedHunks, plan.truncatedHunks)
     return { backend: name, model: results[0].model, ...aggregate(results.map((r) => r.answers)), coverage: coverage(results.length, truncatedHunks) }
   }
 
-  if (chosen.length === 1) return ask(chosen[0])
-  const settled = await Promise.allSettled(chosen.map(ask))
+  if (chosen.length === 1) return run(chosen[0])
+  const settled = await Promise.allSettled(chosen.map(run))
   const comparison = settled.map((s, i) =>
     s.status === 'fulfilled' ? s.value : { backend: chosen[i], error: s.reason instanceof Error ? s.reason.message : String(s.reason) },
   )
@@ -155,36 +139,33 @@ function changedEntries(numstat: string): { path: string; binary: boolean }[] {
   })
 }
 
+type Asking = { provider: DecisionProvider; limit: Limit }
 type Answered = { model: string; answers: Answers }
 
 async function askPart(
   $,
-  request: JevRequest,
+  asking: Asking,
   context: { diffstat: string },
   part: Part,
   depth: number,
 ): Promise<{ answered: Answered[]; truncatedHunks: number }> {
-  const body = JSON.stringify({ model: request.backend.model, state: partState(part, context), questions: request.questions })
-  const res = await send($, request, body)
-  if (!res.ok) {
-    if (depth < MAX_SPLIT_DEPTH && tooLong(request.backend, res)) {
-      const halves = halve(part)
-      if (halves.parts.some((h) => h.diff.length < part.diff.length)) {
-        const answered: Answered[] = []
-        let truncatedHunks = halves.truncatedHunks
-        for (const h of halves.parts) {
-          const sub = await askPart($, request, context, h, depth + 1)
-          answered.push(...sub.answered)
-          truncatedHunks += sub.truncatedHunks
-        }
-        return { answered, truncatedHunks }
-      }
+  let response
+  try {
+    response = await ask($, asking.provider, { input: partState(part, context), questions: factQuestions() }, asking.limit)
+  } catch (error) {
+    if (!(error instanceof DecisionError && error.kind === 'too_long' && depth < MAX_SPLIT_DEPTH)) throw error
+    const halves = halve(part)
+    if (!halves.parts.some((h) => h.diff.length < part.diff.length)) throw error
+    const answered: Answered[] = []
+    let truncatedHunks = halves.truncatedHunks
+    for (const h of halves.parts) {
+      const sub = await askPart($, asking, context, h, depth + 1)
+      answered.push(...sub.answered)
+      truncatedHunks += sub.truncatedHunks
     }
-    throw new Error(httpError(request.backend, res.status, res.text))
+    return { answered, truncatedHunks }
   }
-  const data = JSON.parse(res.text)
-  const answers: Answers = data.answers ?? {}
-  const missing = missingFact(answers)
-  if (missing) throw new Error(`${request.backend.name === 'gemini' ? 'Gemini' : 'TypeSafe'} returned no numeric answer for "${missing}"`)
-  return { answered: [{ model: data.model, answers }], truncatedHunks: 0 }
+  const missing = missingFact(response.answers)
+  if (missing) throw new Error(`${asking.provider.label} returned no numeric answer for "${missing}"`)
+  return { answered: [{ model: response.model, answers: response.answers }], truncatedHunks: 0 }
 }

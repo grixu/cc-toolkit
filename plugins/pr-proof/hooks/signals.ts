@@ -1,3 +1,4 @@
+import type { Answers, Questions } from './decision.ts'
 import { AGENT_FILE, PROSE_FILE, fileDiffs, type Part } from './jev.ts'
 
 export const SUGGEST_AT = 0.7
@@ -25,10 +26,13 @@ export const KIND_OF_FACT = {
 export type Signal = 'suggest' | 'reject' | 'uncertain'
 export type ScoredSignal = { signal: Signal; p: number }
 export type Kind = (typeof KIND_OF_FACT)[keyof typeof KIND_OF_FACT]
-export type Answers = Record<string, { noul?: number }>
+export function factQuestions(): Questions {
+  return Object.fromEntries(Object.entries(FACTS).map(([key, instructions]) => [key, { type: 'binary', instructions }]))
+}
 
-export function factQuestions(): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(FACTS).map(([key, instructions]) => [key, { type: 'noul', instructions }]))
+const pYes = (answers: Answers, key: string) => {
+  const answer = answers[key]
+  return answer?.type === 'binary' ? answer.p : undefined
 }
 
 export function signalOf(p: number): Signal {
@@ -38,7 +42,7 @@ export function signalOf(p: number): Signal {
 }
 
 export function missingFact(answers: Answers): string | undefined {
-  return Object.keys(FACTS).find((key) => !Number.isFinite(answers[key]?.noul))
+  return Object.keys(FACTS).find((key) => pYes(answers, key) === undefined)
 }
 
 // Prose sits apart from `diff`, since a doc describing a change reads to Jev as code making it; agent instructions
@@ -62,7 +66,7 @@ export function partState(part: Part, context: { diffstat: string }) {
 // A kind counts when any part shows it, while one docs-only part must not suppress the proof another part needs.
 export function aggregate(parts: Answers[]): { signals: Record<Kind, ScoredSignal>; noBehaviorChange: ScoredSignal; suppressed: boolean } {
   const sig = (p: number): ScoredSignal => ({ signal: signalOf(p), p })
-  const values = (key: string) => parts.map((a) => a[key]!.noul!)
+  const values = (key: string) => parts.map((a) => pYes(a, key)!)
   const signals = Object.fromEntries(
     Object.entries(KIND_OF_FACT).map(([fact, kind]) => [kind, sig(Math.max(...values(fact)))]),
   ) as Record<Kind, ScoredSignal>
