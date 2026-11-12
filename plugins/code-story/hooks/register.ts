@@ -1,8 +1,8 @@
-import { readConfig } from './config.ts'
+import { readConfig, STACK, UNCOMMITTED } from './config.ts'
 
 const TOOL = 'config'
 const DESCRIPTION =
-  "Return the code-story plugin's settings as JSON: the story languages (English plus an optional second one), whether a second-language term gets a gloss on first use, the diagram skill to use (null means the built-in diagrams), what to do with uncommitted changes (ignore, include or ask) and with a stack of pull requests (ask, always or never). Call it once at the start of a code story."
+  `Return the code-story plugin's settings as JSON: the story languages (English plus an optional second one), whether a second-language term gets a gloss on first use, the diagram skill to use (null means the built-in diagrams), what to do with uncommitted changes (${UNCOMMITTED.join(', ')}) and with a stack of pull requests (${STACK.join(', ')}). Call it once at the start of a code story.`
 
 export function register(on, options) {
   on('session.start', async ($, e, next) => {
