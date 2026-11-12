@@ -30,12 +30,13 @@ test('the tool answers with the default settings', async ($, on) => {
   })
 })
 
-test('an empty options object gives the defaults', () => {
+test('missing options give the defaults', () => {
   const config = readConfig(undefined)
   expect(config.languages).toEqual(['en'])
   expect(config.diagramSkill).toBe(null)
   expect(config.uncommitted).toBe('ignore')
   expect(config.stack).toBe('ask')
+  expect(readConfig({}).languages).toEqual(['en'])
 })
 
 test('a second language is normalised and English is never doubled', () => {
@@ -48,6 +49,13 @@ test('an invalid language tag falls back to English only with a warning', () => 
   const config = readConfig({ second_language: 'polski!' })
   expect(config.languages).toEqual(['en'])
   expect(config.warnings.length).toBe(1)
+})
+
+test('a language tag has two or three letters before any subtag', () => {
+  const tooLong = readConfig({ second_language: 'polski' })
+  expect(tooLong.languages).toEqual(['en'])
+  expect(tooLong.warnings.length).toBe(1)
+  expect(readConfig({ second_language: 'fil' }).languages).toEqual(['en', 'fil'])
 })
 
 test('diagram_skill: empty or null means built-in, a slash is dropped', () => {
