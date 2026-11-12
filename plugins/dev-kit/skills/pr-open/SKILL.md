@@ -16,7 +16,7 @@ Run `git fetch origin` first, then resolve each before moving on:
 
 - **Branch.** `git branch --show-current`. On the default branch (`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`) or a detached HEAD, stop and say so.
 - **Working tree.** When `git status --porcelain --untracked-files=no` prints anything, list it and ask whether to open the PR from the committed state or stop so the user can commit. The PR carries commits only; this skill never commits. Untracked files do not block; list their paths in the final report as not in the PR.
-- **Existing PR.** Check this before the base: `gh pr list --head <branch> --state open --json number,url,baseRefName`. When one exists, push (step 5), assess the risk against that PR's base and update its risk label (step 2 **Risk**, step 5.6), report its URL, its base, the push result and the risk, and finish. When its body (`gh pr view <number> --json body --jq .body`) has a `## Risk` section, replace that section, from its heading up to the next heading or the link reference definitions that end the body, with the new result in the step 4 shape and apply it with `gh pr edit <number> --body-file <file>`, so the body never contradicts the label; a body without the section stays as it is. Rewrite its description only when the request asks for it: draft the body (steps 2-4) against that PR's base, edit the current body as step 4 **Existing body** says, and apply it with `gh pr edit <number> --body-file <file>`, leaving its title as it is. Otherwise offer the rewrite in one line of the report, not as a question.
+- **Existing PR.** Check this before the base: `gh pr list --head <branch> --state open --json number,url,baseRefName`. When one exists, push (step 5), assess the risk against that PR's base and update its risk label (step 2 **Risk**, step 5.7), report its URL, its base, the push result and the risk, and finish. When its body (`gh pr view <number> --json body --jq .body`) has a `## Risk` section, replace that section, from its heading up to the next heading or the link reference definitions that end the body, with the new result in the step 4 shape and apply it with `gh pr edit <number> --body-file <file>`, so the body never contradicts the label; a body without the section stays as it is. Treat `## Proof` the same way in that one edit, whenever step 2 **Proof** found a manifest: replace an existing section with the step 4 render, insert it just before `## Risk` (or where step 4 places it) when the body has none and the manifest has entries, and remove the section, heading included, when the manifest's list is empty; attach its media and handle overflow comments as step 5 says. With no manifest, `## Proof` and its comments stay as they are. Rewrite its description only when the request asks for it: draft the body (steps 2-4) against that PR's base, edit the current body as step 4 **Existing body** says, and apply it with `gh pr edit <number> --body-file <file>`, leaving its title as it is. Otherwise offer the rewrite in one line of the report, not as a question.
 - **Base.** Take a base named in the request. Otherwise use the default branch, unless the branch is stacked: when the head branch of an open PR other than the current branch (`gh pr list --state open --json number,headRefName`) is an ancestor of HEAD (`git merge-base --is-ancestor origin/<head> HEAD`), base on the nearest such branch and say so. Every other such ancestor that is not itself an ancestor of the chosen base (`git merge-base --is-ancestor origin/<head> origin/<base>` fails) is a second parent: name its PR in the report and in the body's dependency section, and say that its commits show in this PR's diff until it merges.
 - **Commits ahead.** `git log --oneline origin/<base>..HEAD` lists at least one commit. With none, stop: there is nothing to open.
 - **Behind base.** When `git rev-list --count HEAD..origin/<base>` is above zero, report the count and whether `git merge-tree --write-tree HEAD origin/<base>` conflicts (it exits 1), then open the PR as it stands. Never merge, rebase or commit here; offer the sync in the report as a separate step.
@@ -31,6 +31,18 @@ Run `git fetch origin` first, then resolve each before moving on:
 - **Testing.** Collect what is evidenced: tests added or changed in the diff, commands run in this session with their result, and checks the user reports, credited to them. Nothing else counts as tested. Note what was not done where a reviewer would assume it was: a UI change nobody opened in a browser, new tests nobody ran.
 - **Deploy steps.** Collect what must happen outside the merge for the change to work, from the diff and the conversation: a database migration, infrastructure code (`*.tf`), a new env var or secret, a permission or policy change, identity-provider configuration, a feature flag to flip, a pull request in another repository.
 - **Risk.** Call the `mcp__dev-kit__pr_risk` tool with `base` set to the chosen base; when it is not loaded, look it up with tool search first. Also pass `slices`: the changed files from the diffstat grouped by purpose of the change (a feature, a fix, a refactor), each slice holding every file that serves that purpose across layers, its tests and docs included, every file in exactly one slice, and a title of a few neutral words that says what changes and never how risky it is. A change with one purpose is one slice. Pass `context` as well: the linked issue's title and description when you read them, and the why from above in a sentence or two; for an existing PR, its current title and body. When the repository states what it tests — in `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING*`, `.claude/rules/` or what its CI runs — pass `testing_policy`: those rules in a few sentences, such as which code needs unit or integration tests, what is left to e2e, and what is never tested; leave it out when the repository says nothing. The tool exists only when a TypeSafe key is configured, so a missing tool means the PR opens without a risk section or label, and the report says `Risk: not assessed (pr_risk tool not available)`. A result starting `Risk assessment unavailable:` means the same, with its reason in the report. Otherwise the result is JSON: `level`, `scorer`, `impact` and `likelihood` (each with its own `level`), `complexity`, `evidence` (`needed`: the manual evidence types that would show the change works, `provided`: those found in `context`, `credited`: whether they lowered the level), `confidence`, `lowConfidence`, `adjustments` (the rules that moved the level), `intents` (what the change does: `new_functionality`, `behavior_change`, `behavior_condition_change`, `bug_fix`, `refactor`, `rename_or_move`, `code_removal`), `types` (change type ids), `flags` (each with `label`), `slices` (each with `title`, `level`, `impact`, `likelihood`, `complexity`, `evidence`, `testGap`, `adjustments`, `intents`, `types` and `flags`), `model`, `label` and `coverage`. It is evidence from a model, not a verdict: quote it as given and never adjust the level. Evidence counts only when `context` carries it (an uploaded screenshot or video, a Loom link, a request or response in a code block), so a new PR's body rarely earns it; refreshing the description after the evidence is attached reassesses the risk.
+- **Proof.** The pr-proof plugin's skills leave a manifest of the proofs they took; this skill only reads the file. Compute its path from the repository root:
+
+  ```sh
+  repo=$(basename -s .git "$(git remote get-url origin)")
+  branch=$(git branch --show-current | sed 's#/#%2F#g')
+  manifest="$HOME/.cache/pr-proof/$repo/$branch/manifest.json"
+  ```
+
+  No file means no `## Proof` section and nothing in the report. A file `jq` cannot parse, or whose `version` is not `1`, is ignored like a missing one, and the report says so. Otherwise it holds `head`, `base` and `entries`, each entry with `kind`, `claim`, `head`, `files`, and either `media` (items `{path, screen, width}`; a video has no `screen` or `width`) or `transcript` (a file path). An empty `entries` list means proof was judged unnecessary: no section. For each entry:
+  - A `media` path or the `transcript` file that does not exist leaves the entry out of the section, and the report names it: one missing `--attach` path makes `gh` refuse the whole command.
+  - `git merge-base --is-ancestor <entry head> HEAD` failing, including on an unknown object, marks history as rewritten since that proof; the report says so.
+  - Otherwise, when `files` is not empty, `git log --format=%h <entry head>..HEAD -- <files>` printing anything makes the proof stale, with those hashes. Empty `files` skips the command and gives no note, since `git log` with no path after `--` lists every commit.
 
 - **Execution context.** When a changed file depends on behavior outside its diff, optionally pass `execution_context` to `pr_risk`: at most 8 changed-file entries, each `{path, sources}` with up to 4 sources `{path, ref, symbol?, facts}`. Use full commit IDs for HEAD or the chosen base, and copy up to 4 short exact excerpts per source from `git show <commit>:<path>`; each excerpt must be at most 500 characters. The entire array must fit 8,000 characters. Collect only the source needed to understand execution boundaries and effects; missing evidence stays unknown. This is targeted context, not a full code review. Omit the previous generated trailing `## Risk` section from existing PR context.
 
@@ -78,6 +90,43 @@ Keep the template's structure intact: every heading, in its order, and every che
   3. A **Testing:** line from step 2.
   4. A **Reviewer notes:** line only when something needs a hard look: a migration, security-relevant logic, a known limitation, a manual step to try.
   5. A **Go deeper:** line linking the design docs from step 2 (a repository-relative path or a blob URL); drop it when there are none.
+- With manifest entries left from step 2 **Proof**, add a `## Proof` section just before `## Risk`, also under a repository template; with no `## Risk`, it is the body's last section, above any link reference definitions that end the body. Leave it out otherwise. It does not count toward the length budget:
+
+````markdown
+## Proof
+
+<sub>History was rewritten since this proof was taken.</sub>
+
+<claim>
+
+![](./<video>.mp4)
+
+<claim>
+
+| Screen | 375 | 768 | 1440 |
+|---|---|---|---|
+| <screen> | ![<screen> at 375](./<file>.png) | … | … |
+
+<claim>
+
+<sub>Commits after this proof changed its files: <hash>, <hash>.</sub>
+
+```text
+<transcript of at most 20 lines>
+```
+
+<claim>
+
+<details><summary>Transcript (<n> lines)</summary>
+
+```text
+<transcript of more than 20 lines>
+```
+
+</details>
+````
+
+  Render each entry in manifest order by its fields, never by `kind`: its `claim` as a plain paragraph, then the staleness `<sub>` line when step 2 found one, then its proof. Media with `width` make one table per entry, a row per `screen` and a column per width in ascending order, `—` in a cell with no shot. Media without `width` stand each on its own line: a video as `![](./<name>)` alone in its paragraph, which `gh` turns into a player, an image as `![<screen or claim>](./<name>)`. A `transcript` becomes a `text` code block of the file's content, inside `<details>` only when it runs over 20 lines; use a longer fence when the transcript itself holds three backticks. Every `./<name>` is the unique name the medium gets in step 5's directory. The rewritten-history `<sub>` line appears once, directly under the heading, when any entry has history rewritten, and not at all otherwise. With more than 50 media in the section, it carries the first 50 in manifest order, and its last line says `<sub><n> more media follow in comments.</sub>`; step 5 posts the rest.
 - With a risk result from step 2, append a `## Risk` section as the body's last section, also under a repository template, and leave it out otherwise. Link reference definitions that end a body (`[PL-1234]: https://…`, which tracker integrations append) stay below it. It does not count toward the length budget:
 
 ```markdown
@@ -104,16 +153,19 @@ Keep the template's structure intact: every heading, in its order, and every che
 
 - Short, plain sentences with concrete nouns: the endpoint, the flag, the error message. Specific verbs (adds, removes, renames, fixes) over adjectives, numbers over intensifiers, and no preamble or closing summary.
 - Bold only the labels (**Testing:**, **Reviewer notes:**, **Dependencies:**, **Go deeper:**); leave everything else plain.
-- One screen: at most about 40 non-blank lines outside the Risk section. Summary or Changes sub-headings and file-by-file lists are the usual bloat, and the table already carries them. Put long logs in a `<details>` block and move other long detail behind the **Go deeper** link.
+- One screen: at most about 40 non-blank lines outside the Proof and Risk sections. Summary or Changes sub-headings and file-by-file lists are the usual bloat, and the table already carries them. Put long logs in a `<details>` block and move other long detail behind the **Go deeper** link.
 - Keep the body valid MDX as well as Markdown, since some repositories feed PR bodies to MDX tooling: no HTML comments, and a `<` or `{` in prose goes in backticks. The `<sub>` and `<details>` tags this skill uses are valid MDX.
 
 ## 5. Push and open
 
 1. `git push -u origin HEAD`. On rejection, report the error and stop; resolving a diverged branch is the user's call.
-2. Write the body to a file outside the repository: `mktemp -t pr-body.XXXXXX`.
-3. `gh pr create --base <base> --head <branch> --title "<title>" --body-file <file>`, adding `--draft` only when the request asks for a draft.
-4. Delete the temporary file.
-5. `gh pr edit <url> --add-assignee @me`. It runs apart from the create because assignment can fail on its own (no push access to the base repository); on failure the PR stays opened, and the report says it is unassigned and why.
-6. With a risk result whose `label.enabled` is true: `gh pr edit <url> --add-label "<label.name>"`, plus `--remove-label` for every other name in `label.all` the PR already carries (`gh pr view <url> --json labels`). When the add fails because the label does not exist, run `gh label create "<label.name>" --description "Pull request risk assessed by TypeSafe Jev"` once and retry; never pass `--force`, which rewrites an existing label. A label failure leaves the PR as it is, and the report says why.
+2. Make one directory outside the repository, `dir=$(mktemp -d -t pr-body.XXXXXX)`, and write the body to `$dir/body.md`. With a `## Proof` section, copy each of its media into `$dir` under a unique name (`<n>-<basename>`, numbered in manifest order) that its `./<name>` reference uses: `gh` resolves `./` references against the body file's directory and rewrites each attached one to its uploaded URL.
+3. `gh pr create --base <base> --head <branch> --title "<title>" --body-file "$dir/body.md"`, adding `--draft` only when the request asks for a draft, and `--attach "$dir/<name>"` for every medium the section references. An existing PR's edit from step 1 takes the same `--attach` flags on `gh pr edit <number> --body-file "$dir/body.md"`.
+4. **Proof follow-up**, only when step 2 read a manifest:
+   - **Overflow.** On an existing PR, first clear the old overflow: list the comments with `gh api repos/{owner}/{repo}/issues/<number>/comments --paginate`, and delete each one whose body starts with `<!-- pr-proof:overflow -->` and whose `user.login` equals `gh api user --jq .login`, with `gh api -X DELETE repos/{owner}/{repo}/issues/comments/<id>`. Do this also when the new manifest needs no overflow or has an empty list; leave every other comment alone. Then, with more than 50 media, post the rest in batches of at most 50, each its own `gh pr comment <number> --body-file "$dir/overflow-<k>.md" --attach "$dir/<name>"...`. Each comment body opens with `<!-- pr-proof:overflow -->`, then holds each entry's `claim` and its remaining media in the step 4 shape.
+   - **Check the upload.** Re-read the body (`gh pr view <number> --json body --jq .body`): `## Proof` holds `https://github.com/user-attachments/assets/…` URLs and, outside its transcript code blocks, no `./` reference. `gh` exits non-zero on a partial upload while still printing the URL, so judge by the re-read, for the body and for each overflow comment, and name in the report what failed to upload.
+5. Delete the directory: `rm -r "$dir"`.
+6. `gh pr edit <url> --add-assignee @me`. It runs apart from the create because assignment can fail on its own (no push access to the base repository); on failure the PR stays opened, and the report says it is unassigned and why.
+7. With a risk result whose `label.enabled` is true: `gh pr edit <url> --add-label "<label.name>"`, plus `--remove-label` for every other name in `label.all` the PR already carries (`gh pr view <url> --json labels`). When the add fails because the label does not exist, run `gh label create "<label.name>" --description "Pull request risk assessed by TypeSafe Jev"` once and retry; never pass `--force`, which rewrites an existing label. A label failure leaves the PR as it is, and the report says why.
 
-Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), a ticket field set to `None`, each section left `None` or checkbox left unticked for the author to complete, for a rewritten description what changed in it, the risk level with its flags and label, or why it was not assessed, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.
+Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), a ticket field set to `None`, each section left `None` or checkbox left unticked for the author to complete, for a rewritten description what changed in it, the risk level with its flags and label, or why it was not assessed, for a manifest that was read its proof entries shown, left out for a missing file, marked as rewritten history or stale, the overflow comments posted and removed, and anything that failed to upload, or why the manifest was ignored, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.

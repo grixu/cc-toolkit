@@ -1,0 +1,5 @@
+feat(checkout): add an order summary component
+
+The cart and checkout pages showed only a total, so shoppers could not see how a discount or
+shipping changed it. A new CheckoutSummary component lists subtotal, discount, shipping, VAT and
+total, and scripts/order-summary.mjs prints the same breakdown for a cart file.

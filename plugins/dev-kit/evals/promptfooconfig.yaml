@@ -208,3 +208,16 @@ tests:
     assert:
       - type: javascript
         value: file://checks/pr-open.mjs:updateBody
+
+  - description: 'pr-open-proof: a new PR carries the branch''s proof manifest as a ## Proof section with uploaded screenshots and a collapsed transcript'
+    prompts:
+      - pr-open
+    vars:
+      request: >-
+        Open a PR for this branch. There is no Jira ticket for it. I ran pnpm test locally and it
+        passed; nobody has clicked through it in a browser.
+      checkout: plugins/dev-kit/evals/.sandbox/pr-open-proof
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+    assert:
+      - type: javascript
+        value: file://checks/pr-open.mjs:proof
