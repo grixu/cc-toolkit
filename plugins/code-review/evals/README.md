@@ -56,7 +56,7 @@ node plugins/code-review/evals/data.mjs push
 git add plugins/code-review/evals/fixtures.sha256
 ```
 
-A pull that brings a different pin moves your local, unpushed fixtures to `.fixtures-prev-<outgoing pin>/` rather than deleting them, keeping one backup per pin.
+A pull that brings a different pin moves your local, unpushed fixtures to a new `.fixtures-prev-<outgoing pin>-<timestamp>/` rather than deleting them. Pulls never remove these backups; delete them yourself once you no longer need them.
 
 The headless skills review committed changes only, so eval-20 runs against a git
 checkout rather than a fixture path; `scripts/run-evals.sh code-review` rebuilds it

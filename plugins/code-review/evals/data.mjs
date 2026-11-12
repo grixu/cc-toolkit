@@ -64,9 +64,8 @@ function pull() {
     rmSync(tmp)
     throw new Error(`hash mismatch for ${hash}`)
   }
-  // One backup per outgoing pin, so switching branches back and forth never overwrites unpushed edits.
-  const prev = join(HERE, `.fixtures-prev-${read(MARKER) || 'unpinned'}`)
-  rmSync(prev, { recursive: true, force: true })
+  // A fresh backup per pull, never deleted, so no round of branch switches can overwrite unpushed edits.
+  const prev = join(HERE, `.fixtures-prev-${(read(MARKER) || 'unpinned').slice(0, 12)}-${Date.now()}`)
   for (const d of DIRS.filter((d) => existsSync(join(HERE, d)))) {
     mkdirSync(prev, { recursive: true })
     renameSync(join(HERE, d), join(prev, d))
