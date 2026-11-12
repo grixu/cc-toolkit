@@ -1,3 +1,4 @@
+// The first entry of each list is the default a missing or unknown value falls back to.
 export const UNCOMMITTED = ['ignore', 'include', 'ask'] as const
 export const STACK = ['ask', 'always', 'never'] as const
 

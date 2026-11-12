@@ -18,7 +18,7 @@ export function register(on, options) {
     return next(e)
   })
 
-  on('tool.call', { tool: 'mcp__code-story__config' }, () => ({
+  on('tool.call', { tool: `mcp__code-story__${TOOL}` }, () => ({
     result: JSON.stringify(readConfig(options), null, 2),
   })).catch(($, e, next) => ({
     result: `Settings unavailable (${next.error.kind}): ${next.error.message}. Use the defaults.`,
