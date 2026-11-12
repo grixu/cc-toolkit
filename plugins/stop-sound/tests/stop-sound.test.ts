@@ -24,6 +24,7 @@ test('waits for you only on a finished main-loop turn with no agent in flight', 
   expect(isWaitingForYou(main, [{ status: 'completed' }, { status: 'idle' }])).toBe(true)
   expect(isWaitingForYou(main, [{ status: 'running' }])).toBe(false)
   expect(isWaitingForYou(main, [{ status: 'pending' }])).toBe(false)
+  expect(isWaitingForYou(main, [{ status: 'waiting' }])).toBe(false)
   expect(isWaitingForYou({ agentId: 'a1', isAborted: false }, [])).toBe(false)
   expect(isWaitingForYou({ isAborted: true }, [])).toBe(false)
 })

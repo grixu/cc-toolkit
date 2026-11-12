@@ -52,7 +52,7 @@ The plugin is a mod. At the end of every turn it checks three things:
 
 1. The turn ran in the main session, not inside a subagent.
 2. You did not interrupt it.
-3. No subagent or teammate in `$.agent.list()` is still `running` or `pending`. Claude Code wakes
+3. No subagent or teammate in `$.agent.list()` is still `running`, `pending` or `waiting`. Claude Code wakes
    the session again when such an agent reports back, so this stop is only a pause.
 
 It uses the end of the turn rather than the `Stop` hook event. On Team and Enterprise plans, Claude

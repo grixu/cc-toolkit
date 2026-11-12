@@ -2,7 +2,7 @@ const DONE_ASSET = 'sounds/done.wav'
 const QUESTION_ASSET = 'sounds/question.wav'
 const QUESTION_TOOLS = ['AskUserQuestion', 'ExitPlanMode']
 
-const IN_FLIGHT = ['running', 'pending']
+const IN_FLIGHT = ['running', 'pending', 'waiting']
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   wav: 'audio/wav',
