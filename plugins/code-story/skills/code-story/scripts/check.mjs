@@ -20,7 +20,7 @@ export function check(html, { cwd = process.cwd() } = {}) {
   const meta = readMeta(html)
   const languages = (meta.languages ?? '').split(',').filter(Boolean)
 
-  if (html.includes('{{')) errors.push('a template placeholder ({{…}}) is still in the page')
+  if (/\{\{(TITLE|META|HEADING|SOURCE|CHAPTERS|I18N)\}\}/.test(html)) errors.push('a template placeholder ({{…}}) is still in the page')
   for (const key of ['repo', 'branch', 'base', 'base-sha', 'head', 'languages'])
     if (!meta[key]) errors.push(`meta code-story:${key} is missing`)
   if (meta.head && !/^[0-9a-f]{40}$/.test(meta.head)) errors.push('meta code-story:head is not a full commit SHA')

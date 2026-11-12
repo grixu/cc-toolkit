@@ -95,7 +95,7 @@ function repoName() {
 
 function numstat() {
   const range = uncommitted ? [baseSha] : [baseSha, head]
-  return git('diff', '--numstat', '--no-renames', ...range)
+  return git('-c', 'core.quotePath=false', 'diff', '--numstat', '--no-renames', ...range)
     .split('\n')
     .filter(Boolean)
     .map((line) => {
@@ -106,7 +106,8 @@ function numstat() {
 
 // <figure class="svg" data-src="diagrams/name.svg"> takes diagrams/name.svg, or one diagrams/name.<lang>.svg per language.
 function inlineDiagrams(source) {
-  let figure = 0
+  // Chapters from unpack.mjs already hold inlined diagrams; a new prefix must not reuse their numbers.
+  let figure = Math.max(0, ...[...source.matchAll(/\bid="d(\d+)/g)].map((m) => Number(m[1])))
   return source.replace(/<figure\b([^>]*)\bdata-src="([^"]+)"([^>]*)>/g, (_, before, src, after) => {
     figure++
     const file = join(dir, src)
