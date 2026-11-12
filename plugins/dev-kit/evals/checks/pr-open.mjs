@@ -81,6 +81,20 @@ function bodyChecks(parsed) {
         .some((s) => /\b(tested|verified|checked|clicked through)\b[^.]{0,20}\bbrowser/i.test(s) && !/\b(not|nothing|nobody|no one|never|yet)\b|n't\b/i.test(s)),
       'claims a browser check that never happened',
     ],
+    ...slopChecks(body),
+  ];
+}
+
+// Only tells anti-slop removes on a single sighting; table rows are skipped because "—" marks an empty cell.
+function slopChecks(body) {
+  const sentences = prose(body)
+    .split('\n')
+    .filter((l) => !/^\s*\|/.test(l))
+    .join('\n');
+  return [
+    [!/—/.test(sentences), 'an em dash joins clauses in the prose (anti-slop did not run or missed it)'],
+    [!/\bnot (just|only|merely)\b/i.test(sentences), 'a "not just X, but Y" contrast in the prose'],
+    [!/\b(delve|seamless(ly)?|pivotal|cornerstone|testament to)\b/i.test(sentences), 'AI-scent vocabulary in the prose'],
   ];
 }
 
