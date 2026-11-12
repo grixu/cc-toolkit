@@ -85,7 +85,8 @@ function bodyChecks(parsed) {
   ];
 }
 
-// Only tells anti-slop removes on a single sighting; table rows are skipped because "—" marks an empty cell.
+// Tells anti-slop removes on a single sighting, plus seamless, pivotal and cornerstone, which it treats as
+// cluster tells but a PR body should not carry even once; table rows are skipped because "—" marks an empty cell.
 function slopChecks(body) {
   const proseOutsideTables = prose(body)
     .split('\n')
