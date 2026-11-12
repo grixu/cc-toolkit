@@ -7,7 +7,7 @@ node plugins/dev-kit/evals/pr-risk/run.mjs --tag baseline
 node --test plugins/dev-kit/evals/pr-risk/*.test.mjs
 ```
 
-Live runs require `TYPESAFE_API_KEY` and the Claude Agent SDK's authenticated session for fallback slicing. Both the tool and runner default to the pinned `DEFAULT_MODEL` in `hooks/evidence.ts` (`jev-1.14.0`); `--model` overrides it for an experiment. Private datasets and evidence belong in the ignored `local/` directory. Results go to `evals/.results/pr-risk/`.
+Live runs require `TYPESAFE_API_KEY` and the Claude Agent SDK's authenticated session for fallback slicing. Both the tool and runner default to the pinned `TYPESAFE_MODEL` in `hooks/providers/typesafe.ts` (`jev-1.14.0`); `--model` overrides it for an experiment. Private datasets and evidence belong in the ignored `local/` directory. Results go to `evals/.results/pr-risk/`.
 
 `--risk-policy calibrated-v1` is the default scoring policy. `--risk-policy evidence-v1` opts into stricter rules for risk reductions. This scoring experiment is independent of `--risk-experiment atomic-v1`, which changes the questions sent to the model. Result summaries and case reports identify the selected policy. Exact recordings can compare scoring policies when their model requests remain unchanged.
 

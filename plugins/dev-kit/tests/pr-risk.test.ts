@@ -17,6 +17,7 @@ import {
   testPaths,
 } from '../hooks/risk.ts'
 import { averageAnswers, evidenceIn, factorGroup, factorQuestions, factorReport, factorState, kindOf, median, scoreFactors, type FactorGroup } from '../hooks/factors.ts'
+import { typesafe } from '../hooks/providers/typesafe.ts'
 
 const TOOL = 'mcp__dev-kit__pr_risk'
 
@@ -45,9 +46,14 @@ function fakeGit(files: Numstat[]) {
 }
 
 const TYPE_KEYS = Object.entries(questions())
-  .filter(([, q]) => (q as { type: string }).type === 'noul')
+  .filter(([, q]) => q.type === 'binary')
   .map(([key]) => key)
 const INTENT_KEYS = Object.keys(intentQuestions())
+
+const { factor: FACTOR_QUESTIONS, testable: TESTABLE_QUESTIONS } = factorQuestions(false)
+const EVERY_QUESTION = { input: {}, questions: { ...questions(), ...intentQuestions(), ...FACTOR_QUESTIONS, ...TESTABLE_QUESTIONS } }
+// The mocks answer in TypeSafe's wire shape; the helpers under test read the internal one.
+const internal = (wire) => typesafe('').decodeAnswers(EVERY_QUESTION, wire)
 
 const isIntent = (e) => !('diff' in JSON.parse(e.init.body).state)
 
@@ -58,6 +64,10 @@ const at = (level: number) => (Number.isFinite(level) ? { [String(Math.round(lev
 // One answer set serves every request kind: each reads only the keys it asked about. Complexity defaults to the
 // level whose likelihood equals the two-axis likelihood, so both scorers agree unless a test sets it.
 function answers(impact: number, likelihood: number, types: string[] = [], factors: Factors = {}) {
+  return internal(wireAnswers(impact, likelihood, types, factors))
+}
+
+function wireAnswers(impact: number, likelihood: number, types: string[] = [], factors: Factors = {}) {
   const a: Record<string, { score?: number; confidence?: number; noul?: number; probabilities?: Record<string, number> }> = {
     defect_impact: { score: impact, confidence: 0.8, probabilities: at(impact) },
     defect_likelihood: { score: likelihood, confidence: 0.6 },
@@ -73,7 +83,7 @@ function answers(impact: number, likelihood: number, types: string[] = [], facto
 }
 
 function jevAnswer(impact: number, likelihood: number, types: string[] = [], factors: Factors = {}) {
-  const body = { model: 'jev-1.14.0', answers: answers(impact, likelihood, types, factors), usage: {} }
+  const body = { model: 'jev-1.14.0', answers: wireAnswers(impact, likelihood, types, factors), usage: {} }
   return { status: 200, ok: true, headers: {}, text: JSON.stringify(body) }
 }
 
@@ -364,7 +374,7 @@ test('reads the level from the impact and likelihood of a mistake', () => {
 test('reads a level from the median of its probabilities, not the averaged score', () => {
   const config = readConfig({})
   const split = answers(3.45, 2)
-  split.defect_impact = { score: 3.45, probabilities: { '0': 0.03, '1': 0.01, '2': 0.2, '3': 0.02, '4': 0.74 }, confidence: 0.4 }
+  split.defect_impact = { type: 'scale', expected: 3.45, probabilities: [0.03, 0.01, 0.2, 0.02, 0.74], confidence: 0.4 }
   const report = aggregate([{ model: 'jev', answers: split }], [], config, [], ['a.ts'], new Map())
   expect(report.impact).toEqual({ level: 'severe', score: 3.45 })
   expect(report.level).toBe('critical')
@@ -461,10 +471,18 @@ test('packs the diff by size when the slicing model does not answer', async ($, 
   expect(report.level).toBe('medium')
 })
 
-test('retries a rate-limited request', async ($, on) => {
+test('retries a rate-limited request after waiting in a sleep process, not on the clock', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
-  const clock = mock.clock(on)
-  on('process.run', fakeGit([{ path: 'a.ts', text: fileDiff('a.ts', '+a') }]))
+  const git = fakeGit([{ path: 'a.ts', text: fileDiff('a.ts', '+a') }])
+  const sleeps: string[][] = []
+  on('process.run', ($, e) => {
+    if (e.argv[0] !== 'sleep') return git($, e)
+    sleeps.push(e.argv)
+    return ok('')
+  })
+  on('clock.sleep', () => {
+    throw new Error('the retry must not wait on the clock')
+  })
   let calls = 0
   on('http.fetch', ($, e) => {
     if (isIntent(e) || kindOfRequest(e) !== 'diff') return { value: jevAnswer(2, 1) }
@@ -472,11 +490,10 @@ test('retries a rate-limited request', async ($, on) => {
     return { value: calls === 1 ? { status: 429, ok: false, headers: { 'retry-after': '2' }, text: 'slow down' } : jevAnswer(2, 1) }
   })
 
-  const pending = $.tool.call({ tool: TOOL, base: 'main', slices: [{ title: 'A', files: ['a.ts'] }] })
-  for (let i = 0; i < 5 && calls < 2; i++) await clock.advance(1000)
-  const report = JSON.parse((await pending).result)
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', slices: [{ title: 'A', files: ['a.ts'] }] })).result)
 
   expect(calls).toBe(2)
+  expect(sleeps).toEqual([['sleep', '2']])
   expect(report.level).toBe('medium')
 })
 
@@ -631,7 +648,7 @@ test('weighs what happened against the two scores', () => {
 
   const splitImpact = (types: string[]) => {
     const a = answers(2, 2, types)
-    a.defect_impact = { score: 2.4, confidence: 0.7, probabilities: { '0': 0.1, '2': 0.6, '4': 0.3 } } as typeof a.defect_impact
+    a.defect_impact = { type: 'scale', expected: 2.4, confidence: 0.7, probabilities: [0.1, 0, 0.6, 0, 0.3] }
     return aggregate([{ model: 'jev', answers: a, slice: 0 }], [], config, [{ title: 'S', files: ['a.ts'] }], ['a.ts'], new Map()).slices[0]
   }
   const backfill = splitImpact(['schema_or_data_migration'])
@@ -737,7 +754,7 @@ test('scope reductions require complete, consistent evidence across the slice', 
   expect(unknownPart.impact.level).toBe('feature')
 
   const unrelatedTail = answers(2, 2)
-  unrelatedTail.defect_impact = { score: 2.4, confidence: 0.7, probabilities: { '0': 0.1, '2': 0.6, '4': 0.3 } } as typeof unrelatedTail.defect_impact
+  unrelatedTail.defect_impact = { type: 'scale', expected: 2.4, confidence: 0.7, probabilities: [0.1, 0, 0.6, 0, 0.3] }
   const separated = aggregate(
     [
       { model: 'jev', answers: answers(1, 1, ['authorization']), slice: 0 },
@@ -770,7 +787,7 @@ test('team-only cap permits local data and infrastructure hazards but retains sl
   expect(report([answers(3, 1, team)], false).impact.level).toBe('core')
 
   const tail = answers(2, 1, [...team, 'data_removal_or_rewrite'])
-  tail.defect_impact = { score: 2.4, confidence: 0.7, probabilities: { '0': 0.1, '2': 0.6, '4': 0.3 } } as typeof tail.defect_impact
+  tail.defect_impact = { type: 'scale', expected: 2.4, confidence: 0.7, probabilities: [0.1, 0, 0.6, 0, 0.3] }
   const tailResult = report([tail])
   expect(tailResult.impact.level).toBe('minor')
   expect(tailResult.adjustments).toEqual([
@@ -956,14 +973,15 @@ test('an untested behaviour change has a test gap that evidence does not close',
 })
 
 test('repeated factor answers are averaged before the median is read', () => {
+  const at = (level: number) => ({ type: 'scale' as const, expected: level, probabilities: [0, 1, 2, 3, 4].map((i) => +(i === level)) })
   const avg = averageAnswers([
-    { complexity: { probabilities: { '1': 1 } }, evidence_video: { noul: 0.2 } },
-    { complexity: { probabilities: { '3': 1 } }, evidence_video: { noul: 0.6 } },
+    { complexity: at(1), evidence_video: { type: 'binary', p: 0.2 } },
+    { complexity: at(3), evidence_video: { type: 'binary', p: 0.6 } },
   ])
-  expect(avg.complexity.probabilities).toEqual({ '1': 0.5, '3': 0.5 })
-  expect(Math.abs(avg.evidence_video.noul! - 0.4) < 1e-9).toBe(true)
+  expect(avg.complexity).toEqual({ type: 'scale', expected: 2, probabilities: [0, 0.5, 0, 0.5, 0] })
+  expect(avg.evidence_video.type === 'binary' && Math.abs(avg.evidence_video.p - 0.4) < 1e-9).toBe(true)
   expect(median(avg.complexity, 5)).toBe(1)
-  expect(factorGroup({ complexity: { probabilities: { '2': 1 } } }, false)).toBeUndefined()
+  expect(factorGroup({ complexity: at(2) }, false)).toBeUndefined()
 })
 
 test('reads manual evidence from the description', () => {
@@ -1067,7 +1085,7 @@ test('without any factor answers the two-axis level stands in', async ($, on) =>
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/decisions'
 
 function geminiAnswer(impact: number, likelihood: number, types: string[] = [], factors: Factors = {}) {
-  return { status: 200, ok: true, headers: {}, text: JSON.stringify({ answers: answers(impact, likelihood, types, factors), usage: { total_input_tokens: 10 } }) }
+  return { status: 200, ok: true, headers: {}, text: JSON.stringify({ answers: wireAnswers(impact, likelihood, types, factors), usage: { total_input_tokens: 10 } }) }
 }
 
 const AUTH_CHANGE = [{ path: 'src/auth.ts', text: fileDiff('src/auth.ts', '+checkToken()') }]

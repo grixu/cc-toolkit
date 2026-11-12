@@ -2,11 +2,10 @@
 // get, the impact of a mistake, which manual evidence would show it works, whether a test could check it), and the
 // level comes from the impact and the complexity of the riskiest parts. A PR description that carries the evidence a
 // low-stakes part needs lowers that part's likelihood one step.
+import type { Answer, Answers, BinaryAnswer, DecisionRequest, Questions, ScaleAnswer } from './decision.ts'
 import { AGENT_FILE, PROSE_FILE, TEST_FILE } from './paths.ts'
-import { IMPACT_LEVELS, LIKELIHOOD_LEVELS, RISK_MATRIX, questions, type FileStatus, type Slice } from './risk.ts'
+import { IMPACT_LEVELS, LIKELIHOOD_LEVELS, RISK_MATRIX, pYes, questions, type FileStatus, type Slice } from './risk.ts'
 
-type Answer = { score?: number; probabilities?: Record<string, number>; noul?: number; confidence?: number }
-type Answers = Record<string, Answer>
 type State = { slice?: string; files: string[]; diff: string }
 
 export const FACTOR_REPEATS = 2
@@ -84,59 +83,59 @@ export function testsInChange(paths: string[]): string[] {
   return tests.length ? tests.slice(0, MAX_TESTS_LISTED) : ['(none)']
 }
 
-const SCORE_QUESTIONS = () => ({
+const SCORE_QUESTIONS = (): Questions => ({
   complexity: {
-    type: 'score',
+    type: 'scale',
     instructions: 'How complex is the change in `diff`? Judge how much a reader must understand together to know it is right, not how many lines it touches.',
-    criteria: [
+    levels: [
       'Each edit replaces a value, a name, a piece of text or a location, and each one can be checked on its own by reading it.',
       'The change adds or alters one small piece of straightforward logic that a reader can follow from start to end within the diff.',
       'The change adds or alters several conditions, paths or transformations that must agree with each other, and a reader has to trace them together, within the diff, to see that they are right.',
-      { what: 'Whether the changed logic is right depends on how something outside the diff behaves: another component, a library, a tool, a platform or data the diff does not show.',
-        not_for: 'Calling code outside the diff the same way it was called before, or setting a value whose whole effect is visible in the diff.' },
+      { description:'Whether the changed logic is right depends on how something outside the diff behaves: another component, a library, a tool, a platform or data the diff does not show.',
+        notFor:'Calling code outside the diff the same way it was called before, or setting a value whose whole effect is visible in the diff.' },
       'Whether the change is right depends on the order or timing in which things happen, or on state that several steps, runs, services or deployments read and change.',
     ],
   },
   behaviour_change: {
-    type: 'score',
+    type: 'scale',
     instructions: "How much does the change in `diff` alter what its users get? Its users are whoever runs, calls or sees what the change changes: people, other programs, or the team's own tooling. Judge the size of the alteration, not how many users there are.",
-    criteria: [
+    levels: [
       'Its users get exactly what they got before; only how it is built changes.',
       'Its users notice a small difference in something they already use, in how it reads or looks or in what it gives in an uncommon case, and in ordinary use they use it and get the same results as before.',
       'Its users get something new next to what they already had, and everything they already use works as before.',
       'Something its users already rely on gives a different result, accepts different input or applies under different conditions in ordinary use, while it remains the same feature doing the same job.',
-      { what: 'Something its users relied on is replaced, taken away or reshaped, so they must change what they do or what they expect.',
-        not_for: 'Taking away code that no user could reach.' },
+      { description:'Something its users relied on is replaced, taken away or reshaped, so they must change what they do or what they expect.',
+        notFor:'Taking away code that no user could reach.' },
     ],
   },
   user_reach: {
-    type: 'score',
+    type: 'scale',
     instructions: 'If the change in `diff` is wrong, who does it reach?',
-    criteria: [
+    levels: [
       'No one: nothing that anyone runs or sees changes.',
-      { what: "Only this team: local development setup, coding-agent instructions, the team's own CI checks or alerts.",
-        not_for: 'Anything deployed where users or other teams meet it.' },
-      { what: 'Some users: one feature, an admin page or a rarely used path.',
-        not_for: 'A core flow most users go through.' },
+      { description:"Only this team: local development setup, coding-agent instructions, the team's own CI checks or alerts.",
+        notFor:'Anything deployed where users or other teams meet it.' },
+      { description:'Some users: one feature, an admin page or a rarely used path.',
+        notFor:'A core flow most users go through.' },
       'Most users: a core flow, a whole service or its public API.',
       'Other teams or outside consumers: builds, deployments, shared packages, services or integrations that depend on this repository.',
     ],
   },
   reversibility: {
-    type: 'score',
+    type: 'scale',
     instructions: 'If the change in `diff` turns out wrong, how hard is it to roll back?',
-    criteria: [
+    levels: [
       'Reverting the change restores everything.',
-      { what: 'Reverting works with a routine extra step: a redeploy, a restart, regenerated clients, or reverting two services together.',
-        not_for: 'Data or state that has to be repaired by hand.' },
+      { description:'Reverting works with a routine extra step: a redeploy, a restart, regenerated clients, or reverting two services together.',
+        notFor:'Data or state that has to be repaired by hand.' },
       'Reverting leaves state behind that must be repaired by hand: written or migrated data, caches, indexes, flag state or downstream copies.',
       'The effects cannot be undone: messages sent, payments taken, data deleted or exposed, outside consumers already broken.',
     ],
   },
   failure_breadth: {
-    type: 'score',
+    type: 'scale',
     instructions: 'How widely does the change in `diff` open new ways for the system to go wrong? Judge the situations it creates, not the number of checks or error messages in the diff, and not how well they are handled.',
-    criteria: [
+    levels: [
       'The change adds no new way to go wrong: it introduces no condition, input, call, stored value or step, and whatever it removes or replaces leaves every remaining path behaving as before.',
       'One new or altered decision, input or call, in one place, so a mistake there misbehaves in that place only.',
       'Several new or altered decisions, inputs or steps within one component, so one of them failing can disturb the others in that component.',
@@ -145,11 +144,11 @@ const SCORE_QUESTIONS = () => ({
     ],
   },
   failure_handling: {
-    type: 'score',
+    type: 'scale',
     instructions: 'When the new or altered code in `diff` fails, how well is that handled?',
-    criteria: [
-      { what: 'Failures pass silently: the changed code catches or ignores them and carries on with a wrong or missing result that no caller or person is told about.',
-        not_for: 'A fallback value that is the intended result for that case.' },
+    levels: [
+      { description:'Failures pass silently: the changed code catches or ignores them and carries on with a wrong or missing result that no caller or person is told about.',
+        notFor:'A fallback value that is the intended result for that case.' },
       'Failures are not hidden but not contained: they stop the operation and reach whoever called it as an error, with no cleanup, so work already done can leave stored state inconsistent.',
       'Failures are either handled where they happen or stop the operation with a clear error, and stored state stays consistent.',
       'Failures are handled, contained and recovered from or rolled back, leaving the system in a known-good state.',
@@ -158,86 +157,88 @@ const SCORE_QUESTIONS = () => ({
   defect_impact: questions().defect_impact,
 })
 
-const EVIDENCE_QUESTIONS = {
+const EVIDENCE_QUESTIONS: Questions = {
   evidence_video: {
-    type: 'noul',
+    type: 'binary',
     instructions: 'The change in `diff` alters how a user interface behaves while a person uses it, over more than one step or moment.',
     criteria: {
-      true: 'What happens after a person acts on a screen or terminal, or waits on it, changes: an interaction, the steps of a flow, navigation, a transition, or what appears while something loads or fails.',
-      false: 'Only what a screen shows at rest changes, or no user interface changes.',
+      yes:'What happens after a person acts on a screen or terminal, or waits on it, changes: an interaction, the steps of a flow, navigation, a transition, or what appears while something loads or fails.',
+      no:'Only what a screen shows at rest changes, or no user interface changes.',
     },
   },
   evidence_screenshots: {
-    type: 'noul',
+    type: 'binary',
     instructions: 'The change in `diff` alters what a screen shows at rest: its layout, styling, content or rendered text.',
     criteria: {
-      true: 'A person comparing still images of the screen before and after the change would see what changed.',
-      false: 'Nothing rendered on a screen changes, or what changes shows only while the interface is being used.',
+      yes:'A person comparing still images of the screen before and after the change would see what changed.',
+      no:'Nothing rendered on a screen changes, or what changes shows only while the interface is being used.',
     },
   },
   evidence_api_dump: {
-    type: 'noul',
+    type: 'binary',
     instructions: 'The change in `diff` alters what this system accepts from or returns to another program across a process or network boundary (a request, response, status code, event, message or file), including an interface that no screen uses.',
     criteria: {
-      true: 'Code in `diff` changes the requests, responses, status codes, events or payloads that a consumer sends or receives.',
-      false: 'Every interface accepts and returns what it did before, or the only changed interfaces are functions, types or modules that other code calls inside the same running program.',
+      yes:'Code in `diff` changes the requests, responses, status codes, events or payloads that a consumer sends or receives.',
+      no:'Every interface accepts and returns what it did before, or the only changed interfaces are functions, types or modules that other code calls inside the same running program.',
     },
   },
 }
 
-const TESTABLE_QUESTION = {
+const TESTABLE_QUESTION: Questions = {
   automation_testable: {
-    type: 'noul',
+    type: 'binary',
     instructions: 'Could the behaviour changed in `diff` reasonably be checked by an automated test, at effort proportionate to the change? Judge whether such a test could be written and what it would have to rebuild, not whether this change supplies one.',
     criteria: {
-      true: 'A test could run the changed code or drive the interface it changes and check what it computes, decides, stores, returns or renders, without a person judging the result and without a live outside system.',
-      false: 'A meaningful check requires human judgement, or conditions that cannot reasonably be reproduced or controlled without a live outside system at effort proportionate to the change. Missing tests do not establish that automation is infeasible.',
+      yes:'A test could run the changed code or drive the interface it changes and check what it computes, decides, stores, returns or renders, without a person judging the result and without a live outside system.',
+      no:'A meaningful check requires human judgement, or conditions that cannot reasonably be reproduced or controlled without a live outside system at effort proportionate to the change. Missing tests do not establish that automation is infeasible.',
     },
   },
 }
 
 // A test runner contains its own failures and tests need no manual evidence, so a part of tests alone skips those
 // questions. Testability goes in its own request, with the change's tests listed beside the diff.
-export function factorQuestions(testOnly: boolean): { factor: Record<string, unknown>; testable?: Record<string, unknown> } {
-  const factor: Record<string, unknown> = { ...SCORE_QUESTIONS(), ...(testOnly ? {} : EVIDENCE_QUESTIONS) }
+export function factorQuestions(testOnly: boolean): { factor: Questions; testable?: Questions } {
+  const factor: Questions = { ...SCORE_QUESTIONS(), ...(testOnly ? {} : EVIDENCE_QUESTIONS) }
   if (testOnly) delete factor.failure_handling
   return testOnly ? { factor } : { factor, testable: TESTABLE_QUESTION }
 }
 
-export function factorBodies(model: string, state: State, tests: string[]): { testOnly: boolean; bodies: string[] } | undefined {
+export function factorRequests(state: State, tests: string[]): { testOnly: boolean; requests: DecisionRequest[] } | undefined {
   const assessed = factorState(state)
   if (!assessed) return undefined
   const q = factorQuestions(assessed.testOnly)
   return {
     testOnly: assessed.testOnly,
-    bodies: [
-      JSON.stringify({ model, state: assessed.state, questions: q.factor }),
-      ...(q.testable ? [JSON.stringify({ model, state: { ...assessed.state, tests_in_change: tests }, questions: q.testable })] : []),
+    requests: [
+      { input: assessed.state, questions: q.factor },
+      ...(q.testable ? [{ input: { ...assessed.state, tests_in_change: tests }, questions: q.testable }] : []),
     ],
   }
 }
 
 // Jev's answers move between two identical asks as much as a whole wording change does, so the probabilities of
-// several asks are averaged before the median is read.
+// several asks are averaged before the median is read. The sums run in the order the evals' recorded costs were
+// computed in, so a replay reproduces them exactly.
 export function averageAnswers(list: Answers[]): Answers {
   const out: Answers = {}
   for (const key of new Set(list.flatMap((a) => Object.keys(a)))) {
     const xs = list.map((a) => a[key]).filter(Boolean)
-    if (xs.every((x) => x.probabilities)) {
-      const p: Record<string, number> = {}
-      for (const x of xs) for (const [k, v] of Object.entries(x.probabilities!)) p[k] = (p[k] ?? 0) + v / xs.length
-      out[key] = { probabilities: p }
-    } else if (xs.every((x) => Number.isFinite(x.noul))) out[key] = { noul: xs.reduce((s, x) => s + x.noul!, 0) / xs.length }
+    const scales = xs.flatMap((x) => (x.type === 'scale' && x.probabilities ? [x as ScaleAnswer & { probabilities: number[] }] : []))
+    if (scales.length === xs.length) {
+      const p: number[] = []
+      for (const x of scales) x.probabilities.forEach((v, i) => (p[i] = (p[i] ?? 0) + v / xs.length))
+      out[key] = { type: 'scale', expected: scales.reduce((s, x) => s + x.expected, 0) / xs.length, probabilities: p }
+    } else if (xs.every((x) => x.type === 'binary')) out[key] = { type: 'binary', p: xs.reduce((s, x) => s + (x as BinaryAnswer).p, 0) / xs.length }
   }
   return out
 }
 
 export function median(answer: Answer | undefined, count: number): number | null {
-  const p = answer?.probabilities
+  const p = answer?.type === 'scale' ? answer.probabilities : undefined
   if (!p) return null
   let total = 0
   for (let i = 0; i < count; i++) {
-    total += p[String(i)] ?? 0
+    total += p[i] ?? 0
     if (total >= 0.5) return i
   }
   return count - 1
@@ -263,8 +264,8 @@ export function factorGroup(answers: Answers, testOnly: boolean, slice?: number)
     c,
     di,
     b: median(answers.behaviour_change, 5),
-    need: Object.fromEntries(EVIDENCE.map((t) => [t, testOnly ? 0 : answers['evidence_' + t]?.noul ?? 0])) as Record<Evidence, number>,
-    testable: testOnly ? null : answers.automation_testable?.noul ?? null,
+    need: Object.fromEntries(EVIDENCE.map((t) => [t, testOnly ? 0 : pYes(answers['evidence_' + t]) ?? 0])) as Record<Evidence, number>,
+    testable: testOnly ? null : pYes(answers.automation_testable) ?? null,
   }
 }
 

@@ -46,7 +46,8 @@ import {
   typesProseCannotHave,
 } from '../../hooks/risk.ts'
 import { rewritePrompt, validateVariant } from './prompt-variants.mjs'
-import { atomicQuestions, DEFAULT_MODEL } from '../../hooks/evidence.ts'
+import { atomicQuestions } from '../../hooks/evidence.ts'
+import { TYPESAFE_MODEL } from '../../hooks/providers/typesafe.ts'
 import { completionStatus, summarizeExperimental, summarizeMetrics } from './metrics.mjs'
 import { cachedSlicing, consumeRecorded, hash, replayPayload, requestProvenance, slicingProvenance } from './replay.mjs'
 
@@ -65,7 +66,7 @@ const { values: args } = parseArgs({
     'gh-context': { type: 'boolean', default: false },
     repo: { type: 'string' },
     tag: { type: 'string', default: 'run' },
-    model: { type: 'string', default: DEFAULT_MODEL },
+    model: { type: 'string', default: TYPESAFE_MODEL },
     only: { type: 'string' },
     // off answers the slicing model call as unanswered, so the diff is packed by size
     slicing: { type: 'string', default: 'model' },

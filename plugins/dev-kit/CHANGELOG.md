@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Requires Claude Code v2.1.271 or later, for the fixed-choice options; the mod already needs v2.1.287.
 - The risk label `pr-open` creates is described as "Pull request risk assessed by dev-kit pr_risk".
 
+### Fixed
+
+- `pr_risk`: a rate-limited or failed request now waits for its retry in a `sleep` process, so the wait no longer counts against the hook's 10 s budget.
+
 ## [0.9.1] - 2026-11-12
 
 ### Fixed

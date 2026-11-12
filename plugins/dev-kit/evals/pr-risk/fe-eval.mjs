@@ -4,7 +4,7 @@
 //   node plugins/dev-kit/evals/pr-risk/fe-eval.mjs --replay            # recorded Jev answers; proves the port
 //   node plugins/dev-kit/evals/pr-risk/fe-eval.mjs --live --limit 20   # the same states sent to Jev now
 //   ... --data <dir>       # a pulled set, default evals/pr-risk/local/data/v8
-//   ... --model <name>     # live only; default DEFAULT_MODEL
+//   ... --model <name>     # live only; default TYPESAFE_MODEL
 //   ... --backend gemini   # live only; asks Gemini Decision (GEMINI_DECISIONS_API_KEY or GEMINI_API_KEY) instead of Jev
 //
 // --replay fails unless every factor state and request body production builds equals the frozen ones byte for byte,
@@ -16,10 +16,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { DEFAULT_MODEL } from '../../hooks/evidence.ts'
-import { FACTOR_REPEATS, averageAnswers, factorBodies, factorGroup, scoreFactors, testsInChange } from '../../hooks/factors.ts'
-import { GEMINI_MODEL, backendFor, readResponse, requestInit, tooLong } from '../../hooks/backend.ts'
-import { endpointUrl } from '../../hooks/risk.ts'
+import { FACTOR_REPEATS, averageAnswers, factorGroup, factorQuestions, factorRequests, scoreFactors, testsInChange } from '../../hooks/factors.ts'
+import { gemini } from '../../hooks/providers/gemini.ts'
+import { TYPESAFE_MODEL, typesafe, typesafeBody } from '../../hooks/providers/typesafe.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const LEVELS = ['low', 'medium', 'high', 'critical']
@@ -66,15 +65,25 @@ export function portCheck(d) {
   for (const b of firstPerTwin(d.bindings)) {
     checked++
     const f = frozen.get(b.twin)
-    const built = factorBodies(d.plan.model, b.state, tests[b.id])
+    const built = factorRequests(b.state, tests[b.id])
     if (!built) {
       if (!f?.skip) states++
       continue
     }
-    if (!f || f.skip || f.testOnly !== built.testOnly || JSON.stringify(JSON.parse(built.bodies[0]).state) !== JSON.stringify(f.state)) states++
-    if (JSON.stringify(built.bodies.map(sha)) !== JSON.stringify(planned.get(b.twin) ?? [])) bodies++
+    if (!f || f.skip || f.testOnly !== built.testOnly || JSON.stringify(built.requests[0].input) !== JSON.stringify(f.state)) states++
+    const hashes = built.requests.map((r) => sha(typesafeBody(d.plan.model, r)))
+    if (JSON.stringify(hashes) !== JSON.stringify(planned.get(b.twin) ?? [])) bodies++
   }
   return { checked, states, bodies }
+}
+
+const { factor: FACTOR_QUESTIONS, testable: TESTABLE_QUESTIONS } = factorQuestions(false)
+const ALL_FACTOR_QUESTIONS = { input: {}, questions: { ...FACTOR_QUESTIONS, ...TESTABLE_QUESTIONS } }
+
+/** Recorded rows hold Jev's wire answers; read them as production reads a TypeSafe response. */
+export function decodeRows(rows) {
+  const reader = typesafe('')
+  return rows.map((r) => (r.answers ? { ...r, answers: reader.decodeAnswers(ALL_FACTOR_QUESTIONS, r.answers) } : r))
 }
 
 /** Factor answers per twin: each repeat's bodies merged, then the repeats averaged, as production does. */
@@ -144,35 +153,43 @@ export function pairedCI(base, cand, labels, repoOf) {
   return { delta: stat(clusters), ci95: [boot[Math.floor(B * 0.025)], boot[Math.floor(B * 0.975) - 1]], clusters: clusters.length }
 }
 
-async function sendAll(requests, model, name) {
+function liveProvider(name, model) {
   const key = name === 'gemini' ? process.env.GEMINI_DECISIONS_API_KEY || process.env.GEMINI_API_KEY : process.env.TYPESAFE_API_KEY
   if (!key) throw new Error(`${name === 'gemini' ? 'GEMINI_DECISIONS_API_KEY or GEMINI_API_KEY' : 'TYPESAFE_API_KEY'} required for --live`)
-  const backend = backendFor(name, key, { url: endpointUrl(undefined), model })
+  return name === 'gemini' ? gemini(key) : typesafe(key, { model })
+}
+
+async function sendAll(requests, provider) {
   const rows = []
   const usage = { requests: 0, inputTokens: 0, outputTokens: 0, failed: 0 }
   const latencies = []
   const queue = [...requests]
   const one = async (req) => {
+    const { url, init } = provider.encode(req.request)
     for (let attempt = 0; ; attempt++) {
       usage.requests++
       const started = Date.now()
       let res, text
       try {
-        res = await fetch(backend.url, { ...requestInit(backend, req.body), redirect: 'error', signal: AbortSignal.timeout(120_000) })
-        text = readResponse(backend, { ok: res.ok, text: await res.text() }).text
+        res = await fetch(url, { ...init, redirect: 'error', signal: AbortSignal.timeout(120_000) })
+        text = await res.text()
       } catch {
         if (attempt < RETRIES) continue
         return { failed: true }
       }
       latencies.push(Date.now() - started)
-      if (tooLong(backend, { status: res.status, text })) return { refused: true }
-      if ((res.status === 429 || res.status >= 500) && attempt < RETRIES) { await new Promise((r) => setTimeout(r, 2000 * (attempt + 1))); continue }
-      if (!res.ok) return { failed: true }
+      if (!res.ok) {
+        const { kind } = provider.failure({ status: res.status, text })
+        if (kind === 'too_long') return { refused: true }
+        if ((kind === 'retryable' || kind === 'rate_limit') && attempt < RETRIES) { await new Promise((r) => setTimeout(r, 2000 * (attempt + 1))); continue }
+        return { failed: true }
+      }
+      const decoded = provider.decode(req.request, { text })
+      if (decoded.model !== provider.model) throw new Error('model mismatch: ' + decoded.model)
       const data = JSON.parse(text)
-      if (data.model != null && data.model !== backend.model) throw new Error('model mismatch: ' + data.model)
       usage.inputTokens += data.usage?.input_tokens ?? data.usage?.total_input_tokens ?? 0
       usage.outputTokens += data.usage?.output_tokens ?? data.usage?.total_output_tokens ?? 0
-      return { answers: data.answers ?? {} }
+      return { answers: decoded.answers }
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
@@ -188,14 +205,14 @@ async function sendAll(requests, model, name) {
   return { rows, usage: { ...usage, latencyMs: { p50: q(0.5), p95: q(0.95) } } }
 }
 
-function liveRequests(d, ids, model) {
+function liveRequests(d, ids) {
   const tests = testsOfCases(d.bindings)
   const wanted = new Set(ids)
   const out = []
   for (const b of firstPerTwin(d.bindings.filter((x) => wanted.has(x.id)))) {
-    const built = factorBodies(model, b.state, tests[b.id])
+    const built = factorRequests(b.state, tests[b.id])
     if (!built) continue
-    for (let repeat = 1; repeat <= FACTOR_REPEATS; repeat++) for (const body of built.bodies) out.push({ twin: b.twin, repeat, body })
+    for (let repeat = 1; repeat <= FACTOR_REPEATS; repeat++) for (const request of built.requests) out.push({ twin: b.twin, repeat, request })
   }
   return out
 }
@@ -224,7 +241,7 @@ async function main() {
   const repoOf = Object.fromEntries(d.roster.map((r) => [r.id, r.repo]))
   const allIds = d.roster.map((r) => r.id).sort()
   const ids = values.limit ? allIds.slice(0, Number(values.limit)) : allIds
-  const recorded = predict(d, answersOf(d.result.rows), ids)
+  const recorded = predict(d, answersOf(decodeRows(d.result.rows)), ids)
   const report = { createdAt: new Date().toISOString(), git: gitSha(), data: dir, cases: ids.length, questions: sha(JSON.stringify(d.plan.requests.map((r) => r.sha256))) }
 
   if (values.replay) {
@@ -234,10 +251,11 @@ async function main() {
     const costMatches = Object.entries(expected).every(([v, c]) => Math.abs(views[v].cost - c) < 1e-12)
     Object.assign(report, { mode: 'replay', model: d.plan.model, port, expectedCost: expected, views, pass: port.states === 0 && port.bodies === 0 && costMatches })
   } else {
-    const model = values.backend === 'gemini' ? GEMINI_MODEL : values.model ?? DEFAULT_MODEL
-    const requests = liveRequests(d, ids, model)
+    const provider = liveProvider(values.backend, values.model ?? TYPESAFE_MODEL)
+    const { model } = provider
+    const requests = liveRequests(d, ids)
     const started = Date.now()
-    const { rows, usage } = await sendAll(requests, model, values.backend)
+    const { rows, usage } = await sendAll(requests, provider)
     const live = predict(d, answersOf(rows), ids)
     Object.assign(report, { mode: 'live', backend: values.backend, model, usage: { ...usage, wallMs: Date.now() - started }, views: summarize(live, d, ids, recorded, repoOf),
       recorded: summarize(recorded, d, ids, recorded, repoOf) })

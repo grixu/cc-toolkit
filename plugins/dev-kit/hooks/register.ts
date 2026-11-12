@@ -1,32 +1,16 @@
-import {
-  MODES,
-  appendLine,
-  backendFor,
-  backendKeys,
-  chooseBackends,
-  choiceNeeded,
-  hasAnyKey,
-  httpError,
-  label,
-  readResponse,
-  requestInit,
-  tooLong,
-  type Backend,
-  type BackendName,
-} from './backend.ts'
-import { DEFAULT_MODEL, EVIDENCE_BUDGET, atomicQuestions, evidenceForFiles, experimentalAnswers, stripTrailingRisk, validateEvidence, type ExecutionEvidence } from './evidence.ts'
-import { FACTOR_REPEATS, averageAnswers, factorBodies, factorGroup, factorReport, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
+import { DecisionError, ask, limiter, type DecisionProvider, type DecisionRequest, type Limit, type Questions } from './decision.ts'
+import { MODES, appendLine, chooseBackends, choiceNeeded, createProvider, hasAnyKey, label, providerKeys, type ProviderName } from './providers/index.ts'
+import { EVIDENCE_BUDGET, atomicQuestions, evidenceForFiles, experimentalAnswers, stripTrailingRisk, validateEvidence, type ExecutionEvidence } from './evidence.ts'
+import { FACTOR_REPEATS, averageAnswers, factorGroup, factorReport, factorRequests, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
 
 import {
   MAX_PARTS,
-  RETRYABLE,
   SLICING_SYSTEM,
   STATE_CHAR_BUDGET,
   aggregate,
   assignSlices,
   clipBulk,
   clipCommits,
-  endpointUrl,
   fileStatuses,
   groupsOf,
   halve,
@@ -46,7 +30,6 @@ import {
   pool,
   questions,
   readConfig,
-  retryDelay,
   slicingPrompt,
   split,
   splitSlices,
@@ -66,7 +49,6 @@ const LOW_CONFIDENCE = 0.5
 const NOT_ASSESSED_SAMPLE = 20
 const SLICING_MODEL = 'haiku'
 const CONCURRENCY = 4
-const MAX_ATTEMPTS = 3
 // Each split halves the request, so three levels cover a part at eight times the token limit.
 const MAX_SPLIT_DEPTH = 3
 const COMPARE_LOG = '.cache/dev-kit/compare.jsonl'
@@ -78,7 +60,7 @@ export function register(on, options) {
 
   on('session.start', async ($, e, next) => {
     // Without a key nothing may leave the machine, so the tool does not exist at all.
-    if (hasAnyKey(await backendKeys($, options))) {
+    if (hasAnyKey(await providerKeys($, options))) {
       try {
         await $.tool.register({
           name: TOOL,
@@ -173,7 +155,7 @@ function unavailable(reason: string) {
 
 export async function assess($, base: unknown, options, config, proposed?: unknown, context?: unknown, testingPolicy?: unknown, executionContext?: unknown, riskExperiment?: unknown, riskPolicy?: unknown, requestedBackend?: unknown) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
-  const keys = await backendKeys($, options)
+  const keys = await providerKeys($, options)
   const chosen = chooseBackends(options, requestedBackend, keys, 'dev-kit')
   if (chosen === 'choose') return choiceNeeded('mcp__dev-kit__pr_risk')
 
@@ -228,11 +210,10 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   const cleanedContext = typeof context === 'string' ? stripTrailingRisk(context.trim()).trim() : ''
   const purpose = { context: cleanedContext || undefined, commits: clippedCommits }
   const tests = testsInChange(parts.flatMap((p) => p.files))
-  const typesafe = { url: endpointUrl(options?.typesafe_endpoint), model: trimmedOption(options?.typesafe_model, DEFAULT_MODEL) }
 
-  const run = async (name: BackendName) => {
-    // Each backend gets its own cap: their rate limits are separate.
-    const request: JevRequest = { backend: backendFor(name, keys[name], typesafe), questions: questions(), limit: limiter(CONCURRENCY) }
+  const run = async (name: ProviderName) => {
+    // Each provider gets its own cap: their rate limits are separate.
+    const request: Asking = { provider: createProvider(name, keys, options), questions: questions(), limit: limiter(CONCURRENCY) }
     const [{ results, truncatedHunks, truncatedCodeHunks }, intents] = await Promise.all([
       requestParts($, request, parts, slices, evidence, experiment === 'atomic-v1', tests),
       requestIntents($, request, groupsOf(slices, reviewable), statuses, purpose),
@@ -403,30 +384,14 @@ type ExtendedPartResult = PartResult & {
   factors?: FactorGroup | 'documentation' | 'failed'
 }
 
-type JevRequest = { backend: Backend; questions: Record<string, unknown>; limit: Limit }
-type Limit = <T>(fn: () => Promise<T>) => Promise<T>
+// The diff, factor, intent and policy pools nest and run side by side, so they share one limit per provider.
+type Asking = { provider: DecisionProvider; questions: Questions; limit: Limit }
 
-// The diff, factor, intent and policy pools nest and run side by side, so only a cap shared by every request holds
-// Jev to CONCURRENCY in flight.
-function limiter(size: number): Limit {
-  let active = 0
-  const waiting: (() => void)[] = []
-  return async (fn) => {
-    if (active >= size) await new Promise<void>((resolve) => waiting.push(resolve))
-    else active++
-    try {
-      return await fn()
-    } finally {
-      const next = waiting.shift()
-      if (next) next()
-      else active--
-    }
-  }
-}
+const askWith = ($, request: Asking, decision: DecisionRequest) => ask($, request.provider, decision, request.limit)
 
 async function requestParts(
   $,
-  request: JevRequest,
+  request: Asking,
   parts: { files: string[]; diff: string; slice?: number }[],
   slices: Slice[],
   evidence: ExecutionEvidence,
@@ -435,51 +400,48 @@ async function requestParts(
 ): Promise<{ results: ExtendedPartResult[]; truncatedHunks: number; truncatedCodeHunks: number }> {
   let truncatedHunks = 0
   let truncatedCodeHunks = 0
-  const ask = async (part: { files: string[]; diff: string; slice?: number }, depth: number): Promise<ExtendedPartResult[]> => {
+  const askPart = async (part: { files: string[]; diff: string; slice?: number }, depth: number): Promise<ExtendedPartResult[]> => {
     const relevantEvidence = evidenceForFiles(evidence, part.files)
     const state = { ...partState(part, part.slice === undefined ? undefined : slices[part.slice].title), ...(relevantEvidence.length ? { execution_context: relevantEvidence } : {}) }
-    const body = JSON.stringify({ model: request.backend.model, state, questions: experiment ? { ...request.questions, ...atomicQuestions() } : request.questions })
-    const res = await send($, request, body)
-    if (!res.ok) {
-      if (depth < MAX_SPLIT_DEPTH && tooLong(request.backend, res)) {
-        const halves = halve(part)
-        if (halves.parts.some((h) => h.diff.length < part.diff.length)) {
-          truncatedHunks += halves.truncatedHunks
-          truncatedCodeHunks += halves.truncatedCodeHunks
-          const answered: ExtendedPartResult[] = []
-          for (const h of halves.parts) answered.push(...(await ask({ ...h, slice: part.slice }, depth + 1)))
-          return answered
-        }
-      }
-      throw new Error(httpError(request.backend, res.status, res.text))
+    let response
+    try {
+      response = await askWith($, request, { input: state, questions: experiment ? { ...request.questions, ...atomicQuestions() } : request.questions })
+    } catch (error) {
+      if (!(error instanceof DecisionError && error.kind === 'too_long' && depth < MAX_SPLIT_DEPTH)) throw error
+      const halves = halve(part)
+      if (!halves.parts.some((h) => h.diff.length < part.diff.length)) throw error
+      truncatedHunks += halves.truncatedHunks
+      truncatedCodeHunks += halves.truncatedCodeHunks
+      const answered: ExtendedPartResult[] = []
+      for (const h of halves.parts) answered.push(...(await askPart({ ...h, slice: part.slice }, depth + 1)))
+      return answered
     }
-    const data = JSON.parse(res.text)
-    const answers = data.answers ?? {}
+    const { answers } = response
     const missing = missingAnswer(answers)
-    if (missing) throw new Error(`${label(request.backend.name)} returned no numeric answer for "${missing}" (slice ${part.slice === undefined ? '-' : part.slice + 1})`)
+    if (missing) throw new Error(`${request.provider.label} returned no numeric answer for "${missing}" (slice ${part.slice === undefined ? '-' : part.slice + 1})`)
     const signals = experiment ? experimentalAnswers(answers) : undefined
     // After the diff request, on the state that fitted: a part halved for length gets factor answers per half.
     const factors = await requestFactors($, request, state, tests, part.slice)
     return [{
-      model: data.model,
+      model: response.model,
       answers,
       slice: part.slice,
       factors,
       ...(experiment ? { experimentalFiles: part.files, experimentalAnswers: signals } : {}),
     }]
   }
-  const results = (await pool(parts, CONCURRENCY, (part) => ask(part, 0))).flat()
+  const results = (await pool(parts, CONCURRENCY, (part) => askPart(part, 0))).flat()
   return { results, truncatedHunks, truncatedCodeHunks }
 }
 
 // Each repeat is the factor request plus, for a part with code, the testability request. A failed request drops only
 // its own answers, and the part counts as missing when no repeat answered.
-async function requestFactors($, request: JevRequest, state: { slice?: string; files: string[]; diff: string }, tests: string[], slice?: number): Promise<FactorGroup | 'documentation' | 'failed'> {
-  const built = factorBodies(request.backend.model, state, tests)
+async function requestFactors($, request: Asking, state: { slice?: string; files: string[]; diff: string }, tests: string[], slice?: number): Promise<FactorGroup | 'documentation' | 'failed'> {
+  const built = factorRequests(state, tests)
   if (!built) return 'documentation'
-  const { testOnly, bodies } = built
+  const { testOnly, requests } = built
   const repeats = await Promise.all(Array.from({ length: FACTOR_REPEATS }, async () => {
-    const settled = await Promise.allSettled(bodies.map(async (body) => JSON.parse((await post($, request, body)).text).answers ?? {}))
+    const settled = await Promise.allSettled(requests.map(async (r) => (await askWith($, request, r)).answers))
     const answered = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value] : []))
     return answered.length ? Object.assign({}, ...answered) : undefined
   }))
@@ -490,7 +452,7 @@ async function requestFactors($, request: JevRequest, state: { slice?: string; f
 // One request per slice, beside the diff requests: the purpose and file statistics are small, so a slice never needs two.
 async function requestIntents(
   $,
-  request: JevRequest,
+  request: Asking,
   groups: { title?: string; files: string[] }[],
   statuses,
   purpose: { context?: string; commits: string },
@@ -498,11 +460,9 @@ async function requestIntents(
   const questions = intentQuestions()
   return pool(groups, CONCURRENCY, async (group, i) => {
     const others = groups.flatMap((g, j) => (j !== i && g.title ? [g.title] : []))
-    const body = JSON.stringify({ model: request.backend.model, state: intentState(group, statuses, purpose, others), questions })
-    const res = await post($, request, body)
-    const answers = JSON.parse(res.text).answers ?? {}
+    const { answers } = await askWith($, request, { input: intentState(group, statuses, purpose, others), questions })
     const missing = missingIntent(answers)
-    if (missing) throw new Error(`${label(request.backend.name)} returned no numeric answer for "${missing}" (slice ${i + 1} of ${groups.length})`)
+    if (missing) throw new Error(`${request.provider.label} returned no numeric answer for "${missing}" (slice ${i + 1} of ${groups.length})`)
     return { answers, group: i }
   })
 }
@@ -510,7 +470,7 @@ async function requestIntents(
 // A failed policy request keeps the flag: the code's own rule already found logic without a test.
 async function requestPolicy(
   $,
-  request: JevRequest,
+  request: Asking,
   flagged: { group: number; title?: string; files: string[]; types: string[] }[],
   statuses,
   tests: string[],
@@ -518,29 +478,14 @@ async function requestPolicy(
 ): Promise<Set<number>> {
   const questions = policyQuestions()
   const cleared = await pool(flagged, CONCURRENCY, async (g) => {
-    const body = JSON.stringify({ model: request.backend.model, state: policyState(g, statuses, g.types, tests, policy), questions })
     try {
-      const res = await post($, request, body)
-      return testsNeeded(JSON.parse(res.text).answers ?? {}) ? undefined : g.group
+      const { answers } = await askWith($, request, { input: policyState(g, statuses, g.types, tests, policy), questions })
+      return testsNeeded(answers) ? undefined : g.group
     } catch {
       return undefined
     }
   })
   return new Set(cleared.filter((g): g is number => g !== undefined))
-}
-
-async function post($, request: JevRequest, body: string) {
-  const res = await send($, request, body)
-  if (!res.ok) throw new Error(httpError(request.backend, res.status, res.text))
-  return res
-}
-
-async function send($, request: JevRequest, body: string) {
-  for (let attempt = 1; ; attempt++) {
-    const res = await request.limit(() => $.http.fetch(request.backend.url, requestInit(request.backend, body)))
-    if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) return readResponse(request.backend, res)
-    await $.clock.sleep(retryDelay(res.headers, attempt))
-  }
 }
 
 async function git($, cwd: string, args: string[]): Promise<string> {

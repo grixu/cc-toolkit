@@ -1,20 +1,21 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { answersOf, metrics, pairedCI, predict } from './fe-eval.mjs'
+import { answersOf, decodeRows, metrics, pairedCI, predict } from './fe-eval.mjs'
 
-const at = (level) => ({ probabilities: { [String(level)]: 1 } })
+const wireAt = (level) => ({ score: level, probabilities: { [String(level)]: 1 } })
+const at = (level) => ({ type: 'scale', expected: level, probabilities: [0, 1, 2, 3, 4].map((i) => +(i === level)) })
 
 test('merges each repeat\'s bodies, then averages the repeats, skipping refusals', () => {
   const rows = [
-    { twin: 't', repeat: 1, answers: { complexity: at(1) } },
+    { twin: 't', repeat: 1, answers: { complexity: wireAt(1) } },
     { twin: 't', repeat: 1, answers: { automation_testable: { noul: 0.2 } } },
-    { twin: 't', repeat: 2, answers: { complexity: at(3) } },
+    { twin: 't', repeat: 2, answers: { complexity: wireAt(3) } },
     { twin: 't', repeat: 2, answers: { automation_testable: { noul: 0.6 } } },
     { twin: 'u', repeat: 1, refused: true },
   ]
-  const a = answersOf(rows)
-  assert.deepEqual(a.t.complexity.probabilities, { 1: 0.5, 3: 0.5 })
-  assert.ok(Math.abs(a.t.automation_testable.noul - 0.4) < 1e-9)
+  const a = answersOf(decodeRows(rows))
+  assert.deepEqual(a.t.complexity.probabilities, [0, 0.5, 0, 0.5, 0])
+  assert.ok(Math.abs(a.t.automation_testable.p - 0.4) < 1e-9)
   assert.equal(a.u, undefined)
 })
 
