@@ -13,6 +13,8 @@ const KNOWN_TAGS = new Set(
 )
 const MAX_LISTED_IDENTIFIERS = 6
 const MAX_LINE_MISMATCHES = 3
+const COUNTER_RESET = /counter-reset:\s*l\s+(\d+)/
+const COUNTER_SET = /counter-set:\s*l\s+(\d+)/
 
 export function check(html, { cwd = process.cwd() } = {}) {
   const errors = []
@@ -55,6 +57,10 @@ function readMeta(html) {
 
 function attr(tag, name) {
   return tag.match(new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`))?.slice(1).find((v) => v !== undefined)
+}
+
+function openTag(element, name) {
+  return element.match(new RegExp(`^<${name}\\b[^>]*>`))[0]
 }
 
 // Every element with the given tag name, outermost first, with nesting resolved.
@@ -123,12 +129,12 @@ function checkNotes(article, languages, where, errors) {
   const perLanguage = languages.length ? languages : ['en']
   for (const l of perLanguage) {
     const own = lists.filter((ol) => {
-      const lang = attr(ol.match(/^<ol\b[^>]*>/)[0], 'data-lang')
+      const lang = attr(openTag(ol, 'ol'), 'data-lang')
       return !lang || lang === l
     })
     const notes = new Set()
     for (const ol of own) {
-      const start = Number(attr(ol.match(/^<ol\b[^>]*>/)[0], 'start') ?? 1)
+      const start = Number(attr(openTag(ol, 'ol'), 'start') ?? 1)
       const count = (ol.match(/<li\b/g) ?? []).length
       for (let k = 0; k < count; k++) notes.add(String(start + k))
     }
@@ -142,7 +148,7 @@ function checkBlocks(article, git, where, errors, warnings) {
   for (const dx of elements(article, 'div', (t) => /class="dx"/.test(t))) {
     const pre = dx.match(/<pre class="diff([^"]*)"([^>]*)>/)
     if (!pre) continue
-    const kinds = pre[1]
+    const [, kinds, preAttrs] = pre
     const head = dx.match(/<div class="dh">([\s\S]*?)<\/div>/)?.[1] ?? ''
     const path = text(head.match(/<b>([\s\S]*?)<\/b>/)?.[1] ?? '')
     const label = `${where}, ${path || 'a code block'}`
@@ -151,49 +157,59 @@ function checkBlocks(article, git, where, errors, warnings) {
       style: attr(`<i ${m[1]}>`, 'style') ?? '',
       raw: m[2],
     }))
-    for (const line of lines) {
-      const bad = line.raw.replace(/<[^>]*>/g, (tag) => (ALLOWED_INLINE.test(tag) ? '' : tag))
-      if (/</.test(bad)) errors.push(`${label}: unescaped "<" in a line; write &lt; (${text(line.raw).slice(0, 40)})`)
-    }
+    checkEscaping(lines, label, errors)
     if (kinds.includes('tree')) continue
-    if (!/counter-reset:\s*l\s+\d+/.test(pre[2])) errors.push(`${label}: <pre class="diff"> lacks style="counter-reset:l N"`)
-    for (const line of lines)
-      if (line.cls === 'e' && !/counter-set:\s*l\s+\d+/.test(line.style)) errors.push(`${label}: an elision lacks style="counter-set:l N"`)
+    checkCounters(preAttrs, lines, label, errors)
     if (/class="tag"/.test(head)) continue
+    checkLineNumbers({ base: kinds.includes('base'), path, preAttrs, lines, git, label }, errors, warnings)
+  }
+}
 
-    const base = kinds.includes('base')
-    const shown = git.file(base ? 'base' : 'head', path)
-    if (!shown) {
-      errors.push(`${label}: no such file at ${base ? 'the base' : 'HEAD'}; fix the path, or tag the header (dependency, unchanged) when it is not this repository's file`)
+function checkEscaping(lines, label, errors) {
+  for (const line of lines) {
+    const bad = line.raw.replace(/<[^>]*>/g, (tag) => (ALLOWED_INLINE.test(tag) ? '' : tag))
+    if (/</.test(bad)) errors.push(`${label}: unescaped "<" in a line; write &lt; (${text(line.raw).slice(0, 40)})`)
+  }
+}
+
+function checkCounters(preAttrs, lines, label, errors) {
+  if (!COUNTER_RESET.test(preAttrs)) errors.push(`${label}: <pre class="diff"> lacks style="counter-reset:l N"`)
+  for (const line of lines)
+    if (line.cls === 'e' && !COUNTER_SET.test(line.style)) errors.push(`${label}: an elision lacks style="counter-set:l N"`)
+}
+
+function checkLineNumbers({ base, path, preAttrs, lines, git, label }, errors, warnings) {
+  const shown = git.file(base ? 'base' : 'head', path)
+  if (!shown) {
+    errors.push(`${label}: no such file at ${base ? 'the base' : 'HEAD'}; fix the path, or tag the header (dependency, unchanged) when it is not this repository's file`)
+    return
+  }
+  const other = git.file(base ? 'head' : 'base', path)
+  let n = Number(preAttrs.match(COUNTER_RESET)?.[1] ?? 0)
+  let wrong = 0
+  for (const line of lines) {
+    if (line.cls === 'e') {
+      n = Number(line.style.match(COUNTER_SET)?.[1] ?? n)
       continue
     }
-    const other = git.file(base ? 'head' : 'base', path)
-    let n = Number(pre[2].match(/counter-reset:\s*l\s+(\d+)/)?.[1] ?? 0)
-    let wrong = 0
-    for (const line of lines) {
-      if (line.cls === 'e') {
-        n = Number(line.style.match(/counter-set:\s*l\s+(\d+)/)?.[1] ?? n)
-        continue
+    const counted = base ? line.cls !== 'a' : line.cls !== 'd'
+    const want = normal(text(line.raw))
+    if (counted) {
+      n++
+      if (normal(shown[n - 1] ?? '') !== want) {
+        wrong++
+        if (wrong <= MAX_LINE_MISMATCHES) errors.push(`${label}: line ${n} reads "${(shown[n - 1] ?? '(past the end)').trim().slice(0, 60)}", not "${want.slice(0, 60)}"`)
       }
-      const counted = base ? line.cls !== 'a' : line.cls !== 'd'
-      const want = normal(text(line.raw))
-      if (counted) {
-        n++
-        if (normal(shown[n - 1] ?? '') !== want) {
-          wrong++
-          if (wrong <= MAX_LINE_MISMATCHES) errors.push(`${label}: line ${n} reads "${(shown[n - 1] ?? '(past the end)').trim().slice(0, 60)}", not "${want.slice(0, 60)}"`)
-        }
-      } else if (other && !other.some((l) => normal(l) === want)) {
-        warnings.push(`${label}: the ${base ? 'added' : 'removed'} line "${want.slice(0, 50)}" is not in the ${base ? 'new' : 'old'} file`)
-      }
+    } else if (other && !other.some((l) => normal(l) === want)) {
+      warnings.push(`${label}: the ${base ? 'added' : 'removed'} line "${want.slice(0, 50)}" is not in the ${base ? 'new' : 'old'} file`)
     }
-    if (wrong > MAX_LINE_MISMATCHES) errors.push(`${label}: ${wrong - MAX_LINE_MISMATCHES} more lines do not match; the counter-reset is probably off`)
   }
+  if (wrong > MAX_LINE_MISMATCHES) errors.push(`${label}: ${wrong - MAX_LINE_MISMATCHES} more lines do not match; the counter-reset is probably off`)
 }
 
 function checkSvg(article, where, errors) {
   for (const svg of elements(article, 'svg')) {
-    const open = svg.match(/^<svg\b[^>]*>/)[0]
+    const open = openTag(svg, 'svg')
     if (!/viewBox=/.test(open)) errors.push(`${where}: an <svg> has no viewBox, so it will not scale`)
     if (/<script\b|<foreignObject\b|\son[a-z]+=/i.test(svg)) errors.push(`${where}: an <svg> carries script, an event handler or foreignObject`)
     if (/class="fx-node/.test(svg)) checkLiteGeometry(svg, where, errors)
