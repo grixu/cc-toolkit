@@ -36,7 +36,7 @@ test('maps sound file extensions to their MIME type', () => {
   expect(mimeFor('no-extension')).toBe(undefined)
 })
 
-test('plays a custom sound, and the bundled one when the custom file cannot play', async () => {
+test('picks the custom clip, and the bundled one when the custom file cannot play', async () => {
   const bundled = { asset: 'sounds/done.wav' }
   const readable = { fs: { read: async () => ({ base64: 'UklGRg==' }) } }
   const missing = {
@@ -46,6 +46,7 @@ test('plays a custom sound, and the bundled one when the custom file cannot play
       },
     },
   }
+
   expect(await clipFor(readable, '/s/ding.mp3', bundled.asset)).toEqual({ base64: 'UklGRg==', mime: 'audio/mpeg' })
   expect(await clipFor(readable, undefined, bundled.asset)).toEqual(bundled)
   expect(await clipFor(readable, '/s/ding.flac', bundled.asset)).toEqual(bundled)
@@ -56,8 +57,10 @@ test('chimes when the main turn ends with every subagent done', async ($, on) =>
   const played = recordPlays(on)
   agents(on, [{ id: 'a1', type: 'Explore', status: 'completed', description: 'search' }])
   on('turn.complete', () => ({ text: '' }))
+
   await $.turn.complete(mainTurn)
   await settle()
+
   expect(played).toEqual([expect.objectContaining({ asset: 'sounds/done.wav' })])
 })
 
@@ -65,8 +68,10 @@ test('stays silent while a subagent still runs', async ($, on) => {
   const played = recordPlays(on)
   agents(on, [{ id: 'a1', type: 'general-purpose', status: 'running', description: 'review' }])
   on('turn.complete', () => ({ text: '' }))
+
   await $.turn.complete(mainTurn)
   await settle()
+
   expect(played).toEqual([])
 })
 
@@ -74,25 +79,41 @@ test('stays silent when a subagent finishes its own turn', async ($, on) => {
   const played = recordPlays(on)
   agents(on, [])
   on('turn.complete', () => ({ text: '' }))
+
   await $.turn.complete({ ...mainTurn, agentId: 'a1' })
   await settle()
+
   expect(played).toEqual([])
 })
 
 test('chimes with the question sound and still runs the question', async ($, on) => {
   const played = recordPlays(on)
   on('tool.call', () => ({ result: 'answered' }))
+
   const result = await $.tool.call({ tool: 'AskUserQuestion', questions: [] })
   await settle()
+
   expect(result).toEqual(expect.objectContaining({ result: 'answered' }))
+  expect(played).toEqual([expect.objectContaining({ asset: 'sounds/question.wav' })])
+})
+
+test('chimes with the question sound when a plan is presented', async ($, on) => {
+  const played = recordPlays(on)
+  on('tool.call', () => ({ result: 'approved' }))
+
+  await $.tool.call({ tool: 'ExitPlanMode' })
+  await settle()
+
   expect(played).toEqual([expect.objectContaining({ asset: 'sounds/question.wav' })])
 })
 
 test('stays silent on any other tool call', async ($, on) => {
   const played = recordPlays(on)
   on('tool.call', () => ({ result: 'ok' }))
+
   await $.tool.call({ tool: 'Bash', command: 'ls' })
   await settle()
+
   expect(played).toEqual([])
 })
 
@@ -106,7 +127,9 @@ test('a turn completes when the sound cannot play', async ($, on) => {
     reachedCore = true
     return { text: '' }
   })
+
   await $.turn.complete(mainTurn)
   await settle()
+
   expect(reachedCore).toBe(true)
 })
