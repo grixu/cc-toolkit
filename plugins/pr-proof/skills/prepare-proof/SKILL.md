@@ -1,6 +1,6 @@
 ---
 name: prepare-proof
-description: Plan and produce the proof a branch's pull request needs. Judges each proof kind (video, screenshots, terminal, API, or none) from the diff with TypeSafe Jev signals when available, confirms the whole plan once, brings up the app's stack, runs walkthrough-video, screenshot-proof and terminal-proof in order, and records the result in the branch's proof manifest for pr-open. Use when asked to prepare, plan or gather proof for a PR or branch, or to work out which proof a change needs, whether the user asks directly or another agent dispatches it.
+description: Plan and produce the proof a branch's pull request needs. Judges each proof kind (video, screenshots, terminal, API, or none) from the diff with decision-model signals (TypeSafe Jev or Gemini Decision) when available, confirms the whole plan once, brings up the app's stack, runs walkthrough-video, screenshot-proof and terminal-proof in order, and records the result in the branch's proof manifest for pr-open. Use when asked to prepare, plan or gather proof for a PR or branch, or to work out which proof a change needs, whether the user asks directly or another agent dispatches it.
 ---
 
 `/pr-proof:prepare-proof [base] [before]`
@@ -19,17 +19,19 @@ Work dir: the manifest's directory, `~/.cache/pr-proof/<repo>/<branch>/`, comput
 ## Steps
 
 1. **Refuse** on the default branch or a detached HEAD: the manifest path needs a branch, and there is no change to prove.
-2. **Signals.** Look up `mcp__pr-proof__proof_signals` with tool search and call it with `base`. When the tool is absent, or its result starts `Proof signals unavailable:`, judge from the diff alone and note "Jev not used" with the reason for the report. A result with `coverage.partial` true assessed only part of the diff; read the rest yourself.
+2. **Signals.** Look up `mcp__pr-proof__proof_signals` with tool search and call it with `base`. When the tool is absent, or its result starts `Proof signals unavailable:`, judge from the diff alone and note "signals not used" with the reason for the report. A result with `coverage.partial` true assessed only part of the diff; read the rest yourself.
+   - A result starting `Backend choice needed:` means both a TypeSafe and a Gemini key are set and no backend is configured. Ask the user in one question whether to use TypeSafe, Gemini or both, then call the tool again with `backend` set to `typesafe`, `gemini` or `both`. Under an agent caller, this question is a `Confirmation needed` block of its own, before the plan. The report suggests saving the answer as the pr-proof option `decision_backend` in `/config`.
+   - The result's `backend` and `model` name who answered. With `comparison`, every backend's signals sit there, one entry per backend, or its `error`; the top-level signals belong to the top-level `backend`: the primary, unless the primary failed and the other one answered. A kind on which two backends disagree, one `suggest` and the other `reject`, counts as `uncertain`.
 3. **Judge each kind** on its own, as the next section says, then set the signals beside your decisions:
    - A kind whose signal is `suggest` that you do not plan, or whose signal is `reject` that you do plan, is an overrule: state its reason in one line.
    - `uncertain` is your call.
-   - Jev's terminal question also counts what a test run prints, so a `suggest` for `terminal` that comes only from test changes is an expected overrule: tests never call for a kind by themselves.
-   - `suppressed` true means Jev reads the change as not affecting program behaviour. Planning any kind against it is an overrule too.
+   - The terminal question also counts what a test run prints, so a `suggest` for `terminal` that comes only from test changes is an expected overrule: tests never call for a kind by themselves.
+   - `suppressed` true means the backend reads the change as not affecting program behaviour. Planning any kind against it is an overrule too.
 
    When no kind applies, the plan is **no proof**.
 4. **Assign files.** Give each planned kind the diff's files it proves (`git diff --name-only "origin/$base...HEAD"`, or `"$base...HEAD"` when origin has no such branch). A file may serve several kinds. The executors confirm and correct them.
 5. **Confirm the plan once.** Show the whole plan in the user's language and wait for a yes or corrections:
-   - each kind, planned or not, with its reason, its signal and any overrule;
+   - each kind, planned or not, with its reason, its signal and any overrule, and with `comparison` each backend's signal beside it;
    - each planned kind's `files`;
    - what will run, in order: `terminal-proof terminal`, `terminal-proof api`, `screenshot-proof`, `walkthrough-video record-only`;
    - whether a stack is needed, and whether one for this checkout is already up or will be started.
@@ -69,7 +71,7 @@ Work dir: the manifest's directory, `~/.cache/pr-proof/<repo>/<branch>/`, comput
    - **Video**, once `walkthrough-video` reports an accepted video: `<work dir>/entry.json` holds `{"kind": "video", "claim": "<one sentence: what the video shows the change doing>", "files": [<the files it reported>], "media": [{"path": "<the MP4's absolute path>"}]}`. No accepted video, no entry.
    - **No proof**: write the manifest with `entries: []` as the rules show.
 9. **Report**, in the user's language:
-   - whether Jev was used, and why not when it was not;
+   - which backend answered, or both, and why no signals were used when none were;
    - each kind with its reason, its signal and any overrule;
    - each failure, dropped entry or rejected proof, and the before shots skipped and why;
    - each executor's corrections to `files`;

@@ -3,9 +3,10 @@ import { test } from 'node:test'
 import { CHARACTERS, questions } from '../../hooks/risk.ts'
 import { CAUSAL_IMPACT_INSTRUCTIONS, SEMANTIC_LIKELIHOOD_INSTRUCTIONS, rewritePrompt, validateVariant } from './prompt-variants.mjs'
 import { V2_TYPES } from './v2-types.mjs'
+import { typesafeBody } from '../../hooks/providers/typesafe.ts'
 
-const request = { model: 'jev-pinned', questions: questions(), state: { slice: 'example', diff: 'changed code', execution_context: ['evidence'] } }
-const body = JSON.stringify(request)
+const body = typesafeBody('jev-pinned', { input: { slice: 'example', diff: 'changed code', execution_context: ['evidence'] }, questions: questions() })
+const request = JSON.parse(body)
 const rewrite = (variant, payload = body, extra = {}) => rewritePrompt(payload, { variant, characters: CHARACTERS, ...extra })
 
 test('causal variant changes only the impact instruction in a diff request', () => {

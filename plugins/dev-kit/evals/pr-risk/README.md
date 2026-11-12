@@ -7,7 +7,7 @@ node plugins/dev-kit/evals/pr-risk/run.mjs --tag baseline
 node --test plugins/dev-kit/evals/pr-risk/*.test.mjs
 ```
 
-Live runs require `TYPESAFE_API_KEY` and the Claude Agent SDK's authenticated session for fallback slicing. Both the tool and runner default to the pinned `DEFAULT_MODEL` in `hooks/evidence.ts` (`jev-1.14.0`); `--model` overrides it for an experiment. Private datasets and evidence belong in the ignored `local/` directory. Results go to `evals/.results/pr-risk/`.
+Live runs require `TYPESAFE_API_KEY` and the Claude Agent SDK's authenticated session for fallback slicing. Both the tool and runner default to the pinned `TYPESAFE_MODEL` in `hooks/providers/typesafe.ts` (`jev-1.14.0`); `--model` overrides it for an experiment. Private datasets and evidence belong in the ignored `local/` directory. Results go to `evals/.results/pr-risk/`.
 
 `--risk-policy calibrated-v1` is the default scoring policy. `--risk-policy evidence-v1` opts into stricter rules for risk reductions. This scoring experiment is independent of `--risk-experiment atomic-v1`, which changes the questions sent to the model. Result summaries and case reports identify the selected policy. Exact recordings can compare scoring policies when their model requests remain unchanged.
 
@@ -27,10 +27,25 @@ node plugins/dev-kit/evals/pr-risk/e2e.mjs --limit 3
 It needs the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. The sets are `v8` (the test cohort: frozen part states, recorded factor answers, PR bodies and sealed labels), `v5` (the development cohort) and `research` (archived write-ups and scripts).
 
 - `fe-eval.mjs --replay` runs production's `hooks/factors.ts` on the recorded Jev answers. It fails unless every factor state and request body production builds equals the frozen ones byte for byte, and unless the cost equals the cohort's recorded baseline. A pass shows that production scores what the cohort measured.
-- `fe-eval.mjs --live` sends the same states to Jev now and compares the result with the recorded answers, showing drift in Jev or in the questions. It reports request count, tokens and latency.
+- `fe-eval.mjs --live` sends the same states to Jev now and compares the result with the recorded answers, showing drift in Jev or in the questions. It reports request count, tokens and latency. `--backend gemini` sends them to Gemini Decision instead (`GEMINI_DECISIONS_API_KEY` or `GEMINI_API_KEY`), comparing Gemini with the recorded Jev answers on the same scorer. `run.mjs` stays on TypeSafe.
 - `e2e.mjs` runs the real `pr-open` skill through the Claude Agent SDK, refreshing each labelled PR's description in a sandbox: a bare origin at the PR's base and head, and the `gh` stand-in serving the PR's title and body. It scores the level that `pr-open`'s own `pr_risk` call returns, so slicing and context collection are part of the measurement. `--max-usd` caps the Claude spend.
 
 All three use the metric from the cohorts: expected cost per case, with under-estimates counted twice and an unassessed case counted as medium, plus a paired, repository-clustered bootstrap interval. V5 is the development split. V8 is the test split, and every decision tuned on it uses it up.
+
+The `v5` set is the raw development bundle, not an fe-eval layout. To run fe-eval on it, map `context-trial/{bindings,inputs-r1,inputs-r2,control}.json`, `factors/states.json` (as `factor-states.json`), `factors/full/{plan,result}.json` (as `plan-factors.json`, `result-factors.json`), `jev/runs/v5-1/prs.json` and `roster.json`, and write `jev/labels-g.jsonl` as `labels.jsonl` with a `weight` of 144/59 on view (b) `/audit` blocks and 1 elsewhere, as `factors/score-lib.mjs` does. Replay then passes on all 707 states, with view (b) at the recorded cost of 0.485.
+
+### Gemini Decision on V5 (2026-11-12)
+
+`gemini-decision-1` against the recorded Jev answers, two rounds over 707 states, 2428 requests (4 failed), p50 216 ms:
+
+| View | Backend | Cost | Exact | Over | Under | Dangerous misses (weighted) |
+|---|---|---|---|---|---|---|
+| b | Jev (recorded) | 0.485 | 64.8% | 27.5% | 7.8% | 12 |
+| b | Gemini | 0.478 | 68.4% | 18.8% | 12.7% | 19 |
+| a | Jev (recorded) | 0.540 | 65.4% | 22.7% | 11.8% | 19 |
+| a | Gemini | 0.573 | 66.4% | 15.6% | 18.0% | 31 |
+
+On cost Gemini is at parity: Δ −0.006 [−0.079, 0.097] on view (b), +0.033 [−0.023, 0.130] on view (a). It sits lower on the scale, though: fewer over-estimates, more under-estimates and more dangerous misses (a high or critical case rated below its label). The thresholds were tuned on Jev over V5, so Jev has the home advantage here; a threshold for Gemini would have to be tuned on V5 and checked on V8.
 
 ## Read the metrics
 

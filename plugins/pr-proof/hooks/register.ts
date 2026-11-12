@@ -1,47 +1,50 @@
+import { DecisionError, ask, limiter, type Answers, type DecisionProvider, type Limit } from './decision.ts'
 import {
   CONCURRENCY,
   DIFFSTAT_CHAR_BUDGET,
   MAX_SPLIT_DEPTH,
   STATE_CHAR_BUDGET,
   clip,
-  endpointUrl,
   git,
   halve,
-  httpError,
   isExcluded,
   isSafeRef,
-  limiter,
   pool,
   readDiffs,
   repoRoot,
   resolveBase,
-  send,
   split,
-  tooLong,
   trimmedOption,
-  type JevRequest,
   type Part,
 } from './jev.ts'
-import { aggregate, factQuestions, missingFact, partState, type Answers } from './signals.ts'
+import { MODES, appendLine, chooseBackends, choiceNeeded, createProvider, hasAnyKey, providerKeys, type ProviderName } from './providers/index.ts'
+import { aggregate, factQuestions, missingFact, partState } from './signals.ts'
 
 const TOOL = 'proof_signals'
-const DEFAULT_MODEL = 'jev-1.14.0'
 // The diffstat travels in every part, so the diff gets what is left of the state.
 const DIFF_CHAR_BUDGET = STATE_CHAR_BUDGET - DIFFSTAT_CHAR_BUDGET
 const DESCRIPTION =
-  "Ask the TypeSafe Jev model which kinds of proof a branch's change needs. Sends the diffstat and diff of <base>...HEAD, without lockfiles and generated files, and returns JSON: for screenshots, video, api and terminal a signal (suggest, reject or uncertain) with its probability, whether the change affects program behaviour at all and whether that suppresses the others, the Jev model that answered, and how much of the diff was assessed. Call it when planning proof for a pull request."
+  "Ask a decision model, TypeSafe Jev or Gemini Decision, which kinds of proof a branch's change needs. Sends the diffstat and diff of <base>...HEAD, without lockfiles and generated files, and returns JSON: for screenshots, video, api and terminal a signal (suggest, reject or uncertain) with its probability, whether the change affects program behaviour at all and whether that suppresses the others, the backend and model that answered, and how much of the diff was assessed. With both backends, `comparison` holds every backend's signals. Call it when planning proof for a pull request."
+const COMPARE_LOG = '.cache/pr-proof/compare.jsonl'
 
 export function register(on, options) {
   on('session.start', async ($, e, next) => {
     // Without a key nothing may leave the machine, so the tool does not exist at all.
-    if (await apiKey($, options)) {
+    if (hasAnyKey(await providerKeys($, options))) {
       try {
         await $.tool.register({
           name: TOOL,
           description: DESCRIPTION,
           inputSchema: {
             type: 'object',
-            properties: { base: { type: 'string', description: 'The branch the change merges into, such as main' } },
+            properties: {
+              base: { type: 'string', description: 'The branch the change merges into, such as main' },
+              backend: {
+                type: 'string',
+                enum: [...MODES],
+                description: 'Optional. The decision backend the user chose: typesafe, gemini or both. Pass it only with the user\'s answer after a "Backend choice needed" result.',
+              },
+            },
             required: ['base'],
           },
         })
@@ -54,7 +57,8 @@ export function register(on, options) {
 
   on('tool.call', { tool: `mcp__pr-proof__${TOOL}` }, async ($, e) => {
     try {
-      return { result: JSON.stringify(await proofSignals($, e.base, options), null, 2) }
+      const out = await proofSignals($, e.base, e.backend, options)
+      return { result: typeof out === 'string' ? out : JSON.stringify(out, null, 2) }
     } catch (error) {
       return unavailable(error instanceof Error ? error.message : String(error))
     }
@@ -65,14 +69,11 @@ function unavailable(reason: string) {
   return { result: 'Proof signals unavailable: ' + reason }
 }
 
-async function apiKey($, options): Promise<string> {
-  return trimmedOption(options?.typesafe_api_key, '') || trimmedOption(await $.env.get('TYPESAFE_API_KEY'), '')
-}
-
-async function proofSignals($, base: unknown, options) {
+async function proofSignals($, base: unknown, requested: unknown, options) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
-  const key = await apiKey($, options)
-  if (!key) throw new Error('no TypeSafe API key; set TYPESAFE_API_KEY or the pr-proof option typesafe_api_key')
+  const keys = await providerKeys($, options)
+  const chosen = chooseBackends(options, requested, keys, 'pr-proof')
+  if (chosen === 'choose') return choiceNeeded(`mcp__pr-proof__${TOOL}`)
 
   const cwd = await repoRoot($)
   const ref = await resolveBase($, cwd, base)
@@ -93,30 +94,41 @@ async function proofSignals($, base: unknown, options) {
   const plan = split(files, DIFF_CHAR_BUDGET)
   if (!plan.parts.length) throw new Error('no reviewable text diff: only mode changes or empty files')
 
-  const request: JevRequest = {
-    url: endpointUrl(options?.typesafe_endpoint),
-    model: trimmedOption(options?.typesafe_model, DEFAULT_MODEL),
-    key,
-    questions: factQuestions(),
-    limit: limiter(CONCURRENCY),
-  }
   const context = { diffstat: clip(diffstat.trimEnd(), DIFFSTAT_CHAR_BUDGET) }
+  const coverage = (parts: number, truncatedHunks: number) => {
+    const filesNotAssessed = plan.skippedFiles.length + unread.length
+    return { parts, filesNotAssessed, filesExcluded, truncatedHunks, partial: filesNotAssessed > 0 || truncatedHunks > 0 }
+  }
+  const run = async (name: ProviderName) => {
+    // Each provider gets its own cap: their rate limits are separate.
+    const asking: Asking = { provider: createProvider(name, keys, options), limit: limiter(CONCURRENCY) }
+    const asked = await pool(plan.parts, CONCURRENCY, (part) => askPart($, asking, context, part, 0))
+    const results = asked.flatMap((a) => a.answered)
+    const truncatedHunks = asked.reduce((sum, a) => sum + a.truncatedHunks, plan.truncatedHunks)
+    return { backend: name, model: results[0].model, ...aggregate(results.map((r) => r.answers)), coverage: coverage(results.length, truncatedHunks) }
+  }
 
-  const asked = await pool(plan.parts, CONCURRENCY, (part) => askPart($, request, context, part, 0))
-  const results = asked.flatMap((a) => a.answered)
-  const truncatedHunks = asked.reduce((sum, a) => sum + a.truncatedHunks, plan.truncatedHunks)
+  if (chosen.length === 1) return run(chosen[0])
+  const settled = await Promise.allSettled(chosen.map(run))
+  const comparison = settled.map((s, i) =>
+    s.status === 'fulfilled' ? s.value : { backend: chosen[i], error: s.reason instanceof Error ? s.reason.message : String(s.reason) },
+  )
+  await logComparison($, cwd, ref, comparison)
+  const answered = settled.find((s) => s.status === 'fulfilled')
+  if (!answered) throw new Error(comparison.map((c) => `${c.backend}: ${'error' in c ? c.error : ''}`).join('; '))
+  return { ...answered.value, comparison }
+}
 
-  const filesNotAssessed = plan.skippedFiles.length + unread.length
-  return {
-    model: results[0].model,
-    ...aggregate(results.map((r) => r.answers)),
-    coverage: {
-      parts: results.length,
-      filesNotAssessed,
-      filesExcluded,
-      truncatedHunks,
-      partial: filesNotAssessed > 0 || truncatedHunks > 0,
-    },
+// The log keeps every pair, so agreement between the backends can be measured later; it holds no diff text.
+async function logComparison($, cwd: string, ref: string, comparison: Record<string, unknown>[]) {
+  const home = trimmedOption(await $.env.get('HOME'), '')
+  if (!home) return
+  try {
+    const [head, branch] = await Promise.all([git($, cwd, ['rev-parse', 'HEAD']), git($, cwd, ['branch', '--show-current'])])
+    const entry = { at: new Date().toISOString(), repo: cwd.split('/').pop(), branch: branch.trim(), head: head.trim(), base: ref, results: comparison }
+    await appendLine($, `${home}/${COMPARE_LOG}`, JSON.stringify(entry))
+  } catch {
+    // A log that cannot be written never costs the user their signals.
   }
 }
 
@@ -127,36 +139,33 @@ function changedEntries(numstat: string): { path: string; binary: boolean }[] {
   })
 }
 
+type Asking = { provider: DecisionProvider; limit: Limit }
 type Answered = { model: string; answers: Answers }
 
 async function askPart(
   $,
-  request: JevRequest,
+  asking: Asking,
   context: { diffstat: string },
   part: Part,
   depth: number,
 ): Promise<{ answered: Answered[]; truncatedHunks: number }> {
-  const body = JSON.stringify({ model: request.model, state: partState(part, context), questions: request.questions })
-  const res = await send($, request, body)
-  if (!res.ok) {
-    if (depth < MAX_SPLIT_DEPTH && tooLong(res)) {
-      const halves = halve(part)
-      if (halves.parts.some((h) => h.diff.length < part.diff.length)) {
-        const answered: Answered[] = []
-        let truncatedHunks = halves.truncatedHunks
-        for (const h of halves.parts) {
-          const sub = await askPart($, request, context, h, depth + 1)
-          answered.push(...sub.answered)
-          truncatedHunks += sub.truncatedHunks
-        }
-        return { answered, truncatedHunks }
-      }
+  let response
+  try {
+    response = await ask($, asking.provider, { input: partState(part, context), questions: factQuestions() }, asking.limit)
+  } catch (error) {
+    if (!(error instanceof DecisionError && error.kind === 'too_long' && depth < MAX_SPLIT_DEPTH)) throw error
+    const halves = halve(part)
+    if (!halves.parts.some((h) => h.diff.length < part.diff.length)) throw error
+    const answered: Answered[] = []
+    let truncatedHunks = halves.truncatedHunks
+    for (const h of halves.parts) {
+      const sub = await askPart($, asking, context, h, depth + 1)
+      answered.push(...sub.answered)
+      truncatedHunks += sub.truncatedHunks
     }
-    throw new Error(httpError(res.status, res.text))
+    return { answered, truncatedHunks }
   }
-  const data = JSON.parse(res.text)
-  const answers: Answers = data.answers ?? {}
-  const missing = missingFact(answers)
-  if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}"`)
-  return { answered: [{ model: data.model, answers }], truncatedHunks: 0 }
+  const missing = missingFact(response.answers)
+  if (missing) throw new Error(`${asking.provider.label} returned no numeric answer for "${missing}"`)
+  return { answered: [{ model: response.model, answers: response.answers }], truncatedHunks: 0 }
 }

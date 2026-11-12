@@ -1,5 +1,8 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { endpointUrl, fileDiffs } from '../hooks/jev.ts'
+import { fileDiffs } from '../hooks/jev.ts'
+import { GEMINI_URL } from '../hooks/providers/gemini.ts'
+import { chooseBackends } from '../hooks/providers/index.ts'
+import { typesafeEndpoint } from '../hooks/providers/typesafe.ts'
 import { FACTS, aggregate, factQuestions, partState, signalOf } from '../hooks/signals.ts'
 
 const TOOL = 'mcp__pr-proof__proof_signals'
@@ -43,6 +46,8 @@ const UI_CHANGE = [{ path: 'src/Login.tsx', text: fileDiff('src/Login.tsx', '+<B
 
 for (const { env, expected } of [
   { env: { TYPESAFE_API_KEY: 'secret' }, expected: ['proof_signals'] },
+  { env: { GEMINI_DECISIONS_API_KEY: 'g' }, expected: ['proof_signals'] },
+  { env: { GEMINI_API_KEY: 'g' }, expected: ['proof_signals'] },
   { env: {}, expected: [] },
 ]) {
   test(`registers ${JSON.stringify(expected)} with the environment ${JSON.stringify(env)}`, async ($, on) => {
@@ -61,9 +66,9 @@ for (const { env, expected } of [
 }
 
 test('builds the endpoint URL from a base with or without the systemone path', () => {
-  expect(endpointUrl(undefined)).toBe('https://api.typesafe.ai/v1/systemone')
-  expect(endpointUrl('https://x.test/')).toBe('https://x.test/v1/systemone')
-  expect(endpointUrl('https://x.test/v1/systemone')).toBe('https://x.test/v1/systemone')
+  expect(typesafeEndpoint(undefined)).toBe('https://api.typesafe.ai/v1/systemone')
+  expect(typesafeEndpoint('https://x.test/')).toBe('https://x.test/v1/systemone')
+  expect(typesafeEndpoint('https://x.test/v1/systemone')).toBe('https://x.test/v1/systemone')
 })
 
 test('splits and names a file whose quoted header git kept despite core.quotePath=false', () => {
@@ -82,14 +87,16 @@ test('reads a probability at the thresholds as suggest or reject', () => {
   expect(signalOf(1)).toBe('suggest')
 })
 
-test('asks the five facts as noul questions', () => {
-  const q = factQuestions() as Record<string, { type: string; instructions: string }>
+test('asks the five facts as yes/no questions', () => {
+  const q = factQuestions()
   expect(Object.keys(q)).toEqual(['appearance_changed', 'ui_flow_changed', 'endpoint_response_changed', 'command_output_changed', 'no_behavior_change'])
-  expect(Object.values(q).every((x) => x.type === 'noul')).toBe(true)
+  expect(Object.values(q).every((x) => x.type === 'binary')).toBe(true)
 })
 
+const yes = (p: number) => ({ type: 'binary' as const, p })
+
 test('takes the maximum across parts for a kind and the minimum for no behaviour change', () => {
-  const part = (f: Record<string, number>) => Object.fromEntries(Object.entries(f).map(([k, noul]) => [k, { noul }]))
+  const part = (f: Record<string, number>) => Object.fromEntries(Object.entries(f).map(([k, p]) => [k, yes(p)]))
   const result = aggregate([
     part({ appearance_changed: 0.9, ui_flow_changed: 0.2, endpoint_response_changed: 0.1, command_output_changed: 0.5, no_behavior_change: 0.95 }),
     part({ appearance_changed: 0.1, ui_flow_changed: 0.4, endpoint_response_changed: 0.2, command_output_changed: 0.1, no_behavior_change: 0.2 }),
@@ -105,8 +112,8 @@ test('takes the maximum across parts for a kind and the minimum for no behaviour
 })
 
 test('a change without behaviour in any part suppresses the kinds but keeps their values', () => {
-  const answers = { appearance_changed: { noul: 0.8 }, ui_flow_changed: { noul: 0.1 }, endpoint_response_changed: { noul: 0.1 }, command_output_changed: { noul: 0.1 }, no_behavior_change: { noul: 0.75 } }
-  const result = aggregate([answers, { ...answers, no_behavior_change: { noul: 0.9 } }])
+  const answers = { appearance_changed: yes(0.8), ui_flow_changed: yes(0.1), endpoint_response_changed: yes(0.1), command_output_changed: yes(0.1), no_behavior_change: yes(0.75) }
+  const result = aggregate([answers, { ...answers, no_behavior_change: yes(0.9) }])
   expect(result.suppressed).toBe(true)
   expect(result.noBehaviorChange).toEqual({ signal: 'suggest', p: 0.75 })
   expect(result.signals.screenshots).toEqual({ signal: 'suggest', p: 0.8 })
@@ -389,4 +396,108 @@ test('halves a part Jev refuses as too long and aggregates the halves', async ($
   expect(report.signals.terminal).toEqual({ signal: 'suggest', p: 0.8 })
   expect(report.noBehaviorChange).toEqual({ signal: 'reject', p: 0.1 })
   expect(report.suppressed).toBe(false)
+})
+
+function geminiAnswer(facts: Facts = {}) {
+  const answers = Object.fromEntries(Object.keys(FACTS).map((key) => [key, { type: 'noul', noul: facts[key] ?? 0.1, confidence: 0.9 }]))
+  return { status: 200, ok: true, headers: {}, text: JSON.stringify({ answers, usage: { total_input_tokens: 10, total_output_tokens: 0 } }) }
+}
+
+const KEYS = { typesafe: 't', gemini: 'g' }
+
+test('picks the backend with a key, asks when both have one, and honours an explicit answer', () => {
+  expect(chooseBackends({}, undefined, { typesafe: 't', gemini: '' }, 'pr-proof')).toEqual(['typesafe'])
+  expect(chooseBackends({}, undefined, { typesafe: '', gemini: 'g' }, 'pr-proof')).toEqual(['gemini'])
+  expect(chooseBackends({}, undefined, KEYS, 'pr-proof')).toBe('choose')
+  expect(chooseBackends({ decision_backend: 'gemini' }, undefined, KEYS, 'pr-proof')).toEqual(['gemini'])
+  expect(chooseBackends({ decision_backend: 'typesafe' }, 'both', KEYS, 'pr-proof')).toEqual(['typesafe', 'gemini'])
+  expect(chooseBackends({ decision_backend: 'both', primary_backend: 'gemini' }, undefined, KEYS, 'pr-proof')).toEqual(['gemini', 'typesafe'])
+  expect(() => chooseBackends({ decision_backend: 'gemini' }, undefined, { typesafe: 't', gemini: '' }, 'pr-proof')).toThrow(/GEMINI_DECISIONS_API_KEY/)
+  expect(() => chooseBackends({}, 'jev', KEYS, 'pr-proof')).toThrow(/auto, typesafe, gemini or both/)
+})
+
+test('asks Gemini with its key, URL and body, and reports its model', async ($, on) => {
+  mock.env(on, { GEMINI_DECISIONS_API_KEY: 'g-key', GEMINI_API_KEY: 'other' })
+  on('process.run', fakeProcess(UI_CHANGE))
+  const requests: { url: string; init: { headers: Record<string, string>; body: string } }[] = []
+  on('http.fetch', ($, e) => {
+    requests.push(e)
+    return { value: geminiAnswer({ appearance_changed: 0.9 }) }
+  })
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main' })).result)
+  const body = JSON.parse(requests[0].init.body)
+
+  expect(requests[0].url).toBe(GEMINI_URL)
+  expect(requests[0].init.headers['x-goog-api-key']).toBe('g-key')
+  expect(requests[0].init.headers.authorization).toBeUndefined()
+  expect(JSON.parse(body.input).diff).toContain('Button')
+  expect(report.backend).toBe('gemini')
+  expect(report.model).toBe('gemini-decision-1')
+  expect(report.signals.screenshots).toEqual({ signal: 'suggest', p: 0.9 })
+  expect(report.comparison).toBeUndefined()
+})
+
+test('with both keys and no choice, asks for one before sending anything', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })
+  on('process.run', fakeProcess(UI_CHANGE))
+  let requests = 0
+  on('http.fetch', () => {
+    requests += 1
+    return { value: jevAnswer() }
+  })
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+  expect(out.result).toMatch(/^Backend choice needed:/)
+  expect(requests).toBe(0)
+})
+
+function loggingProcess(files: File[], lines: string[][]) {
+  const git = fakeProcess(files)
+  return ($, e) => {
+    const argv: string[] = e.argv
+    if (argv[0] === 'sh') {
+      lines.push(argv.slice(-2))
+      return ok('')
+    }
+    if (argv[1] === 'rev-parse' && argv[2] === 'HEAD') return ok('abc123\n')
+    if (argv[1] === 'branch') return ok('feat/x\n')
+    return git($, e)
+  }
+}
+
+test('with both backends, answers from the primary, compares both and logs the pair', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g', HOME: '/home/u' })
+  const lines: string[][] = []
+  on('process.run', loggingProcess(UI_CHANGE, lines))
+  on('http.fetch', ($, e) => ({
+    value: e.url === GEMINI_URL ? geminiAnswer({ appearance_changed: 0.2 }) : jevAnswer({ appearance_changed: 0.9 }),
+  }))
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })).result)
+
+  expect(report.backend).toBe('typesafe')
+  expect(report.signals.screenshots.signal).toBe('suggest')
+  expect(report.comparison.map((c) => [c.backend, c.model, c.signals.screenshots.signal])).toEqual([
+    ['typesafe', 'jev-1.14.0', 'suggest'],
+    ['gemini', 'gemini-decision-1', 'reject'],
+  ])
+  expect(lines.length).toBe(1)
+  expect(lines[0][0]).toBe('/home/u/.cache/pr-proof/compare.jsonl')
+  const logged = JSON.parse(lines[0][1])
+  expect(logged).toMatchObject({ repo: 'work', branch: 'feat/x', head: 'abc123', base: 'origin/main' })
+  expect(logged.results.map((r) => r.backend)).toEqual(['typesafe', 'gemini'])
+  expect(lines[0][1]).not.toContain('Button')
+})
+
+test('with both backends, a failed one leaves the other answering and is named in the comparison', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })
+  on('process.run', fakeProcess(UI_CHANGE))
+  on('http.fetch', ($, e) => ({ value: e.url === GEMINI_URL ? geminiAnswer() : jevFailure(401, 'unauthorized') }))
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })).result)
+
+  expect(report.backend).toBe('gemini')
+  expect(report.comparison[0]).toEqual({ backend: 'typesafe', error: expect.stringMatching(/TypeSafe rejected the API key/) })
 })

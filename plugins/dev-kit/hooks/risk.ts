@@ -1,4 +1,5 @@
 // Pure helpers for the pr_risk tool: no mods API calls, so they can be imported and unit tested.
+import type { Answer, Answers, Question, Questions, ScaleAnswer } from './decision.ts'
 import { AGENT_FILE, PROSE_FILE, TEST_FILE } from './paths.ts'
 
 const DEFAULT_LEVELS = ['low', 'medium', 'high', 'critical']
@@ -23,7 +24,6 @@ const OTHER_SLICE = 'Other changes'
 const MAX_HUNK_CONTEXTS = 6
 const MAX_CONTEXT_CHARS = 300
 const SLICING_PROMPT_BUDGET = 60_000
-const MAX_RETRY_DELAY_MS = 10_000
 
 const EXCLUDED_FILE = [
   /(^|\/)(pnpm-lock\.yaml|package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|bun\.lockb?|composer\.lock|Gemfile\.lock|Cargo\.lock|poetry\.lock|uv\.lock|Pipfile\.lock|go\.sum|flake\.lock)$/,
@@ -93,16 +93,16 @@ export const RISK_MATRIX = [
 const PROSE_ONLY =
   'Only prose, such as docs, changelog entries or specs, describes such a change; no code or configuration in `diff` makes it.'
 
-type Question = { instructions: string; criteria?: { true: string; false: string } }
+type Signal = { instructions: string; criteria?: { yes: string; no: string } }
 
 // A type whose single occurrence already matters to a reviewer, such as one version bump or one changed template,
 // is asked about by presence: a dominance question tells Jev to answer no exactly when it is one or two lines.
-const SIGNALS: Record<string, Question> = {
+const SIGNALS: Record<string, Signal> = {
   schema_or_data_migration: {
     instructions: '`diff` changes a storage schema definition, a migration, or a backfill that rewrites stored data.',
     criteria: {
-      true: 'A schema definition, migration file or backfill in `diff` changes how data is stored or rewrites stored data.',
-      false: PROSE_ONLY,
+      yes: 'A schema definition, migration file or backfill in `diff` changes how data is stored or rewrites stored data.',
+      no: PROSE_ONLY,
     },
   },
   // Deletions by jobs, endpoints and infrastructure lose data as surely as a migration does, and no other type sees them.
@@ -110,8 +110,8 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       '`diff` deletes, overwrites, expires or rewrites stored data, or removes or replaces a resource that holds it.',
     criteria: {
-      true: 'Code, a scheduled job or an infrastructure definition in `diff` deletes or purges records, rewrites stored values, sets a retention, expiry or lifecycle rule, drops, destroys, replaces or upgrades in place a database, table, bucket or other store of data, or makes an existing delete, purge or cleanup that removed nothing start removing data.',
-      false:
+      yes: 'Code, a scheduled job or an infrastructure definition in `diff` deletes or purges records, rewrites stored values, sets a retention, expiry or lifecycle rule, drops, destroys, replaces or upgrades in place a database, table, bucket or other store of data, or makes an existing delete, purge or cleanup that removed nothing start removing data.',
+      no:
         'The changes only read data, add new storage, or remove temporary, build or cache files, or only prose, such as docs, changelog entries or specs, describes such a change.',
     },
   },
@@ -120,8 +120,8 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       '`diff` changes the logic that decides whether, when, how often or to whom the system issues invoices, payments or messages to its customers or end users.',
     criteria: {
-      true: 'Code in `diff` changes when or how the system issues invoices or other financial or legal documents, charges, refunds or confirms payments, or sends emails, messages or notifications to customers or end users.',
-      false:
+      yes: 'Code in `diff` changes when or how the system issues invoices or other financial or legal documents, charges, refunds or confirms payments, or sends emails, messages or notifications to customers or end users.',
+      no:
         'Messages go only to the team that runs the system, such as CI, deploy or monitoring alerts; the change is to deployments, infrastructure or calls to other services; only the look, wording or headers of a message or document change; or only prose, such as docs, changelog entries or specs, describes such a change.',
     },
   },
@@ -131,8 +131,8 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       'Whether the infrastructure changes in `diff` are correct depends on live state the diff does not show, such as resources already in Terraform state, the traffic or data a resource holds, or steps done by hand.',
     criteria: {
-      true: 'An infrastructure-as-code change in `diff` imports existing resources into state, cuts capacity in use (instances, IP addresses, node pools, disks), or upgrades or replaces in place a resource that holds data or serves traffic.',
-      false:
+      yes: 'An infrastructure-as-code change in `diff` imports existing resources into state, cuts capacity in use (instances, IP addresses, node pools, disks), or upgrades or replaces in place a resource that holds data or serves traffic.',
+      no:
         'The infrastructure change only adds new resources, grants or swaps IAM roles without importing them, removes resources, peerings or connections to projects nothing uses any more, changes rotation, retention, expiry or lifecycle settings, pins or bumps a provider or module version, or sets values whose whole effect is visible in the diff; or `diff` changes no infrastructure.',
     },
   },
@@ -141,8 +141,8 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       "Every change in `diff` reaches only the team's own local development setup, coding-agent instructions and guards, or alerts and notifications sent to the team.",
     criteria: {
-      true: 'The changes are confined to local development environments, such as compose files or scripts used only on developer machines, to coding-agent instructions, rules or guards, or to alerts and notifications that go to the team.',
-      false:
+      yes: 'The changes are confined to local development environments, such as compose files or scripts used only on developer machines, to coding-agent instructions, rules or guards, or to alerts and notifications that go to the team.',
+      no:
         'Some change reaches a deployed environment, a deployment or release pipeline, a build that deployments or other teams depend on, or the product and its users.',
     },
   },
@@ -150,8 +150,8 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       "`diff` changes code that reads or writes the application's stored data, such as database queries, ORM or repository calls, cache reads, writes or keys, or object storage of the application's data.",
     criteria: {
-      true: "Code in `diff` adds, removes or changes a database query, an ORM or repository call, a cache read, write or key, or a read or write of the application's data in object storage.",
-      false:
+      yes: "Code in `diff` adds, removes or changes a database query, an ORM or repository call, a cache read, write or key, or a read or write of the application's data in object storage.",
+      no:
         "The only reads and writes are of build or generated files by scripts and generators, front-end code only calls the application's own API, or storage is only mentioned in prose, CI caches, schema migrations or configuration.",
     },
   },
@@ -159,8 +159,8 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       '`diff` changes who may do what, such as permission checks, roles, access policies, guards or access grants in infrastructure.',
     criteria: {
-      true: 'Code or configuration in `diff` adds, removes or changes a permission check, role, access policy, guard or access grant.',
-      false:
+      yes: 'Code or configuration in `diff` adds, removes or changes a permission check, role, access policy, guard or access grant.',
+      no:
         "The only permissions that change are a CI/CD job's or its token's, such as a workflow's `permissions:` block, or only prose, such as docs, changelog entries or specs, describes such a change.",
     },
   },
@@ -168,15 +168,15 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       '`diff` changes how users or services sign in or prove their identity, such as login flows, sessions, token verification or identity federation.',
     criteria: {
-      true: 'Code or configuration in `diff` changes a login flow, session handling, token verification or identity federation.',
-      false: PROSE_ONLY,
+      yes: 'Code or configuration in `diff` changes a login flow, session handling, token verification or identity federation.',
+      no: PROSE_ONLY,
     },
   },
   secret_handling: {
     instructions: '`diff` changes how credentials, keys, tokens or other secrets are issued, stored, rotated or redacted.',
     criteria: {
-      true: 'Creates, moves, rotates, stores or redacts a credential, key, token or secret, or changes where one is kept.',
-      false:
+      yes: 'Creates, moves, rotates, stores or redacts a credential, key, token or secret, or changes where one is kept.',
+      no:
         'Reads an existing environment variable or secret the same way as before, adds a configuration value that is not a credential, or only prose describes such a change.',
     },
   },
@@ -184,103 +184,103 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       '`diff` changes or removes an existing part of an interface that crosses a deployment or package boundary, such as an HTTP or RPC endpoint, a request or response field, a status code, an event payload, a schema shared between services, or an export of a shared package.',
     criteria: {
-      true: 'An existing endpoint, field, status code, payload or shared export that another service or package relies on is renamed, removed, or changes shape or meaning.',
-      false:
+      yes: 'An existing endpoint, field, status code, payload or shared export that another service or package relies on is renamed, removed, or changes shape or meaning.',
+      no:
         'Only new endpoints or fields are added, the changed interfaces are internal to one service, such as its ports, classes or helpers, or only prose describes such a change.',
     },
   },
   dependency_added_or_removed: {
     instructions: '`diff` adds a third-party dependency to a manifest or removes one from it.',
     criteria: {
-      true: 'A manifest in `diff` gains a third-party dependency it did not list before, or loses one.',
-      false: 'Only versions of dependencies already listed change, or a dependency is only mentioned in prose.',
+      yes: 'A manifest in `diff` gains a third-party dependency it did not list before, or loses one.',
+      no: 'Only versions of dependencies already listed change, or a dependency is only mentioned in prose.',
     },
   },
   cloud_infrastructure: {
     instructions:
       '`diff` changes cloud resources declared as code, such as networks, databases, queues, buckets, IAM bindings or DNS records.',
     criteria: {
-      true: 'An infrastructure-as-code file in `diff` adds, removes or changes a cloud resource.',
-      false: PROSE_ONLY,
+      yes: 'An infrastructure-as-code file in `diff` adds, removes or changes a cloud resource.',
+      no: PROSE_ONLY,
     },
   },
   ci_cd_pipeline: {
     instructions:
       '`diff` changes CI/CD pipeline definitions, such as workflow files, reusable actions, jobs, triggers, steps, caching or pipeline permissions.',
     criteria: {
-      true: 'A CI/CD workflow, reusable action or pipeline definition file in `diff` changes.',
-      false: PROSE_ONLY,
+      yes: 'A CI/CD workflow, reusable action or pipeline definition file in `diff` changes.',
+      no: PROSE_ONLY,
     },
   },
   runtime_environment: {
     instructions:
       '`diff` changes how or where the application process runs, such as a container image, compose file, Kubernetes or Helm manifest, resource limits, replicas or health checks.',
     criteria: {
-      true: 'A container image, compose file, Kubernetes or Helm manifest, or process resource or health setting in `diff` changes.',
-      false: PROSE_ONLY,
+      yes: 'A container image, compose file, Kubernetes or Helm manifest, or process resource or health setting in `diff` changes.',
+      no: PROSE_ONLY,
     },
   },
   feature_flag_gated: {
     instructions:
       '`diff` puts new or changed behaviour behind a feature flag or toggle check, so the behaviour runs only where the flag is on.',
     criteria: {
-      true: 'Code in `diff` checks a feature flag or runtime toggle, such as a per-customer, per-instance or per-user flag, before running the new or changed behaviour.',
-      false:
+      yes: 'Code in `diff` checks a feature flag or runtime toggle, such as a per-customer, per-instance or per-user flag, before running the new or changed behaviour.',
+      no:
         'No code in `diff` checks a flag, a flag is at most mentioned in prose, or the check only picks environments, such as running in production but not in test, so the behaviour runs as soon as it is deployed there.',
     },
   },
   unit_or_integration_tests: {
     instructions: '`diff` adds or changes unit or integration tests, their helpers, fixtures or runner configuration.',
     criteria: {
-      true: 'A test in `diff` calls application code directly, or runs it with its real dependencies, without driving its UI or public API.',
-      false: 'The tests drive the application through its UI or public API, such as browser tests and page objects, or only prose describes tests.',
+      yes: 'A test in `diff` calls application code directly, or runs it with its real dependencies, without driving its UI or public API.',
+      no: 'The tests drive the application through its UI or public API, such as browser tests and page objects, or only prose describes tests.',
     },
   },
   e2e_tests: {
     instructions:
       '`diff` adds or changes end-to-end tests that drive the application through its UI or public API, including page objects and their fixtures.',
     criteria: {
-      true: 'A test, page object or fixture in `diff` drives the application through its UI or public API.',
-      false: PROSE_ONLY,
+      yes: 'A test, page object or fixture in `diff` drives the application through its UI or public API.',
+      no: PROSE_ONLY,
     },
   },
   performance_tests: {
     instructions: '`diff` adds or changes load, stress or benchmark tests.',
     criteria: {
-      true: 'A load, stress or benchmark test or its configuration in `diff` changes.',
-      false: PROSE_ONLY,
+      yes: 'A load, stress or benchmark test or its configuration in `diff` changes.',
+      no: PROSE_ONLY,
     },
   },
   infrastructure_tests: {
     instructions:
       '`diff` adds or changes tests whose subject is infrastructure-as-code, the health of a deployed environment, or access policies tested in their policy language, such as policy test files or post-deploy smoke checks.',
     criteria: {
-      true: 'The tested subject is an infrastructure definition, a deployed environment or a policy file.',
-      false: 'The tests exercise application code, even code that manages policies, environments or runtimes, or only prose describes such tests.',
+      yes: 'The tested subject is an infrastructure definition, a deployed environment or a policy file.',
+      no: 'The tests exercise application code, even code that manages policies, environments or runtimes, or only prose describes such tests.',
     },
   },
   ui_components: {
     instructions:
       "`diff` changes the structure of the application's user-interface components or templates, such as markup, layout, component props or slots, or the labels and messages they render.",
     criteria: {
-      true: 'A component or template file in `diff` changes its markup, layout, props, slots or rendered text.',
-      false: 'The user interface is only described in prose, such as docs or changelog entries.',
+      yes: 'A component or template file in `diff` changes its markup, layout, props, slots or rendered text.',
+      no: 'The user interface is only described in prose, such as docs or changelog entries.',
     },
   },
   ui_interactions: {
     instructions:
       '`diff` changes how the user interface responds to the user, such as event handlers, client-side state, forms, navigation, or loading and error states.',
     criteria: {
-      true: 'Client-side code in `diff` changes event handling, state, forms, navigation or loading and error states.',
-      false: 'The user interface is only described in prose, such as docs or changelog entries.',
+      yes: 'Client-side code in `diff` changes event handling, state, forms, navigation or loading and error states.',
+      no: 'The user interface is only described in prose, such as docs or changelog entries.',
     },
   },
   build_and_dev_tooling: {
     instructions:
       '`diff` changes how code is built, linted, type-checked, bundled or run locally, such as compiler or bundler config, monorepo task config, package scripts or developer scripts.',
     criteria: {
-      true: 'A build, lint, compiler, bundler, task-runner or developer script or config file in `diff` changes.',
-      false:
+      yes: 'A build, lint, compiler, bundler, task-runner or developer script or config file in `diff` changes.',
+      no:
         'Only the version of a build, lint or test tool changes, with no change to its configuration or scripts, or tooling is only described in prose, such as docs or changelog entries.',
     },
   },
@@ -288,15 +288,15 @@ const SIGNALS: Record<string, Question> = {
     instructions:
       '`diff` changes the version of a dependency that already exists, such as a package version, a runtime version file, a base image tag, a pinned CI action or a submodule pointer.',
     criteria: {
-      true: 'A version of an existing dependency changes in a manifest, version file, image tag, action pin or submodule pointer.',
-      false: 'A dependency is added or removed, or a version appears only in prose.',
+      yes: 'A version of an existing dependency changes in a manifest, version file, image tag, action pin or submodule pointer.',
+      no: 'A dependency is added or removed, or a version appears only in prose.',
     },
   },
   ai_assistant_instructions: {
     instructions: '`diff` changes instructions, prompts, rules, skills or settings for AI coding assistants or LLM agents.',
     criteria: {
-      true: 'A prompt, rule, skill, agent instruction file or assistant setting in `diff` changes.',
-      false: 'AI assistants are only mentioned in prose that does not instruct them, such as a changelog entry.',
+      yes: 'A prompt, rule, skill, agent instruction file or assistant setting in `diff` changes.',
+      no: 'AI assistants are only mentioned in prose that does not instruct them, such as a changelog entry.',
     },
   },
 }
@@ -304,12 +304,12 @@ const SIGNALS: Record<string, Question> = {
 // A character is what much of the slice is about; asking only whether it is present marked every slice that had a
 // stray log line or error code. Each subject completes "A substantial part of the changes in `diff` is …", or in
 // the fields it names.
-export const CHARACTERS: Record<string, { subject: string; where?: string; criteria?: { true: string; false: string } }> = {
+export const CHARACTERS: Record<string, { subject: string; where?: string; criteria?: { yes: string; no: string } }> = {
   observability: {
     subject: "this system's own telemetry: its logging, metrics, tracing, monitors, alerts or dashboards",
     criteria: {
-      true: 'The changes alter how this system records, measures or alerts on its own behaviour.',
-      false:
+      yes: 'The changes alter how this system records, measures or alerts on its own behaviour.',
+      no:
         'Telemetry appears only in an incidental line or two or only in prose, or the code is a product feature that shows metrics or monitoring data to users.',
     },
   },
@@ -317,8 +317,8 @@ export const CHARACTERS: Record<string, { subject: string; where?: string; crite
     subject:
       'application code that validates input or handles runtime errors, such as validation rules, thrown or caught errors, error responses, retries or fallbacks',
     criteria: {
-      true: 'Application code now validates input or raises, catches or recovers from errors differently, and that is a main point of the changes.',
-      false: 'Errors appear only in an incidental line or two, in prose, or in monitors, alerts, CI scripts or infrastructure definitions.',
+      yes: 'Application code now validates input or raises, catches or recovers from errors differently, and that is a main point of the changes.',
+      no: 'Errors appear only in an incidental line or two, in prose, or in monitors, alerts, CI scripts or infrastructure definitions.',
     },
   },
   visual_styling: { subject: 'visual presentation, such as CSS, style classes, colours, spacing, sizing, icons or design tokens' },
@@ -342,14 +342,14 @@ export const CHARACTERS: Record<string, { subject: string; where?: string; crite
 const characterCriteria = (where: string) =>
   where === '`diff`'
     ? {
-        true: 'Many of the changed lines in `diff` are of this kind.',
-        false: 'Only an incidental line or two in `diff` is of this kind, or only prose describes it.',
+        yes: 'Many of the changed lines in `diff` are of this kind.',
+        no: 'Only an incidental line or two in `diff` is of this kind, or only prose describes it.',
       }
-    : { true: `Many of the changed lines in ${where} are of this kind.`, false: `Only an incidental line or two in ${where} is of this kind.` }
+    : { yes: `Many of the changed lines in ${where} are of this kind.`, no: `Only an incidental line or two in ${where} is of this kind.` }
 
 // What happened to the code is read from the change's purpose and its file statistics, not its content: a large
 // addition to an existing file looks like new code in a diff whatever it is for.
-const INTENTS: Record<string, Question> = {
+const INTENTS: Record<string, Signal> = {
   new_functionality: {
     instructions:
       'The changes in `files` add a capability that did not exist before, such as a new endpoint, page, module, command or job.',
@@ -358,8 +358,8 @@ const INTENTS: Record<string, Question> = {
     instructions:
       'The changes in `files` change what users of an existing feature can see or do: something they relied on is removed, modified, moved elsewhere, or works differently in the same place.',
     criteria: {
-      true: 'An existing option, element, flow, default, limit or output that users of the product or consumers of its API rely on is removed, modified, moved or works differently, including through a removal or a fix that changes what they get, such as new status codes, new validation or a different result.',
-      false:
+      yes: 'An existing option, element, flow, default, limit or output that users of the product or consumers of its API rely on is removed, modified, moved or works differently, including through a removal or a fix that changes what they get, such as new status codes, new validation or a different result.',
+      no:
         "Existing features keep working as before for their users: only new capabilities appear, wording changes, code is restructured, a fix only makes something work the way it was meant to, or only the team's own tooling works differently, such as CI, builds, deployment, infrastructure, developer scripts or local setup.",
     },
   },
@@ -367,8 +367,8 @@ const INTENTS: Record<string, Question> = {
     instructions:
       'Some of the changes in `files` deliberately change which users get an existing feature or option, or when it applies to them, such as who sees or may use it, when it is enabled, or a threshold or limit.',
     criteria: {
-      true: 'Users of the product or consumers of its API get an existing feature under a different condition than before, even when other changes in the slice modify behaviour too.',
-      false:
+      yes: 'Users of the product or consumers of its API get an existing feature under a different condition than before, even when other changes in the slice modify behaviour too.',
+      no:
         "No user-facing condition changes on purpose: the feature is new, only what it does changes, a fix corrects a check so the feature works as it was meant to, or the condition belongs to the team's own tooling, such as CI, builds, deployment, infrastructure, developer scripts or local setup.",
     },
   },
@@ -380,15 +380,15 @@ const INTENTS: Record<string, Question> = {
   rename_or_move: {
     instructions: 'Most of the changes in `files` rename or relocate files, symbols, routes or keys and update the references to them.',
     criteria: {
-      true: 'The slice is mostly renames or moves together with the reference updates that follow them.',
-      false: 'A rename or move is incidental to logic that is added, removed or rewritten.',
+      yes: 'The slice is mostly renames or moves together with the reference updates that follow them.',
+      no: 'A rename or move is incidental to logic that is added, removed or rewritten.',
     },
   },
   code_removal: {
     instructions: 'The changes in `files` take away functionality, endpoints, UI sections, resources or dead code.',
     criteria: {
-      true: 'Something that existed is taken away and nothing takes its place.',
-      false:
+      yes: 'Something that existed is taken away and nothing takes its place.',
+      no:
         'Removed code is replaced by a new version of the same thing, moved elsewhere, or rewritten as part of a redesign or a migration.',
     },
   },
@@ -455,18 +455,11 @@ type Split = {
   truncatedCodeHunks: number
 }
 
-type JevAnswer = {
-  score?: number
-  probabilities?: Record<string, number>
-  confidence?: number
-  noul?: number
-}
-
 const SCORES = { impact: 'defect_impact', likelihood: 'defect_likelihood' }
 
-export type PartResult = { model: string; answers: Record<string, JevAnswer>; slice?: number }
+export type PartResult = { model: string; answers: Answers; slice?: number }
 
-export type IntentResult = { answers: Record<string, JevAnswer>; group: number }
+export type IntentResult = { answers: Answers; group: number }
 
 type Config = {
   levels: string[]
@@ -564,34 +557,31 @@ export function labelFor(template: string, level: string): string {
   return template.includes('{level}') ? template.split('{level}').join(level) : `${template}: ${level}`
 }
 
-export function questions(): Record<string, unknown> {
-  const q: Record<string, unknown> = {
+export function questions(): Questions {
+  const q: Questions = {
     [SCORES.impact]: {
-      type: 'score',
+      type: 'scale',
       instructions: 'If the change in `diff` contains a mistake, what is the worst consequence once it is deployed?',
-      criteria: IMPACT.map((l) => l.criterion),
+      levels: IMPACT.map((l) => l.criterion),
     },
     [SCORES.likelihood]: {
-      type: 'score',
+      type: 'scale',
       instructions: 'How likely is the change in `diff` to contain a mistake?',
-      criteria: LIKELIHOOD.map((l) => l.criterion),
+      levels: LIKELIHOOD.map((l) => l.criterion),
     },
   }
-  for (const [key, t] of Object.entries(SIGNALS)) q[key] = { type: 'noul', ...t }
+  for (const [key, t] of Object.entries(SIGNALS)) q[key] = binary(t)
   for (const [key, c] of Object.entries(CHARACTERS)) {
     const where = c.where ?? '`diff`'
-    q[key] = {
-      type: 'noul',
-      instructions: `A substantial part of the changes in ${where} is ${c.subject}.`,
-      criteria: c.criteria ?? characterCriteria(where),
-    }
+    q[key] = binary({ instructions: `A substantial part of the changes in ${where} is ${c.subject}.`, criteria: c.criteria ?? characterCriteria(where) })
   }
   return q
 }
 
+const binary = (s: Signal): Question => ({ type: 'binary', ...s })
 
-export function intentQuestions(): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(INTENTS).map(([key, t]) => [key, { type: 'noul', ...t }]))
+export function intentQuestions(): Questions {
+  return Object.fromEntries(Object.entries(INTENTS).map(([key, t]) => [key, binary(t)]))
 }
 
 export function clipCommits(commits: string): string {
@@ -634,14 +624,14 @@ export function intentState(
 
 // Asked only for a slice the code already flags, so a repository's own rules decide what needs a test: one that
 // leaves components to e2e, or never tests its Terraform, would otherwise be flagged on every such change.
-export function policyQuestions(): Record<string, unknown> {
+export function policyQuestions(): Questions {
   return {
     [POLICY_KEY]: {
-      type: 'noul',
+      type: 'binary',
       instructions: 'Under `testing_policy`, the changes in `files` need tests that `tests_in_change` does not contain.',
       criteria: {
-        true: 'The policy expects tests for files or changes of this kind, and no test in `tests_in_change` covers them.',
-        false: 'The policy expects no tests for files or changes of this kind, or a test in `tests_in_change` covers them.',
+        yes: 'The policy expects tests for files or changes of this kind, and no test in `tests_in_change` covers them.',
+        no: 'The policy expects no tests for files or changes of this kind, or a test in `tests_in_change` covers them.',
       },
     },
   }
@@ -663,8 +653,8 @@ export function policyState(
   }
 }
 
-export function testsNeeded(answers: Record<string, JevAnswer>): boolean {
-  return (answers[POLICY_KEY]?.noul ?? 1) >= TYPE_PROBABILITY
+export function testsNeeded(answers: Answers): boolean {
+  return (pYes(answers[POLICY_KEY]) ?? 1) >= TYPE_PROBABILITY
 }
 
 export function testPaths(files: string[]): string[] {
@@ -891,23 +881,21 @@ export async function pool<T, R>(items: T[], size: number, fn: (item: T, index: 
   return results
 }
 
-export const RETRYABLE = new Set([429, 500, 502, 503, 504, 529])
-
-export function retryDelay(headers: Record<string, string> | undefined, attempt: number): number {
-  const after = Number(headers?.['retry-after'])
-  const ms = Number.isFinite(after) && after > 0 ? after * 1000 : 1000 * 2 ** (attempt - 1)
-  return Math.min(ms, MAX_RETRY_DELAY_MS)
+// The decoder leaves out answers without a value, so a present answer of the right type is a complete one.
+export function missingAnswer(answers: Answers): string | undefined {
+  return Object.values(SCORES).find((key) => answers[key]?.type !== 'scale') ?? TYPES.find((key) => answers[key]?.type !== 'binary')
 }
 
-export function missingAnswer(answers: Record<string, JevAnswer>): string | undefined {
-  return (
-    Object.values(SCORES).find((key) => !Number.isFinite(answers[key]?.score)) ??
-    TYPES.find((key) => !Number.isFinite(answers[key]?.noul))
-  )
+export function missingIntent(answers: Answers): string | undefined {
+  return Object.keys(INTENTS).find((key) => answers[key]?.type !== 'binary')
 }
 
-export function missingIntent(answers: Record<string, JevAnswer>): string | undefined {
-  return Object.keys(INTENTS).find((key) => !Number.isFinite(answers[key]?.noul))
+export function pYes(answer: Answer | undefined): number | undefined {
+  return answer?.type === 'binary' ? answer.p : undefined
+}
+
+function scale(answer: Answer | undefined): ScaleAnswer | undefined {
+  return answer?.type === 'scale' ? answer : undefined
 }
 
 // The groups the change is assessed in: its slices, or the whole change as one.
@@ -1008,7 +996,7 @@ function assessGroups(
 // Git sees renames and deletions for certain, so they count whatever the intent answers say. A deleted file is a
 // removal only when the slice adds no code to take its place; a consumed changeset or a replaced file is not.
 function intentsOf(g: { files: string[]; intent?: IntentResult }, statuses: Map<string, FileStatus>): string[] {
-  const found = new Set(Object.keys(INTENTS).filter((key) => (g.intent?.answers[key]?.noul ?? 0) >= TYPE_PROBABILITY))
+  const found = new Set(Object.keys(INTENTS).filter((key) => (pYes(g.intent?.answers[key]) ?? 0) >= TYPE_PROBABILITY))
   const code = g.files.filter((p) => !PROSE_FILE.test(p)).map((p) => statuses.get(p)?.status)
   if (g.files.some((p) => statuses.get(p)?.status === 'renamed')) found.add('rename_or_move')
   if (code.includes('deleted') && !code.includes('added')) found.add('code_removal')
@@ -1104,7 +1092,7 @@ function assessGroup(
 ) {
   const impossible = typesProseCannotHave(g.files)
   const partTypes = g.results.map((r) => TYPES.filter(
-    (key) => !impossible.includes(key) && (r.answers[key]?.noul ?? 0) >= typeThreshold(key),
+    (key) => !impossible.includes(key) && (pYes(r.answers[key]) ?? 0) >= typeThreshold(key),
   ))
   const present = TYPES.filter((key) => partTypes.some((part) => part.includes(key)))
   const hazards = [...EXPOSURE_TYPES, 'irreversible_external_effect', 'infrastructure_state_dependent']
@@ -1147,7 +1135,7 @@ function assessGroup(
       majorBump,
       canReduce,
       teamCanReduce,
-      r.answers[SCORES.impact]?.probabilities?.[String(IMPACT.length - 1)] ?? 0,
+      scale(r.answers[SCORES.impact])?.probabilities?.[IMPACT.length - 1] ?? 0,
     )
     return { r, ...scored, rank: RISK_MATRIX[scored.impact][scored.likelihood], weight: scored.impact + scored.likelihood }
   })
@@ -1165,18 +1153,18 @@ function assessGroup(
     types.length === 0 || types.some((t) => !TEST_TYPES.includes(t) && !NON_LOGIC_TYPES.includes(t))
   const code = logic && g.files.some((p) => !PROSE_FILE.test(p))
   if (code && !tested && !testsNotRequired && intents.some((t) => BEHAVIOR_INTENTS.includes(t))) flags.push('untested')
-  const impactAnswer = worst.r.answers[SCORES.impact]
-  const likelihoodAnswer = worst.r.answers[SCORES.likelihood]
+  const impactAnswer = scale(worst.r.answers[SCORES.impact])
+  const likelihoodAnswer = scale(worst.r.answers[SCORES.likelihood])
   return {
     title: g.title,
     files: g.files,
     level: config.levels[worst.rank],
     rank: worst.rank,
     weight: worst.weight,
-    impact: { level: IMPACT[worst.impact].name, score: round(impactAnswer.score ?? 0) },
-    likelihood: { level: LIKELIHOOD[worst.likelihood].name, score: round(likelihoodAnswer.score ?? 0) },
+    impact: { level: IMPACT[worst.impact].name, score: round(impactAnswer?.expected ?? 0) },
+    likelihood: { level: LIKELIHOOD[worst.likelihood].name, score: round(likelihoodAnswer?.expected ?? 0) },
     adjustments: worst.adjustments,
-    confidence: round(Math.min(impactAnswer.confidence ?? 0, likelihoodAnswer.confidence ?? 0)),
+    confidence: round(Math.min(impactAnswer?.confidence ?? 0, likelihoodAnswer?.confidence ?? 0)),
     model: worst.r.model,
     intents,
     types,
@@ -1186,16 +1174,16 @@ function assessGroup(
 
 // Jev often splits between a harmless level and a severe one; `score` is a probability-weighted mean, which lands on
 // a level in between that Jev put almost no probability on, so both axes read the median.
-function levelOf(answer: JevAnswer | undefined, count: number): number {
-  const p = answer?.probabilities
+function levelOf(answer: Answer | undefined, count: number): number {
+  const p = scale(answer)?.probabilities
   if (p) {
     let total = 0
     for (let level = 0; level < count; level++) {
-      total += p[String(level)] ?? 0
+      total += p[level] ?? 0
       if (total >= 0.5) return level
     }
   }
-  return Math.min(count - 1, Math.max(0, Math.round(answer?.score ?? 0)))
+  return Math.min(count - 1, Math.max(0, Math.round(scale(answer)?.expected ?? 0)))
 }
 
 function round(n: number): number {
@@ -1205,19 +1193,4 @@ function round(n: number): number {
 // Refs come from the model, so reject anything git could read as an option or a revision expression.
 export function isSafeRef(ref: unknown): ref is string {
   return typeof ref === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(ref) && !ref.includes('..')
-}
-
-export function endpointUrl(endpoint: unknown): string {
-  const base = trimmedOption(endpoint, 'https://api.typesafe.ai').replace(/\/+$/, '')
-  return base.endsWith('/v1/systemone') ? base : base + '/v1/systemone'
-}
-
-export function httpError(status: number, body: string): string {
-  if (status === 401 || status === 403)
-    return `TypeSafe rejected the API key (HTTP ${status}). Check the key; an endpoint that redirects to another host also drops the Authorization header.`
-  if (status === 400 && body.includes('max_tokens_exceeded'))
-    return 'A request was longer than the Jev model accepts (HTTP 400 max_tokens_exceeded).'
-  if (status === 422) return `TypeSafe refused the request (HTTP 422): ${body.slice(0, 500)}`
-  if (status === 429) return 'TypeSafe rate limit reached (HTTP 429). Try again later.'
-  return `TypeSafe answered HTTP ${status}: ${body.slice(0, 300)}`
 }

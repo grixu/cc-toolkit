@@ -18,7 +18,7 @@ dev-kit is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then ins
 - To push a fix to a file under `.github/workflows/`, a token with the `workflow` scope.
 - For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
 - Optional, for `dep-upgrade-check`: the firecrawl and context7 MCP servers, which it uses to find migration guides. Without them it still reads GitHub releases, changelogs and guide files in the package's repository, then fetches the guide the release notes link to, and reports a guide it could not find as `no guide found`.
-- Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment-typesafe-jev).
+- Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key, a [Gemini Decision](https://aistudio.google.com/docs/models/gemini-decision-1) key, or both, and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment).
 
 ## Skills
 
@@ -212,7 +212,7 @@ It pushes the current branch and fills the repository's pull request template. I
 - It assigns the pull request to you.
 - When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
 - When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line. A rewrite edits the current description: your own sentences, bot lines, extra sections such as `## Code story` and the tracker's link line at the end stay as they are.
-- With a TypeSafe key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
+- With a TypeSafe or Gemini key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
 - When the [pr-proof](../pr-proof/README.md) plugin's skills have left proof for the branch, it adds a **Proof** section just before **Risk**. See [Proof](#proof-from-pr-proof).
 
 When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
@@ -232,16 +232,18 @@ The pr-proof plugin's skills (videos, screenshots, terminal transcripts, API cal
 - On an existing pull request it replaces the **Proof** section, inserts it when the description has none, or removes it when the manifest's list is empty. With no manifest, the section and its comments stay as they are.
 - The section does not count toward the one-screen length budget.
 
-## Risk assessment (TypeSafe Jev)
+## Risk assessment
 
-dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It groups the changed files of `<base>...HEAD` into slices, one per purpose of the change, and asks [TypeSafe's Jev model](https://docs.typesafe.ai/introduction) fixed questions about each slice: the impact of a mistake, how complex the logic is, what the slice does, and which risky areas it touches. Code turns the answers into a level (`low`, `medium`, `high` or `critical`) and risk flags: security, persisted data, public contracts, CI and infrastructure, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
+dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It groups the changed files of `<base>...HEAD` into slices, one per purpose of the change, and asks a decision model, [TypeSafe's Jev](https://docs.typesafe.ai/introduction) or Google's [Gemini Decision](https://aistudio.google.com/docs/decisions-api), fixed questions about each slice: the impact of a mistake, how complex the logic is, what the slice does, and which risky areas it touches. Code turns the answers into a level (`low`, `medium`, `high` or `critical`) and risk flags: security, persisted data, public contracts, CI and infrastructure, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
 
 **The diff, the commit messages and the pull request and ticket descriptions passed as `context` leave your machine.** The tool exists only when a key is configured, so without one nothing is sent.
 
-Set the key in one of two ways:
+Set a key in one of two ways:
 
-- Export `TYPESAFE_API_KEY` in the shell you start Claude Code from (the default).
-- Or enter it as the plugin's **TypeSafe API key** option (`/plugin configure dev-kit@cc-toolkit`), which Claude Code keeps in your system's credential store. It takes precedence over the variable.
+- Export `TYPESAFE_API_KEY`, or `GEMINI_DECISIONS_API_KEY` (falling back to `GEMINI_API_KEY`), in the shell you start Claude Code from (the default).
+- Or enter it as the plugin's **TypeSafe API key** or **Gemini API key** option (`/plugin configure dev-kit@cc-toolkit`), which Claude Code keeps in your system's credential store. It takes precedence over the variable.
+
+With both keys set, `pr-open` asks which backend to use, TypeSafe, Gemini or both, until you save the answer as the **Decision backend** option. With both, the **Primary backend** option (TypeSafe by default) sets the level and label, the other backend's level appears beside it in the **Risk** section, and each pair is logged to `~/.cache/dev-kit/compare.jsonl` for later comparison. The levels were calibrated on Jev. On the development cohort Gemini matches Jev's overall cost but rates more high-risk changes too low, so keep TypeSafe as the primary backend for now; see the [evaluation guide](evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12).
 
 A key set or changed during a session takes effect after `/reload-plugins`.
 

@@ -22,7 +22,7 @@ If you used walkthrough-video as a personal skill before, delete `~/.claude/skil
 - The GitHub CLI `gh` 2.103 or later, logged in, to attach the video to a pull request.
 - Optional: the firecrawl MCP server, which the tool check uses to read playwright-recast's release notes; `gh` works for that too.
 - Optional: `agent-browser` on `PATH` for screenshots. Without it, `screenshot-proof` uses Playwright through `pnpm dlx`.
-- Optional: a TypeSafe API key, for the `proof_signals` tool.
+- Optional: a TypeSafe API key, a Gemini Developer API key with access to `gemini-decision-1`, or both, for the `proof_signals` tool.
 
 The video and screenshots need the running app; so do API transcripts, and terminal transcripts whose command talks to the app.
 
@@ -35,6 +35,9 @@ pr-proof asks for these when you enable it. Every one may stay empty.
 | `typesafe_api_key` | none | TypeSafe API key for `proof_signals`, stored as a secret. Empty falls back to the `TYPESAFE_API_KEY` environment variable; with neither, the tool is not registered. |
 | `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the TypeSafe API. |
 | `typesafe_model` | `jev-1.14.0` | Jev model name or alias, such as `jev-latest`. |
+| `gemini_api_key` | none | Gemini Developer API key for Gemini Decision, stored as a secret. Empty falls back to `GEMINI_DECISIONS_API_KEY`, then `GEMINI_API_KEY`. |
+| `decision_backend` | `auto` | `auto` uses the backend whose key is set, and with both keys `prepare-proof` asks which to use; `typesafe` or `gemini` uses that one; `both` asks both side by side. |
+| `primary_backend` | `typesafe` | With both backends, whose signals `prepare-proof` plans from; the other's stand beside them. |
 | `screenshot_widths` | none | Comma-separated viewport widths in pixels, such as `375,768,1440`. Empty uses the project's breakpoints from its styling configuration, or 375, 768 and 1440 when it has none. |
 
 ## The proof manifest
@@ -45,9 +48,11 @@ dev-kit's `pr-open` reads the manifest and writes a `## Proof` section into the 
 
 ## Tool: `proof_signals`
 
-`mcp__pr-proof__proof_signals` asks TypeSafe's Jev model which kinds of proof a change needs. It takes `{ base }`, the branch the change merges into, sends the diffstat and the diff of `<base>...HEAD`, and returns, for each of `screenshots`, `video`, `api` and `terminal`, a signal (`suggest`, `reject` or `uncertain`) with its probability. It also says whether the change affects behaviour at all, and how much of the diff it assessed. A failure returns `Proof signals unavailable: <reason>`.
+`mcp__pr-proof__proof_signals` asks a decision model, TypeSafe's Jev or Google's Gemini Decision, which kinds of proof a change needs. It takes `{ base, backend? }`: the branch the change merges into, and the backend the user chose (`typesafe`, `gemini` or `both`). It sends the diffstat and the diff of `<base>...HEAD`, and returns, for each of `screenshots`, `video`, `api` and `terminal`, a signal (`suggest`, `reject` or `uncertain`) with its probability. It also says whether the change affects behaviour at all, which backend and model answered, and how much of the diff it assessed. A failure returns `Proof signals unavailable: <reason>`.
 
-The tool exists only when a key is set. With no key it is not registered and nothing leaves the machine; `prepare-proof` then judges from the diff alone.
+With both keys set and `decision_backend` on `auto`, the tool returns `Backend choice needed: …` without sending anything, and `prepare-proof` asks you. With `both`, the two backends run side by side: the primary backend's signals come first, `comparison` holds each backend's signals (or its error, while the other still answers), and each pair is appended to `~/.cache/pr-proof/compare.jsonl` with the repository, branch, commit and base, never the diff.
+
+The tool exists only when a TypeSafe or Gemini key is set. With neither it is not registered and nothing leaves the machine; `prepare-proof` then judges from the diff alone.
 
 ## Skills
 
@@ -66,7 +71,7 @@ Use it on a feature branch before opening its pull request:
 
 1. Refuses on the default branch or a detached HEAD.
 2. Calls `proof_signals` when it exists, and otherwise judges from the diff alone.
-3. Decides each kind (video, screenshots, terminal, API) or no proof, with a one-line reason. A decision against Jev's `suggest` or `reject` says why.
+3. Decides each kind (video, screenshots, terminal, API) or no proof, with a one-line reason. A decision against the backend's `suggest` or `reject` says why; with both backends, a kind they disagree on counts as uncertain.
 4. Assigns the diff's files to each kind, then shows you the whole plan once and waits for a yes. With `before`, it also asks where the base comes from: a stack already running at the base, a second stack it starts from a temporary worktree, or neither.
 5. Brings up the app's stack when a planned kind needs it, reusing one already up for this checkout. How the stack runs and where the test users' credentials live come from the project's `CLAUDE.md` files.
 6. Runs `terminal-proof terminal`, `terminal-proof api`, `screenshot-proof` and `walkthrough-video record-only`, each only when planned. A kind that fails is reported, and the others go on.

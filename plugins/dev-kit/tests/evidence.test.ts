@@ -30,10 +30,11 @@ test('removes only a trailing risk section outside fenced examples', () => {
 
 test('atomic questions have distinct opt-in keys', () => {
   expect(Object.keys(atomicQuestions()).length).toBe(10)
-  const signals = experimentalAnswers({ server_enforcement: { noul: 0.1 }, server_enforcement_evidence_sufficient: { noul: 0.1 }, ordering_dependencies: { noul: NaN } })
+  const yes = (p: number) => ({ type: 'binary' as const, p })
+  const signals = experimentalAnswers({ server_enforcement: yes(0.1), server_enforcement_evidence_sufficient: yes(0.1), ordering_dependencies: yes(NaN) })
   expect(signals.server_enforcement.status).toBe('unknown')
   expect(signals.ordering_dependencies.status).toBe('missing')
-  const classify = (value: number, evidence = 0.7) => experimentalAnswers({ server_enforcement: { noul: value }, server_enforcement_evidence_sufficient: { noul: evidence } }).server_enforcement.status
+  const classify = (value: number, evidence = 0.7) => experimentalAnswers({ server_enforcement: yes(value), server_enforcement_evidence_sufficient: yes(evidence) }).server_enforcement.status
   expect(classify(0.3)).toBe('absent')
   expect(classify(0.301)).toBe('unknown')
   expect(classify(0.699)).toBe('unknown')
