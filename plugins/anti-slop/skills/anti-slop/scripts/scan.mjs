@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REFERENCES = join(dirname(fileURLToPath(import.meta.url)), '..', 'references')
+const LANGUAGES = ['en', 'pl']
 const WORD_START ='(?<![\\p{L}\\p{N}_])'
 const PLACEHOLDER = '.{1,60}?'
 // Each spans a whole line with `.*` and matches most ordinary sentences; the model catches the real cases.
@@ -13,7 +14,7 @@ const TOO_BROAD = new Set(['\\bfrom\\b.*\\bto\\b', '\\bwhether\\b.*\\bor\\b'])
 // These rows describe a shape in words; no string matches them.
 const DESCRIBED = /e\.g\.|^"|Each paragraph|Bulleted list|Uniform sentence|Repeated |Short clipped|Triplet|Staccato|Asyndeton|Step‑by‑step|Firstly/
 
-export function scan(text, { langs = ['en', 'pl'] } = {}) {
+export function scan(text, { langs = LANGUAGES } = {}) {
   const prose = mask(text)
   const lines = prose.split('\n')
   const raw = text.split('\n')
@@ -127,11 +128,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const isPositional = (a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--lang'
   const file = args.find(isPositional)
   const lang = args.includes('--lang') ? args[args.indexOf('--lang') + 1] : null
-  if (!file || (lang && !['en', 'pl'].includes(lang))) {
+  if (!file || (lang && !LANGUAGES.includes(lang))) {
     console.error('usage: node scan.mjs <file> [--lang en|pl]')
     process.exit(2)
   }
-  const hits = scan(readFileSync(file, 'utf8'), { langs: lang ? [lang] : ['en', 'pl'] })
+  const hits = scan(readFileSync(file, 'utf8'), { langs: lang ? [lang] : undefined })
   for (const h of hits) console.log(`${file}:${h.line}:${h.col}  ${h.kind}  "${h.match}"`)
   const counts = Object.entries(Object.groupBy(hits, (h) => h.kind)).map(([k, v]) => `${k} ${v.length}`)
   console.log(hits.length ? `\n${hits.length} hits: ${counts.join(', ')}` : 'no mechanical hits')
