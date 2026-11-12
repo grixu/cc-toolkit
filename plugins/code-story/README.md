@@ -67,3 +67,19 @@ A request overrides a setting for one run: "po polsku", `stack`, `no stack`, `un
 - Notes that light up the line they explain.
 - Built-in diagrams drawn as inline SVG in one dark style, adapted from [fireworks-tech-graph](https://github.com/yizhiyanhua-ai/fireworks-tech-graph) (MIT).
 - `<meta name="code-story:*">` with the repository, branch, base and head SHA. This is how an update finds its story.
+
+## Evals
+
+Run from the repository root, not from this directory. A case may load only plugins under the eval target, and this plugin does not load without `anti-slop`:
+
+```
+claude plugin eval . --eval-dir plugins/code-story/evals --ablation none --scaffold --trust-plugin \
+  --allow-tools Bash Write Edit ToolSearch "mcp__code-story__*"
+```
+
+`story-from-branch` builds a two-commit fixture repository and asks for an English and Polish story. Eval runs have no Artifact tool, so the graders read the local `story.html` and the trace:
+- every chapter went through `anti-slop` before `assemble.mjs`, and the check passed;
+- code names stay untranslated in Polish;
+- the first commit's stated reason is kept, and the second commit's missing reason is reported, not invented.
+
+A run takes about 2 to 4 minutes and $1. There is no no-plugin baseline, because without the plugin there is nothing to compare.

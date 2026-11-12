@@ -29,6 +29,10 @@ Run `claude plugin test plugins/code-story`.
 
 Step 5 hands each written chapter to `anti-slop` in file mode, so prose rules belong there, not in `craft.md`. `check.mjs` stays the net for anything the cleanup breaks in markup or identifiers.
 
+## Evals
+
+`evals/` holds a `claude plugin eval` suite. It runs with the repository root as the target (see the README), because a case can load `anti-slop` only from inside the target. A change to the skill's flow keeps `story-from-branch` passing. `evals/fixture-repo.sh` builds the fixture repository, and a new case reuses it.
+
 ## Result line
 
 `dev-kit:pr-open` parses the last line of the skill's reply, which starts with `CODE_STORY url=…`. Changing its fields is a breaking change for pr-open: update both in one PR.
