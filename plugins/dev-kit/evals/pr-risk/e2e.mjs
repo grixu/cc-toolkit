@@ -81,7 +81,7 @@ const REFUSED = /(^|[\s;&|(])(\/\S+\/gh|curl|wget|ssh)\s|git\s+push\s+(?!origin\
 
 async function runCase(c, pr, budgetUsd) {
   const { dir, work } = prepare(c, pr)
-  const env = { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}`, GH_CONFIG_DIR: join(dir, 'gh-config'), GH_TOKEN: '', GITHUB_TOKEN: '', GITHUB_ACTIONS: '' }
+  const env = { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}`, GH_CONFIG_DIR: join(dir, 'gh-config'), GH_TOKEN: '', GITHUB_TOKEN: '', GITHUB_ACTIONS: '', GEMINI_API_KEY: '', GEMINI_DECISIONS_API_KEY: '' }
   const calls = new Map()
   const out = { id: c.id, calls: [], denied: [], costUsd: 0, turns: 0 }
   const started = Date.now()

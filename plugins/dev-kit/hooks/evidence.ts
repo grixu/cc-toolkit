@@ -1,4 +1,5 @@
-export const DEFAULT_MODEL = 'jev-1.14.0'
+import type { Answers, Questions } from './decision.ts'
+
 export const EVIDENCE_BUDGET = 8_000
 
 type Source = { path: string; ref: string; symbol?: string; facts: string[] }
@@ -75,16 +76,17 @@ const ATOMIC: Record<string, { question: string; yes: string; no: string }> = {
   },
 }
 
-export function atomicQuestions(): Record<string, unknown> {
+export function atomicQuestions(): Questions {
   return Object.fromEntries(Object.entries(ATOMIC).flatMap(([key, spec]) => [
-    [key, { type: 'noul', instructions: spec.question, criteria: { true: spec.yes, false: spec.no } }],
-    [`${key}_evidence_sufficient`, { type: 'noul', instructions: `Is the provided diff and execution context sufficient to answer this question: ${spec.question}`, criteria: { true: 'The provided evidence supports a definite yes or no.', false: 'The provided evidence leaves the answer unknown.' } }],
+    [key, { type: 'binary', instructions: spec.question, criteria: { yes: spec.yes, no: spec.no } }],
+    [`${key}_evidence_sufficient`, { type: 'binary', instructions: `Is the provided diff and execution context sufficient to answer this question: ${spec.question}`, criteria: { yes: 'The provided evidence supports a definite yes or no.', no: 'The provided evidence leaves the answer unknown.' } }],
   ]))
 }
 
-export function experimentalAnswers(answers: Record<string, any>) {
+export function experimentalAnswers(answers: Answers) {
   const numeric = (key: string) => {
-    const value = answers[key]?.noul
+    const answer = answers[key]
+    const value = answer?.type === 'binary' ? answer.p : undefined
     return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1 ? value : undefined
   }
   return Object.fromEntries(Object.keys(ATOMIC).map((key) => {
