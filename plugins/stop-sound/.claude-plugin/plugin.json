@@ -13,12 +13,12 @@
     "stop_sound": {
       "type": "file",
       "title": "Stop sound",
-      "description": "Sound file (wav, mp3, aiff, m4a, ogg) played when the session ends its turn. Leave empty for the bundled chime."
+      "description": "Sound file (wav, mp3, aiff, aif, m4a, ogg) played when the session ends its turn. Leave empty for the bundled chime."
     },
     "question_sound": {
       "type": "file",
       "title": "Question sound",
-      "description": "Sound file (wav, mp3, aiff, m4a, ogg) played when Claude asks a question or presents a plan. Leave empty for the bundled chime."
+      "description": "Sound file (wav, mp3, aiff, aif, m4a, ogg) played when Claude asks a question or presents a plan. Leave empty for the bundled chime."
     }
   }
 }
