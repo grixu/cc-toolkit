@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `prepare-proof` skill: judges which proof a branch's change needs (video, screenshots, terminal, API, or none), confirms the plan once, brings up the app's stack, runs the executors in order and records the result in the branch's proof manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, which dev-kit's `pr-open` reads.
+- `screenshot-proof` skill: screenshots the changed screens at the project's breakpoints, or `screenshot_widths`, from a running app; each shot needs the user's approval, and "before" shots come from a base stack on request.
+- `terminal-proof` skill: captures a masked, reviewed transcript of a CLI command's output (`terminal`) or of HTTP requests and responses (`api`). Test-runner output does not count as proof.
+- `mcp__pr-proof__proof_signals` tool: asks the TypeSafe Jev model which proof kinds a branch's change needs and whether it changes behaviour at all. It is registered only when a TypeSafe API key is set; with no key, nothing leaves the machine.
+- Options `typesafe_api_key` (falls back to `TYPESAFE_API_KEY`), `typesafe_endpoint`, `typesafe_model` and `screenshot_widths`.
+- `walkthrough-video` takes `record-only`: it reports the accepted MP4's path and files to `prepare-proof` instead of copying it to `~/Downloads` and attaching it to the pull request, and it uses the caller's stack.
+
 ## [0.1.0] - 2026-11-02
 
 ### Added

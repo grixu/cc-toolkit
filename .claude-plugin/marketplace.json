@@ -210,7 +210,7 @@
     {
       "name": "pr-proof",
       "source": "./plugins/pr-proof",
-      "description": "Proof that a pull request's change works: record a narrated walkthrough video of the feature against the running app with playwright-recast, from its spec or from requirements reconstructed out of the code, and attach it to the pull request once you accept it.",
+      "description": "Proof that a pull request's change works: prepare-proof judges which proof a branch needs, with TypeSafe Jev signals when a key is set, then produces each kind, a narrated walkthrough video with playwright-recast, screenshots at the project's breakpoints, and masked terminal or API transcripts, and hands it to pr-open through the branch's proof manifest.",
       "version": "0.1.0",
       "author": {
         "name": "Mateusz Gostański",
@@ -222,7 +222,10 @@
         "proof",
         "demo",
         "video",
-        "playwright"
+        "playwright",
+        "screenshots",
+        "terminal",
+        "api"
       ]
     }
   ]

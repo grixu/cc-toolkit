@@ -1,0 +1,4 @@
+{
+  "description": "pr-proof mod: the proof_signals tool that asks the TypeSafe Jev model which kinds of proof a branch's change needs",
+  "modules": ["./register.ts"]
+}
