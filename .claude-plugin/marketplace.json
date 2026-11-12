@@ -6,7 +6,7 @@
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
   },
-  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, transcription, naming, and hook rules",
+  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, code stories, AI-slop cleanup for prose, transcription, naming, and hook rules",
   "plugins": [
     {
       "name": "codex-plan-improver",
@@ -244,6 +244,25 @@
         "explainer",
         "onboarding",
         "diagrams"
+      ]
+    },
+    {
+      "name": "anti-slop",
+      "source": "./plugins/anti-slop",
+      "description": "Clean AI slop out of English and Polish prose so it reads plain and human without changing what it says: unsupported claims, staged contrasts and closers, forced triads, rare words where common ones fit, inflated and corporate language. One skill merging cw-ai-check, humanizer, Strunk's composition rules and miodkuj, with a scan script for the mechanical tells.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "writing",
+        "ai-slop",
+        "humanizer",
+        "plain-language",
+        "editing",
+        "polish"
       ]
     }
   ]
