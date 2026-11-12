@@ -97,8 +97,9 @@ export function readWireAnswers(request: DecisionRequest, wire: unknown): Answer
     if (question.type === 'scale') {
       const wire = a.probabilities && typeof a.probabilities === 'object' ? a.probabilities : undefined
       const probabilities = wire && question.levels.map((_, i) => Number(wire[String(i)]) || 0)
-      const expected = Number.isFinite(a.score) ? a.score : probabilities?.reduce((s, p, i) => s + p * i, 0)
-      if (expected !== undefined) answers[key] = { type: 'scale', expected, ...(probabilities ? { probabilities } : {}), ...confidence }
+      const usable = probabilities?.some((p) => p > 0) ? probabilities : undefined
+      const expected = Number.isFinite(a.score) ? a.score : usable?.reduce((s, p, i) => s + p * i, 0)
+      if (expected !== undefined) answers[key] = { type: 'scale', expected, ...(usable ? { probabilities: usable } : {}), ...confidence }
     }
     if (question.type === 'choice' && typeof a.choice === 'string')
       answers[key] = { type: 'choice', choice: a.choice, probabilities: { ...(a.probabilities ?? {}) }, ...confidence }

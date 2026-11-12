@@ -67,6 +67,11 @@ test('a scale answer with a distribution and no score takes its expected level f
   expect(read.rated).toEqual({ type: 'scale', expected: 1.5, probabilities: [0, 0.5, 0.5] })
 })
 
+test('a scale answer with no score and no probability on any level is left out', () => {
+  expect(typesafe('k').decodeAnswers(REQUEST, { rated: { probabilities: {} } }).rated).toBeUndefined()
+  expect(gemini('g').decodeAnswers(REQUEST, { rated: { probabilities: { x: 1 } } }).rated).toBeUndefined()
+})
+
 test('each adapter tells a too-long request, a block, a limit and an outage apart', () => {
   const ts = typesafe('k')
   const gm = gemini('g')
