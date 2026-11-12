@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { check, report } from './check.mjs'
+import { PLACEHOLDER, check, report } from './check.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const dir = process.argv[2]
@@ -64,15 +64,18 @@ const heading = languages.length > 1
   ? languages.map((l) => `<span data-lang="${l}">${escape(story.title[l])}</span>`).join('')
   : escape(story.title.en)
 
-// Function replacers, so a "$&" or "$1" in a title or chapter is inserted literally.
-const html = readFileSync(join(here, '../references/template.html'), 'utf8')
-  .replace('{{TITLE}}', () => escape(story.title.en))
-  .replace('{{META}}', () => Object.entries(meta).map(([k, v]) => `<meta name="code-story:${k}" content="${escape(v)}">`).join('\n'))
-  .replace('{{HEADING}}', () => heading)
-  .replace('{{SOURCE}}', () => escape(source))
-  .replace('{{CHAPTERS}}', () => chapters)
+const values = {
+  TITLE: escape(story.title.en),
+  META: Object.entries(meta).map(([k, v]) => `<meta name="code-story:${k}" content="${escape(v)}">`).join('\n'),
+  HEADING: heading,
+  SOURCE: escape(source),
+  CHAPTERS: chapters,
   // Escape "<" so a "</script>" inside a label cannot close the JSON script block.
-  .replace('{{I18N}}', () => JSON.stringify(ui).replace(/</g, '\\u003c'))
+  I18N: JSON.stringify(ui).replace(/</g, '\\u003c'),
+}
+// One pass with a function replacer: an inserted chapter that quotes "{{I18N}}" or "$&" is never rescanned.
+const html = readFileSync(join(here, '../references/template.html'), 'utf8')
+  .replace(PLACEHOLDER, (_, key) => values[key])
 
 const out = join(dir, 'story.html')
 writeFileSync(out, html)

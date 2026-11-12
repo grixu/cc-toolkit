@@ -11,6 +11,7 @@ const KNOWN_TAGS = new Set(
     'a br sub sup small kbd details summary blockquote hr svg g rect path text tspan circle ellipse line polyline polygon ' +
     'defs marker title desc lineargradient stop').split(' '),
 )
+export const PLACEHOLDER = /\{\{(TITLE|META|HEADING|SOURCE|CHAPTERS|I18N)\}\}/g
 const MAX_LISTED_IDENTIFIERS = 6
 const MAX_LINE_MISMATCHES = 3
 const COUNTER_RESET = /counter-reset:\s*l\s+(\d+)/
@@ -22,7 +23,9 @@ export function check(html, { cwd = process.cwd() } = {}) {
   const meta = readMeta(html)
   const languages = (meta.languages ?? '').split(',').filter(Boolean)
 
-  if (/\{\{(TITLE|META|HEADING|SOURCE|CHAPTERS|I18N)\}\}/.test(html)) errors.push('a template placeholder ({{…}}) is still in the page')
+  // Chapters may quote a placeholder name from the code they explain; only the template around them counts.
+  const outsideChapters = html.replace(/<main>[\s\S]*<\/main>/, '')
+  if (outsideChapters.match(PLACEHOLDER)) errors.push('a template placeholder ({{…}}) is still in the page')
   for (const key of ['repo', 'branch', 'base', 'base-sha', 'head', 'languages'])
     if (!meta[key]) errors.push(`meta code-story:${key} is missing`)
   if (meta.head && !/^[0-9a-f]{40}$/.test(meta.head)) errors.push('meta code-story:head is not a full commit SHA')
