@@ -27,6 +27,7 @@ const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '' } })
 function fakeGit(files: Numstat[]) {
   return ($, e) => {
     const args: string[] = e.argv.slice(1)
+    if (args[1] === '--show-toplevel') return ok('/work\n')
     if (args[0] === 'rev-parse') return { value: { exitCode: args[3] === 'origin/main^{commit}' ? 0 : 1, stdout: '', stderr: '' } }
     if (args[0] === 'log') return ok('abc123 feat: add login\n')
     if (args[0] === 'merge-base') return ok('base123\n')
@@ -160,6 +161,39 @@ test('assesses the diff without lockfiles and binaries', async ($, on) => {
     all: ['risk: low', 'risk: medium', 'risk: high', 'risk: critical'],
   })
   expect(report.coverage).toMatchObject({ requests: 1, filesAssessed: 1, filesExcluded: 2, partial: false })
+})
+
+test('runs git in the repository the session started in when its working directory left it', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  const git = fakeGit([{ path: 'src/auth.ts', text: fileDiff('src/auth.ts', '+checkToken()') }])
+  const cwds = new Set<unknown>()
+  on('process.run', ($, e) => {
+    if (e.argv[2] !== '--show-toplevel') {
+      cwds.add(e.init?.cwd)
+      return git($, e)
+    }
+    return e.init?.cwd === '/start' ? ok('/work\n') : { value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } }
+  })
+  on('session.root', () => ({ value: '/start' }))
+  on('http.fetch', () => ({ value: jevAnswer(2, 1) }))
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main' })).result)
+
+  expect(report.base).toBe('origin/main')
+  expect([...cwds]).toEqual(['/work'])
+})
+
+test('reports a session outside any git repository as unavailable', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } }))
+  on('session.root', () => ({ value: '/start' }))
+  on('session.cwd', () => ({ value: '/tmp/scratchpad' }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+  expect(out.result).toBe(
+    "Risk assessment unavailable: neither the session's working directory (/tmp/scratchpad) nor the directory it started in (/start) is in a git repository",
+  )
 })
 
 test('marks confidence low when a diff hunk is truncated', async ($, on) => {

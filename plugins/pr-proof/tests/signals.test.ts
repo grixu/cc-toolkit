@@ -19,6 +19,7 @@ function fakeProcess(files: File[], sleeps: string[][] = []) {
       return ok('')
     }
     const args = argv.slice(1)
+    if (args[1] === '--show-toplevel') return ok('/work\n')
     if (args[0] === 'rev-parse') return { value: { exitCode: args[3] === 'origin/main^{commit}' ? 0 : 1, stdout: '', stderr: '' } }
     if (args.includes('--stat=200')) return ok(files.map((f) => ` ${f.path} | 1 +`).join('\n'))
     if (args.includes('--numstat')) return ok(files.map((f) => `${f.binary ? '-' : '1'}\t${f.binary ? '-' : '0'}\t${f.path}\0`).join(''))
@@ -174,6 +175,39 @@ test('runs every git diff without diff.relative', async ($, on) => {
   expect(diffs.every((argv) => argv.includes('--no-relative'))).toBe(true)
 })
 
+test('runs git in the repository the session started in when its working directory left it', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  const git = fakeProcess(UI_CHANGE)
+  const cwds = new Set<unknown>()
+  on('process.run', ($, e) => {
+    if (e.argv[2] !== '--show-toplevel') {
+      cwds.add(e.init?.cwd)
+      return git($, e)
+    }
+    return e.init?.cwd === '/start' ? ok('/work\n') : { value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } }
+  })
+  on('session.root', () => ({ value: '/start' }))
+  on('http.fetch', () => ({ value: jevAnswer() }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+  expect(out.result).not.toMatch(/unavailable/)
+  expect([...cwds]).toEqual(['/work'])
+})
+
+test('reports a session outside any git repository as unavailable', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } }))
+  on('session.root', () => ({ value: '/start' }))
+  on('session.cwd', () => ({ value: '/tmp/scratchpad' }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+  expect(out.result).toBe(
+    "Proof signals unavailable: neither the session's working directory (/tmp/scratchpad) nor the directory it started in (/start) is in a git repository",
+  )
+})
+
 test('reports a rejected key as unavailable', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'bad' })
   on('process.run', fakeProcess(UI_CHANGE))
@@ -197,7 +231,7 @@ test('reports an answer without a number as unavailable', async ($, on) => {
 test('reports a git failure as unavailable', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   on('process.run', ($, e) =>
-    e.argv.includes('diff') ? { value: { exitCode: 128, stdout: '', stderr: 'fatal: bad revision' } } : ok(''),
+    e.argv.includes('diff') ? { value: { exitCode: 128, stdout: '', stderr: 'fatal: bad revision' } } : ok('/work\n'),
   )
 
   const out = await $.tool.call({ tool: TOOL, base: 'main' })

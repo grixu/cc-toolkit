@@ -225,23 +225,34 @@ export async function send($, request: JevRequest, body: string) {
 
 export const tooLong = (res) => res.status === 400 && String(res.text).includes('max_tokens_exceeded')
 
-export async function git($, args: string[]): Promise<string> {
-  const r = await $.process.run(['git', ...args], { timeoutMs: 60_000 })
+// The session's working directory follows the model's `cd`, which can leave the repository for a scratchpad or a
+// work dir, so fall back to the directory the session started in.
+export async function repoRoot($): Promise<string> {
+  const here = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { timeoutMs: 60_000 })
+  if (here.exitCode === 0) return here.stdout.trim()
+  const root = await $.session.root()
+  const started = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: root, timeoutMs: 60_000 })
+  if (started.exitCode === 0) return started.stdout.trim()
+  throw new Error(`neither the session's working directory (${await $.session.cwd()}) nor the directory it started in (${root}) is in a git repository`)
+}
+
+export async function git($, cwd: string, args: string[]): Promise<string> {
+  const r = await $.process.run(['git', ...args], { cwd, timeoutMs: 60_000 })
   const subcommand = args[args[0] === '-c' ? 2 : 0]
   if (r.exitCode !== 0) throw new Error(`git ${subcommand} failed: ${r.stderr.trim().slice(0, 300)}`)
   return r.stdout
 }
 
-export async function resolveBase($, base: string): Promise<string> {
+export async function resolveBase($, cwd: string, base: string): Promise<string> {
   // origin first: the PR merges into the remote branch, and a stale local copy would widen the range.
   for (const ref of [`origin/${base}`, base]) {
-    const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
+    const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd })
     if (r.exitCode === 0) return ref
   }
   throw new Error(`base branch "${base}" not found locally or on origin; run git fetch origin`)
 }
 
-export async function readDiffs($, range: string, paths: string[], budget: number): Promise<{ files: FileDiff[]; unread: string[] }> {
+export async function readDiffs($, cwd: string, range: string, paths: string[], budget: number): Promise<{ files: FileDiff[]; unread: string[] }> {
   const files: FileDiff[] = []
   const unread: string[] = []
   let charsRead = 0
@@ -251,9 +262,8 @@ export async function readDiffs($, range: string, paths: string[], budget: numbe
       unread.push(path)
       continue
     }
-    // The paths are relative to the repository root, and the session may sit in a subdirectory. A quoted header
-    // would hide a non-ASCII path from diffPath and glue its file to the one before it.
-    const diff = await git($, ['-c', 'core.quotePath=false', 'diff','--no-relative', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
+    // A quoted header would hide a non-ASCII path from diffPath and glue its file to the one before it.
+    const diff = await git($, cwd, ['-c', 'core.quotePath=false', 'diff','--no-relative', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
     const text = diff.trimEnd()
     charsRead += text.length
     files.push({ path, text })

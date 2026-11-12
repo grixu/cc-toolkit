@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `pr_risk`: runs git in the repository even after the session changed into a directory outside it, such as the scratchpad, falling back to the directory the session started in; such a session no longer gets `Risk assessment unavailable: base branch "main" not found locally or on origin`, and a session outside any repository is told so
+
 ## [0.9.0] - 2026-11-12
 
 ### Added
