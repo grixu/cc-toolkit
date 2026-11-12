@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REFERENCES = join(dirname(fileURLToPath(import.meta.url)), '..', 'references')
-const LETTER_BEFORE = '(?<![\\p{L}\\p{N}_])'
+const WORD_START ='(?<![\\p{L}\\p{N}_])'
 const PLACEHOLDER = '.{1,60}?'
 // Each spans a whole line with `.*` and matches most ordinary sentences; the model catches the real cases.
 const TOO_BROAD = new Set(['\\bfrom\\b.*\\bto\\b', '\\bwhether\\b.*\\bor\\b'])
@@ -80,7 +80,7 @@ function literal(phrase, lang) {
   // Polish entries are stems and English single words take inflections (enhance → enhanced); an entry with a
   // (a|b) group lists its whole forms, so `(stanowi|stanowią)` does not also match `stanowisko`.
   const tail = (single || lang === 'pl') && !bare.includes('(') ? '\\p{L}*' : '(?![\\p{L}])'
-  return LETTER_BEFORE + parts.join('') + tail
+  return WORD_START + parts.join('') + tail
 }
 
 function isTitleCase(title) {
@@ -124,7 +124,8 @@ function parseCsv(text) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
-  const file = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--lang')
+  const isPositional = (a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--lang'
+  const file = args.find(isPositional)
   const lang = args.includes('--lang') ? args[args.indexOf('--lang') + 1] : null
   if (!file || (lang && !['en', 'pl'].includes(lang))) {
     console.error('usage: node scan.mjs <file> [--lang en|pl]')
