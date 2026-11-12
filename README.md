@@ -66,6 +66,7 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 | [code-review](plugins/code-review/README.md) | Reviews your branch's changes from several angles at once (comments, readability and tests, naming, structure, simplicity, correctness, security, agreement between code and its docs, contracts and config, assumptions about dependencies and the platform, performance, and conformance to a spec) and merges the results into one report per file. Changes nothing until you pick which fixes to apply. | `/code-review:start-cr` |
 | [tester](plugins/tester/README.md) | Checks that a running app behaves as intended. It finds the local stack, derives checks from a spec or from your git diff, and runs them against the API, the UI in a browser, and failure cases such as a stopped dependency. Returns a pass/fail table with evidence for each check. | `/tester:run [spec or scope]` |
 | [pr-proof](plugins/pr-proof/README.md) | Shows that a pull request's change works. It records a narrated video of the feature against your running app, from its spec or from requirements it reconstructs out of the code, reports the defects it saw on camera, and attaches the video to the pull request once you accept it. | `/pr-proof:walkthrough-video <PR or spec>` |
+| [code-story](plugins/code-story/README.md) | Explains a branch, a pull request or a stack of them as a chaptered page for a reader who has never seen the code: one question per chapter, notes pinned to the lines they explain, diagrams, and an optional second language. Publishes it as a private claude.ai page and updates it under the same link. | `/code-story:code-story` |
 | [hookify](plugins/hookify/README.md) | Stops Claude from repeating a mistake. Describe the behavior, such as "warn me before `rm -rf`", and it writes a rule that blocks or warns when it happens again. | `/hookify:hookify <behavior>` |
 
 ### Everyday git and CI chores
@@ -80,6 +81,7 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 |---|---|---|
 | [researcher](plugins/researcher/README.md) | Answers a research question with an HTML report in which every claim links to a numbered source. Follow-up questions extend the same report. | `/researcher:research "<question>"` |
 | [scribe](plugins/scribe/README.md) | Transcribes YouTube videos or local audio and video files, then summarizes them, pulls out news on a topic, or applies your own prompt. Transcripts are cached, so asking again about the same item does not transcribe it again. | Paste a YouTube link or file path and ask for a summary |
+| [anti-slop](plugins/anti-slop/README.md) | Rewrites English or Polish prose so it reads plain and human: common words over rare exact ones, no staged contrasts, closers or forced lists of three, and no claim the source does not back. Every fact, number and caveat stays. code-story and dev-kit run it on what they write. | `/anti-slop:anti-slop <file or text>` |
 | [namesmith](plugins/namesmith/README.md) | Suggests names for a business or product, scores each one, and checks which domains are free. | `/namesmith:namesmith <description>` |
 
 ### Improve Claude Code itself
@@ -106,7 +108,9 @@ Most plugins need only Claude Code. These need more:
 | researcher | [Dynamic workflows](https://code.claude.com/docs/en/workflows); the [firecrawl](https://www.firecrawl.dev) MCP server with `FIRECRAWL_API_KEY`; optional `mmdc` for diagrams |
 | scribe | Node.js 20 or later, `ffmpeg`, `ELEVENLABS_API_KEY`; `yt-dlp` for YouTube |
 | tester | A running, non-production app; optional [`agent-browser`](https://github.com/vercel-labs/agent-browser) for UI checks; Docker for one failure-injection mode |
-| dev-kit | git, the GitHub CLI (`gh`) |
+| dev-kit | git, the GitHub CLI (`gh`); installs code-story and anti-slop with it |
+| code-story | Node.js 22 or later, git, `gh`; installs anti-slop with it |
+| anti-slop | Node.js 22 or later for its scan script |
 | pr-proof | A web app that runs locally; Node.js 22.18 or later, `pnpm`, `ffmpeg` with libass, `timeout` (coreutils on macOS), `gh` 2.103 or later |
 | namesmith | Nothing to install; domain checks use a remote MCP server bundled with the plugin |
 
@@ -133,7 +137,7 @@ lists every plugin.
 - `hookify` is forked from `anthropics/claude-plugins-official`. Upstream changes arrive on the
   `hookify-upstream` branch via `scripts/sync-hookify.sh`.
 
-To try a local change without installing it, start Claude Code with `claude --plugin-dir ./plugins/<name>`.
+To try a local change without installing it, start Claude Code with `claude --plugin-dir ./plugins/<name>`, adding a `--plugin-dir` for each plugin it depends on (dev-kit needs code-story and anti-slop; code-story needs anti-slop).
 Run `claude plugin validate .` after editing `marketplace.json`.
 
 ## License
