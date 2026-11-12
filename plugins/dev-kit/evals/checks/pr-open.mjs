@@ -87,14 +87,14 @@ function bodyChecks(parsed) {
 
 // Only tells anti-slop removes on a single sighting; table rows are skipped because "—" marks an empty cell.
 function slopChecks(body) {
-  const sentences = prose(body)
+  const proseOutsideTables = prose(body)
     .split('\n')
     .filter((l) => !/^\s*\|/.test(l))
     .join('\n');
   return [
-    [!/—/.test(sentences), 'an em dash joins clauses in the prose (anti-slop did not run or missed it)'],
-    [!/\bnot (just|only|merely)\b/i.test(sentences), 'a "not just X, but Y" contrast in the prose'],
-    [!/\b(delve|seamless(ly)?|pivotal|cornerstone|testament to)\b/i.test(sentences), 'AI-scent vocabulary in the prose'],
+    [!/—/.test(proseOutsideTables), 'an em dash joins clauses in the prose (anti-slop did not run or missed it)'],
+    [!/\bnot (just|only|merely)\b/i.test(proseOutsideTables), 'a "not just X, but Y" contrast in the prose'],
+    [!/\b(delve|seamless(ly)?|pivotal|cornerstone|testament to)\b/i.test(proseOutsideTables), 'AI-scent vocabulary in the prose'],
   ];
 }
 
