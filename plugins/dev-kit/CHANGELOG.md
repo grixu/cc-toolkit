@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dev-kit depends on the `code-story` and `anti-slop` plugins, which install with it
 
 ### Security
-- `pr-open`: when looking for a stacked base, skips pull requests from forks and uses another PR's branch name in a git command only after `git check-ref-format` accepts it, single-quoted, so a crafted branch name cannot run a shell command
+- `pr-open`: when looking for a stacked base, skips pull requests from forks and other PRs whose branch name holds anything but letters, digits, `.`, `_`, `/` and `-`, and single-quotes the names it uses, so a branch name with `'`, `$(…)` or backticks never reaches a git command; skipped PRs are named in the report
 
 ## [0.10.0] - 2026-11-13
 
