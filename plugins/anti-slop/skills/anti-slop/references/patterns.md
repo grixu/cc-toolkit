@@ -168,7 +168,7 @@ The text rejects a view or an option no one raised.
 
 **Fix:** use sentence case and name what the section holds.
 
-### C6. Dashes as the universal connector · cluster for one dash, one for many
+### C6. Dashes as the universal connector · one
 
 **Watch for:** em dashes, en dashes or ` -- ` joining clauses.
 
