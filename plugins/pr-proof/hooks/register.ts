@@ -13,6 +13,7 @@ import {
   limiter,
   pool,
   readDiffs,
+  repoRoot,
   resolveBase,
   send,
   split,
@@ -73,12 +74,13 @@ async function proofSignals($, base: unknown, options) {
   const key = await apiKey($, options)
   if (!key) throw new Error('no TypeSafe API key; set TYPESAFE_API_KEY or the pr-proof option typesafe_api_key')
 
-  const ref = await resolveBase($, base)
+  const cwd = await repoRoot($)
+  const ref = await resolveBase($, cwd, base)
   const range = `${ref}...HEAD`
   // --no-relative: a user's diff.relative=true would limit the diff to the current directory.
   const [diffstat, numstat] = await Promise.all([
-    git($,['diff', '--no-relative', '--stat=200', '--no-color', range]),
-    git($, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
+    git($, cwd, ['diff', '--no-relative', '--stat=200', '--no-color', range]),
+    git($, cwd, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
   ])
 
   const entries = changedEntries(numstat)
@@ -87,7 +89,7 @@ async function proofSignals($, base: unknown, options) {
   const filesExcluded = entries.length - reviewable.length
   if (!reviewable.length) throw new Error('no reviewable text files in the change')
 
-  const { files, unread } = await readDiffs($, range, reviewable, DIFF_CHAR_BUDGET)
+  const { files, unread } = await readDiffs($, cwd, range, reviewable, DIFF_CHAR_BUDGET)
   const plan = split(files, DIFF_CHAR_BUDGET)
   if (!plan.parts.length) throw new Error('no reviewable text diff: only mode changes or empty files')
 
