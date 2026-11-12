@@ -72,6 +72,14 @@ test('chimes with the question sound and still runs the question', async ($, on)
   expect(played).toEqual([expect.objectContaining({ asset: 'sounds/question.wav' })])
 })
 
+test('stays silent on any other tool call', async ($, on) => {
+  const played = recordPlays(on)
+  on('tool.call', () => ({ result: 'ok' }))
+  await $.tool.call({ tool: 'Bash', command: 'ls' })
+  await settle()
+  expect(played).toEqual([])
+})
+
 test('a turn completes when the sound cannot play', async ($, on) => {
   on('audio.play', () => {
     throw new Error('no audio device')
