@@ -1,0 +1,52 @@
+{
+  "name": "code-story",
+  "version": "0.0.0",
+  "description": "Turn a branch, a pull request or a stack of them into a code story: a chaptered page that teaches how and why the change works, re-cut into the steps it could have been reviewed in, with notes pinned to the lines they explain, built-in dark diagrams, English plus an optional second language, and updates published under the same link.",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "code-story",
+    "pull-request",
+    "explainer",
+    "onboarding",
+    "diagrams",
+    "artifact"
+  ],
+  "userConfig": {
+    "second_language": {
+      "type": "string",
+      "title": "Second language",
+      "description": "Language tag of a second story language beside English, such as pl or de. Code identifiers and programming terms stay in English. Leave empty for English only.",
+      "default": ""
+    },
+    "gloss_first_use": {
+      "type": "boolean",
+      "title": "Gloss terms on first use",
+      "description": "In the second language, follow an English term's first use with its translation in parentheses",
+      "default": true
+    },
+    "diagram_skill": {
+      "type": "string",
+      "title": "Diagram skill",
+      "description": "Name of an installed skill that draws the story's diagrams, such as fireworks-tech-graph. Leave empty for the built-in diagrams.",
+      "default": ""
+    },
+    "uncommitted": {
+      "type": "string",
+      "title": "Uncommitted changes",
+      "description": "ignore: tell the committed change without asking; include: add uncommitted changes without asking; ask: ask each time there are any",
+      "options": ["ignore", "include", "ask"],
+      "default": "ignore"
+    },
+    "stack": {
+      "type": "string",
+      "title": "Pull request stack",
+      "description": "When the branch sits in a stack of open pull requests: ask whether to tell the whole stack, always tell it, or never",
+      "options": ["ask", "always", "never"],
+      "default": "ask"
+    }
+  }
+}

@@ -227,6 +227,24 @@
         "terminal",
         "api"
       ]
+    },
+    {
+      "name": "code-story",
+      "source": "./plugins/code-story",
+      "description": "Turn a branch, a pull request or a stack of them into a code story: a chaptered page that teaches how and why the change works, re-cut into the steps it could have been reviewed in, with notes pinned to the lines they explain, built-in dark diagrams, English plus an optional second language, and updates published under the same link.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "code-story",
+        "pull-request",
+        "explainer",
+        "onboarding",
+        "diagrams"
+      ]
     }
   ]
 }
