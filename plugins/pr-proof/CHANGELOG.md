@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-12
+
 ### Added
 
 - `prepare-proof` skill: judges which proof a branch's change needs (video, screenshots, terminal, API, or none), confirms the plan once, brings up the app's stack, runs the executors in order and records the result in the branch's proof manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, which dev-kit's `pr-open` reads.
