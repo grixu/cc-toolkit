@@ -112,6 +112,8 @@ Read `references/craft.md` once. It holds the markup, the voice, the language ru
 
   For a language with no built-in labels in `references/ui.json`, add `"ui": {"<lang>": {…every key of ui.json's "en"…}}`.
 
+When every chapter is written in every language, clean the prose: call `anti-slop:anti-slop` through the Skill tool in file mode, once per chapter file you wrote or rewrote in this run. Name the sources you read in step 4 (the diff range, the PR, tickets, specs) as `source:`, so its fidelity pass checks each *why* against them. It changes prose only; markup, `<code>`, diff and tree blocks stay byte for byte, and step 7's check catches anything it breaks.
+
 ## 6. Diagrams
 
 - **`diagramSkill` is `null`:** draw the diagrams yourself by `diagrams/lite.md`, inline in the chapter.

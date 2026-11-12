@@ -15,3 +15,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Built-in dark diagrams (fireworks-lite), or a diagram skill named in the settings.
 - `assemble.mjs`, `check.mjs` and `unpack.mjs`. They fill in what git knows (counts, line ranges, SHAs, labels) and check every quoted line against the real file before publishing.
 - Settings through a mod `config` tool: `second_language`, `gloss_first_use`, `diagram_skill`, `uncommitted`, `stack`.
+- Chapter prose goes through `anti-slop` before the page is assembled. The plugin depends on `anti-slop`, which installs with it.

@@ -34,6 +34,7 @@ Prose carries what none of them can.
 - The last chapter closes with where each *why* came from.
 - Say plainly where you think the change is wrong.
 - A "Watch out" callout needs a line of code or a test you can point at. Intended behaviour that merely surprised you is not a warning.
+- Write plain from the start; `anti-slop` cleans every chapter after you, but it cuts words, never a claim you could not back.
 
 ## A chapter file
 

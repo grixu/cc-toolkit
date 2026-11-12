@@ -17,6 +17,8 @@ Adapted from [`will-ness-ai/skills` code-story](https://github.com/will-ness-ai/
 /plugin install code-story@cc-toolkit
 ```
 
+This also installs `anti-slop`, which cleans the prose of every chapter before the page is assembled.
+
 If you used `code-story` as a personal skill before, delete `~/.claude/skills/code-story` after installing, or two skills with the same name compete.
 
 ## Requirements
