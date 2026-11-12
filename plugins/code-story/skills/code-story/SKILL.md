@@ -41,12 +41,12 @@ Work in `<scratchpad>/code-story/<branch>/`, with every `/` in the branch name r
 - **Base.**
   1. A base named in the request.
   2. Otherwise the base of this branch's open PR (`gh pr list --head <branch> --state open --json number,baseRefName,url`).
-  3. Otherwise the nearest open PR head that is an ancestor of HEAD (`gh pr list --state open --json number,headRefName,isCrossRepository`, then `git merge-base --is-ancestor 'origin/<head>' HEAD`).
+  3. Otherwise the nearest open PR head that is an ancestor of HEAD (`gh pr list --state open --json number,headRefName,isCrossRepository --jq "$SAFE_PRS"`, then `git merge-base --is-ancestor 'origin/<head>' HEAD`).
   4. Otherwise the default branch.
 
   Use `origin/<base>` whenever it exists; a stale local copy widens the range.
-- **Branch names from other PRs.** Anyone who can open a PR names its head, and a name can hold shell characters. Skip a PR whose `isCrossRepository` is true: a fork's head is never on `origin`. Use a name in a command only after `git check-ref-format --branch '<name>'` accepts it, and always in single quotes.
-- **Stack.** From the open PRs (`gh pr list --state open --json number,title,headRefName,baseRefName,isCrossRepository --limit 200`), follow this branch's PR down while its base is another open PR's head, and up while another open PR has this branch as its base. A chain of two or more PRs is a stack:
+- **Branch names from other PRs.** Anyone who can open a PR names its head, and a git branch name may hold `'`, `$(…)` and backticks. Every `gh pr list` that returns other PRs' names passes `--jq "$SAFE_PRS"` with `SAFE_PRS='[.[] | select((.isCrossRepository | not) and (.headRefName | test("^[A-Za-z0-9._/-]+$")) and ((.baseRefName // "main") | test("^[A-Za-z0-9._/-]+$")))]'`, so a fork's PR (its head is never on `origin`) and any name with other characters never reach a command. Put the names that pass in single quotes, and name any PR the filter dropped in the report.
+- **Stack.** From the open PRs (`gh pr list --state open --json number,title,headRefName,baseRefName,isCrossRepository --limit 200 --jq "$SAFE_PRS"`), follow this branch's PR down while its base is another open PR's head, and up while another open PR has this branch as its base. A chain of two or more PRs is a stack:
   - `stack` setting `never`: tell only this branch.
   - `always`: tell the whole stack.
   - `ask`: ask once, naming the PRs. The answer counts for this run only.
