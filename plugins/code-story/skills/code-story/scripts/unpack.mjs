@@ -23,12 +23,15 @@ if (!meta.head) {
 const languages = meta.languages.split(',')
 const h1 = html.match(/<h1>([\s\S]*?)<\/h1>/)?.[1] ?? ''
 const title = {}
-for (const l of languages) title[l] = unescape(h1.match(new RegExp(`<span data-lang="${l}">([\\s\\S]*?)</span>`))?.[1] ?? h1.replace(/<[^>]*>/g, ''))
+for (const l of languages) {
+  const spanText = h1.match(new RegExp(`<span data-lang="${l}">([\\s\\S]*?)</span>`))?.[1]
+  title[l] = unescape(spanText ?? h1.replace(/<[^>]*>/g, ''))
+}
 const builtIn = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../references/ui.json'), 'utf8'))
 const pageUi = JSON.parse(html.match(/<script type="application\/json" id="i18n">([\s\S]*?)<\/script>/)?.[1] ?? '{}')
 const ui = Object.fromEntries(Object.entries(pageUi).filter(([l]) => !builtIn[l]))
 
-const main = html.slice(html.indexOf('<main>') + 6, html.lastIndexOf('</main>'))
+const main = html.slice(html.indexOf('<main>') + '<main>'.length, html.lastIndexOf('</main>'))
 const chapters = [...main.matchAll(/<article\b[\s\S]*?<\/article>/g)].map((m) =>
   m[0]
     .replace(/<code class="cf">[\s\S]*?<\/code> <span class="st">[^<]*<\/span> /g, '')

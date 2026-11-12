@@ -51,7 +51,9 @@ const stack = Array.isArray(story.stack) ? story.stack.map(Number).filter(Boolea
 const where = stack.length > 1
   ? `${repo} · ${stack.map((n) => `#${n}`).join(' → ')}`
   : story.pr ? `${repo}#${story.pr}` : `${repo} · ${branch} → ${story.base.replace(/^origin\//, '')}`
-const source = `${where} · +${added} / −${removed} · ${stats.length} ${stats.length === 1 ? 'file' : 'files'}${uncommitted ? ' · incl. uncommitted' : ''}`
+const fileCount = `${stats.length} ${stats.length === 1 ? 'file' : 'files'}`
+const uncommittedNote = uncommitted ? ' · incl. uncommitted' : ''
+const source = `${where} · +${added} / −${removed} · ${fileCount}${uncommittedNote}`
 
 const meta = {
   repo, branch, base: story.base, 'base-sha': baseSha, head,
@@ -62,12 +64,14 @@ const heading = languages.length > 1
   ? languages.map((l) => `<span data-lang="${l}">${escape(story.title[l])}</span>`).join('')
   : escape(story.title.en)
 
+// Function replacers, so a "$&" or "$1" in a title or chapter is inserted literally.
 const html = readFileSync(join(here, '../references/template.html'), 'utf8')
   .replace('{{TITLE}}', () => escape(story.title.en))
   .replace('{{META}}', () => Object.entries(meta).map(([k, v]) => `<meta name="code-story:${k}" content="${escape(v)}">`).join('\n'))
   .replace('{{HEADING}}', () => heading)
   .replace('{{SOURCE}}', () => escape(source))
   .replace('{{CHAPTERS}}', () => chapters)
+  // Escape "<" so a "</script>" inside a label cannot close the JSON script block.
   .replace('{{I18N}}', () => JSON.stringify(ui).replace(/</g, '\\u003c'))
 
 const out = join(dir, 'story.html')
@@ -90,7 +94,7 @@ function repoName() {
 }
 
 function numstat() {
-  const range = uncommitted ? [baseSha] : [`${baseSha}`, head]
+  const range = uncommitted ? [baseSha] : [baseSha, head]
   return git('diff', '--numstat', '--no-renames', ...range)
     .split('\n')
     .filter(Boolean)

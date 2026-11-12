@@ -11,6 +11,8 @@ const KNOWN_TAGS = new Set(
     'a br sub sup small kbd details summary blockquote hr svg g rect path text tspan circle ellipse line polyline polygon ' +
     'defs marker title desc lineargradient stop').split(' '),
 )
+const MAX_LISTED_IDENTIFIERS = 6
+const MAX_LINE_MISMATCHES = 3
 
 export function check(html, { cwd = process.cwd() } = {}) {
   const errors = []
@@ -111,7 +113,7 @@ function checkLanguages(article, languages, where, errors, warnings) {
   for (const l of languages.slice(1)) {
     const missing = [...english].filter((c) => !codes(l).has(c))
     if (missing.length)
-      warnings.push(`${where}: identifiers in ${languages[0]} but not in ${l}: ${missing.slice(0, 6).join(', ')}${missing.length > 6 ? '…' : ''}; keep code names untranslated`)
+      warnings.push(`${where}: identifiers in ${languages[0]} but not in ${l}: ${missing.slice(0, MAX_LISTED_IDENTIFIERS).join(', ')}${missing.length > MAX_LISTED_IDENTIFIERS ? '…' : ''}; keep code names untranslated`)
   }
 }
 
@@ -179,13 +181,13 @@ function checkBlocks(article, git, where, errors, warnings) {
         n++
         if (normal(shown[n - 1] ?? '') !== want) {
           wrong++
-          if (wrong <= 3) errors.push(`${label}: line ${n} reads "${(shown[n - 1] ?? '(past the end)').trim().slice(0, 60)}", not "${want.slice(0, 60)}"`)
+          if (wrong <= MAX_LINE_MISMATCHES) errors.push(`${label}: line ${n} reads "${(shown[n - 1] ?? '(past the end)').trim().slice(0, 60)}", not "${want.slice(0, 60)}"`)
         }
       } else if (other && !other.some((l) => normal(l) === want)) {
         warnings.push(`${label}: the ${base ? 'added' : 'removed'} line "${want.slice(0, 50)}" is not in the ${base ? 'new' : 'old'} file`)
       }
     }
-    if (wrong > 3) errors.push(`${label}: ${wrong - 3} more lines do not match; the counter-reset is probably off`)
+    if (wrong > MAX_LINE_MISMATCHES) errors.push(`${label}: ${wrong - MAX_LINE_MISMATCHES} more lines do not match; the counter-reset is probably off`)
   }
 }
 
