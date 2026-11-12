@@ -1063,3 +1063,121 @@ test('without any factor answers the two-axis level stands in', async ($, on) =>
   expect(report.coverage).toMatchObject({ factorsMissing: 2, partial: true })
   expect(report.impact.level).toBe('core')
 })
+
+const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/decisions'
+
+function geminiAnswer(impact: number, likelihood: number, types: string[] = [], factors: Factors = {}) {
+  return { status: 200, ok: true, headers: {}, text: JSON.stringify({ answers: answers(impact, likelihood, types, factors), usage: { total_input_tokens: 10 } }) }
+}
+
+const AUTH_CHANGE = [{ path: 'src/auth.ts', text: fileDiff('src/auth.ts', '+checkToken()') }]
+
+test('registers the tool with only a Gemini key', async ($, on) => {
+  mock.env(on, { GEMINI_DECISIONS_API_KEY: 'g' })
+  const registered: string[] = []
+  on('tool.register', ($, e) => {
+    registered.push(e.name)
+    return { value: { tool: TOOL } }
+  })
+  on('session.start', () => ({ cwd: '/work' }))
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  expect(registered).toEqual(['pr_risk'])
+})
+
+test('assesses with Gemini, sending its key and the state as text, and reports its model', async ($, on) => {
+  mock.env(on, { GEMINI_API_KEY: 'g-key' })
+  on('process.run', fakeGit(AUTH_CHANGE))
+  const requests: { url: string; init: { headers: Record<string, string>; body: string } }[] = []
+  on('http.fetch', ($, e) => {
+    requests.push(e)
+    return { value: geminiAnswer(4.2, 0.8, ['authentication', 'new_functionality']) }
+  })
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main' })).result)
+  const bodies = requests.map((r) => JSON.parse(r.init.body))
+
+  expect(requests.every((r) => r.url === GEMINI && r.init.headers['x-goog-api-key'] === 'g-key')).toBe(true)
+  expect(bodies.every((b) => b.model === 'gemini-decision-1' && typeof b.input === 'string' && !('state' in b))).toBe(true)
+  const diff = bodies.find((b) => 'defect_impact' in b.questions)!
+  expect(JSON.parse(diff.input).diff).toContain('checkToken')
+  expect(Object.keys(diff.questions.secret_handling.criteria)).toEqual(['true_description', 'false_description'])
+  expect(diff.questions.defect_impact.criteria.every((c) => typeof c === 'string')).toBe(true)
+  const factor = bodies.find((b) => 'complexity' in b.questions)!
+  expect(factor.questions.complexity.criteria.every((c) => typeof c === 'string')).toBe(true)
+  expect(report.backend).toBe('gemini')
+  expect(report.model).toBe('gemini-decision-1')
+  expect(report.level).toBe('high')
+  expect(report.comparison).toBeUndefined()
+})
+
+test('with both keys and no choice, asks for one before running git or sending anything', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })
+  let calls = 0
+  on('process.run', () => {
+    calls += 1
+    return ok('')
+  })
+  on('http.fetch', () => {
+    calls += 1
+    return { value: jevAnswer(2, 1) }
+  })
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+  expect(out.result).toMatch(/^Backend choice needed: .*backend/)
+  expect(calls).toBe(0)
+})
+
+test('with both backends, levels come from the primary, both are compared and the pair is logged', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g', HOME: '/home/u' })
+  const git = fakeGit(AUTH_CHANGE)
+  const lines: string[][] = []
+  on('process.run', ($, e) => {
+    const argv: string[] = e.argv
+    if (argv[0] === 'sh') {
+      lines.push(argv.slice(-2))
+      return ok('')
+    }
+    if (argv[1] === 'rev-parse' && argv[2] === 'HEAD') return ok('abc123\n')
+    if (argv[1] === 'branch') return ok('feat/login\n')
+    return git($, e)
+  })
+  on('http.fetch', ($, e) => ({ value: e.url === GEMINI ? geminiAnswer(0, 0) : jevAnswer(4.2, 0.8, ['authentication']) }))
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })).result)
+
+  expect(report.backend).toBe('typesafe')
+  expect(report.level).toBe('high')
+  expect(report.label.name).toBe('risk: high')
+  expect(report.comparison.map((c) => [c.backend, c.model])).toEqual([
+    ['typesafe', 'jev-1.14.0'],
+    ['gemini', 'gemini-decision-1'],
+  ])
+  expect(report.comparison[0].level).toBe('high')
+  expect(report.comparison[1].level).not.toBe('high')
+  expect(lines.length).toBe(1)
+  expect(lines[0][0]).toBe('/home/u/.cache/dev-kit/compare.jsonl')
+  expect(JSON.parse(lines[0][1])).toMatchObject({ repo: 'work', branch: 'feat/login', head: 'abc123', base: 'origin/main' })
+  expect(lines[0][1]).not.toContain('checkToken')
+})
+
+test('with both backends, one that fails leaves the other assessing and is named', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })
+  on('process.run', fakeGit(AUTH_CHANGE))
+  on('http.fetch', ($, e) => ({ value: e.url === GEMINI ? { status: 403, ok: false, headers: {}, text: 'denied' } : jevAnswer(2, 1) }))
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })).result)
+
+  expect(report.backend).toBe('typesafe')
+  expect(report.comparison[1]).toEqual({ backend: 'gemini', error: expect.stringMatching(/Gemini rejected the API key \(HTTP 403\)/) })
+})
+
+test('with both backends failing, the assessment is unavailable with both reasons', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })
+  on('process.run', fakeGit(AUTH_CHANGE))
+  on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: 'no' } }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })
+
+  expect(out.result).toMatch(/^Risk assessment unavailable: TypeSafe: .*; Gemini: /)
+})

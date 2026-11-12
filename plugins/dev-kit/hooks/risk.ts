@@ -1211,13 +1211,3 @@ export function endpointUrl(endpoint: unknown): string {
   const base = trimmedOption(endpoint, 'https://api.typesafe.ai').replace(/\/+$/, '')
   return base.endsWith('/v1/systemone') ? base : base + '/v1/systemone'
 }
-
-export function httpError(status: number, body: string): string {
-  if (status === 401 || status === 403)
-    return `TypeSafe rejected the API key (HTTP ${status}). Check the key; an endpoint that redirects to another host also drops the Authorization header.`
-  if (status === 400 && body.includes('max_tokens_exceeded'))
-    return 'A request was longer than the Jev model accepts (HTTP 400 max_tokens_exceeded).'
-  if (status === 422) return `TypeSafe refused the request (HTTP 422): ${body.slice(0, 500)}`
-  if (status === 429) return 'TypeSafe rate limit reached (HTTP 429). Try again later.'
-  return `TypeSafe answered HTTP ${status}: ${body.slice(0, 300)}`
-}

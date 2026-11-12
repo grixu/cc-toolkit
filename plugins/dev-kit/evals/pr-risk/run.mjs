@@ -125,7 +125,7 @@ const cases = (
 const TYPE_KEYS = Object.keys(questions()).filter((k) => !k.startsWith('defect_'))
 const INTENT_KEYS = Object.keys(intentQuestions())
 
-const options = { typesafe_model: args.model, risk_policy: args['risk-policy'], ...(args['risk-experiment'] && { risk_experiment: args['risk-experiment'] }) }
+const options = { decision_backend: 'typesafe', typesafe_model: args.model, risk_policy: args['risk-policy'], ...(args['risk-experiment'] && { risk_experiment: args['risk-experiment'] }) }
 const config = readConfig(options)
 const sandbox = resolve(args.sandbox)
 const THRESHOLDS = [0.5, 0.6, 0.7, 0.8, 0.9]

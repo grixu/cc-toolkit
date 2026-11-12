@@ -5,6 +5,7 @@
 //   node plugins/dev-kit/evals/pr-risk/fe-eval.mjs --live --limit 20   # the same states sent to Jev now
 //   ... --data <dir>       # a pulled set, default evals/pr-risk/local/data/v8
 //   ... --model <name>     # live only; default DEFAULT_MODEL
+//   ... --backend gemini   # live only; asks Gemini Decision (GEMINI_DECISIONS_API_KEY or GEMINI_API_KEY) instead of Jev
 //
 // --replay fails unless every factor state and request body production builds equals the frozen ones byte for byte,
 // and the cost equals the cohort's recorded baseline. --live measures drift of Jev and of the questions against the
@@ -17,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { DEFAULT_MODEL } from '../../hooks/evidence.ts'
 import { FACTOR_REPEATS, averageAnswers, factorBodies, factorGroup, scoreFactors, testsInChange } from '../../hooks/factors.ts'
+import { GEMINI_MODEL, backendFor, readResponse, requestInit, tooLong } from '../../hooks/backend.ts'
 import { endpointUrl } from '../../hooks/risk.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -142,10 +144,10 @@ export function pairedCI(base, cand, labels, repoOf) {
   return { delta: stat(clusters), ci95: [boot[Math.floor(B * 0.025)], boot[Math.floor(B * 0.975) - 1]], clusters: clusters.length }
 }
 
-async function sendAll(requests, model) {
-  const key = process.env.TYPESAFE_API_KEY
-  if (!key) throw new Error('TYPESAFE_API_KEY required for --live')
-  const url = endpointUrl(undefined)
+async function sendAll(requests, model, name) {
+  const key = name === 'gemini' ? process.env.GEMINI_DECISIONS_API_KEY || process.env.GEMINI_API_KEY : process.env.TYPESAFE_API_KEY
+  if (!key) throw new Error(`${name === 'gemini' ? 'GEMINI_DECISIONS_API_KEY or GEMINI_API_KEY' : 'TYPESAFE_API_KEY'} required for --live`)
+  const backend = backendFor(name, key, { url: endpointUrl(undefined), model })
   const rows = []
   const usage = { requests: 0, inputTokens: 0, outputTokens: 0, failed: 0 }
   const latencies = []
@@ -156,21 +158,20 @@ async function sendAll(requests, model) {
       const started = Date.now()
       let res, text
       try {
-        res = await fetch(url, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(120_000),
-          headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: req.body })
-        text = await res.text()
+        res = await fetch(backend.url, { ...requestInit(backend, req.body), redirect: 'error', signal: AbortSignal.timeout(120_000) })
+        text = readResponse(backend, { ok: res.ok, text: await res.text() }).text
       } catch {
         if (attempt < RETRIES) continue
         return { failed: true }
       }
       latencies.push(Date.now() - started)
-      if (res.status === 400 && text.includes('max_tokens_exceeded')) return { refused: true }
+      if (tooLong(backend, { status: res.status, text })) return { refused: true }
       if ((res.status === 429 || res.status >= 500) && attempt < RETRIES) { await new Promise((r) => setTimeout(r, 2000 * (attempt + 1))); continue }
       if (!res.ok) return { failed: true }
       const data = JSON.parse(text)
-      if (data.model != null && data.model !== model) throw new Error('model mismatch: ' + data.model)
-      usage.inputTokens += data.usage?.input_tokens ?? 0
-      usage.outputTokens += data.usage?.output_tokens ?? 0
+      if (data.model != null && data.model !== backend.model) throw new Error('model mismatch: ' + data.model)
+      usage.inputTokens += data.usage?.input_tokens ?? data.usage?.total_input_tokens ?? 0
+      usage.outputTokens += data.usage?.output_tokens ?? data.usage?.total_output_tokens ?? 0
       return { answers: data.answers ?? {} }
     }
   }
@@ -213,9 +214,10 @@ function summarize(rounds, d, ids, base, repoOf) {
 
 async function main() {
   const { values } = parseArgs({ options: {
-    replay: { type: 'boolean' }, live: { type: 'boolean' }, data: { type: 'string' }, limit: { type: 'string' }, model: { type: 'string' },
+    replay: { type: 'boolean' }, live: { type: 'boolean' }, data: { type: 'string' }, limit: { type: 'string' }, model: { type: 'string' }, backend: { type: 'string', default: 'typesafe' },
   } })
   if (!values.replay === !values.live) throw new Error('pass exactly one of --replay or --live')
+  if (!['typesafe', 'gemini'].includes(values.backend)) throw new Error('--backend must be typesafe or gemini')
   const dir = resolve(values.data ?? join(HERE, 'local/data/v8'))
   if (!existsSync(join(dir, 'labels.jsonl'))) throw new Error(`no data in ${dir}: run data.mjs pull v8 first`)
   const d = loadSet(dir)
@@ -232,12 +234,12 @@ async function main() {
     const costMatches = Object.entries(expected).every(([v, c]) => Math.abs(views[v].cost - c) < 1e-12)
     Object.assign(report, { mode: 'replay', model: d.plan.model, port, expectedCost: expected, views, pass: port.states === 0 && port.bodies === 0 && costMatches })
   } else {
-    const model = values.model ?? DEFAULT_MODEL
+    const model = values.backend === 'gemini' ? GEMINI_MODEL : values.model ?? DEFAULT_MODEL
     const requests = liveRequests(d, ids, model)
     const started = Date.now()
-    const { rows, usage } = await sendAll(requests, model)
+    const { rows, usage } = await sendAll(requests, model, values.backend)
     const live = predict(d, answersOf(rows), ids)
-    Object.assign(report, { mode: 'live', model, usage: { ...usage, wallMs: Date.now() - started }, views: summarize(live, d, ids, recorded, repoOf),
+    Object.assign(report, { mode: 'live', backend: values.backend, model, usage: { ...usage, wallMs: Date.now() - started }, views: summarize(live, d, ids, recorded, repoOf),
       recorded: summarize(recorded, d, ids, recorded, repoOf) })
   }
 
