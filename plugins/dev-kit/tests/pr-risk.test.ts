@@ -1190,6 +1190,19 @@ test('with both backends, one that fails leaves the other assessing and is named
   expect(report.comparison[1]).toEqual({ backend: 'gemini', error: expect.stringMatching(/Gemini rejected the API key \(HTTP 403\)/) })
 })
 
+test('with both backends and the primary failing, the other sets the level and the primary is named', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })
+  on('process.run', fakeGit(AUTH_CHANGE))
+  on('http.fetch', ($, e) => ({ value: e.url === GEMINI ? geminiAnswer(0, 0) : { status: 401, ok: false, headers: {}, text: 'no' } }))
+
+  const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })).result)
+
+  expect(report.backend).toBe('gemini')
+  expect(report.model).toBe('gemini-decision-1')
+  expect(report.comparison[0]).toEqual({ backend: 'typesafe', error: expect.stringMatching(/TypeSafe rejected the API key \(HTTP 401\)/) })
+  expect(report.comparison[1].backend).toBe('gemini')
+})
+
 test('with both backends failing, the assessment is unavailable with both reasons', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })
   on('process.run', fakeGit(AUTH_CHANGE))
