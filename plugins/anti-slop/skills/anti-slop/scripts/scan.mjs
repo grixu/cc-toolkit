@@ -95,7 +95,7 @@ function mask(text) {
   return text
     .replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, blank)
     .replace(/<(pre|code|script|style|svg)\b[\s\S]*?<\/\1>/gi, blank)
-    .replace(/^---\n[\s\S]*?\n---$/m, blank)
+    .replace(/^---\n[\s\S]*?\n---(?=\n|$)/, blank)
     .replace(/`[^`\n]*`/g, blank)
     .replace(/<[^>\n]*>/g, blank)
     .replace(/https?:\/\/\S+/g, blank)
