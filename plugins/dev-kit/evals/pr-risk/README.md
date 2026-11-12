@@ -32,6 +32,21 @@ It needs the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_
 
 All three use the metric from the cohorts: expected cost per case, with under-estimates counted twice and an unassessed case counted as medium, plus a paired, repository-clustered bootstrap interval. V5 is the development split. V8 is the test split, and every decision tuned on it uses it up.
 
+The `v5` set is the raw development bundle, not an fe-eval layout. To run fe-eval on it, map `context-trial/{bindings,inputs-r1,inputs-r2,control}.json`, `factors/states.json` (as `factor-states.json`), `factors/full/{plan,result}.json` (as `plan-factors.json`, `result-factors.json`), `jev/runs/v5-1/prs.json` and `roster.json`, and write `jev/labels-g.jsonl` as `labels.jsonl` with a `weight` of 144/59 on view (b) `/audit` blocks and 1 elsewhere, as `factors/score-lib.mjs` does. Replay then passes on all 707 states, with view (b) at the recorded cost of 0.485.
+
+### Gemini Decision on V5 (2026-11-12)
+
+`gemini-decision-1` against the recorded Jev answers, two rounds over 707 states, 2428 requests (4 failed), p50 216 ms:
+
+| View | Backend | Cost | Exact | Over | Under | Dangerous misses (weighted) |
+|---|---|---|---|---|---|---|
+| b | Jev (recorded) | 0.485 | 64.8% | 27.5% | 7.8% | 12 |
+| b | Gemini | 0.478 | 68.4% | 18.8% | 12.7% | 19 |
+| a | Jev (recorded) | 0.540 | 65.4% | 22.7% | 11.8% | 19 |
+| a | Gemini | 0.573 | 66.4% | 15.6% | 18.0% | 31 |
+
+On cost Gemini is at parity: Δ −0.006 [−0.079, 0.097] on view (b), +0.033 [−0.023, 0.130] on view (a). It sits lower on the scale, though: fewer over-estimates, more under-estimates and more dangerous misses (a high or critical case rated below its label). The thresholds were tuned on Jev over V5, so Jev has the home advantage here; a threshold for Gemini would have to be tuned on V5 and checked on V8.
+
 ## Read the metrics
 
 `summary.metrics.endToEndExactAccuracy` divides correct **completed** assessments by every labelled case selected for the run, including preparation errors, failed requests and incomplete assessments. `wilson95` gives a 95% Wilson confidence interval for that proportion. An interval is not evidence that a 95% accuracy target has been met on fresh PRs.

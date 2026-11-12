@@ -243,7 +243,7 @@ Set a key in one of two ways:
 - Export `TYPESAFE_API_KEY`, or `GEMINI_DECISIONS_API_KEY` (falling back to `GEMINI_API_KEY`), in the shell you start Claude Code from (the default).
 - Or enter it as the plugin's **TypeSafe API key** or **Gemini API key** option (`/plugin configure dev-kit@cc-toolkit`), which Claude Code keeps in your system's credential store. It takes precedence over the variable.
 
-With both keys set, `pr-open` asks which backend to use, TypeSafe, Gemini or both, until you save the answer as the **Decision backend** option. With both, the **Primary backend** option (TypeSafe by default) sets the level and label, the other backend's level appears beside it in the **Risk** section, and each pair is logged to `~/.cache/dev-kit/compare.jsonl` for later comparison. The levels were calibrated on Jev; the [evaluation guide](evals/pr-risk/README.md) measures how Gemini scores the same cohort.
+With both keys set, `pr-open` asks which backend to use, TypeSafe, Gemini or both, until you save the answer as the **Decision backend** option. With both, the **Primary backend** option (TypeSafe by default) sets the level and label, the other backend's level appears beside it in the **Risk** section, and each pair is logged to `~/.cache/dev-kit/compare.jsonl` for later comparison. The levels were calibrated on Jev. On the development cohort Gemini matches Jev's overall cost but rates more high-risk changes too low, so keep TypeSafe as the primary backend for now; see the [evaluation guide](evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12).
 
 A key set or changed during a session takes effect after `/reload-plugins`.
 
