@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pr-open`: the description's prose goes through `anti-slop` before the PR is opened
 - dev-kit depends on the `code-story` and `anti-slop` plugins, which install with it
 
+### Security
+- `pr-open`: when looking for a stacked base, skips pull requests from forks and uses another PR's branch name in a git command only after `git check-ref-format` accepts it, single-quoted, so a crafted branch name cannot run a shell command
+
 ## [0.9.1] - 2026-11-12
 
 ### Fixed
