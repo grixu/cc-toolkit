@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Gemini Decision (`gemini-decision-1`) as a second backend for `proof_signals`, beside TypeSafe Jev. New options `gemini_api_key` (falls back to `GEMINI_DECISIONS_API_KEY`, then `GEMINI_API_KEY`), `decision_backend` (`auto`, `typesafe`, `gemini`, `both`) and `primary_backend`. With both keys and `auto`, `prepare-proof` asks which to use; `both` runs them side by side, shows each backend's signal in the plan, counts a disagreement as uncertain and logs each pair to `~/.cache/pr-proof/compare.jsonl`.
+
+### Changed
+
+- Requires Claude Code v2.1.271 or later, for the fixed-choice options.
+
 ## [0.2.1] - 2026-11-12
 
 ### Fixed

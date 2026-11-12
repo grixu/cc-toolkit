@@ -1,3 +1,5 @@
+import { httpError, readResponse, requestInit, type Backend } from './backend.ts'
+
 // Jev client helpers copied from dev-kit's hooks at e20a572: a plugin cannot import another plugin's files, and a
 // symlink breaks under --plugin-dir and local-path marketplaces. A fix to the originals has to be copied here by hand.
 
@@ -36,7 +38,7 @@ export type Split = {
   truncatedHunks: number
 }
 
-export type JevRequest = { url: string; model: string; key: string; questions: Record<string, unknown>; limit: Limit }
+export type JevRequest = { backend: Backend; questions: Record<string, unknown>; limit: Limit }
 export type Limit = <T>(fn: () => Promise<T>) => Promise<T>
 
 export function isExcluded(path: string): boolean {
@@ -176,16 +178,6 @@ export function endpointUrl(endpoint: unknown): string {
   return base.endsWith(SYSTEMONE_PATH) ? base : base + SYSTEMONE_PATH
 }
 
-export function httpError(status: number, body: string): string {
-  if (status === 401 || status === 403)
-    return `TypeSafe rejected the API key (HTTP ${status}). Check the key; an endpoint that redirects to another host also drops the Authorization header.`
-  if (status === 400 && body.includes('max_tokens_exceeded'))
-    return 'A request was longer than the Jev model accepts (HTTP 400 max_tokens_exceeded).'
-  if (status === 422) return `TypeSafe refused the request (HTTP 422): ${body.slice(0, 500)}`
-  if (status === 429) return 'TypeSafe rate limit reached (HTTP 429). Try again later.'
-  return `TypeSafe answered HTTP ${status}: ${body.slice(0, 300)}`
-}
-
 // Every pool shares one cap, so nested pools still hold Jev to CONCURRENCY requests in flight.
 export function limiter(size: number): Limit {
   let active = 0
@@ -205,25 +197,19 @@ export function limiter(size: number): Limit {
 
 export async function post($, request: JevRequest, body: string) {
   const res = await send($, request, body)
-  if (!res.ok) throw new Error(httpError(res.status, res.text))
+  if (!res.ok) throw new Error(httpError(request.backend, res.status, res.text))
   return res
 }
 
 export async function send($, request: JevRequest, body: string) {
   for (let attempt = 1; ; attempt++) {
-    const res = await request.limit(() => $.http.fetch(request.url, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${request.key}`, 'content-type': 'application/json' },
-      body,
-    }))
-    if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) return res
+    const res = await request.limit(() => $.http.fetch(request.backend.url, requestInit(request.backend, body)))
+    if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) return readResponse(request.backend, res)
     // $.clock.sleep counts toward the hook's 10 s budget, while time inside a process does not; the retry follows
     // whatever the exit code.
     await $.process.run(['sleep', String(retryDelay(res.headers, attempt) / 1000)], { timeoutMs: 30_000 })
   }
 }
-
-export const tooLong = (res) => res.status === 400 && String(res.text).includes('max_tokens_exceeded')
 
 // The session's working directory follows the model's `cd`, which can leave the repository for a scratchpad or a
 // work dir, so fall back to the directory the session started in.
