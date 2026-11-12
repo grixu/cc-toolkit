@@ -1,7 +1,7 @@
 {
   "name": "stop-sound",
   "description": "Plays a sound when Claude stops and waits for you: one chime when the main session ends its turn, another when it asks a question or presents a plan. Silent while subagents still run in the background and when a subagent finishes.",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"

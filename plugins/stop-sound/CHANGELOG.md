@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-11-12
-
 ### Added
 
 - A chime when the main session ends its turn, skipped while a subagent or teammate still runs in the background.
