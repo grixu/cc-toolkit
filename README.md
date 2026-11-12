@@ -87,7 +87,7 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 | Plugin | What it does | Start with |
 |---|---|---|
 | [session-learner](plugins/session-learner/README.md) | At the end of a session, finds where you had to correct or repeat yourself and proposes updates to `CLAUDE.md` or `.claude/rules/`, so the next session starts with that knowledge. You approve each change. | `/session-learner:learn` |
-| [stop-sound](plugins/stop-sound/README.md) | Plays a sound when Claude needs you: one when the session ends its turn, another when it asks a question or presents a plan. Stays silent while subagents still work in the background and when one of them finishes. | Runs on its own once installed |
+| [stop-sound](plugins/stop-sound/README.md) | Chimes when Claude waits for you: when it finishes a turn and when it asks a question. Silent while subagents work. | Runs on its own once installed |
 
 ### Deprecated
 

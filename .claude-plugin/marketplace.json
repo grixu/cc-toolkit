@@ -231,7 +231,7 @@
     {
       "name": "stop-sound",
       "source": "./plugins/stop-sound",
-      "description": "Plays a sound when Claude stops and waits for you: one chime when the main session ends its turn, another when it asks a question or presents a plan. Silent while subagents still run in the background and when a subagent finishes.",
+      "description": "Chimes when Claude waits for you: when it finishes a turn and when it asks a question. Silent while subagents work.",
       "version": "0.0.0",
       "author": {
         "name": "Mateusz Gostański",
