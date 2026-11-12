@@ -20,9 +20,11 @@ evals/
   prompts/performance.txt  # scanner brief — performance lens
   prompts/spec.txt         # scanner brief — spec lens ({{spec}} carries the spec path)
   prompts/scope-paths.txt  # start-cr Step 1 over named paths, with the kinds and lens set — eval-19
-  cases/                   # inputs, kept out of fixtures/ (test kind in scope.md); cases/spec-conformance/ and cases/standards/ are multi-file
-  scope-mix/               # eval-19 input, kept out of fixtures/ so its paths classify by kind
-  comment-track/           # evals 0–4 inputs, kept out of fixtures/ so R11's test-file bar does not apply
+  data.mjs                 # pulls cases/, scope-mix/ and comment-track/ from R2 at the sha256 fixtures.sha256 pins
+  fixtures.sha256          # the pinned fixtures tarball; push rewrites it
+  cases/                   # (from R2) inputs, kept out of fixtures/ (test kind in scope.md); cases/spec-conformance/ and cases/standards/ are multi-file
+  scope-mix/               # (from R2) eval-19 input, kept out of fixtures/ so its paths classify by kind
+  comment-track/           # (from R2) evals 0–4 inputs, kept out of fixtures/ so R11's test-file bar does not apply
   prompts/headless.txt     # cr-prepare → cr-scan × N → cr-merge, in that order — headless track
   prompts/headless-prepare.txt # cr-prepare alone — eval-22
   prompts/headless-list.txt # the headless track with one cr-scan over a lens list — eval-25
@@ -42,6 +44,19 @@ evals/
   checks/                  # the other checks read files on disk (headless, pr, HANDOFF families)
   reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22–33, 34–37 and 41–44 run in, the context dirs of evals 26–27, and the gh stand-in
 ```
+
+## Fixtures live in R2
+
+The fixtures under `cases/`, `scope-mix/` and `comment-track/` are drawn from private repositories, so they stay out of this public repo. They live in a Cloudflare R2 bucket as one tarball, stored under its sha256, and `fixtures.sha256` pins the one this commit's evals were written against. `reset-sandbox.sh` runs `node data.mjs pull` first, which skips the download when the pinned fixtures are already in place and refuses a tarball whose hash differs.
+
+Both commands need the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. After you change a fixture, upload the new set and commit the new pin:
+
+```sh
+node plugins/code-review/evals/data.mjs push
+git add plugins/code-review/evals/fixtures.sha256
+```
+
+A pull that brings a different pin moves your local, unpushed fixtures to `.fixtures-prev/` rather than deleting them.
 
 The headless skills review committed changes only, so eval-20 runs against a git
 checkout rather than a fixture path; `scripts/run-evals.sh code-review` rebuilds it

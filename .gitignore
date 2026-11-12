@@ -13,6 +13,11 @@ plugins/*/evals/.sandbox/
 plugins/*/evals/.results/
 # eval cases drawn from private repositories: their names, commits and descriptions stay off this public repo
 plugins/*/evals/*/local/
+# code-review eval fixtures, pulled from R2 by evals/data.mjs at the sha256 fixtures.sha256 pins
+plugins/code-review/evals/cases/
+plugins/code-review/evals/comment-track/
+plugins/code-review/evals/scope-mix/
+plugins/code-review/evals/.fixtures-*
 # research write-ups that cite private pull requests; kept in private storage, not in this public repo
 plugins/*/docprivate/
 

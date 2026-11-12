@@ -1,4 +1,0 @@
-server:
-  port: 8080
-  request_timeout_ms: 30000
-  database_secret: orders-db-credentials
