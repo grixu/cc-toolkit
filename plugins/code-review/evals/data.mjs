@@ -64,8 +64,8 @@ function pull() {
     rmSync(tmp)
     throw new Error(`hash mismatch for ${hash}`)
   }
-  // Fixtures edited locally but not pushed yet survive a pin change in .fixtures-prev/.
-  const prev = join(HERE, '.fixtures-prev')
+  // One backup per outgoing pin, so switching branches back and forth never overwrites unpushed edits.
+  const prev = join(HERE, `.fixtures-prev-${read(MARKER) || 'unpinned'}`)
   rmSync(prev, { recursive: true, force: true })
   for (const d of DIRS.filter((d) => existsSync(join(HERE, d)))) {
     mkdirSync(prev, { recursive: true })

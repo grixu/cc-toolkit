@@ -47,7 +47,7 @@ evals/
 
 ## Fixtures live in R2
 
-The fixtures under `cases/`, `scope-mix/` and `comment-track/` are drawn from private repositories, so they stay out of this public repo. They live in a Cloudflare R2 bucket as one tarball, stored under its sha256, and `fixtures.sha256` pins the one this commit's evals were written against. `reset-sandbox.sh` runs `node data.mjs pull` first, which skips the download when the pinned fixtures are already in place and refuses a tarball whose hash differs.
+The fixtures under `cases/`, `scope-mix/` and `comment-track/` are drawn from private repositories, so new and changed fixtures stay out of this public repo; versions committed before the move remain in git history. They live in a Cloudflare R2 bucket as one tarball, stored under its sha256, and `fixtures.sha256` pins the one this commit's evals were written against. `reset-sandbox.sh` runs `node data.mjs pull` first, which skips the download when the pinned fixtures are already in place and refuses a tarball whose hash differs.
 
 Both commands need the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. After you change a fixture, upload the new set and commit the new pin:
 
@@ -56,7 +56,7 @@ node plugins/code-review/evals/data.mjs push
 git add plugins/code-review/evals/fixtures.sha256
 ```
 
-A pull that brings a different pin moves your local, unpushed fixtures to `.fixtures-prev/` rather than deleting them.
+A pull that brings a different pin moves your local, unpushed fixtures to `.fixtures-prev-<outgoing pin>/` rather than deleting them, keeping one backup per pin.
 
 The headless skills review committed changes only, so eval-20 runs against a git
 checkout rather than a fixture path; `scripts/run-evals.sh code-review` rebuilds it
