@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `pr-open`: when the `code-story` plugin is installed, a background subagent builds or updates the branch's code story, and the description gets a `## Code story` section with its link, refreshed in place on later runs
+- `pr-open`: a background subagent builds or updates the branch's code story, and the description gets a `## Code story` section with its link, refreshed in place on later runs
+- `pr-open`: the description's prose goes through `anti-slop` before the PR is opened
+- dev-kit depends on the `code-story` and `anti-slop` plugins, which install with it
 
 ## [0.9.1] - 2026-11-12
 

@@ -157,6 +157,7 @@ Keep the template's structure intact: every heading, in its order, and every che
 - Bold only the labels (**Testing:**, **Reviewer notes:**, **Dependencies:**, **Go deeper:**); leave everything else plain.
 - One screen: at most about 40 non-blank lines outside the Proof and Risk sections. Summary or Changes sub-headings and file-by-file lists are the usual bloat, and the table already carries them. Put long logs in a `<details>` block and move other long detail behind the **Go deeper** link.
 - Keep the body valid MDX as well as Markdown, since some repositories feed PR bodies to MDX tooling: no HTML comments, and a `<` or `{` in prose goes in backticks. The `<sub>` and `<details>` tags this skill uses are valid MDX.
+- When the draft is done, call `anti-slop:anti-slop` through the Skill tool in embedded mode on the sentences you wrote, with the commits and diff as `source:`. Put its text back in place, keep the bold labels, and go on to step 5 in the same turn: the cleanup is one step of this skill, not its end. Template headings, checkboxes, links, the Risk section, the author's kept sentences and table cells that hold names or values stay as they are, and the body stays within the length above.
 
 ## 5. Push and open
 
@@ -171,8 +172,6 @@ Keep the template's structure intact: every heading, in its order, and every che
 7. With a risk result whose `label.enabled` is true: `gh pr edit <url> --add-label "<label.name>"`, plus `--remove-label` for every other name in `label.all` the PR already carries (`gh pr view <url> --json labels`). When the add fails because the label does not exist, run `gh label create "<label.name>" --description "Pull request risk assessed by TypeSafe Jev"` once and retry; never pass `--force`, which rewrites an existing label. A label failure leaves the PR as it is, and the report says why.
 
 ## 6. Code story
-
-Only when the `code-story:code-story` skill is in the skill list; without it, skip this step silently.
 
 **Start.** Dispatch one background `general-purpose` subagent with the Agent tool, and give it no `name`, so its full reply arrives in the completion notice. Its prompt:
 
