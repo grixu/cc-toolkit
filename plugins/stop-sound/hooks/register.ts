@@ -51,7 +51,7 @@ async function chime($, customPath: string | undefined, asset: string) {
   }
 }
 
-async function clipFor($, customPath: string | undefined, asset: string) {
+export async function clipFor($, customPath: string | undefined, asset: string) {
   const mime = customPath ? mimeFor(customPath) : undefined
   if (!customPath || !mime) return { asset }
   try {

@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { isWaitingForYou, mimeFor } from '../hooks/register.ts'
+import { clipFor, isWaitingForYou, mimeFor } from '../hooks/register.ts'
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
 
@@ -34,6 +34,22 @@ test('maps sound file extensions to their MIME type', () => {
   expect(mimeFor('ding.mp3')).toBe('audio/mpeg')
   expect(mimeFor('ding.flac')).toBe(undefined)
   expect(mimeFor('no-extension')).toBe(undefined)
+})
+
+test('plays a custom sound, and the bundled one when the custom file cannot play', async () => {
+  const bundled = { asset: 'sounds/done.wav' }
+  const readable = { fs: { read: async () => ({ base64: 'UklGRg==' }) } }
+  const missing = {
+    fs: {
+      read: async () => {
+        throw new Error('ENOENT')
+      },
+    },
+  }
+  expect(await clipFor(readable, '/s/ding.mp3', bundled.asset)).toEqual({ base64: 'UklGRg==', mime: 'audio/mpeg' })
+  expect(await clipFor(readable, undefined, bundled.asset)).toEqual(bundled)
+  expect(await clipFor(readable, '/s/ding.flac', bundled.asset)).toEqual(bundled)
+  expect(await clipFor(missing, '/s/ding.mp3', bundled.asset)).toEqual(bundled)
 })
 
 test('chimes when the main turn ends with every subagent done', async ($, on) => {
