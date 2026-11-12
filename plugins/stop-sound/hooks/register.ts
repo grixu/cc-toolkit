@@ -53,7 +53,7 @@ async function chime($, customPath: string | undefined, asset: string) {
 
 export async function clipFor($, customPath: string | undefined, asset: string) {
   const mime = customPath ? mimeFor(customPath) : undefined
-  if (!customPath || !mime) return { asset }
+  if (!mime) return { asset }
   try {
     const { base64 } = await $.fs.read(customPath, { as: 'bytes' })
     return { base64, mime }
