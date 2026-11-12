@@ -1,0 +1,5 @@
+feat(cart): persist the cart across sessions
+fix(checkout): keep the shipping method when the address changes
+chore(deps): update vue to 3.5.13
+feat(checkout): accept WELCOME10 and other percentage codes
+fix(cart): round line totals to two decimals

@@ -1,7 +1,7 @@
 {
   "name": "pr-proof",
-  "description": "Proof that a pull request's change works: record a narrated walkthrough video of the feature against the running app with playwright-recast, from its spec or from requirements reconstructed out of the code, and attach it to the pull request once you accept it.",
-  "version": "0.1.0",
+  "description": "Proof that a pull request's change works: prepare-proof judges which proof a branch needs, with TypeSafe Jev signals when a key is set, then produces each kind, a narrated walkthrough video with playwright-recast, screenshots at the project's breakpoints, and masked terminal or API transcripts, and hands it to pr-open through the branch's proof manifest.",
+  "version": "0.2.1",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
@@ -13,6 +13,34 @@
     "demo",
     "walkthrough",
     "video",
-    "playwright"
-  ]
+    "playwright",
+    "screenshots",
+    "terminal",
+    "api"
+  ],
+  "userConfig": {
+    "typesafe_api_key": {
+      "type": "string",
+      "title": "TypeSafe API key",
+      "description": "Key for the TypeSafe API. Leave empty to read TYPESAFE_API_KEY.",
+      "sensitive": true
+    },
+    "typesafe_endpoint": {
+      "type": "string",
+      "title": "TypeSafe endpoint",
+      "description": "Base URL of the TypeSafe API",
+      "default": "https://api.typesafe.ai"
+    },
+    "typesafe_model": {
+      "type": "string",
+      "title": "Jev model",
+      "description": "Model name or alias, such as jev-latest or jev-1.14.0",
+      "default": "jev-1.14.0"
+    },
+    "screenshot_widths": {
+      "type": "string",
+      "title": "Screenshot widths",
+      "description": "Comma-separated viewport widths in pixels, such as 375,768,1440. Leave empty to use the project's breakpoints, or 375, 768 and 1440."
+    }
+  }
 }

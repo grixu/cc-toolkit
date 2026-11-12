@@ -159,13 +159,14 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   const key = await apiKey($, options)
   if (!key) throw new Error('no TypeSafe API key; set TYPESAFE_API_KEY or the dev-kit option typesafe_api_key')
 
-  const ref = await resolveBase($, base)
+  const cwd = await repoRoot($)
+  const ref = await resolveBase($, cwd, base)
   const range = `${ref}...HEAD`
   const [commits, numstat, nameStatus] = await Promise.all([
-    git($, ['log', '--no-color', '--format=%h %s%n%b', `${ref}..HEAD`]),
+    git($, cwd, ['log', '--no-color', '--format=%h %s%n%b', `${ref}..HEAD`]),
     // --no-relative: a user's diff.relative=true would limit the diff to the current directory.
-    git($, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
-    git($, ['diff', '--no-relative', '--name-status', '-z', '-M', range]),
+    git($, cwd, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
+    git($, cwd, ['diff', '--no-relative', '--name-status', '-z', '-M', range]),
   ])
 
   const entries = numstat.split('\0').filter(Boolean).map((line) => {
@@ -181,10 +182,10 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   if (!reviewable.length) throw new Error('no reviewable text files in the change')
   let evidence: ExecutionEvidence = []
   if (executionContext !== undefined) {
-    const [head, baseCommit] = await Promise.all([git($, ['rev-parse', 'HEAD^{commit}']), git($, ['rev-parse', `${ref}^{commit}`])])
+    const [head, baseCommit] = await Promise.all([git($, cwd, ['rev-parse', 'HEAD^{commit}']), git($, cwd, ['rev-parse', `${ref}^{commit}`])])
     evidence = validateEvidence(executionContext, reviewable, [head.trim(), baseCommit.trim()].filter((r) => /^[0-9a-f]{40,64}$/i.test(r)))
     for (const entry of evidence) for (const source of entry.sources) {
-      const content = await git($, ['show', `${source.ref}:${source.path}`])
+      const content = await git($, cwd, ['show', `${source.ref}:${source.path}`])
       if ((source.symbol && !content.includes(source.symbol)) || source.facts.some((fact) => !content.includes(fact))) throw new Error(`execution_context excerpt not found in ${source.path} at ${source.ref}`)
     }
   }
@@ -193,10 +194,10 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   const experiment = riskExperiment ?? options?.risk_experiment
   if (experiment !== undefined && experiment !== 'atomic-v1') throw new Error('unsupported risk_experiment')
   const budget = STATE_CHAR_BUDGET - (evidence.length ? EVIDENCE_BUDGET : 0)
-  const { files, unread, clipped } = await readDiffs($, range, reviewable, budget)
+  const { files, unread, clipped } = await readDiffs($, cwd, range, reviewable, budget)
 
   const statuses = fileStatuses(nameStatus, entries)
-  await markMajorBumps($, ref, statuses)
+  await markMajorBumps($, cwd, ref, statuses)
   const clippedCommits = clipCommits(commits.trim())
   const slicing = await sliceChange($, proposed, clippedCommits, files, entries)
   const plan = slicing.slices ? splitSlices(slicing.slices, files, budget) : split(files, budget)
@@ -290,16 +291,27 @@ async function sliceChange(
   }
 }
 
-async function resolveBase($, base: string): Promise<string> {
+// The session's working directory follows the model's `cd`, which can leave the repository for a scratchpad or a
+// work dir, so fall back to the directory the session started in.
+async function repoRoot($): Promise<string> {
+  const here = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { timeoutMs: 60_000 })
+  if (here.exitCode === 0) return here.stdout.trim()
+  const root = await $.session.root()
+  const started = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: root, timeoutMs: 60_000 })
+  if (started.exitCode === 0) return started.stdout.trim()
+  throw new Error(`neither the session's working directory (${await $.session.cwd()}) nor the directory it started in (${root}) is in a git repository`)
+}
+
+async function resolveBase($, cwd: string, base: string): Promise<string> {
   // origin first: the PR merges into the remote branch, and a stale local copy would widen the range.
   for (const ref of [`origin/${base}`, base]) {
-    const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
+    const r = await $.process.run(['git', 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd })
     if (r.exitCode === 0) return ref
   }
   throw new Error(`base branch "${base}" not found locally or on origin; run git fetch origin`)
 }
 
-async function readDiffs($, range: string, paths: string[], budget: number): Promise<{ files: FileDiff[]; unread: string[]; clipped: number }> {
+async function readDiffs($, cwd: string, range: string, paths: string[], budget: number): Promise<{ files: FileDiff[]; unread: string[]; clipped: number }> {
   const files: FileDiff[] = []
   const unread: string[] = []
   let charsRead = 0
@@ -310,8 +322,7 @@ async function readDiffs($, range: string, paths: string[], budget: number): Pro
       unread.push(path)
       continue
     }
-    // The paths are relative to the repository root, and the session may sit in a subdirectory.
-    const diff = await git($, ['diff', '--no-relative', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
+    const diff = await git($, cwd, ['diff', '--no-relative', '-U1', '--no-color', '--no-ext-diff', '--no-renames', range, '--', `:(top,literal)${path}`])
     const bulk = clipBulk(path, diff.trimEnd(), budget)
     if (bulk.clipped) clipped += 1
     charsRead += bulk.text.length
@@ -321,12 +332,12 @@ async function readDiffs($, range: string, paths: string[], budget: number): Pro
 }
 
 // Whole files, not diff lines: a lock-file hunk can show a version without the provider block it belongs to.
-async function markMajorBumps($, ref: string, statuses: Map<string, FileStatus>) {
+async function markMajorBumps($, cwd: string, ref: string, statuses: Map<string, FileStatus>) {
   const manifests = [...statuses].filter(([path, s]) => s.status === 'modified' && isDependencyManifest(path))
   if (!manifests.length) return
-  const base = (await git($, ['merge-base', ref, 'HEAD'])).trim()
+  const base = (await git($, cwd, ['merge-base', ref, 'HEAD'])).trim()
   for (const [path, status] of manifests) {
-    const [before, after] = await Promise.all([git($, ['show', `${base}:${path}`]), git($, ['show', `HEAD:${path}`])])
+    const [before, after] = await Promise.all([git($, cwd, ['show', `${base}:${path}`]), git($, cwd, ['show', `HEAD:${path}`])])
     const bumps = majorBumps(path, before, after)
     if (bumps.length) status.majorBumps = bumps
   }
@@ -484,8 +495,8 @@ async function send($, request: JevRequest, body: string) {
   }
 }
 
-async function git($, args: string[]): Promise<string> {
-  const r = await $.process.run(['git', ...args], { timeoutMs: 60_000 })
+async function git($, cwd: string, args: string[]): Promise<string> {
+  const r = await $.process.run(['git', ...args], { cwd, timeoutMs: 60_000 })
   if (r.exitCode !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr.trim().slice(0, 300)}`)
   return r.stdout
 }

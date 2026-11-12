@@ -13,7 +13,7 @@ dev-kit is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then ins
 
 ## Requirements
 
-- The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it.
+- The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it. A `## Proof` section in `pr-open` needs `gh` 2.99.0 or later, the first with `--attach`; an older `gh` fails `gh pr create` on that flag.
 - A GitHub repository. `ci-fix` and `pr-shepherd` handle GitHub Actions runs and GitHub check runs only.
 - To push a fix to a file under `.github/workflows/`, a token with the `workflow` scope.
 - For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
@@ -213,10 +213,24 @@ It pushes the current branch and fills the repository's pull request template. I
 - When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
 - When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line. A rewrite edits the current description: your own sentences, bot lines, extra sections such as `## Code story` and the tracker's link line at the end stay as they are.
 - With a TypeSafe key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
+- When the [pr-proof](../pr-proof/README.md) plugin's skills have left proof for the branch, it adds a **Proof** section just before **Risk**. See [Proof](#proof-from-pr-proof).
 
 When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
-Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label (or why it was not assessed), and a one-line suggestion to run `pr-shepherd` next.
+Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label (or why it was not assessed), the proof entries it rendered or left out and anything that failed to upload, and a one-line suggestion to run `pr-shepherd` next.
+
+#### Proof from pr-proof
+
+The pr-proof plugin's skills (videos, screenshots, terminal transcripts, API calls) record what they took in a manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, where `<repo>` is the name of the `origin` remote and `<branch>` the current branch with `/` written as `%2F`. `pr-open` only reads that file; it needs no other part of pr-proof installed.
+
+- No manifest means no **Proof** section. A manifest that does not parse, or has a `version` other than `1`, is ignored, and the report says so. An empty list of entries means proof was judged unnecessary: no section.
+- Each entry renders in manifest order as its claim, then its proof: screenshots taken at several widths as a table with a row per screen and a column per width, a video or a single image on its own line, a terminal or API transcript as a code block, folded into `<details>` past 20 lines.
+- When commits after an entry's proof changed the files it covers, the entry carries a note naming those commits. When history was rewritten since a proof was taken, one note under the heading says so.
+- An entry whose media or transcript file is missing is left out and named in the report.
+- The media are attached with `gh --attach`, so the description holds GitHub's `user-attachments` URLs. `pr-open` re-reads the description after the upload and reports anything that did not upload.
+- More than 50 media files: the description carries the first 50 and says how many follow; the rest go in comments of at most 50 each, marked `<!-- pr-proof:overflow -->`. On every run it first deletes your earlier marked comments, and leaves every other comment alone.
+- On an existing pull request it replaces the **Proof** section, inserts it when the description has none, or removes it when the manifest's list is empty. With no manifest, the section and its comments stay as they are.
+- The section does not count toward the one-screen length budget.
 
 ## Risk assessment (TypeSafe Jev)
 

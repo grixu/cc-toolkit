@@ -39,13 +39,13 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+      # pnpm 11 needs Node 22+, so Node is set up first; setup-node's pnpm cache would need pnpm installed before it.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       # The eval configs require the Claude Code sandbox (failIfUnavailable), which needs bubblewrap
