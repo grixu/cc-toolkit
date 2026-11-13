@@ -168,6 +168,8 @@ jobs:
         run: |
           pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
             --plugin-dir ../cc-toolkit/plugins/dev-kit \
+            --plugin-dir ../cc-toolkit/plugins/code-story \
+            --plugin-dir ../cc-toolkit/plugins/anti-slop \
             --permission-mode dontAsk \
             --strict-mcp-config \
             --setting-sources user \
@@ -184,6 +186,7 @@ jobs:
 - **The gate** is the last three lines. The job fails unless the run finished, no upgrade is blocked, and every escalated upgrade's decision is `accepted`. The compatibility verdict doesn't gate, because your build and tests already run on the pull request.
 - **The base commit** is checked out on purpose. On `pull_request`, `actions/checkout` defaults to the merge commit, which already holds the upgrade.
 - **The plugin checkout** stays outside the repository's directory, or the usage search reads it as part of your code.
+- **The three `--plugin-dir` flags** load dev-kit with the [code-story](/plugins/code-story/) and [anti-slop](/plugins/anti-slop/) plugins it depends on. Without them, dev-kit doesn't load.
 - **`--permission-mode dontAsk`** denies every call the skill doesn't pre-approve. The pre-approved set covers pnpm. For other ecosystems, add their lookups with `--allowedTools`.
 - **`--strict-mcp-config` and `--setting-sources user`** keep the repository's own Claude Code configuration, such as a `.mcp.json`, out of the run.
 - **A Claude subscription** works too: set `CLAUDE_CODE_OAUTH_TOKEN` to a token from `claude setup-token` in place of `ANTHROPIC_API_KEY`.

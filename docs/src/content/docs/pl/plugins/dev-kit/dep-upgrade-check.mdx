@@ -168,6 +168,8 @@ jobs:
         run: |
           pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
             --plugin-dir ../cc-toolkit/plugins/dev-kit \
+            --plugin-dir ../cc-toolkit/plugins/code-story \
+            --plugin-dir ../cc-toolkit/plugins/anti-slop \
             --permission-mode dontAsk \
             --strict-mcp-config \
             --setting-sources user \
@@ -184,6 +186,7 @@ jobs:
 - **Bramka** to trzy ostatnie linie. Job pada, chyba że run się zakończył, żadna aktualizacja nie jest zablokowana, a decyzja dla każdej aktualizacji z wynikiem escalated to `accepted`. Werdykt zgodności nie jest bramką, bo twój build i testy i tak działają na pull requeście.
 - **Commit bazowy** jest checkoutowany celowo. Przy `pull_request` `actions/checkout` domyślnie bierze commit merge'a, który ma już aktualizację.
 - **Checkout pluginu** leży poza katalogiem repozytorium, bo inaczej wyszukiwanie użyć potraktuje go jako część twojego kodu.
+- **Trzy flagi `--plugin-dir`** ładują dev-kit razem z pluginami [code-story](/pl/plugins/code-story/) i [anti-slop](/pl/plugins/anti-slop/), od których zależy. Bez nich dev-kit się nie załaduje.
 - **`--permission-mode dontAsk`** odrzuca każde wywołanie, którego skill nie ma z góry dozwolonego. Z góry dozwolony zestaw obejmuje pnpm. Dla innych ekosystemów dodaj ich zapytania przez `--allowedTools`.
 - **`--strict-mcp-config` i `--setting-sources user`** trzymają z dala od runu własną konfigurację Claude Code z repozytorium, na przykład `.mcp.json`.
 - **Subskrypcja Claude** też działa: zamiast `ANTHROPIC_API_KEY` ustaw `CLAUDE_CODE_OAUTH_TOKEN` na token z `claude setup-token`.

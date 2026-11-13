@@ -9,7 +9,9 @@ sidebar:
 
 This page follows one assessment from the diff to the level on the label. It's for readers who want to know why a pull request got its level, or who want to change how the assessment works. For what the result looks like on a pull request, see [The risk label](/plugins/dev-kit/risk-assessment/).
 
-In short, the change is split into slices, TypeSafe's Jev model answers fixed questions about each slice, and code turns the answers into a level. Jev never picks the level itself. Every rule that turns answers into a level is in code and is reported in the result.
+In short, the change is split into slices, a decision model answers fixed questions about each slice, and code turns the answers into a level. The model never picks the level itself. Every rule that turns answers into a level is in code and is reported in the result.
+
+The model is TypeSafe's Jev or Google's Gemini Decision, depending on the [backend you choose](/plugins/dev-kit/risk-assessment/#choose-a-backend). Both get the same questions, and their answers go through the same rules. This page names Jev, because the thresholds were calibrated on its answers.
 
 ## The pipeline
 
@@ -37,9 +39,13 @@ Figure 1. The requests of one assessment, from the diff to the report
 4. When the repository's testing rules were passed, a slice flagged as logic without tests gets one more request, the policy request.
 5. Code scores the factor answers into a level and builds the report.
 
-At most four Jev requests run at the same time. A request that fails with a rate limit or a server error is tried up to three times in all.
+At most four requests to each backend run at the same time. A request that fails with a rate limit or a server error is tried up to three times in all. Before a retry, the tool waits as long as the API's `Retry-After` header asks, or 1 and then 2 seconds without one, and never more than 10 seconds. The wait doesn't count toward the time limit of the hook that runs the tool.
+
+With both backends, each one runs the whole assessment on its own, and the [primary backend's](/plugins/dev-kit/risk-assessment/#choose-a-backend) result sets the level. When the primary backend fails, the other one's result stands.
 
 ## Step 1: Read the diff
+
+The tool runs git in the repository the session works in. When the session has moved to a directory outside it, such as a scratchpad, the tool uses the directory the session started in.
 
 The tool diffs `<base>...HEAD`, preferring `origin/<base>` over a local branch. It leaves out lockfiles, binaries, minified files, source maps, snapshots and anything under `dist/`, `build/`, `vendor/` or `node_modules/`. It cuts context lines to one around each change, which keeps more of the change inside one request.
 

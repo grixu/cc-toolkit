@@ -7,7 +7,7 @@ sidebar:
   order: 8
 ---
 
-Poziom ryzyka jest tak dobry, jak to, co model zobaczył i na co odpowiedział. Ta strona wyjaśnia sygnały, że poziom zasługuje na mniejszą wagę. Wyjaśnia też, co się dzieje, gdy części zmiany nie da się odczytać albo Jev nie odpowiada. Zakłada, że znasz kroki z [Jak liczony jest poziom ryzyka](/pl/plugins/dev-kit/risk-assessment/how-it-works/).
+Poziom ryzyka jest tak dobry, jak to, co model zobaczył i na co odpowiedział. Ta strona wyjaśnia sygnały, że poziom zasługuje na mniejszą wagę. Wyjaśnia też, co się dzieje, gdy części zmiany nie da się odczytać albo Jev nie odpowiada. Zakłada, że znasz kroki z [Jak liczony jest poziom ryzyka](/pl/plugins/dev-kit/risk-assessment/how-it-works/). Podobnie jak tamta strona mówi o Jev, a to samo dotyczy Gemini Decision.
 
 ## Pewność i `lowConfidence`
 
@@ -41,6 +41,8 @@ Co się dzieje, zależy od tego, które zapytanie zawiedzie:
 | Wszystkie zapytania o czynniki | Poziom pochodzi z samych zapytań o diff, a `scorer` ma wartość `"two-axis fallback"`. |
 | Zapytanie o politykę | Flaga „Logic without tests” zostaje. |
 | Grupowanie przez Haiku | Diff jest pakowany według rozmiaru i oceniany jako jedna zmiana bez podziału. `slicing.reason` mówi dlaczego. |
+| Jeden z dwóch backendów | Zostaje wynik drugiego backendu. Jego wpis w `comparison` zawiera błąd, a sekcja **Risk** pokazuje backend, który zawiódł, jako `failed`. |
+| Oba backendy | Ocena jest niedostępna, a powód podaje błąd każdego backendu. |
 
 Tabela 1. Co nieudane zapytanie robi z wynikiem
 
@@ -73,6 +75,17 @@ Wejście `risk_policy` zmienia tylko te reguły. Domyślne `calibrated-v1` zacho
 ## Jak oceniany jest scorer
 
 Scorer czynników jest mierzony na pull requestach, którym ludzie nadali poziom ryzyka. Oznaczone dane pochodzą z prywatnych repozytoriów, więc nie ma ich w tym repozytorium. Skrypty ewaluacji są w `plugins/dev-kit/evals/pr-risk/`. Ich [README](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md) wyjaśnia metrykę i sposób uruchamiania ewaluacji.
+
+Metryka to oczekiwany koszt na pull request, w którym zaniżenia liczą się podwójnie, więc niższy wynik jest lepszy. Na kohorcie deweloperskiej Gemini Decision oceniono na tych samych stanach co zapisane odpowiedzi Jev:
+
+| Backend | Koszt | Trafienia | Za wysoko | Za nisko | Groźne pomyłki (ważone) |
+|---|---|---|---|---|---|
+| Jev | 0,485 | 64,8% | 27,5% | 7,8% | 12 |
+| Gemini Decision | 0,478 | 68,4% | 18,8% | 12,7% | 19 |
+
+Tabela 2. Jev i Gemini Decision na kohorcie deweloperskiej, widok (b) etykiet
+
+Koszt wychodzi podobnie, ale Gemini ocenia niżej na skali: rzadziej zawyża, częściej zaniża i częściej przeocza zmiany o poziomie high albo critical. Progi dostrojono na Jev, więc Jev gra u siebie. Dlatego TypeSafe pozostaje domyślnym głównym backendem. [Wynik Gemini Decision](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12) w README podaje oba widoki etykiet.
 
 ## Następne kroki
 

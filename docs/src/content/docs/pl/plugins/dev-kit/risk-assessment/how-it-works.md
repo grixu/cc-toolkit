@@ -9,7 +9,9 @@ sidebar:
 
 Ta strona śledzi jedną ocenę od diffu do poziomu na etykiecie. Jest dla tych, którzy chcą wiedzieć, skąd pull request ma swój poziom, albo chcą zmienić sposób oceny. Jak wynik wygląda na pull requeście, opisuje strona [Etykieta ryzyka](/pl/plugins/dev-kit/risk-assessment/).
 
-W skrócie: zmiana jest dzielona na slice’y, model Jev od TypeSafe odpowiada na stałe pytania o każdy slice, a kod zamienia odpowiedzi w poziom. Jev nigdy sam nie wybiera poziomu. Każda reguła, która zamienia odpowiedzi w poziom, jest w kodzie i trafia do wyniku.
+W skrócie: zmiana jest dzielona na slice’y, model decyzyjny odpowiada na stałe pytania o każdy slice, a kod zamienia odpowiedzi w poziom. Model nigdy sam nie wybiera poziomu. Każda reguła, która zamienia odpowiedzi w poziom, jest w kodzie i trafia do wyniku.
+
+Tym modelem jest Jev od TypeSafe albo Gemini Decision od Google, zależnie od [wybranego backendu](/pl/plugins/dev-kit/risk-assessment/#wybierz-backend). Oba dostają te same pytania, a ich odpowiedzi przechodzą przez te same reguły. Ta strona mówi o Jev, bo progi skalibrowano na jego odpowiedziach.
 
 ## Przebieg
 
@@ -37,9 +39,13 @@ Rysunek 1. Zapytania jednej oceny, od diffu do raportu
 4. Gdy przekazano zasady testowania repozytorium, slice oznaczony jako logika bez testów dostaje jeszcze jedno zapytanie, zapytanie o politykę.
 5. Kod ocenia odpowiedzi o czynniki, wylicza poziom i buduje raport.
 
-Naraz działają najwyżej cztery zapytania do Jev. Zapytanie, które padnie przez rate limit albo błąd serwera, jest próbowane łącznie do trzech razy.
+Naraz działają najwyżej cztery zapytania do każdego backendu. Zapytanie, które padnie przez rate limit albo błąd serwera, jest próbowane łącznie do trzech razy. Przed kolejną próbą narzędzie czeka tyle, ile każe nagłówek `Retry-After` z API, a bez niego najpierw 1, potem 2 sekundy, i nigdy dłużej niż 10 sekund. To czekanie nie wlicza się do limitu czasu hooka, który uruchamia narzędzie.
+
+Przy obu backendach każdy przeprowadza całą ocenę osobno, a poziom ustala wynik [głównego backendu](/pl/plugins/dev-kit/risk-assessment/#wybierz-backend). Gdy główny backend zawiedzie, zostaje wynik drugiego.
 
 ## Krok 1: odczyt diffu
+
+Narzędzie uruchamia git w repozytorium, w którym pracuje sesja. Gdy sesja przeszła do katalogu poza nim, na przykład do scratchpada, narzędzie używa katalogu, w którym sesja wystartowała.
 
 Narzędzie liczy diff `<base>...HEAD`, wybierając `origin/<base>` przed lokalnym branchem. Pomija lockfile'y, pliki binarne, pliki zminifikowane, source mapy, snapshoty i wszystko w `dist/`, `build/`, `vendor/` albo `node_modules/`. Przycina linie kontekstu do jednej wokół każdej zmiany, dzięki czemu w jednym zapytaniu mieści się więcej zmiany.
 

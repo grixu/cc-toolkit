@@ -7,7 +7,7 @@ sidebar:
   order: 8
 ---
 
-A risk level is only as good as what the model saw and answered. This page explains the signals that a level deserves less weight. It also explains what happens when part of the change can't be read or Jev doesn't answer. It assumes you know the steps from [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/).
+A risk level is only as good as what the model saw and answered. This page explains the signals that a level deserves less weight. It also explains what happens when part of the change can't be read or Jev doesn't answer. It assumes you know the steps from [How a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/). Like that page, it names Jev, and the same holds for Gemini Decision.
 
 ## Confidence and `lowConfidence`
 
@@ -41,6 +41,8 @@ What happens depends on which request fails:
 | Every factor request | The level comes from the diff requests alone, and `scorer` is `"two-axis fallback"`. |
 | A policy request | The "Logic without tests" flag stays. |
 | Haiku's slicing | The diff is packed by size and assessed as one unsliced change. `slicing.reason` says why. |
+| One of two backends | The other backend's result stands. Its `comparison` entry holds the error, and the **Risk** section shows the failed backend as `failed`. |
+| Both backends | The assessment is unavailable, and the reason names each backend's error. |
 
 Table 1. What a failed request does to the result
 
@@ -73,6 +75,17 @@ The `risk_policy` input changes only these rules. The default `calibrated-v1` ke
 ## How the scorer is evaluated
 
 The factor scorer is measured against pull requests that people labelled with a risk level. The labelled data comes from private repositories, so it isn't in this repository. The evaluation scripts are, in `plugins/dev-kit/evals/pr-risk/`. Its [README](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md) explains the metric and how to run the evaluations.
+
+The metric is the expected cost per pull request, with under-estimates counted twice, so lower is better. On the development cohort, Gemini Decision was scored on the same states as the recorded Jev answers:
+
+| Backend | Cost | Exact | Too high | Too low | Dangerous misses (weighted) |
+|---|---|---|---|---|---|
+| Jev | 0.485 | 64.8% | 27.5% | 7.8% | 12 |
+| Gemini Decision | 0.478 | 68.4% | 18.8% | 12.7% | 19 |
+
+Table 2. Jev and Gemini Decision on the development cohort, view (b) of the labels
+
+The cost is at parity, but Gemini rates lower on the scale: it over-estimates less, under-estimates more, and misses more high or critical changes. The thresholds were tuned on Jev, so Jev has the home advantage. That's why TypeSafe stays the default primary backend. The [Gemini Decision result](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12) in the README gives both views of the labels.
 
 ## Next steps
 

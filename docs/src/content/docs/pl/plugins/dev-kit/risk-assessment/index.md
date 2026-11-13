@@ -36,7 +36,7 @@ Dziesięć linii zmieniających, kto może czytać dane klientów, może dostać
 
 Tabela 1. Cztery poziomy ryzyka
 
-Poziom pochodzi z modelu, [Jev od TypeSafe](https://docs.typesafe.ai/introduction), więc traktuj go jako dowód, a nie werdykt.
+Poziom pochodzi z modelu decyzyjnego, [Jev od TypeSafe](https://docs.typesafe.ai/introduction) albo [Gemini Decision](https://aistudio.google.com/docs/decisions-api) od Google, więc traktuj go jako dowód, a nie werdykt.
 `pr-open` cytuje go tak, jak go dostał, i nigdy go nie koryguje.
 
 ## Co widzisz na pull requeście
@@ -69,7 +69,7 @@ Gdy odświeżenie zmienia poziom, `pr-open` zamienia starą etykietę na nową.
 
 ## Co opuszcza twój komputer
 
-Ocena wysyła do API TypeSafe:
+Ocena wysyła do API backendu, TypeSafe albo Google, a przy obu backendach do każdego z nich:
 
 - diff brancha względem bazy, bez lockfile'ów, plików binarnych i innych plików, które narzędzie [pomija](/pl/plugins/dev-kit/risk-assessment/how-it-works/#krok-1-odczyt-diffu);
 - opisy commitów;
@@ -80,22 +80,48 @@ Ocena wysyła do API TypeSafe:
 Gdy `pr-open` nie pogrupuje plików w slice’y sam, narzędzie prosi o to Claude Haiku, na twoim koncie Claude Code.
 Haiku dostaje ścieżki plików, liczby linii, nagłówki hunków i opisy commitów, ale nie diff.
 
-Bez klucza API TypeSafe nic nie jest wysyłane.
+Bez klucza TypeSafe ani Gemini nic nie jest wysyłane.
 Narzędzie nie istnieje, a `pr-open` podaje `Risk: not assessed`.
+
+Przy obu backendach każda para wyników trafia też do pliku `~/.cache/dev-kit/compare.jsonl` na twoim komputerze.
+Plik zawiera poziomy, nazwę katalogu repozytorium, branch, commit i bazę, ale nigdy diff.
 
 ## Włącz ją
 
-Etykieta ryzyka wymaga Claude Code w wersji 2.1.287 lub nowszej, który ładuje moda pluginu, i klucza API [TypeSafe](https://docs.typesafe.ai/introduction).
+Etykieta ryzyka wymaga Claude Code w wersji 2.1.287 lub nowszej, który ładuje moda pluginu, i klucza API do co najmniej jednego backendu:
+
+- **TypeSafe:** klucz API [TypeSafe](https://docs.typesafe.ai/introduction).
+- **Gemini Decision:** klucz Gemini Developer API z dostępem do `gemini-decision-1`. Klucz Vertex AI nie zadziała.
+
 Klucz ustawisz na jeden z dwóch sposobów:
 
-- Wyeksportuj `TYPESAFE_API_KEY` w powłoce, z której uruchamiasz Claude Code.
-- Albo uruchom `/plugin configure dev-kit@cc-toolkit` i wpisz go jako opcję **TypeSafe API key**. Claude Code przechowuje go w systemowym magazynie poświadczeń, a ma on pierwszeństwo przed zmienną.
+- Wyeksportuj `TYPESAFE_API_KEY` albo `GEMINI_DECISIONS_API_KEY` (a gdy go brak, `GEMINI_API_KEY`) w powłoce, z której uruchamiasz Claude Code.
+- Albo uruchom `/plugin configure dev-kit@cc-toolkit` i wpisz go jako opcję **TypeSafe API key** albo **Gemini API key**. Claude Code przechowuje go w systemowym magazynie poświadczeń, a ma on pierwszeństwo przed zmienną.
 
 Klucz ustawiony albo zmieniony w trakcie sesji zaczyna działać po `/reload-plugins`.
 [Etykieta ryzyka: referencja](/pl/plugins/dev-kit/risk-assessment/reference/) wymienia pozostałe opcje, na przykład nazwę etykiety i wersję modelu.
 
 Narzędzie stojące za etykietą to `pr_risk` (`mcp__dev-kit__pr_risk`).
 Nie ma dla niego komendy: woła je `pr-open`, a Claude może je też wywołać, gdy zapytasz, jak ryzykowny jest branch.
+
+## Wybierz backend
+
+Backend wybiera opcja **Decision backend** (`decision_backend`):
+
+| Wartość | Co się dzieje |
+|---|---|
+| `auto` (domyślna) | Narzędzie używa backendu, którego klucz jest ustawiony. Przy obu kluczach `pr-open` pyta, czy użyć TypeSafe, Gemini czy obu, i proponuje zapisanie odpowiedzi w tej opcji. |
+| `typesafe` albo `gemini` | Zmianę ocenia tylko ten backend. Bez jego klucza ocena jest niedostępna. |
+| `both` | Potrzebne są oba klucze, a oba backendy działają równolegle. Opcja **Primary backend** (`primary_backend`, domyślnie TypeSafe) ustala poziom, flagi i etykietę. Sekcja **Risk** pokazuje obok poziom drugiego backendu i mówi, czy się różnią. |
+
+Tabela 2. Wartości opcji Decision backend
+
+Gdy jeden z dwóch backendów zawiedzie, zostaje wynik drugiego.
+
+Na razie zostaw TypeSafe jako główny backend.
+Progi oceny skalibrowano na odpowiedziach Jev.
+Na kohorcie deweloperskiej Gemini Decision dorównuje Jev w łącznym koszcie, ale częściej zaniża ocenę zmian wysokiego ryzyka.
+Liczby podaje sekcja [Jak oceniany jest scorer](/pl/plugins/dev-kit/risk-assessment/reliability/#jak-oceniany-jest-scorer).
 
 ## Popraw ocenę
 

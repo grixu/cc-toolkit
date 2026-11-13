@@ -15,7 +15,7 @@ Open the options with `/plugin configure dev-kit@cc-toolkit`. A change takes eff
 
 | Option | Default | What it does |
 |---|---|---|
-| `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The TypeSafe API key. Without one, the tool doesn't exist and nothing is sent. |
+| `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The TypeSafe API key. Without it and without a Gemini key, the tool doesn't exist and nothing is sent. |
 | `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the API. `/v1/systemone` is appended. |
 | `typesafe_model` | `jev-1.14.0` | Model name or alias. Pin a version to keep levels stable across Jev releases. |
 | `gemini_api_key` | empty, reads `GEMINI_DECISIONS_API_KEY`, then `GEMINI_API_KEY` | A Gemini Developer API key with access to `gemini-decision-1`. A Vertex AI key doesn't work: the Decisions API exists only on the Gemini Developer API. |
@@ -26,6 +26,8 @@ Open the options with `/plugin configure dev-kit@cc-toolkit`. A change takes eff
 | `risk_levels` | `low`, `medium`, `high`, `critical` | Names of the four levels, from lowest to highest. Any count other than four falls back to the default. |
 
 Table 1. Plugin options
+
+`decision_backend` and `primary_backend` are fixed-choice options, which need Claude Code v2.1.271 or later. The plugin's mod already needs v2.1.287, so a version that runs the tool shows them.
 
 ## Tool inputs
 

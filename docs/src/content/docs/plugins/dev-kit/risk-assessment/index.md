@@ -36,7 +36,7 @@ A ten-line change to who can read customer data can be high or critical.
 
 Table 1. The four risk levels
 
-The level comes from a model, [TypeSafe's Jev](https://docs.typesafe.ai/introduction), so treat it as evidence, not a verdict.
+The level comes from a decision model, [TypeSafe's Jev](https://docs.typesafe.ai/introduction) or Google's [Gemini Decision](https://aistudio.google.com/docs/decisions-api), so treat it as evidence, not a verdict.
 `pr-open` quotes it as returned and never adjusts it.
 
 ## What you see on the pull request
@@ -69,7 +69,7 @@ When a refresh changes the level, `pr-open` swaps the old label for the new one.
 
 ## What leaves your machine
 
-The assessment sends the following to TypeSafe's API:
+The assessment sends the following to the backend's API, TypeSafe's or Google's, and with both backends to each:
 
 - the diff of the branch against its base, without lockfiles, binaries and the other files the tool [leaves out](/plugins/dev-kit/risk-assessment/how-it-works/#step-1-read-the-diff);
 - the commit messages;
@@ -80,22 +80,48 @@ The assessment sends the following to TypeSafe's API:
 When `pr-open` doesn't group the files into slices itself, the tool asks Claude Haiku to do it, on your Claude Code account.
 Haiku gets the file paths, line counts, hunk headers and commit messages, but not the diff.
 
-Without a TypeSafe API key, nothing is sent.
+Without a TypeSafe or a Gemini key, nothing is sent.
 The tool doesn't exist, and `pr-open` reports `Risk: not assessed`.
+
+With both backends, each pair of results is also logged to `~/.cache/dev-kit/compare.jsonl` on your machine.
+The log holds the levels, the repository's directory name, the branch, the commit and the base, never the diff.
 
 ## Turn it on
 
-The risk label needs Claude Code v2.1.287 or later, which loads the plugin's mod, and a [TypeSafe](https://docs.typesafe.ai/introduction) API key.
-Set the key in one of two ways:
+The risk label needs Claude Code v2.1.287 or later, which loads the plugin's mod, and an API key for at least one backend:
 
-- Export `TYPESAFE_API_KEY` in the shell you start Claude Code from.
-- Or run `/plugin configure dev-kit@cc-toolkit` and enter it as the **TypeSafe API key** option. Claude Code keeps it in your system's credential store, and it takes precedence over the variable.
+- **TypeSafe:** a [TypeSafe](https://docs.typesafe.ai/introduction) API key.
+- **Gemini Decision:** a Gemini Developer API key with access to `gemini-decision-1`. A Vertex AI key doesn't work.
+
+Set a key in one of two ways:
+
+- Export `TYPESAFE_API_KEY`, or `GEMINI_DECISIONS_API_KEY` (falling back to `GEMINI_API_KEY`), in the shell you start Claude Code from.
+- Or run `/plugin configure dev-kit@cc-toolkit` and enter it as the **TypeSafe API key** or **Gemini API key** option. Claude Code keeps it in your system's credential store, and it takes precedence over the variable.
 
 A key set or changed during a session takes effect after `/reload-plugins`.
 [Risk label reference](/plugins/dev-kit/risk-assessment/reference/) lists the other options, such as the label name and the model version.
 
 The tool behind the label is `pr_risk` (`mcp__dev-kit__pr_risk`).
 There's no slash command for it: `pr-open` calls it, and Claude can also call it when you ask how risky a branch is.
+
+## Choose a backend
+
+The **Decision backend** option (`decision_backend`) picks the backend:
+
+| Value | What happens |
+|---|---|
+| `auto` (default) | The tool uses the backend whose key is set. With both keys, `pr-open` asks you whether to use TypeSafe, Gemini or both, and suggests saving the answer in this option. |
+| `typesafe` or `gemini` | Only that backend assesses the change. Without its key, the assessment is unavailable. |
+| `both` | Both keys are needed, and the two backends run side by side. The **Primary backend** option (`primary_backend`, TypeSafe by default) sets the level, the flags and the label. The **Risk** section shows the other backend's level beside it and says whether the two differ. |
+
+Table 2. Values of the Decision backend option
+
+When one of two backends fails, the other one's result stands.
+
+Keep TypeSafe as the primary backend for now.
+The scoring thresholds were calibrated on Jev's answers.
+On the development cohort, Gemini Decision matches Jev's overall cost, but rates more high-risk changes too low.
+[How the scorer is evaluated](/plugins/dev-kit/risk-assessment/reliability/#how-the-scorer-is-evaluated) gives the numbers.
 
 ## Get a better assessment
 
