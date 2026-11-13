@@ -1,4 +1,4 @@
-pr-proof can now decide which proof a branch's change needs, produce it, and record it where dev-kit's `pr-open` will pick it up. So far it could only record a walkthrough video. Reviewers then get screenshots, terminal or API transcripts, or a video they can check without running the branch.
+pr-proof can now decide which proof a branch's change needs, produce it, and record it where dev-kit's `pr-open` will pick it up. Reviewers then get screenshots, terminal or API transcripts, or a video they can check without running the branch. Until now it could only record a walkthrough video.
 
 | | Before | After |
 |---|---|---|
