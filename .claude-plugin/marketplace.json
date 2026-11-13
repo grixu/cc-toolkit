@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "cc-toolkit",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "owner": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
@@ -12,7 +12,7 @@
       "name": "codex-plan-improver",
       "source": "./plugins/codex-plan-improver",
       "description": "Intercepts ExitPlanMode to automatically review implementation plans via OpenAI Codex CLI. Includes /codex-review command for manual invocation.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "Mateusz Gostański",
         "email": "mg@grixu.dev"
