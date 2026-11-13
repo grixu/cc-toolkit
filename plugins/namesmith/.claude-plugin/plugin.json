@@ -1,6 +1,6 @@
 {
   "name": "namesmith",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Business name discovery: generates candidates, challenges them with a sub-agent, then checks domain availability via Instant Domain Search MCP.",
   "author": {
     "name": "Mateusz Gostański",
