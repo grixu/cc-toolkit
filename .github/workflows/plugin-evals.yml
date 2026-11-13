@@ -129,7 +129,7 @@ jobs:
           set -e
           # results.json points each run at $TMPDIR/claude-eval-*; without its trace and workspace a failure cannot be read.
           # --keep-temp seals what the run wrote to its home and tmp (mode 000), and the story workdir lives there;
-          # these are our own plugins, so open the seal before copying. config/ holds account ids and stays out.
+          # these are our own plugins, so open the seal before copying. config/ is the harness's state and account ids.
           mkdir -p "$out/runs"
           for d in "$TMPDIR"/claude-eval-*/; do
             [ -d "$d" ] || continue
@@ -139,18 +139,26 @@ jobs:
             cp -r "$d/out" "$d/sealed" "$run/" 2>/dev/null || true
           done
           chmod -R u+rwX "$out/runs"
-          # The artifact is readable by anyone who can see the repo, so never ship a run that captured the token.
+          # The bucket outlives this job, so never store a run that captured the token.
           if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$out/runs"; then
-            echo "::warning::a run captured the OAuth token; dropping the run directories from the artifact"
+            echo "::warning::a run captured the OAuth token; dropping the run directories from the upload"
             rm -rf "$out/runs"
           fi
           exit "$rc"
-      - name: Upload results
+      # Traces and workspaces go to the private R2 bucket the pr-risk evals use, never to a public Actions artifact.
+      # Fetch one with: aws s3 cp --recursive "s3://$R2_BUCKET/<key>" <dir> --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+      - name: Upload results to R2
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.suite }}-eval-results
-          path: ${{ runner.temp }}/eval-${{ matrix.suite }}/
-          if-no-files-found: ignore
-          # Workspaces keep the story under .scratch/ and the fixture repo's .git.
-          include-hidden-files: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          src="$RUNNER_TEMP/eval-$SUITE"
+          [ -d "$src" ] || { echo "no results to upload"; exit 0; }
+          key="plugin-evals/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/$SUITE/"
+          aws s3 cp --recursive --only-show-errors "$src" "s3://$R2_BUCKET/$key" \
+            --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          echo "Eval results: \`s3://\$R2_BUCKET/$key\` (R2)" >> "$GITHUB_STEP_SUMMARY"
