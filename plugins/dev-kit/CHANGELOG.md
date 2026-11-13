@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `pr-open`: a background subagent builds or updates the branch's code story, and the description gets a `## Code story` section with its link, refreshed in place on later runs
+- `pr-open`: the description's prose goes through `anti-slop` before the PR is opened
+- dev-kit depends on the `code-story` and `anti-slop` plugins, which install with it
+
+### Security
+- `pr-open`: when looking for a stacked base, skips pull requests from forks and other PRs whose branch name holds anything but letters, digits, `.`, `_`, `/` and `-`, and single-quotes the names it uses, so a branch name with `'`, `$(…)` or backticks never reaches a git command; skipped PRs are named in the report
+
 ## [0.10.0] - 2026-11-13
 
 ### Added

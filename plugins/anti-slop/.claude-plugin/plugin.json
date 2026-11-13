@@ -1,0 +1,18 @@
+{
+  "name": "anti-slop",
+  "version": "0.0.0",
+  "description": "Clean AI slop out of English and Polish prose so it reads plain and human without changing what it says: unsupported claims, staged contrasts and closers, forced triads, rare words where common ones fit, inflated and corporate language. One skill merging cw-ai-check, humanizer, Strunk's composition rules and miodkuj, with a scan script for the mechanical tells.",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "writing",
+    "ai-slop",
+    "humanizer",
+    "plain-language",
+    "editing",
+    "polish"
+  ]
+}

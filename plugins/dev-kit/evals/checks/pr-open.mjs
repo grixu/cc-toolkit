@@ -81,6 +81,21 @@ function bodyChecks(parsed) {
         .some((s) => /\b(tested|verified|checked|clicked through)\b[^.]{0,20}\bbrowser/i.test(s) && !/\b(not|nothing|nobody|no one|never|yet)\b|n't\b/i.test(s)),
       'claims a browser check that never happened',
     ],
+    ...slopChecks(body),
+  ];
+}
+
+// Tells anti-slop removes on a single sighting, plus seamless, pivotal and cornerstone, which it treats as
+// cluster tells but a PR body should not carry even once; table rows are skipped because "—" marks an empty cell.
+function slopChecks(body) {
+  const proseOutsideTables = prose(body)
+    .split('\n')
+    .filter((l) => !/^\s*\|/.test(l))
+    .join('\n');
+  return [
+    [!/—/.test(proseOutsideTables), 'an em dash joins clauses in the prose (anti-slop did not run or missed it)'],
+    [!/\bnot (just|only|merely)\b/i.test(proseOutsideTables), 'a "not just X, but Y" contrast in the prose'],
+    [!/\b(delve|seamless(ly)?|pivotal|cornerstone|testament to)\b/i.test(proseOutsideTables), 'AI-scent vocabulary in the prose'],
   ];
 }
 

@@ -6,7 +6,7 @@
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
   },
-  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, transcription, naming, hook rules, and a sound when Claude waits for you",
+  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, code stories, AI-slop cleanup for prose, transcription, naming, hook rules, and a sound when Claude waits for you",
   "plugins": [
     {
       "name": "codex-plan-improver",
@@ -244,6 +244,43 @@
         "stop",
         "subagents",
         "ask-user-question"
+      ]
+    },
+    {
+      "name": "code-story",
+      "source": "./plugins/code-story",
+      "description": "Turn a branch, a pull request or a stack of them into a code story: a chaptered page that teaches how and why the change works, re-cut into the steps it could have been reviewed in, with notes pinned to the lines they explain, built-in dark diagrams, English plus an optional second language, and updates published under the same link.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "code-story",
+        "pull-request",
+        "explainer",
+        "onboarding",
+        "diagrams"
+      ]
+    },
+    {
+      "name": "anti-slop",
+      "source": "./plugins/anti-slop",
+      "description": "Clean AI slop out of English and Polish prose so it reads plain and human without changing what it says: unsupported claims, staged contrasts and closers, forced triads, rare words where common ones fit, inflated and corporate language. One skill merging cw-ai-check, humanizer, Strunk's composition rules and miodkuj, with a scan script for the mechanical tells.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "writing",
+        "ai-slop",
+        "humanizer",
+        "plain-language",
+        "editing",
+        "polish"
       ]
     }
   ]

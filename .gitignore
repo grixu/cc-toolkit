@@ -16,6 +16,8 @@ plugins/*/evals/.results/
 plugins/*/evals/*/local/
 # research write-ups that cite private pull requests; kept in private storage, not in this public repo
 plugins/*/docprivate/
+# claude plugin eval run output
+plugins/*/evals/results/
 
 # the target app's own runtime store, written on every boot
 plugins/tester/evals/fixtures/target-app/state.json
