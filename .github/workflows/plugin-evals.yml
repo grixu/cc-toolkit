@@ -81,16 +81,15 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
           git --version
-      # Under bwrap's AppArmor profile the unix-socket seccomp helper cannot write /proc/self/setgroups,
-      # which kills every Bash call (anthropics/claude-code#43454). `claude plugin eval` writes each run's
-      # own settings.json, so the switch goes into managed settings, which take precedence over it.
-      # Allowing unix sockets lets sandboxed Bash reach any socket it can see; the docker socket would let
-      # it mount / and read this job's token, so it becomes root-only, and no case runs Docker.
-      - name: Allow unix sockets in the eval sandbox
+      # The bwrap-userns-restrict profile moves bwrap's children into unpriv_bwrap, whose `audit deny capability`
+      # leaves the unix-socket seccomp helper unable to write /proc/self/setgroups, so every Bash call dies
+      # (anthropics/claude-code#43454). `claude plugin eval` forces allowAllUnixSockets off, so no setting skips
+      # the helper; unloading the profile on this throwaway runner keeps the seccomp filter instead.
+      - name: Unload the bwrap AppArmor profile
         run: |
-          sudo mkdir -p /etc/claude-code
-          echo '{"sandbox":{"network":{"allowAllUnixSockets":true}}}' | sudo tee /etc/claude-code/managed-settings.json
-          sudo chmod 600 /var/run/docker.sock
+          if [ -f /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict
+          fi
       - name: Install Claude Code
         run: |
           curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_CODE_VERSION"
