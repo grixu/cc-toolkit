@@ -453,13 +453,19 @@ test('with both keys and no choice, asks for one before sending anything', async
   expect(requests).toBe(0)
 })
 
-function loggingProcess(files: File[], lines: string[][]) {
+const NO_ORIGIN = { value: { exitCode: 2, stdout: '', stderr: "error: No such remote 'origin'" } }
+
+function loggingProcess(files: File[], lines: string[][], origin: string | null = 'git@github.com:acme/shop.git\n') {
   const git = fakeProcess(files)
   return ($, e) => {
     const argv: string[] = e.argv
     if (argv[0] === 'sh') {
       lines.push(argv.slice(-2))
       return ok('')
+    }
+    if (argv[1] === 'remote') {
+      expect(e.init?.cwd).toBe('/work')
+      return origin === null ? NO_ORIGIN : ok(origin)
     }
     if (argv[1] === 'rev-parse' && argv[2] === 'HEAD') return ok('abc123\n')
     if (argv[1] === 'branch') return ok('feat/x\n')
@@ -486,10 +492,27 @@ test('with both backends, answers from the primary, compares both and logs the p
   expect(lines.length).toBe(1)
   expect(lines[0][0]).toBe('/home/u/.cache/pr-proof/compare.jsonl')
   const logged = JSON.parse(lines[0][1])
-  expect(logged).toMatchObject({ repo: 'work', branch: 'feat/x', head: 'abc123', base: 'origin/main' })
+  expect(logged).toMatchObject({ repo: 'shop', branch: 'feat/x', head: 'abc123', base: 'origin/main' })
   expect(logged.results.map((r) => r.backend)).toEqual(['typesafe', 'gemini'])
   expect(lines[0][1]).not.toContain('Button')
 })
+
+for (const { origin, repo } of [
+  { origin: 'https://github.com/acme/shop\n', repo: 'shop' },
+  { origin: 'https://github.com/acme/shop.git/\n', repo: 'shop' },
+  { origin: null, repo: 'work' },
+]) {
+  test(`logs the repository as ${repo} for the origin ${JSON.stringify(origin)}`, async ($, on) => {
+    mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g', HOME: '/home/u' })
+    const lines: string[][] = []
+    on('process.run', loggingProcess(UI_CHANGE, lines, origin))
+    on('http.fetch', ($, e) => ({ value: e.url === GEMINI_URL ? geminiAnswer() : jevAnswer() }))
+
+    await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })
+
+    expect(JSON.parse(lines[0][1]).repo).toBe(repo)
+  })
+}
 
 test('with both backends, a failed one leaves the other answering and is named in the comparison', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })

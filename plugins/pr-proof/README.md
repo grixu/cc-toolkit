@@ -19,7 +19,8 @@ If you used walkthrough-video as a personal skill before, delete `~/.claude/skil
 - Node.js 22.18 or later and `pnpm`. playwright-recast and `@playwright/test` run through `pnpm dlx`; nothing is installed into the repository.
 - `ffmpeg` and `ffprobe` on `PATH`, with libass for burned-in captions.
 - `timeout` on `PATH` (on macOS, from coreutils).
-- The GitHub CLI `gh` 2.103 or later, logged in, to attach the video to a pull request.
+- `jq` on `PATH`. Every skill that produces proof writes the manifest with it.
+- The GitHub CLI `gh` 2.103 or later, logged in, only when you run `walkthrough-video` on its own and it attaches the video to the pull request itself. Under `prepare-proof` it runs in `record-only` mode, and `pr-open` attaches the video.
 - Optional: the firecrawl MCP server, which the tool check uses to read playwright-recast's release notes; `gh` works for that too.
 - Optional: `agent-browser` on `PATH` for screenshots. Without it, `screenshot-proof` uses Playwright through `pnpm dlx`.
 - Optional: a TypeSafe API key, a Gemini Developer API key with access to `gemini-decision-1`, or both, for the `proof_signals` tool.
@@ -50,7 +51,7 @@ dev-kit's `pr-open` reads the manifest and writes a `## Proof` section into the 
 
 `mcp__pr-proof__proof_signals` asks a decision model, TypeSafe's Jev or Google's Gemini Decision, which kinds of proof a change needs. It takes `{ base, backend? }`: the branch the change merges into, and the backend the user chose (`typesafe`, `gemini` or `both`). It sends the diffstat and the diff of `<base>...HEAD`, and returns, for each of `screenshots`, `video`, `api` and `terminal`, a signal (`suggest`, `reject` or `uncertain`) with its probability. It also says whether the change affects behaviour at all, which backend and model answered, and how much of the diff it assessed. A failure returns `Proof signals unavailable: <reason>`.
 
-With both keys set and `decision_backend` on `auto`, the tool returns `Backend choice needed: …` without sending anything, and `prepare-proof` asks you. With `both`, the two backends run side by side: the primary backend's signals come first, `comparison` holds each backend's signals (or its error, while the other still answers), and each pair is appended to `~/.cache/pr-proof/compare.jsonl` with the repository, branch, commit and base, never the diff.
+With both keys set and `decision_backend` on `auto`, the tool returns `Backend choice needed: …` without sending anything, and `prepare-proof` asks you. With `both`, the two backends run side by side: the primary backend's signals come first, `comparison` holds each backend's signals (or its error, while the other still answers), and each pair is appended to `~/.cache/pr-proof/compare.jsonl` with the repository (named from the origin remote, as in the manifest's path), branch, commit and `base`, never the diff. `base` holds the ref the diff was taken against, such as `origin/main`, not the branch name you passed.
 
 The tool exists only when a TypeSafe or Gemini key is set. With neither it is not registered and nothing leaves the machine; `prepare-proof` then judges from the diff alone.
 
