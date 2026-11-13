@@ -43,6 +43,8 @@ mkdirSync(join(dir, 'chapters'), { recursive: true })
 chapters.forEach((c, k) => writeFileSync(join(dir, 'chapters', `${String(k + 1).padStart(2, '0')}.html`), c + '\n'))
 const story = {
   base: meta.base,
+  // Older pages carry no head-ref; leaving head unset keeps HEAD.
+  head: meta['head-ref'],
   languages,
   title,
   pr: meta.pr ? Number(meta.pr) : null,

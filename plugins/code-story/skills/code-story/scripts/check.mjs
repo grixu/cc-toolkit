@@ -184,7 +184,7 @@ function checkCounters(preAttrs, lines, label, errors) {
 function checkLineNumbers({ base, path, preAttrs, lines, git, label }, errors, warnings) {
   const shown = git.file(base ? 'base' : 'head', path)
   if (!shown) {
-    errors.push(`${label}: no such file at ${base ? 'the base' : 'HEAD'}; fix the path, or tag the header (dependency, unchanged) when it is not this repository's file`)
+    errors.push(`${label}: no such file at ${git.where(base ? 'base' : 'head')}; fix the path, or tag the header (dependency, unchanged) when it is not this repository's file`)
     return
   }
   const other = git.file(base ? 'head' : 'base', path)
@@ -265,7 +265,13 @@ function normal(line) {
 function gitReader(cwd, meta) {
   const cache = new Map()
   const refs = { base: meta['base-sha'], head: meta.uncommitted === 'true' ? null : meta.head }
+  const short = (sha) => (sha ?? '').slice(0, 12)
   return {
+    where(side) {
+      if (side === 'base') return `the base ${meta.base} (${short(refs.base)})`
+      if (refs.head === null) return 'the working tree'
+      return `the head ${meta['head-ref'] ?? 'HEAD'} (${short(refs.head)})`
+    },
     file(side, path) {
       const key = `${side}:${path}`
       if (!cache.has(key)) cache.set(key, read(side, path))
