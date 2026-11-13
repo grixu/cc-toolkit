@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "cc-toolkit",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "owner": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
@@ -250,7 +250,7 @@
       "name": "code-story",
       "source": "./plugins/code-story",
       "description": "Turn a branch, a pull request or a stack of them into a code story: a chaptered page that teaches how and why the change works, re-cut into the steps it could have been reviewed in, with notes pinned to the lines they explain, built-in dark diagrams, English plus an optional second language, and updates published under the same link.",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "author": {
         "name": "Mateusz Gostański",
         "email": "mg@grixu.dev"

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-13
+
 ### Added
 
 - `code-story` skill, adapted from `will-ness-ai/skills`: builds a chaptered page that teaches how and why a branch, a pull request or a stack of pull requests works. Publishes it as an Artifact and ends with a `CODE_STORY` result line for other skills.
