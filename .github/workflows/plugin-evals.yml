@@ -125,12 +125,14 @@ jobs:
           set -e
           # results.json points each run at /tmp/claude-eval-*; without its trace and workspace a failure cannot be read.
           # --keep-temp seals what the run wrote to its home and tmp (mode 000), and the story workdir lives there;
-          # these are our own plugins, so open the seal before copying.
+          # these are our own plugins, so open the seal before copying. config/ holds account ids and stays out.
           mkdir -p "$out/runs"
           for d in /tmp/claude-eval-*/; do
             [ -d "$d" ] || continue
             chmod -R u+rwX "$d" 2>/dev/null || true
-            cp -r "$d" "$out/runs/" || true
+            run="$out/runs/$(basename "$d")"
+            mkdir -p "$run"
+            cp -r "$d/out" "$d/sealed" "$run/" 2>/dev/null || true
           done
           chmod -R u+rwX "$out/runs"
           # The artifact is readable by anyone who can see the repo, so never ship a run that captured the token.
