@@ -22,7 +22,7 @@ const id = `supporting-${n}`
         <tr>
           <td><a href={href(pluginPath(p.name), lang)}><code>{p.name}</code></a></td>
           <td>{p.desc[lang]}</td>
-          <td>{stagesOf(p.name).map((x) => x.title[lang]).join(', ')}</td>
+          <td>{stagesOf(p.name).map((x) => x.title[lang]).join(', ') || (lang === 'pl' ? 'Każda sesja' : 'Every session')}</td>
         </tr>
       ))}
     </tbody>

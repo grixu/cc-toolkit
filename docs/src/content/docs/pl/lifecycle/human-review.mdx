@@ -21,24 +21,31 @@ A gdy reviewer czeka, check robi się w nocy czerwony, a komentarze czekają na 
 
 ## Kto co robi
 
-- **Agent** nagrywa dowód, że zmiana działa, i pisze opis do przeczytania na jednym ekranie. Oznacza ryzyko, odpowiada na komentarze i naprawia czerwone checki.
-- **Ty** akceptujesz wideo, przeglądasz zmianę i ją akceptujesz. Rozstrzygasz też to, co agent ci odda: konflikty merge'a i komentarze wymagające decyzji.
+- **Agent** przygotowuje dowód, że zmiana działa, i otwiera pull request do przeczytania na jednym ekranie. Pull request zawiera ten dowód, historię zmiany, która ją wyjaśnia, i etykietę ryzyka. Potem agent odpowiada na komentarze i naprawia czerwone checki.
+- **Ty** akceptujesz plan dowodów, każdy zrzut ekranu i wideo. Potem przeglądasz zmianę i ją akceptujesz. Rozstrzygasz też to, co agent ci odda: konflikty merge'a i komentarze wymagające decyzji.
 
 ## Na mapie
 
 Podświetlona kolumna pokazuje, gdzie leży w cyklu.
+`pr-open` stoi na głównej linii, a pluginy, które zasilają jego pull request, wiszą nad nim.
 
 <LifeMap stage="human" animate={false} />
 
 ## Jak to przebiega
 
-Ten krok prowadzą trzy skille z dwóch pluginów:
+Środkiem tego kroku jest [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).
+Składa pull request z tego, co przygotują inne pluginy:
 
-1. **Dowód.** [`/pr-proof:walkthrough-video`](/pl/plugins/pr-proof/walkthrough-video/) nagrywa wideo z narracją, na którym zmiana działa w twojej aplikacji. Defekt widoczny na nagraniu trafia na górę raportu. Wideo dołącza do pull requesta, który już istnieje; gdy go jeszcze nie ma, zostawia wideo w `~/Downloads/`, żebyś dołączył je sam.
-2. **Pull request.** [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) wypełnia szablon repozytorium na podstawie diffu, z krótkim opisem i tabelą przed i po. Z kluczem TypeSafe dodaje [etykietę ryzyka](/pl/plugins/dev-kit/risk-assessment/), na przykład `risk: high`. Etykieta mówi reviewerowi, jak uważnie patrzeć.
+1. **Dowód.** [`/pr-proof:prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) ustala, jakiego dowodu zmiana potrzebuje: wideo z narracją, zrzutów ekranu, transkryptu z terminala albo z API. Po twojej akceptacji planu przygotowuje każdy z nich i zapisuje je w manifeście brancha. Uruchom go przed `pr-open`; `pr-open` czyta manifest, ale sam go nie uruchamia.
+2. **Pull request.** `pr-open` wypełnia szablon repozytorium na podstawie diffu, z krótkim opisem i tabelą przed i po. Robi przy tym trzy rzeczy:
+   - Dołącza dowody z manifestu w sekcji **Proof**.
+   - Prosi [code-story](/pl/plugins/code-story/) w subagencie w tle o stronę, która wyjaśnia zmianę rozdział po rozdziale, i linkuje ją w sekcji **Code story**.
+   - Przepuszcza swoje zdania przez [anti-slop](/pl/plugins/anti-slop/), zanim otworzy pull request.
+
+   Z kluczem TypeSafe albo Gemini dodaje też [etykietę ryzyka](/pl/plugins/dev-kit/risk-assessment/), na przykład `risk: high`. Etykieta mówi reviewerowi, jak uważnie patrzeć.
 3. **Na zielono.** [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/) działa w pętli, aż każdy wymagany check jest zielony, a każdy wątek rozwiązany albo przekazany tobie. Poprawia komentarze, z którymi się zgadza, na resztę odpowiada w wątku, a każdy czerwony check przekazuje [`/dev-kit:ci-fix`](/pl/plugins/dev-kit/ci-fix/).
 
-Żeby wideo trafiło do pull requesta, uruchom `/dev-kit:pr-open` przed pr-proof. Po dołączeniu wideo uruchom go ponownie, żeby ocena ryzyka je uwzględniła.
+Nowa historia zmiany jest prywatna, dopóki nie udostępnisz jej na claude.ai, więc zrób to, zanim reviewerzy otworzą link.
 `ci-fix` rzadko uruchamiasz ręcznie: pr-shepherd wywołuje go, gdy check padnie.
 
 ## Co uruchomić

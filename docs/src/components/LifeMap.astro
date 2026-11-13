@@ -31,7 +31,7 @@ const artifacts: Record<string, string> = {
   implement: '3 branches · green',
   'start-cr': 'cr-report.md · 4 fixed',
   tester: '14 passed',
-  'pr-proof': 'walkthrough.mp4',
+  'prepare-proof': 'manifest · video, 6 shots',
   'pr-open': 'PR #142 · risk: medium',
   'pr-shepherd': 'approved · CI green',
 }
@@ -45,8 +45,10 @@ const pos: Record<string, { x: number; y: number; labelSide: LabelSide }> = {
   implement: { x: 390, y: Y, labelSide: 'below' },
   'start-cr': { x: 540, y: Y, labelSide: 'above' },
   tester: { x: 740, y: Y, labelSide: 'below' },
-  'pr-proof': { x: 905, y: Y, labelSide: 'above' },
-  'pr-open': { x: 1005, y: Y, labelSide: 'below' },
+  'pr-open': { x: 930, y: Y, labelSide: 'below' },
+  'prepare-proof': { x: 930, y: 104, labelSide: 'right' },
+  'code-story': { x: 930, y: 66, labelSide: 'right' },
+  'anti-slop': { x: 930, y: 28, labelSide: 'right' },
   'pr-shepherd': { x: 1110, y: Y, labelSide: 'above' },
   'ci-fix': { x: 1110, y: 246, labelSide: 'left' },
   'rule-hooks': { x: 300, y: 292, labelSide: 'right' },
@@ -59,9 +61,10 @@ const segs = [
   { plugin: 'fd3', x1: START, x2: 440 },
   { plugin: 'code-review', x1: 440, x2: 640 },
   { plugin: 'tester', x1: 640, x2: 840 },
-  { plugin: 'pr-proof', x1: 840, x2: 955 },
-  { plugin: 'dev-kit', x1: 955, x2: MERGE },
+  { plugin: 'dev-kit', x1: 840, x2: MERGE },
 ]
+// pr-open orchestrates the plugins that feed its pull request, so they hang off it rather than the main line.
+const feeds = ['prepare-proof', 'code-story', 'anti-slop'].map((id) => skills.find((s) => s.id === id)!)
 const onMap = skills.filter((s) => pos[s.id])
 const maintain = skills.filter((s) => s.stage === 'maintain')
 
@@ -117,6 +120,10 @@ const showMaintain = !onStages || onStages.has('maintain')
 
         <path class:list={['lmap-spur', segmentDimClass('fd3')]} style={lineStyle('fd3')} data-plugin="fd3" d={`M 120 ${Y} V 62`} aria-hidden="true" />
         <path class:list={['lmap-spur lmap-spur--called', segmentDimClass('dev-kit')]} style={lineStyle('dev-kit')} data-plugin="dev-kit" d={`M 1110 ${Y} V 246`} aria-hidden="true" />
+        {feeds.map((s, i) => {
+          const from = i === 0 ? pos['pr-open'] : pos[feeds[i - 1].id]
+          return <path class:list={['lmap-spur lmap-spur--called', skillDimClass(s)]} style={lineStyle(s.plugin)} data-plugin={s.plugin} d={`M ${from.x} ${from.y} V ${pos[s.id].y}`} aria-hidden="true" />
+        })}
         <g class:list={[{ 'lmap-track': animate }]}>
           {segs.map((s) => (
             <path class:list={['lmap-seg', segmentDimClass(s.plugin)]} style={lineStyle(s.plugin)} data-plugin={s.plugin} d={`M ${s.x1} ${Y} H ${s.x2}`} aria-hidden="true" />

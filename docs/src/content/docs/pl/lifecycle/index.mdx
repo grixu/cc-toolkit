@@ -61,8 +61,10 @@ Czas człowieka to najrzadszy zasób w cyklu, więc dostaje zmianę, która prze
 
 ### Dowód zamiast zaufania
 
-„Działa” to twierdzenie; komenda do ponownego uruchomienia albo nagranie to dowód.
-[tester](/pl/plugins/tester/) zapisuje komendę za każdym werdyktem, a [pr-proof](/pl/plugins/pr-proof/) nagrywa dla reviewera wideo z przejściem przez zmianę.
+„Działa” to twierdzenie; komenda do ponownego uruchomienia, zrzut ekranu albo nagranie to dowód.
+[tester](/pl/plugins/tester/) zapisuje komendę za każdym werdyktem.
+[pr-proof](/pl/plugins/pr-proof/) przygotowuje dowód, którego potrzebuje reviewer: wideo z narracją, zrzuty ekranu albo transkrypt z terminala lub API.
+[code-story](/pl/plugins/code-story/) wyjaśnia zmianę rozdział po rozdziale, więc reviewer wie, gdzie patrzeć.
 
 ### Ludzie na bramkach, nie w pętli
 
@@ -91,7 +93,7 @@ Agent wykonuje pracę na każdym etapie; ty decydujesz na bramkach.
 | [Budowa](/pl/lifecycle/build/) | Tnie spec na zadania, buduje je równolegle w worktree, uruchamia walidację repozytorium i naprawia błędy | Odpowiadasz na jedną paczkę pytań, rozstrzygasz sprawy dla człowieka, zgadzasz się na push | Branche, po jednym na pull request |
 | [Self-review](/pl/lifecycle/self-review/) | Przegląda zmianę każdą pasującą soczewką i scala znaleziska w jeden raport | Wybierasz, które poprawki zastosować | Raport z review i poprawki |
 | [Testy](/pl/lifecycle/test/) | Ustala, co przetestować, uruchamia każde sprawdzenie na działającej aplikacji i zapisuje dowody | Wskazujesz lokalne albo stagingowe środowisko albo pozwalasz mu je uruchomić i odpowiadasz na jego pytania | Raport z testów w sesji, z werdyktem dla każdego sprawdzenia |
-| [Review człowieka](/pl/lifecycle/human-review/) | Nagrywa walkthrough, otwiera pull request z etykietą ryzyka, odpowiada na komentarze i naprawia CI | Przeglądasz i akceptujesz zmianę oraz rozstrzygasz to, co agent ci odda | Pull request z zielonymi checkami i rozstrzygniętymi wątkami, gotowy do akceptacji |
+| [Review człowieka](/pl/lifecycle/human-review/) | Przygotowuje dowody, otwiera pull request z tymi dowodami, historią zmiany i etykietą ryzyka, odpowiada na komentarze i naprawia CI | Akceptujesz plan dowodów i każde nagranie, przeglądasz i akceptujesz zmianę oraz rozstrzygasz to, co agent ci odda | Pull request z zielonymi checkami i rozstrzygniętymi wątkami, gotowy do akceptacji |
 | [Utrzymanie](/pl/lifecycle/maintain/) | Sprawdza aktualizacje zależności i znajduje poprawki z sesji | Akceptujesz albo pomijasz każdą proponowaną regułę | Werdykt o aktualizacji albo nowe reguły |
 
 Tabela 1. Co robi agent, a o czym decydujesz ty na każdym etapie

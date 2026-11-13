@@ -21,24 +21,31 @@ And while the reviewer waits, a check goes red overnight and the comments wait f
 
 ## Who does what
 
-- **The agent** records proof that the change works and writes a description a reviewer can read in one screen. It labels the risk, answers comments, and fixes failed checks.
-- **You** accept the video, review the change, and approve it. You also settle what the agent hands back: merge conflicts and comments that need a decision.
+- **The agent** produces proof that the change works and opens a pull request a reviewer can read in one screen. The pull request carries that proof, a code story that explains the change, and a risk label. Then the agent answers comments and fixes failed checks.
+- **You** approve the proof plan, each screenshot and the video. Then you review the change and approve it. You also settle what the agent hands back: merge conflicts and comments that need a decision.
 
 ## On the map
 
 The highlighted column shows where it sits in the cycle.
+`pr-open` sits on the main line, and the plugins that feed its pull request hang above it.
 
 <LifeMap stage="human" animate={false} />
 
 ## How it runs
 
-Three skills from two plugins carry this step:
+[`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) is the center of this step.
+It builds the pull request from what the other plugins produce:
 
-1. **Prove it.** [`/pr-proof:walkthrough-video`](/plugins/pr-proof/walkthrough-video/) records a narrated video of the change working in your app. A defect it sees on camera goes to the top of its report. It attaches the video to a pull request that already exists; when there is none yet, it leaves the video in `~/Downloads/` for you to attach.
-2. **Open the pull request.** [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) fills the repository's template from the diff, with a short description and a before and after table. With a TypeSafe key, it adds a [risk label](/plugins/dev-kit/risk-assessment/), such as `risk: high`. The label tells the reviewer how closely to look.
+1. **Prove it.** [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) decides which proof the change needs: a narrated video, screenshots, a terminal transcript or an API transcript. After you approve the plan, it produces each kind and records them in a manifest for the branch. Run it before `pr-open`; `pr-open` reads the manifest and doesn't start it for you.
+2. **Open the pull request.** `pr-open` fills the repository's template from the diff, with a short description and a before and after table. It then does three more things:
+   - It attaches the proof from the manifest in a **Proof** section.
+   - It asks [code-story](/plugins/code-story/) for a page that explains the change chapter by chapter, in a background subagent, and links it in a **Code story** section.
+   - It cleans its own sentences through [anti-slop](/plugins/anti-slop/) before it opens the pull request.
+
+   With a TypeSafe or Gemini key, it also adds a [risk label](/plugins/dev-kit/risk-assessment/), such as `risk: high`. The label tells the reviewer how closely to look.
 3. **Keep it green.** [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) loops until every required check is green and every thread is resolved or handed to you. It fixes the comments it agrees with, answers the rest in the thread, and hands each red check to [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/).
 
-To get the video into the pull request, run `/dev-kit:pr-open` before pr-proof. Run it again after the video is attached, so the risk assessment reads it.
+A new code story is private until you share it on claude.ai, so share it before reviewers open the link.
 You rarely run `ci-fix` by hand: pr-shepherd calls it when a check fails.
 
 ## What to run

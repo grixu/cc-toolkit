@@ -61,8 +61,10 @@ A person's time is the scarcest resource in the cycle, so it gets a change that 
 
 ### Evidence instead of trust
 
-"It works" is a claim; a re-runnable command or a recording is evidence.
-[tester](/plugins/tester/) records the command behind every verdict, and [pr-proof](/plugins/pr-proof/) records a walkthrough video of the change for the reviewer.
+"It works" is a claim; a re-runnable command, a screenshot or a recording is evidence.
+[tester](/plugins/tester/) records the command behind every verdict.
+[pr-proof](/plugins/pr-proof/) produces the proof the reviewer needs: a narrated video, screenshots, or a terminal or API transcript.
+[code-story](/plugins/code-story/) explains the change chapter by chapter, so the reviewer knows where to look.
 
 ### People at the gates, not in the loop
 
@@ -91,7 +93,7 @@ The agent does the work in every stage; you decide at the gates.
 | [Build](/lifecycle/build/) | Cuts the spec into tasks, builds them in parallel worktrees, runs the repository's checks and fixes failures | Answer one batch of questions, settle the items only a person can, approve the push | Branches, one per pull request |
 | [Self-review](/lifecycle/self-review/) | Reviews the change through every lens that applies and merges the findings into one report | Choose which fixes to apply | A review report and the fixes |
 | [Test](/lifecycle/test/) | Works out what to test, runs each check against the running app and records the evidence | Point it at a local or staging stack, or let it start one, and answer its questions | A test report in the session, with a verdict per check |
-| [Human review](/lifecycle/human-review/) | Records a walkthrough, opens the pull request with a risk label, answers comments and fixes CI | Review and approve the change, and settle what the agent hands back | A pull request with green checks and settled threads, ready for approval |
+| [Human review](/lifecycle/human-review/) | Produces proof, opens the pull request with that proof, a code story and a risk label, answers comments and fixes CI | Approve the proof plan and each recording, review and approve the change, and settle what the agent hands back | A pull request with green checks and settled threads, ready for approval |
 | [Maintain](/lifecycle/maintain/) | Checks dependency upgrades and finds the corrections in a session | Accept or skip each proposed rule | A verdict on the upgrade, or new rules |
 
 Table 1. What the agent does and what you decide in each stage
