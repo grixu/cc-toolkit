@@ -34,6 +34,8 @@ Testy nigdy nie są dowodem same w sobie: wynik uruchomienia testów należy do 
 
 ## Gdzie działa
 
+Mapa pokazuje, gdzie w cyklu pracy działa pr-proof:
+
 <LifeMap focus="pr-proof" animate={false} />
 
 pr-proof działa w [review człowieka](/pl/lifecycle/human-review/), gdy branch jest już przejrzany i przetestowany.
@@ -45,7 +47,7 @@ Na razie uruchamiasz oba skille sam, w tej kolejności:
 2. Uruchom `/dev-kit:pr-open`. Czyta manifest i dopisuje do pull requesta sekcję `## Proof`.
 
 `pr-open` nigdy nie uruchamia pr-proof za ciebie; czyta tylko to, co pr-proof zostawił.
-Bez `pr-open` dowód zostaje na twoim komputerze.
+Pod `prepare-proof` dowód zostaje na twoim komputerze, dopóki nie uruchomisz `pr-open`.
 
 ## Przygotuj dowód
 
@@ -78,7 +80,7 @@ Każdy skill pr-proof zapisuje to, co wytworzył, w jednym pliku JSON na branch:
 ~/.cache/pr-proof/<repo>/<branch>/manifest.json
 ```
 
-`<repo>` to nazwa remote'a `origin`, a każdy `/` w nazwie brancha zamienia się w `%2F`.
+`<repo>` to nazwa repozytorium z URL-a remote'a `origin`, a każdy `/` w nazwie brancha zamienia się w `%2F`.
 Każdy wpis zawiera rodzaj, jednozdaniowe twierdzenie, commit, przy którym powstał, pliki, których dotyczy, oraz obrazy, wideo albo transkrypt.
 Nowy wpis zastępuje wcześniejszy tego samego rodzaju, a pozostałe zostają.
 Pusta lista oznacza, że branch nie potrzebuje dowodu.
@@ -94,7 +96,8 @@ Pełny format opisuje [dokumentacja referencyjna](/pl/plugins/pr-proof/reference
 - Node.js 22.18 lub nowszy i `pnpm`. playwright-recast i `@playwright/test` działają przez `pnpm dlx`, więc nic nie trafia do repozytorium.
 - `ffmpeg` i `ffprobe` w `PATH`, z libass do wtopionych napisów w wideo.
 - `timeout` w `PATH`. Na macOS pochodzi z coreutils.
-- GitHub CLI `gh` 2.103 lub nowszy, zalogowany, gdy `walkthrough-video` sam dołącza wideo do pull requesta.
+- `jq` w `PATH`. Każdy skill wytwarzający dowód zapisuje nim manifest.
+- GitHub CLI `gh` 2.103 lub nowszy, zalogowany, do samodzielnego `walkthrough-video`, który sam dołącza wideo. Pod `prepare-proof` wideo dołącza `pr-open`.
 - Opcjonalnie: `agent-browser` w `PATH` do zrzutów ekranu. Bez niego `screenshot-proof` używa Playwrighta przez `pnpm dlx`.
 - Opcjonalnie: serwer MCP firecrawl, którym sprawdzenie narzędzi przed nagraniem czyta informacje o wydaniach playwright-recast. Do tego wystarczy też `gh`.
 - Opcjonalnie: klucz API TypeSafe, klucz Gemini Developer API z dostępem do `gemini-decision-1` albo oba, do narzędzia `proof_signals`.
@@ -106,13 +109,15 @@ Inaczej dwa skille z tym samym opisem konkurują o te same prośby.
 
 ## Co opuszcza twój komputer
 
-Bez klucza TypeSafe ani Gemini nic.
+Bez klucza TypeSafe ani Gemini żaden diff go nie opuszcza.
+Dowód wychodzi tylko wtedy, gdy wgra go `pr-open` albo gdy samodzielny `walkthrough-video` dołączy wideo do pull requesta.
 Narzędzie `proof_signals` w ogóle nie jest rejestrowane, a `prepare-proof` ocenia dowód na podstawie samego diffu.
 
 Z kluczem `prepare-proof` wywołuje `proof_signals`, które pyta model decyzyjny, jakich rodzajów dowodu potrzebuje zmiana.
 Odpowiada Jev od TypeSafe albo Gemini Decision od Google.
 Narzędzie wysyła diffstat, listę zmienionych plików i diff `<base>...HEAD`.
-Pomija lockfile, zminifikowane pliki, source mapy, snapshoty, pliki binarne i pliki w `dist/`, `build/`, `vendor/` i `node_modules/`.
+Nie wysyła diffów lockfile'ów, zminifikowanych plików, source map, snapshotów, plików binarnych ani plików w `dist/`, `build/`, `vendor/` i `node_modules/`.
+Ich nazwy i liczby linii nadal są w diffstacie.
 Nie wysyła opisów commitów.
 
 [Dokumentacja referencyjna](/pl/plugins/pr-proof/reference/#opcje) wymienia opcje, które ustawiają klucze i backend.

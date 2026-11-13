@@ -74,7 +74,7 @@ The assessment sends the following to the backend's API, TypeSafe's or Google's,
 - the diff of the branch against its base, without lockfiles, binaries and the other files the tool [leaves out](/plugins/dev-kit/risk-assessment/how-it-works/#step-1-read-the-diff);
 - the commit messages;
 - the `context` that `pr-open` passes: the pull request's title and description, and the linked ticket's title and description when it read them;
-- the repository's testing rules, when `pr-open` found them in `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` or CI;
+- the repository's testing rules, when `pr-open` found them in `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING`, `.claude/rules/` or CI;
 - short source excerpts, when the caller passes `execution_context`.
 
 When `pr-open` doesn't group the files into slices itself, the tool asks Claude Haiku to do it, on your Claude Code account.
@@ -84,7 +84,9 @@ Without a TypeSafe or a Gemini key, nothing is sent.
 The tool doesn't exist, and `pr-open` reports `Risk: not assessed`.
 
 With both backends, each pair of results is also logged to `~/.cache/dev-kit/compare.jsonl` on your machine.
-The log holds the levels, the repository's directory name, the branch, the commit and the base, never the diff.
+Each entry holds a timestamp, the repository name from the `origin` remote's URL, the branch, the commit and the base.
+It also holds each backend's model, levels and confidence, the slice titles, and any backend's error, but never the diff.
+An entry is written even when both backends fail.
 
 ## Turn it on
 
@@ -110,7 +112,7 @@ The **Decision backend** option (`decision_backend`) picks the backend:
 
 | Value | What happens |
 |---|---|
-| `auto` (default) | The tool uses the backend whose key is set. With both keys, `pr-open` asks you whether to use TypeSafe, Gemini or both, and suggests saving the answer in this option. |
+| `auto` (default) | The tool uses the backend whose key is set. With both keys, `pr-open` asks you whether to use TypeSafe, Gemini or both. It suggests saving the answer in this option with `/plugin configure dev-kit@cc-toolkit`. |
 | `typesafe` or `gemini` | Only that backend assesses the change. Without its key, the assessment is unavailable. |
 | `both` | Both keys are needed, and the two backends run side by side. The **Primary backend** option (`primary_backend`, TypeSafe by default) sets the level, the flags and the label. The **Risk** section shows the other backend's level beside it and says whether the two differ. |
 
@@ -128,7 +130,7 @@ On the development cohort, Gemini Decision matches Jev's overall cost, but rates
 - **Write the description first.** The description tells the model what each slice is meant to do, such as add a feature or fix a bug.
 - **Attach the manual evidence.** A screenshot, a video, a Loom link, or a request and response in a code block can lower a low-stakes slice's likelihood one step. New pull requests rarely carry it, so run `pr-open` again after you attach it to refresh the **Risk** section.
 - **Keep tests beside the code they test.** A test file in the change with a matching name counts as a test for that file.
-- **State your testing rules** in `CLAUDE.md`, `AGENTS.md` or `CONTRIBUTING`. A slice that your rules don't expect to be tested, such as Terraform or end-to-end-only UI, then loses the "Logic without tests" flag.
+- **State your testing rules** in `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` or `.claude/rules/`. A slice that your rules don't expect to be tested, such as Terraform or end-to-end-only UI, then loses the "Logic without tests" flag.
 
 ## Next steps
 

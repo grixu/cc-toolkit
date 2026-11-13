@@ -35,7 +35,7 @@ Add `draft` for a draft pull request, and a branch name to set the base:
 
 Without a base, `pr-open` targets the default branch.
 When your branch builds on another open pull request's branch, it targets that branch instead and says so.
-It skips pull requests from forks, and pull requests whose branch name holds anything other than letters, digits, `.`, `_`, `/` and `-`, so a crafted branch name never reaches a git command. The report names each pull request it skipped.
+While it looks for that branch, it skips pull requests from forks. It also skips any whose branch name holds anything other than letters, digits, `.`, `_`, `/` and `-`, so a crafted branch name never reaches a git command. The report names each pull request it skipped.
 Running it authorizes the push, and counts as the per-branch push consent that a repository rule reserving `git push` for humans asks for.
 
 ## How it runs
@@ -91,15 +91,15 @@ It ends with the ticket key in parentheses when the history does that too.
 ## The proof from pr-proof
 
 pr-proof's skills record the proof they take in a manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`.
-`<repo>` is the name of the `origin` remote, and `<branch>` is the current branch with `/` written as `%2F`.
+`<repo>` is the repository name from the `origin` remote's URL, without `.git`, and `<branch>` is the current branch with `/` written as `%2F`.
 `pr-open` only reads that file, so it needs no other part of pr-proof.
-Today you run [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) yourself before `pr-open`; `pr-open` doesn't start it.
+`pr-open` doesn't start [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/), so run it yourself first.
 
-From the manifest, `pr-open` adds a **Proof** section just before **Risk**:
+From the manifest, `pr-open` adds a **Proof** section directly before **Risk**:
 
 - **No manifest** means no **Proof** section. A manifest that doesn't parse, or has a `version` other than `1`, is ignored, and the report says so.
 - **An empty list of entries** means the proof was judged unnecessary, so there's no section either.
-- **Each entry** renders in manifest order as its claim, then its proof. Screenshots taken at several widths become a table with a row per screen and a column per width. A video or a single image stands on its own line. A terminal or API transcript becomes a code block, folded into `<details>` past 20 lines.
+- **Each entry** renders in manifest order as its claim, then its proof. Screenshots with a width become a table with a row per screen and a column per width. A video, or an image without a width, stands on its own line. A terminal or API transcript becomes a code block, folded into `<details>` past 20 lines.
 - **A stale entry** carries a note naming the commits that changed its files after the proof was taken. When history was rewritten since a proof was taken, one note under the heading says so.
 - **An entry whose media or transcript file is missing** is left out and named in the report.
 
@@ -109,7 +109,7 @@ The description then holds GitHub's `user-attachments` URLs.
 
 With more than 50 media files, the description carries the first 50 and says how many follow.
 The rest go in comments of at most 50 each, marked `<!-- pr-proof:overflow -->`.
-On every run, `pr-open` first deletes the marked comments you posted earlier and leaves every other comment alone.
+When it reads a manifest for an existing pull request, `pr-open` first deletes the marked comments you posted earlier and leaves every other comment alone.
 
 The **Proof** section doesn't count toward the one-screen length.
 
@@ -128,13 +128,14 @@ After the push, `pr-open` waits for the subagent and adds a **Code story** secti
 
 When the description already links the same story, it stays as it is.
 A new story is private until you share it on claude.ai, and the report says so, because reviewers can't open the link before then.
-When the story is saved only locally, or the subagent fails, the description stays as it is, and the report gives the story's path or the failure.
+When the story is saved only locally, or the subagent fails, the description stays as it is.
+The report then gives the story's path or the failure.
 
 ## The risk label
 
 With a TypeSafe or Gemini Decision key configured, `pr-open` rates the branch's risk before it opens the pull request.
 It groups the changed files into slices, one per purpose of the change, and passes them to the `pr_risk` tool.
-It also passes the why of the change and the linked issue, and your testing rules when `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` or CI state them.
+It also passes the why of the change and the linked issue, and your testing rules when `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING`, `.claude/rules/` or CI state them.
 
 The result goes in two places:
 
@@ -158,8 +159,9 @@ The result goes in two places:
 Without either key, nothing is sent, the pull request opens without a **Risk** section or label, and the report says `Risk: not assessed`.
 
 When both keys are set and you haven't chosen a backend, `pr-open` asks you once: TypeSafe, Gemini or both.
-It then suggests that you save the answer as the `decision_backend` option, so it doesn't ask again.
-With both backends, the primary one sets the level and the label, and the **Risk** section adds a line for the other one:
+It then suggests that you save the answer as the **Decision backend** option (`decision_backend`) with `/plugin configure dev-kit@cc-toolkit`, so it doesn't ask again.
+With both backends, the primary one sets the level and the label, unless it fails and the other one answers.
+The **Risk** section adds a line for the other backend:
 
 ```markdown
 Also assessed by gemini-decision-1: **medium** · impact feature · complexity interacting logic · confidence 0.58 · levels differ
@@ -188,7 +190,7 @@ With no manifest, the **Proof** section and its overflow comments stay as they a
 
 It rewrites the rest of the description only when you ask for it.
 Otherwise the report offers the rewrite in one line.
-A rewrite edits the current description: your own sentences, bot lines, sections outside the template such as **Code story**, and the tracker's link line at the end stay as they are.
+A rewrite edits the current description: your own sentences, bot lines, sections outside the template such as **Release notes**, and the tracker's link line at the end stay as they are.
 
 ## What it leaves
 
@@ -196,7 +198,7 @@ A rewrite edits the current description: your own sentences, bot lines, sections
 - The **Proof** section, when pr-proof left a manifest with entries.
 - The **Code story** section, when the story was built.
 - The **Risk** section and the risk label, when a key is configured.
-- A report with the pull request URL, its base, the template it used, the sections and checkboxes left for you, and the risk level and flags with the backend that set them. It also lists the proof entries it rendered or left out, anything that failed to upload, and the code story link and its status.
+- A report with the pull request URL, its base and the template it used. It names the sections and checkboxes left for you, and the risk level and flags with the backend that set them. It also lists the proof entries it rendered or left out, anything that failed to upload, and the code story link and its status.
 
 The report ends with a one-line suggestion to run `/dev-kit:pr-shepherd`.
 `pr-open` never runs it for you.

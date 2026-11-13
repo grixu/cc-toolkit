@@ -39,9 +39,9 @@ Figure 1. The requests of one assessment, from the diff to the report
 4. When the repository's testing rules were passed, a slice flagged as logic without tests gets one more request, the policy request.
 5. Code scores the factor answers into a level and builds the report.
 
-At most four requests to each backend run at the same time. A request that fails with a rate limit or a server error is tried up to three times in all. Before a retry, the tool waits as long as the API's `Retry-After` header asks, or 1 and then 2 seconds without one, and never more than 10 seconds. The wait doesn't count toward the time limit of the hook that runs the tool.
+At most four requests to each backend run at the same time. A request that fails with a rate limit or a server error is tried up to three times in all. Before a retry, the tool waits as long as the API's `Retry-After` header asks. Without the header, it waits 1 and then 2 seconds. It never waits more than 10 seconds. The wait doesn't count toward the time limit of the hook that runs the tool.
 
-With both backends, each one runs the whole assessment on its own, and the [primary backend's](/plugins/dev-kit/risk-assessment/#choose-a-backend) result sets the level. When the primary backend fails, the other one's result stands.
+With both backends, the two share the slices, and each one answers every request on its own. The [primary backend's](/plugins/dev-kit/risk-assessment/#choose-a-backend) result sets the level. When the primary backend fails, the other one's result stands.
 
 ## Step 1: Read the diff
 

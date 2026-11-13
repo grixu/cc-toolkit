@@ -41,6 +41,8 @@ The skill refuses on the default branch or a detached HEAD, because the manifest
 
 ## How it runs
 
+The diagram shows the skill's steps and what each leaves:
+
 <SkillFlow
   skill="prepare-proof"
   input="A feature branch and its base"
@@ -84,12 +86,14 @@ Examples are documentation, agent instructions, comments, refactors that keep be
 Tests the change adds or edits never call for a kind by themselves.
 
 The signals are advice.
-When the skill plans a kind the signal rejects, or skips a kind the signal suggests, it calls that an overrule and gives the reason in one line.
+The skill may plan a kind the signal rejects, or skip a kind the signal suggests.
+It calls either an overrule and gives the reason in one line.
 A `terminal` signal that comes only from changed tests is an expected overrule, since the tool counts what a test run prints.
+When the tool reads the change as not affecting behavior, planning any kind is an overrule too.
 
 ## What it asks you
 
-The skill asks for one confirmation of the whole plan, and nothing else before it produces proof.
+Apart from the backend choice, the skill asks for one confirmation of the whole plan before it produces proof.
 The plan lists:
 
 - each kind, planned or not, with its reason, its signal and any overrule, and each backend's signal when both answered;
@@ -104,6 +108,7 @@ With `before`, the same question asks where the base comes from:
 - neither, so the before shots are skipped.
 
 After that, the producing skills still ask you to approve each screenshot and the video, since no image counts as proof until you've seen it.
+`walkthrough-video` also asks you to confirm any derived requirement before it writes its scenario.
 
 ## The app's stack
 
@@ -116,14 +121,15 @@ It reuses a stack already up for this checkout, and never stops one it reused.
 Otherwise it starts the stack, seeds it, and waits until it responds.
 A stack that doesn't come up fails the kinds that need it; the other kinds still run.
 
-For the second stack, the skill gives the base worktree its own install and environment, the project's way, on ports that don't clash with the first stack.
+For the second stack, the skill gives the base worktree its own install and environment, the project's way.
+It runs that stack on ports that don't clash with the first one.
 When the base stack doesn't come up, only the before shots are dropped.
 
 ## What it leaves
 
 - The branch's proof manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, with one entry per kind that was produced and approved. The producing skills write their own entries; `prepare-proof` writes the video's entry, and an empty list for no proof.
 - The proof files themselves, in the same folder: screenshots and transcripts. The video stays in the walkthrough's own folder under `~/.cache/walkthrough-video/`.
-- A report: which backend answered, each kind with its reason and signal, each failure or rejected proof, the before shots skipped and why, and each correction a producing skill made to the files.
+- A report: which backend answered, and each kind with its reason and signal. It also lists each failure or rejected proof, the before shots skipped and why, and each correction a producing skill made to the files.
 
 A kind that fails is reported and never enters the manifest.
 The report reminds you that `pr-open` must run for the proof to appear in the pull request.
@@ -132,7 +138,8 @@ Then the skill asks before it stops each stack it started; stopping the base sta
 ## When another agent runs it
 
 A coordinator can dispatch `prepare-proof`.
-It can't ask you directly then, so every question, including the plan and each screenshot approval, goes back to that agent as a `Confirmation needed` block.
+It can't ask you directly then.
+Every question, including the plan and each screenshot approval, goes back to that agent as a `Confirmation needed` block.
 The agent asks you and resumes the skill with your answers.
 A dispatch that says not to ask you doesn't skip a confirmation; the block still goes to the caller.
 

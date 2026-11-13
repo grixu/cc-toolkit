@@ -1,6 +1,6 @@
 ---
 title: code-story
-description: Turns a branch, a pull request or a stack of pull requests into a chaptered page that teaches how and why the change works, for a reader who has never seen the codebase.
+description: Turns a branch, a pull request or a stack of them into a chaptered page that teaches a newcomer to the code how and why the change works.
 group: start
 sidebar:
   label: Overview
@@ -18,6 +18,8 @@ Each chapter answers one question with the lines it is about, and notes are pinn
 
 ## Where it works
 
+The map shows where code-story sits in the cycle.
+
 <LifeMap focus="code-story" animate={false} />
 
 code-story is a supporting plugin in [03c Human review](/lifecycle/human-review/).
@@ -34,7 +36,8 @@ You can also run it on its own, on any branch or pull request.
 - You want to explain a stack of pull requests as one change.
 - You come back to a change later and want to know why the code took this shape.
 
-Every claim in a story rests on something the skill read: the diff, a commit, the pull request, a review, a ticket, a spec, or the code.
+Every claim in a story rests on something the skill read.
+That can be the diff, a commit, the pull request, a review, a ticket, a spec, or the code.
 When the reason for a change is nowhere to be found, the story says so instead of inventing one.
 
 ## Install
@@ -69,7 +72,7 @@ The plugin's mod hands them to the skill through its `config` tool.
 | Setting | Default | What it does |
 |---|---|---|
 | `second_language` | empty | A language tag, such as `pl`. Empty means English only. Code names and programming terms stay in English in every language. |
-| `gloss_first_use` | `true` | In the second language, an English term's first use gets its translation in parentheses. |
+| `gloss_first_use` | `true` | In the second language, an English term's first use is followed by its translation in parentheses. |
 | `diagram_skill` | empty | An installed diagram skill, such as `fireworks-tech-graph`. Empty means the built-in diagrams. |
 | `uncommitted` | `ignore` | `ignore` tells the committed change without asking. `include` adds uncommitted changes without asking. `ask` asks each time. |
 | `stack` | `ask` | For a branch in a stack of open pull requests: `ask` whether to tell the whole stack, `always`, or `never`. |
@@ -117,6 +120,9 @@ A chain of two or more is a stack.
 With the `stack` setting at `always`, or `stack` in the request, one story covers the whole stack.
 It runs from the bottom pull request's base to the top pull request's head, and the report names the pull requests it covers.
 With `never`, or `no stack`, it covers only your branch.
+
+The page also records its head ref.
+An update of a whole-stack story then still runs to the top pull request's head, even when you run it from a lower branch.
 
 The skill ignores pull requests from forks and branch names with unusual characters, and names any that it dropped in its report.
 

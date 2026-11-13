@@ -18,10 +18,10 @@ Każdy skill wykonuje całą pracę, łącznie z commitami i pushami tam, gdzie 
 
 <LifeMap focus="dev-kit" animate={false} />
 
-Trzy skille działają w etapie [review człowieka](/pl/lifecycle/human-review/), ostatnim w cyklu.
-Najpierw [`/pr-proof:prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) nagrywa dowód.
-Potem `pr-open` otwiera pull request z tym dowodem, z [historią zmiany](/pl/plugins/code-story/), która ją wyjaśnia, i ze zdaniami oczyszczonymi przez [anti-slop](/pl/plugins/anti-slop/).
-`pr-shepherd` trzyma go na zielono aż do akceptacji.
+Trzy skille działają w etapie [review człowieka](/pl/lifecycle/human-review/), ostatnim w cyklu: `pr-open`, `pr-shepherd` i `ci-fix`.
+Najpierw [`/pr-proof:prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) zbiera dowód dla brancha.
+Potem `pr-open` otwiera pull request z tym dowodem, z [historią zmiany](/pl/plugins/code-story/), która tłumaczy zmianę, i ze zdaniami oczyszczonymi przez [anti-slop](/pl/plugins/anti-slop/).
+`pr-shepherd` trzyma go na zielono aż do akceptacji i przekazuje każdy czerwony check do `ci-fix`.
 `dep-upgrade-check` działa w [Utrzymaniu](/pl/lifecycle/maintain/), poza cyklem: uruchamiaj go, gdy przychodzi aktualizacja.
 
 ## Co jest w pluginie
@@ -40,7 +40,8 @@ Skill możesz uruchomić jego komendą albo opisać zadanie („CI jest czerwone
 ## Etykieta ryzyka
 
 Najważniejszą funkcją `pr-open` jest etykieta ryzyka.
-Gdy skonfigurujesz klucz API [TypeSafe](https://docs.typesafe.ai/introduction) albo [Gemini Decision](https://aistudio.google.com/docs/decisions-api), `pr-open` ocenia, jak ryzykowny jest branch, kończy opis sekcją **Risk** i dodaje do pull requesta etykietę, na przykład `risk: high`.
+Gdy skonfigurujesz klucz API [TypeSafe](https://docs.typesafe.ai/introduction) albo [Gemini Decision](https://aistudio.google.com/docs/decisions-api), `pr-open` ocenia, jak ryzykowny jest branch.
+Kończy opis sekcją **Risk** i dodaje do pull requesta etykietę, na przykład `risk: high`.
 Reviewer wie wtedy, jak uważnie patrzeć, zanim otworzy diff.
 
 Diff, opisy commitów oraz opisy pull requesta i ticketu trafiają do wybranego backendu: TypeSafe, Google albo obu.

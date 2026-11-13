@@ -41,6 +41,8 @@ Na domyślnym branchu albo przy odłączonym HEAD skill odmawia, bo ścieżka ma
 
 ## Jak przebiega
 
+Diagram pokazuje kroki skilla i to, co zostawia każdy z nich:
+
 <SkillFlow
   skill="prepare-proof"
   input="Branch z funkcją i jego baza"
@@ -83,13 +85,15 @@ Plan brzmi **brak dowodu**, gdy zmiana nie wpływa na zachowanie programu.
 Przykłady to dokumentacja, instrukcje dla agenta, komentarze, refaktory bez zmiany zachowania, usunięcie martwego kodu, podbicia wersji i changelogi.
 Testy dodane albo zmienione w tej zmianie same nigdy nie wymagają żadnego rodzaju.
 
-Sygnały są tylko podpowiedzią.
-Gdy skill planuje rodzaj, który sygnał odrzuca, albo pomija rodzaj, który sygnał proponuje, nazywa to odstępstwem i podaje powód w jednym zdaniu.
+Sygnały są podpowiedzią.
+Skill może zaplanować rodzaj, który sygnał odrzuca, albo pominąć rodzaj, który sygnał proponuje.
+W obu przypadkach nazywa to odstępstwem i podaje powód w jednym zdaniu.
 Sygnał `terminal` wynikający tylko ze zmienionych testów to oczekiwane odstępstwo, bo narzędzie liczy także to, co wypisuje uruchomienie testów.
+Gdy narzędzie uznaje, że zmiana nie wpływa na zachowanie, zaplanowanie jakiegokolwiek rodzaju też jest odstępstwem.
 
 ## O co pyta
 
-Skill prosi o jedno potwierdzenie całego planu i o nic więcej, zanim wytworzy dowód.
+Poza wyborem backendu skill prosi o jedno potwierdzenie całego planu, zanim wytworzy dowód.
 Plan wymienia:
 
 - każdy rodzaj, zaplanowany czy nie, z uzasadnieniem, sygnałem i ewentualnym odstępstwem, a gdy odpowiedziały oba backendy, z sygnałem każdego z nich;
@@ -104,6 +108,7 @@ Z `before` to samo pytanie dotyczy też tego, skąd wziąć bazę:
 - żadne z nich, więc zrzuty „przed” zostaną pominięte.
 
 Potem skille wytwarzające dowód i tak proszą cię o akceptację każdego zrzutu ekranu i wideo, bo żaden obraz nie jest dowodem, dopóki go nie zobaczysz.
+`walkthrough-video` prosi też o potwierdzenie każdego wywnioskowanego wymagania, zanim napisze scenariusz.
 
 ## Stack aplikacji
 
@@ -114,16 +119,17 @@ Gdy żaden zaplanowany rodzaj nie potrzebuje aplikacji, skill niczego nie urucha
 To, jak uruchomić stack, jak zasilić go danymi i gdzie leżą dane logowania użytkowników testowych, skill bierze z plików `CLAUDE.md` projektu.
 Używa stacka, który już działa dla tego checkoutu, i nigdy nie zatrzymuje stacka, którego nie uruchomił.
 W przeciwnym razie uruchamia stack, zasila go danymi i czeka, aż zacznie odpowiadać.
-Stack, który nie wstanie, oznacza porażkę rodzajów, które go potrzebują; pozostałe rodzaje i tak się wykonują.
+Stack, który się nie uruchomi, oznacza porażkę rodzajów, które go potrzebują; pozostałe rodzaje i tak się wykonują.
 
-Dla drugiego stacka skill przygotowuje w worktree bazy osobną instalację zależności i środowisko, tak jak robi to projekt, na portach, które nie kolidują z pierwszym stackiem.
-Gdy stack bazy nie wstanie, odpadają tylko zrzuty „przed”.
+Dla drugiego stacka skill przygotowuje w worktree bazy osobną instalację zależności i środowisko, tak jak robi to projekt.
+Uruchamia ten stack na portach, które nie kolidują z pierwszym.
+Gdy stack bazy się nie uruchomi, odpadają tylko zrzuty „przed”.
 
 ## Co zostawia
 
 - Manifest dowodów brancha, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, z jednym wpisem na każdy rodzaj, który powstał i został zaakceptowany. Skille wytwarzające dowód zapisują własne wpisy; `prepare-proof` zapisuje wpis wideo, a przy braku dowodu pustą listę.
 - Same pliki dowodu w tym samym folderze: zrzuty ekranu i transkrypty. Wideo zostaje we własnym folderze walkthrough w `~/.cache/walkthrough-video/`.
-- Raport: który backend odpowiedział, każdy rodzaj z uzasadnieniem i sygnałem, każda porażka albo odrzucony dowód, pominięte zrzuty „przed” i powód oraz każda poprawka plików, którą wprowadził skill wytwarzający dowód.
+- Raport: który backend odpowiedział i każdy rodzaj z uzasadnieniem i sygnałem. Wymienia też każdą porażkę albo odrzucony dowód, pominięte zrzuty „przed” i powód oraz każdą poprawkę plików, którą wprowadził skill wytwarzający dowód.
 
 Rodzaj, który się nie udał, trafia do raportu i nigdy do manifestu.
 Raport przypomina, że dowód pojawi się w pull requeście dopiero po uruchomieniu `pr-open`.
@@ -132,7 +138,8 @@ Na koniec skill pyta, zanim zatrzyma każdy stack, który sam uruchomił; zatrzy
 ## Gdy uruchamia go inny agent
 
 `prepare-proof` może zostać uruchomiony przez koordynatora.
-Wtedy nie może zapytać cię bezpośrednio, więc każde pytanie, łącznie z planem i akceptacją każdego zrzutu ekranu, wraca do tego agenta jako blok `Confirmation needed`.
+Wtedy nie może zapytać cię bezpośrednio.
+Każde pytanie, łącznie z planem i akceptacją każdego zrzutu ekranu, wraca do tego agenta jako blok `Confirmation needed`.
 Agent pyta ciebie i wznawia skill z twoimi odpowiedziami.
 Polecenie, żeby cię nie pytać, nie pomija żadnego potwierdzenia; blok i tak trafia do wywołującego.
 
@@ -140,7 +147,7 @@ Polecenie, żeby cię nie pytać, nie pomija żadnego potwierdzenia; blok i tak 
 
 - **Sygnały są niedostępne.** Nie ma brancha bazowego, klucz został odrzucony albo wyczerpał się limit zapytań. Skill ocenia na podstawie samego diffu i mówi dlaczego.
 - **Narzędzie oceniło tylko część diffu.** Duży diff może przekroczyć to, co narzędzie wysyła. Resztę skill czyta sam.
-- **Stack nie wstaje.** Rodzaje, które go potrzebują, kończą się porażką, a raport ją nazywa. Transkrypty z terminala, które nie potrzebują aplikacji, i tak się wykonują.
+- **Stack się nie uruchamia.** Rodzaje, które go potrzebują, kończą się porażką, a raport ją nazywa. Transkrypty z terminala, które nie potrzebują aplikacji, i tak się wykonują.
 - **Ścieżka worktree bazy jest zajęta.** Może ją zostawić inny klon o tej samej nazwie. Zrzuty „przed” są pomijane, a zrzuty „po” powstają dalej.
 
 ## Następne kroki

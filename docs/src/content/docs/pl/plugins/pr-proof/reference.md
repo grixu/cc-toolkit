@@ -41,8 +41,8 @@ Każda może zostać pusta.
 | `typesafe_endpoint` | `https://api.typesafe.ai` | Bazowy URL API TypeSafe. |
 | `typesafe_model` | `jev-1.14.0` | Nazwa albo alias modelu Jev, na przykład `jev-latest`. |
 | `gemini_api_key` | brak | Klucz Gemini Developer API dla Gemini Decision (`gemini-decision-1`), przechowywany jako sekret. Gdy opcja jest pusta, narzędzie czyta `GEMINI_DECISIONS_API_KEY`, a potem `GEMINI_API_KEY`. |
-| `decision_backend` | `auto` | `auto` używa backendu, którego klucz jest ustawiony, a przy obu kluczach `prepare-proof` pyta cię, którego użyć. `typesafe` albo `gemini` używa wskazanego. `both` pyta oba równolegle. |
-| `primary_backend` | `typesafe` | Przy obu backendach ten, na którego sygnałach `prepare-proof` opiera plan; sygnały drugiego stoją obok. |
+| `decision_backend` | `auto` | `auto` używa backendu, którego klucz jest ustawiony, a przy obu kluczach `prepare-proof` pyta cię, którego użyć. `typesafe` albo `gemini` używa wskazanego. `both` odpytuje oba równolegle. |
+| `primary_backend` | `typesafe` | Przy obu backendach ten, na którego sygnałach `prepare-proof` opiera plan; sygnały drugiego są pokazywane obok. |
 | `screenshot_widths` | brak | Szerokości viewportu w pikselach, oddzielone przecinkami, na przykład `375,768,1440`. Gdy opcja jest pusta, skill używa breakpointów projektu albo 375, 768 i 1440, gdy projekt ich nie ma. |
 
 Tabela 2. Opcje pluginu.
@@ -72,8 +72,9 @@ Narzędzie porównuje `origin/<base>...HEAD` albo `<base>...HEAD`, gdy origin ni
 - listę zmienionych plików i ich diff, z dokumentacją wysyłaną osobno od kodu;
 - żadnych opisów commitów.
 
-Lockfile, zminifikowane pliki, source mapy, snapshoty, pliki binarne i pliki w `dist/`, `build/`, `vendor/` i `node_modules/` są pomijane.
-Duży diff jest dzielony na części, maksymalnie osiem; reszta jest zgłaszana jako nieoceniona.
+Diffy lockfile'ów, zminifikowanych plików, source map, snapshotów, plików binarnych i plików w `dist/`, `build/`, `vendor/` i `node_modules/` są pomijane.
+Diffstat nadal je wymienia.
+Duży diff jest dzielony na maksymalnie osiem części, a część, którą model uzna za zbyt długą, jest dzielona na pół; reszta jest zgłaszana jako nieoceniona.
 
 ### Wyjście
 
@@ -125,9 +126,11 @@ Przy obu backendach każde wywołanie dopisuje jedną linię JSON do `~/.cache/p
 { "at": "2026-11-13T10:00:00.000Z", "repo": "shop", "branch": "feat/checkout", "head": "<sha>", "base": "origin/main", "results": [] }
 ```
 
+`repo` to nazwa repozytorium z URL-a remote'a `origin`, tak jak w ścieżce manifestu.
+`base` to ref, względem którego powstał diff, na przykład `origin/main`, a nie podana przez ciebie nazwa brancha.
 `results` zawiera te same wpisy co `comparison`.
 Log nigdy nie zawiera diffu.
-Log, którego nie da się zapisać, nigdy nie odbiera ci sygnałów.
+Błąd zapisu logu nigdy nie odbiera ci sygnałów.
 
 ## Manifest dowodów
 
@@ -137,7 +140,7 @@ Każdy skill, który wytwarza dowód, zapisuje go w jednym pliku JSON na branch:
 ~/.cache/pr-proof/<repo>/<branch>/manifest.json
 ```
 
-`<repo>` to nazwa remote'a `origin`, więc worktree jednego repozytorium dzielą manifest, a każdy `/` w nazwie brancha zamienia się w `%2F`.
+`<repo>` to nazwa repozytorium z URL-a remote'a `origin`, więc worktree jednego repozytorium dzielą manifest, a każdy `/` w nazwie brancha zamienia się w `%2F`.
 
 ```jsonc
 {

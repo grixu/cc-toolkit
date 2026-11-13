@@ -39,18 +39,21 @@ Podaj tryb:
 ```
 
 [`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) uruchamia oba tryby za ciebie, gdy je zaplanuje, i przekazuje URL aplikacji, miejsce danych logowania i pliki, których dotyczy dowód.
-Uruchomiony ręcznie, skill pyta o URL, gdy zapis potrzebuje aplikacji, i o to, gdzie leżą dane logowania, jako ścieżka albo źródło, nigdy wartość.
+Uruchomiony ręcznie, skill pyta o URL, gdy przechwycenie potrzebuje aplikacji.
+Pyta też, gdzie leżą dane logowania, jako ścieżka albo źródło, nigdy wartość.
 Pliki, które transkrypt sprawdza, wybiera z diffu względem bazy, którą domyślnie jest domyślny branch repozytorium.
 Na domyślnym branchu albo przy odłączonym HEAD odmawia.
 
 ## Jak przebiega
 
+Diagram pokazuje kroki skilla i to, co zostawia każdy z nich:
+
 <SkillFlow
   skill="terminal-proof"
-  input="Tryb i URL działającej aplikacji, gdy zapis go potrzebuje"
+  input="Tryb i URL działającej aplikacji, gdy przechwycenie go potrzebuje"
   steps={[
-    { name: 'Plan', does: 'Nazywa zachowanie, które zmienia zmiana, w jednym zdaniu, które staje się twierdzeniem.' },
-    { name: 'Zapis', does: 'Uruchamia każdą komendę albo żądanie bez interakcji, z limitem czasu, i zapisuje je razem z wyjściem.', leaves: '<kind>.raw.txt' },
+    { name: 'Plan', does: 'Nazywa zachowanie, które modyfikuje zmiana, w jednym zdaniu, które staje się twierdzeniem.' },
+    { name: 'Przechwycenie', does: 'Uruchamia każdą komendę albo żądanie bez interakcji, z limitem czasu, i zapisuje je razem z wyjściem.', leaves: '<kind>.raw.txt' },
     { name: 'Maskowanie', does: 'Zamienia sekrety w transkrypcie na ***.', leaves: '<kind>.txt' },
     { name: 'Przegląd', does: 'Świeży subagent szuka tego, co maska przeoczyła, i sprawdza, czy transkrypt pokazuje twierdzenie.' },
     { name: 'Wpis', does: 'Usuwa surowy transkrypt i zapisuje wpis w manifeście dowodów.', leaves: 'manifest.json' },
@@ -58,10 +61,10 @@ Na domyślnym branchu albo przy odłączonym HEAD odmawia.
   next={['pr-open']}
 />
 
-### Zapis
+### Przechwycenie
 
 Każda komenda jest poprzedzona `$ `, a każde żądanie metodą i URL-em, a po nich następuje to, co wróciło.
-Gdy żądanie wymaga danych logowania, czyta je i wysyła żądanie skrypt w folderze roboczym.
+Gdy żądanie wymaga danych logowania, skrypt w folderze roboczym czyta je i wysyła żądanie.
 Transkrypt zapisuje żądanie bez danych logowania.
 Skill pomija niezwiązany szum, ale nigdy nie zmienia tego, co wypisała zmieniona rzecz.
 
@@ -77,10 +80,10 @@ Gdy skrypt zawiedzie, wpis odpada.
 
 ### Przegląd
 
-Świeży subagent, a nie ten, który zapisywał, czyta zamaskowany transkrypt z twierdzeniem i miejscem danych logowania, nigdy z ich wartościami.
+Świeży subagent, a nie ten, który przechwytywał, czyta zamaskowany transkrypt z twierdzeniem i miejscem danych logowania, nigdy z ich wartościami.
 Odpowiada na dwa pytania:
 
-- Czy transkrypt zawiera coś, co może być sekretem albo daną osobową, którą maska przeoczyła, na przykład token, ciasteczko, id sesji albo e-mail lub nazwisko prawdziwej osoby?
+- Czy transkrypt zawiera sekret albo daną osobową, którą maska przeoczyła? Przykłady to token, ciasteczko, id sesji albo e-mail lub nazwisko prawdziwej osoby.
 - Czy pokazuje twierdzenie?
 
 Każda wątpliwość oznacza, że wpis odpada.
@@ -107,7 +110,7 @@ Każda z tych sytuacji oznacza, że wpis odpada, a raport mówi dlaczego:
 - **Nic obserwowalnego się nie zmieniło.** Żadnego zachowania zmiany nie da się zobaczyć po jej uruchomieniu.
 - **Uruchomienie się nie udaje albo pokazuje inne zachowanie niż twierdzenie.** To ustalenie do raportu, nie dowód.
 - **Skrypt maskujący kończy się błędem.**
-- **Przegląd ma wątpliwość.** Transkrypt może nadal zawierać sekret albo daną osobową albo nie pokazuje twierdzenia.
+- **Przegląd ma wątpliwość.** Transkrypt może nadal zawierać sekret lub daną osobową albo nie pokazuje twierdzenia.
 
 ## Następne kroki
 

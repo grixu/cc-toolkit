@@ -39,11 +39,14 @@ Pass the mode:
 ```
 
 [`prepare-proof`](/plugins/pr-proof/prepare-proof/) runs both modes for you when it plans them, passing the app's URL, the credentials' location and the files to prove.
-Run by hand, the skill asks for the URL when the capture needs the app, and where the credentials live, as a path or a source, never a value.
+Run by hand, the skill asks for the URL when the capture needs the app.
+It also asks where the credentials live, as a path or a source, never a value.
 It picks the files the transcript exercises from the diff against the base, which defaults to the repository's default branch.
 It refuses on the default branch or a detached HEAD.
 
 ## How it runs
+
+The diagram shows the skill's steps and what each leaves:
 
 <SkillFlow
   skill="terminal-proof"
@@ -80,7 +83,7 @@ When the script fails, the entry is dropped.
 A fresh subagent, not the one that captured, reads the masked transcript with the claim and the credentials' location, never their values.
 It answers two questions:
 
-- Does the transcript hold anything that could be a secret or a personal value the mask missed, such as a token, a cookie, a session id, or a real person's email or name?
+- Does the transcript hold a secret or a personal value the mask missed? Examples are a token, a cookie, a session id, or a real person's email or name.
 - Does it show the claim?
 
 Any doubt drops the entry.

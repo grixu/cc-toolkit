@@ -20,7 +20,7 @@ You run it yourself for a video outside that flow, such as a whole feature for a
 
 ## When to reach for it
 
-- A branch is reviewed and tested, and the reviewer should see it work before reading the code. `prepare-proof` covers this case.
+- A branch is reviewed and tested, and the reviewer needs to see it work before reading the code. `prepare-proof` covers this case.
 - A product owner or another non-developer asked to see a feature end to end.
 - You fixed what an earlier video showed, and need a new take.
 
@@ -45,11 +45,13 @@ With a pull request or branch, the video shows only what that change made differ
 Without one, it shows the whole feature.
 When you name no viewer, it records for a product reviewer.
 
-A third optional argument, `record-only`, changes only where the video goes once you accept it.
+A third optional argument, `record-only`, makes the skill record on the caller's stack and changes where the video goes once you accept it.
 `prepare-proof` passes it; you rarely type it yourself.
 [How the video is delivered](#how-the-video-is-delivered) explains the difference.
 
 ## How it runs
+
+The diagram shows the skill's steps and what each leaves:
 
 <SkillFlow
   skill="walkthrough-video"
@@ -115,10 +117,10 @@ The skill then reads the description back: the section must hold that link, and 
 :::note[No pull request yet]
 The skill attaches the video only to a pull request that already exists.
 Without one, the video stays in `~/Downloads/`, and `/dev-kit:pr-open` does not pick it up from there, since a standalone run writes no manifest entry.
-Open the pull request first, then record, attach the file to the description yourself, or let `prepare-proof` run the skill instead.
+To get the video there, open the pull request before you record, attach the file yourself, or let `prepare-proof` run the skill.
 :::
 
-When pr-open rewrites the description, it keeps the `### Video walkthrough` section, because it keeps every section it did not write.
+When pr-open rewrites the description, it keeps the text it did not write, including the `### Video walkthrough` section.
 
 ## Retake after fixes
 

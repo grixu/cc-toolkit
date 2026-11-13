@@ -71,8 +71,9 @@ The tool compares `origin/<base>...HEAD`, or `<base>...HEAD` when origin has no 
 - the list of changed files and their diff, with documentation sent apart from code;
 - no commit messages.
 
-Lockfiles, minified files, source maps, snapshots, binary files and files under `dist/`, `build/`, `vendor/` and `node_modules/` are left out.
-A large diff is split into parts, up to eight; the rest is reported as not assessed.
+The diffs of lockfiles, minified files, source maps, snapshots, binary files and files under `dist/`, `build/`, `vendor/` and `node_modules/` are left out.
+The diffstat still lists them.
+A large diff is split into up to eight parts, and a part the model finds too long is halved again; the rest is reported as not assessed.
 
 ### Output
 
@@ -124,6 +125,8 @@ With both backends, each call appends one JSON line to `~/.cache/pr-proof/compar
 { "at": "2026-11-13T10:00:00.000Z", "repo": "shop", "branch": "feat/checkout", "head": "<sha>", "base": "origin/main", "results": [] }
 ```
 
+`repo` is the repository name from the `origin` remote's URL, as in the manifest's path.
+`base` is the ref the diff was taken against, such as `origin/main`, not the branch name you passed.
 `results` holds the same entries as `comparison`.
 The log never holds the diff.
 A log that can't be written never costs you the signals.
@@ -136,7 +139,7 @@ Every skill that produces proof records it in one JSON file per branch:
 ~/.cache/pr-proof/<repo>/<branch>/manifest.json
 ```
 
-`<repo>` is the name of the `origin` remote, so worktrees of one repository share it, and each `/` in the branch becomes `%2F`.
+`<repo>` is the repository name from the `origin` remote's URL, so worktrees of one repository share it, and each `/` in the branch becomes `%2F`.
 
 ```jsonc
 {

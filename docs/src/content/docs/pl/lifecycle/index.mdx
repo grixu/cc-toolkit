@@ -10,7 +10,8 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-cc-toolkit jest zbudowany wokół agentowego cyklu wytwarzania oprogramowania (ADLC, od ang. agentic development lifecycle): etapów, przez które przechodzi zmiana, gdy kod pisze Claude Code, a decyzje podejmujesz ty.
+cc-toolkit jest zbudowany wokół agentowego cyklu wytwarzania oprogramowania (ADLC, od ang. agentic development lifecycle).
+ADLC to etapy, przez które przechodzi zmiana, gdy kod pisze Claude Code, a decyzje podejmujesz ty.
 Ta strona wyjaśnia ideę, pokazuje, gdzie bierzesz udział, i przypisuje do każdego etapu pluginy i skille, które go obsługują.
 Każdy etap ma potem własną stronę z krokami po kolei.
 
@@ -56,7 +57,8 @@ Reguła [hookify](/pl/plugins/hookify/) jest sprawdzana przy każdym wywołaniu 
 
 ### Najtańsze sprawdzenie najpierw
 
-Review i testy idą w trzech krokach, od najtańszego do najdroższego: agent przegląda własny branch, potem testuje działającą aplikację, a dopiero na końcu prosi człowieka.
+Review i testy idą w trzech krokach, od najtańszego do najdroższego.
+Agent przegląda własny branch, potem testuje działającą aplikację, a dopiero na końcu prosi człowieka.
 Czas człowieka to najrzadszy zasób w cyklu, więc dostaje zmianę, która przeszła już dwa poprzednie kroki.
 
 ### Dowód zamiast zaufania
@@ -93,7 +95,7 @@ Agent wykonuje pracę na każdym etapie; ty decydujesz na bramkach.
 | [Budowa](/pl/lifecycle/build/) | Tnie spec na zadania, buduje je równolegle w worktree, uruchamia walidację repozytorium i naprawia błędy | Odpowiadasz na jedną paczkę pytań, rozstrzygasz sprawy dla człowieka, zgadzasz się na push | Branche, po jednym na pull request |
 | [Self-review](/pl/lifecycle/self-review/) | Przegląda zmianę każdą pasującą soczewką i scala znaleziska w jeden raport | Wybierasz, które poprawki zastosować | Raport z review i poprawki |
 | [Testy](/pl/lifecycle/test/) | Ustala, co przetestować, uruchamia każde sprawdzenie na działającej aplikacji i zapisuje dowody | Wskazujesz lokalne albo stagingowe środowisko albo pozwalasz mu je uruchomić i odpowiadasz na jego pytania | Raport z testów w sesji, z werdyktem dla każdego sprawdzenia |
-| [Review człowieka](/pl/lifecycle/human-review/) | Przygotowuje dowody, otwiera pull request z tymi dowodami, historią zmiany i etykietą ryzyka, odpowiada na komentarze i naprawia CI | Akceptujesz plan dowodów i każde nagranie, przeglądasz i akceptujesz zmianę oraz rozstrzygasz to, co agent ci odda | Pull request z zielonymi checkami i rozstrzygniętymi wątkami, gotowy do akceptacji |
+| [Review człowieka](/pl/lifecycle/human-review/) | Przygotowuje dowody, otwiera pull request z tymi dowodami, historią zmiany i etykietą ryzyka, odpowiada na komentarze i naprawia CI | Akceptujesz plan dowodów, każdy zrzut ekranu i wideo, przeglądasz i akceptujesz zmianę oraz rozstrzygasz to, co agent ci odda | Pull request z zielonymi checkami i rozstrzygniętymi wątkami, gotowy do akceptacji |
 | [Utrzymanie](/pl/lifecycle/maintain/) | Sprawdza aktualizacje zależności i znajduje poprawki z sesji | Akceptujesz albo pomijasz każdą proponowaną regułę | Werdykt o aktualizacji albo nowe reguły |
 
 Tabela 1. Co robi agent, a o czym decydujesz ty na każdym etapie

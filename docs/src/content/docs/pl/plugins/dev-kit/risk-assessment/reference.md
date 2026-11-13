@@ -69,7 +69,7 @@ Narzędzie zwraca JSON. Wynik zaczynający się od `Risk assessment unavailable:
 | `slices` | Jeden wpis na slice, opisany niżej. |
 | `label` | `enabled`, `name` etykiety dla tego poziomu i `all`, czyli wszystkie nazwy etykiet, żeby `pr-open` mógł usunąć starą. |
 | `coverage` | Jak duża część zmiany została oceniona, opisane niżej. |
-| `comparison` | Tylko przy obu backendach: po jednym wpisie na backend, najpierw główny, z polami `backend`, `model`, `level`, `impact`, `likelihood`, `complexity`, `confidence`, `lowConfidence`, `scorer` oraz `title`, `level`, `impact` i `complexity` każdego slice’a; albo `backend` i `error` dla tego, który zawiódł, a wynik drugiego obowiązuje. Każde porównanie jest też dopisywane do `~/.cache/dev-kit/compare.jsonl` z nazwą katalogu repozytorium, branchem, commitem i bazą, nigdy z diffem. |
+| `comparison` | Tylko przy obu backendach: po jednym wpisie na backend, najpierw główny, z polami `backend`, `model`, `level`, `impact`, `likelihood`, `complexity`, `confidence`, `lowConfidence`, `scorer` oraz `title`, `level`, `impact` i `complexity` każdego slice’a; albo `backend` i `error` dla tego, który zawiódł, a wynik drugiego obowiązuje. Każde porównanie jest też dopisywane do `~/.cache/dev-kit/compare.jsonl` ze znacznikiem czasu, nazwą repozytorium z adresu remote'a `origin`, branchem, commitem i bazą, nigdy z diffem. |
 | `backend`, `model`, `base`, `riskPolicy`, `slicing` | Backend (`typesafe` albo `gemini`) i model, który odpowiedział, ustalona baza, użyta polityka i skąd pochodzą slice’y (`caller`, `model` albo `size`). |
 
 Tabela 3. Pola wyniku dla całej zmiany

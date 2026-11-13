@@ -11,7 +11,7 @@ sidebar:
 import SkillFlow from '~/components/SkillFlow.astro'
 import Strip from '~/components/Strip.astro'
 
-Przestylowaną stronę albo nowy komponent najłatwiej przejrzeć na obrazku.
+Przestylowaną stronę albo nowy komponent reviewer najlepiej ocenia na obrazku.
 `screenshot-proof` robi jeden zrzut całej strony dla każdego zmienionego ekranu w każdej szerokości viewportu i zostawia tylko te, które zaakceptujesz.
 Z `before` robi też zrzuty tych samych ekranów z bazy, żeby reviewer mógł je porównać.
 
@@ -31,6 +31,8 @@ Pliki, których dotyczą zrzuty, wybiera z diffu względem bazy, którą domyśl
 Na domyślnym branchu albo przy odłączonym HEAD odmawia.
 
 ## Jak przebiega
+
+Diagram pokazuje kroki skilla i to, co zostawia każdy z nich:
 
 <SkillFlow
   skill="screenshot-proof"
@@ -63,7 +65,7 @@ W obu przypadkach dane logowania są czytane tylko w skrypcie albo kroku logowan
 ### Zrzuty „przed”
 
 Z `before` i URL-em bazy skill robi zrzuty tych samych ekranów w tych samych szerokościach z bazy.
-Każdy zrzut „przed” to osobny obraz, nazwany jak zrzut „po” z dopiskiem ` (before)`.
+Każdy zrzut „przed” to osobny obraz, a jego etykieta `screen` to nazwa zrzutu „po” z dopiskiem ` (before)`.
 Z `before`, ale bez URL-a bazy, robi tylko zrzuty „po” i informuje, że zrzuty „przed” zostały pominięte.
 
 ## O co pyta
@@ -84,9 +86,10 @@ Zrzuty trafiają do `~/.cache/pr-proof/<repo>/<branch>/screenshots/`:
 Tabela 1. Pliki zrzutów. `<screen>` to nazwa ekranu małymi literami, ze słowami połączonymi myślnikami.
 
 Manifest dostaje jeden wpis `screenshots` z twierdzeniem, plikami, których dotyczą zrzuty, i jedną pozycją na każdy zaakceptowany zrzut.
-`pr-open` pokazuje go jako tabelę: jeden wiersz na ekran i jedna kolumna na szerokość.
+`pr-open` pokazuje go jako osobną tabelę dla każdego wpisu: jeden wiersz na ekran i jedna kolumna na szerokość.
 
-Raport wymienia użytą przeglądarkę, szerokości i ich źródło, ekrany z zaakceptowanymi zrzutami, poprawki listy plików i każdy pominięty zrzut.
+Raport wymienia użytą przeglądarkę, szerokości i ich źródło oraz ekrany z zaakceptowanymi zrzutami.
+Podaje też poprawki listy plików i każdy pominięty zrzut.
 
 ## Następne kroki
 

@@ -18,10 +18,10 @@ Each skill does the whole job, including commits and pushes where you allow them
 
 <LifeMap focus="dev-kit" animate={false} />
 
-Three skills work in [human review](/lifecycle/human-review/), the last stage of the cycle.
-[`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) records its proof first.
+Three skills work in [human review](/lifecycle/human-review/), the last stage of the cycle: `pr-open`, `pr-shepherd` and `ci-fix`.
+[`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) first records the branch's proof.
 `pr-open` then opens the pull request with that proof, a [code story](/plugins/code-story/) that explains the change, and sentences cleaned by [anti-slop](/plugins/anti-slop/).
-`pr-shepherd` keeps it green until it's approved.
+`pr-shepherd` keeps it green until it's approved, and hands every red check to `ci-fix`.
 `dep-upgrade-check` works in [Maintain](/lifecycle/maintain/), outside the cycle: run it when an upgrade arrives.
 
 ## What's in the plugin
@@ -40,7 +40,8 @@ You can run a skill by its command, or describe the task ("CI is red on this PR"
 ## The risk label
 
 The highlight of `pr-open` is the risk label.
-With a [TypeSafe](https://docs.typesafe.ai/introduction) or [Gemini Decision](https://aistudio.google.com/docs/decisions-api) API key configured, `pr-open` rates how risky the branch is, ends the description with a **Risk** section, and labels the pull request, such as `risk: high`.
+With a [TypeSafe](https://docs.typesafe.ai/introduction) or [Gemini Decision](https://aistudio.google.com/docs/decisions-api) API key configured, `pr-open` rates how risky the branch is.
+It ends the description with a **Risk** section and labels the pull request, such as `risk: high`.
 A reviewer then knows how closely to look before they open the diff.
 
 The diff, the commit messages and the pull request and ticket descriptions are sent to the backend you chose: TypeSafe, Google, or both.

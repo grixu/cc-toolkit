@@ -1,6 +1,6 @@
 ---
 title: code-story
-description: Zamienia branch, pull request albo stos pull requestów w stronę z rozdziałami, która uczy, jak i dlaczego zmiana działa, czytelnika, który nigdy nie widział tego kodu.
+description: Zamienia branch, pull request albo ich stos w stronę z rozdziałami, która czytelnikowi nieznającemu kodu wyjaśnia, jak i dlaczego zmiana działa.
 group: start
 sidebar:
   label: Przegląd
@@ -14,9 +14,11 @@ Diff pokazuje, co się zmieniło, plik po pliku, w kolejności alfabetycznej.
 Nie pokazuje, która zmiana tłumaczy pozostałe ani dlaczego autor ją wprowadził.
 code-story zamienia zmianę w **historię zmiany** (code story): stronę z rozdziałami dla kogoś, kto nigdy nie widział tego kodu.
 Zmiana zostaje pocięta na kroki, w jakich dałoby się ją przejrzeć.
-Każdy rozdział odpowiada na jedno pytanie liniami, których dotyczy, a notatki są przypięte do tych linii.
+Każdy rozdział odpowiada na jedno pytanie i pokazuje linie, których dotyczy, a notatki są przypięte do tych linii.
 
 ## Gdzie działa
+
+Mapa pokazuje, gdzie w cyklu leży code-story.
 
 <LifeMap focus="code-story" animate={false} />
 
@@ -34,7 +36,8 @@ Możesz go też uruchomić samodzielnie, na dowolnym branchu albo pull requeści
 - Chcesz wyjaśnić stos pull requestów jako jedną zmianę.
 - Wracasz do zmiany po czasie i chcesz wiedzieć, skąd taki kształt kodu.
 
-Każde twierdzenie w historii opiera się na czymś, co skill przeczytał: diffie, commicie, pull requeście, review, tickecie, specu albo kodzie.
+Każde twierdzenie w historii opiera się na czymś, co skill przeczytał.
+Może to być diff, commit, pull request, review, ticket, spec albo kod.
 Gdy powodu zmiany nie da się nigdzie znaleźć, historia mówi to wprost, zamiast go wymyślać.
 
 ## Instalacja
@@ -69,14 +72,14 @@ Mod pluginu przekazuje je skillowi przez swoje narzędzie `config`.
 | Ustawienie | Domyślnie | Co robi |
 |---|---|---|
 | `second_language` | puste | Tag języka, na przykład `pl`. Puste oznacza tylko angielski. Nazwy z kodu i terminy programistyczne zostają po angielsku w każdym języku. |
-| `gloss_first_use` | `true` | W drugim języku przy pierwszym użyciu angielskiego terminu pojawia się w nawiasie jego tłumaczenie. |
+| `gloss_first_use` | `true` | W drugim języku po pierwszym użyciu angielskiego terminu pojawia się w nawiasie jego tłumaczenie. |
 | `diagram_skill` | puste | Zainstalowany skill do diagramów, na przykład `fireworks-tech-graph`. Puste oznacza wbudowane diagramy. |
 | `uncommitted` | `ignore` | `ignore` opowiada zmianę z commitów bez pytania. `include` bez pytania dołącza zmiany niezacommitowane. `ask` pyta za każdym razem. |
 | `stack` | `ask` | Dla brancha w stosie otwartych pull requestów: `ask`, czy opowiedzieć cały stos, `always` albo `never`. |
 
 Tabela 1. Ustawienia code-story.
 
-Nieprawidłowa wartość wraca do domyślnej, a skill powtarza ostrzeżenie w raporcie.
+Zamiast nieprawidłowej wartości skill bierze domyślną i powtarza ostrzeżenie w raporcie.
 Bez narzędzia `config` skill używa wartości domyślnych i o tym informuje.
 
 Prośba zmienia ustawienie na jeden przebieg:
@@ -118,9 +121,12 @@ Przy ustawieniu `stack` na `always` albo z `stack` w prośbie jedna historia obe
 Biegnie od bazy najniższego pull requesta do heada najwyższego, a raport wymienia pull requesty, które obejmuje.
 Przy `never` albo z `no stack` obejmuje tylko twój branch.
 
+Strona zapisuje też ref swojego heada.
+Aktualizacja historii całego stosu nadal biegnie więc do heada najwyższego pull requesta, nawet gdy uruchamiasz ją z niższego brancha.
+
 Skill pomija pull requesty z forków i branche o nazwach z nietypowymi znakami, a te, które pominął, wymienia w raporcie.
 
-## Kto może zobaczyć stronę
+## Kto może zobaczyć historię
 
 Nowa historia to prywatny Artifact na claude.ai.
 Dopóki jej nie udostępnisz, otworzysz ją tylko ty.

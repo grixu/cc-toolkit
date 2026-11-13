@@ -76,7 +76,7 @@ Wejście `risk_policy` zmienia tylko te reguły. Domyślne `calibrated-v1` zacho
 
 Scorer czynników jest mierzony na pull requestach, którym ludzie nadali poziom ryzyka. Oznaczone dane pochodzą z prywatnych repozytoriów, więc nie ma ich w tym repozytorium. Skrypty ewaluacji są w `plugins/dev-kit/evals/pr-risk/`. Ich [README](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md) wyjaśnia metrykę i sposób uruchamiania ewaluacji.
 
-Metryka to oczekiwany koszt na pull request, w którym zaniżenia liczą się podwójnie, więc niższy wynik jest lepszy. Na kohorcie deweloperskiej Gemini Decision oceniono na tych samych stanach co zapisane odpowiedzi Jev:
+Metryka to oczekiwany koszt na pull request, przy czym zaniżenia liczą się podwójnie, więc niższy wynik jest lepszy. Na kohorcie deweloperskiej Gemini Decision oceniono na tych samych stanach co zapisane odpowiedzi Jev:
 
 | Backend | Koszt | Trafienia | Za wysoko | Za nisko | Groźne pomyłki (ważone) |
 |---|---|---|---|---|---|
@@ -85,7 +85,7 @@ Metryka to oczekiwany koszt na pull request, w którym zaniżenia liczą się po
 
 Tabela 2. Jev i Gemini Decision na kohorcie deweloperskiej, widok (b) etykiet
 
-Koszt wychodzi podobnie, ale Gemini ocenia niżej na skali: rzadziej zawyża, częściej zaniża i częściej przeocza zmiany o poziomie high albo critical. Progi dostrojono na Jev, więc Jev gra u siebie. Dlatego TypeSafe pozostaje domyślnym głównym backendem. [Wynik Gemini Decision](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12) w README podaje oba widoki etykiet.
+Koszt jest na tym samym poziomie, ale Gemini ocenia niżej na skali: rzadziej zawyża, częściej zaniża i częściej przeocza zmiany o poziomie high albo critical. Progi dostrojono na Jev, więc sprzyjają Jev. Dlatego TypeSafe pozostaje domyślnym głównym backendem. [Wynik Gemini Decision](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12) w README podaje oba widoki etykiet.
 
 ## Następne kroki
 

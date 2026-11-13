@@ -39,9 +39,9 @@ Rysunek 1. Zapytania jednej oceny, od diffu do raportu
 4. Gdy przekazano zasady testowania repozytorium, slice oznaczony jako logika bez testów dostaje jeszcze jedno zapytanie, zapytanie o politykę.
 5. Kod ocenia odpowiedzi o czynniki, wylicza poziom i buduje raport.
 
-Naraz działają najwyżej cztery zapytania do każdego backendu. Zapytanie, które padnie przez rate limit albo błąd serwera, jest próbowane łącznie do trzech razy. Przed kolejną próbą narzędzie czeka tyle, ile każe nagłówek `Retry-After` z API, a bez niego najpierw 1, potem 2 sekundy, i nigdy dłużej niż 10 sekund. To czekanie nie wlicza się do limitu czasu hooka, który uruchamia narzędzie.
+Naraz działają najwyżej cztery zapytania do każdego backendu. Zapytanie, które padnie przez rate limit albo błąd serwera, jest próbowane łącznie do trzech razy. Przed kolejną próbą narzędzie czeka tyle, ile każe nagłówek `Retry-After` z API. Bez tego nagłówka czeka najpierw 1, potem 2 sekundy. Nigdy nie czeka dłużej niż 10 sekund. To czekanie nie wlicza się do limitu czasu hooka, który uruchamia narzędzie.
 
-Przy obu backendach każdy przeprowadza całą ocenę osobno, a poziom ustala wynik [głównego backendu](/pl/plugins/dev-kit/risk-assessment/#wybierz-backend). Gdy główny backend zawiedzie, zostaje wynik drugiego.
+Przy obu backendach slice’y są wspólne, a każdy backend sam odpowiada na wszystkie zapytania. Poziom ustala wynik [głównego backendu](/pl/plugins/dev-kit/risk-assessment/#wybierz-backend). Gdy główny backend zawiedzie, zostaje wynik drugiego.
 
 ## Krok 1: odczyt diffu
 

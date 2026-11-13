@@ -1,6 +1,6 @@
 ---
 title: /code-story:code-story
-description: Build or update a code story for a branch, a pull request or a stack of them, publish it as an Artifact under a stable link, and get that link back.
+description: Build or update a code story for a branch, a pull request or a stack, and publish it as an Artifact under a stable link.
 group: guides
 skill: code-story
 sidebar:
@@ -46,6 +46,8 @@ You can also ask in plain words ("write a code story for this branch"), and Clau
 
 ## How it runs
 
+The following diagram shows the steps of a run:
+
 <SkillFlow
   skill="code-story"
   input="A branch, a pull request or a stack, and optionally a spec, tickets or a question"
@@ -65,21 +67,23 @@ You can also ask in plain words ("write a code story for this branch"), and Clau
 A typical story has 4 to 8 chapters, in the order understanding has to build.
 Each chapter answers one question, and its heading is that question.
 
-The skill works in its scratchpad, in `code-story/<branch>/`.
+The skill works in its scratchpad, in `code-story/<branch>/`, with each `/` in the branch name replaced by `-`.
 It never edits, stages or commits files in your repository, and it never pushes or edits a pull request.
 
 ## What the scripts check
 
 Facts that git can answer come from scripts, not from the model.
-`assemble.mjs` fills in the head commit, base, repository, counts, line ranges and labels.
-It then runs `check.mjs`, which checks:
+`assemble.mjs` fills in the head commit, base, repository, counts and labels.
+The page's own script computes the line ranges.
+`assemble.mjs` then runs `check.mjs`, which checks:
 
-- each note against the line it marks;
-- each quoted line against the real file at the story's commit;
-- that every chapter exists in every story language;
+- that every marker in a code block has a note, and every note a marker;
+- each quoted line of this repository's files against the real file at the story's commit, or the working tree when uncommitted changes are included;
+- that every chapter has its title and each text block in every story language;
 - escaping;
 - that diagram labels fit.
 
+Blocks tagged as a dependency or another ref, and file trees, skip the quoted-line check.
 The skill fixes every error and runs the check again.
 It publishes only after the check passes.
 

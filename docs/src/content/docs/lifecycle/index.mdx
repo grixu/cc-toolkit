@@ -10,7 +10,8 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import StageCommands from '~/components/StageCommands.astro'
 
-cc-toolkit is built around the agentic development lifecycle (ADLC): the stages a change goes through when Claude Code writes the code and you make the decisions.
+cc-toolkit is built around the agentic development lifecycle (ADLC).
+The ADLC is the set of stages a change goes through when Claude Code writes the code and you make the decisions.
 This page explains the idea, shows where you take part, and maps each stage to the plugins and skills that carry it.
 Each stage then has its own page with the steps in order.
 
@@ -56,7 +57,8 @@ A [hookify](/plugins/hookify/) rule is checked on every tool call, so an edit th
 
 ### The cheapest check runs first
 
-Review & test runs in three steps, from the cheapest to the most expensive: the agent reviews its own branch, then tests the running app, and only then asks a person.
+Review & test runs in three steps, from the cheapest to the most expensive.
+The agent reviews its own branch, then tests the running app, and only then asks a person.
 A person's time is the scarcest resource in the cycle, so it gets a change that already passed the other two.
 
 ### Evidence instead of trust
@@ -93,7 +95,7 @@ The agent does the work in every stage; you decide at the gates.
 | [Build](/lifecycle/build/) | Cuts the spec into tasks, builds them in parallel worktrees, runs the repository's checks and fixes failures | Answer one batch of questions, settle the items only a person can, approve the push | Branches, one per pull request |
 | [Self-review](/lifecycle/self-review/) | Reviews the change through every lens that applies and merges the findings into one report | Choose which fixes to apply | A review report and the fixes |
 | [Test](/lifecycle/test/) | Works out what to test, runs each check against the running app and records the evidence | Point it at a local or staging stack, or let it start one, and answer its questions | A test report in the session, with a verdict per check |
-| [Human review](/lifecycle/human-review/) | Produces proof, opens the pull request with that proof, a code story and a risk label, answers comments and fixes CI | Approve the proof plan and each recording, review and approve the change, and settle what the agent hands back | A pull request with green checks and settled threads, ready for approval |
+| [Human review](/lifecycle/human-review/) | Produces proof, opens the pull request with that proof, a code story and a risk label, answers comments and fixes CI | Approve the proof plan, each screenshot and the video, review and approve the change, and settle what the agent hands back | A pull request with green checks and settled threads, ready for approval |
 | [Maintain](/lifecycle/maintain/) | Checks dependency upgrades and finds the corrections in a session | Accept or skip each proposed rule | A verdict on the upgrade, or new rules |
 
 Table 1. What the agent does and what you decide in each stage

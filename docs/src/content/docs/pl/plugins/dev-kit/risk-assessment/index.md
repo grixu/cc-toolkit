@@ -74,7 +74,7 @@ Ocena wysyła do API backendu, TypeSafe albo Google, a przy obu backendach do ka
 - diff brancha względem bazy, bez lockfile'ów, plików binarnych i innych plików, które narzędzie [pomija](/pl/plugins/dev-kit/risk-assessment/how-it-works/#krok-1-odczyt-diffu);
 - opisy commitów;
 - `context`, który przekazuje `pr-open`: tytuł i opis pull requesta oraz tytuł i opis podlinkowanego ticketu, jeśli je przeczytał;
-- zasady testowania repozytorium, gdy `pr-open` znalazł je w `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` albo w CI;
+- zasady testowania repozytorium, gdy `pr-open` znalazł je w `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING`, `.claude/rules/` albo w CI;
 - krótkie fragmenty kodu, gdy wywołujący przekaże `execution_context`.
 
 Gdy `pr-open` nie pogrupuje plików w slice’y sam, narzędzie prosi o to Claude Haiku, na twoim koncie Claude Code.
@@ -84,7 +84,9 @@ Bez klucza TypeSafe ani Gemini nic nie jest wysyłane.
 Narzędzie nie istnieje, a `pr-open` podaje `Risk: not assessed`.
 
 Przy obu backendach każda para wyników trafia też do pliku `~/.cache/dev-kit/compare.jsonl` na twoim komputerze.
-Plik zawiera poziomy, nazwę katalogu repozytorium, branch, commit i bazę, ale nigdy diff.
+Każdy wpis zawiera znacznik czasu, nazwę repozytorium z adresu remote'a `origin`, branch, commit i bazę.
+Zawiera też model, poziomy i pewność każdego backendu, tytuły slice’ów i błąd backendu, jeśli wystąpił, ale nigdy diff.
+Wpis powstaje nawet wtedy, gdy zawiodą oba backendy.
 
 ## Włącz ją
 
@@ -96,7 +98,7 @@ Etykieta ryzyka wymaga Claude Code w wersji 2.1.287 lub nowszej, który ładuje 
 Klucz ustawisz na jeden z dwóch sposobów:
 
 - Wyeksportuj `TYPESAFE_API_KEY` albo `GEMINI_DECISIONS_API_KEY` (a gdy go brak, `GEMINI_API_KEY`) w powłoce, z której uruchamiasz Claude Code.
-- Albo uruchom `/plugin configure dev-kit@cc-toolkit` i wpisz go jako opcję **TypeSafe API key** albo **Gemini API key**. Claude Code przechowuje go w systemowym magazynie poświadczeń, a ma on pierwszeństwo przed zmienną.
+- Albo uruchom `/plugin configure dev-kit@cc-toolkit` i wpisz go jako opcję **TypeSafe API key** albo **Gemini API key**. Claude Code przechowuje go w systemowym magazynie poświadczeń, a klucz z opcji ma pierwszeństwo przed zmienną.
 
 Klucz ustawiony albo zmieniony w trakcie sesji zaczyna działać po `/reload-plugins`.
 [Etykieta ryzyka: referencja](/pl/plugins/dev-kit/risk-assessment/reference/) wymienia pozostałe opcje, na przykład nazwę etykiety i wersję modelu.
@@ -110,7 +112,7 @@ Backend wybiera opcja **Decision backend** (`decision_backend`):
 
 | Wartość | Co się dzieje |
 |---|---|
-| `auto` (domyślna) | Narzędzie używa backendu, którego klucz jest ustawiony. Przy obu kluczach `pr-open` pyta, czy użyć TypeSafe, Gemini czy obu, i proponuje zapisanie odpowiedzi w tej opcji. |
+| `auto` (domyślna) | Narzędzie używa backendu, którego klucz jest ustawiony. Przy obu kluczach `pr-open` pyta, czy użyć TypeSafe, Gemini czy obu. Proponuje zapisanie odpowiedzi w tej opcji przez `/plugin configure dev-kit@cc-toolkit`. |
 | `typesafe` albo `gemini` | Zmianę ocenia tylko ten backend. Bez jego klucza ocena jest niedostępna. |
 | `both` | Potrzebne są oba klucze, a oba backendy działają równolegle. Opcja **Primary backend** (`primary_backend`, domyślnie TypeSafe) ustala poziom, flagi i etykietę. Sekcja **Risk** pokazuje obok poziom drugiego backendu i mówi, czy się różnią. |
 
@@ -128,7 +130,7 @@ Liczby podaje sekcja [Jak oceniany jest scorer](/pl/plugins/dev-kit/risk-assessm
 - **Najpierw napisz opis.** Opis mówi modelowi, czemu ma służyć każdy slice, na przykład dodaniu funkcji albo naprawie błędu.
 - **Dołącz ręczne dowody.** Zrzut ekranu, wideo, link do Looma albo zapytanie i odpowiedź w bloku kodu mogą obniżyć prawdopodobieństwo slice’a o niskiej stawce o jeden stopień. Nowe pull requesty rzadko je mają, więc po ich dołączeniu uruchom `pr-open` ponownie, żeby odświeżyć sekcję **Risk**.
 - **Trzymaj testy obok kodu, który testują.** Plik testu w zmianie o pasującej nazwie liczy się jako test tego pliku.
-- **Opisz zasady testowania** w `CLAUDE.md`, `AGENTS.md` albo `CONTRIBUTING`. Slice, którego twoje zasady nie każą testować, na przykład Terraform albo UI testowany tylko end-to-end, traci wtedy flagę „Logic without tests”.
+- **Opisz zasady testowania** w `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING` albo `.claude/rules/`. Slice, którego twoje zasady nie każą testować, na przykład Terraform albo UI testowany tylko end-to-end, traci wtedy flagę „Logic without tests”.
 
 ## Następne kroki
 

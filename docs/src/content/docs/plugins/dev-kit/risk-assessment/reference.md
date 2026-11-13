@@ -69,7 +69,7 @@ The tool returns JSON. A result that starts with `Risk assessment unavailable:` 
 | `slices` | One entry per slice, described below. |
 | `label` | `enabled`, the label `name` for this level, and `all` label names, so `pr-open` can remove the old one. |
 | `coverage` | How much of the change was assessed, described below. |
-| `comparison` | Only with both backends: one entry per backend, primary first, with `backend`, `model`, `level`, `impact`, `likelihood`, `complexity`, `confidence`, `lowConfidence`, `scorer` and each slice's `title`, `level`, `impact` and `complexity`; or `backend` and `error` for one that failed, while the other's result stands. Each comparison is also appended to `~/.cache/dev-kit/compare.jsonl` with the repository's directory name, branch, commit and base, never the diff. |
+| `comparison` | Only with both backends: one entry per backend, primary first, with `backend`, `model`, `level`, `impact`, `likelihood`, `complexity`, `confidence`, `lowConfidence`, `scorer` and each slice's `title`, `level`, `impact` and `complexity`; or `backend` and `error` for one that failed, while the other's result stands. Each comparison is also appended to `~/.cache/dev-kit/compare.jsonl` with a timestamp, the repository name from the `origin` remote's URL, the branch, commit and base, never the diff. |
 | `backend`, `model`, `base`, `riskPolicy`, `slicing` | The backend (`typesafe` or `gemini`) and model that answered, the resolved base, the policy used, and where the slices came from (`caller`, `model` or `size`). |
 
 Table 3. Result fields for the whole change

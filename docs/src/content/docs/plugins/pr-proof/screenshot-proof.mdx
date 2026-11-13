@@ -11,7 +11,7 @@ sidebar:
 import SkillFlow from '~/components/SkillFlow.astro'
 import Strip from '~/components/Strip.astro'
 
-A restyled page or a new component is easiest to review as a picture.
+A reviewer reads a restyled page or a new component best as a picture.
 `screenshot-proof` takes one full-page screenshot of each changed screen at each viewport width, and keeps only the shots you approve.
 With `before`, it also shoots the same screens on the base, so the reviewer can compare.
 
@@ -31,6 +31,8 @@ It picks the files the shots prove from the diff against the base, which default
 It refuses on the default branch or a detached HEAD.
 
 ## How it runs
+
+The diagram shows the skill's steps and what each leaves:
 
 <SkillFlow
   skill="screenshot-proof"
@@ -63,7 +65,7 @@ Either way, the credentials are read only inside the script or the login step th
 ### Before shots
 
 With `before` and a base URL, the skill shoots the same screens at the same widths against the base.
-Each before shot is its own image, named after the after shot with ` (before)`.
+Each before shot is its own image, and its `screen` label is the after shot's name followed by ` (before)`.
 With `before` and no base URL, it takes only the after shots and says the before shots were skipped.
 
 ## What it asks you
@@ -86,7 +88,8 @@ Table 1. The screenshot files. `<screen>` is the screen's name in lowercase keba
 The manifest gets one `screenshots` entry with a claim, the files the shots prove and one item per approved shot.
 `pr-open` renders it as a table per entry: one row per screen and one column per width.
 
-The report names the browser that ran, the widths and where they came from, the screens and their approved shots, the corrections to the files, and any shot left out.
+The report names the browser that ran, the widths and where they came from, and the screens with their approved shots.
+It also lists the corrections to the files and any shot left out.
 
 ## Next steps
 

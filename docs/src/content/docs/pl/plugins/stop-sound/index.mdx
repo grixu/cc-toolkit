@@ -21,8 +21,8 @@ Nie ma komendy do wpisania: po instalacji nasłuchuje końca każdej tury i pyta
 
 | Moment | Dźwięk |
 |---|---|
-| Główna sesja kończy turę i nic w tle jej nie obudzi | `done`: dwa opadające dźwięki |
-| Claude zadaje ci pytanie (`AskUserQuestion`) albo przedstawia plan (`ExitPlanMode`) | `question`: trzy rosnące dźwięki |
+| Główna sesja kończy turę i nic w tle jej nie obudzi | `done`: dwa coraz niższe dźwięki |
+| Claude zadaje ci pytanie (`AskUserQuestion`) albo przedstawia plan (`ExitPlanMode`) | `question`: trzy coraz wyższe dźwięki |
 | Sesja kończy turę, a subagent albo członek zespołu (teammate) wciąż pracuje | Brak |
 | Subagent kończy pracę | Brak |
 | Sam przerywasz turę | Brak |
@@ -61,9 +61,10 @@ Opcje ustawisz w `/plugin` → stop-sound → configure albo w `pluginConfigs` w
 Tabela 2. Opcje stop-sound.
 
 Plik może mieć rozszerzenie `.wav`, `.mp3`, `.aiff`, `.aif`, `.m4a` albo `.ogg` i ważyć do 4 MiB.
+Większego pliku Claude Code nie odczyta dla moda.
 Zostaw opcję pustą, żeby zachować dołączony dźwięk.
-Gdy pliku brakuje albo ma inne rozszerzenie, gra dołączony dźwięk.
-Gdy plik da się odczytać, ale nie da się go odtworzyć, nic nie gra.
+Gdy pliku brakuje, jest za duży, ma inne rozszerzenie albo nie da się go odtworzyć, gra dołączony dźwięk.
+Nic nie gra tylko wtedy, gdy zawiedzie też dołączony dźwięk.
 
 ## Jak decyduje
 
@@ -77,7 +78,8 @@ Na końcu każdej tury sprawdza trzy rzeczy:
 Gdy wszystkie trzy warunki są spełnione, odtwarza dźwięk `done`.
 
 Reaguje na koniec tury, a nie na zdarzenie hooka `Stop`.
-W planach Team i Enterprise wbudowane zabezpieczenie Claude Code pomija hooki `Stop` z modów, które instalujesz, ale koniec tury przepuszcza.
+W planach Team i Enterprise wbudowane zabezpieczenie Claude Code pomija hooki `Stop` z modów, które instalujesz.
+Koniec tury nadal przepuszcza.
 
 Nieudany sygnał niczego nie blokuje: tura albo pytanie toczą się dalej bez zmian.
 Na komputerze bez wyjścia audio plugin milczy.

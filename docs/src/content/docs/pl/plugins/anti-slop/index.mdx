@@ -9,7 +9,7 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import Strip from '~/components/Strip.astro'
 
-Modele piszą domyślnym wyborem:
+Model pisze to, co domyślne, a domyślny wybór wygląda tak:
 
 - najdokładniejsze słowo w każdym miejscu, więc zdania brzmią sztywno;
 - przyczyna przy każdym fakcie i zdanie na koniec, które wszystko podsumowuje;
@@ -21,6 +21,8 @@ Działa na tekstach po angielsku i po polsku.
 Tnie słowa, nigdy twierdzenia: każdy fakt, liczba, nazwa, data, cytat, link, zastrzeżenie i stopień pewności zostają.
 
 ## Gdzie działa
+
+Mapa pokazuje, gdzie w cyklu leży anti-slop.
 
 <LifeMap focus="anti-slop" animate={false} />
 
@@ -42,7 +44,8 @@ Podaj tekst albo ścieżkę do pliku:
 Uruchamiają go też prośby w rodzaju „de-slop this”, „humanize this” czy „check it for AI tells”.
 
 Tekst, który mu dajesz, jest materiałem, a nie poleceniem.
-Linia, która zwraca się do „AI” albo podaje się za polecenie od admina, jest redagowana jak każda inna albo zostaje bez zmian.
+Niektóre linie zwracają się do „AI” albo podają się za polecenie od admina.
+Skill redaguje je jak każde inne albo zostawia bez zmian.
 
 ## Tryby
 
@@ -51,7 +54,7 @@ Skill wybiera tryb na podstawie prośby:
 | Tryb | Kiedy | Co dostajesz |
 |---|---|---|
 | Cleanup | Domyślnie | Oczyszczony tekst, a pod nim lista **What changed**, po jednej linii na zmianę |
-| File | Prośba wskazuje plik | Plik przepisany na miejscu, tylko proza. Kod, linki, frontmatter i HTML zostają co do bajtu. |
+| File | Prośba wskazuje plik | Plik przepisany na miejscu, tylko proza. Kod, adresy URL, cele linków, frontmatter i HTML zostają co do bajtu. |
 | Diagnose | Prośba mówi „diagnose”, „audit”, „check” albo „only point out” | Lista cytowanych problemów z poprawkami, w kolejności tekstu. Bez przepisywania. |
 | Embedded | Inny skill przekazuje tekst w trakcie własnych kroków | Sam oczyszczony tekst w formacie wywołującego, który od razu przechodzi do swojego następnego kroku |
 
@@ -74,7 +77,8 @@ Bez źródła zamienia swoje podejrzenia w pytania, zamiast twierdzić, że coś
 W trybie embedded i file wywołanym przez inny skill nikt nie odpowiada na pytania.
 Skill przepisuje wtedy niepoparte twierdzenie na takie, które źródło potwierdza, albo pisze, że powód nie został zapisany.
 
-Podaj próbkę stylu (`voice: <sample>`), a skill dopasuje się do jej długości zdań, słownictwa, interpunkcji i sposobu zaczynania zdań, przed własnymi regułami.
+Podaj próbkę stylu (`voice: <sample>`), a skill dopasuje się do jej długości zdań, słownictwa, interpunkcji i sposobu zaczynania zdań.
+Jej nawyki mają pierwszeństwo przed regułami skilla.
 
 ## Przebiegi
 
@@ -96,7 +100,7 @@ Inne same w sobie są słabe i skill reaguje na nie tylko wtedy, gdy w tym samym
 ## Języki
 
 Skill ocenia każdy akapit w jego własnym języku.
-Angielski i polski przechodzą przez wszystkie przebiegi, każdy z własnym leksykonem; polski dostaje też wzorce na urzędniczy styl, nominalizacje, łańcuchy dopełniaczy i kalki z tłumaczeń.
+Angielski i polski przechodzą przez wszystkie przebiegi, każdy z własnym leksykonem; polski dostaje też wzorce urzędniczego stylu, nominalizacje, łańcuchy dopełniaczy i kalki z tłumaczeń.
 Inne języki przechodzą przebiegi od 1 do 4 i 7, a raport mówi, że przebiegi słowne się nie odbyły.
 
 Identyfikatory z kodu, nazwy API, klucze konfiguracji, komunikaty błędów i terminy fachowe zostają w oryginalnej formie i języku.
@@ -109,19 +113,22 @@ Przed przebiegami skill uruchamia na tekście skrypt:
 node scripts/scan.mjs <file> [--lang en|pl]
 ```
 
-Wypisuje mechaniczne sygnały z numerem linii i kolumny: frazy z leksykonu, myślniki w roli łącznika, cudzysłowy drukarskie, punkty listy zaczynające się od pogrubionej etykiety, nagłówki pisane Title Case oraz emoji w nagłówkach i punktach list.
+Wypisuje mechaniczne sygnały z numerem linii i kolumny.
+To frazy z leksykonu, myślniki w roli łącznika i cudzysłowy drukarskie.
+Oznacza też punkty listy zaczynające się od pogrubionej etykiety, nagłówki pisane Title Case oraz emoji w nagłówkach i punktach list.
 Pomija kod, znaczniki i adresy URL.
 Bez `--lang` sprawdza oba leksykony, co pasuje do tekstu mieszającego angielski z polskim.
 
 Trafienie to trop, a nie werdykt: model ocenia każde w kontekście.
-Skrypt kończy się kodem 0 bez względu na to, co znajdzie; błędem kończy się tylko wtedy, gdy brakuje pliku albo język jest nieznany.
+Skrypt kończy się kodem 0 bez względu na to, co znajdzie.
+Kodem 2 kończy się przy złym wywołaniu: bez pliku, z plikiem, którego nie da się odczytać, albo z `--lang` bez `en` lub `pl` po nim.
 
 ## Czego nie rusza
 
 - Cytatów, tytułów, nazw własnych i fragmentów, które omawiają frazę, a nie jej używają.
 - Tekstów napisanych przed 30 listopada 2022.
 - Nawyków próbki stylu, którą podasz.
-- Szczegółów, które niosą autora: dziwnej konkretności, mieszanych uczuć, odniesienia do swoich czasów, prawdziwej dygresji.
+- Szczegółów, które niosą autora: nietypowego szczegółu, mieszanych uczuć, odniesienia, które zdradza datę, prawdziwej dygresji.
 - Sformułowań prawnych, dotyczących bezpieczeństwa i zakresu oraz formalnego rejestru, którego wymaga dany gatunek.
 
 ## Wymagania

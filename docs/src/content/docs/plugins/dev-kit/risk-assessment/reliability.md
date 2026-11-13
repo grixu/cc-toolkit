@@ -85,7 +85,7 @@ The metric is the expected cost per pull request, with under-estimates counted t
 
 Table 2. Jev and Gemini Decision on the development cohort, view (b) of the labels
 
-The cost is at parity, but Gemini rates lower on the scale: it over-estimates less, under-estimates more, and misses more high or critical changes. The thresholds were tuned on Jev, so Jev has the home advantage. That's why TypeSafe stays the default primary backend. The [Gemini Decision result](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12) in the README gives both views of the labels.
+The cost is at parity, but Gemini rates lower on the scale: it over-estimates less, under-estimates more, and misses more high or critical changes. The thresholds were tuned on Jev, so they favor Jev. That's why TypeSafe stays the default primary backend. The [Gemini Decision result](https://github.com/grixu/cc-toolkit/blob/main/plugins/dev-kit/evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12) in the README gives both views of the labels.
 
 ## Next steps
 

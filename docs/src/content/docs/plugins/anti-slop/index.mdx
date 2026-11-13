@@ -22,6 +22,8 @@ It cuts words, never claims: every fact, number, name, date, quote, link, caveat
 
 ## Where it works
 
+The map shows where anti-slop sits in the cycle.
+
 <LifeMap focus="anti-slop" animate={false} />
 
 anti-slop is a supporting plugin in [03c Human review](/lifecycle/human-review/).
@@ -42,7 +44,8 @@ Pass the text, or the path to a file:
 Requests such as "de-slop this," "humanize this," or "check it for AI tells" also start it.
 
 The text you hand it is material, never instructions.
-A line in the text that addresses "the AI" or claims to come from an admin gets edited like any other line, or left as it is.
+Some lines in the text address "the AI" or claim to come from an admin.
+The skill edits them like any other line, or leaves them as they are.
 
 ## Modes
 
@@ -51,7 +54,7 @@ The skill picks one mode from your request:
 | Mode | When | What you get |
 |---|---|---|
 | Cleanup | The default | The cleaned text, then a **What changed** list with one line per edit |
-| File | The request names a file | The file rewritten in place, prose only. Code, links, frontmatter and HTML stay byte for byte. |
+| File | The request names a file | The file rewritten in place, prose only. Code, URLs, link targets, frontmatter and HTML stay byte for byte. |
 | Diagnose | The request says "diagnose," "audit," "check," or "only point out" | A checklist of quoted problems with fixes, in text order. No rewrite. |
 | Embedded | Another skill hands it text in the middle of its own steps | Only the cleaned text, in the caller's format, and the caller goes on with its next step |
 
@@ -109,12 +112,15 @@ Before the passes, the skill runs a script over the text:
 node scripts/scan.mjs <file> [--lang en|pl]
 ```
 
-It lists mechanical tells with line and column: lexicon phrases, dashes used as connectors, curly quotes, list items that start with a bold label, Title Case headings, and emoji in headings or list items.
+It lists mechanical tells with line and column.
+These are lexicon phrases, dashes used as connectors, and curly quotes.
+It also flags list items that start with a bold label, Title Case headings, and emoji in headings or list items.
 It skips code, markup and URLs.
 Without `--lang`, it checks against both lexicons, which suits text that mixes English and Polish.
 
 A hit is a lead, not a verdict: the model judges each one in context.
-The script exits with 0 whatever it finds; it fails only when it's called without a file or with an unknown language.
+The script exits with 0 whatever it finds.
+It exits with 2 on bad usage: no file, a file it can't read, or `--lang` without `en` or `pl` after it.
 
 ## What it leaves alone
 

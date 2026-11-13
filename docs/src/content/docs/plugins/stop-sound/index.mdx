@@ -61,9 +61,10 @@ Set the options in `/plugin` → stop-sound → configure, or under `pluginConfi
 Table 2. stop-sound options.
 
 A file can be `.wav`, `.mp3`, `.aiff`, `.aif`, `.m4a` or `.ogg`, up to 4 MiB.
+Claude Code refuses to read a larger file for a mod.
 Leave an option empty to keep the bundled sound.
-When the file is missing or has another extension, the bundled sound plays instead.
-When the file can be read but can't be played, nothing plays.
+When the file is missing, too large, has another extension, or fails to play, the bundled sound plays instead.
+Nothing plays only when the bundled sound fails too.
 
 ## How it decides
 
@@ -77,7 +78,8 @@ At the end of every turn, it checks three things:
 When all three hold, it plays the `done` sound.
 
 It reacts to the end of the turn rather than to the `Stop` hook event.
-On Team and Enterprise plans, Claude Code's built-in guard skips the `Stop` hooks of mods that you install, but it lets the end of a turn through.
+On Team and Enterprise plans, Claude Code's built-in guard skips the `Stop` hooks of mods that you install.
+It still lets the end of a turn through.
 
 A failed chime never blocks anything: the turn or the question goes on unchanged.
 On a machine with no audio output, the plugin stays silent.

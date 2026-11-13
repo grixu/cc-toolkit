@@ -33,10 +33,10 @@ Podświetlona kolumna pokazuje, gdzie leży w cyklu.
 
 ## Jak to przebiega
 
-Środkiem tego kroku jest [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).
+W centrum tego kroku stoi [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).
 Składa pull request z tego, co przygotują inne pluginy:
 
-1. **Dowód.** [`/pr-proof:prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) ustala, jakiego dowodu zmiana potrzebuje: wideo z narracją, zrzutów ekranu, transkryptu z terminala albo z API. Po twojej akceptacji planu przygotowuje każdy z nich i zapisuje je w manifeście brancha. Uruchom go przed `pr-open`; `pr-open` czyta manifest, ale sam go nie uruchamia.
+1. **Dowód.** [`/pr-proof:prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) ustala, jakiego dowodu zmiana potrzebuje: wideo z narracją, zrzutów ekranu, transkryptu z terminala albo z API. Po twojej akceptacji planu przygotowuje każdy rodzaj dowodu i zapisuje je w manifeście brancha. Uruchom go przed `pr-open`; `pr-open` czyta manifest, ale sam go nie uruchamia.
 2. **Pull request.** `pr-open` wypełnia szablon repozytorium na podstawie diffu, z krótkim opisem i tabelą przed i po. Robi przy tym trzy rzeczy:
    - Dołącza dowody z manifestu w sekcji **Proof**.
    - Prosi [code-story](/pl/plugins/code-story/) w subagencie w tle o stronę, która wyjaśnia zmianę rozdział po rozdziale, i linkuje ją w sekcji **Code story**.
