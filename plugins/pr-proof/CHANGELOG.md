@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `proof_signals` takes an optional `repo`, the working tree to judge, and `prepare-proof` always passes it, so a branch in a git worktree outside the session's directory is no longer judged against the session's checkout and reported as `no changes between origin/main and HEAD`; that message now names the checkout it read
+
 ## [0.3.0] - 2026-11-13
 
 ### Added

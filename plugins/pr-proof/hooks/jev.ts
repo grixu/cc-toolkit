@@ -158,8 +158,15 @@ export function isSafeRef(ref: unknown): ref is string {
 }
 
 // The session's working directory follows the model's `cd`, which can leave the repository for a scratchpad or a
-// work dir, so fall back to the directory the session started in.
-export async function repoRoot($): Promise<string> {
+// work dir, so fall back to the directory the session started in. Neither finds a worktree outside the session's
+// directories, so a caller-named `repo` wins, and it never falls back: judging another checkout is worse than none.
+export async function repoRoot($, repo?: unknown): Promise<string> {
+  if (repo !== undefined) {
+    if (typeof repo !== 'string' || !/^(\/|[A-Za-z]:[\\/])/.test(repo)) throw new Error('`repo` must be an absolute path')
+    const given = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: repo, timeoutMs: 60_000 }).catch(() => undefined)
+    if (given?.exitCode === 0) return given.stdout.trim()
+    throw new Error(`${repo} is not in a git repository`)
+  }
   const here = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { timeoutMs: 60_000 })
   if (here.exitCode === 0) return here.stdout.trim()
   const root = await $.session.root()
