@@ -114,10 +114,15 @@ jobs:
           rc=$?
           set -e
           # results.json points each run at /tmp/claude-eval-*; without its trace and workspace a failure cannot be read.
+          # --keep-temp seals what the run wrote to its home and tmp (mode 000), and the story workdir lives there;
+          # these are our own plugins, so open the seal before copying.
           mkdir -p "$out/runs"
           for d in /tmp/claude-eval-*/; do
-            [ -d "$d" ] && cp -r "$d" "$out/runs/" || true
+            [ -d "$d" ] || continue
+            chmod -R u+rwX "$d" 2>/dev/null || true
+            cp -r "$d" "$out/runs/" || true
           done
+          chmod -R u+rwX "$out/runs"
           # The artifact is readable by anyone who can see the repo, so never ship a run that captured the token.
           if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$out/runs"; then
             echo "::warning::a run captured the OAuth token; dropping the run directories from the artifact"
