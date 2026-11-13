@@ -104,12 +104,26 @@ jobs:
                 --allow-tools Bash Write Edit ToolSearch 'mcp__code-story__*') ;;
             *) echo "unknown suite: $SUITE" >&2; exit 1 ;;
           esac
+          set +e
           claude plugin eval "${args[@]}" \
-            --scaffold --trust-plugin --no-publish \
+            --scaffold --trust-plugin --no-publish --keep-temp \
             --model "$EVAL_MODEL" \
             --output-dir "$out" \
             --report "$out/report.html" \
             --json "$out/results.json"
+          rc=$?
+          set -e
+          # results.json points each run at /tmp/claude-eval-*; without its trace and workspace a failure cannot be read.
+          mkdir -p "$out/runs"
+          for d in /tmp/claude-eval-*/; do
+            [ -d "$d" ] && cp -r "$d" "$out/runs/" || true
+          done
+          # The artifact is readable by anyone who can see the repo, so never ship a run that captured the token.
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$out/runs"; then
+            echo "::warning::a run captured the OAuth token; dropping the run directories from the artifact"
+            rm -rf "$out/runs"
+          fi
+          exit "$rc"
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -117,3 +131,5 @@ jobs:
           name: ${{ matrix.suite }}-eval-results
           path: ${{ runner.temp }}/eval-${{ matrix.suite }}/
           if-no-files-found: ignore
+          # Workspaces keep the story under .scratch/ and the fixture repo's .git.
+          include-hidden-files: true
