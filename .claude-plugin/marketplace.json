@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "cc-toolkit",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "owner": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
@@ -28,7 +28,7 @@
       "name": "feature-delivery",
       "source": "./plugins/feature-delivery",
       "description": "Deprecated — use fd3. End-to-end feature delivery: requirements gathering, editing, status tracking, and implementation orchestration with parallel subagents",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "Mateusz Gostański",
         "email": "mg@grixu.dev"
