@@ -1,6 +1,7 @@
 {
   "permissions": {
     "deny": [
+      "Artifact",
       "Bash(claude plugin *)",
       "Bash(claude plugins *)",
       "Read(~/.config/gcloud/**)",

@@ -1,0 +1,30 @@
+<svg viewBox="0 0 800 360" role="img" aria-label="What reaches the sandbox after a test file ends">
+  <rect class="fx-bg" width="800" height="360"/>
+
+  <rect class="fx-group" x="24" y="40" width="296" height="296" rx="8"/>
+  <text class="fx-group-label" x="40" y="64"><tspan data-lang="en">lives as long as the worker</tspan><tspan data-lang="pl">żyje tak długo jak worker</tspan></text>
+  <rect class="fx-group" x="480" y="40" width="296" height="296" rx="8"/>
+  <text class="fx-group-label" x="496" y="64"><tspan data-lang="en">one test file's sandbox</tspan><tspan data-lang="pl">sandbox jednego pliku</tspan></text>
+
+  <path class="fx-edge key" d="M 280,112 L 560,112"/>
+  <path class="fx-edge" d="M 280,192 L 400,192 L 400,128 L 560,128"/>
+  <path class="fx-edge del" d="M 280,272 L 416,272 L 416,144 L 560,144"/>
+  <path class="fx-edge" d="M 640,152 L 640,232"/>
+
+  <rect class="fx-node key" x="64" y="88" width="216" height="48" rx="6"/>
+  <text class="fx-label" x="172" y="117" text-anchor="middle">evaluatedModulesCache</text>
+  <rect class="fx-node" x="64" y="168" width="216" height="48" rx="6"/>
+  <text class="fx-label" x="172" y="197" text-anchor="middle"><tspan data-lang="en">cleanup hooks</tspan><tspan data-lang="pl">hooki sprzątające</tspan></text>
+  <rect class="fx-node del" x="64" y="248" width="216" height="48" rx="6"/>
+  <text class="fx-label" x="172" y="277" text-anchor="middle">onCancel listeners</text>
+
+  <rect class="fx-node" x="560" y="96" width="176" height="56" rx="6"/>
+  <text class="fx-label" x="648" y="120" text-anchor="middle"><tspan data-lang="en">module graph</tspan><tspan data-lang="pl">graf modułów</tspan></text>
+  <text class="fx-sub" x="648" y="138" text-anchor="middle">ModuleRunner</text>
+  <rect class="fx-node add" x="560" y="232" width="176" height="48" rx="6"/>
+  <text class="fx-label" x="648" y="261" text-anchor="middle">vm context</text>
+
+  <circle class="fx-badge" cx="420" cy="100" r="9"/>
+  <text class="fx-badge-text" x="420" y="104" text-anchor="middle">2</text>
+  <text class="fx-edge-label" x="652" y="196"><tspan data-lang="en">holds</tspan><tspan data-lang="pl">trzyma</tspan></text>
+</svg>

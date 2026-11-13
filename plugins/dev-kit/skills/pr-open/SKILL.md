@@ -16,10 +16,12 @@ Run `git fetch origin` first, then resolve each before moving on:
 
 - **Branch.** `git branch --show-current`. On the default branch (`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`) or a detached HEAD, stop and say so.
 - **Working tree.** When `git status --porcelain --untracked-files=no` prints anything, list it and ask whether to open the PR from the committed state or stop so the user can commit. The PR carries commits only; this skill never commits. Untracked files do not block; list their paths in the final report as not in the PR.
-- **Existing PR.** Check this before the base: `gh pr list --head <branch> --state open --json number,url,baseRefName`. When one exists, push (step 5), assess the risk against that PR's base and update its risk label (step 2 **Risk**, step 5.7), report its URL, its base, the push result and the risk, and finish. When its body (`gh pr view <number> --json body --jq .body`) has a `## Risk` section, replace that section, from its heading up to the next heading or the link reference definitions that end the body, with the new result in the step 4 shape and apply it with `gh pr edit <number> --body-file <file>`, so the body never contradicts the label; a body without the section stays as it is. Treat `## Proof` the same way in that one edit, whenever step 2 **Proof** found a manifest: replace an existing section with the step 4 render, insert it just before `## Risk` (or where step 4 places it) when the body has none and the manifest has entries, and remove the section, heading included, when the manifest's list is empty; attach its media and handle overflow comments as step 5 says. With no manifest, `## Proof` and its comments stay as they are. Rewrite its description only when the request asks for it: draft the body (steps 2-4) against that PR's base, edit the current body as step 4 **Existing body** says, and apply it with `gh pr edit <number> --body-file <file>`, leaving its title as it is. Otherwise offer the rewrite in one line of the report, not as a question.
-- **Base.** Take a base named in the request. Otherwise use the default branch, unless the branch is stacked: when the head branch of an open PR other than the current branch (`gh pr list --state open --json number,headRefName`) is an ancestor of HEAD (`git merge-base --is-ancestor origin/<head> HEAD`), base on the nearest such branch and say so. Every other such ancestor that is not itself an ancestor of the chosen base (`git merge-base --is-ancestor origin/<head> origin/<base>` fails) is a second parent: name its PR in the report and in the body's dependency section, and say that its commits show in this PR's diff until it merges.
+- **Existing PR.** Check this before the base: `gh pr list --head <branch> --state open --json number,url,baseRefName`. When one exists, push (step 5), assess the risk against that PR's base and update its risk label (step 2 **Risk**, step 5.7), report its URL, its base, the push result and the risk, and finish with step 6. When its body (`gh pr view <number> --json body --jq .body`) has a `## Risk` section, replace that section, from its heading up to the next heading or the link reference definitions that end the body, with the new result in the step 4 shape and apply it with `gh pr edit <number> --body-file <file>`, so the body never contradicts the label; a body without the section stays as it is. Treat `## Proof` the same way in that one edit, whenever step 2 **Proof** found a manifest: replace an existing section with the step 4 render, insert it just before `## Risk` (or where step 4 places it) when the body has none and the manifest has entries, and remove the section, heading included, when the manifest's list is empty; attach its media and handle overflow comments as step 5 says. With no manifest, `## Proof` and its comments stay as they are. Rewrite its description only when the request asks for it: draft the body (steps 2-4) against that PR's base, edit the current body as step 4 **Existing body** says, and apply it with `gh pr edit <number> --body-file <file>`, leaving its title as it is. Otherwise offer the rewrite in one line of the report, not as a question.
+- **Base.** Take a base named in the request. Otherwise use the default branch, unless the branch is stacked: when the head branch of an open PR other than the current branch (`gh pr list --state open --json number,headRefName,isCrossRepository --jq '[.[] | select((.isCrossRepository | not) and (.headRefName | test("^[A-Za-z0-9._/-]+$")))]'`) is an ancestor of HEAD (`git merge-base --is-ancestor 'origin/<head>' HEAD`), base on the nearest such branch and say so. Anyone who opens a PR names its head, and a git branch name may hold `'`, `$(…)` and backticks, so that filter drops fork PRs (their head is never on `origin`) and any name with other characters before a name can reach a command; name any PR it dropped in the report, and put the names that pass in single quotes. Every other such ancestor that is not itself an ancestor of the chosen base (`git merge-base --is-ancestor 'origin/<head>' 'origin/<base>'` fails) is a second parent: name its PR in the report and in the body's dependency section, and say that its commits show in this PR's diff until it merges.
 - **Commits ahead.** `git log --oneline origin/<base>..HEAD` lists at least one commit. With none, stop: there is nothing to open.
 - **Behind base.** When `git rev-list --count HEAD..origin/<base>` is above zero, report the count and whether `git merge-tree --write-tree HEAD origin/<base>` conflicts (it exits 1), then open the PR as it stands. Never merge, rebase or commit here; offer the sync in the report as a separate step.
+
+With the base settled, for a new PR and an existing one alike, start the code story (step 6) when that skill is available. It runs while the rest of this skill does.
 
 ## 2. Gather the change
 
@@ -157,6 +159,7 @@ Also assessed by <model>: **<level>** · impact <impact> · complexity <complexi
 - Bold only the labels (**Testing:**, **Reviewer notes:**, **Dependencies:**, **Go deeper:**); leave everything else plain.
 - One screen: at most about 40 non-blank lines outside the Proof and Risk sections. Summary or Changes sub-headings and file-by-file lists are the usual bloat, and the table already carries them. Put long logs in a `<details>` block and move other long detail behind the **Go deeper** link.
 - Keep the body valid MDX as well as Markdown, since some repositories feed PR bodies to MDX tooling: no HTML comments, and a `<` or `{` in prose goes in backticks. The `<sub>` and `<details>` tags this skill uses are valid MDX.
+- When the draft is done, call `anti-slop:anti-slop` through the Skill tool in embedded mode on the sentences you wrote, with the commits and diff as `source:`. Put its text back in place, keep the bold labels, and go on to step 5 in the same turn: the cleanup is one step of this skill, not its end. Template headings, checkboxes, links, the Risk section, the author's kept sentences and table cells that hold names or values stay as they are, and the body stays within the length above.
 
 ## 5. Push and open
 
@@ -170,4 +173,33 @@ Also assessed by <model>: **<level>** · impact <impact> · complexity <complexi
 6. `gh pr edit <url> --add-assignee @me`. It runs apart from the create because assignment can fail on its own (no push access to the base repository); on failure the PR stays opened, and the report says it is unassigned and why.
 7. With a risk result whose `label.enabled` is true: `gh pr edit <url> --add-label "<label.name>"`, plus `--remove-label` for every other name in `label.all` the PR already carries (`gh pr view <url> --json labels`). When the add fails because the label does not exist, run `gh label create "<label.name>" --description "Pull request risk assessed by dev-kit pr_risk"` once and retry; never pass `--force`, which rewrites an existing label. A label failure leaves the PR as it is, and the report says why.
 
-Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), a ticket field set to `None`, each section left `None` or checkbox left unticked for the author to complete, for a rewritten description what changed in it, the risk level with its flags and label and the backend that set it, each other backend's level and whether it differs, or why it was not assessed, for a manifest that was read its proof entries shown, left out for a missing file, marked as rewritten history or stale, the overflow comments posted and removed, and anything that failed to upload, or why the manifest was ignored, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.
+## 6. Code story
+
+**Start.** Dispatch one background `general-purpose` subagent with the Agent tool, and give it no `name`, so its full reply arrives in the completion notice. Its prompt:
+
+- invoke the `code-story:code-story` skill with the arguments `base <base>`;
+- for an existing PR whose body has a `## Code story` section with a `claude.ai` link, add `story <that link>`;
+- it runs unattended, so it asks nobody and leaves `ask` settings at their defaults;
+- reply with the skill's report, ending with its `CODE_STORY …` line unchanged.
+
+Do not wait for it before pushing or opening the PR.
+
+**Finish.** After step 5, or after the existing-PR push, wait for the subagent's notice and read its last `CODE_STORY` line.
+
+- **`status=created` or `updated`, with a `url`:** make sure the body has a section:
+
+  ```markdown
+  ## Code story
+
+  [How and why this change works, chapter by chapter](<url>)
+  ```
+
+  - Place it before `## Proof`, or before `## Risk` when there is no Proof section, so those two stay last, and above any link reference definitions.
+  - When the body already links this URL, leave the body alone: the story was updated in place.
+  - Otherwise add the section or replace its link, and apply the change with `gh pr edit <url> --body-file <file>`.
+  - Report the link, and for a `created` story say that it is private until it is shared on claude.ai, so reviewers cannot open it before then.
+- **`status=local`, no `CODE_STORY` line, or a failed subagent:** leave the body as it is, and report the story's path or the failure in one line.
+
+## Report
+
+Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), a ticket field set to `None`, each section left `None` or checkbox left unticked for the author to complete, for a rewritten description what changed in it, the risk level with its flags and label and the backend that set it, each other backend's level and whether it differs, or why it was not assessed, for a manifest that was read its proof entries shown, left out for a missing file, marked as rewritten history or stale, the overflow comments posted and removed, and anything that failed to upload, or why the manifest was ignored, the code story link with its status, or why there is none, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.

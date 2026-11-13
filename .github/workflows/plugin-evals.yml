@@ -1,0 +1,164 @@
+name: Plugin evals (anti-slop, code-story)
+
+on:
+  pull_request:
+    paths:
+      - 'plugins/anti-slop/**'
+      - 'plugins/code-story/**'
+      # anti-slop's embedded-output-only case is the contract pr-open relies on.
+      - 'plugins/dev-kit/skills/pr-open/**'
+      - '.github/workflows/plugin-evals.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CLAUDE_CODE_VERSION: 2.1.322
+  # The suites were calibrated on this model; pinning it keeps a model rollout from reading as a regression.
+  EVAL_MODEL: claude-opus-5-5
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # Fork PRs get no secrets, so there is nothing to run the agent with.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    outputs:
+      suites: ${{ steps.pick.outputs.suites }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo 'suites=["anti-slop","code-story"]' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          has() { grep -qE "$1" <<< "$changed"; }
+          suites=()
+          if has '^(plugins/anti-slop/|plugins/dev-kit/skills/pr-open/|\.github/workflows/plugin-evals\.yml$)'; then
+            suites+=('"anti-slop"')
+          fi
+          # code-story's case loads anti-slop, so an anti-slop change can break it too.
+          if has '^(plugins/code-story/|plugins/anti-slop/|\.github/workflows/plugin-evals\.yml$)'; then
+            suites+=('"code-story"')
+          fi
+          echo "suites=[$(IFS=,; echo "${suites[*]}")]" >> "$GITHUB_OUTPUT"
+
+  eval:
+    needs: changes
+    if: needs.changes.outputs.suites != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.changes.outputs.suites) }}
+    env:
+      SUITE: ${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@v4
+      # code-story's assemble.mjs and check.mjs run under the granted Bash.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # A granted Bash runs under the Claude Code sandbox, which needs bubblewrap and socat on Linux;
+      # Ubuntu 24.04's AppArmor policy otherwise stops bwrap from creating its user namespace.
+      - name: Install sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap socat
+          if sysctl -n kernel.apparmor_restrict_unprivileged_userns >/dev/null 2>&1; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          git --version
+      # The bwrap-userns-restrict profile moves bwrap's children into unpriv_bwrap, whose `audit deny capability`
+      # leaves the unix-socket seccomp helper unable to write /proc/self/setgroups, so every Bash call dies
+      # (anthropics/claude-code#43454). `claude plugin eval` forces allowAllUnixSockets off, so no setting skips
+      # the helper; unloading the profile on this throwaway runner keeps the seccomp filter instead.
+      - name: Unload the bwrap AppArmor profile
+        run: |
+          if [ -f /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict
+          fi
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_CODE_VERSION"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Run ${{ matrix.suite }} evals
+        env:
+          # Runs on a subscription OAuth token (`claude setup-token`), not a metered API key.
+          # Scoped to this step so no other step, and nothing it installs, can read it.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          claude --version
+          out="$RUNNER_TEMP/eval-$SUITE"
+          case "$SUITE" in
+            anti-slop)
+              # One case is known to score 0.83 on a flaky run.
+              args=(plugins/anti-slop --threshold 0.8 --max-cost-usd 15
+                --allow-tools Bash Write Edit) ;;
+            code-story)
+              # Repo root as target: a case may only load plugins under it, and this one loads anti-slop.
+              args=(. --eval-dir plugins/code-story/evals --ablation none --threshold 1.0 --max-cost-usd 10
+                --allow-tools Bash Write Edit ToolSearch 'mcp__code-story__*') ;;
+            *) echo "unknown suite: $SUITE" >&2; exit 1 ;;
+          esac
+          # On Linux the eval sandbox denies writes to all of /tmp, /var/tmp and /dev/shm, the run root it makes
+          # under os.tmpdir() included, so every Bash write fails as read-only; /home is denied for reading.
+          TMPDIR=/opt/eval-tmp
+          sudo install -d -o "$(id -u)" -g "$(id -g)" "$TMPDIR"
+          export TMPDIR
+          set +e
+          claude plugin eval "${args[@]}" \
+            --scaffold --trust-plugin --no-publish --keep-temp \
+            --model "$EVAL_MODEL" \
+            --output-dir "$out" \
+            --report "$out/report.html" \
+            --json "$out/results.json"
+          rc=$?
+          set -e
+          # results.json points each run at $TMPDIR/claude-eval-*; without its trace and workspace a failure cannot be read.
+          # --keep-temp seals what the run wrote to its home and tmp (mode 000), and the story workdir lives there;
+          # these are our own plugins, so open the seal before copying. config/ is the harness's state and account ids.
+          mkdir -p "$out/runs"
+          for d in "$TMPDIR"/claude-eval-*/; do
+            [ -d "$d" ] || continue
+            chmod -R u+rwX "$d" 2>/dev/null || true
+            run="$out/runs/$(basename "$d")"
+            mkdir -p "$run"
+            cp -r "$d/out" "$d/sealed" "$run/" 2>/dev/null || true
+          done
+          chmod -R u+rwX "$out/runs"
+          # The bucket outlives this job, so never store a run that captured the token.
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && grep -rqF -- "$CLAUDE_CODE_OAUTH_TOKEN" "$out/runs"; then
+            echo "::warning::a run captured the OAuth token; dropping the run directories from the upload"
+            rm -rf "$out/runs"
+          fi
+          exit "$rc"
+      # Traces and workspaces go to the private R2 bucket the pr-risk evals use, never to a public Actions artifact.
+      # Fetch one with: aws s3 cp --recursive "s3://$R2_BUCKET/<key>" <dir> --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+      - name: Upload results to R2
+        if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          src="$RUNNER_TEMP/eval-$SUITE"
+          [ -d "$src" ] || { echo "no results to upload"; exit 0; }
+          key="plugin-evals/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/$SUITE/"
+          aws s3 cp --recursive --only-show-errors "$src" "s3://$R2_BUCKET/$key" \
+            --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          echo "Eval results: \`s3://\$R2_BUCKET/$key\` (R2)" >> "$GITHUB_STEP_SUMMARY"

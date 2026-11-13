@@ -168,6 +168,8 @@ case "${1:-} ${2:-}" in
     body_file="$(flag --body-file "$@")"
     [ -n "$body_file" ] || body_file="$(flag -F "$@")"
     [ -n "$body_file" ] || fail "pr create without --body-file"
+    # Like gh, an unreadable body file refuses the call before a PR exists.
+    [ -r "$body_file" ] || fail "$body_file: no such file or directory"
     git ls-remote --exit-code origin "refs/heads/$head" > /dev/null 2>&1 || fail "head branch \"$head\" is not on the remote"
     key="$(printf '%s' "$head" | tr '/' '-')"
     body_dir="$(dirname "$body_file")"
@@ -200,6 +202,7 @@ case "${1:-} ${2:-}" in
     body_file="$(flag --body-file "$@")"
     [ -n "$body_file" ] || body_file="$(flag -F "$@")"
     if [ -n "$body_file" ]; then
+      [ -r "$body_file" ] || fail "$body_file: no such file or directory"
       body_dir="$(dirname "$body_file")"
       attached_body "$body_dir" < "$body_file" > "$sandbox/gh-posted-pr-edit-$n.md"
       jq --rawfile body "$sandbox/gh-posted-pr-edit-$n.md" '.body = $body' "$dir/pr.json" > "$dir/pr.json.tmp" && mv "$dir/pr.json.tmp" "$dir/pr.json"

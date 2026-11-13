@@ -1,0 +1,4 @@
+{
+  "description": "code-story mod: the config tool that hands the skill its resolved settings",
+  "modules": ["./register.ts"]
+}

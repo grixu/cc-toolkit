@@ -1,0 +1,28 @@
+<svg viewBox="0 0 800 400" role="img" aria-label="Saving a user flag, in order">
+  <rect class="fx-bg" width="800" height="400"/>
+
+  <path class="fx-life" d="M 120,88 L 120,376"/>
+  <path class="fx-life" d="M 400,88 L 400,376"/>
+  <path class="fx-life" d="M 680,88 L 680,376"/>
+
+  <rect class="fx-act" x="394" y="128" width="12" height="176"/>
+
+  <path class="fx-edge" d="M 120,136 L 394,136"/>
+  <text class="fx-edge-label" x="257" y="128" text-anchor="middle">PUT /flags/:id</text>
+  <path class="fx-edge add" d="M 406,184 L 680,184"/>
+  <text class="fx-edge-label" x="543" y="176" text-anchor="middle">SELECT … FOR UPDATE</text>
+  <path class="fx-edge dash" d="M 680,232 L 406,232"/>
+  <text class="fx-edge-label" x="543" y="224" text-anchor="middle"><tspan data-lang="en">row locked</tspan><tspan data-lang="pl">wiersz zablokowany</tspan></text>
+  <path class="fx-edge dash" d="M 394,296 L 120,296"/>
+  <text class="fx-edge-label" x="257" y="288" text-anchor="middle">204 No Content</text>
+
+  <rect class="fx-node" x="48" y="40" width="144" height="48" rx="6"/>
+  <text class="fx-label" x="120" y="69" text-anchor="middle">client</text>
+  <rect class="fx-node key" x="320" y="40" width="160" height="48" rx="6"/>
+  <text class="fx-label" x="400" y="69" text-anchor="middle">FlagsService</text>
+  <rect class="fx-node ext" x="608" y="40" width="144" height="48" rx="6"/>
+  <text class="fx-label" x="680" y="69" text-anchor="middle">Postgres</text>
+
+  <circle class="fx-badge" cx="420" cy="172" r="9"/>
+  <text class="fx-badge-text" x="420" y="176" text-anchor="middle">3</text>
+</svg>

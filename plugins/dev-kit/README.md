@@ -11,6 +11,8 @@ dev-kit is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then ins
 /plugin install dev-kit@cc-toolkit
 ```
 
+This also installs two plugins `pr-open` calls: `code-story`, which builds the code story linked from the PR, and `anti-slop`, which cleans the description's prose. dev-kit does not load while either is disabled.
+
 ## Requirements
 
 - The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it. A `## Proof` section in `pr-open` needs `gh` 2.99.0 or later, the first with `--attach`; an older `gh` fails `gh pr create` on that flag.
@@ -166,6 +168,8 @@ jobs:
         run: |
           pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
             --plugin-dir ../cc-toolkit/plugins/dev-kit \
+            --plugin-dir ../cc-toolkit/plugins/code-story \
+            --plugin-dir ../cc-toolkit/plugins/anti-slop \
             --permission-mode dontAsk \
             --strict-mcp-config \
             --setting-sources user \

@@ -1,0 +1,77 @@
+Category,Subcategory,Example (literal or template),Severity (High/Medium/Low),Why it reads as AI,Human alternative / fix
+Meta/Disclosure,Chatbot residue,jako model językowy,High,Interface chatter left in the text.,Remove it.
+Meta/Disclosure,Chatbot residue,"mam nadzieję, że to pomoże",High,Interface chatter left in the text.,Remove it.
+Meta/Disclosure,Chatbot residue,oto poprawiona wersja,High,Interface chatter left in the text.,Remove it.
+Meta/Disclosure,Chatbot residue,mogę pomóc w,High,Interface chatter left in the text.,Remove it.
+Lexical/Framing,Throat-clearing,warto zauważyć,High,Announces a point instead of making it.,Start with the claim.
+Lexical/Framing,Throat-clearing,warto podkreślić,High,Announces a point instead of making it.,Start with the claim.
+Lexical/Framing,Throat-clearing,należy podkreślić,High,Announces a point instead of making it.,Start with the claim.
+Lexical/Framing,Throat-clearing,trzeba zaznaczyć,Medium,Announces a point instead of making it.,Start with the claim.
+Lexical/Framing,Throat-clearing,nie sposób nie wspomnieć,High,Announces a point instead of making it.,Start with the claim.
+Lexical/Framing,Throat-clearing,co istotne,Medium,Announces a point instead of making it.,Start with the claim.
+Lexical/Framing,Throat-clearing,"ważne jest, aby",Medium,Announces a point instead of making it.,Say what to do.
+Lexical/Framing,Throat-clearing,w dzisiejszych czasach,High,Contextless opener.,Start with a fact or a date.
+Lexical/Framing,Throat-clearing,w obecnych realiach,High,Contextless opener.,Start with a fact or a date.
+Lexical/Framing,Throat-clearing,w dynamicznie zmieniającym się,High,Contextless opener.,Start with a fact or a date.
+Lexical/Framing,Throat-clearing,w dobie,Medium,Contextless opener.,Start with a fact or a date.
+Lexical/Framing,Throat-clearing,w erze,Medium,Contextless opener.,Start with a fact or a date.
+Discourse markers,Metadiscourse,jak widać,Medium,Tells the reader what to conclude.,Delete it when the point is clear.
+Discourse markers,Metadiscourse,"ten punkt jest ważniejszy, niż się wydaje",High,Rates the text's own point.,Give the reason instead.
+Discourse markers,Metadiscourse,ma kluczowe znaczenie,High,Rates instead of explaining.,Say what breaks without it.
+Lexical/Word choice,Inflated importance,kluczow,Medium,Inflates an ordinary point.,"najważniejszy, główny, or the evidence"
+Lexical/Word choice,Inflated importance,istotn,Medium,Inflates an ordinary point.,"ważny, or the evidence"
+Lexical/Word choice,Inflated importance,znacząc,Medium,Inflates an ordinary point.,Give the number.
+Lexical/Word choice,Inflated importance,fundamentaln,Medium,Inflates an ordinary point.,"podstawowy, or cut"
+Lexical/Word choice,Inflated importance,kompleksow,Medium,Inflates an ordinary point.,"pełny, or say what it covers"
+Lexical/Word choice,Inflated importance,przełomow,High,Inflates an ordinary point.,Say what changed.
+Lexical/Word choice,Inflated importance,unikaln,Medium,Inflates an ordinary point.,Say what differs.
+Lexical/Word choice,Inflated importance,holistyczn,High,Inflates an ordinary point.,"całościowy, or cut"
+Lexical/Word choice,Inflated importance,innowacyjn,Medium,Inflates an ordinary point.,Say what is new.
+Lexical/Word choice,Officialese,niniejsz,Medium,Official register in ordinary text.,ten
+Lexical/Word choice,Officialese,w celu,Medium,Official register in ordinary text.,"aby, żeby"
+Lexical/Word choice,Officialese,w ramach,Low,Official register in ordinary text.,"w, przy, or cut"
+Lexical/Word choice,Officialese,w zakresie,Low,Official register in ordinary text.,"w, o, or cut"
+Lexical/Word choice,Officialese,z uwagi na,Medium,Official register in ordinary text.,"bo, ze względu na"
+Lexical/Word choice,Officialese,w związku z powyższym,High,Official register in ordinary text.,"dlatego, więc"
+Lexical/Word choice,Officialese,dokona,Medium,Empty verb carrying a noun.,"Use the verb: kupić, zgłosić, zmienić."
+Lexical/Word choice,Officialese,realizowa,Medium,Empty verb carrying a noun.,"robić, wykonać"
+Lexical/Word choice,Officialese,podejmować działania,High,Empty verb carrying a noun.,Say what is done.
+Lexical/Word choice,Officialese,ulec popraw,Medium,Empty verb carrying a noun.,poprawić się
+Lexical/Word choice,Officialese,ulec pogorszeni,Medium,Empty verb carrying a noun.,pogorszyć się
+Lexical/Word choice,Officialese,posiadać możliwość,High,Empty verb carrying a noun.,móc
+Lexical/Word choice,Officialese,w dniu dzisiejszym,High,Official register in ordinary text.,dzisiaj
+Lexical/Word choice,Participial heaviness,mając na uwadze,Medium,Heavy participle where a clause reads easier.,Split into a clause with a finite verb.
+Lexical/Word choice,Participial heaviness,biorąc pod uwagę,Low,Heavy participle where a clause reads easier.,Split into a clause with a finite verb.
+Lexical/Word choice,Participial heaviness,stanowiąc,Medium,Heavy participle where a clause reads easier.,Split into a clause with a finite verb.
+Lexical/Word choice,Exact-sounding word,(stanowi|stanowią|stanowił|stanowiła|stanowiło|stanowiły),Medium,A formal word where a common one fits.,jest
+Lexical/Word choice,Exact-sounding word,umożliwia,Medium,A formal word where a common one fits.,"pozwala, można"
+Lexical/Word choice,Exact-sounding word,zweryfikow,Medium,A formal word where a common one fits.,sprawdzić
+Lexical/Word choice,Exact-sounding word,zaadres,Medium,Translation residue (address a problem).,"rozwiązać, zająć się"
+Lexical/Word choice,Exact-sounding word,wyeliminow,Low,A formal word where a common one fits.,usunąć
+Lexical/Word choice,Exact-sounding word,dedykowan,Medium,Translation residue (dedicated).,"osobny, przeznaczony dla"
+Lexical/Word choice,Exact-sounding word,finalnie,Medium,A formal word where a common one fits.,"w końcu, ostatecznie"
+Lexical/Word choice,Exact-sounding word,adekwatn,Low,A formal word where a common one fits.,odpowiedni
+Lexical/Word choice,Exact-sounding word,optymaln,Low,A formal word where a common one fits.,najlepszy
+Lexical/Word choice,Exact-sounding word,procedowa,Medium,A formal word where a common one fits.,"zająć się, przeprowadzić"
+Lexical/Word choice,Exact-sounding word,mitygowa,Medium,A rare word where a common one fits.,ograniczać
+Lexical/Word choice,Exact-sounding word,posiada,Low,A formal word where a common one fits.,mieć
+Lexical/Word choice,Translation residue,w oparciu o,Medium,English syntax under Polish words (based on).,na podstawie
+Lexical/Word choice,Translation residue,bazuj,Low,English syntax under Polish words (based on).,opierać się na
+Lexical/Word choice,Translation residue,na ten moment,Medium,English syntax under Polish words (at this moment).,teraz
+Lexical/Word choice,Translation residue,robi sens,High,Calque of makes sense.,"ma sens"
+Lexical/Word choice,Translation residue,w kontekście,Low,Often a calque of in the context of.,"przy, w, w sprawie"
+Sentence structure,Formulaic contrast,"nie tylko [X], ale (także|również|też)",High,Contrast that adds weight without a claim.,State the second half directly.
+Sentence structure,Formulaic contrast,"to nie [X], (lecz|ale) [Y]",High,Contrast against something no one claimed.,State Y.
+Sentence structure,Formulaic contrast,z jednej strony,Medium,Balanced pair imposed on the material.,Keep only when the text compares two sides.
+Sentence structure,Formulaic synthesis,wpisuje się w szerszy trend,High,Generic synthesis instead of a consequence.,Say the consequence.
+Sentence structure,Formulaic synthesis,"pokazuje, jak ważn",High,Generic synthesis instead of a consequence.,Say the consequence.
+Sentence structure,Formulaic synthesis,odzwierciedla potrzebę,High,Generic synthesis instead of a consequence.,Say the consequence.
+Lexical/Framing,Fake insight,oto czego,High,Presents an ordinary claim as hidden knowledge.,State the point.
+Lexical/Framing,Fake insight,prawdziwy problem polega na tym,High,Presents an ordinary claim as hidden knowledge.,State the problem.
+Lexical/Framing,Fake insight,większość ludzi nie rozumie,High,Presents an ordinary claim as hidden knowledge.,State the point.
+Discourse markers,Closers,podsumowując,Medium,Formulaic ending.,End on the last concrete fact.
+Discourse markers,Closers,można stwierdzić,Medium,Formulaic ending.,State it.
+Discourse markers,Closers,czas pokaże,High,Formulaic ending.,End on the next step or the open question.
+Discourse markers,Closers,krok w dobrym kierunku,High,Formulaic ending.,Say what the step changes.
+Discourse markers,Closers,ma ogromny potencjał,High,Formulaic ending.,Say what it could do and when.
+Discourse markers,Closers,będzie odgrywać coraz większą rolę,High,Formulaic ending.,Say what will change.

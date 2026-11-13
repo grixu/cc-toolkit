@@ -23,6 +23,11 @@ providers:
         - type: local
           # Resolved relative to this config file, not to working_dir.
           path: ..
+        # dev-kit does not load without the plugins it depends on.
+        - type: local
+          path: ../../code-story
+        - type: local
+          path: ../../anti-slop
       skills: all
       setting_sources: []
       settings: ../../../scripts/evals-isolation.json
