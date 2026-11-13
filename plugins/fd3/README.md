@@ -156,7 +156,7 @@ in the background.
   runs the full set once, gets up to three fix rounds (each checked against its changes only), and
   runs the full set again at the end only when a fix moved the branch after that first run.
 - Review (optional). After the checks pass, the `code-review` plugin reviews the branch with one
-  agent per active lens, nine to eleven — or, when the change has at most three judged files, one
+  agent per active lens, nine to twelve — or, when the change has at most three judged files, one
   agent running every active lens in turn. A repair's review is narrower: one agent checks the
   repair against the decisions it applied, and only the `correctness` and `security` lenses run. High and medium findings rated safe or structural, security
   included (each security fix in its own commit), findings in code the branch did not touch when
@@ -286,14 +286,9 @@ An interview question looks like this:
   do it.
 - Task statuses: `todo`; `in-progress`; `implemented` (code on the task's own branch); `merged`
   (code on the target branch, waiting for checks and review); `blocked` (needs a person); `done`
-  (the branch passed its final checks with nothing left for you).
+  (the branch passed its final checks, and its review when review is on, and nothing holds it;
+  under review `yes`, findings left open wait in the run's report).
 - Lens: one focus of the code review, such as security, performance or spec conformance. Each
   active lens is one review agent.
 - Boy-scout finding: a review finding about code the branch did not change. fd3 fixes one
   automatically only when its fix is rated safe, and never under `gated`.
-
-## Relationship to `feature-delivery`
-
-fd3 covers the same ground as the [`feature-delivery`](../feature-delivery) plugin, rebuilt around
-skills and dynamic workflows. The two share no commands or file formats, so use one or the other
-for a given piece of work.

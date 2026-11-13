@@ -1,6 +1,5 @@
 # Node dev tooling (shared at the repo root; used by plugins/*/evals)
 node_modules/
-pnpm-lock.yaml
 # pnpm-workspace.yaml is committed — it carries the onlyBuiltDependencies setting
 
 # promptfoo eval outputs
@@ -14,11 +13,22 @@ plugins/*/evals/.sandbox/
 plugins/*/evals/.results/
 # eval cases drawn from private repositories: their names, commits and descriptions stay off this public repo
 plugins/*/evals/*/local/
+# code-review eval fixtures, pulled from R2 by evals/data.mjs at the sha256 fixtures.sha256 pins
+plugins/code-review/evals/cases/
+plugins/code-review/evals/comment-track/
+plugins/code-review/evals/scope-mix/
+plugins/code-review/evals/.fixtures-*
 # research write-ups that cite private pull requests; kept in private storage, not in this public repo
 plugins/*/docprivate/
 
 # the target app's own runtime store, written on every boot
 plugins/tester/evals/fixtures/target-app/state.json
+
+# docs site build output, Astro's generated types, cf's build output and account cache, and local credentials
+docs/dist/
+docs/.astro/
+docs/cloudflare/.cloudflare/
+docs/cloudflare/.env
 
 # Python bytecode
 __pycache__/

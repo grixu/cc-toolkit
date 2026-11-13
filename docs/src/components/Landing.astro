@@ -1,0 +1,88 @@
+---
+import Strip from './Strip.astro'
+import Art from './Art.astro'
+import LifeMap from './LifeMap.astro'
+import CoreCards from './CoreCards.astro'
+import SupportingTable from './SupportingTable.astro'
+import Releases from './Releases.astro'
+import { href, langOf } from '../lib/i18n'
+import { installMarketplace } from '../lib/lifecycle'
+
+const lang = langOf(Astro.url.pathname)
+const copy = {
+  en: {
+    kicker: 'Claude Code plugins for software engineers',
+    title: 'From an idea to a merged pull request, with the legwork done for you.',
+    lede: 'Plan the change, build it, review and test it yourself, then get it past a human. Nine plugins cover each stage of that cycle, and each one works on its own.',
+    readDocs: 'Read the introduction',
+    install: 'Installation guide',
+    mapH: 'The lifecycle',
+    mapP: 'Where each plugin works, from the first question to the merged change. Hover a plugin to trace it; every station opens its page.',
+    coreH: 'Five core plugins',
+    coreP: 'One for each stretch of the cycle. Most people start with fd3 and add the others as their pull requests reach them.',
+    auxH: 'Supporting plugins',
+    newsH: 'Recent releases',
+    newsAll: 'All releases',
+  },
+  pl: {
+    kicker: 'Pluginy Claude Code dla inżynierów oprogramowania',
+    title: 'Od pomysłu do zmergowanego pull requesta, z czarną robotą zrobioną za ciebie.',
+    lede: 'Zaplanuj zmianę, zbuduj ją, sam ją przejrzyj i przetestuj, a potem przeprowadź przez review człowieka. Dziewięć pluginów pokrywa każdy etap tego cyklu i każdy działa samodzielnie.',
+    readDocs: 'Przeczytaj wprowadzenie',
+    install: 'Instrukcja instalacji',
+    mapH: 'Cykl pracy',
+    mapP: 'Gdzie działa każdy plugin, od pierwszego pytania do zmergowanej zmiany. Najedź na plugin, żeby prześledzić jego trasę; każda stacja prowadzi do jego strony.',
+    coreH: 'Pięć głównych pluginów',
+    coreP: 'Po jednym na każdy odcinek cyklu. Większość osób zaczyna od fd3 i dokłada kolejne, gdy ich pull requesty do nich dojdą.',
+    auxH: 'Pluginy pomocnicze',
+    newsH: 'Ostatnie wydania',
+    newsAll: 'Wszystkie wydania',
+  },
+}[lang]
+---
+
+<div class="landing not-content">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="label">{copy.kicker}</p>
+      <h1 class="display" id="_top">{copy.title}</h1>
+      <p class="lead">{copy.lede}</p>
+      <div class="hero-install">
+        <Strip cmd={installMarketplace} />
+        <div class="hero-actions">
+          <a class="btn btn--primary" href={href('getting-started/introduction/', lang)}>{copy.readDocs}</a>
+          <a class="btn btn--secondary" href={href('getting-started/installation/', lang)}>{copy.install}</a>
+        </div>
+      </div>
+    </div>
+    <Art name="hero" class="hero-art" />
+  </section>
+
+  <section aria-labelledby="map-h">
+    <div class="lsec-head">
+      <h2 id="map-h">{copy.mapH}</h2>
+      <p class="lead">{copy.mapP}</p>
+    </div>
+    <LifeMap />
+  </section>
+
+  <section aria-labelledby="core-h">
+    <div class="lsec-head">
+      <h2 id="core-h">{copy.coreH}</h2>
+      <p class="lead">{copy.coreP}</p>
+    </div>
+    <CoreCards />
+    <div class="aux">
+      <h3 id="aux-h">{copy.auxH}</h3>
+      <SupportingTable />
+    </div>
+  </section>
+
+  <section aria-labelledby="news-h">
+    <div class="lsec-head lsec-head--row">
+      <h2 id="news-h">{copy.newsH}</h2>
+      <a href={href('changelog/', lang)}>{copy.newsAll}</a>
+    </div>
+    <Releases />
+  </section>
+</div>

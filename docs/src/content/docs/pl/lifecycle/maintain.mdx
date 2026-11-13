@@ -1,0 +1,60 @@
+---
+title: Utrzymanie
+description: Poza cyklem. Aktualizacje sprawdzone, zanim coś zepsują, i poprawki zamienione w reguły, których trzyma się każdy kolejny przebieg.
+group: outside
+sidebar:
+  order: 6
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Utrzymanie leży poza cyklem [ADLC](/pl/lifecycle/) i go zasila.
+Obejmuje pracę, która nie wynika z merge'a: aktualizacje zależności i reguły, które powstrzymują agenta przed powtarzaniem błędu.
+
+## Co idzie źle bez tego etapu
+
+Poprawka wpisana w czacie znika, gdy sesja się kończy, więc następna sesja popełnia ten sam błąd.
+Aktualizacja zależności przychodzi, gdy wydadzą ją opiekunowie, a zielone CI nie mówi, czy jej zmiany dotykają twojego kodu.
+Żadna z tych rzeczy nie czeka na etap cyklu, więc te pluginy uruchamiasz wtedy, kiedy jest potrzeba.
+
+## Kto co robi
+
+- **Agent** znajduje poprawki w sesji i proponuje regułę dla każdej nowej. Przy aktualizacji przypisuje każdą zmianę do miejsc, w których twój kod używa pakietu.
+- **Ty** akceptujesz, zmieniasz albo pomijasz każdą proponowaną regułę i decydujesz, czy bierzesz aktualizację.
+
+## Na mapie
+
+Podświetlona kolumna pokazuje, gdzie leży w cyklu.
+
+<LifeMap stage="maintain" animate={false} />
+
+## Zamień poprawki w reguły
+
+Dwa pluginy piszą reguły, a te działają na pozostałych etapach:
+
+- [`/session-learner:learn`](/pl/plugins/session-learner/) czyta bieżącą sesję, i znajduje momenty, w których poprawiałeś agenta. Dla każdej poprawki, której nie ma jeszcze w dokumentacji, proponuje zmianę w `.claude/rules/`, w `CLAUDE.md` albo, gdy hookify jest zainstalowany, regułę hookify. Pokazuje jedno znalezisko naraz i zapisuje tylko to, co zaakceptujesz.
+- [`/hookify:hookify`](/pl/plugins/hookify/hookify/) pisze regułę hookify z twojego opisu albo z błędów w bieżącej rozmowie.
+
+Reguły wracają do cyklu:
+
+- Każda sesja czyta `CLAUDE.md` i pliki reguł, więc każdy etap zaczyna z nimi. Plik reguł z `paths:` ładuje się tylko dla plików, które wskazuje.
+- W [Budowie](/pl/lifecycle/build/) reguły hookify ostrzegają przed edycją, która je łamie, albo ją blokują.
+- W [Self-review](/pl/lifecycle/self-review/) code-review czyta twoje reguły jako konwencje, więc nie zgłasza tego, na co pozwalają. Jego soczewka hookify odtwarza na diffie twoje reguły hookify dla edycji plików, więc wyłapuje też to, co powstało bez hooków.
+
+Uruchom session-learner przed `/compact` albo `/clear`: czyta tylko rozmowę, która jest jeszcze w kontekście.
+
+## Sprawdź aktualizację, zanim coś zepsuje
+
+[`/dev-kit:dep-upgrade-check`](/pl/plugins/dev-kit/dep-upgrade-check/) przyjmuje pakiet i docelową wersję albo pull request od Renovate lub Dependabota.
+Sprawdza bezpieczeństwo docelowej wersji, wypisuje każdą zmianę aż do niej i oznacza, czy dotyka twojego kodu.
+Kończy werdyktem `safe`, `safe with changes` albo `breaking` z dowodami.
+
+## Co uruchomić
+
+<StageCommands stage="maintain" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** sesja, w której poprawiałeś agenta, albo zależność i docelowa wersja.
+- **Wychodzi:** reguły, których trzyma się następna sesja, albo werdykt o aktualizacji z dowodami.

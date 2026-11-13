@@ -1,6 +1,6 @@
 # code-review
 
-code-review is a Claude Code plugin that reviews a code change with up to eleven focused reviewers
+code-review is a Claude Code plugin that reviews a code change with up to twelve focused reviewers
 running in parallel, then merges what they find into one report grouped by file. After the report,
 a short menu asks which fixes to apply. Nothing is edited until you choose.
 
@@ -19,7 +19,7 @@ counts as a problem. This plugin instead:
 It reviews how code reads and is structured, whether it does what it evidently means to do,
 whether the change agrees with its own docs, contracts and config, and whether it relies on
 behaviour its dependencies or platform do not have, plus narrow security, performance and spec
-checks. Claude Code's bundled `/code-review` skill shares
+checks, and, in a project that uses [hookify](../hookify/README.md), a check against its rules. Claude Code's bundled `/code-review` skill shares
 this plugin's name; it is a single bug-hunting pass, where this plugin grades every finding
 against a fixed rule.
 
@@ -67,8 +67,8 @@ comment review or keep it.
 
 ## The lenses
 
-You do not pick lenses; the change decides. Nine run on any change of code, two depend on the
-input, and the report's tally lists any lens that did not run and why. A change of documents,
+You do not pick lenses; the change decides. Nine run on any change of code, three depend on the
+input or the project, and the report's tally lists any lens that did not run and why. A change of documents,
 changesets or config data alone runs coherence only, which reads the code each claim describes
 from the repository.
 
@@ -85,6 +85,7 @@ from the repository.
 | assumptions | always | Code that relies on a library, runtime, CI or platform behaving in a way it does not: an option's real scope or default, an API the locked version lacks, a job reading a secret its environment does not grant, a test double the real dependency would not match. |
 | performance | the change includes executable source (not tests, test helpers, `*.config.*`, infrastructure code or `.sh`) | N+1 calls, unbounded fetches, blocking calls on async paths, wasted React renders, queries on unindexed columns. |
 | spec | you name a spec with `--spec`, or accept the one the change carries | Spec lines nothing implements, implemented wrongly or only partly, and behaviour the spec never asked for. |
+| hookify | the checkout has hookify rule files (`.claude/hookify.*.local.md` or `.claude/hookify.*.rule.md`) with an enabled `file` or `all` rule | Added lines that the project's hookify rules would have warned about or blocked, had every edit gone through the hooks. |
 
 A security finding names where untrusted data enters and where it lands; a performance finding
 names the loop, the call inside it, and the batch or limit API that exists; a correctness finding
@@ -137,7 +138,7 @@ An example report:
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 11. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 12 (skipped: hookify — no hookify rule files). Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 ```
 
 A report may also carry a `Boy-scout` block, with optional fixes in code the change did not touch,
@@ -169,19 +170,6 @@ branch is writable from here.
 Before applying anything, the review saves the report and your selection to the session's scratch
 directory, so a long apply walk survives a context compaction.
 
-## Single-lens reviews
-
-Two skills run a lighter review with a single reviewer and no parallel fan-out:
-
-```
-/code-review:comment-review     # comments only
-/code-review:quality-review     # code craft only: no comments, correctness, security, coherence, assumptions, performance or spec
-```
-
-Claude can also start them on its own when you ask for a comment review or a quality review in
-plain words. Both take the same paths and `--base` option as `/code-review:start-cr` and use the
-same rule files.
-
 ## Customize with your project's rules
 
 The review reads your conventions before it judges anything. Two kinds of files matter.
@@ -204,6 +192,15 @@ order and quotes are skipped when a formatter or linter config sits at the repos
 `[tool.ruff]` table in `pyproject.toml`, `.golangci.yml`, `rustfmt.toml`, `phpcs.xml`,
 `.php-cs-fixer*`), because the tool enforces them.
 
+Hookify rules create findings too. When the checkout keeps hookify rule files in its `.claude/`
+directory, the hookify lens replays every enabled `file` and `all` rule over the diff, the way
+hookify's hooks check each edit, and quotes the rule's message in the finding. A `block` rule's
+finding is high and a `warn` rule's medium. A `.local.md` rule with `enabled: false` switches off
+the team rule of the same name, as it does at runtime. `bash`, `prompt` and `stop` rules, rules in
+`~/.claude/`, and conditions on anything but the file path, the added text and the removed text
+are left out, because a diff cannot show them. A rule whose only condition is the file path is
+raised only when the added lines do what its message warns against.
+
 Decision records create findings too: the coherence lens flags code that breaks a rule stated by
 an accepted ADR, `CONTEXT.md`, or a decision document in the change, and quotes the rule. Other
 design notes and plans only raise it as a candidate the merge decides.
@@ -220,16 +217,19 @@ Reviewed: source files with the extensions `.ts .tsx .mts .cts .js .jsx .mjs .cj
 compose files and other infrastructure-as-code. Tests get every lens except performance;
 infrastructure code also skips objects & patterns. Access policies (`*.rego`,
 `*.cedar`, Cerbos and Kubernetes RBAC manifests, IAM policy files), `CODEOWNERS` and CI workflow
-files are reviewed by the security, assumptions and coherence lenses only.
+files are reviewed by the security, assumptions and coherence lenses only, plus hookify when it
+runs.
 
 Skipped, and listed on the report's `Skipped` line: JSON, lockfiles, generated or minified files,
 Markdown and other docs, `.txt`, other static config (`.yaml`, `.toml`, `.ini`, `.env`), and
-license headers. Two lenses read them anyway. Coherence judges every skipped file except
+license headers. Two lenses read them anyway, three in a project with hookify rules. Coherence judges every skipped file except
 lockfiles, generated output and real `.env` files, because a README, a migration or a compose file
 is one side of the disagreements it looks for; a real `.env` it only Greps for key names, never
 reading a value. The spec lens, with a spec given, maps the spec against every changed
 file, skipped and policy files included, because a workflow or a manifest is often what a spec
-line describes; a real `.env` it too only Greps for key names.
+line describes; a real `.env` it too only Greps for key names. The hookify lens, when it runs,
+checks the same files coherence reads against your hookify rules, since a rule can target any
+path.
 
 Limits:
 
@@ -276,14 +276,9 @@ They review committed changes only, never edit the checkout, and never ask anyth
 change or a lens that did not report comes back as a status (`empty`, `incomplete`), never as a
 clean review.
 
-## Upgrading from comment-review or quality-review
-
-This plugin replaces the separate `comment-review` and `quality-review` plugins, which the
-marketplace no longer lists. Uninstall them, or you will see two copies of each skill.
-
 ## Development
 
 - `evals/`: a promptfoo eval suite, used for development. See `evals/README.md`.
 - `CONTEXT.md`: the plugin's glossary.
-- `docs/adr/`: the design decisions behind the lens split, the active lens set, and the coherence
-  and assumptions lenses.
+- `docs/adr/`: the design decisions behind the lens split, the active lens set, the coherence
+  and assumptions lenses, and the hookify lens.

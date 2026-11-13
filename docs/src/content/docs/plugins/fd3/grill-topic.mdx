@@ -1,0 +1,68 @@
+---
+title: /fd3:grill-topic
+description: Get interviewed about a topic until its design tree is settled, without writing a spec.
+group: guides
+skill: grill-topic
+sidebar:
+  order: 3
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+`/fd3:grill-topic` is the interview from [`/fd3:build-spec`](/plugins/fd3/build-spec/) on its own.
+Reach for it when you want to stress-test an idea, a plan or a decision, and no delivery is planned yet.
+It ends with a summary and a notes file, and nothing turns that file into a spec.
+To get a spec, run `/fd3:build-spec` instead: it runs the same interview first.
+
+Claude can also start this skill when you ask it to grill you about something.
+
+## How it runs
+
+<SkillFlow
+  skill="grill-topic"
+  input="A topic, plan, decision or idea, or a path to a document"
+  steps={[
+    { name: 'Ground', does: 'Fetches the repository, reads its specs and decision records, and checks the claims.', leaves: 'research/prior-conversation.md' },
+    { name: 'Look up', does: 'Sub-agents look up the facts the questions turn on.', leaves: 'research/INDEX.md' },
+    { name: 'Ask', does: 'One round of numbered questions, each with options and a recommendation.', leaves: 'notes/question-ledger.md', loop: 'until nothing is left to decide' },
+    { name: 'Close', does: 'You confirm the summary, and it is written to a notes file.' },
+  ]}
+/>
+
+## Run it
+
+Pass the topic as a sentence or as a path:
+
+<Strip cmd="/fd3:grill-topic should the webhook worker retry on its own or hand retries to the queue" />
+
+With no topic, Claude asks what to grill and waits.
+
+## What a round looks like
+
+Round 1 opens with every place the topic turned out to be wrong against the code, one line each, with the decision it affects.
+When the topic doesn't say what is in scope and what is out, round 1 asks that first.
+
+Each round asks every decision whose prerequisites are already settled.
+Questions are numbered, each option has a letter and a cost, and one option is marked as recommended with the reason why.
+The round ends with the labels it expects back, such as `Answer as: 5, 6, 7.1, 7.2`.
+From round 2 on, a round opens with the numbers still unanswered from earlier rounds.
+
+A question waiting on a lookup goes out only once the fact is in.
+The questions nobody is looking anything up for go out right away.
+
+## What it leaves
+
+All files stay in the session's scratch directory, never in your repository:
+
+- `research/prior-conversation.md`, with what was settled in the conversation before the command.
+- `research/` with one report per lookup, and `research/INDEX.md` with a short answer and the sources for each.
+- `notes/question-ledger.md`, one row per question with the option you chose.
+- After you confirm, the closing notes file: your ratified decisions, the decisions Claude took itself, the risks you accepted, and the research files.
+
+The scratch directory is the one Claude Code gives the session, or a temporary directory fd3 creates when there is none.
+
+## Next steps
+
+- When the idea should become work, run [`/fd3:build-spec`](/plugins/fd3/build-spec/). It runs this interview and then writes and checks the spec.
+- For a cited report on one open question, use [researcher](/plugins/researcher/).

@@ -1,0 +1,62 @@
+---
+title: Planowanie
+description: Każda decyzja podjęta i zweryfikowana względem kodu, zanim powstanie choć linijka.
+group: cycle
+sidebar:
+  label: 01 · Planowanie
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Planowanie to pierwszy etap [ADLC](/pl/lifecycle/).
+Zamienia pomysł, ticket albo szkic planu w spec, od którego zaczyna każdy kolejny etap.
+
+## Co idzie źle bez tego etapu
+
+Daj agentowi prośbę w jednej linijce, a każdą lukę wypełni zgadywaniem.
+Zgadywanki wychodzą na jaw późno, jako poprawki w review.
+Planowanie przesuwa te decyzje na początek, gdzie zmiana jednej kosztuje zdanie, a nie branch.
+
+## Kto co robi
+
+- **Agent** porównuje założenia twojego pomysłu z kodem, istniejącymi specami i lockfile'em. Sam ustala każdy fakt, który da się sprawdzić, a pyta cię tylko o to, czego nie da się.
+- **Ty** odpowiadasz w rundach wywiadu i potwierdzasz końcowe podsumowanie decyzji. Nic nie zostaje zapisane, zanim potwierdzisz.
+
+## Na mapie
+
+Podświetlona kolumna pokazuje, gdzie leży w cyklu.
+
+<LifeMap stage="plan" animate={false} />
+
+## Jak to przebiega
+
+Większości zmian wystarcza [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/), który prowadzi cały etap:
+
+1. **Ugruntowanie.** Agent pobiera repozytorium i porównuje pomysł z kodem. Runda 1 zaczyna się od każdego miejsca, w którym pomysł okazał się błędny.
+2. **Wywiad.** Każda runda zadaje wszystkie pytania, na które da się już odpowiedzieć. Każde pytanie ma dwie albo trzy opcje z kosztami i jedną rekomendowaną.
+3. **Potwierdzenie.** Potwierdzasz podsumowanie każdej decyzji, także tych, które agent podjął, choć nie odpowiedziałeś na nie wprost.
+4. **Zapis.** Subagent pisze spec z potwierdzonych notatek. Każdy element do zbudowania dostaje stały kod, na przykład `API-2`.
+5. **Walidacja.** Drugi subagent weryfikuje względem kodu każde kluczowe twierdzenie i dopisuje werdykt. Uruchamia się ponownie, do trzech przebiegów, dopóki werdykt brzmi `not ready` albo poprzedni przebieg zmienił spec.
+
+Dwa pluginy pomocnicze przydają się, gdy decyzja potrzebuje czegoś więcej niż kod:
+
+- [researcher](/pl/plugins/researcher/) odpowiada na pytanie, na które kod nie odpowie, raportem, w którym każde twierdzenie ma źródło.
+- [codex-plan-improver](/pl/plugins/codex-plan-improver/) daje plan do przeglądu OpenAI Codex, który z nim dyskutuje, do pięciu rund.
+
+Żeby przegadać pomysł bez pisania specu, uruchom sam wywiad: [`/fd3:grill-topic`](/pl/plugins/fd3/grill-topic/).
+
+## Co uruchomić
+
+<StageCommands stage="plan" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** pomysł, issue albo szkic planu.
+- **Wychodzi:** spec, którego ostatnia linia werdyktu brzmi `ready`, gotowy do pocięcia na zadania w [Budowie](/pl/lifecycle/build/).
+
+## Kiedy go pominąć
+
+Pomiń Planowanie przy zmianie, w której nie ma już nic do zdecydowania, na przykład poprawce w jednej linijce albo zmianie nazwy.
+Budowa potrzebuje specu, ale Review i testy nie: zrób zmianę sam, a code-review i tester przeczytają diff.

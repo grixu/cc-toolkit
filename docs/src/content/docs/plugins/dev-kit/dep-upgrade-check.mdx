@@ -1,0 +1,209 @@
+---
+title: /dev-kit:dep-upgrade-check
+description: Tells you whether a dependency upgrade is safe to take and whether it breaks your code. It checks the target's security record, then maps every change up to the target to the places your code uses it.
+group: guides
+skill: dep-upgrade-check
+sidebar:
+  label: dep-upgrade-check
+  order: 5
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+A dependency bump looks small in the diff: one line in a manifest and a lockfile.
+What it changes lives in the package's release notes, migration guides and metadata, and only some of that touches your code.
+`dep-upgrade-check` reads all of it, keeps the changes your code actually uses, and ends with a verdict and `file:line` evidence.
+Before that, it checks whether the target version is safe to take at all.
+
+It works in [Maintain](/lifecycle/maintain/), outside the cycle: run it whenever an upgrade arrives, not at a fixed point of the cycle.
+
+## When to reach for it
+
+- A Renovate or Dependabot pull request is waiting for review.
+- You want to bump a package and need to know what breaks first.
+- You want a CI job that checks every bot upgrade before anyone merges it.
+
+## Run it
+
+<Strip cmd="/dev-kit:dep-upgrade-check" />
+
+Pass a package with a version, a package alone for its latest release, or a pull request URL:
+
+```
+/dev-kit:dep-upgrade-check vite@7
+/dev-kit:dep-upgrade-check zod
+/dev-kit:dep-upgrade-check https://github.com/owner/repo/pull/42
+```
+
+It works with pnpm, npm, yarn, Python, Go, PHP and Rust projects, container images and GitHub Actions.
+
+## How it runs
+
+<SkillFlow
+  skill="dep-upgrade-check"
+  input="A package and version, or a Renovate or Dependabot pull request"
+  steps={[
+    { name: 'Pin the range', does: 'Takes the version your lockfile resolves today and the exact target.' },
+    { name: 'Security', does: 'Checks the target and every new transitive version in OSV.dev and the GitHub Advisory Database.', leaves: 'security comment' },
+    { name: 'Change ledger', does: 'Lists every change up to the target from releases, changelogs, migration guides and package metadata.' },
+    { name: 'Usage surface', does: 'Finds every place your code touches the package and marks each change affected, not affected or unknown.' },
+    { name: 'Evidence run', does: 'Installs and builds the upgrade in a throwaway worktree, only when you agree.', optional: true },
+    { name: 'Report', does: 'Gives the security outcome, the verdict and a table of affected changes with fixes.', leaves: 'dep-upgrade-check-result' },
+  ]}
+/>
+
+For a pull request, the current version comes from the base branch's lockfile, and the check also reads the pull request's CI result.
+A runner failure in a setup or cleanup step after the tests passed counts neither for nor against the upgrade, and the report suggests a rerun.
+
+## The security outcome
+
+Each upgrade gets one of three outcomes before the compatibility work:
+
+- **blocked:** malware, a version the registry has taken down, or a version younger than its release-age cooldown. A recent version passes when it fixes a moderate-or-above vulnerability of the version it replaces. The report names the lowest safe version instead.
+- **escalated:** a known vulnerability of moderate severity or above. The report says whether your code uses the vulnerable function, but that never lowers the severity. It asks you to accept the risk, switch to the lowest safe version, or hold.
+- **clear:** neither.
+
+The cooldown follows your repository's own policy, so the check doesn't block what your dependency bot already waited for:
+
+| Source | Where the value comes from |
+|---|---|
+| Renovate | `minimumReleaseAge`, at the top level and per matching `packageRules` entry |
+| Dependabot | the `cooldown` block of the matching `updates` entry, or 3 days without one |
+| pnpm | `minimumReleaseAge` in `pnpm-workspace.yaml`, with `minimumReleaseAgeExclude` |
+| none of them | 7 days |
+
+Table 1. Where the release-age cooldown comes from
+
+The first source in the table that sets a value for the version wins, and the others aren't read.
+In Renovate, an explicit `null` means no cooldown, and a rule with a matcher the check can't evaluate, such as `matchCurrentVersion`, counts at the stricter value.
+For a pull request, the configuration is read from the base branch, so a pull request can't lower its own cooldown.
+The report names the value and its source, such as `cooldown 7 days (default)`.
+
+:::note[What leaves your machine]
+Package names are sent to api.osv.dev, api.github.com and api.deps.dev.
+Packages from a private registry are never sent, and are listed as not checked.
+:::
+
+## The verdict
+
+- **safe:** no change touches the places your code uses the package.
+- **safe with changes:** some changes do, and each has a known, bounded fix, such as a rename, a config key, a codemod or a peer bump.
+- **breaking:** a change has no drop-in fix, the runtime or engine floor is above what the project runs, or the fix needs a redesign.
+
+While an open question could change the verdict, the report gives the worst value still possible and marks it `provisional`.
+It names the question and offers the build that would settle it.
+
+## What it leaves
+
+- A report: the security outcome with its advisory table, the verdict, a table of affected changes with `file:line` locations and the fix for each, the open unknowns, and the sources it used.
+- On a pull request, one security comment with the outcome, the advisories and your decision. A re-run updates the same comment.
+- A `dep-upgrade-check-result` block at the end of every run, which a script can parse.
+
+The check is otherwise read-only: it changes no manifest, lockfile or source file.
+Anything that downloads and runs third-party code, such as the evidence build or pulling a container image, is offered and runs only when you agree.
+
+## Apply the upgrade
+
+When you ask it to apply the upgrade, it applies the fixes from the table and runs your checks:
+
+- For a package and version, in your working tree.
+- For a pull request, on its branch in a separate worktree, committed locally and pushed only when you say so.
+
+Renovate and Dependabot drop commits that aren't theirs when they rebase.
+The report warns about that, and names the bot setting that would make the commit unnecessary.
+
+## Run it in CI
+
+Add `unattended` after the pull request URL, or run it where `GITHUB_ACTIONS=true`, and the check never waits for a person:
+
+- Where it would ask, it stops with `status: stopped` and the reason.
+- An escalated outcome gets no question. The security comment goes up at once with the decision `pending`. A maintainer decides by running the check on the pull request in their own session, and later runs keep that decision while the packages, targets and advisories stay the same.
+- It reads the CI checks once, and never installs, builds or applies the upgrade.
+- It posts the full report as a second comment, and a re-run updates both comments.
+
+This reference job checks Renovate pull requests:
+
+```yaml
+name: dependency check
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  checks: read
+  actions: read
+concurrency:
+  group: dep-upgrade-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  dep-upgrade-check:
+    if: >-
+      github.event.pull_request.user.login == 'renovate[bot]' &&
+      github.event.pull_request.head.ref != 'renovate/lock-file-maintenance'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: repo
+      - uses: actions/checkout@v6
+        with:
+          repository: grixu/cc-toolkit
+          ref: <cc-toolkit commit SHA>
+          path: cc-toolkit
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Check the upgrade
+        working-directory: repo
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
+            --plugin-dir ../cc-toolkit/plugins/dev-kit \
+            --permission-mode dontAsk \
+            --strict-mcp-config \
+            --setting-sources user \
+            --max-turns 80 \
+            --output-format json > ../result.json
+          block="$(jq -r .result ../result.json | sed -n '/^```dep-upgrade-check-result/,/^```/p')"
+          printf '%s\n' "$block" >> "$GITHUB_STEP_SUMMARY"
+          jq -e '(.permission_denials // []) | length == 0' ../result.json
+          grep -qx 'status: done' <<< "$block"
+          grep -Eqx 'security: (clear|escalated)' <<< "$block"
+          grep -Eqx 'decision: (accepted|n/a)' <<< "$block"
+```
+
+- **The gate** is the last three lines. The job fails unless the run finished, no upgrade is blocked, and every escalated upgrade's decision is `accepted`. The compatibility verdict doesn't gate, because your build and tests already run on the pull request.
+- **The base commit** is checked out on purpose. On `pull_request`, `actions/checkout` defaults to the merge commit, which already holds the upgrade.
+- **The plugin checkout** stays outside the repository's directory, or the usage search reads it as part of your code.
+- **`--permission-mode dontAsk`** denies every call the skill doesn't pre-approve. The pre-approved set covers pnpm. For other ecosystems, add their lookups with `--allowedTools`.
+- **`--strict-mcp-config` and `--setting-sources user`** keep the repository's own Claude Code configuration, such as a `.mcp.json`, out of the run.
+- **A Claude subscription** works too: set `CLAUDE_CODE_OAUTH_TOKEN` to a token from `claude setup-token` in place of `ANTHROPIC_API_KEY`.
+- **A required check:** add the job as a required status check on the default branch. A job that its `if:` skips reports success, so other pull requests aren't blocked.
+- **Self-hosted Renovate** posts under its own bot login. Use that login in the `if:`.
+- **Dependabot pull requests** only get Dependabot secrets, so store `ANTHROPIC_API_KEY` as a Dependabot secret too.
+
+:::danger[Keep the token narrow]
+The run reads release notes it can't trust, and the skill pre-approves commands that reach the network, including `gh api` writes and `WebFetch` to any domain.
+Keep `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1`, grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head.
+Keep the repository setting **Allow GitHub Actions to create and approve pull requests** off, so an injected command can't approve the pull request.
+:::
+
+## What can go wrong
+
+- **The pull request belongs to another repository.** The check asks for the path of a local checkout. Unattended, it stops.
+- **No migration guide is found.** Without firecrawl and context7, the check still reads the package repository's guide files and the guide the release notes link to. A guide it can't find is listed under the unknowns as `no guide found`.
+- **The comment fails with a 403.** Commenting on a pull request takes `pull-requests: write`. The result block's `reason` names the missing permission.
+
+## Next steps
+
+- The [reference](/plugins/dev-kit/reference/#dep-upgrade-check-result) lists every field of the result block and the commands the check runs without asking.
+- See the other plugins that work outside the cycle in [Maintain](/lifecycle/maintain/).

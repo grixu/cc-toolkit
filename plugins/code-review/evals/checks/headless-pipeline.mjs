@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { strayHandoffFamilies } from './handoff-families.mjs';
 
-const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'correctness', 'security', 'coherence', 'assumptions', 'performance', 'spec'];
+const LENSES = ['comments', 'readability-tests', 'naming-module', 'objects-patterns', 'simplicity-types', 'correctness', 'security', 'coherence', 'assumptions', 'performance', 'spec', 'hookify'];
 const FINDING = /^- (high|medium|nit) · [\w-]+ · [\w-]+ · \S+:L\d+(?:-\d+)? · (safe|structural|report-only)\b.* — /m;
 const RECONCILIATION = /^Reconciliation: (\d+) handoffs \+ (\d+) candidates → (\d+) merged · (\d+) own bullet · (\d+) boy-scout · (\d+) Not flagged; (\d+) primary dropped · (\d+) passed on\s*$/m;
 

@@ -1,0 +1,23 @@
+---
+import { ui, langOf } from '../../lib/i18n'
+import { tocHeadings } from '../../lib/nav'
+
+const t = ui[langOf(Astro.url.pathname)]
+const items = tocHeadings(Astro.locals.starlightRoute.toc)
+---
+
+{items.length > 0 && (
+  <nav class="toc" aria-labelledby="toc-h">
+    <p class="label" id="toc-h">{t.onPage}</p>
+    <ol>
+      {items.map((i) => (
+        <li>
+          <a href={`#${i.slug}`} data-toc={i.slug}>{i.text}</a>
+          {i.children.length > 0 && (
+            <ol>{i.children.filter((c) => c.depth === 3).map((c) => <li><a class="toc-sub" href={`#${c.slug}`} data-toc={c.slug}>{c.text}</a></li>)}</ol>
+          )}
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}

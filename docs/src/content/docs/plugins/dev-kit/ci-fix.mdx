@@ -1,0 +1,61 @@
+---
+title: /dev-kit:ci-fix
+description: Fixes a failed CI run at its root cause, verifies the fix locally, and commits one fix per cause. pr-shepherd calls it for every red check.
+group: guides
+skill: ci-fix
+sidebar:
+  label: ci-fix
+  order: 4
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+You rarely run `ci-fix` by hand.
+[`pr-shepherd`](/plugins/dev-kit/pr-shepherd/) calls it for every red check on the pull request it drives, and lets it push without asking.
+Run it yourself when a check fails and you don't want the whole loop.
+
+## Run it
+
+<Strip cmd="/dev-kit:ci-fix" />
+
+Pass a run, job, pull request or commit URL, a run ID, a pull request number, or nothing for the current branch:
+
+```
+/dev-kit:ci-fix https://github.com/owner/repo/actions/runs/123456
+/dev-kit:ci-fix 42
+```
+
+## How it runs
+
+<SkillFlow
+  skill="ci-fix"
+  input="A failed run, a pull request, or the current branch"
+  steps={[
+    { name: 'Locate', does: 'Resolves the target to the failed runs, jobs and steps.' },
+    { name: 'Find the cause', does: 'Reads the failed logs and the workflow file, and names the change that made it fail.' },
+    { name: 'Fix', does: 'Reproduces the failure locally, fixes it, and runs the same command again until it passes.' },
+    { name: 'Commit', does: 'Commits one fix per root cause and pushes once you agree.', leaves: 'ci-fix result' },
+  ]}
+/>
+
+Not every failure gets a code change:
+
+- **A transient failure** (lost runner, network timeout, rate limit) or **a flaky test** gets one rerun instead. A test whose subject the branch changes counts as flaky only after it passes locally twice.
+- **An environment problem** (missing secret, expired credential, permission, billing) is reported for an admin, not patched.
+- **A cause already fixed on the branch** with no new run coming, such as a deploy workflow, ends as `nothing-to-fix`. The report names the `gh workflow run` command, and `ci-fix` never dispatches a deploy itself.
+
+## What it leaves
+
+Every run ends with a `ci-fix result` block: the status (`fixed`, `rerun`, `nothing-to-fix`, `not-fixable` or `blocked`), the cause, the commits, how the fix was verified, whether it was pushed, and what's left for you.
+
+## What it never does
+
+- Fix outside a local clone of the failing repository. It asks before switching to the run's branch.
+- Skip, loosen or remove a check without asking you. Aligning an assertion with a documented contract is a fix, and the commit quotes the contract line.
+- Merge or rebase the base into the branch, resolve conflicts, force-push or edit the pull request, unless you name that action.
+
+## Next steps
+
+- Let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) call `ci-fix` for you while it handles review.
+- The [reference](/plugins/dev-kit/reference/) lists the `push-authorized` argument, the result block and the commands `ci-fix` runs without asking.

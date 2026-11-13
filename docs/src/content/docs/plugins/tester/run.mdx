@@ -1,0 +1,107 @@
+---
+title: /tester:run
+description: Check a spec, a named area or your git diff against the running app, and get a report with the evidence behind every verdict.
+group: guides
+skill: tester
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Reach for `/tester:run` once a branch builds and you want to know whether the running app does what was promised.
+It derives the checks, asks you one round of questions, runs the checks against your stack, and reports.
+
+## Before you start
+
+- Bring up your local or staging stack, or let tester start it after you agree.
+- Install [agent-browser](https://github.com/vercel-labs/agent-browser) if the change has a UI.
+- Start Docker if the change handles a failing dependency.
+
+The full list is in the [reference](/plugins/tester/reference/#requirements).
+
+## Choose what to check
+
+`/tester:run` takes one argument, the scope:
+
+- **A spec path or URL.** tester checks the spec's acceptance criteria and its error and edge-case sections.
+
+  <Strip cmd="/tester:run docs/specs/team-invites.md" />
+
+- **A named area of the app.** tester finds the code behind it and any nearby spec.
+
+  <Strip cmd='/tester:run "the org-role assignment endpoints"' />
+
+- **Nothing.** tester reads the `git diff` against the merge base with the main branch and checks the touched endpoints, UI flows and error paths.
+
+  <Strip cmd="/tester:run" />
+
+A spec from [`/fd3:build-spec`](/plugins/fd3/build-spec/) works here: tester derives its checks from the spec's acceptance criteria, then widens them from the code around the change.
+
+## How it runs
+
+<SkillFlow
+  skill="tester"
+  input="A spec, a named area, or nothing (the git diff)"
+  steps={[
+    { name: 'Scope', does: 'Reads the acceptance criteria, the code behind the area, or the diff.' },
+    { name: 'Discover', does: 'Finds the live ports, routes, test users and dependencies, and snapshots the current state.', leaves: 'BRIEF.md' },
+    { name: 'Derive', does: 'Turns each expected behavior into API, UI and fault checks, grouped into suites.' },
+    { name: 'Ask', does: 'Asks once which suites to run and which changes it may make.' },
+    { name: 'Run', does: 'Runs API and UI suites in parallel, then the fault suite alone.', leaves: 'TEARDOWN.md' },
+    { name: 'Report', does: 'Classifies each failure and reports the verdicts, the gaps and the ledger.' },
+  ]}
+  next={['pr-proof']}
+/>
+
+Discovery happens on every run, because ports, routes and test users are what goes stale in stored configuration.
+If a piece can't be found, such as database access or a working login, the brief records the gap and the affected checks become `BLOCKED` instead of a false `FAIL`.
+
+## Answer the questions
+
+Before anything runs, tester shows the suites it derived and asks one round of questions:
+
+1. **Which suites to run.** Pick all of them or a subset.
+2. **Whether checks may make real changes through the app.** Answer `all`, `selected` or `none`. The default is `none`: tester then runs only reads and attempts that it expects the app to deny.
+3. **Which environment changes are allowed.** For example, starting a service, seeding rows, applying a migration or restarting the app with different settings.
+4. **What you could supply to unlock a blocked check.** For example, a credential, a CLI on `PATH`, or a disposable email address for a sign-up or invite flow.
+
+The last question decides how much of the scope tester can reach.
+A check that one action from you would unlock is a question, not a verdict; it becomes `BLOCKED` only when you decline.
+
+:::caution[Sign-up and invite flows]
+tester never makes up an email address for a new-user flow, because the flow can send real mail and register the account with your identity provider.
+Without a disposable address from you, those checks are `BLOCKED`.
+:::
+
+## Read the report
+
+The report arrives in the conversation and leads with the outcome:
+
+- a result table per suite, with each check marked `PASS`, `FAIL`, `BLOCKED`, `ERROR` or `SKIP`;
+- every `FAIL` tied to its acceptance criterion, with expected and actual output, and classified as an implementation defect, a test defect or a spec defect;
+- a root cause for a failure marked `PLAUSIBLE` or `CONFIRMED`, and `CONFIRMED` only after an experiment that tells the two apart;
+- anomalies noticed along the way, each in its own `observation` row marked as not investigated;
+- behaviors it could not check, each with its reason;
+- the teardown ledger: every change made to your environment, how it was reverted, and anything left in place on purpose with the reason;
+- one suggested next step.
+
+When tester is unsure how to classify a failure, it calls it an implementation defect.
+The [reference](/plugins/tester/reference/#verdicts) defines each verdict and each defect class.
+
+tester stops after the report.
+It doesn't fix the code and doesn't start another command.
+
+## What can go wrong
+
+- **The base URL looks like production.** tester halts. Point it at a local or staging stack.
+- **There is no scope.** With no argument and an empty diff, tester asks you to name a scope.
+- **A test user can't log in, or a session expires mid-run.** That user's checks become `BLOCKED`; the rest still run.
+- **A check would change more than you allowed.** tester reports the difference and holds that kind of change until you agree again.
+
+## Next steps
+
+- Fix the defects the report found, then run `/tester:run` again with the same scope.
+- When the checks pass, prove the change to a reviewer with [pr-proof](/plugins/pr-proof/), in [03c Human review](/lifecycle/human-review/).
+- [How tester works](/plugins/tester/how-it-works/) explains the brief, the agents and the fault mechanisms.

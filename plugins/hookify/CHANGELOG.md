@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `references/rule-syntax.md`: every frontmatter key, field, operator, event outcome and parser limit.
 
+### Removed
+
+- **Breaking:** the `review-changes` skill (`/hookify:review-changes`) and its `get_changes.py` and
+  `list_rules.py` scripts. Reviewing a diff against hookify rules is now the `code-review` plugin's
+  `hookify` lens, which runs inside `/code-review:start-cr` whenever the project's `.claude/` holds
+  hookify rule files and reports its matches in the same report as the other lenses. It no longer
+  reads rules from `~/.claude/`, and the saved report and Plan Mode follow-up are gone with the skill.
+
 ### Changed
 
 - Author metadata now reads `Mateusz Gostański <mg@grixu.dev>` in `plugin.json` and the marketplace entry.
@@ -18,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `/hookify:help` matches the current rule format: it covers `conditions`, `tool_matcher`, and what a match does per event, and its "require tests" example uses a `transcript` condition instead of a stop `pattern` that never matched.
+- `/hookify:hookify` without arguments launches the plugin's `conversation-analyzer` agent, which its text named, instead of a `general-purpose` agent with an inline prompt, and passes it the recent messages it analyzes.
 - `prompt` rules now match the submitted prompt. The engine read `user_prompt`, but Claude Code sends the text as `prompt`; a simple `pattern:` and a `field: prompt` or `field: user_prompt` condition all read it now.
 - `file` rules with a simple `pattern:` (or a `new_text` condition) now see the content of `Write` calls. Before, `new_text` read only Edit's `new_string`, so new files were never checked.
 - The "require tests before stopping" example (README and `examples/require-tests-stop.local.md`) blocked every stop: `not_contains` compares literal text, so `npm test|pytest|cargo test` never matched. It now uses a negative-lookahead `regex_match` that looks for a Bash call running one of those commands.
@@ -25,7 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The "Hookify: Blocked operation by rule" notice now names the rules that blocked the call. It named the last rule evaluated, which could be an unrelated warn rule.
 - `stop` and `prompt` rules no longer run on tool calls. For tools other than Bash, Edit, Write and MultiEdit the tool hooks load every rule, so an enabled stop rule on `transcript` denied `Read`, `Grep` and similar calls, and a prompt rule matched the `prompt` input of `Agent` or `WebFetch`.
 - The `writing-rules` skill names the prompt field `prompt`, the field Claude Code sends; `user_prompt` stays as an alias.
-- The diff-review skill registers as `/hookify:review-changes`, matching its directory and the docs. Its frontmatter name made the command `/hookify:reviewing-hookify-compliance`.
 
 ## [0.4.0] - 2026-04-27
 

@@ -1,0 +1,63 @@
+---
+title: dev-kit
+description: Przeprowadza branch przez review człowieka. Pull request do przeczytania na jednym ekranie, z etykietą ryzyka, zielony aż do akceptacji, a do tego sprawdzenie, czy aktualizacja zależności zepsuje twój kod.
+group: start
+sidebar:
+  label: Przegląd
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+
+Gdy branch jest już przejrzany i przetestowany, wciąż musi go zaakceptować człowiek, a praca wokół tej akceptacji to głównie drobne obowiązki.
+Ktoś pisze opis, ktoś naprawia check, który w nocy zrobił się czerwony, ktoś odpowiada na komentarze z review.
+dev-kit przejmuje te obowiązki.
+Każdy skill wykonuje całą pracę, łącznie z commitami i pushami tam, gdzie na nie pozwolisz, i kończy się krótkim raportem.
+
+## Gdzie działa
+
+<LifeMap focus="dev-kit" animate={false} />
+
+Trzy skille działają w etapie [review człowieka](/pl/lifecycle/human-review/), ostatnim w cyklu.
+Najpierw [pr-proof](/pl/plugins/pr-proof/) nagrywa dowód, potem `pr-open` otwiera pull request, a `pr-shepherd` trzyma go na zielono aż do akceptacji.
+`dep-upgrade-check` działa w [Utrzymaniu](/pl/lifecycle/maintain/), poza cyklem: uruchamiaj go, gdy przychodzi aktualizacja.
+
+## Co jest w pluginie
+
+| Skill | Kiedy po niego sięgasz | Co robi |
+|---|---|---|
+| [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) | Twoje commity są gotowe do review | Pushuje branch i otwiera pull request, który wypełnia szablon repozytorium na podstawie diffu. Z kluczem TypeSafe dodaje etykietę z ryzykiem. |
+| [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/) | Pull request jest otwarty | Działa w pętli, aż każdy wymagany check będzie zielony i nie zostanie żaden otwarty wątek review. Naprawia to, z czym się zgadza, a na resztę odpowiada. |
+| [`/dev-kit:ci-fix`](/pl/plugins/dev-kit/ci-fix/) | Check padł | Znajduje przyczynę czerwonego runu, naprawia ją, sprawdza poprawkę lokalnie i robi jeden commit na przyczynę. `pr-shepherd` woła go za ciebie. |
+| [`/dev-kit:dep-upgrade-check`](/pl/plugins/dev-kit/dep-upgrade-check/) | Przychodzi podbicie zależności | Sprawdza historię bezpieczeństwa wersji docelowej, a potem odnosi każdą zmianę do miejsc, w których twój kod używa paczki. Zwraca `safe`, `safe with changes` albo `breaking`. |
+
+Tabela 1. Skille dev-kit
+
+Skill możesz uruchomić jego komendą albo opisać zadanie („CI jest czerwone na tym PR”, „czy podbicie vite do 7 nas zepsuje?”), a Claude wybierze pasujący skill.
+
+## Etykieta ryzyka
+
+Najważniejszą funkcją `pr-open` jest etykieta ryzyka.
+Gdy skonfigurujesz klucz API [TypeSafe](https://docs.typesafe.ai/introduction), `pr-open` ocenia, jak ryzykowny jest branch, kończy opis sekcją **Risk** i dodaje do pull requesta etykietę, na przykład `risk: high`.
+Reviewer wie wtedy, jak uważnie patrzeć, zanim otworzy diff.
+
+Do TypeSafe trafiają diff, opisy commitów oraz opisy pull requesta i ticketu.
+Bez klucza nic nie jest wysyłane, a pull request otwiera się bez etykiety.
+[Etykieta ryzyka](/pl/plugins/dev-kit/risk-assessment/) wyjaśnia, co znaczy etykieta i jak ją włączyć.
+
+## Wymagania
+
+- GitHub CLI `gh`, zalogowane (`gh auth status`) z dostępem do repozytorium. Każdy skill go używa.
+- Repozytorium na GitHubie. `ci-fix` i `pr-shepherd` obsługują tylko runy GitHub Actions i check runy GitHuba.
+- Token ze scope'em `workflow`, żeby wypchnąć poprawkę pliku w `.github/workflows/`.
+- Dla `pr-shepherd`: wbudowany w Claude Code `/loop`. Bez niego `pr-shepherd` wykonuje jedną rundę i informuje, że pętla nie wystartowała.
+- Opcjonalnie, dla `dep-upgrade-check`: serwery MCP firecrawl i context7, z których korzysta, szukając przewodników migracji.
+- Opcjonalnie, dla etykiety ryzyka: klucz API TypeSafe i Claude Code w wersji 2.1.287 lub nowszej, który ładuje moda pluginu.
+
+[Dokumentacja referencyjna](/pl/plugins/dev-kit/reference/) wymienia argumenty każdego skilla i komendy, które każdy z nich uruchamia bez pytania.
+
+## Następne kroki
+
+- Otwórz pierwszy pull request z [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).
+- Oddaj go [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/), żeby doprowadził go do akceptacji.
+- Zobacz cały [etap review człowieka](/pl/lifecycle/human-review/).

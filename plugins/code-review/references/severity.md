@@ -4,8 +4,8 @@ Every finding that reports as `family` · rule · severity carries one **family*
 **rule**, and one **severity**, all three **verbatim** from this table — never a code
 number, never a paraphrase invented this run. Two reviews of the same code name the
 same `family` · rule every time. Every family reports in that shape: the fixed families
-below, each with its own rows, plus `standards`, whose rules are the project's own and
-are graded by the mapping at the end of this file.
+below, each with its own rows, plus `standards` and `hookify`, whose rules are the project's
+own and are graded by the two mappings at the end of this file.
 
 Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 `critical`, and no numeric scale.
@@ -130,7 +130,7 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   type-in-the-name `role-name`, a `verbose` site a shorter form would say plainly. Real, but cheap; cluster them so the report does not
   drown in nits.
 
-A `security`, `correctness`, `spec`, `coherence` or `assumptions` finding is never `nit`: those families grade `high`
+A `security`, `correctness`, `spec`, `coherence`, `assumptions` or `hookify` finding is never `nit`: those families grade `high`
 or `medium` only, and a doubt about one goes to CANDIDATES or `Not flagged`, never to a softer
 severity.
 
@@ -166,8 +166,28 @@ the severity, the file's overall impression does not. A `standards` bullet has t
 exact shape:
 
 ```
-`standards` · <slug> · <sev> · L<lines> — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <fix as a clause>
+`standards` · <slug> · <sev> · `path:L<lines>` — "<quoted rule>" (CODING_STANDARDS.md › <section>) → <fix as a clause>
 ```
 
 The quoted rule and the file › section citation are mandatory — a `standards` finding
 that cannot quote its rule is not a finding.
+
+## hookify
+
+The `hookify` family has no fixed rows either: its rules are the checkout's hookify rule
+files (`.claude/hookify.*.local.md` and `.claude/hookify.*.rule.md`), and a finding's rule is
+the hookify rule's `name`, verbatim. Severity comes from the rule's `action`:
+
+| `action` in the rule file | severity |
+|---------------------------|----------|
+| `block` | high |
+| anything else (`warn`, or no `action`) | medium |
+
+A `hookify` bullet has this exact shape:
+
+```
+`hookify` · <rule name> · <sev> · `path:L<lines>` — "<quoted sentence of the rule's message>" (<rule file basename>) <what matched> → <fix as a clause>
+```
+
+The quoted message and the rule file are mandatory — a `hookify` finding that cannot quote
+its rule is not a finding.

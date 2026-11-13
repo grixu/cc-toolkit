@@ -1,0 +1,66 @@
+---
+title: Budowa
+description: Spec pocięty na zadania i zbudowany równolegle w osobnych worktree, z twoimi regułami pilnowanymi w trakcie pisania.
+group: cycle
+sidebar:
+  label: 02 · Budowa
+  order: 2
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Budowa to drugi etap [ADLC](/pl/lifecycle/).
+Zamienia spec w branche, które przechodzą walidację twojego repozytorium, po jednym branchu na pull request.
+
+## Co idzie źle bez tego etapu
+
+Spec jest za duży, żeby dać go jednemu agentowi za jednym razem: kontekst się zapełnia, a ostatnie zadania dostają najmniej uwagi.
+A agent, który szybko pisze, równie szybko łamie regułę zespołu, wiele razy, zanim ktokolwiek przeczyta kod.
+Budowa tnie spec na zadania na tyle małe, że każde mieści się w jednym worktree, i sprawdza twoje reguły przy każdej edycji.
+
+## Kto co robi
+
+- **Agent** tnie spec na zadania, buduje je równolegle i merguje każdą falę. Uruchamia build, typecheck, lint i testy, z maksymalnie trzema rundami poprawek na branch.
+- **Ty** odpowiadasz na jedną paczkę pytań przed przebiegiem, rozstrzygasz sprawy, o których może zdecydować tylko człowiek, i zgadzasz się, zanim cokolwiek zostanie wypchnięte.
+
+## Na mapie
+
+Podświetlona kolumna pokazuje, gdzie leży w cyklu.
+
+<LifeMap stage="build" animate={false} />
+
+## Jak to przebiega
+
+Etap to dwie komendy fd3, a hookify działa w tle:
+
+1. **Podział.** [`/fd3:split-to-tasks`](/pl/plugins/fd3/split-to-tasks/) czyta spec z werdyktem `ready`. Tnie pracę na pliki zadań, układa je według zależności i grupuje na branche według bramek wdrożenia.
+2. **Pytania.** [`/fd3:implement`](/pl/plugins/fd3/implement/) zadaje jedną paczkę pytań. Wśród nich: czy robić review każdego brancha, od jakiej bazy zacząć i co zadanie musi mieć potwierdzone.
+3. **Budowa falami.** Każde zadanie, którego zależności są skończone, rusza od razu, każde w osobnym worktree. Na końcu fali branche zadań merguje się do ich brancha docelowego.
+4. **Walidacja.** Każdy branch przechodzi walidację repozytorium, jeden branch naraz. Błędy, które były już na bazie, nie obciążają brancha.
+5. **Review.** Gdy wybrałeś review, code-review przegląda każdy branch, a znaleziska z poprawką są poprawiane. To ten sam review co w [Self-review](/pl/lifecycle/self-review/).
+6. **Rozstrzygnięcie i push.** Sprawy dla człowieka (HIL, human in the loop) rozstrzygasz w jednej paczce. Odpowiedzi, które odblokowują zadania, wznawiają przebieg, a te, które zmieniają zbudowany branch, idą do przebiegu naprawczego. Potem wybierasz, czy wypchnąć branche i otworzyć pull requesty.
+
+### Twoje reguły pilnowane przy każdej edycji
+
+Reguły [hookify](/pl/plugins/hookify/) działają jako hooki przy każdym wywołaniu narzędzia.
+Reguła pasująca do treści edycji pokazuje agentowi ostrzeżenie albo blokuje edycję, więc ta nigdy nie trafia do pliku.
+Nie musisz pilnować każdej edycji, żeby reguła obowiązywała.
+Reguły zespołu (`.rule.md`) są commitowane, więc ma je każdy checkout repozytorium.
+
+Spec, który okazał się błędny, nie jest edytowany w trakcie budowy.
+Rozbieżność między specem a tym, co zbudowano, trafia do ciebie jako sprawa HIL, a jej droga to `/fd3:build-spec <spec>`.
+
+## Co uruchomić
+
+<StageCommands stage="build" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** spec z werdyktem `ready`.
+- **Wychodzi:** branche, po jednym na pull request, każdy sprawdzony własnymi checkami repozytorium i przejrzany, jeśli wybrałeś review.
+
+## Kiedy go pominąć
+
+Pomiń komendy fd3, gdy piszesz zmianę sam albo w jednej sesji Claude Code.
+Reguły hookify nadal obowiązują: sprawdzają każdą edycję Claude'a, w każdej sesji z zainstalowanym hookify.

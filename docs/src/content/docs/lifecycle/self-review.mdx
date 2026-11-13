@@ -1,0 +1,63 @@
+---
+title: Self-review
+description: The agent reviews its own branch before anyone else sees it.
+group: cycle
+sidebar:
+  label: 03a · Self-review
+  order: 3
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Self-review is the first of three steps in Review & test, the third stage of the [ADLC](/lifecycle/).
+The agent reads its own change the way a reviewer would, and fixes what it can before a person spends time on it.
+
+## What goes wrong without it
+
+Code that passes CI can still be wrong, unclear or unsafe, and the agent that wrote it reports it as done.
+A human reviewer is the most expensive place to find that out.
+A single review pass also misses things: a reviewer who looks for bugs reads past a misleading comment or a leaked secret.
+
+## Who does what
+
+- **The agent** decides which lenses apply, runs one reviewer per lens in parallel, and merges their findings into one report graded against a fixed table.
+- **You** choose which fixes to apply and how to commit them. Nothing is edited until you choose.
+
+## On the map
+
+The highlighted column shows where it sits in the cycle.
+
+<LifeMap stage="self" animate={false} />
+
+## How it runs
+
+[`/code-review:start-cr`](/plugins/code-review/start-cr/) runs the whole step:
+
+1. **Resolve the scope.** It finds the changed files against the base branch, or against a pull request's base.
+2. **Read the conventions.** It reads your project rules, such as `CLAUDE.md` and `.claude/rules/`, once for every lens. A finding that your rules allow is dropped.
+3. **Pick the lenses.** The change decides which lenses run, never a preference. Nine run on every change. Three depend on the input:
+   - performance runs only on executable source files;
+   - spec runs only on a spec you named or accepted;
+   - hookify runs only when the project's `.claude/` holds an enabled rule that checks file edits.
+4. **Scan.** One scanner agent per active lens judges the change against that lens's rules, all at the same time.
+5. **Merge.** Duplicates are merged and each finding is graded against one severity table. The result is one report grouped by file.
+6. **Apply.** One menu asks which fixes to apply and how to commit them.
+
+[`/fd3:implement`](/plugins/fd3/implement/) runs this review on every branch it builds, when you turn review on.
+After fd3, you run it yourself only on changes made outside fd3.
+
+## What to run
+
+<StageCommands stage="self" />
+
+## What arrives and what leaves
+
+- **Arrives:** a branch, or a pull request.
+- **Leaves:** one graded report, and the fixes you chose to apply.
+
+## On someone else's pull request
+
+The same command works as a reviewer's assistant.
+On a pull request you didn't write, it edits nothing and drafts review comments for the author instead.
+[Review someone else's pull request](/plugins/code-review/start-cr/#review-someone-elses-pull-request) explains how.

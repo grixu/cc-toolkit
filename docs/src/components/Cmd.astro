@@ -1,0 +1,7 @@
+---
+// Hyphens are break opportunities, so "/fd3:split-to-tasks" would wrap as "split-to-" / "tasks";
+// each segment stays whole and the line may only break after the colon.
+const { text } = Astro.props as { text: string }
+---
+
+{text.split(/(?<=:)/).map((seg) => <span class="nw">{seg}</span>)}

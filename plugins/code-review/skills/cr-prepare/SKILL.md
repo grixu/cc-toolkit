@@ -59,7 +59,7 @@ either: return `status: empty` with `files: 0 judged` and each skip reason in `s
 looked at. A change whose every file is skipped is not always that change: `coherence` judges
 every skipped file but lockfiles, generated output and real `.env*` files, and an active `spec` maps the spec against
 all of them but the real `.env*` files. An all-skipped change that leaves `coherence` a file — a document, a changeset,
-config data — is `ready`, with `coherence` (plus `spec` when one counts) the only active lens and
+config data — is `ready`, with `coherence` (plus `spec` and `hookify` when they count) the only active lenses and
 every other lens inactive. One of lockfiles and generated files alone is `ready` only with a
 usable `--spec`, `spec` then the only active lens; without one it is `empty`.
 
@@ -75,7 +75,8 @@ Settle the conventions note, the standards slot and the active lens set by
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`, working the mechanical read `scope.md`
 describes inside the checkout. A lens is named by its rules file's basename: `comments`,
 `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`,
-`security`, `coherence`, `assumptions`, `performance`, `spec`.
+`security`, `coherence`, `assumptions`, `performance`, `spec`, `hookify`. The hookify rule files
+are looked for in the checkout's own `.claude/`, never in the directory you run from.
 
 ## 3. Write the context directory
 
@@ -95,6 +96,7 @@ Write each file with the `Write` tool:
   "skipped": [{ "path": "pnpm-lock.yaml", "reason": "lockfile" }],
   "spec": "<absolute path, or null>",
   "spec_focus": ["<code from --spec-focus>"],
+  "hookify": ["<absolute path of each hookify rule file, in load order>"],
   "lenses": {
     "active": [{ "lens": "performance", "files": ["src/a.ts"] }],
     "inactive": [{ "lens": "spec", "reason": "no spec named" }]
@@ -102,10 +104,12 @@ Write each file with the `Write` tool:
 }
 ```
 
-`spec_focus` is `null` when no focus was given or `spec` is `null`. `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
+`spec_focus` is `null` when no focus was given or `spec` is `null`. `hookify` is the gate's file
+list when the `hookify` lens is active, and `null` when it is inactive. `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
 `files` is its own list — the `source` subset for `performance`, the whole judged list for
 `security` and `assumptions`, the whole judged list plus every skipped path but real `.env*` files (every one but `.env.example`, `.env.sample`, `.env.template` and `.env.dist`) for `spec`, the whole judged list plus
-every skipped path but lockfiles, generated output and real `.env*` files, minus the spec, for `coherence`, and the
+every skipped path but lockfiles, generated output and real `.env*` files, minus the spec, for `coherence`, the
+same list with the spec kept for `hookify`, and the
 judged list minus its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
 the script returned, so the caller can read what you saw.
 

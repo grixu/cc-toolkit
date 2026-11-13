@@ -1,0 +1,60 @@
+---
+title: tester
+description: Sprawdza, czy działająca aplikacja robi to, co obiecał spec albo diff, przez API, interfejs i symulowane awarie zależności, i zapisuje komendę za każdym werdyktem.
+group: start
+sidebar:
+  label: Przegląd
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Testy jednostkowe przechodzą, ale nikt nie sprawdził, czy zmiana działa w uruchomionej aplikacji.
+tester robi to sprawdzenie w twoim lokalnym albo stagingowym środowisku.
+Ustala, co przetestować, uruchamia każde sprawdzenie jako prawdziwą komendę i raportuje, co przeszło, a co nie, z zapisanym wynikiem za każdym werdyktem.
+
+Nie trzyma konfiguracji i nie zapisuje planu testów.
+Każde uruchomienie odkrywa środowisko od zera i zostawia raport.
+
+## Gdzie działa
+
+<LifeMap focus="tester" animate={false} />
+
+tester działa na etapie [03b Testy](/pl/lifecycle/test/): po tym, jak agent przejrzał własny branch, a przed review pull requesta przez człowieka.
+
+## Kiedy po niego sięgnąć
+
+- Branch się buduje, review jest czyste, ale nikt nie widział, jak funkcja działa od początku do końca.
+- Spec wymienia kryteria akceptacji i chcesz sprawdzić każde z nich na żywej aplikacji.
+- Zmiana dotyka obsługi błędów, na przykład tego, co się dzieje, gdy zależność nie odpowiada albo zwraca 5xx.
+
+tester zgłasza problemy; nie poprawia twojego kodu.
+
+## Czego potrzebujesz
+
+- Lokalnego albo stagingowego środowiska. tester zatrzymuje się, gdy bazowy URL wygląda na produkcję.
+- `curl` i `git`.
+- [agent-browser](https://github.com/vercel-labs/agent-browser) do sprawdzeń interfejsu i logowania użytkowników testowych. Bez niego sprawdzenia interfejsu dostają `BLOCKED` z podanym powodem.
+- Dockera do sprawdzeń awarii, które wstrzymują kontener zależności albo stawiają przed nią proxy WireMock.
+
+[Dokumentacja referencyjna](/pl/plugins/tester/reference/#wymagania) wymienia też opcjonalny dostęp do bazy danych.
+
+## Uruchom go
+
+tester uruchamiasz ręcznie; Claude nie wywoła go z własnej inicjatywy.
+Podaj spec, nazwany obszar aplikacji albo nic, a sprawdzi to, co zmieniło się względem głównego brancha:
+
+<Strip cmd="/tester:run" />
+
+Strona [`/tester:run`](/pl/plugins/tester/run/) prowadzi przez uruchomienie krok po kroku, razem z jedną rundą pytań, którą tester zadaje, zanim cokolwiek uruchomi.
+
+## Co dostajesz
+
+Raport w rozmowie: tabelę wyników dla każdego zestawu, każdy `FAIL` powiązany z kryterium akceptacji i sklasyfikowany, zachowania, których nie dało się sprawdzić, oraz rejestr wszystkich zmian w twoim środowisku razem z tym, jak je cofnięto.
+
+## Następne kroki
+
+- [Uruchom pierwsze sprawdzenie](/pl/plugins/tester/run/) i przeczytaj raport.
+- [Jak działa tester](/pl/plugins/tester/how-it-works/): agenci, brief i zasady bezpieczeństwa.
+- Gdy sprawdzenia przejdą, oddaj zmianę człowiekowi: [pr-proof](/pl/plugins/pr-proof/) nagrywa walkthrough dla reviewera na etapie [03c Review człowieka](/pl/lifecycle/human-review/).

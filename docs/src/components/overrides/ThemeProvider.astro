@@ -1,0 +1,14 @@
+---
+---
+
+{/* The theme follows the system setting; an explicit data-theme is what the tokens key color-scheme on. */}
+<script is:inline>
+  ;(() => {
+    const root = document.documentElement
+    const forced = new URLSearchParams(location.search).get('theme')
+    const mq = matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => (root.dataset.theme = forced === 'light' || forced === 'dark' ? forced : mq.matches ? 'dark' : 'light')
+    apply()
+    mq.addEventListener('change', apply)
+  })()
+</script>

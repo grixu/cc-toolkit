@@ -1,6 +1,6 @@
-export const FAMILIES = new Set([
+const FAMILIES = new Set([
   'readability', 'tests', 'naming', 'module', 'objects', 'patterns', 'simplicity',
-  'correctness', 'security', 'performance', 'spec', 'coherence', 'assumptions', 'standards',
+  'correctness', 'security', 'performance', 'spec', 'coherence', 'assumptions', 'standards', 'hookify',
   'comments',
 ]);
 

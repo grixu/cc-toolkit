@@ -1,0 +1,53 @@
+---
+import SectionLinks from './SectionLinks.astro'
+import Icon from './Icon.astro'
+import { ui, href, langOf, canonicalPath } from '../lib/i18n'
+import { sectionOf } from '../lib/nav'
+import { plugins, marketplaceVersion, pluginPath, repoUrl } from '../lib/lifecycle'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const current = sectionOf(canonicalPath(Astro.url.pathname))
+---
+
+<dialog class="drawer" id="drawer" aria-label={t.menuLabel}>
+  <div class="drawer-top">
+    <a href={href('', lang)} aria-label={t.home}>
+      <img class="only-light" src="/brand/lockup-on-light.svg" alt="cc-toolkit" height="24" width="120" />
+      <img class="only-dark" src="/brand/lockup-on-dark.svg" alt="cc-toolkit" height="24" width="120" />
+    </a>
+    <button class="icon-btn" type="button" data-close-drawer aria-label={t.close}><Icon name="close" /></button>
+  </div>
+  <nav class="drawer-sections" aria-label={t.main}>
+    <SectionLinks current={current} lang={lang} />
+  </nav>
+  <p class="label drawer-h">{t.plugins}</p>
+  <ul class="drawer-plugins">
+    {plugins.map((p) => <li><a href={href(pluginPath(p.name), lang)}>{p.name}</a></li>)}
+    <li><a href={href('plugins/', lang)}>{t.allPlugins} →</a></li>
+  </ul>
+  <div class="drawer-bottom">
+    <p class="caption">cc-toolkit {marketplaceVersion} · MIT</p>
+    <a class="icon-btn" href={repoUrl} aria-label={t.github}><Icon name="github" /></a>
+  </div>
+</dialog>
+
+<script>
+  const drawer = document.getElementById('drawer') as HTMLDialogElement
+  const menu = document.querySelector<HTMLButtonElement>('.hd-menu')!
+  const lock = (on: boolean) => document.documentElement.classList.toggle('no-scroll', on)
+  menu.addEventListener('click', () => {
+    drawer.showModal()
+    menu.setAttribute('aria-expanded', 'true')
+    lock(true)
+    drawer.querySelector<HTMLElement>('[data-close-drawer]')!.focus()
+  })
+  drawer.addEventListener('close', () => {
+    menu.setAttribute('aria-expanded', 'false')
+    lock(false)
+    menu.focus()
+  })
+  drawer.querySelector('[data-close-drawer]')!.addEventListener('click', () => drawer.close())
+  drawer.addEventListener('click', (e) => e.target === drawer && drawer.close())
+  drawer.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => drawer.close()))
+</script>

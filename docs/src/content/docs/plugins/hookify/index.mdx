@@ -1,0 +1,96 @@
+---
+title: hookify
+description: Turns "don't do X" into a rule that Claude Code enforces, with a warning or a block, without editing settings or writing hook scripts.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+When Claude repeats a mistake, a correction in chat doesn't stop it next time.
+hookify turns your description, or a mistake Claude just made, into a small Markdown rule file.
+Its built-in hooks read those files on every tool call, prompt, and end of turn, and show a warning or block the action.
+
+hookify is a fork of the official [hookify plugin](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify).
+It adds team and global rules, clearer block output, and fixes to prompt, stop, and file matching.
+To check a diff that is already written against your rules, run [code-review](/plugins/code-review/): its hookify lens turns on when the project has hookify rules.
+
+## Where it works
+
+<LifeMap focus="hookify" animate={false} />
+
+hookify works in two places.
+You write a rule in [Maintain](/lifecycle/maintain/), outside the cycle, the moment Claude repeats a mistake, whatever stage you're in.
+The rule is enforced in [Build](/lifecycle/build/): the hooks check every edit the agent makes, and warn about or block one that breaks the rule.
+
+## What you can do with it
+
+| Command | What it does |
+|---|---|
+| [`/hookify:hookify [behavior]`](/plugins/hookify/hookify/) | Creates rules from your description. Without arguments, it scans the conversation for things you corrected. |
+| [`/hookify:list`](/plugins/hookify/reference/#hookifylist) | Lists every rule with its event, status, and source file. |
+| [`/hookify:configure`](/plugins/hookify/reference/#hookifyconfigure) | Lets you pick rules to enable or disable. |
+| [`/hookify:help`](/plugins/hookify/reference/#hookifyhelp) | Explains hookify inside Claude Code. |
+
+Table 1. The commands hookify adds.
+
+The rule hooks need no command.
+They run on their own and apply the rules that match the event.
+
+## Try it in a minute
+
+1. Ask for a rule:
+
+   <Strip cmd="/hookify:hookify Block rm -rf" />
+
+   Claude asks whether to warn or block and whether the rule is for the team or for you, then writes `.claude/hookify.block-rm-rf.rule.md` or `.claude/hookify.block-rm-rf.local.md`.
+
+2. Ask Claude to `Run rm -rf /tmp/hookify-test`.
+
+   You don't need to restart. Claude Code shows `Hookify: Blocked operation by rule: block-rm-rf`, and the command doesn't run.
+   Claude receives the rule's message as the reason.
+
+To change or delete a rule, edit or delete its file.
+The change applies on the next tool call.
+
+## What a rule looks like
+
+A rule is a Markdown file in `.claude/`.
+The frontmatter says when the rule fires, and the body is the message Claude sees:
+
+```markdown
+---
+name: block-dangerous-rm
+enabled: true
+event: bash
+pattern: rm\s+-rf
+action: block
+---
+
+**Dangerous rm command detected!**
+
+This command could delete important files.
+```
+
+Listing 1. `examples/dangerous-rm.rule.md`, shortened
+
+A `.rule.md` file is a team rule you commit.
+A `.local.md` file is yours alone, in this project or in `~/.claude/` for every project.
+The [reference](/plugins/hookify/reference/) lists every field, event, and operator.
+
+## Requirements
+
+hookify needs Python 3.9 or later, available as `python3` on your `PATH`.
+It has no other dependencies.
+
+:::caution
+hookify fails open. If Python is missing or a hook crashes, the action goes ahead and Claude Code shows a `Hookify error` message.
+:::
+
+## Next steps
+
+- [Create a rule with `/hookify:hookify`](/plugins/hookify/hookify/): from a sentence or from the mistakes in the current conversation.
+- [session-learner](/plugins/session-learner/): turn a whole session's corrections into rules, some of them hookify rules.
+

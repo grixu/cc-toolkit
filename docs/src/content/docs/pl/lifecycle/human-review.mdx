@@ -1,0 +1,51 @@
+---
+title: Review człowieka
+description: Dowód, że działa, pull request do przeczytania na jednym ekranie, zielone checki i odpowiedzi na komentarze.
+group: cycle
+sidebar:
+  label: 03c · Review człowieka
+  order: 5
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Review człowieka to ostatni z trzech kroków Review i testów i ostatnia bramka [ADLC](/pl/lifecycle/).
+Zmiana jest już przejrzana i przetestowana, a zostaje tylko akceptacja człowieka.
+
+## Co idzie źle bez tego kroku
+
+Reviewer, który otwiera pull request, widzi kod i musi sobie wyobrazić, co on robi dla użytkownika.
+Duży diff bez wskazówki o ryzyku dostaje tyle samo uwagi w każdym pliku, więc ryzykowny plik dostaje jej za mało.
+A gdy reviewer czeka, check robi się w nocy czerwony, a komentarze czekają na odpowiedź.
+
+## Kto co robi
+
+- **Agent** nagrywa dowód, że zmiana działa, i pisze opis do przeczytania na jednym ekranie. Oznacza ryzyko, odpowiada na komentarze i naprawia czerwone checki.
+- **Ty** akceptujesz wideo, przeglądasz zmianę i ją akceptujesz. Rozstrzygasz też to, co agent ci odda: konflikty merge'a i komentarze wymagające decyzji.
+
+## Na mapie
+
+Podświetlona kolumna pokazuje, gdzie leży w cyklu.
+
+<LifeMap stage="human" animate={false} />
+
+## Jak to przebiega
+
+Ten krok prowadzą trzy skille z dwóch pluginów:
+
+1. **Dowód.** [`/pr-proof:walkthrough-video`](/pl/plugins/pr-proof/walkthrough-video/) nagrywa wideo z narracją, na którym zmiana działa w twojej aplikacji. Defekt widoczny na nagraniu trafia na górę raportu. Wideo dołącza do pull requesta, który już istnieje; gdy go jeszcze nie ma, zostawia wideo w `~/Downloads/`, żebyś dołączył je sam.
+2. **Pull request.** [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) wypełnia szablon repozytorium na podstawie diffu, z krótkim opisem i tabelą przed i po. Z kluczem TypeSafe dodaje [etykietę ryzyka](/pl/plugins/dev-kit/risk-assessment/), na przykład `risk: high`. Etykieta mówi reviewerowi, jak uważnie patrzeć.
+3. **Na zielono.** [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/) działa w pętli, aż każdy wymagany check jest zielony, a każdy wątek rozwiązany albo przekazany tobie. Poprawia komentarze, z którymi się zgadza, na resztę odpowiada w wątku, a każdy czerwony check przekazuje [`/dev-kit:ci-fix`](/pl/plugins/dev-kit/ci-fix/).
+
+Żeby wideo trafiło do pull requesta, uruchom `/dev-kit:pr-open` przed pr-proof. Po dołączeniu wideo uruchom go ponownie, żeby ocena ryzyka je uwzględniła.
+`ci-fix` rzadko uruchamiasz ręcznie: pr-shepherd wywołuje go, gdy check padnie.
+
+## Co uruchomić
+
+<StageCommands stage="human" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** przejrzany i przetestowany branch.
+- **Wychodzi:** pull request z zielonymi checkami i rozstrzygniętymi wątkami. Po twojej akceptacji jest gotowy do merge'a. Merge zamyka cykl, a następna zmiana zaczyna od [Planowania](/pl/lifecycle/plan/).

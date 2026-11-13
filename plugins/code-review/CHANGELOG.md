@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `hookify` lens, active only when the checkout keeps hookify rule files in its `.claude/`
+  (`hookify.*.local.md` or `hookify.*.rule.md`) with an enabled `file` or `all` rule. It replays
+  those rules over the diff hunk by hunk, the way hookify's hooks check each edit: `.local.md`
+  overrides by `name` as at runtime, `bash`, `prompt` and `stop` rules and `~/.claude/` rules are
+  left out, and a rule whose only condition is the file path is raised only when the added lines
+  do what its message warns against. Like `standards`, the `hookify` family has no fixed rows: a
+  finding's rule is the hookify rule's `name`, it quotes the rule's message, and its severity is
+  `high` for `action: block` and `medium` otherwise. It replaces the hookify plugin's
+  `review-changes` skill. The report's tally reads `Lenses: L of 12`. Eval-43 and eval-44 cover it
+- ADR 0004 records the hookify lens: why the review moved out of the hookify plugin, the gate,
+  severity by `action`, and its known edge cases
+
+### Removed
+
+- The standalone `comment-review` and `quality-review` skills. They judged the same rules files as
+  the `comments` lens and the four craft lenses, so every lens now runs one way: through a Scanner,
+  from `/code-review:start-cr` or the headless `cr-prepare` → `cr-scan` → `cr-merge` steps. The
+  comment rules file now carries the deletion test and the KEEP-when-unsure default the skill held.
+
+### Changed
+
+- The comment, quality and standards eval tracks emulate the Scanner brief, like the other lens
+  tracks, instead of triggering the removed skills. Assertions on the skills' report skeleton
+  (Conventions / Headline lines, `###` file headers, the Tally line) are gone; eval-19 checks the
+  scope classification through `/start-cr` Step 1 in path mode.
+
+### Fixed
+
+- `severity.md` showed the `standards` bullet with a bare `L<lines>`; it now carries `path:L<lines>`,
+  the shape the Scanner contract requires, as the new `hookify` bullet does.
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

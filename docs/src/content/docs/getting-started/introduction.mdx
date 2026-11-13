@@ -1,0 +1,43 @@
+---
+title: Introduction
+description: What cc-toolkit is, how its plugins hand a change to each other, and where to start.
+group: start
+sidebar:
+  order: 1
+---
+
+import Strip from '~/components/Strip.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+cc-toolkit is a marketplace of plugins for [Claude Code](https://code.claude.com/docs), Anthropic's coding agent.
+Each plugin covers one stage of shipping a change, from the first question about it to the approved pull request, and each one works on its own.
+
+## Plugins and the marketplace
+
+A plugin adds commands, skills, helper agents or hooks to Claude Code.
+The marketplace is the catalogue you install them from: add it once, then install only the plugins you need.
+
+<Strip cmd="/plugin marketplace add grixu/cc-toolkit" />
+
+You run a plugin's commands and skills as `/<plugin>:<name>`, for example `/fd3:build-spec`.
+Many skills also start on their own when your request matches, for example when you paste a link to a failed CI run.
+
+## The cycle
+
+The plugins follow a change through the same stages every time, the agentic development lifecycle (ADLC).
+Each stage leaves a file or a branch for the next one, so you can start at any stage and stop at any stage.
+
+<StageCommands />
+
+[The ADLC overview](/lifecycle/) explains why the stages come in this order and where you decide.
+
+## Where to start
+
+- To plan and build a feature, start with [fd3](/plugins/fd3/) and its [`/fd3:build-spec`](/plugins/fd3/build-spec/).
+- If you already have a branch, start at [self-review](/lifecycle/self-review/) with [code-review](/plugins/code-review/).
+- If your pull request is open and stuck on CI or comments, go straight to [dev-kit](/plugins/dev-kit/).
+
+## Next steps
+
+- [Install the marketplace and your first plugin](/getting-started/installation/).
+- [See where each plugin works in the lifecycle](/lifecycle/).

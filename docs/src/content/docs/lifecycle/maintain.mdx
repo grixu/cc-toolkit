@@ -1,0 +1,60 @@
+---
+title: Maintain
+description: Outside the cycle. Upgrades checked before they break you, and corrections turned into rules that every later run follows.
+group: outside
+sidebar:
+  order: 6
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Maintain sits outside the [ADLC](/lifecycle/) cycle and feeds it.
+It covers the work that doesn't follow a merge: dependency upgrades, and the rules that keep the agent from repeating a mistake.
+
+## What goes wrong without it
+
+A correction you type in chat is gone when the session ends, so the next session makes the same mistake.
+A dependency upgrade arrives when its maintainers release it, and a green CI run doesn't tell you whether its changes reach your code.
+Neither waits for a stage of the cycle, so these plugins run whenever the need comes up.
+
+## Who does what
+
+- **The agent** finds the corrections in a session and proposes a rule for each new one. For an upgrade, it maps every change to where your code uses the package.
+- **You** accept, change or skip each proposed rule, and decide whether to take an upgrade.
+
+## On the map
+
+The highlighted column shows where it sits in the cycle.
+
+<LifeMap stage="maintain" animate={false} />
+
+## Turn corrections into rules
+
+Two plugins write rules, and the rules work in the other stages:
+
+- [`/session-learner:learn`](/plugins/session-learner/) reads the current session, and finds the moments you corrected the agent. For each correction not documented yet, it proposes a change to `.claude/rules/`, `CLAUDE.md` or, when hookify is installed, a hookify rule. It shows one finding at a time and writes only what you accept.
+- [`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule from your description, or from the mistakes in the current conversation.
+
+The rules come back in the cycle:
+
+- Every session reads `CLAUDE.md` and the rules files, so every stage starts with them. A rules file with `paths:` loads only for the files it names.
+- In [Build](/lifecycle/build/), hookify rules warn about or block an edit that breaks them.
+- In [Self-review](/lifecycle/self-review/), code-review reads your rules as conventions, so it doesn't flag what they allow. Its hookify lens replays your file-edit hookify rules over the diff, so it also catches what was written without the hooks.
+
+Run session-learner before `/compact` or `/clear`: it reads only the conversation still in context.
+
+## Check an upgrade before it breaks you
+
+[`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/) takes a package and a target version, or a Renovate or Dependabot pull request.
+It checks the target's security record, lists every change up to the target, and marks each one as affecting your code or not.
+It ends with a `safe`, `safe with changes` or `breaking` verdict and the evidence behind it.
+
+## What to run
+
+<StageCommands stage="maintain" />
+
+## What arrives and what leaves
+
+- **Arrives:** a session in which you corrected the agent, or a dependency and a target version.
+- **Leaves:** rules that the next session follows, or a verdict on the upgrade with evidence.

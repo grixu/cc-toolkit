@@ -1,0 +1,63 @@
+---
+title: dev-kit
+description: Gets a branch past a human reviewer. A pull request they can read on one screen, labelled with its risk, kept green until they approve, plus a check that tells you whether a dependency upgrade will break your code.
+group: start
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+
+Once a branch is reviewed and tested, a person still has to approve it, and the work around that approval is mostly chores.
+Someone writes a description, someone fixes the check that went red overnight, and someone answers the review comments.
+dev-kit does those chores.
+Each skill does the whole job, including commits and pushes where you allow them, and ends with a short report.
+
+## Where it works
+
+<LifeMap focus="dev-kit" animate={false} />
+
+Three skills work in [human review](/lifecycle/human-review/), the last stage of the cycle.
+[pr-proof](/plugins/pr-proof/) records its proof first, `pr-open` opens the pull request, and `pr-shepherd` keeps it green until it's approved.
+`dep-upgrade-check` works in [Maintain](/lifecycle/maintain/), outside the cycle: run it when an upgrade arrives.
+
+## What's in the plugin
+
+| Skill | When you reach for it | What it does |
+|---|---|---|
+| [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) | Your commits are ready for review | Pushes the branch and opens a pull request that fills the repository's template from the diff. With a TypeSafe key, it labels the pull request with its risk. |
+| [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) | The pull request is open | Loops until every required check is green and no review thread is open. It fixes what it agrees with and answers the rest. |
+| [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/) | A check failed | Finds the cause of a red run, fixes it, verifies the fix locally, and commits one fix per cause. `pr-shepherd` calls it for you. |
+| [`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/) | A dependency bump arrives | Checks the target version's security record, then maps every change to where your code uses the package. Returns `safe`, `safe with changes` or `breaking`. |
+
+Table 1. The dev-kit skills
+
+You can run a skill by its command, or describe the task ("CI is red on this PR", "will bumping vite to 7 break us?") and Claude picks the matching skill.
+
+## The risk label
+
+The highlight of `pr-open` is the risk label.
+With a [TypeSafe](https://docs.typesafe.ai/introduction) API key configured, `pr-open` rates how risky the branch is, ends the description with a **Risk** section, and labels the pull request, such as `risk: high`.
+A reviewer then knows how closely to look before they open the diff.
+
+The diff, the commit messages and the pull request and ticket descriptions are sent to TypeSafe.
+Without a key, nothing is sent, and the pull request opens without a label.
+[The risk label](/plugins/dev-kit/risk-assessment/) explains what the label means and how to turn it on.
+
+## Requirements
+
+- The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it.
+- A GitHub repository. `ci-fix` and `pr-shepherd` handle GitHub Actions runs and GitHub check runs only.
+- A token with the `workflow` scope, to push a fix to a file under `.github/workflows/`.
+- For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
+- Optional, for `dep-upgrade-check`: the firecrawl and context7 MCP servers, which it uses to find migration guides.
+- Optional, for the risk label: a TypeSafe API key and Claude Code v2.1.287 or later, which loads the plugin's mod.
+
+The [reference](/plugins/dev-kit/reference/) lists the arguments of each skill and the commands each one runs without asking.
+
+## Next steps
+
+- Open your first pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/).
+- Hand it to [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) to drive it to approval.
+- See the whole [human review stage](/lifecycle/human-review/).

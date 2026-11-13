@@ -1,0 +1,115 @@
+---
+title: session-learner
+description: Finds where you corrected or repeated yourself in a session and turns each moment into a project rule, written only after you accept it.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Corrections you give Claude are lost when the session ends, so the next session repeats the same mistakes.
+session-learner finds those moments in the conversation and proposes a change to your project's rules for each one.
+Each proposal quotes the conversation that prompted it.
+It writes only the changes you accept.
+
+## Where it works
+
+<LifeMap focus="session-learner" animate={false} />
+
+session-learner sits in [Maintain](/lifecycle/maintain/), outside the cycle.
+It doesn't follow a stage: run it whenever a session taught the agent something the next session needs to know.
+
+## When to run it
+
+Run it in the session you want to learn from, before `/compact` or `/clear`:
+
+<Strip cmd="/session-learner:learn" />
+
+It reads only the conversation still in context, so a cleared or compacted session has nothing left to learn from.
+Phrases such as "what did we learn," "update rules," "session review," or "capture learnings" also start it.
+
+A short session (fewer than five exchanges) often has no friction to find.
+In that case it says so instead of inventing findings.
+
+## What it reads
+
+Before it looks at the conversation, it maps the documentation the project already has:
+
+- `.claude/rules/*.md` files
+- `CLAUDE.md` in the project root, in subdirectories, and in `.claude/`
+- `AGENTS.md` files, if present
+- your project's auto memory (`MEMORY.md` under `~/.claude/projects/`)
+- hookify rules (`.claude/hookify.*.md`), or the hookify plugin itself
+
+When the project has none of these files, it offers to create a first `.claude/rules/` file or a `CLAUDE.md`.
+
+Then it scans the conversation for friction: corrections, repeated instructions, new patterns, outdated or wrong documentation, missing coverage, and repeated errors.
+It drops a finding when the documentation already covers it, and when it's a personal preference rather than something the team needs.
+Before it proposes a finding, it reads the target file again, so nothing already covered under another heading comes back.
+
+## Where it writes rules
+
+Each finding goes to one target:
+
+| Target | Used for | Shared with the team? |
+|---|---|---|
+| `.claude/rules/<topic>.md` | Conventions, pitfalls, and architectural decisions. The preferred target. | Yes, once committed |
+| `CLAUDE.md` | High-level project instructions | Yes, once committed |
+| Hookify rule (`.claude/hookify.*.md`) | A repeated error that a regular expression can catch without false positives | Only a `.rule.md` file; a `.local.md` file stays personal |
+
+Table 1. Where session-learner writes each kind of finding.
+
+A new rules file gets `paths:` frontmatter when the rule applies to part of the codebase, and none when it applies project-wide.
+Files stay under about 200 lines: when a target would grow past that, it proposes a new topic file instead.
+It never overwrites existing content, and it never writes to auto memory.
+
+A hookify rule is proposed only when hookify is installed and the same mistake appeared in two or more places.
+Accepting one hands the rule to [`/hookify:hookify`](/plugins/hookify/hookify/), which creates it.
+
+## How you approve changes
+
+It shows one finding at a time.
+Each finding names the target file, shows the proposed lines between the existing ones, and quotes the conversation as evidence:
+
+```
+Finding 2/4: correction
+Target: .claude/rules/api.md  (Add)
+  ...existing lines...
++ Return 404, not 403, when the resource belongs to another tenant.
+  ...existing lines...
+Evidence: "no, other tenants' resources must look like they don't exist"
+Accept / Modify / Skip / Auto-memory?
+```
+
+For each finding, choose one answer:
+
+- **Accept** writes the change as proposed.
+- **Modify** asks for your wording and writes that instead.
+- **Skip** drops the finding. If the pattern repeats, it surfaces again in a later session.
+- **Auto-memory** writes nothing. It marks the finding as valid but personal and leaves it to Claude Code's built-in memory.
+
+Hookify candidates, and learnings promoted from auto memory into a rules file, offer only Accept or Skip.
+When two findings contradict each other, it shows both and asks you to resolve the conflict first.
+With more than 10 findings, you first choose which target files to review.
+
+After the last finding, it applies the accepted changes as targeted edits.
+It then prints a summary: what changed in which file, what went to auto memory, and what was skipped.
+It doesn't commit; review the edits and commit them yourself so the team gets them.
+
+:::tip
+When a learning moves from auto memory into a rules file, the old memory entry stays.
+The summary reminds you to remove it with `/memory`.
+:::
+
+## Requirements
+
+Nothing beyond Claude Code.
+The [hookify](/plugins/hookify/) plugin is optional: without it, a repeated error becomes a prose rule instead of a hook.
+
+## Next steps
+
+- [hookify](/plugins/hookify/): write a rule that warns or blocks a repeated mistake by hand.
+- [Maintain](/lifecycle/maintain/): the other plugins that run outside the cycle.
+- [Plan](/lifecycle/plan/): start the next change with the new rules in place.

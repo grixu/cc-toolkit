@@ -1,0 +1,25 @@
+Act as the four craft scanners of the code-review plugin — `readability-tests`,
+`naming-module`, `objects-patterns`, `simplicity-types` — one after another, in that order,
+as `cr-scan` does for a lens list. Read `plugins/code-review/references/severity.md` and
+`plugins/code-review/references/scanner-contract.md` completely. Then, for each lens in
+turn, read `plugins/code-review/references/rules/<lens>.md` completely and judge every file
+in {{file}} against that lens's families only — each path is a separate file, read it in
+full, and the whole of each counts as added code. The kind of each file comes from the
+`## File kinds` globs in `plugins/code-review/references/scope.md`. The conventions note is
+"none"{% if standards %}; the standards slot is the pair below{% else %} and the standards slot is "none"{% endif %}.
+{% if standards %}
+The standards slot: read `{{standards}}/CODING_STANDARDS.md` and then
+`{{standards}}/CODING_STANDARDS.local.md` as the root standards pair. They layer, and the
+`.local` file wins per statement. Every lens raises a `standards` finding, inside its own
+subject, wherever the code breaks an explicit, quotable rule of the pair.
+{% endif %}
+Return findings only: no report skeleton, no headline, no tally, no edits, and nothing
+written to disk — not the files under review and not a scratch file. For each lens, open
+its block with the contract's `Lens:` header line, then state each finding as its own
+markdown bullet in exactly the contract's shape:
+
+`family` · rule · severity · `path:L<lines>` — <what the reader loses> → <the fix, as a clause>
+
+After each lens's findings add one `Not flagged:` prose line naming each look-alike you
+cleared and the calibration that clears it. A real problem that belongs to a family no
+craft lens owns goes in a `HANDOFF` block at the end, in the contract's shape.

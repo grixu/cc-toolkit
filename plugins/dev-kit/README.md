@@ -247,7 +247,7 @@ With both keys set, `pr-open` asks which backend to use, TypeSafe, Gemini or bot
 
 A key set or changed during a session takes effect after `/reload-plugins`.
 
-The [risk assessment docs](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/index.md) explain what the **Risk** section shows, [how a level is computed](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/how-it-works.md), [what partial and low-confidence results mean](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/reliability.md), and [every option, input and output field](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/reference.md). The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
+[The risk label](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/) explains what the **Risk** section shows, [How it works](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/how-it-works/) how a level is computed, [Reliability](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reliability/) what partial and low-confidence results mean, and the [Risk label reference](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reference/) every option, input and output field. The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
 
 ## Permissions
 

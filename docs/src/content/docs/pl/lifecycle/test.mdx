@@ -1,0 +1,59 @@
+---
+title: Testy
+description: Działająca aplikacja sprawdzona ze specem, z dowodem za każdym werdyktem.
+group: cycle
+sidebar:
+  label: 03b · Testy
+  order: 4
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Testy to drugi z trzech kroków Review i testów, trzeciego etapu [ADLC](/pl/lifecycle/).
+Sprawdzają, czy zmiana działa w uruchomionej aplikacji, a nie tylko w kodzie.
+
+## Co idzie źle bez tego kroku
+
+Review czyta kod; nie powie ci, jak zachowuje się aplikacja.
+Testy jednostkowe przechodzą, review jest czyste, a funkcja i tak się sypie, gdy użytkownik przez nią przeklika albo zależność zwróci błąd.
+A agent, który mówi „działa” bez komendy na poparcie, prosi reviewera, żeby uwierzył mu na słowo.
+
+## Kto co robi
+
+- **Agent** ustala, co przetestować, i znajduje działające porty, ścieżki i użytkowników testowych. Uruchamia każde sprawdzenie jako prawdziwą komendę i zapisuje wynik za każdym werdyktem.
+- **Ty** wskazujesz lokalne albo stagingowe środowisko albo pozwalasz mu je uruchomić. Odpowiadasz na jego pytania: które zestawy uruchomić, jakie zmiany może zrobić i co możesz odblokować.
+
+## Na mapie
+
+Podświetlona kolumna pokazuje, gdzie leży w cyklu.
+
+<LifeMap stage="test" animate={false} />
+
+## Jak to przebiega
+
+[`/tester:run`](/pl/plugins/tester/run/) prowadzi cały krok:
+
+1. **Zakres.** Czyta kryteria akceptacji ze specu, kod za wskazanym obszarem albo diff względem głównego brancha.
+2. **Rozpoznanie.** Ustala, co działa, i robi snapshot bieżącego stanu, żeby móc go potem przywrócić.
+3. **Wyprowadzenie.** Zamienia każde oczekiwane zachowanie w sprawdzenia API, UI i awarii, pogrupowane w zestawy.
+4. **Pytania.** Raz pyta, które zestawy uruchomić i jakie zmiany może zrobić. O zmianę, której wtedy nie uzgodnił, pyta w chwili, gdy jest potrzebna.
+5. **Przebieg.** Zestawy API i UI idą równolegle, potem osobno zestaw awarii.
+6. **Raport.** Każdy błąd jest powiązany z kryterium akceptacji i sklasyfikowany. Raport wymienia też, czego nie dało się sprawdzić i co zmienił, a potem cofnął.
+
+tester się zatrzymuje, gdy bazowy URL wygląda na produkcję.
+Zgłasza problemy; nie poprawia twojego kodu.
+
+## Co uruchomić
+
+<StageCommands stage="test" />
+
+## Co wchodzi, a co wychodzi
+
+- **Wchodzi:** branch, który się buduje, i jego spec albo diff.
+- **Wychodzi:** raport z testów w sesji, z werdyktem i dowodem dla każdego sprawdzenia.
+
+## Kiedy go pominąć
+
+Pomiń go przy zmianie bez zachowania do uruchomienia, na przykład dokumentacji albo refaktorze, który pokrywają już testy jednostkowe.
+Napisz o tym w pull requeście, żeby reviewer wiedział, że aplikacji nie sprawdzano.

@@ -5,44 +5,40 @@ allowed-tools: ["Read"]
 
 # Hookify Plugin Help
 
-Explain how the hookify plugin works and how to use it.
+Explain how the hookify plugin works and how to use it, using the content below. When the user asks
+about a detail this page does not cover, read `${CLAUDE_PLUGIN_ROOT}/references/rule-syntax.md` and
+answer from it.
 
 ## Overview
 
-The hookify plugin makes it easy to create custom hooks that prevent unwanted behaviors. Instead of editing `hooks.json` files, users create simple markdown configuration files that define patterns to watch for.
+Hookify turns short markdown files into Claude Code hooks. Instead of editing `hooks.json`, you write a
+rule file that says what to watch for and what message to show. Rules are read again on every hook
+call, so a new or edited rule applies immediately, with no restart.
 
-## How It Works
+## Hook events
 
-### 1. Hook System
+Hookify runs on four Claude Code hook events:
 
-Hookify installs generic hooks that run on these events:
-- **PreToolUse**: Before any tool executes (Bash, Edit, Write, etc.)
-- **PostToolUse**: After a tool executes
-- **Stop**: When Claude wants to stop working
-- **UserPromptSubmit**: When user submits a prompt
+- **PreToolUse** and **PostToolUse**: before and after a tool call (Bash, Edit, Write, MultiEdit and
+  any other tool)
+- **Stop**: when Claude wants to finish its turn
+- **UserPromptSubmit**: when you send a prompt
 
-These hooks read rule files from multiple locations and check if any rules match the current operation.
+`bash` and `file` rules run both before and after the tool, so a warning can appear twice.
 
-### 2. Rule Types and Locations
+## Rule files and locations
 
-Hookify supports two file extensions and two locations:
+| Type | File | Folder | Purpose |
+|------|------|--------|---------|
+| Personal, this project | `hookify.<name>.local.md` | `.claude/` | Your rules, gitignored |
+| Team, this project | `hookify.<name>.rule.md` | `.claude/` | Committed, shared with the team |
+| Personal, every project | `hookify.<name>.local.md` | `~/.claude/` | Your defaults |
 
-| Type | Extension | Location | Git | Purpose |
-|------|-----------|----------|-----|---------|
-| Team rule | `.rule.md` | `.claude/` | Committed | Shared project rules |
-| User-local | `.local.md` | `.claude/` | Ignored | Personal project rules |
-| Global | `.local.md` | `~/.claude/` | N/A | Personal defaults |
+Hookify reads them in that order, and the first rule to claim a `name` wins. A project `.local.md`
+with the same `name` and `enabled: false` switches a team rule off for you. A `.rule.md` file in
+`~/.claude/` is not read.
 
-**Priority (highest first):**
-1. Project `.local.md` -- overrides everything
-2. Project `.rule.md` -- team/project rules
-3. Global `~/.claude/*.local.md` -- user global defaults
-
-If two rules share the same `name`, the higher-priority tier wins. You can override a team rule by creating a `.local.md` with the same name and `enabled: false`.
-
-### 3. Configuration Files
-
-Users create rules in `.claude/hookify.{rule-name}.rule.md` (team) or `.local.md` (personal) files:
+## Rule format
 
 ```markdown
 ---
@@ -50,62 +46,62 @@ name: warn-dangerous-rm
 enabled: true
 event: bash
 pattern: rm\s+-rf
+action: warn
 ---
 
-⚠️ **Dangerous rm command detected!**
-
-This command could delete important files. Please verify the path.
+**Dangerous rm command detected.** Verify the path before running it.
 ```
 
-**Key fields:**
-- `name`: Unique identifier for the rule
-- `enabled`: true/false to activate/deactivate
-- `event`: bash, file, stop, prompt, or all
-- `pattern`: Regex pattern to match
+| Key | Meaning | Default |
+|-----|---------|---------|
+| `name` | Rule identifier, used in messages and overrides | `unnamed` |
+| `enabled` | `true` or `false` | `true` |
+| `event` | `bash`, `file`, `prompt`, `stop` or `all` | `all` |
+| `action` | `block`, or `warn` | `warn` |
+| `pattern` | One regex on the event's main field (`command`, `new_text`, `prompt`) | none |
+| `conditions` | A list of `field` / `operator` / `pattern` checks; all must match. Replaces `pattern` | none |
+| `tool_matcher` | Exact tool names, such as `Edit\|Write`, checked before the conditions | none |
 
-The message body is what Claude sees when the rule triggers.
+The body below the frontmatter is the message. A rule with neither `pattern` nor `conditions` never
+fires.
 
-### 3. Creating Rules
+Operators: `regex_match` (the default, case-insensitive), `contains`, `not_contains`, `equals`,
+`starts_with`, `ends_with`. Only `regex_match` understands `|`.
 
-**Option A: Use /hookify command**
-```
-/hookify Don't use console.log in production files
-```
+## What a match does
 
-This analyzes your request and creates the appropriate rule file.
+- **warn**: the message is shown and the operation goes ahead.
+- **block** before a tool call: the call is denied and Claude gets the message as the reason.
+- **block** after a tool call: the message is shown, but the tool has already run.
+- **block** on stop: Claude keeps working, with the message as the reason.
+- On a prompt, `block` behaves like `warn`: the prompt is not blocked.
 
-**Option B: Create manually**
-Create `.claude/hookify.my-rule.rule.md` (team) or `.claude/hookify.my-rule.local.md` (personal) with the format above.
+## Commands
 
-**Option C: Analyze conversation**
-```
-/hookify
-```
+- **`/hookify:hookify [behavior]`**: create rules from a sentence, or from the recent conversation
+  when you give no argument
+- **`/hookify:list`**: list every configured rule
+- **`/hookify:configure`**: switch rules on or off
+- **`/hookify:help`**: this page
 
-Without arguments, hookify analyzes recent conversation to find behaviors you want to prevent.
+## Examples
 
-## Available Commands
+**Block a dangerous command:**
 
-- **`/hookify`** - Create hooks from conversation analysis or explicit instructions
-- **`/hookify:help`** - Show this help (what you're reading now)
-- **`/hookify:list`** - List all configured hooks
-- **`/hookify:configure`** - Enable/disable existing hooks interactively
-
-## Example Use Cases
-
-**Prevent dangerous commands:**
 ```markdown
 ---
 name: block-chmod-777
 enabled: true
 event: bash
 pattern: chmod\s+777
+action: block
 ---
 
-Don't use chmod 777 - it's a security risk. Use specific permissions instead.
+Don't use chmod 777. Set the specific permissions the file needs.
 ```
 
-**Warn about debugging code:**
+**Warn about debug logging in edits:**
+
 ```markdown
 ---
 name: warn-console-log
@@ -114,81 +110,61 @@ event: file
 pattern: console\.log\(
 ---
 
-Console.log detected. Remember to remove debug logging before committing.
+console.log detected. Remove debug logging before committing.
 ```
 
-**Require tests before stopping:**
+**Warn on edits to env files only:**
+
 ```markdown
 ---
-name: require-tests
+name: warn-env-edits
 enabled: true
-event: stop
-pattern: .*
+event: file
+tool_matcher: Edit|Write|MultiEdit
+conditions:
+  - field: file_path
+    operator: regex_match
+    pattern: \.env$
 ---
 
-Did you run tests before finishing? Make sure `npm test` or equivalent was executed.
+You are editing an env file. Don't commit secrets.
 ```
 
-## Pattern Syntax
+Without `tool_matcher`, a `file_path` condition also fires when Claude reads the file.
 
-Use Python regex syntax:
-- `\s` - whitespace
-- `\.` - literal dot
-- `|` - OR
-- `+` - one or more
-- `*` - zero or more
-- `\d` - digit
-- `[abc]` - character class
+**Require tests before stopping:**
 
-**Examples:**
-- `rm\s+-rf` - matches "rm -rf"
-- `console\.log\(` - matches "console.log("
-- `(eval|exec)\(` - matches "eval(" or "exec("
-- `\.env$` - matches files ending in .env
+```markdown
+---
+name: require-tests-run
+enabled: true
+event: stop
+action: block
+conditions:
+  - field: transcript
+    operator: regex_match
+    pattern: ^(?![\s\S]*"command":\s*"[^"]*(npm test|pytest|cargo test))
+---
 
-## Important Notes
+No test run found in this session. Run the tests before finishing.
+```
 
-**No Restart Needed**: Hookify rules take effect immediately on the next tool use. The hookify hooks are already loaded and read your rules dynamically.
-
-**Block or Warn**: Rules can either `block` operations (prevent execution) or `warn` (show message but allow). Set `action: block` or `action: warn` in the rule's frontmatter.
-
-**Team vs Personal**: Use `.rule.md` for team rules (committed to repo) and `.local.md` for personal rules (gitignored). Global personal rules go in `~/.claude/`.
-
-**Override Team Rules**: Create a `.local.md` with the same `name` as a `.rule.md` rule to override it. Set `enabled: false` to disable a team rule for yourself.
-
-**Disable Rules**: Set `enabled: false` in frontmatter or delete the file.
+On `stop`, the `pattern` shorthand never matches, so stop rules need `conditions` on `transcript`.
 
 ## Troubleshooting
 
-**Hook not triggering:**
-- Check rule file is in `.claude/` directory (or `~/.claude/` for global rules)
-- Verify `enabled: true` in frontmatter
-- Confirm pattern is valid regex
-- Test pattern: `python3 -c "import re; print(re.search('your_pattern', 'test_text'))"`
-- Rules take effect immediately - no restart needed
+- **Rule missing from `/hookify:list`**: check the `hookify.` prefix, the `.local.md` or `.rule.md`
+  suffix, the folder, and that the file starts with `---`.
+- **Rule listed but silent**: check `event` and the field name. A field that resolves to nothing makes
+  its condition fail, `not_contains` included. Test the regex with
+  `python3 -c "import re; print(re.search(r'<pattern>', '<sample>', re.I))"`.
+- **Backslashes in quotes**: write patterns unquoted. Inside double quotes, `\\` becomes `\`.
+- **Python**: hookify needs Python 3.9 or later on `PATH`. If the hook fails, it blocks nothing.
 
-**Import errors:**
-- Check Python 3 is available: `python3 --version`
-- Verify hookify plugin is installed correctly
+## Getting started
 
-**Pattern not matching:**
-- Test regex separately
-- Check for escaping issues (use unquoted patterns in YAML)
-- Try simpler pattern first, then refine
+1. Create a rule: `/hookify:hookify Warn me when I try to use rm -rf`
+2. Trigger it: ask Claude to run `rm -rf /tmp/hookify-test`. The warning appears.
+3. Refine the rule by editing its file in `.claude/`.
 
-## Getting Started
-
-1. Create your first rule:
-   ```
-   /hookify Warn me when I try to use rm -rf
-   ```
-
-2. Try to trigger it:
-   - Ask Claude to run `rm -rf /tmp/test`
-   - You should see the warning
-
-4. Refine the rule by editing its `.rule.md` or `.local.md` file
-
-5. Create more rules as you encounter unwanted behaviors
-
-For more examples, check the `${CLAUDE_PLUGIN_ROOT}/examples/` directory.
+More examples are in `${CLAUDE_PLUGIN_ROOT}/examples/`.

@@ -1,0 +1,9 @@
+---
+import { ui, langOf } from '../../lib/i18n'
+const t = ui[langOf(Astro.url.pathname)]
+---
+
+<aside class="callout callout--note notice" role="note" aria-labelledby="untranslated">
+  <p class="callout-t" id="untranslated"><span aria-hidden="true">i</span> {t.untranslated}</p>
+  <p class="callout-b">{t.untranslatedP}</p>
+</aside>

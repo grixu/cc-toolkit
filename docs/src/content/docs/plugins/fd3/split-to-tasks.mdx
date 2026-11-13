@@ -1,0 +1,111 @@
+---
+title: /fd3:split-to-tasks
+description: Cut a ready spec into task files, one per worktree, grouped onto branches that each become one pull request.
+group: guides
+skill: split-to-tasks
+sidebar:
+  order: 4
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+A spec is too big to hand to one agent in one go.
+`/fd3:split-to-tasks` cuts it into tasks small enough for one worktree each, orders them by what depends on what, and groups them onto the branches that become pull requests.
+Reach for it once [`/fd3:build-spec`](/plugins/fd3/build-spec/) has given the spec a `ready` verdict.
+
+The spec is read-only here.
+The split never edits it, not even when you offer to let it.
+
+## How it runs
+
+<SkillFlow
+  skill="split-to-tasks"
+  input="The path to a spec whose last verdict is ready"
+  steps={[
+    { name: 'Check the verdict', does: 'Reads the last verdict line and compares its line count with the file.' },
+    { name: 'Enumerate', does: 'Fetches each repository and lists work items, element codes, phases and protected paths.' },
+    { name: 'Cut and order', does: 'Cuts tasks along repositories, owners, phases and protected paths, then draws dependencies.' },
+    { name: 'Group', does: 'Groups tasks onto branches by rollout gate and records each branch base.' },
+    { name: 'Ask', does: 'Puts the few judgment calls to you in one batch.' },
+    { name: 'Write', does: 'Writes the task files and the report, then checks them on disk.', leaves: 'tasks/NNNN-<slug>.md' },
+  ]}
+  next={['implement']}
+/>
+
+## Run it
+
+Pass the path to the spec:
+
+<Strip cmd="/fd3:split-to-tasks docs/specs/webhook-retries.md" />
+
+The split first reads the spec's last verdict line.
+It goes on only when that line reads `ready`, counts no blocked claim, and gives the spec's current line count.
+Otherwise it says what the record holds and asks whether to validate first (recommended) or split anyway.
+Choosing to validate ends the split with nothing written and names the route: `/fd3:build-spec <spec path>`.
+
+It also checks whether `origin` changed a file the spec cites since the spec was validated.
+When a change breaks what the spec says about that file, the split stops and names the same route.
+
+## How the work is cut
+
+A task is the smallest piece of work that can be checked on its own and leaves its repository mergeable.
+One task is one worktree.
+A task never spans:
+
+- two repositories,
+- two owning teams inside a monorepo,
+- two rollout phases.
+
+An irreversible change, such as a database migration, gets its own task, placed as early as its dependencies allow.
+A path that needs an outside approval, such as one `CODEOWNERS` assigns to another team, gets its own task and its own branch, so one approval never holds the whole set.
+
+A dependency between tasks exists only when one task can't be written without the other's output: a shared file, a symbol one defines and the other uses, a migration one writes and the other reads.
+Tasks with no dependency between them are built at the same time.
+
+A step done by hand against a live system, such as a console action, becomes an operational task with no repository and no pull request.
+A declared gap in the spec becomes one too, naming what has to come back and from whom.
+
+## How tasks become branches
+
+By default, the tasks of one repository share a branch per landing unit: the run of rollout phases up to and including a gate, such as a deploy or an approval.
+Each branch becomes one pull request.
+
+A branch stacks on an earlier branch only when its tasks build on that branch's work.
+Otherwise it starts from the default branch.
+The base goes into each task's `branch-base` field, and the order in which pull requests must merge goes into `merge-after`.
+
+Branch names follow the convention your repository's existing branches show.
+When a branch would exceed 80 changed files or 2000 changed lines, the split warns in the report and suggests revisiting the spec's rollout table.
+It doesn't subdivide the branch itself.
+
+## What it asks
+
+The split asks only what the spec and the repository don't settle, in one batch, for example:
+
+- whether to replace an existing `tasks/` directory or write beside it,
+- whether to reuse a branch your checkout already sits on, when it carries work for this spec,
+- consent for a path the repository says needs your approval before it is edited.
+
+Replacing an existing `tasks/` directory from an earlier split destroys the statuses and notes a run wrote into it, so that question always comes up.
+
+## What it leaves
+
+- `tasks/NNNN-<slug>.md` next to the spec, unless you name another directory. The number is the reading order.
+- `<spec>.split.md` next to the spec: the task table, the branches with their order and stack per repository, the coverage check, and what you still owe.
+
+A task file holds frontmatter (repository, branch, base, phase, dependencies, status) and pointers into the spec by element code and section.
+It copies nothing from the spec, so the spec stays the only source of truth.
+Its `status` field is the implementation run's state: keep the directory until the run is over.
+The [reference](/plugins/fd3/reference/#task-file-fields) lists every field.
+
+## What can go wrong
+
+- **The verdict is missing, stale or not `ready`.** Run `/fd3:build-spec <spec path>` and split again.
+- **The spec has a defect**, such as an element no work item builds. The split stops before writing anything and reports it. Fix it through `/fd3:build-spec`.
+- **A path you decline consent for.** The work that needs it stops and is reported, rather than left waiting.
+
+## Next steps
+
+- [Implement the tasks](/plugins/fd3/implement/) with `/fd3:implement <tasks dir>`.
+- [How fd3 works](/plugins/fd3/how-it-works/#task-statuses) explains the task statuses the run writes back.

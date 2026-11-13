@@ -1,0 +1,120 @@
+---
+title: /dev-kit:pr-shepherd
+description: Prowadzi otwarty pull request albo cały stack w samodzielnie taktowanej pętli, aż każdy wymagany check będzie zielony i nie zostanie żaden otwarty wątek review, nie pytając cię o nic w trakcie.
+group: guides
+skill: pr-shepherd
+sidebar:
+  label: pr-shepherd
+  order: 3
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Po otwarciu pull requesta praca przychodzi małymi kawałkami: check robi się czerwony, reviewer zostawia komentarz, bot oznacza linię.
+`pr-shepherd` zajmuje się tymi kawałkami, gdy ty pracujesz nad czymś innym.
+Każdy czerwony check przekazuje [`ci-fix`](/pl/plugins/dev-kit/ci-fix/), naprawia komentarze z review, z którymi się zgadza, a na resztę odpowiada z dowodami.
+Zatrzymuje się, gdy pull request jest czysty albo gdy dalej może go popchnąć tylko człowiek.
+
+## Kiedy po niego sięgnąć
+
+- Twój branch ma otwarty pull request i chcesz, żeby CI było naprawiane, a komentarze obsługiwane bez twojego pilnowania.
+- Masz stack pull requestów, z których każdy bazuje na poprzednim, a poprawka musi trafić do wszystkich.
+
+## Uruchom go
+
+<Strip cmd="/dev-kit:pr-shepherd" />
+
+Bez argumentów prowadzi pull request bieżącego brancha.
+Z jednym numerem prowadzi ten pull request, a gdy jesteś na innym branchu, pracuje w worktree na jego branchu.
+Podaj kilka numerów pull requestów, żeby prowadzić stack:
+
+```
+/dev-kit:pr-shepherd 101 102 103
+```
+
+Uruchomienie go zezwala na commity i pushe do branchy prowadzonych pull requestów.
+Liczy się też jako zgoda na push dla tych branchy, której wymaga reguła repozytorium rezerwująca `git push` dla ludzi.
+
+:::caution[Najpierw zezwól na komendy checków]
+Pętla działa bez nadzoru i staje przy pierwszym pytaniu o uprawnienia.
+Zanim ją uruchomisz, zezwól na komendy testów i lintera swojego repozytorium w `.claude/settings.json`, na przykład `"Bash(pnpm test *)"`.
+:::
+
+## Jak przebiega
+
+`pr-shepherd` uruchamia `/loop` z Claude Code, a każda runda od nowa odczytuje cały stan z gita i GitHuba:
+
+<SkillFlow
+  skill="pr-shepherd"
+  input="Otwarty pull request albo stack podany numerami"
+  steps={[
+    { name: 'Odczyt', does: 'Czyta pull request, jego checki i nierozwiązane wątki review.' },
+    { name: 'Naprawa CI', does: 'Każdy czerwony check przekazuje ci-fix, który może pushować bez pytania.' },
+    { name: 'Review', does: 'Ocenia każdy otwarty komentarz, naprawia, commituje i pushuje, a potem odpowiada w wątku.' },
+    { name: 'Decyzja', does: 'Zatrzymuje się, gdy skończył albo utknął, albo planuje następną rundę.', loop: 'co 5, 30 albo 60 minut, do 48 rund' },
+  ]}
+/>
+
+Przerwa między rundami zależy od tego, co się jeszcze dzieje.
+Po pushu albo gdy checki trwają, czeka 5 minut, a gdy zostali już tylko reviewerzy, 30, potem 60 minut.
+
+## Jak obsługuje komentarz z review
+
+`pr-shepherd` ocenia każdy komentarz merytorycznie, bez względu na autora, i wydaje jeden werdykt:
+
+| Werdykt | Kiedy | Co robi |
+|---|---|---|
+| justified | Komentarz wskazuje prawdziwy błąd albo wyraźne ulepszenie w zakresie pull requesta | Wprowadza zmianę, uruchamia twoje komendy lintera i testów dla zmienionych plików, commituje, pushuje, odpowiada `Fixed in <sha>.` i rozwiązuje wątek |
+| unjustified | Komentarz jest błędny, wykracza poza zakres albo przeczy mu kod | Odpowiada z uzasadnieniem i dowodem w postaci pliku, linii albo dokumentacji, oznaczając autora przez @ |
+| question | Komentarz pyta, a nie prosi o zmianę | Odpowiada tak samo. Gdy uczciwa odpowiedź ujawnia błąd, werdykt zmienia się na justified |
+| decision | Poprawka to kompromis, który możesz wybrać tylko ty, na przykład poziom bezpieczeństwa albo zakres | Niczego nie zmienia. Odpowiada raz, podając opcje i koszt każdej, i zostawia wątek tobie |
+
+Tabela 1. Werdykty review
+
+Wątek bota rozwiązuje po odpowiedzi.
+Wątek człowieka zostawia otwarty, żeby rozwiązał go reviewer.
+Po dwóch ripostach w jednym wątku nie pisze w nim nic więcej i przekazuje go tobie.
+
+## Stacki
+
+Przy kilku numerach pull requestów każdy pull request dostaje własny worktree na swoim branchu.
+Poprawka trafia na najniższy branch, do którego należy kod.
+Do branchy powyżej dociera zwykłym merge'em bazy do brancha potomnego, poziom po poziomie, nigdy rebase'em.
+`pr-shepherd` nigdy nie merguje domyślnego brancha do żadnego z nich.
+
+## Kiedy się zatrzymuje
+
+W trakcie nigdy o nic nie pyta.
+Zatrzymuje się i składa raport, gdy zajdzie jedno z poniższych:
+
+- Każdy wymagany check jest zielony i nie ma otwartego wątku review. To sukces.
+- Branch nie ma otwartego pull requesta, ma niezacommitowane zmiany w śledzonych plikach albo niewypchnięte commity, albo rozjechał się z remote'em.
+- GitHub zgłasza pull request jako konfliktowy. Skill i tak obsługuje wątki review i pushuje, potem zatrzymuje się i wymienia pliki z konfliktem. Nigdy nie rozwiązuje konfliktu.
+- `ci-fix` zgłasza błąd, którego nie umie naprawić, albo ten sam check jest znów czerwony po dwóch cyklach poprawki albo ponownego uruchomienia.
+- Każdy wymagany check jest zielony, a każdy pozostały wątek czeka na ciebie albo na reviewera, który nie odpowiada od 24 godzin.
+- Wykonał 48 rund.
+
+Czerwony check, który nie jest wymagany, dostaje jedno uruchomienie `ci-fix`.
+Jeśli dalej jest czerwony, raport wymienia go dla ciebie, zamiast wstrzymywać pętlę.
+
+## Co zostawia
+
+- Commity wypchnięte na branch pull requesta, po jednym na wątek albo na grupę wątków naprawionych jedną zmianą.
+- Odpowiedzi w wątkach review i rozwiązane wątki tam, gdzie naprawił problem albo odpowiedział botowi.
+- Linię statusu po każdej rundzie i raport końcowy: dlaczego się zatrzymał, wypchnięte commity, wątki naprawione, z odpowiedzią i z ripostą, z linkami, oraz wszystko, co zostaje dla ciebie.
+
+## Czego nigdy nie robi
+
+Poza merge'ami w stacku opisanymi wyżej nigdy nie robi tych rzeczy, chyba że twoja późniejsza wiadomość wprost je wymieni:
+
+- merge'a ani rebase'a bazy do brancha;
+- rozwiązywania konfliktu ani force-pusha;
+- zamykania, ponownego otwierania, zmiany bazy ani edycji pull requesta.
+
+Nigdy nie dodaje do commita nieśledzonych plików.
+
+## Następne kroki
+
+- Przeczytaj o [`/dev-kit:ci-fix`](/pl/plugins/dev-kit/ci-fix/), żeby zobaczyć, co dzieje się z czerwonym checkiem.
+- Gdy przyjdzie aktualizacja zależności, sprawdź ją poza cyklem z [`/dev-kit:dep-upgrade-check`](/pl/plugins/dev-kit/dep-upgrade-check/).

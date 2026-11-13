@@ -14,7 +14,8 @@ and leaves a report. It changes your source only with your approval (see Fault i
   down, tester can start it after you agree.
 - `curl` and `git`.
 - [agent-browser](https://github.com/vercel-labs/agent-browser), for UI checks and for logging
-  test users in. Without it, UI checks are skipped with the reason stated.
+  test users in. Without it, tester records the gap and marks the UI checks `BLOCKED`,
+  unless you install it when tester asks.
 - Docker, for fault checks that pause a dependency's container or put a WireMock proxy in front
   of it.
 - Optional: a database client (for example `psql`) or a database MCP tool, for checks that read
