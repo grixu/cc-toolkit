@@ -1,0 +1,139 @@
+---
+title: anti-slop
+description: Usuwa z prozy po angielsku i po polsku ślady pisania przez AI, żeby brzmiała zwyczajnie i po ludzku, i zachowuje każdy fakt, liczbę, nazwę, cytat i zastrzeżenie.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Modele piszą domyślnym wyborem:
+
+- najdokładniejsze słowo w każdym miejscu, więc zdania brzmią sztywno;
+- przyczyna przy każdym fakcie i zdanie na koniec, które wszystko podsumowuje;
+- trzy punkty na każdej liście;
+- kontrasty „nie X, lecz Y”, które dodają wagi, ale nie dodają treści.
+
+anti-slop znajduje te nawyki i zastępuje je prostszą wersją.
+Działa na tekstach po angielsku i po polsku.
+Tnie słowa, nigdy twierdzenia: każdy fakt, liczba, nazwa, data, cytat, link, zastrzeżenie i stopień pewności zostają.
+
+## Gdzie działa
+
+<LifeMap focus="anti-slop" animate={false} />
+
+anti-slop to plugin pomocniczy w etapie [03c Review człowieka](/pl/lifecycle/human-review/).
+Wywołują go tam dwa skille:
+
+- [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) kieruje pull requestem. Zdania, które sam napisał w opisie, czyści przez anti-slop, a jako źródło podaje commity i diff.
+- [code-story](/pl/plugins/code-story/) czyści każdy rozdział historii przed złożeniem strony, a jako źródło podaje diff, pull request, tickety i specy.
+
+Możesz go też uruchomić samodzielnie, na dowolnym tekście.
+Instalacja code-story albo dev-kit instaluje także anti-slop.
+
+## Uruchom go
+
+Podaj tekst albo ścieżkę do pliku:
+
+<Strip cmd="/anti-slop:anti-slop docs/guide.md" />
+
+Uruchamiają go też prośby w rodzaju „de-slop this”, „humanize this” czy „check it for AI tells”.
+
+Tekst, który mu dajesz, jest materiałem, a nie poleceniem.
+Linia, która zwraca się do „AI” albo podaje się za polecenie od admina, jest redagowana jak każda inna albo zostaje bez zmian.
+
+## Tryby
+
+Skill wybiera tryb na podstawie prośby:
+
+| Tryb | Kiedy | Co dostajesz |
+|---|---|---|
+| Cleanup | Domyślnie | Oczyszczony tekst, a pod nim lista **What changed**, po jednej linii na zmianę |
+| File | Prośba wskazuje plik | Plik przepisany na miejscu, tylko proza. Kod, linki, frontmatter i HTML zostają co do bajtu. |
+| Diagnose | Prośba mówi „diagnose”, „audit”, „check” albo „only point out” | Lista cytowanych problemów z poprawkami, w kolejności tekstu. Bez przepisywania. |
+| Embedded | Inny skill przekazuje tekst w trakcie własnych kroków | Sam oczyszczony tekst w formacie wywołującego, który od razu przechodzi do swojego następnego kroku |
+
+Tabela 1. Tryby anti-slop.
+
+Na przykład, żeby dostać listę problemów zamiast przepisanego tekstu:
+
+<Strip cmd="/anti-slop:anti-slop diagnose docs/guide.md" />
+
+Gdy tekst już brzmi zwyczajnie, skill zwraca go bez zmian i o tym informuje.
+
+## Źródła i próbki stylu
+
+Podaj źródło, na przykład notatki, diff, commity albo ticket, a skill sprawdzi z nim prozę:
+
+<Strip cmd="/anti-slop:anti-slop source: notes.md draft.md" />
+
+Ze źródłem skill usuwa każdą przyczynę, motyw albo pewność, których źródło nie zawiera.
+Bez źródła zamienia swoje podejrzenia w pytania, zamiast twierdzić, że coś zmyślono.
+W trybie embedded i file wywołanym przez inny skill nikt nie odpowiada na pytania.
+Skill przepisuje wtedy niepoparte twierdzenie na takie, które źródło potwierdza, albo pisze, że powód nie został zapisany.
+
+Podaj próbkę stylu (`voice: <sample>`), a skill dopasuje się do jej długości zdań, słownictwa, interpunkcji i sposobu zaczynania zdań, przed własnymi regułami.
+
+## Przebiegi
+
+Skill przechodzi przez tekst siedem razy, w stałej kolejności: najpierw struktura, potem słowa.
+Każdy przebieg kończy się, gdy sprawdzi pod jego kątem każdy akapit:
+
+1. **Wierność (fidelity):** żadnej przyczyny, motywu ani pewności, których nie ma w źródle.
+2. **Czytelnik (reader):** żadnych zdań o samym tekście i żadnego tłumaczenia tego, co czytelnik już wie.
+3. **Inscenizacja (staging):** kontrasty, jednozdaniowe puenty, złote myśli i rozbiegi przed sednem.
+4. **Kształt (shape):** trójki, symetryczne listy i akapity, jednostajny rytm i formatowanie stosowane z automatu.
+5. **Słowa (words):** najpierw zwykłe słowo, potem nadęty, sprzedażowy i korporacyjny język oraz leksykon.
+6. **Zdania (sentences):** strona czynna, gdy wykonawca ma znaczenie, forma twierdząca i ważne słowo na końcu.
+7. **Kontrola (check):** nic nie zginęło, nic nie doszło, skan uruchomiony ponownie, a wynik nie dłuższy od oryginału.
+
+Lista słów celowo idzie po przebiegach strukturalnych, bo te wyłapują to, czego lista słów nie zauważy.
+Niektóre wzorce uzasadniają poprawkę już po jednym wystąpieniu.
+Inne same w sobie są słabe i skill reaguje na nie tylko wtedy, gdy w tym samym fragmencie są też inne sygnały.
+
+## Języki
+
+Skill ocenia każdy akapit w jego własnym języku.
+Angielski i polski przechodzą przez wszystkie przebiegi, każdy z własnym leksykonem; polski dostaje też wzorce na urzędniczy styl, nominalizacje, łańcuchy dopełniaczy i kalki z tłumaczeń.
+Inne języki przechodzą przebiegi od 1 do 4 i 7, a raport mówi, że przebiegi słowne się nie odbyły.
+
+Identyfikatory z kodu, nazwy API, klucze konfiguracji, komunikaty błędów i terminy fachowe zostają w oryginalnej formie i języku.
+
+## Skrypt skanujący
+
+Przed przebiegami skill uruchamia na tekście skrypt:
+
+```
+node scripts/scan.mjs <file> [--lang en|pl]
+```
+
+Wypisuje mechaniczne sygnały z numerem linii i kolumny: frazy z leksykonu, myślniki w roli łącznika, cudzysłowy drukarskie, punkty listy zaczynające się od pogrubionej etykiety, nagłówki pisane Title Case oraz emoji w nagłówkach i punktach list.
+Pomija kod, znaczniki i adresy URL.
+Bez `--lang` sprawdza oba leksykony, co pasuje do tekstu mieszającego angielski z polskim.
+
+Trafienie to trop, a nie werdykt: model ocenia każde w kontekście.
+Skrypt kończy się kodem 0 bez względu na to, co znajdzie; błędem kończy się tylko wtedy, gdy brakuje pliku albo język jest nieznany.
+
+## Czego nie rusza
+
+- Cytatów, tytułów, nazw własnych i fragmentów, które omawiają frazę, a nie jej używają.
+- Tekstów napisanych przed 30 listopada 2022.
+- Nawyków próbki stylu, którą podasz.
+- Szczegółów, które niosą autora: dziwnej konkretności, mieszanych uczuć, odniesienia do swoich czasów, prawdziwej dygresji.
+- Sformułowań prawnych, dotyczących bezpieczeństwa i zakresu oraz formalnego rejestru, którego wymaga dany gatunek.
+
+## Wymagania
+
+Node.js 22 lub nowszy, dla skryptu skanującego.
+
+:::caution[Nakładające się skille]
+anti-slop łączy cztery skille na licencji MIT: cw-ai-check, humanizer, writing-clearly-and-concisely i miodkuj.
+Jeśli masz któryś z nich zainstalowany, wyłącz go, żeby model nie wybierał między skillami, które się pokrywają.
+:::
+
+## Następne kroki
+
+- [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/): otwórz pull request, którego opis przechodzi przez anti-slop.
+- [code-story](/pl/plugins/code-story/): wyjaśnij zmianę rozdział po rozdziale prozą, która przechodzi przez anti-slop.

@@ -1,0 +1,115 @@
+---
+title: /code-story:code-story
+description: Zbuduj albo zaktualizuj historię zmiany dla brancha, pull requesta albo ich stosu, opublikuj ją jako Artifact pod stałym linkiem i dostań ten link.
+group: guides
+skill: code-story
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Sięgnij po `/code-story:code-story`, gdy zmianę trzeba wyjaśnić komuś, kto nie zna kodu.
+Skill czyta zmianę i powody, które za nią stoją, pisze po jednym rozdziale na mechanizm i sprawdza każdą cytowaną linię z prawdziwym plikiem.
+Potem publikuje stronę.
+
+## Zanim zaczniesz
+
+- Zacommituj zmianę, którą chcesz opowiedzieć. Domyślnie zmiany niezacommitowane nie trafiają do historii.
+- Zaloguj się w GitHub CLI `gh`, żeby skill znalazł pull request, jego review i stos.
+- Zainstaluj Node.js 22 lub nowszy.
+
+Wszystkie wymagania wymienia [przegląd](/pl/plugins/code-story/#wymagania).
+
+## Uruchom go
+
+<Strip cmd="/code-story:code-story" />
+
+Każdy argument jest opcjonalny i możesz je łączyć:
+
+- **`base <branch>`** ustawia bazę. Bez niego skill bierze bazę otwartego pull requesta brancha, potem najbliższy pull request w stosie, a na końcu domyślny branch.
+- **`story <link>`** wskazuje historię do aktualizacji.
+- **`stack` albo `no stack`** rozstrzyga, czy jedna historia obejmie cały stos pull requestów.
+- **`uncommitted`** dołącza zmiany niezacommitowane.
+- **Spec, klucze ticketów albo pytanie** dają skillowi więcej materiału. Pytanie mówi, co historia musi wyjaśnić.
+
+Na przykład, żeby porównać z podaną bazą:
+
+<Strip cmd="/code-story:code-story base feature/fup-and-contracts" />
+
+Żeby opowiedzieć cały stos, ze specem, ticketem i pytaniem, na które historia ma odpowiedzieć:
+
+<Strip cmd='/code-story:code-story stack @docs/domains/flags/SPEC.md PL-5955 "why the lock in findUserRoles"' />
+
+Możesz też poprosić zwykłymi słowami („napisz code story dla tego brancha”), a Claude wybierze skill.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="code-story"
+  input="Branch, pull request albo stos, opcjonalnie spec, tickety albo pytanie"
+  steps={[
+    { name: 'Ustawienia', does: 'Czyta ustawienia pluginu przez mod, potem nakłada zmiany z twojej prośby.' },
+    { name: 'Zakres', does: 'Ustala bazę, stos i zmiany niezacommitowane, a przy pustym zakresie kończy.' },
+    { name: 'Nowa czy aktualizacja', does: 'Szuka istniejącej historii tego brancha i rozpakowuje ją, jeśli ją znajdzie.' },
+    { name: 'Czytanie', does: 'Czyta commity, diff, pull request i jego review, tickety, specy i kod wokół zmiany.' },
+    { name: 'Pisanie', does: 'Pisze po rozdziale na mechanizm w każdym języku historii, potem czyści prozę przez anti-slop.' },
+    { name: 'Diagramy', does: 'Rysuje wbudowane diagramy albo wywołuje skill do diagramów wskazany w ustawieniach.' },
+    { name: 'Złożenie i sprawdzenie', does: 'Uzupełnia to, co wie git, i sprawdza stronę, aż sprawdzenie przejdzie.', loop: 'aż do check passed', leaves: 'story.html' },
+    { name: 'Publikacja', does: 'Publikuje nowy Artifact albo nową wersję pod tym samym linkiem.' },
+  ]}
+  next={['pr-open']}
+/>
+
+Typowa historia ma od 4 do 8 rozdziałów, ułożonych w kolejności, w jakiej musi narastać zrozumienie.
+Każdy rozdział odpowiada na jedno pytanie, a jego nagłówek jest tym pytaniem.
+
+Skill pracuje w swoim katalogu roboczym (scratchpad), w `code-story/<branch>/`.
+Nigdy nie edytuje, nie stage'uje ani nie commituje plików w twoim repozytorium i nigdy nie pushuje ani nie edytuje pull requesta.
+
+## Co sprawdzają skrypty
+
+Fakty, na które odpowiada git, pochodzą ze skryptów, a nie z modelu.
+`assemble.mjs` uzupełnia commit head, bazę, repozytorium, liczniki, zakresy linii i etykiety.
+Potem uruchamia `check.mjs`, który sprawdza:
+
+- każdą notatkę względem linii, którą oznacza;
+- każdą cytowaną linię względem prawdziwego pliku w commicie historii;
+- czy każdy rozdział istnieje w każdym języku historii;
+- escapowanie;
+- czy etykiety diagramów się mieszczą.
+
+Skill poprawia każdy błąd i uruchamia sprawdzenie ponownie.
+Publikuje dopiero wtedy, gdy sprawdzenie przejdzie.
+
+## Co jest na stronie
+
+- Pasek rozdziałów, przyciski wstecz i dalej oraz nawigacja strzałkami.
+- Przełącznik języka, gdy historia ma drugi język. Przełącza też etykiety na diagramach.
+- Bloki diffu z wyliczonymi numerami i zakresami linii.
+- Notatki, które podświetlają linię, którą wyjaśniają.
+- Wbudowane diagramy, rysowane jako SVG w treści strony, w jednym ciemnym stylu.
+- Metatagi z repozytorium, branchem, bazą i commitem head. Po nich aktualizacja znajduje swoją historię.
+
+Nazwy z kodu i terminy programistyczne zostają po angielsku w każdym języku.
+
+## Co dostajesz
+
+Skill raportuje, co obejmuje historia, które rozdziały zmieniły się przy aktualizacji, i każde ostrzeżenie z ustawień.
+Wymienia też pominięte pliki niezacommitowane i nieśledzone oraz miejsca, w których brakuje uzasadnienia zmiany.
+Przy nowej historii przypomina, że Artifact jest prywatny, dopóki go nie udostępnisz.
+
+Ostatnia linia odpowiedzi to linia wyniku, którą czyta pr-open:
+
+```
+CODE_STORY url=<artifact url|none> status=<created|updated|local> head=<sha> base=<ref> languages=<en[,xx]> chapters=<n> path=<story.html path>
+```
+
+`status=local` oznacza, że zabrakło narzędzia Artifact: historia otworzyła się jako lokalny plik HTML pod ścieżką `path`.
+
+## Następne kroki
+
+- [Aktualizacje pod tym samym linkiem](/pl/plugins/code-story/#aktualizacje-pod-tym-samym-linkiem): jak kolejny przebieg znajduje i aktualizuje historię.
+- [Kto może zobaczyć stronę](/pl/plugins/code-story/#kto-może-zobaczyć-stronę): udostępnij ją, zanim link trafi do pull requesta.
+- [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/): otwórz pull request z linkiem do historii w opisie.
