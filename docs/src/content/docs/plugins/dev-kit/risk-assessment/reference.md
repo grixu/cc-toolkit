@@ -18,6 +18,9 @@ Open the options with `/plugin configure dev-kit@cc-toolkit`. A change takes eff
 | `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The TypeSafe API key. Without one, the tool doesn't exist and nothing is sent. |
 | `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the API. `/v1/systemone` is appended. |
 | `typesafe_model` | `jev-1.14.0` | Model name or alias. Pin a version to keep levels stable across Jev releases. |
+| `gemini_api_key` | empty, reads `GEMINI_DECISIONS_API_KEY`, then `GEMINI_API_KEY` | A Gemini Developer API key with access to `gemini-decision-1`. A Vertex AI key doesn't work: the Decisions API exists only on the Gemini Developer API. |
+| `decision_backend` | `auto` | `auto` uses the backend whose key is set; with both keys, `pr-open` asks which to use. `typesafe` or `gemini` uses that one. `both` runs them side by side. |
+| `primary_backend` | `typesafe` | With both backends, the one whose level, flags and label count. The other's level appears beside it. |
 | `risk_label` | `true` | Whether `pr-open` labels the pull request. |
 | `risk_label_name` | `risk: {level}` | The label name. `{level}` becomes the level. |
 | `risk_levels` | `low`, `medium`, `high`, `critical` | Names of the four levels, from lowest to highest. Any count other than four falls back to the default. |
@@ -37,14 +40,15 @@ Claude calls the tool as `mcp__dev-kit__pr_risk`. `pr-open` calls it for you, an
 | `execution_context` | no | Up to 8 entries of short, exact source excerpts for changed files, each checked against a full base or HEAD commit ID. The whole array fits in 8,000 characters. Only the matching slice's diff request receives them. |
 | `risk_policy` | no | `calibrated-v1` (default) or the stricter, unvalidated `evidence-v1`. It affects only the [two-axis fallback](/plugins/dev-kit/risk-assessment/reliability/#the-two-axis-fallback). |
 | `risk_experiment` | no | `atomic-v1` adds experimental questions whose answers appear under `experimental`. They don't change the level. |
+| `backend` | no | `typesafe`, `gemini` or `both`: the user's answer after a `Backend choice needed:` result. It overrides `decision_backend`. |
 
 Table 2. Inputs of the pr_risk tool
 
-Everything in `context`, `testing_policy` and `execution_context` is sent to TypeSafe, along with the diff and the commit messages.
+Everything in `context`, `testing_policy` and `execution_context` is sent to the chosen backend, TypeSafe or Google, along with the diff and the commit messages; with `both`, to each.
 
 ## Result
 
-The tool returns JSON. A result that starts with `Risk assessment unavailable:` means no assessment was made, and the rest of the text gives the reason.
+The tool returns JSON. A result that starts with `Risk assessment unavailable:` means no assessment was made, and the rest of the text gives the reason. A result that starts with `Backend choice needed:` means both keys are set and `decision_backend` is `auto`: nothing was sent, and the call needs `backend`.
 
 ### The whole change
 
@@ -63,7 +67,8 @@ The tool returns JSON. A result that starts with `Risk assessment unavailable:` 
 | `slices` | One entry per slice, described below. |
 | `label` | `enabled`, the label `name` for this level, and `all` label names, so `pr-open` can remove the old one. |
 | `coverage` | How much of the change was assessed, described below. |
-| `model`, `base`, `riskPolicy`, `slicing` | The Jev model that answered, the resolved base, the policy used, and where the slices came from (`caller`, `model` or `size`). |
+| `comparison` | Only with both backends: one entry per backend, primary first, with `backend`, `model`, `level`, `impact`, `likelihood`, `complexity`, `confidence`, `lowConfidence`, `scorer` and each slice's `title`, `level`, `impact` and `complexity`; or `backend` and `error` for one that failed, while the other's result stands. Each comparison is also appended to `~/.cache/dev-kit/compare.jsonl` with the repository's directory name, branch, commit and base, never the diff. |
+| `backend`, `model`, `base`, `riskPolicy`, `slicing` | The backend (`typesafe` or `gemini`) and model that answered, the resolved base, the policy used, and where the slices came from (`caller`, `model` or `size`). |
 
 Table 3. Result fields for the whole change
 

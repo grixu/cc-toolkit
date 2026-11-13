@@ -1,12 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "cc-toolkit",
-  "version": "1.2.2",
+  "version": "1.5.0",
   "owner": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
   },
-  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, transcription, naming, and hook rules",
+  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, transcription, naming, hook rules, and a sound when Claude waits for you",
   "plugins": [
     {
       "name": "codex-plan-improver",
@@ -175,8 +175,8 @@
     {
       "name": "dev-kit",
       "source": "./plugins/dev-kit",
-      "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template and labelled with its risk, assessed by the TypeSafe Jev model.",
-      "version": "0.9.1",
+      "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template and labelled with its risk, assessed by TypeSafe Jev, Gemini Decision or both.",
+      "version": "0.10.0",
       "author": {
         "name": "Mateusz Gostański",
         "email": "mg@grixu.dev"
@@ -193,8 +193,8 @@
     {
       "name": "pr-proof",
       "source": "./plugins/pr-proof",
-      "description": "Proof that a pull request's change works: prepare-proof judges which proof a branch needs, with TypeSafe Jev signals when a key is set, then produces each kind, a narrated walkthrough video with playwright-recast, screenshots at the project's breakpoints, and masked terminal or API transcripts, and hands it to pr-open through the branch's proof manifest.",
-      "version": "0.2.1",
+      "description": "Proof that a pull request's change works: prepare-proof judges which proof a branch needs, with signals from TypeSafe Jev or Gemini Decision when a key is set, then produces each kind, a narrated walkthrough video with playwright-recast, screenshots at the project's breakpoints, and masked terminal or API transcripts, and hands it to pr-open through the branch's proof manifest.",
+      "version": "0.3.0",
       "author": {
         "name": "Mateusz Gostański",
         "email": "mg@grixu.dev"
@@ -209,6 +209,24 @@
         "screenshots",
         "terminal",
         "api"
+      ]
+    },
+    {
+      "name": "stop-sound",
+      "source": "./plugins/stop-sound",
+      "description": "Chimes when Claude waits for you: when it finishes a turn and when it asks a question. Silent while subagents work.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "notification",
+        "sound",
+        "stop",
+        "subagents",
+        "ask-user-question"
       ]
     }
   ]

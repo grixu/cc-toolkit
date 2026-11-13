@@ -46,7 +46,8 @@ import {
   typesProseCannotHave,
 } from '../../hooks/risk.ts'
 import { rewritePrompt, validateVariant } from './prompt-variants.mjs'
-import { atomicQuestions, DEFAULT_MODEL } from '../../hooks/evidence.ts'
+import { atomicQuestions } from '../../hooks/evidence.ts'
+import { TYPESAFE_MODEL } from '../../hooks/providers/typesafe.ts'
 import { completionStatus, summarizeExperimental, summarizeMetrics } from './metrics.mjs'
 import { cachedSlicing, consumeRecorded, hash, replayPayload, requestProvenance, slicingProvenance } from './replay.mjs'
 
@@ -65,7 +66,7 @@ const { values: args } = parseArgs({
     'gh-context': { type: 'boolean', default: false },
     repo: { type: 'string' },
     tag: { type: 'string', default: 'run' },
-    model: { type: 'string', default: DEFAULT_MODEL },
+    model: { type: 'string', default: TYPESAFE_MODEL },
     only: { type: 'string' },
     // off answers the slicing model call as unanswered, so the diff is packed by size
     slicing: { type: 'string', default: 'model' },
@@ -125,7 +126,7 @@ const cases = (
 const TYPE_KEYS = Object.keys(questions()).filter((k) => !k.startsWith('defect_'))
 const INTENT_KEYS = Object.keys(intentQuestions())
 
-const options = { typesafe_model: args.model, risk_policy: args['risk-policy'], ...(args['risk-experiment'] && { risk_experiment: args['risk-experiment'] }) }
+const options = { decision_backend: 'typesafe', typesafe_model: args.model, risk_policy: args['risk-policy'], ...(args['risk-experiment'] && { risk_experiment: args['risk-experiment'] }) }
 const config = readConfig(options)
 const sandbox = resolve(args.sandbox)
 const THRESHOLDS = [0.5, 0.6, 0.7, 0.8, 0.9]

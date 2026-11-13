@@ -18,6 +18,9 @@ Otwórz opcje przez `/plugin configure dev-kit@cc-toolkit`. Zmiana zaczyna dzia�
 | `typesafe_api_key` | puste, czyta `TYPESAFE_API_KEY` | Klucz API TypeSafe. Bez niego narzędzie nie istnieje i nic nie jest wysyłane. |
 | `typesafe_endpoint` | `https://api.typesafe.ai` | Bazowy URL API. Dopisywane jest do niego `/v1/systemone`. |
 | `typesafe_model` | `jev-1.14.0` | Nazwa albo alias modelu. Przypnij wersję, żeby poziomy nie zmieniały się między wydaniami Jev. |
+| `gemini_api_key` | puste, czyta `GEMINI_DECISIONS_API_KEY`, potem `GEMINI_API_KEY` | Klucz Gemini Developer API z dostępem do `gemini-decision-1`. Klucz Vertex AI nie działa: Decisions API istnieje tylko w Gemini Developer API. |
+| `decision_backend` | `auto` | `auto` używa backendu, którego klucz jest ustawiony; przy obu kluczach `pr-open` pyta, którego użyć. `typesafe` albo `gemini` używa tego jednego. `both` uruchamia oba obok siebie. |
+| `primary_backend` | `typesafe` | Przy obu backendach ten, którego poziom, flagi i etykieta się liczą. Poziom drugiego pojawia się obok. |
 | `risk_label` | `true` | Czy `pr-open` dodaje etykietę do pull requesta. |
 | `risk_label_name` | `risk: {level}` | Nazwa etykiety. `{level}` zamienia się w poziom. |
 | `risk_levels` | `low`, `medium`, `high`, `critical` | Nazwy czterech poziomów, od najniższego do najwyższego. Każda liczba nazw inna niż cztery wraca do wartości domyślnej. |
@@ -37,14 +40,15 @@ Claude woła narzędzie jako `mcp__dev-kit__pr_risk`. `pr-open` woła je za cieb
 | `execution_context` | nie | Do 8 wpisów z krótkimi, dokładnymi fragmentami kodu dla zmienionych plików, każdy sprawdzany względem pełnego ID commita bazy albo HEAD. Cała tablica mieści się w 8000 znaków. Dostaje je tylko zapytanie o diff pasującego slice’a. |
 | `risk_policy` | nie | `calibrated-v1` (domyślnie) albo surowsze, niezwalidowane `evidence-v1`. Wpływa tylko na [fallback dwuosiowy](/pl/plugins/dev-kit/risk-assessment/reliability/#fallback-dwuosiowy). |
 | `risk_experiment` | nie | `atomic-v1` dodaje pytania eksperymentalne, których odpowiedzi pojawiają się w `experimental`. Nie zmieniają poziomu. |
+| `backend` | nie | `typesafe`, `gemini` albo `both`: odpowiedź użytkownika po wyniku `Backend choice needed:`. Nadpisuje `decision_backend`. |
 
 Tabela 2. Wejścia narzędzia pr_risk
 
-Wszystko w `context`, `testing_policy` i `execution_context` trafia do TypeSafe razem z diffem i opisami commitów.
+Wszystko w `context`, `testing_policy` i `execution_context` trafia do wybranego backendu, TypeSafe albo Google, razem z diffem i opisami commitów; przy `both` do każdego z nich.
 
 ## Wynik
 
-Narzędzie zwraca JSON. Wynik zaczynający się od `Risk assessment unavailable:` znaczy, że oceny nie wykonano, a reszta tekstu podaje powód.
+Narzędzie zwraca JSON. Wynik zaczynający się od `Risk assessment unavailable:` znaczy, że oceny nie wykonano, a reszta tekstu podaje powód. Wynik zaczynający się od `Backend choice needed:` znaczy, że oba klucze są ustawione, a `decision_backend` ma wartość `auto`: nic nie wysłano, a wywołanie potrzebuje `backend`.
 
 ### Cała zmiana
 
@@ -63,7 +67,8 @@ Narzędzie zwraca JSON. Wynik zaczynający się od `Risk assessment unavailable:
 | `slices` | Jeden wpis na slice, opisany niżej. |
 | `label` | `enabled`, `name` etykiety dla tego poziomu i `all`, czyli wszystkie nazwy etykiet, żeby `pr-open` mógł usunąć starą. |
 | `coverage` | Jak duża część zmiany została oceniona, opisane niżej. |
-| `model`, `base`, `riskPolicy`, `slicing` | Model Jev, który odpowiedział, ustalona baza, użyta polityka i skąd pochodzą slice’y (`caller`, `model` albo `size`). |
+| `comparison` | Tylko przy obu backendach: po jednym wpisie na backend, najpierw główny, z polami `backend`, `model`, `level`, `impact`, `likelihood`, `complexity`, `confidence`, `lowConfidence`, `scorer` oraz `title`, `level`, `impact` i `complexity` każdego slice’a; albo `backend` i `error` dla tego, który zawiódł, a wynik drugiego obowiązuje. Każde porównanie jest też dopisywane do `~/.cache/dev-kit/compare.jsonl` z nazwą katalogu repozytorium, branchem, commitem i bazą, nigdy z diffem. |
+| `backend`, `model`, `base`, `riskPolicy`, `slicing` | Backend (`typesafe` albo `gemini`) i model, który odpowiedział, ustalona baza, użyta polityka i skąd pochodzą slice’y (`caller`, `model` albo `size`). |
 
 Tabela 3. Pola wyniku dla całej zmiany
 

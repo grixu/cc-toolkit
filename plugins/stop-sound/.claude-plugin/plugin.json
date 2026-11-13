@@ -1,0 +1,30 @@
+{
+  "name": "stop-sound",
+  "description": "Chimes when Claude waits for you: when it finishes a turn and when it asks a question. Silent while subagents work.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "notification",
+    "sound",
+    "stop",
+    "subagents",
+    "ask-user-question"
+  ],
+  "userConfig": {
+    "stop_sound": {
+      "type": "file",
+      "title": "Stop sound",
+      "description": "Sound file (wav, mp3, aiff, aif, m4a, ogg) played when the session ends its turn. Leave empty for the bundled chime."
+    },
+    "question_sound": {
+      "type": "file",
+      "title": "Question sound",
+      "description": "Sound file (wav, mp3, aiff, aif, m4a, ogg) played when Claude asks a question or presents a plan. Leave empty for the bundled chime."
+    }
+  }
+}

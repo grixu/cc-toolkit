@@ -1,20 +1,19 @@
-import { DEFAULT_MODEL, EVIDENCE_BUDGET, atomicQuestions, evidenceForFiles, experimentalAnswers, stripTrailingRisk, validateEvidence, type ExecutionEvidence } from './evidence.ts'
-import { FACTOR_REPEATS, averageAnswers, factorBodies, factorGroup, factorReport, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
+import { DecisionError, ask, limiter, type DecisionProvider, type DecisionRequest, type Limit, type Questions } from './decision.ts'
+import { MODES, appendLine, chooseBackends, choiceNeeded, createProvider, hasAnyKey, label, providerKeys, type ProviderName } from './providers/index.ts'
+import { EVIDENCE_BUDGET, atomicQuestions, evidenceForFiles, experimentalAnswers, stripTrailingRisk, validateEvidence, type ExecutionEvidence } from './evidence.ts'
+import { FACTOR_REPEATS, averageAnswers, factorGroup, factorReport, factorRequests, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
 
 import {
   MAX_PARTS,
-  RETRYABLE,
   SLICING_SYSTEM,
   STATE_CHAR_BUDGET,
   aggregate,
   assignSlices,
   clipBulk,
   clipCommits,
-  endpointUrl,
   fileStatuses,
   groupsOf,
   halve,
-  httpError,
   intentQuestions,
   intentState,
   isDependencyManifest,
@@ -31,7 +30,6 @@ import {
   pool,
   questions,
   readConfig,
-  retryDelay,
   slicingPrompt,
   split,
   splitSlices,
@@ -51,18 +49,18 @@ const LOW_CONFIDENCE = 0.5
 const NOT_ASSESSED_SAMPLE = 20
 const SLICING_MODEL = 'haiku'
 const CONCURRENCY = 4
-const MAX_ATTEMPTS = 3
 // Each split halves the request, so three levels cover a part at eight times the token limit.
 const MAX_SPLIT_DEPTH = 3
+const COMPARE_LOG = '.cache/dev-kit/compare.jsonl'
 const DESCRIPTION =
-  'Assess the risk a branch introduces, with the TypeSafe Jev model. Groups the changed files of <base>...HEAD into vertical slices, sends each slice\'s diff to TypeSafe and, separately, the change\'s purpose with each slice\'s file statistics, and returns JSON: for the change and for each slice, the risk level with the impact of a mistake, its complexity and likelihood, the manual evidence it needs and whether the description carries it, any rule that adjusted them, what the change does (adds, changes, fixes, restructures), the types of change, and risk flags; plus confidence, the GitHub label to apply, and how much of the diff was assessed. Call it when preparing or reviewing a pull request.'
+  'Assess the risk a branch introduces, with a decision model: TypeSafe Jev, Gemini Decision, or both side by side. Groups the changed files of <base>...HEAD into vertical slices, sends each slice\'s diff to the model and, separately, the change\'s purpose with each slice\'s file statistics, and returns JSON: for the change and for each slice, the risk level with the impact of a mistake, its complexity and likelihood, the manual evidence it needs and whether the description carries it, any rule that adjusted them, what the change does (adds, changes, fixes, restructures), the types of change, and risk flags; plus confidence, the GitHub label to apply, how much of the diff was assessed, and the backend and model that answered. With both backends, `comparison` holds each backend\'s levels. Call it when preparing or reviewing a pull request.'
 
 export function register(on, options) {
   const config = readConfig(options)
 
   on('session.start', async ($, e, next) => {
     // Without a key nothing may leave the machine, so the tool does not exist at all.
-    if (await apiKey($, options)) {
+    if (hasAnyKey(await providerKeys($, options))) {
       try {
         await $.tool.register({
           name: TOOL,
@@ -110,6 +108,11 @@ export function register(on, options) {
                   },
                 },
               },
+              backend: {
+                type: 'string',
+                enum: [...MODES],
+                description: 'Optional. The decision backend the user chose: typesafe, gemini or both. Pass it only with the user\'s answer after a "Backend choice needed" result.',
+              },
               risk_policy: { type: 'string', enum: ['calibrated-v1', 'evidence-v1'], description: 'Optional risk policy; evidence-v1 is stricter and unvalidated.' },
               risk_experiment: { type: 'string', enum: ['atomic-v1'], description: 'Optional experimental signals; does not change risk policy.' },
               slices: {
@@ -138,8 +141,8 @@ export function register(on, options) {
 
   on('tool.call', { tool: 'mcp__dev-kit__pr_risk' }, async ($, e) => {
     try {
-      const report = await assess($, e.base, options, config, e.slices, e.context, e.testing_policy, e.execution_context, e.risk_experiment, e.risk_policy)
-      return { result: JSON.stringify(report, null, 2) }
+      const report = await assess($, e.base, options, config, e.slices, e.context, e.testing_policy, e.execution_context, e.risk_experiment, e.risk_policy, e.backend)
+      return { result: typeof report === 'string' ? report : JSON.stringify(report, null, 2) }
     } catch (error) {
       return unavailable(error instanceof Error ? error.message : String(error))
     }
@@ -150,14 +153,11 @@ function unavailable(reason: string) {
   return { result: 'Risk assessment unavailable: ' + reason }
 }
 
-async function apiKey($, options): Promise<string> {
-  return trimmedOption(options?.typesafe_api_key, '') || trimmedOption(await $.env.get('TYPESAFE_API_KEY'), '')
-}
-
-export async function assess($, base: unknown, options, config, proposed?: unknown, context?: unknown, testingPolicy?: unknown, executionContext?: unknown, riskExperiment?: unknown, riskPolicy?: unknown) {
+export async function assess($, base: unknown, options, config, proposed?: unknown, context?: unknown, testingPolicy?: unknown, executionContext?: unknown, riskExperiment?: unknown, riskPolicy?: unknown, requestedBackend?: unknown) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
-  const key = await apiKey($, options)
-  if (!key) throw new Error('no TypeSafe API key; set TYPESAFE_API_KEY or the dev-kit option typesafe_api_key')
+  const keys = await providerKeys($, options)
+  const chosen = chooseBackends(options, requestedBackend, keys, 'dev-kit')
+  if (chosen === 'choose') return choiceNeeded('mcp__dev-kit__pr_risk')
 
   const cwd = await repoRoot($)
   const ref = await resolveBase($, cwd, base)
@@ -205,59 +205,94 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
     ? plan.parts
     : [{ files: [], diff: '(no reviewable text diff: only lockfiles, binary or generated files changed)' }]
 
-  const request: JevRequest = {
-    url: endpointUrl(options?.typesafe_endpoint),
-    model: trimmedOption(options?.typesafe_model, DEFAULT_MODEL),
-    key,
-    questions: questions(),
-    limit: limiter(CONCURRENCY),
-  }
   // The placeholder part belongs to no slice, so without any diff text the change is assessed as one.
   const slices = plan.parts.length ? (slicing.slices ?? []) : []
   const cleanedContext = typeof context === 'string' ? stripTrailingRisk(context.trim()).trim() : ''
   const purpose = { context: cleanedContext || undefined, commits: clippedCommits }
   const tests = testsInChange(parts.flatMap((p) => p.files))
-  const [{ results, truncatedHunks, truncatedCodeHunks }, intents] = await Promise.all([
-    requestParts($, request, parts, slices, evidence, experiment === 'atomic-v1', tests),
-    requestIntents($, request, groupsOf(slices, reviewable), statuses, purpose),
-  ])
 
-  const policy = typeof testingPolicy === 'string' ? testingPolicy.trim() : ''
-  const flagged = policy ? untestedGroups(results, intents, config, slices, reviewable, statuses) : []
-  const testsNotRequired = await requestPolicy($, request, flagged, statuses, testPaths(reviewable), policy)
-  const notAssessed = [...plan.skippedFiles, ...unread]
-  const factorsMissing = results.filter((r) => r.factors === 'failed').length
-  const codeMissing = notAssessed.length > 0 || plan.truncatedCodeHunks + truncatedCodeHunks > 0
-  const partial = codeMissing || factorsMissing > 0
-  const twoAxis = aggregate(results, intents, config, slices, reviewable, statuses, testsNotRequired, !codeMissing, policyName)
-  const groups = results.flatMap((r) => (r.factors && r.factors !== 'failed' && r.factors !== 'documentation' ? [r.factors] : []))
-  // With every factor request failed the two-axis level stands, so the PR is not cleared by an outage.
-  const missing = new Set(results.flatMap((r) => (r.factors === 'failed' ? [r.slice ?? 0] : [])))
-  const report = factorsMissing && !groups.length
-    ? { ...twoAxis, scorer: 'two-axis fallback' }
-    : factorReport(twoAxis, scoreFactors(groups, { slices, files: reviewable, statuses, testsNotRequired, context: cleanedContext }), config.levels, (level) => labelFor(config.labelTemplate, level), missing)
-  const experimental = experiment === 'atomic-v1' ? {
-    version: 'atomic-v1',
-    status: results.some((r) => Object.values(r.experimentalAnswers ?? {}).some((a) => a.status === 'missing')) ? 'incomplete' : 'complete',
-    signals: results.map((r) => ({ slice: r.slice, files: r.experimentalFiles, answers: r.experimentalAnswers })),
-  } : undefined
+  const run = async (name: ProviderName) => {
+    // Each provider gets its own cap: their rate limits are separate.
+    const request: Asking = { provider: createProvider(name, keys, options), questions: questions(), limit: limiter(CONCURRENCY) }
+    const [{ results, truncatedHunks, truncatedCodeHunks }, intents] = await Promise.all([
+      requestParts($, request, parts, slices, evidence, experiment === 'atomic-v1', tests),
+      requestIntents($, request, groupsOf(slices, reviewable), statuses, purpose),
+    ])
+
+    const policy = typeof testingPolicy === 'string' ? testingPolicy.trim() : ''
+    const flagged = policy ? untestedGroups(results, intents, config, slices, reviewable, statuses) : []
+    const testsNotRequired = await requestPolicy($, request, flagged, statuses, testPaths(reviewable), policy)
+    const notAssessed = [...plan.skippedFiles, ...unread]
+    const factorsMissing = results.filter((r) => r.factors === 'failed').length
+    const codeMissing = notAssessed.length > 0 || plan.truncatedCodeHunks + truncatedCodeHunks > 0
+    const partial = codeMissing || factorsMissing > 0
+    const twoAxis = aggregate(results, intents, config, slices, reviewable, statuses, testsNotRequired, !codeMissing, policyName)
+    const groups = results.flatMap((r) => (r.factors && r.factors !== 'failed' && r.factors !== 'documentation' ? [r.factors] : []))
+    // With every factor request failed the two-axis level stands, so the PR is not cleared by an outage.
+    const missing = new Set(results.flatMap((r) => (r.factors === 'failed' ? [r.slice ?? 0] : [])))
+    const report = factorsMissing && !groups.length
+      ? { ...twoAxis, scorer: 'two-axis fallback' }
+      : factorReport(twoAxis, scoreFactors(groups, { slices, files: reviewable, statuses, testsNotRequired, context: cleanedContext }), config.levels, (level) => labelFor(config.labelTemplate, level), missing)
+    const experimental = experiment === 'atomic-v1' ? {
+      version: 'atomic-v1',
+      status: results.some((r) => Object.values(r.experimentalAnswers ?? {}).some((a) => a.status === 'missing')) ? 'incomplete' : 'complete',
+      signals: results.map((r) => ({ slice: r.slice, files: r.experimentalFiles, answers: r.experimentalAnswers })),
+    } : undefined
+    return {
+      backend: name,
+      ...report,
+      riskPolicy: policyName,
+      ...(experimental ? { experimental } : {}),
+      base: ref,
+      lowConfidence: partial || report.confidence < LOW_CONFIDENCE,
+      slicing: { source: slicing.source, ...(slicing.reason ? { reason: slicing.reason } : {}) },
+      coverage: {
+        requests: results.length,
+        filesAssessed: reviewable.length - notAssessed.length,
+        filesNotAssessed: notAssessed.length,
+        filesNotAssessedSample: notAssessed.slice(0, NOT_ASSESSED_SAMPLE),
+        filesExcluded: excluded.length,
+        truncatedHunks: clipped + plan.truncatedHunks + truncatedHunks,
+        factorsMissing,
+        partial,
+      },
+    }
+  }
+
+  if (chosen.length === 1) return run(chosen[0])
+  const settled = await Promise.allSettled(chosen.map(run))
+  const comparison = settled.map((s, i) => (s.status === 'fulfilled' ? summary(s.value) : { backend: chosen[i], error: s.reason instanceof Error ? s.reason.message : String(s.reason) }))
+  await logComparison($, cwd, ref, comparison)
+  const answered = settled.find((s) => s.status === 'fulfilled')
+  if (!answered) throw new Error(comparison.map((c) => `${label(c.backend)}: ${'error' in c ? c.error : ''}`).join('; '))
+  return { ...answered.value, comparison }
+}
+
+function summary(r) {
   return {
-    ...report,
-    riskPolicy: policyName,
-    ...(experimental ? { experimental } : {}),
-    base: ref,
-    lowConfidence: partial || report.confidence < LOW_CONFIDENCE,
-    slicing: { source: slicing.source, ...(slicing.reason ? { reason: slicing.reason } : {}) },
-    coverage: {
-      requests: results.length,
-      filesAssessed: reviewable.length - notAssessed.length,
-      filesNotAssessed: notAssessed.length,
-      filesNotAssessedSample: notAssessed.slice(0, NOT_ASSESSED_SAMPLE),
-      filesExcluded: excluded.length,
-      truncatedHunks: clipped + plan.truncatedHunks + truncatedHunks,
-      factorsMissing,
-      partial,
-    },
+    backend: r.backend,
+    model: r.model,
+    level: r.level,
+    impact: r.impact?.level,
+    likelihood: r.likelihood?.level,
+    complexity: r.complexity,
+    confidence: r.confidence,
+    lowConfidence: r.lowConfidence,
+    scorer: r.scorer,
+    slices: (r.slices ?? []).map((s) => ({ title: s.title, level: s.level, impact: s.impact?.level ?? s.impact, complexity: s.complexity })),
+  }
+}
+
+// The log keeps every pair, so agreement between the backends can be measured later; it holds no diff text.
+async function logComparison($, cwd: string, ref: string, comparison: Record<string, unknown>[]) {
+  const home = trimmedOption(await $.env.get('HOME'), '')
+  if (!home) return
+  try {
+    const [head, branch] = await Promise.all([git($, cwd, ['rev-parse', 'HEAD']), git($, cwd, ['branch', '--show-current'])])
+    const entry = { at: new Date().toISOString(), repo: cwd.split('/').pop(), branch: branch.trim(), head: head.trim(), base: ref, results: comparison }
+    await appendLine($, `${home}/${COMPARE_LOG}`, JSON.stringify(entry))
+  } catch {
+    // A log that cannot be written never costs the user their assessment.
   }
 }
 
@@ -349,30 +384,14 @@ type ExtendedPartResult = PartResult & {
   factors?: FactorGroup | 'documentation' | 'failed'
 }
 
-type JevRequest = { url: string; model: string; key: string; questions: Record<string, unknown>; limit: Limit }
-type Limit = <T>(fn: () => Promise<T>) => Promise<T>
+// The diff, factor, intent and policy pools nest and run side by side, so they share one limit per provider.
+type Asking = { provider: DecisionProvider; questions: Questions; limit: Limit }
 
-// The diff, factor, intent and policy pools nest and run side by side, so only a cap shared by every request holds
-// Jev to CONCURRENCY in flight.
-function limiter(size: number): Limit {
-  let active = 0
-  const waiting: (() => void)[] = []
-  return async (fn) => {
-    if (active >= size) await new Promise<void>((resolve) => waiting.push(resolve))
-    else active++
-    try {
-      return await fn()
-    } finally {
-      const next = waiting.shift()
-      if (next) next()
-      else active--
-    }
-  }
-}
+const askWith = ($, request: Asking, decision: DecisionRequest) => ask($, request.provider, decision, request.limit)
 
 async function requestParts(
   $,
-  request: JevRequest,
+  request: Asking,
   parts: { files: string[]; diff: string; slice?: number }[],
   slices: Slice[],
   evidence: ExecutionEvidence,
@@ -381,51 +400,48 @@ async function requestParts(
 ): Promise<{ results: ExtendedPartResult[]; truncatedHunks: number; truncatedCodeHunks: number }> {
   let truncatedHunks = 0
   let truncatedCodeHunks = 0
-  const ask = async (part: { files: string[]; diff: string; slice?: number }, depth: number): Promise<ExtendedPartResult[]> => {
+  const askPart = async (part: { files: string[]; diff: string; slice?: number }, depth: number): Promise<ExtendedPartResult[]> => {
     const relevantEvidence = evidenceForFiles(evidence, part.files)
     const state = { ...partState(part, part.slice === undefined ? undefined : slices[part.slice].title), ...(relevantEvidence.length ? { execution_context: relevantEvidence } : {}) }
-    const body = JSON.stringify({ model: request.model, state, questions: experiment ? { ...request.questions, ...atomicQuestions() } : request.questions })
-    const res = await send($, request, body)
-    if (!res.ok) {
-      if (depth < MAX_SPLIT_DEPTH && tooLong(res)) {
-        const halves = halve(part)
-        if (halves.parts.some((h) => h.diff.length < part.diff.length)) {
-          truncatedHunks += halves.truncatedHunks
-          truncatedCodeHunks += halves.truncatedCodeHunks
-          const answered: ExtendedPartResult[] = []
-          for (const h of halves.parts) answered.push(...(await ask({ ...h, slice: part.slice }, depth + 1)))
-          return answered
-        }
-      }
-      throw new Error(httpError(res.status, res.text))
+    let response
+    try {
+      response = await askWith($, request, { input: state, questions: experiment ? { ...request.questions, ...atomicQuestions() } : request.questions })
+    } catch (error) {
+      if (!(error instanceof DecisionError && error.kind === 'too_long' && depth < MAX_SPLIT_DEPTH)) throw error
+      const halves = halve(part)
+      if (!halves.parts.some((h) => h.diff.length < part.diff.length)) throw error
+      truncatedHunks += halves.truncatedHunks
+      truncatedCodeHunks += halves.truncatedCodeHunks
+      const answered: ExtendedPartResult[] = []
+      for (const h of halves.parts) answered.push(...(await askPart({ ...h, slice: part.slice }, depth + 1)))
+      return answered
     }
-    const data = JSON.parse(res.text)
-    const answers = data.answers ?? {}
+    const { answers } = response
     const missing = missingAnswer(answers)
-    if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}" (slice ${part.slice === undefined ? '-' : part.slice + 1})`)
+    if (missing) throw new Error(`${request.provider.label} returned no numeric answer for "${missing}" (slice ${part.slice === undefined ? '-' : part.slice + 1})`)
     const signals = experiment ? experimentalAnswers(answers) : undefined
     // After the diff request, on the state that fitted: a part halved for length gets factor answers per half.
     const factors = await requestFactors($, request, state, tests, part.slice)
     return [{
-      model: data.model,
+      model: response.model,
       answers,
       slice: part.slice,
       factors,
       ...(experiment ? { experimentalFiles: part.files, experimentalAnswers: signals } : {}),
     }]
   }
-  const results = (await pool(parts, CONCURRENCY, (part) => ask(part, 0))).flat()
+  const results = (await pool(parts, CONCURRENCY, (part) => askPart(part, 0))).flat()
   return { results, truncatedHunks, truncatedCodeHunks }
 }
 
 // Each repeat is the factor request plus, for a part with code, the testability request. A failed request drops only
 // its own answers, and the part counts as missing when no repeat answered.
-async function requestFactors($, request: JevRequest, state: { slice?: string; files: string[]; diff: string }, tests: string[], slice?: number): Promise<FactorGroup | 'documentation' | 'failed'> {
-  const built = factorBodies(request.model, state, tests)
+async function requestFactors($, request: Asking, state: { slice?: string; files: string[]; diff: string }, tests: string[], slice?: number): Promise<FactorGroup | 'documentation' | 'failed'> {
+  const built = factorRequests(state, tests)
   if (!built) return 'documentation'
-  const { testOnly, bodies } = built
+  const { testOnly, requests } = built
   const repeats = await Promise.all(Array.from({ length: FACTOR_REPEATS }, async () => {
-    const settled = await Promise.allSettled(bodies.map(async (body) => JSON.parse((await post($, request, body)).text).answers ?? {}))
+    const settled = await Promise.allSettled(requests.map(async (r) => (await askWith($, request, r)).answers))
     const answered = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value] : []))
     return answered.length ? Object.assign({}, ...answered) : undefined
   }))
@@ -433,12 +449,10 @@ async function requestFactors($, request: JevRequest, state: { slice?: string; f
   return (answered.length && factorGroup(averageAnswers(answered), testOnly, slice)) || 'failed'
 }
 
-const tooLong = (res) => res.status === 400 && String(res.text).includes('max_tokens_exceeded')
-
 // One request per slice, beside the diff requests: the purpose and file statistics are small, so a slice never needs two.
 async function requestIntents(
   $,
-  request: JevRequest,
+  request: Asking,
   groups: { title?: string; files: string[] }[],
   statuses,
   purpose: { context?: string; commits: string },
@@ -446,11 +460,9 @@ async function requestIntents(
   const questions = intentQuestions()
   return pool(groups, CONCURRENCY, async (group, i) => {
     const others = groups.flatMap((g, j) => (j !== i && g.title ? [g.title] : []))
-    const body = JSON.stringify({ model: request.model, state: intentState(group, statuses, purpose, others), questions })
-    const res = await post($, request, body)
-    const answers = JSON.parse(res.text).answers ?? {}
+    const { answers } = await askWith($, request, { input: intentState(group, statuses, purpose, others), questions })
     const missing = missingIntent(answers)
-    if (missing) throw new Error(`TypeSafe returned no numeric answer for "${missing}" (slice ${i + 1} of ${groups.length})`)
+    if (missing) throw new Error(`${request.provider.label} returned no numeric answer for "${missing}" (slice ${i + 1} of ${groups.length})`)
     return { answers, group: i }
   })
 }
@@ -458,7 +470,7 @@ async function requestIntents(
 // A failed policy request keeps the flag: the code's own rule already found logic without a test.
 async function requestPolicy(
   $,
-  request: JevRequest,
+  request: Asking,
   flagged: { group: number; title?: string; files: string[]; types: string[] }[],
   statuses,
   tests: string[],
@@ -466,33 +478,14 @@ async function requestPolicy(
 ): Promise<Set<number>> {
   const questions = policyQuestions()
   const cleared = await pool(flagged, CONCURRENCY, async (g) => {
-    const body = JSON.stringify({ model: request.model, state: policyState(g, statuses, g.types, tests, policy), questions })
     try {
-      const res = await post($, request, body)
-      return testsNeeded(JSON.parse(res.text).answers ?? {}) ? undefined : g.group
+      const { answers } = await askWith($, request, { input: policyState(g, statuses, g.types, tests, policy), questions })
+      return testsNeeded(answers) ? undefined : g.group
     } catch {
       return undefined
     }
   })
   return new Set(cleared.filter((g): g is number => g !== undefined))
-}
-
-async function post($, request: JevRequest, body: string) {
-  const res = await send($, request, body)
-  if (!res.ok) throw new Error(httpError(res.status, res.text))
-  return res
-}
-
-async function send($, request: JevRequest, body: string) {
-  for (let attempt = 1; ; attempt++) {
-    const res = await request.limit(() => $.http.fetch(request.url, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${request.key}`, 'content-type': 'application/json' },
-      body,
-    }))
-    if (res.ok || !RETRYABLE.has(res.status) || attempt === MAX_ATTEMPTS) return res
-    await $.clock.sleep(retryDelay(res.headers, attempt))
-  }
 }
 
 async function git($, cwd: string, args: string[]): Promise<string> {

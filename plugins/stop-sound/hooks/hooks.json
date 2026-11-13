@@ -1,0 +1,4 @@
+{
+  "description": "stop-sound mod: chimes when the main session stops for you or asks you a question",
+  "modules": ["./register.ts"]
+}

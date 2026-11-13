@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-13
+
+### Added
+
+- `pr_risk`: Gemini Decision (`gemini-decision-1`) as a second backend beside TypeSafe Jev. New options `gemini_api_key` (falls back to `GEMINI_DECISIONS_API_KEY`, then `GEMINI_API_KEY`), `decision_backend` (`auto`, `typesafe`, `gemini`, `both`) and `primary_backend`, and a `backend` tool input. With both keys and `auto`, `pr-open` asks which to use. `both` runs the two side by side: the primary backend sets the level and label, `comparison` holds each backend's levels, the **Risk** section shows the other's level and whether it differs, and each pair is logged to `~/.cache/dev-kit/compare.jsonl`.
+- `fe-eval.mjs --live --backend gemini` scores the cohort with Gemini Decision's answers.
+
+### Changed
+
+- Requires Claude Code v2.1.271 or later, for the fixed-choice options; the mod already needs v2.1.287.
+- The risk label `pr-open` creates is described as "Pull request risk assessed by dev-kit pr_risk".
+
+### Fixed
+
+- `pr_risk`: a rate-limited or failed request now waits for its retry in a `sleep` process, so the wait no longer counts against the hook's 10 s budget.
+
 ## [0.9.1] - 2026-11-12
 
 ### Fixed
