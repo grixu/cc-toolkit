@@ -128,11 +128,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const isPositional = (a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--lang'
   const file = args.find(isPositional)
   const lang = args.includes('--lang') ? args[args.indexOf('--lang') + 1] : null
-  if (!file || (lang && !LANGUAGES.includes(lang))) {
+  const badUsage = (reason) => {
+    if (reason) console.error(reason)
     console.error('usage: node scan.mjs <file> [--lang en|pl]')
     process.exit(2)
   }
-  const hits = scan(readFileSync(file, 'utf8'), { langs: lang ? [lang] : undefined })
+  if (lang !== null && !LANGUAGES.includes(lang)) badUsage(`--lang takes en or pl, got ${lang ?? 'nothing'}`)
+  if (!file) badUsage()
+  let text
+  try {
+    text = readFileSync(file, 'utf8')
+  } catch (err) {
+    badUsage(`cannot read ${file}: ${err.message}`)
+  }
+  const hits = scan(text, { langs: lang ? [lang] : undefined })
   for (const h of hits) console.log(`${file}:${h.line}:${h.col}  ${h.kind}  "${h.match}"`)
   const counts = Object.entries(Object.groupBy(hits, (h) => h.kind)).map(([k, v]) => `${k} ${v.length}`)
   console.log(hits.length ? `\n${hits.length} hits: ${counts.join(', ')}` : 'no mechanical hits')

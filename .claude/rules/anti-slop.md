@@ -28,7 +28,7 @@ Before adding a pattern, search all five; extend the existing entry instead of a
 
 After changing a lexicon or the scanner, run it on prose and on a file full of code. Code, URLs and markup must yield no hits, and real docs (`plugins/dev-kit/README.md`) only a handful.
 
-The scan reports leads; `SKILL.md` says the model judges each one. Keep it advisory (exit 0) and keep it free of dependencies.
+The scan reports leads; `SKILL.md` says the model judges each one. Keep it advisory (exit 0 on any findings, exit 2 on bad usage) and keep it free of dependencies.
 
 ## Callers
 
