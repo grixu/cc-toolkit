@@ -69,6 +69,11 @@ export function register(on, options) {
             type: 'object',
             properties: {
               base: { type: 'string', description: 'The branch the change merges into, such as main' },
+              repo: {
+                type: 'string',
+                description:
+                  "Optional. The absolute path of the working tree the branch is checked out in, such as a git worktree outside the session's directory. Without it the tool reads the session's working directory, then the directory the session started in.",
+              },
               context: {
                 type: 'string',
                 description:
@@ -141,7 +146,7 @@ export function register(on, options) {
 
   on('tool.call', { tool: 'mcp__dev-kit__pr_risk' }, async ($, e) => {
     try {
-      const report = await assess($, e.base, options, config, e.slices, e.context, e.testing_policy, e.execution_context, e.risk_experiment, e.risk_policy, e.backend)
+      const report = await assess($, e.base, options, config, e.slices, e.context, e.testing_policy, e.execution_context, e.risk_experiment, e.risk_policy, e.backend, e.repo)
       return { result: typeof report === 'string' ? report : JSON.stringify(report, null, 2) }
     } catch (error) {
       return unavailable(error instanceof Error ? error.message : String(error))
@@ -153,13 +158,13 @@ function unavailable(reason: string) {
   return { result: 'Risk assessment unavailable: ' + reason }
 }
 
-export async function assess($, base: unknown, options, config, proposed?: unknown, context?: unknown, testingPolicy?: unknown, executionContext?: unknown, riskExperiment?: unknown, riskPolicy?: unknown, requestedBackend?: unknown) {
+export async function assess($, base: unknown, options, config, proposed?: unknown, context?: unknown, testingPolicy?: unknown, executionContext?: unknown, riskExperiment?: unknown, riskPolicy?: unknown, requestedBackend?: unknown, repo?: unknown) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
   const keys = await providerKeys($, options)
   const chosen = chooseBackends(options, requestedBackend, keys, 'dev-kit')
   if (chosen === 'choose') return choiceNeeded('mcp__dev-kit__pr_risk')
 
-  const cwd = await repoRoot($)
+  const cwd = await repoRoot($, repo)
   const ref = await resolveBase($, cwd, base)
   const range = `${ref}...HEAD`
   const [commits, numstat, nameStatus] = await Promise.all([
@@ -173,7 +178,7 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
     const [added, deleted, ...path] = line.split('\t')
     return { path: path.join('\t'), binary: added === '-', added: Number(added) || 0, deleted: Number(deleted) || 0 }
   })
-  if (!entries.length) throw new Error(`no changes between ${ref} and HEAD`)
+  if (!entries.length) throw new Error(`no changes between ${ref} and HEAD in ${cwd}`)
 
   const isReviewable = (f: { path: string; binary: boolean }) => !f.binary && !isExcluded(f.path)
   const excluded = entries.filter((f) => !isReviewable(f)).map((f) => f.path)
@@ -327,8 +332,15 @@ async function sliceChange(
 }
 
 // The session's working directory follows the model's `cd`, which can leave the repository for a scratchpad or a
-// work dir, so fall back to the directory the session started in.
-async function repoRoot($): Promise<string> {
+// work dir, so fall back to the directory the session started in. Neither finds a worktree outside the session's
+// directories, so a caller-named `repo` wins, and it never falls back: assessing another checkout is worse than none.
+async function repoRoot($, repo?: unknown): Promise<string> {
+  if (repo !== undefined) {
+    if (typeof repo !== 'string' || !/^(\/|[A-Za-z]:[\\/])/.test(repo)) throw new Error('`repo` must be an absolute path')
+    const given = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: repo, timeoutMs: 60_000 }).catch(() => undefined)
+    if (given?.exitCode === 0) return given.stdout.trim()
+    throw new Error(`${repo} is not in a git repository`)
+  }
   const here = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { timeoutMs: 60_000 })
   if (here.exitCode === 0) return here.stdout.trim()
   const root = await $.session.root()
