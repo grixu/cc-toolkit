@@ -1146,20 +1146,30 @@ test('with both keys and no choice, asks for one before running git or sending a
   expect(calls).toBe(0)
 })
 
-test('with both backends, levels come from the primary, both are compared and the pair is logged', async ($, on) => {
-  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g', HOME: '/home/u' })
+const NO_ORIGIN = { value: { exitCode: 2, stdout: '', stderr: "error: No such remote 'origin'" } }
+
+function loggingGit(lines: string[][], origin: string | null = 'git@github.com:acme/shop.git\n') {
   const git = fakeGit(AUTH_CHANGE)
-  const lines: string[][] = []
-  on('process.run', ($, e) => {
+  return ($, e) => {
     const argv: string[] = e.argv
     if (argv[0] === 'sh') {
       lines.push(argv.slice(-2))
       return ok('')
     }
+    if (argv[1] === 'remote') {
+      expect(e.init?.cwd).toBe('/work')
+      return origin === null ? NO_ORIGIN : ok(origin)
+    }
     if (argv[1] === 'rev-parse' && argv[2] === 'HEAD') return ok('abc123\n')
     if (argv[1] === 'branch') return ok('feat/login\n')
     return git($, e)
-  })
+  }
+}
+
+test('with both backends, levels come from the primary, both are compared and the pair is logged', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g', HOME: '/home/u' })
+  const lines: string[][] = []
+  on('process.run', loggingGit(lines))
   on('http.fetch', ($, e) => ({ value: e.url === GEMINI ? geminiAnswer(0, 0) : jevAnswer(4.2, 0.8, ['authentication']) }))
 
   const report = JSON.parse((await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })).result)
@@ -1175,9 +1185,26 @@ test('with both backends, levels come from the primary, both are compared and th
   expect(report.comparison[1].level).not.toBe('high')
   expect(lines.length).toBe(1)
   expect(lines[0][0]).toBe('/home/u/.cache/dev-kit/compare.jsonl')
-  expect(JSON.parse(lines[0][1])).toMatchObject({ repo: 'work', branch: 'feat/login', head: 'abc123', base: 'origin/main' })
+  expect(JSON.parse(lines[0][1])).toMatchObject({ repo: 'shop', branch: 'feat/login', head: 'abc123', base: 'origin/main' })
   expect(lines[0][1]).not.toContain('checkToken')
 })
+
+for (const { origin, repo } of [
+  { origin: 'https://github.com/acme/shop\n', repo: 'shop' },
+  { origin: 'https://github.com/acme/shop.git/\n', repo: 'shop' },
+  { origin: null, repo: 'work' },
+]) {
+  test(`logs the repository as ${repo} for the origin ${JSON.stringify(origin)}`, async ($, on) => {
+    mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g', HOME: '/home/u' })
+    const lines: string[][] = []
+    on('process.run', loggingGit(lines, origin))
+    on('http.fetch', ($, e) => ({ value: e.url === GEMINI ? geminiAnswer(0, 0) : jevAnswer(4.2, 0.8, ['authentication']) }))
+
+    await $.tool.call({ tool: TOOL, base: 'main', backend: 'both' })
+
+    expect(JSON.parse(lines[0][1]).repo).toBe(repo)
+  })
+}
 
 test('with both backends, one that fails leaves the other assessing and is named', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 't', GEMINI_API_KEY: 'g' })

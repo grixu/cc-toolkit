@@ -288,12 +288,24 @@ async function logComparison($, cwd: string, ref: string, comparison: Record<str
   const home = trimmedOption(await $.env.get('HOME'), '')
   if (!home) return
   try {
-    const [head, branch] = await Promise.all([git($, cwd, ['rev-parse', 'HEAD']), git($, cwd, ['branch', '--show-current'])])
-    const entry = { at: new Date().toISOString(), repo: cwd.split('/').pop(), branch: branch.trim(), head: head.trim(), base: ref, results: comparison }
+    const [head, branch, repo] = await Promise.all([
+      git($, cwd, ['rev-parse', 'HEAD']),
+      git($, cwd, ['branch', '--show-current']),
+      manifestRepo($, cwd),
+    ])
+    const entry = { at: new Date().toISOString(), repo, branch: branch.trim(), head: head.trim(), base: ref, results: comparison }
     await appendLine($, `${home}/${COMPARE_LOG}`, JSON.stringify(entry))
   } catch {
     // A log that cannot be written never costs the user their assessment.
   }
+}
+
+// The proof manifest's `<repo>`, `basename -s .git "$(git remote get-url origin)"`: worktrees share the remote, while
+// the toplevel's name differs per worktree.
+async function manifestRepo($, cwd: string): Promise<string> {
+  const r = await $.process.run(['git', 'remote', 'get-url', 'origin'], { cwd, timeoutMs: 60_000 })
+  const name = r.exitCode === 0 ? r.stdout.trim().replace(/\/+$/, '').split('/').pop()?.replace(/\.git$/, '') : ''
+  return name || (cwd.split('/').pop() ?? '')
 }
 
 type Slicing = { source: 'caller' | 'model' | 'size'; slices?: Slice[]; reason?: string }
