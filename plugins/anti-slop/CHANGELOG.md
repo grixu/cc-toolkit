@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-13
+
 ### Added
 
 - `anti-slop` skill. It cleans AI slop out of English and Polish prose without changing what the prose says, in four modes: cleanup, diagnose, file and embedded (for other skills).
