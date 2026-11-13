@@ -1,11 +1,11 @@
 ---
 title: /pr-proof:walkthrough-video
-description: Nagrywa wideo z narracją, na którym twoja zmiana działa w uruchomionej aplikacji, zgłasza, co poszło źle na nagraniu, i po twojej akceptacji dołącza wideo do pull requesta.
+description: Nagrywa wideo z narracją, na którym twoja zmiana działa w uruchomionej aplikacji, zgłasza, co poszło źle na nagraniu, i po twojej akceptacji dostarcza wideo, do manifestu prepare-proof albo prosto do pull requesta.
 group: guides
-skill: pr-proof
+skill: walkthrough-video
 sidebar:
   label: walkthrough-video
-  order: 2
+  order: 5
 ---
 
 import SkillFlow from '~/components/SkillFlow.astro'
@@ -15,9 +15,12 @@ Walkthrough to jeden test Playwright, który scena po scenie opowiada historię 
 playwright-recast renderuje go do MP4 z wtopionymi napisami.
 Tempo jest celowo spokojne: widz widzi, co jest klikane, czyta, co jest wpisywane, i ma czas przeczytać każdy napis.
 
+[`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) uruchamia ten skill za ciebie, gdy zaplanuje wideo, w trybie `record-only`.
+Sam uruchamiasz go po wideo spoza tego procesu, na przykład z całą funkcją dla product ownera.
+
 ## Kiedy po niego sięgnąć
 
-- Branch jest przejrzany i przetestowany, a reviewer ma zobaczyć, że działa, zanim przeczyta kod.
+- Branch jest przejrzany i przetestowany, a reviewer ma zobaczyć, że działa, zanim przeczyta kod. Ten przypadek obsługuje `prepare-proof`.
 - Product owner albo inna osoba spoza zespołu deweloperskiego chce zobaczyć funkcję od początku do końca.
 - Poprawki do tego, co pokazało wcześniejsze nagranie, są gotowe i potrzebne jest nowe ujęcie.
 
@@ -42,10 +45,14 @@ Z pull requestem albo branchem nagranie pokazuje tylko to, co ta zmiana zmienił
 Bez nich pokazuje całą funkcję.
 Gdy nie wskażesz widza, skill nagrywa dla osoby robiącej review produktowe.
 
+Trzeci opcjonalny argument, `record-only`, zmienia tylko to, gdzie trafia wideo po twojej akceptacji.
+Przekazuje go `prepare-proof`; sam rzadko go wpisujesz.
+Różnicę wyjaśnia sekcja [Jak wideo jest dostarczane](#jak-wideo-jest-dostarczane).
+
 ## Jak przebiega
 
 <SkillFlow
-  skill="pr-proof"
+  skill="walkthrough-video"
   input="Pull request, branch, spec albo funkcja i to, kto ogląda"
   steps={[
     { name: 'Wymagania', does: 'Spisuje każdą zmianę widoczną dla użytkownika z kryteriami akceptacji; równolegle sprawdzenie narzędzi wybiera wersje.', leaves: 'requirements.md' },
@@ -53,7 +60,7 @@ Gdy nie wskażesz widza, skill nagrywa dla osoby robiącej review produktowe.
     { name: 'Scenariusz', does: 'Pisze sceny; osobny subagent sprawdza je z kodem i poprawia.', leaves: 'scenario.md' },
     { name: 'Nagranie', does: 'Nagrywa test, renderuje MP4 i przegląda własne klatki.', leaves: 'out/<slug>.mp4', loop: 'do dwóch powtórek, dopóki sprawdzenie klatek nie przejdzie' },
     { name: 'Raport', does: 'Daje ci wideo, a przed resztą błędy i bugi widoczne na nagraniu.' },
-    { name: 'Dostarczenie', does: 'Po twojej akceptacji kopiuje wideo i dołącza je do pull requesta.', leaves: '~/Downloads/<ticket-or-PR>-<slug>.mp4' },
+    { name: 'Dostarczenie', does: 'Po twojej akceptacji zgłasza wideo do prepare-proof, a uruchomiony samodzielnie kopiuje je i dołącza do pull requesta.', leaves: 'out/<slug>.mp4 albo ~/Downloads/<ticket-or-PR>-<slug>.mp4' },
   ]}
   next={['pr-open']}
 />
@@ -66,6 +73,7 @@ Wymagania pochodzą ze specu, z pull requesta i jego ticketu, z testów e2e i ze
 Każde jest oznaczone jako `stated`, gdy mówi o nim dokument, albo `derived`, gdy zostało odczytane z testów lub kodu.
 
 Krok nagrania uruchamia lokalny stack, jeśli nikt inny tego nie zrobił, nagrywa test i renderuje wideo.
+W trybie `record-only` korzysta ze stacka, który przygotował `prepare-proof`, i nigdy żadnego nie uruchamia ani nie zatrzymuje.
 Potem sprawdza własne klatki: czytelne napisy do 60 znaków, dość czasu na przeczytanie każdego, żadnej akcji uciętej w połowie, żadnego toasta z błędem ani pustego ekranu.
 Gdy po trzecim ujęciu któreś sprawdzenie dalej nie przechodzi, skill się zatrzymuje i zgłasza, które i dlaczego.
 
@@ -80,9 +88,23 @@ Gdy jest coś do potwierdzenia, skill przedstawia ci to, zanim powstanie scenari
 Odpowiedzi trafiają do `requirements.md` pod `## User decisions` i wiążą każdy późniejszy krok.
 Wznowione uruchomienie nie pyta o nie ponownie.
 
-## Jak wideo trafia do pull requesta
+## Jak wideo jest dostarczane
 
-Po twojej akceptacji skill dostarcza wideo w dwa miejsca:
+Dostarczenie zaczyna się po twojej akceptacji wideo i zależy od tego, jak skill został uruchomiony.
+
+### Z `record-only`, pod prepare-proof
+
+Skill zgłasza do `prepare-proof` bezwzględną ścieżkę do MP4 w `out/` swojego folderu roboczego i pliki, których dotyczy wideo.
+Sprawdza te pliki z nagranymi scenami i mówi, które dodał albo usunął i dlaczego.
+Nie kopiuje wideo do `~/Downloads/` i nie dotyka pull requesta.
+
+Potem `prepare-proof` zapisuje wpis wideo w [manifeście dowodów](/pl/plugins/pr-proof/#jak-dowód-trafia-do-pull-requesta).
+Wideo trafia do pull requesta dopiero wtedy, gdy uruchomisz [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), który wgrywa je do sekcji `## Proof`.
+Nie zatrzymuj stacka, dopóki nie zaakceptujesz wideo, bo na nim nagrywa się powtórka.
+
+### Samodzielnie
+
+Uruchomiony bez `record-only` skill dostarcza wideo w dwa miejsca:
 
 1. Kopiuje MP4 do `~/Downloads/<ticket-or-PR>-<slug>.mp4`. Powtórka dostaje `-v2`, `-v3`, a wcześniejszą wersję skill usuwa tylko na twoje słowo.
 2. Gdy zmiana ma pull request, bez ponownego pytania dodaje na końcu opisu sekcję `### Video walkthrough`. Sekcja zawiera wideo, a gdy ujęcie podstawiało dane, także jedną linijkę o tym, co podstawiono.
@@ -92,13 +114,10 @@ Potem skill czyta opis ponownie: sekcja musi zawierać ten link, a reszta musi s
 
 :::note[Jeszcze bez pull requesta]
 Skill dołącza wideo tylko do pull requesta, który już istnieje.
-Bez niego wideo zostaje w `~/Downloads/`, a `/dev-kit:pr-open` go stamtąd nie weźmie.
-Najpierw otwórz pull request, potem nagrywaj, albo dołącz plik do opisu samodzielnie.
+Bez niego wideo zostaje w `~/Downloads/`, a `/dev-kit:pr-open` go stamtąd nie weźmie, bo samodzielne uruchomienie nie zapisuje wpisu w manifeście.
+Najpierw otwórz pull request, potem nagrywaj, dołącz plik do opisu samodzielnie albo zostaw nagranie `prepare-proof`.
 :::
 
-Gdy wideo jest już w opisie, [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) z niego korzysta.
-Uruchom go ponownie na tym pull requeście: ocena ryzyka czyta opis i liczy wgrane wideo jako dowód, że zmiana działa.
-Ten dowód może obniżyć poziom ryzyka.
 Gdy pr-open przepisuje opis, zachowuje sekcję `### Video walkthrough`, bo zachowuje każdą sekcję, której sam nie napisał.
 
 ## Powtórka po poprawkach
@@ -125,12 +144,12 @@ Gdy ten folder istnieje, nowe uruchomienie wznawia pracę po ostatnim skończony
 
 Tabela 1. Folder roboczy jednego walkthrough.
 
-Przy dostarczeniu skill usuwa `recast/.state/` i `recast/test-results/`, bo trace'y Playwrighta zawierają ciasteczka sesji.
-Gdy skill sam uruchomił lokalny stack, pyta, czy go zatrzymać.
+Przy dostarczeniu, w obu trybach, skill usuwa `recast/.state/` i `recast/test-results/`, bo trace'y Playwrighta zawierają ciasteczka sesji.
+Gdy skill sam uruchomił lokalny stack, pyta, czy go zatrzymać; stack wywołującego zatrzymuje wywołujący.
 
 ## Gdy uruchamia go inny agent
 
-walkthrough-video może zostać uruchomiony przez koordynatora albo skill od pull requestów.
+walkthrough-video może zostać uruchomiony przez `prepare-proof`, koordynatora albo skill od pull requestów.
 Wtedy nie może zapytać cię bezpośrednio, więc pytania wracają do tego agenta jako blok `Confirmation needed`, a agent pyta ciebie.
 Raport zawiera też id subagenta nagrania, żeby wywołujący mógł go wznowić do powtórki.
 Gdy wywołujący wskaże inne miejsce na wideo albo sam je dołącza, jego wybór wygrywa z domyślną sekcją.
@@ -143,6 +162,7 @@ Gdy wywołujący wskaże inne miejsce na wideo albo sam je dołącza, jego wybó
 
 ## Następne kroki
 
-- Uruchom ponownie [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) na pull requeście, żeby etykieta ryzyka uwzględniła wideo.
+- Uruchom [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), który umieszcza wideo z `record-only` w sekcji `## Proof` pull requesta.
+- Pozwól [`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) ocenić, czy branch potrzebuje też zrzutów ekranu albo transkryptów.
 - Oddaj pull request [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/), który odpowiada na komentarze z review i trzyma CI na zielono do akceptacji.
 - Zobacz cały [etap review człowieka](/pl/lifecycle/human-review/).

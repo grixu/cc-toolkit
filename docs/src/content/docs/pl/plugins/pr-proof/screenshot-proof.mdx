@@ -1,0 +1,95 @@
+---
+title: /pr-proof:screenshot-proof
+description: Robi zrzuty ekranów zmienionych w branchu w każdym breakpoincie, z aplikacji, która już działa, i zapisuje zaakceptowane przez ciebie zrzuty w manifeście dowodów brancha.
+group: guides
+skill: screenshot-proof
+sidebar:
+  label: screenshot-proof
+  order: 3
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Przestylowaną stronę albo nowy komponent najłatwiej przejrzeć na obrazku.
+`screenshot-proof` robi jeden zrzut całej strony dla każdego zmienionego ekranu w każdej szerokości viewportu i zostawia tylko te, które zaakceptujesz.
+Z `before` robi też zrzuty tych samych ekranów z bazy, żeby reviewer mógł je porównać.
+
+Nigdy nie uruchamia, nie zasila danymi ani nie zatrzymuje stacka: aplikacja musi już działać.
+[`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) uruchamia go za ciebie, z działającym stackiem; ręcznie uruchamiasz go, żeby powtórzyć zrzuty po poprawce.
+
+## Uruchom go
+
+<Strip cmd="/pr-proof:screenshot-proof" />
+
+Uruchomiony ręcznie, skill pyta o to, czego nie da się ustalić z argumentów i rozmowy:
+
+- URL działającej aplikacji, a z `before` także URL stacka działającego na bazie;
+- gdzie leżą dane logowania użytkowników testowych, jako ścieżka albo źródło, nigdy wartość.
+
+Pliki, których dotyczą zrzuty, wybiera z diffu względem bazy, którą domyślnie jest domyślny branch repozytorium.
+Na domyślnym branchu albo przy odłączonym HEAD odmawia.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="screenshot-proof"
+  input="URL działającej aplikacji i branch ze zmianami w UI"
+  steps={[
+    { name: 'Ekrany', does: 'Spisuje ekrany, które diff zmienia z wyglądu albo zachowania, i poprawia przekazaną listę plików.' },
+    { name: 'Szerokości', does: 'Bierze szerokości viewportu z opcji, z breakpointów projektu albo domyślne.' },
+    { name: 'Zrzuty', does: 'Loguje się i robi jeden PNG całej strony na ekran i szerokość, a z before także na ekran bazy.', leaves: 'screenshots/' },
+    { name: 'Akceptacja', does: 'Pokazuje ci każdy zrzut i zostawia te, które zaakceptujesz; dla każdego odrzuconego proponuje powtórkę.' },
+    { name: 'Zapis', does: 'Zapisuje zaakceptowane zrzuty w manifeście dowodów.', leaves: 'manifest.json' },
+  ]}
+  next={['pr-open']}
+/>
+
+### Szerokości viewportu
+
+Skill bierze pierwszą pasującą z tych możliwości:
+
+1. Opcję `screenshot_widths`, na przykład `375,768,1440`.
+2. Breakpointy projektu z jego konfiguracji stylów: Tailwind `theme.screens`, CSS custom media albo breakpointy `@media` lub tokeny design systemu.
+3. 375, 768 i 1440 pikseli.
+
+### Przeglądarka
+
+Skill używa `agent-browser`, gdy jest w `PATH`.
+W przeciwnym razie pisze jeden skrypt Playwrighta i uruchamia go przez `pnpm dlx`, z tą samą wersją `@playwright/test`, której używa wideo.
+Raport mówi, co zostało użyte.
+W obu przypadkach dane logowania są czytane tylko w skrypcie albo kroku logowania, który z nich korzysta.
+
+### Zrzuty „przed”
+
+Z `before` i URL-em bazy skill robi zrzuty tych samych ekranów w tych samych szerokościach z bazy.
+Każdy zrzut „przed” to osobny obraz, nazwany jak zrzut „po” z dopiskiem ` (before)`.
+Z `before`, ale bez URL-a bazy, robi tylko zrzuty „po” i informuje, że zrzuty „przed” zostały pominięte.
+
+## O co pyta
+
+Skill pokazuje ci każdy zrzut, ekran po ekranie, i pyta, które zostawić.
+Odrzucony zrzut zostaje usunięty i nigdy nie trafia do manifestu, a skill pyta, czy go powtórzyć.
+Gdy nie zaakceptujesz żadnego zrzutu, nic nie zostaje zapisane.
+
+## Co zostawia
+
+Zrzuty trafiają do `~/.cache/pr-proof/<repo>/<branch>/screenshots/`:
+
+| Plik | Zawiera |
+|---|---|
+| `<screen>-<width>.png` | ekran na branchu w tej szerokości |
+| `<screen>-before-<width>.png` | ten sam ekran na bazie, z `before` |
+
+Tabela 1. Pliki zrzutów. `<screen>` to nazwa ekranu małymi literami, ze słowami połączonymi myślnikami.
+
+Manifest dostaje jeden wpis `screenshots` z twierdzeniem, plikami, których dotyczą zrzuty, i jedną pozycją na każdy zaakceptowany zrzut.
+`pr-open` pokazuje go jako tabelę: jeden wiersz na ekran i jedna kolumna na szerokość.
+
+Raport wymienia użytą przeglądarkę, szerokości i ich źródło, ekrany z zaakceptowanymi zrzutami, poprawki listy plików i każdy pominięty zrzut.
+
+## Następne kroki
+
+- Uruchom [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), żeby zrzuty trafiły do pull requesta.
+- Pozwól [`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) ocenić, czy branch potrzebuje też innego dowodu.
+- Ustaw `screenshot_widths` w [opcjach](/pl/plugins/pr-proof/reference/#opcje).

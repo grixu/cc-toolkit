@@ -1,0 +1,95 @@
+---
+title: /pr-proof:screenshot-proof
+description: Screenshots the screens a branch changed at each breakpoint, from an app that is already running, and records the shots you approve in the branch's proof manifest.
+group: guides
+skill: screenshot-proof
+sidebar:
+  label: screenshot-proof
+  order: 3
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+A restyled page or a new component is easiest to review as a picture.
+`screenshot-proof` takes one full-page screenshot of each changed screen at each viewport width, and keeps only the shots you approve.
+With `before`, it also shoots the same screens on the base, so the reviewer can compare.
+
+It never starts, seeds or stops a stack: the app must already be running.
+[`prepare-proof`](/plugins/pr-proof/prepare-proof/) runs it for you, with the stack up; run it by hand to retake the screenshots after a fix.
+
+## Run it
+
+<Strip cmd="/pr-proof:screenshot-proof" />
+
+Run by hand, the skill asks for what it can't settle from the arguments and the conversation:
+
+- the running app's URL, and with `before`, the URL of a stack running at the base;
+- where the test users' credentials live, as a path or a source, never a value.
+
+It picks the files the shots prove from the diff against the base, which defaults to the repository's default branch.
+It refuses on the default branch or a detached HEAD.
+
+## How it runs
+
+<SkillFlow
+  skill="screenshot-proof"
+  input="A running app's URL and a branch with UI changes"
+  steps={[
+    { name: 'Screens', does: 'Lists the screens the diff makes look or behave differently, and corrects the files it was given.' },
+    { name: 'Widths', does: 'Takes the viewport widths from the options, the project’s breakpoints, or a default.' },
+    { name: 'Shoot', does: 'Logs in and takes one full-page PNG per screen and width, and per base screen with before.', leaves: 'screenshots/' },
+    { name: 'Approve', does: 'Shows you every shot and keeps the ones you approve; offers a retake for each rejected one.' },
+    { name: 'Record', does: 'Writes the approved shots into the proof manifest.', leaves: 'manifest.json' },
+  ]}
+  next={['pr-open']}
+/>
+
+### Viewport widths
+
+The skill uses the first of these that applies:
+
+1. The `screenshot_widths` option, such as `375,768,1440`.
+2. The project's breakpoints, from its styling configuration: Tailwind `theme.screens`, CSS custom media or `@media` breakpoints, or the design system's tokens.
+3. 375, 768 and 1440 pixels.
+
+### The browser
+
+The skill uses `agent-browser` when it's on `PATH`.
+Otherwise it writes one Playwright script and runs it through `pnpm dlx`, pinned to the same `@playwright/test` version the video uses.
+The report says which one ran.
+Either way, the credentials are read only inside the script or the login step that uses them.
+
+### Before shots
+
+With `before` and a base URL, the skill shoots the same screens at the same widths against the base.
+Each before shot is its own image, named after the after shot with ` (before)`.
+With `before` and no base URL, it takes only the after shots and says the before shots were skipped.
+
+## What it asks you
+
+The skill shows you every shot, screen by screen, and asks which to keep.
+A rejected shot is deleted and never enters the manifest, and the skill asks whether to retake it.
+When no shot is approved, it writes nothing.
+
+## What it leaves
+
+Shots go to `~/.cache/pr-proof/<repo>/<branch>/screenshots/`:
+
+| File | Holds |
+|---|---|
+| `<screen>-<width>.png` | the screen on the branch at that width |
+| `<screen>-before-<width>.png` | the same screen on the base, with `before` |
+
+Table 1. The screenshot files. `<screen>` is the screen's name in lowercase kebab case.
+
+The manifest gets one `screenshots` entry with a claim, the files the shots prove and one item per approved shot.
+`pr-open` renders it as a table per entry: one row per screen and one column per width.
+
+The report names the browser that ran, the widths and where they came from, the screens and their approved shots, the corrections to the files, and any shot left out.
+
+## Next steps
+
+- Run [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) to put the shots in the pull request.
+- Let [`prepare-proof`](/plugins/pr-proof/prepare-proof/) decide whether the branch needs other proof too.
+- Set `screenshot_widths` in the [options](/plugins/pr-proof/reference/#options).

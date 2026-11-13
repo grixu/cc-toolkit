@@ -1,0 +1,115 @@
+---
+title: /pr-proof:terminal-proof
+description: Captures what a change does when it runs, a command's output or HTTP requests and their responses, masks secrets, has a second agent review it, and records it in the branch's proof manifest.
+group: guides
+skill: terminal-proof
+sidebar:
+  label: terminal-proof
+  order: 4
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Some changes have nothing to show on a screen: a new CLI flag, a migration's output, a different status code from an endpoint.
+`terminal-proof` runs the changed thing and keeps a transcript of what it did, so the reviewer can read the result without running the branch.
+It never starts, seeds or stops a stack.
+
+## Two modes
+
+| Mode | Captures | Needs the app |
+|---|---|---|
+| `terminal` | a CLI command, script, migration, job or build, and what it prints | only when the command talks to the app |
+| `api` | HTTP requests against the running app, with their status, the headers the claim needs and the body | always |
+
+Table 1. The two modes. Each writes its own manifest entry, kind `terminal` or kind `api`, and `pr-open` shows them as separate proofs.
+
+Test-runner output isn't proof in either mode.
+Test results belong in the pull request's testing notes, which `pr-open` writes.
+
+## Run it
+
+<Strip cmd="/pr-proof:terminal-proof" />
+
+Pass the mode:
+
+```
+/pr-proof:terminal-proof terminal
+/pr-proof:terminal-proof api
+```
+
+[`prepare-proof`](/plugins/pr-proof/prepare-proof/) runs both modes for you when it plans them, passing the app's URL, the credentials' location and the files to prove.
+Run by hand, the skill asks for the URL when the capture needs the app, and where the credentials live, as a path or a source, never a value.
+It picks the files the transcript exercises from the diff against the base, which defaults to the repository's default branch.
+It refuses on the default branch or a detached HEAD.
+
+## How it runs
+
+<SkillFlow
+  skill="terminal-proof"
+  input="A mode, and the running app's URL when the capture needs it"
+  steps={[
+    { name: 'Plan', does: 'Names the behavior the change makes different, in one sentence that becomes the claim.' },
+    { name: 'Capture', does: 'Runs each command or request non-interactively, with a timeout, and writes it down with its output.', leaves: '<kind>.raw.txt' },
+    { name: 'Mask', does: 'Replaces secrets in the transcript with ***.', leaves: '<kind>.txt' },
+    { name: 'Review', does: 'A fresh subagent checks for anything the mask missed, and that the transcript shows the claim.' },
+    { name: 'Record', does: 'Deletes the raw transcript and writes the entry into the proof manifest.', leaves: 'manifest.json' },
+  ]}
+  next={['pr-open']}
+/>
+
+### Capture
+
+Each command appears with `$ ` before it, and each request with its method and URL, followed by what came back.
+When a request needs credentials, a script in the work folder reads them and sends the request.
+The transcript records the request without the credential.
+The skill leaves out unrelated noise, but never edits what the changed thing printed.
+
+### Mask
+
+A script replaces likely secrets with `***`, including:
+
+- values next to names such as `token`, `secret`, `password`, `api_key`, `authorization`, `cookie` or `session`, in JSON, `name=value` and `Name: value` form;
+- bearer tokens, `-u user:password` and `--password` arguments, and credentials inside URLs;
+- private key blocks, JWTs, and GitHub, Slack, Google, AWS and `sk-` keys.
+
+When the script fails, the entry is dropped.
+
+### Review
+
+A fresh subagent, not the one that captured, reads the masked transcript with the claim and the credentials' location, never their values.
+It answers two questions:
+
+- Does the transcript hold anything that could be a secret or a personal value the mask missed, such as a token, a cookie, a session id, or a real person's email or name?
+- Does it show the claim?
+
+Any doubt drops the entry.
+The skill doesn't hand-edit the transcript to pass the review.
+
+## What it leaves
+
+| File | Holds |
+|---|---|
+| `~/.cache/pr-proof/<repo>/<branch>/terminal.txt` | the masked, reviewed transcript in `terminal` mode |
+| `~/.cache/pr-proof/<repo>/<branch>/api.txt` | the masked, reviewed transcript in `api` mode |
+
+Table 2. The transcript files. The raw transcript and any script that read credentials are deleted.
+
+The manifest gets one entry for the mode, with the claim, the files and the transcript's path.
+`pr-open` renders the transcript as a code block, folded when it runs over 20 lines.
+
+The report gives the mode, the claim, the transcript path, the files, and any correction to the files passed in.
+
+## What can go wrong
+
+Each of these drops the entry, and the report says why:
+
+- **Nothing observable changed.** No behavior of the change can be seen by running it.
+- **The run fails, or shows other behavior than the claim.** That's a finding for the report, not proof.
+- **The mask script exits with an error.**
+- **The review has a doubt.** The transcript may still hold a secret or a personal value, or doesn't show the claim.
+
+## Next steps
+
+- Run [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) to put the transcript in the pull request.
+- Let [`prepare-proof`](/plugins/pr-proof/prepare-proof/) decide whether the branch needs other proof too.

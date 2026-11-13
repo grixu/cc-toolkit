@@ -1,11 +1,11 @@
 ---
 title: /pr-proof:walkthrough-video
-description: Records a narrated video of your change working in the running app, reports what went wrong on camera, and attaches the video to the pull request once you accept it.
+description: Records a narrated video of your change working in the running app, reports what went wrong on camera, and delivers the video once you accept it, to prepare-proof's manifest or straight to the pull request.
 group: guides
-skill: pr-proof
+skill: walkthrough-video
 sidebar:
   label: walkthrough-video
-  order: 2
+  order: 5
 ---
 
 import SkillFlow from '~/components/SkillFlow.astro'
@@ -15,9 +15,12 @@ A walkthrough is one Playwright test that tells the change's story scene by scen
 playwright-recast renders it into an MP4 with burned-in captions.
 The pacing is calm on purpose: the viewer sees what is clicked, reads what is typed, and has time to read every caption.
 
+[`prepare-proof`](/plugins/pr-proof/prepare-proof/) runs this skill for you when it plans a video, in `record-only` mode.
+You run it yourself for a video outside that flow, such as a whole feature for a product owner.
+
 ## When to reach for it
 
-- A branch is reviewed and tested, and the reviewer should see it work before reading the code.
+- A branch is reviewed and tested, and the reviewer should see it work before reading the code. `prepare-proof` covers this case.
 - A product owner or another non-developer asked to see a feature end to end.
 - You fixed what an earlier video showed, and need a new take.
 
@@ -42,10 +45,14 @@ With a pull request or branch, the video shows only what that change made differ
 Without one, it shows the whole feature.
 When you name no viewer, it records for a product reviewer.
 
+A third optional argument, `record-only`, changes only where the video goes once you accept it.
+`prepare-proof` passes it; you rarely type it yourself.
+[How the video is delivered](#how-the-video-is-delivered) explains the difference.
+
 ## How it runs
 
 <SkillFlow
-  skill="pr-proof"
+  skill="walkthrough-video"
   input="A pull request, branch, spec or feature, and who watches"
   steps={[
     { name: 'Requirements', does: 'Lists every user-visible change with acceptance criteria; a tool check picks versions in parallel.', leaves: 'requirements.md' },
@@ -53,7 +60,7 @@ When you name no viewer, it records for a product reviewer.
     { name: 'Scenario', does: 'Writes the scenes; a separate subagent checks them against the code and fixes them.', leaves: 'scenario.md' },
     { name: 'Recording', does: 'Records the test, renders the MP4 and reviews its own frames.', leaves: 'out/<slug>.mp4', loop: 'up to two retakes while a frame check fails' },
     { name: 'Report', does: 'Gives you the video, then the defects and bugs seen on camera.' },
-    { name: 'Delivery', does: 'Once you accept, copies the video and attaches it to the pull request.', leaves: '~/Downloads/<ticket-or-PR>-<slug>.mp4' },
+    { name: 'Delivery', does: 'Once you accept, reports the video to prepare-proof, or on its own copies it and attaches it to the pull request.', leaves: 'out/<slug>.mp4 or ~/Downloads/<ticket-or-PR>-<slug>.mp4' },
   ]}
   next={['pr-open']}
 />
@@ -66,6 +73,7 @@ The requirements come from the spec, the pull request and its ticket, the e2e te
 Each one is marked `stated` when a document says it, or `derived` when it was read off the tests or code.
 
 The recording step starts the local stack when nobody else has, records the test and renders the video.
+Under `record-only`, it uses the stack `prepare-proof` brought up, and never starts or stops one.
 Then it checks its own frames: readable captions of at most 60 characters, enough time to read each one, no action cut mid-way, and no error toast or blank screen.
 When a check still fails after the third take, it stops and reports which check failed and why.
 
@@ -80,9 +88,23 @@ When there is anything to confirm, the skill puts it to you before it writes the
 Your answers go into `requirements.md` under `## User decisions`, and every later step treats them as binding.
 A resumed run never asks them again.
 
-## How the video reaches the pull request
+## How the video is delivered
 
-Once you accept the video, the skill delivers it in two places:
+Delivery starts once you accept the video, and depends on how the skill was started.
+
+### With `record-only`, under prepare-proof
+
+The skill reports the MP4's absolute path in its work folder's `out/`, and the files the video covers, back to `prepare-proof`.
+It checks those files against the recorded scenes and says which it added or dropped, and why.
+It doesn't copy the video to `~/Downloads/` and doesn't touch the pull request.
+
+`prepare-proof` then writes the video's entry into the [proof manifest](/plugins/pr-proof/#how-the-proof-reaches-the-pull-request).
+The video reaches the pull request only when you run [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/), which uploads it into the `## Proof` section.
+Keep the stack up until you accept the video, because a retake runs on it.
+
+### On its own
+
+Run without `record-only`, the skill delivers the video in two places:
 
 1. It copies the MP4 to `~/Downloads/<ticket-or-PR>-<slug>.mp4`. A retake becomes `-v2`, `-v3`, and an earlier version is deleted only when you say so.
 2. When the change has a pull request, it adds a `### Video walkthrough` section at the end of the description, without asking again. The section holds the video and, when the take staged any data, one line saying what was staged.
@@ -92,13 +114,10 @@ The skill then reads the description back: the section must hold that link, and 
 
 :::note[No pull request yet]
 The skill attaches the video only to a pull request that already exists.
-Without one, the video stays in `~/Downloads/`, and `/dev-kit:pr-open` does not pick it up from there.
-Open the pull request first, then record, or attach the file to the description yourself.
+Without one, the video stays in `~/Downloads/`, and `/dev-kit:pr-open` does not pick it up from there, since a standalone run writes no manifest entry.
+Open the pull request first, then record, attach the file to the description yourself, or let `prepare-proof` run the skill instead.
 :::
 
-Once the video is in the description, [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) works with it.
-Run it again on that pull request: the risk assessment reads the description and counts the uploaded video as evidence that the change works.
-That evidence can lower the risk level.
 When pr-open rewrites the description, it keeps the `### Video walkthrough` section, because it keeps every section it did not write.
 
 ## Retake after fixes
@@ -125,12 +144,12 @@ When that folder exists, a new run resumes after the last finished step.
 
 Table 1. The work folder of one walkthrough.
 
-On delivery, the skill deletes `recast/.state/` and `recast/test-results/`, because Playwright traces hold session cookies.
-When the skill started the local stack, it asks whether to stop it.
+On delivery, in either mode, the skill deletes `recast/.state/` and `recast/test-results/`, because Playwright traces hold session cookies.
+When the skill started the local stack, it asks whether to stop it; a caller's stack is the caller's to stop.
 
 ## When another agent runs it
 
-A coordinator or a pull request skill can dispatch walkthrough-video.
+`prepare-proof`, a coordinator or a pull request skill can dispatch walkthrough-video.
 It can't ask you directly then, so its questions go back to that agent as a `Confirmation needed` block, and that agent asks you.
 The report also includes the recording subagent's id, so the caller can resume it for a retake.
 A caller that names another place for the video, or attaches it itself, takes precedence over the default section.
@@ -143,6 +162,7 @@ A caller that names another place for the video, or attaches it itself, takes pr
 
 ## Next steps
 
-- Run [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) again on the pull request, so the risk label takes the video into account.
+- Run [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/), which puts a `record-only` video into the pull request's `## Proof` section.
+- Let [`prepare-proof`](/plugins/pr-proof/prepare-proof/) decide whether the branch needs screenshots or transcripts too.
 - Let [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) answer review comments and keep CI green until approval.
 - See the whole [human review stage](/lifecycle/human-review/).

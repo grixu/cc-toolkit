@@ -1,6 +1,6 @@
 ---
 title: pr-proof
-description: Reviewer widzi, że zmiana działa, zanim przeczyta choć linijkę kodu, na nagraniu z narracją z działającej aplikacji, dołączonym do pull requesta.
+description: Pokazuje reviewerowi, że zmiana działa, zanim przeczyta kod, dowodem, którego zmiana potrzebuje, wideo z narracją, zrzutami ekranu albo transkryptem z terminala lub API, przekazanym do pull requesta przez pr-open.
 group: start
 sidebar:
   label: Przegląd
@@ -10,57 +10,123 @@ sidebar:
 import LifeMap from '~/components/LifeMap.astro'
 import Strip from '~/components/Strip.astro'
 
-Reviewer, który otwiera pull request, widzi kod i musi sobie wyobrazić, co ten kod robi dla użytkownika.
-pr-proof nagrywa to za niego: MP4 z narracją i wtopionymi napisami, na którym zmiana działa w twojej aplikacji, dołączony do opisu pull requesta.
-Reviewer najpierw ogląda zmianę, a potem czyta kod z tym obrazem w głowie.
+Reviewer, który otwiera pull request, widzi kod i musi sobie wyobrazić, co ten kod robi po uruchomieniu.
+pr-proof mu to pokazuje.
+Ustala, jakiego dowodu potrzebuje twoja zmiana, wytwarza go z działającej aplikacji albo z terminala i przekazuje do pull requesta.
+Reviewer sprawdza, że zmiana działa, bez uruchamiania brancha, a potem czyta kod z tym obrazem w głowie.
 
-Nagranie łapie też to, czego nikt celowo nie wpisałby do pull requesta.
-Błąd UX albo bug widoczny na nagraniu trafia na początek raportu i nigdy nie jest podpisany jako sukces.
+## Cztery rodzaje dowodu
+
+Każdy rodzaj pasuje do innej zmiany.
+Branch może potrzebować kilku rodzajów albo żadnego:
+
+| Rodzaj | Pasuje do zmiany, która zmienia | Wytwarza go |
+|---|---|---|
+| Wideo | to, co użytkownik robi w UI w kilku krokach, albo jak UI reaguje na kliknięcie, wpisanie tekstu czy wybór | [`walkthrough-video`](/pl/plugins/pr-proof/walkthrough-video/) |
+| Zrzuty ekranu | to, jak ekran wygląda w spoczynku: układ, style, widoczny tekst, nowy komponent albo stan | [`screenshot-proof`](/pl/plugins/pr-proof/screenshot-proof/) |
+| Transkrypt z terminala | to, co komenda, skrypt, migracja, job albo build wypisuje lub robi | [`terminal-proof terminal`](/pl/plugins/pr-proof/terminal-proof/) |
+| Transkrypt z API | to, co zwraca endpoint HTTP albo RPC: status, treść, pola, błędy, nagłówki albo to, kto może go wywołać | [`terminal-proof api`](/pl/plugins/pr-proof/terminal-proof/) |
+
+Tabela 1. Rodzaje dowodu i skill, który wytwarza każdy z nich.
+
+Dokumentacja, komentarze, instrukcje dla agenta, refaktory bez zmiany zachowania, podbicia wersji i changelogi nie potrzebują dowodu.
+Testy nigdy nie są dowodem same w sobie: wynik uruchomienia testów należy do opisu testowania w pull requeście.
 
 ## Gdzie działa
 
 <LifeMap focus="pr-proof" animate={false} />
 
-pr-proof to pierwszy krok [review człowieka](/pl/lifecycle/human-review/).
-Branch jest już przejrzany i przetestowany; teraz nagrywasz dowód.
-Skill dołącza wideo tylko do pull requesta, który już istnieje, więc jeśli chcesz mieć w nim wideo, najpierw go otwórz.
+pr-proof działa w [review człowieka](/pl/lifecycle/human-review/), gdy branch jest już przejrzany i przetestowany.
+Na tym etapie [`pr-open`](/pl/plugins/dev-kit/pr-open/) z dev-kit buduje pull request, a pr-proof dostarcza mu dowód.
 
-## Nagraj dowód
+Na razie uruchamiasz oba skille sam, w tej kolejności:
 
-pr-proof ma jedną komendę:
+1. Uruchom `/pr-proof:prepare-proof` na branchu. Planuje dowód, wytwarza go i zapisuje w manifeście dowodów brancha.
+2. Uruchom `/dev-kit:pr-open`. Czyta manifest i dopisuje do pull requesta sekcję `## Proof`.
 
-<Strip cmd="/pr-proof:walkthrough-video" />
+`pr-open` nigdy nie uruchamia pr-proof za ciebie; czyta tylko to, co pr-proof zostawił.
+Bez `pr-open` dowód zostaje na twoim komputerze.
 
-Podaj numer pull requesta, branch, ścieżkę do specu albo funkcję, a opcjonalnie także to, kto ogląda i co chce zobaczyć.
-Z pull requestem albo branchem nagranie pokazuje, co ta zmiana zmieniła dla użytkownika; bez nich całą funkcję.
-Możesz też opisać zadanie słowami („nagraj demo tego PR”), a Claude sam wybierze skill.
+## Przygotuj dowód
 
-[Przewodnik po walkthrough-video](/pl/plugins/pr-proof/walkthrough-video/) pokazuje, jak przebiega nagranie, o co skill pyta i co zostawia.
+Komenda, którą uruchamiasz, to `prepare-proof`:
+
+<Strip cmd="/pr-proof:prepare-proof" />
+
+Rozstrzyga każdy rodzaj z jednozdaniowym uzasadnieniem i raz pokazuje ci cały plan.
+Po twojej zgodzie uruchamia aplikację, gdy potrzebuje jej któryś zaplanowany rodzaj, i po kolei wywołuje pozostałe skille.
+[Przewodnik po prepare-proof](/pl/plugins/pr-proof/prepare-proof/) pokazuje, jak przebiega uruchomienie.
+
+Każdy skill wytwarzający dowód możesz też uruchomić osobno, na przykład żeby powtórzyć zrzuty ekranu po poprawce:
+
+| Skill | Co robi |
+|---|---|
+| [`/pr-proof:prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) | Planuje, jakich rodzajów potrzebuje branch, uruchamia aplikację, wywołuje skille poniżej i zapisuje wynik |
+| [`/pr-proof:walkthrough-video`](/pl/plugins/pr-proof/walkthrough-video/) | Nagrywa wideo z narracją, na którym zmiana działa w aplikacji |
+| [`/pr-proof:screenshot-proof`](/pl/plugins/pr-proof/screenshot-proof/) | Robi zrzuty zmienionych ekranów w każdym breakpoincie z aplikacji, która już działa |
+| [`/pr-proof:terminal-proof`](/pl/plugins/pr-proof/terminal-proof/) | Zapisuje zamaskowany i przejrzany transkrypt komendy albo żądań HTTP |
+
+Tabela 2. Skille pr-proof.
+
+Możesz też opisać zadanie słowami („przygotuj dowód dla tego brancha”), a Claude sam wybierze skill.
+
+## Jak dowód trafia do pull requesta
+
+Każdy skill pr-proof zapisuje to, co wytworzył, w jednym pliku JSON na branch:
+
+```
+~/.cache/pr-proof/<repo>/<branch>/manifest.json
+```
+
+`<repo>` to nazwa remote'a `origin`, a każdy `/` w nazwie brancha zamienia się w `%2F`.
+Każdy wpis zawiera rodzaj, jednozdaniowe twierdzenie, commit, przy którym powstał, pliki, których dotyczy, oraz obrazy, wideo albo transkrypt.
+Nowy wpis zastępuje wcześniejszy tego samego rodzaju, a pozostałe zostają.
+Pusta lista oznacza, że branch nie potrzebuje dowodu.
+
+`pr-open` czyta manifest, pisze sekcję `## Proof` i wgrywa każdy obraz i wideo na GitHuba.
+Oznacza wpis jako nieaktualny, gdy późniejsze commity zmieniły pliki, których ten wpis dotyczy.
+Pełny format opisuje [dokumentacja referencyjna](/pl/plugins/pr-proof/reference/#manifest-dowodów).
 
 ## Zanim zaczniesz
 
-pr-proof nagrywa twoją aplikację uruchomioną lokalnie, więc maszyna musi umieć ją uruchomić:
-
-- Aplikacja webowa, która startuje z checkoutu, z użytkownikami testowymi, których dane logowania są w pliku, zwykle w pliku danych do e2e. Skill czyta z plików `CLAUDE.md` projektu, jak uruchomić, zasilić danymi i zatrzymać stack.
+- Claude Code v2.1.271 lub nowszy.
+- Do wideo, zrzutów ekranu i transkryptów z API: aplikacja webowa, która startuje lokalnie z checkoutu, z użytkownikami testowymi, których dane logowania są w pliku, zwykle w pliku danych do e2e. Skille czytają z plików `CLAUDE.md` projektu, jak uruchomić, zasilić danymi i zatrzymać stack. Transkrypt z terminala potrzebuje aplikacji tylko wtedy, gdy jego komenda się z nią łączy.
 - Node.js 22.18 lub nowszy i `pnpm`. playwright-recast i `@playwright/test` działają przez `pnpm dlx`, więc nic nie trafia do repozytorium.
-- `ffmpeg` i `ffprobe` w `PATH`, z libass do wtopionych napisów.
+- `ffmpeg` i `ffprobe` w `PATH`, z libass do wtopionych napisów w wideo.
 - `timeout` w `PATH`. Na macOS pochodzi z coreutils.
-- GitHub CLI `gh` 2.103 lub nowszy, zalogowany. Starsze wersje nie dołączą pliku do pull requesta.
-- Opcjonalnie: serwer MCP firecrawl, którym sprawdzenie narzędzi czyta informacje o wydaniach playwright-recast. Do tego wystarczy też `gh`.
+- GitHub CLI `gh` 2.103 lub nowszy, zalogowany, gdy `walkthrough-video` sam dołącza wideo do pull requesta.
+- Opcjonalnie: `agent-browser` w `PATH` do zrzutów ekranu. Bez niego `screenshot-proof` używa Playwrighta przez `pnpm dlx`.
+- Opcjonalnie: serwer MCP firecrawl, którym sprawdzenie narzędzi przed nagraniem czyta informacje o wydaniach playwright-recast. Do tego wystarczy też `gh`.
+- Opcjonalnie: klucz API TypeSafe, klucz Gemini Developer API z dostępem do `gemini-decision-1` albo oba, do narzędzia `proof_signals`.
 
 :::caution[Starszy skill osobisty]
 Jeśli walkthrough-video był wcześniej twoim osobistym skillem, po instalacji usuń `~/.claude/skills/walkthrough-video`.
 Inaczej dwa skille z tym samym opisem konkurują o te same prośby.
 :::
 
+## Co opuszcza twój komputer
+
+Bez klucza TypeSafe ani Gemini nic.
+Narzędzie `proof_signals` w ogóle nie jest rejestrowane, a `prepare-proof` ocenia dowód na podstawie samego diffu.
+
+Z kluczem `prepare-proof` wywołuje `proof_signals`, które pyta model decyzyjny, jakich rodzajów dowodu potrzebuje zmiana.
+Odpowiada Jev od TypeSafe albo Gemini Decision od Google.
+Narzędzie wysyła diffstat, listę zmienionych plików i diff `<base>...HEAD`.
+Pomija lockfile, zminifikowane pliki, source mapy, snapshoty, pliki binarne i pliki w `dist/`, `build/`, `vendor/` i `node_modules/`.
+Nie wysyła opisów commitów.
+
+[Dokumentacja referencyjna](/pl/plugins/pr-proof/reference/#opcje) wymienia opcje, które ustawiają klucze i backend.
+
 ## Czego nigdy nie robi
 
 - Nie instaluje pakietów w repozytorium i nie zmienia śledzonych plików.
 - Nie dotyka kontenerów należących do innego checkoutu albo innej sesji.
-- Nie tworzy, nie zmienia i nie usuwa danych we współdzielonych ani zewnętrznych usługach, chyba że wskażesz konkretny zasób. Takie dane podstawia w przeglądarce, a nagranie mówi o tym w napisie.
+- Nie tworzy, nie zmienia i nie usuwa danych we współdzielonych ani zewnętrznych usługach, chyba że wskażesz konkretny zasób. Wideo podstawia takie dane w przeglądarce.
+- Nie wypisuje danych logowania. Skille czytają je tylko w skryptach, które z nich korzystają, a ty podajesz ścieżkę, nigdy wartość.
+- Nie uznaje za dowód wideo ani zrzutu ekranu, którego nie zaakceptowałeś.
 
 ## Następne kroki
 
-- [Nagraj pierwszy walkthrough](/pl/plugins/pr-proof/walkthrough-video/).
-- Otwórz pull request z [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) przed nagraniem, żeby skill miał do czego dołączyć wideo. Gdy wideo jest już dołączone, uruchom go ponownie, żeby ocena ryzyka je odczytała.
-- Oddaj pull request [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/), który doprowadzi go do akceptacji.
+- [Przygotuj dowód dla brancha](/pl/plugins/pr-proof/prepare-proof/).
+- Otwórz pull request z [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), który doda dowód.
+- Sprawdź opcje, narzędzie i manifest w [dokumentacji referencyjnej](/pl/plugins/pr-proof/reference/).
