@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A custom sound file that can be read but fails to play now falls back to the bundled sound instead of staying silent.
+- The README now says the 4 MiB file limit comes from Claude Code, which refuses to read a larger file for a mod.
+
 ## [0.1.0] - 2026-11-12
 
 ### Added

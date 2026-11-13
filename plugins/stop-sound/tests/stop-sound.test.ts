@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { clipFor, isWaitingForYou, mimeFor } from '../hooks/register.ts'
+import { chime, clipFor, isWaitingForYou, mimeFor } from '../hooks/register.ts'
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
 
@@ -51,6 +51,40 @@ test('picks the custom clip, and the bundled one when the custom file cannot pla
   expect(await clipFor(readable, undefined, bundled.asset)).toEqual(bundled)
   expect(await clipFor(readable, '/s/ding.flac', bundled.asset)).toEqual(bundled)
   expect(await clipFor(missing, '/s/ding.mp3', bundled.asset)).toEqual(bundled)
+})
+
+test('plays the bundled clip when a readable custom file fails to play', async () => {
+  const played: unknown[] = []
+  const host = {
+    fs: { read: async () => ({ base64: 'bm90IGF1ZGlv' }) },
+    audio: {
+      play: async (clip) => {
+        played.push(clip)
+        if (!('asset' in clip)) throw new Error('afplay exited 1')
+      },
+    },
+  }
+
+  await chime(host, '/s/ding.mp3', 'sounds/done.wav')
+
+  expect(played).toEqual([{ base64: 'bm90IGF1ZGlv', mime: 'audio/mpeg' }, { asset: 'sounds/done.wav' }])
+})
+
+test('tries the bundled clip only once when it cannot play', async () => {
+  let plays = 0
+  const host = {
+    fs: { read: async () => ({ base64: '' }) },
+    audio: {
+      play: async () => {
+        plays += 1
+        throw new Error('no audio device')
+      },
+    },
+  }
+
+  await chime(host, undefined, 'sounds/done.wav')
+
+  expect(plays).toBe(1)
 })
 
 test('chimes when the main turn ends with every subagent done', async ($, on) => {
