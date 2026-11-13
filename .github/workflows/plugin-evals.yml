@@ -113,6 +113,11 @@ jobs:
                 --allow-tools Bash Write Edit ToolSearch 'mcp__code-story__*') ;;
             *) echo "unknown suite: $SUITE" >&2; exit 1 ;;
           esac
+          # On Linux the eval sandbox denies writes to all of /tmp, /var/tmp and /dev/shm, the run root it makes
+          # under os.tmpdir() included, so every Bash write fails as read-only; /home is denied for reading.
+          TMPDIR=/opt/eval-tmp
+          sudo install -d -o "$(id -u)" -g "$(id -g)" "$TMPDIR"
+          export TMPDIR
           set +e
           claude plugin eval "${args[@]}" \
             --scaffold --trust-plugin --no-publish --keep-temp \
@@ -122,11 +127,11 @@ jobs:
             --json "$out/results.json"
           rc=$?
           set -e
-          # results.json points each run at /tmp/claude-eval-*; without its trace and workspace a failure cannot be read.
+          # results.json points each run at $TMPDIR/claude-eval-*; without its trace and workspace a failure cannot be read.
           # --keep-temp seals what the run wrote to its home and tmp (mode 000), and the story workdir lives there;
           # these are our own plugins, so open the seal before copying. config/ holds account ids and stays out.
           mkdir -p "$out/runs"
-          for d in /tmp/claude-eval-*/; do
+          for d in "$TMPDIR"/claude-eval-*/; do
             [ -d "$d" ] || continue
             chmod -R u+rwX "$d" 2>/dev/null || true
             run="$out/runs/$(basename "$d")"
