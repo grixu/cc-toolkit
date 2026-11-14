@@ -193,6 +193,62 @@ test('runs git in the repository the session started in when its working directo
   expect([...cwds]).toEqual(['/work'])
 })
 
+test('runs git in the worktree the caller names even when the session sits in another checkout', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  const git = fakeGit([{ path: 'src/auth.ts', text: fileDiff('src/auth.ts', '+checkToken()') }])
+  const cwds = new Set<unknown>()
+  on('process.run', ($, e) => {
+    if (e.argv[2] !== '--show-toplevel') {
+      cwds.add(e.init?.cwd)
+      return git($, e)
+    }
+    return ok(e.init?.cwd === '/repo.worktrees/feature' ? '/repo.worktrees/feature\n' : '/repo\n')
+  })
+  on('session.root', () => ({ value: '/repo' }))
+  on('http.fetch', () => ({ value: jevAnswer(2, 1) }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', repo: '/repo.worktrees/feature' })
+
+  expect(out.result).not.toContain('unavailable')
+  expect([...cwds]).toEqual(['/repo.worktrees/feature'])
+})
+
+test('reports a named repo outside any git repository as unavailable instead of falling back', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', ($, e) => (e.init?.cwd === '/gone' ? { value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } } : ok('/repo\n')))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', repo: '/gone' })
+
+  expect(out.result).toBe('Risk assessment unavailable: /gone is not in a git repository')
+})
+
+test('rejects a relative repo path', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', repo: 'landings.worktrees/feature' })
+
+  expect(out.result).toBe('Risk assessment unavailable: `repo` must be an absolute path')
+})
+
+test('accepts a Windows drive path as an absolute repo', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeGit([{ path: 'src/auth.ts', text: fileDiff('src/auth.ts', '+checkToken()') }]))
+  on('http.fetch', () => ({ value: jevAnswer(2, 1) }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', repo: 'C:\\repo' })
+
+  expect(out.result).not.toContain('unavailable')
+})
+
+test('names the checkout it read when the branch has no changes', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeGit([]))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main' })
+
+  expect(out.result).toBe('Risk assessment unavailable: no changes between origin/main and HEAD in /work')
+})
+
 test('reports a session outside any git repository as unavailable', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } }))
