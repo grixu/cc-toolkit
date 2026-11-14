@@ -29,3 +29,8 @@ __pycache__/
 # mod type declarations Claude Code writes when it loads a plugin with --plugin-dir
 plugins/*/.claude-plugin/types/
 plugins/*/tsconfig.json
+
+# a spec's working state: transcripts, scraped pages and notes that can cite private repositories
+.ai/specs/*/*.session/
+.ai/specs/*/*.notes.md
+.ai/specs/*/*.research/
