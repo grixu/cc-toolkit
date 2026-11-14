@@ -337,16 +337,23 @@ async function sliceChange(
 async function repoRoot($, repo?: unknown): Promise<string> {
   if (repo !== undefined) {
     if (typeof repo !== 'string' || !/^(\/|[A-Za-z]:[\\/])/.test(repo)) throw new Error('`repo` must be an absolute path')
-    const given = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: repo, timeoutMs: 60_000 }).catch(() => undefined)
-    if (given?.exitCode === 0) return given.stdout.trim()
+    const given = await toplevelOf($, repo)
+    if (given) return given
     throw new Error(`${repo} is not in a git repository`)
   }
-  const here = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { timeoutMs: 60_000 })
-  if (here.exitCode === 0) return here.stdout.trim()
+  const here = await toplevelOf($)
+  if (here) return here
   const root = await $.session.root()
-  const started = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: root, timeoutMs: 60_000 })
-  if (started.exitCode === 0) return started.stdout.trim()
+  const started = await toplevelOf($, root)
+  if (started) return started
   throw new Error(`neither the session's working directory (${await $.session.cwd()}) nor the directory it started in (${root}) is in a git repository`)
+}
+
+// The host rejects an empty cwd, so the session's own directory is the one asked with none.
+async function toplevelOf($, cwd?: string): Promise<string | undefined> {
+  const init = cwd === undefined ? { timeoutMs: 60_000 } : { cwd, timeoutMs: 60_000 }
+  const r = await $.process.run(['git', 'rev-parse', '--show-toplevel'], init).catch(() => undefined)
+  return r?.exitCode === 0 ? r.stdout.trim() : undefined
 }
 
 async function resolveBase($, cwd: string, base: string): Promise<string> {
