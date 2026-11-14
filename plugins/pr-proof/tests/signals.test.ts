@@ -239,6 +239,16 @@ test('rejects a relative repo path', async ($, on) => {
   expect(out.result).toBe('Proof signals unavailable: `repo` must be an absolute path')
 })
 
+test('accepts a Windows drive path as an absolute repo', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeProcess(UI_CHANGE))
+  on('http.fetch', () => ({ value: jevAnswer() }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', repo: 'C:\\repo' })
+
+  expect(out.result).not.toMatch(/unavailable/)
+})
+
 test('reports a session outside any git repository as unavailable', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   on('process.run', () => ({ value: { exitCode: 128, stdout: '', stderr: 'fatal: not a git repository' } }))
