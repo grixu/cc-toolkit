@@ -230,6 +230,16 @@ test('rejects a relative repo path', async ($, on) => {
   expect(out.result).toBe('Risk assessment unavailable: `repo` must be an absolute path')
 })
 
+test('accepts a Windows drive path as an absolute repo', async ($, on) => {
+  mock.env(on, { TYPESAFE_API_KEY: 'secret' })
+  on('process.run', fakeGit([{ path: 'src/auth.ts', text: fileDiff('src/auth.ts', '+checkToken()') }]))
+  on('http.fetch', () => ({ value: jevAnswer(2, 1) }))
+
+  const out = await $.tool.call({ tool: TOOL, base: 'main', repo: 'C:\\repo' })
+
+  expect(out.result).not.toContain('unavailable')
+})
+
 test('names the checkout it read when the branch has no changes', async ($, on) => {
   mock.env(on, { TYPESAFE_API_KEY: 'secret' })
   on('process.run', fakeGit([]))
