@@ -101,6 +101,7 @@ mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { t
 - **justified**: reply `Fixed in <short SHA>.` (`Fixed in <short SHA> (#<PR>).` when another PR in the stack carries it) with one line on what changed, then resolve.
 - **unjustified** or **question** from a bot (`author.__typename == "Bot"`): post the reply, then resolve.
 - **unjustified** or **question** from a human: post the reply and leave the thread unresolved; it is now awaiting and theirs to resolve.
+
 A deferred decision gets no reply and stays unresolved; it is handed over. A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report unhandled.
 
 ## 4. Decide: stop or wake
