@@ -2,13 +2,12 @@
 name: pr-shepherd
 description: Shepherd the current branch's pull request, or a stack of pull requests named by number, in a self-paced loop until CI is green and every review thread is resolved, fixing failures and review comments with commits and pushes, and answering the unjustified ones in-thread. Use when the user asks to babysit, watch or drive a PR to green, or to keep fixing CI and review comments until the PR is clean.
 argument-hint: "[PR …] [iteration]"
-allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git merge-tree *) Bash(git merge *) Bash(git worktree *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
-disallowed-tools: AskUserQuestion
+allowed-tools: Read Edit Write Grep Glob AskUserQuestion Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git merge-tree *) Bash(git merge *) Bash(git worktree *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
 ---
 
 Arguments: **$ARGUMENTS**
 
-Invoking this skill authorizes every commit and push it describes, on the branches of the PRs it shepherds only. It does not cover merging or rebasing the base into the branch (the stack merge under Entry is the one exception), resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. It runs unattended: wherever it needs a human, it *stops* (below) with a report instead of asking.
+Invoking this skill authorizes every commit and push it describes, on the branches of the PRs it shepherds only. It does not cover merging or rebasing the base into the branch (the stack merge under Entry is the one exception), resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. The user running it is the PR's owner. It runs unattended with one exception: a review *decision* (step 3) is the owner's call, so it asks them. Wherever else it needs a human, it *stops* (below) with a report instead of asking.
 
 ## Entry
 
@@ -77,9 +76,16 @@ Judge each comment on its merits, whoever wrote it, into one verdict:
 - **justified**: it names a real defect or a clear improvement within the PR's scope. Make the change, verify it with the repository's own lint/test commands for the touched files, and commit it (one commit per thread, or per group of threads fixed by one change; conventional commit style matching `git log`). Stage by explicit file path (`git add <file>…`), never a directory, `-A` or `-a`.
 - **unjustified**: wrong, out of scope, or contradicted by the codebase. Write a *rebuttal*: the concrete reason, with file/line or doc evidence, opening with an @-mention of the comment's author.
 - **question**: it asks rather than requests. Answer it the same way, @-mentioning the author. When the honest answer reveals a defect, the verdict is justified.
-- **decision**: the fix is a trade-off only the PR's owner can make (security posture, a scope or spec change). Change nothing; reply once with the options and the cost of each, @-mentioning the author, and list it under left-to-the-user in the report.
+- **decision**: the fix is a trade-off only the PR's owner can make (security posture, a scope or spec change). Ask the owner (below); never put the options to the reviewer in the thread.
 
-An outdated thread (`isOutdated`) whose point a later commit already addresses, or a thread whose point another PR in the stack already fixes, is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, apply neither and reply in both, linking each to the other and @-mentioning both authors. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
+An outdated thread (`isOutdated`) whose point a later commit already addresses, or a thread whose point another PR in the stack already fixes, is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, it is a decision whose options include each human's change. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
+
+**Asking for decisions.** Once every thread is judged, and before committing, collect this iteration's decisions across every PR in the set and ask about them together, so the chosen changes land in this iteration's push. `AskUserQuestion` has room only for short labels, so first write the decisions out in prose. For each one, give the thread URL, what the reviewer asks for and why, then every option with what it changes and what it costs, and which one you recommend and why. Only then call `AskUserQuestion`: one question per decision, naming the thread, with each option's label matching the prose. Put the recommended option first, marked `(Recommended)`. Offer a "leave as is" option whenever keeping the code unchanged is a real option. The tool takes at most four questions per call, so with more decisions, make further calls. Act on each answer:
+
+- an option that changes code: the thread is justified; its reply also says the owner chose that option.
+- leave as is: the thread is answered like an unjustified one, giving the owner's reason; between two humans, reply in both, linking each to the other.
+- the owner's own text: follow it as one of the two above, or as a deferral.
+- the question was dismissed, or the owner wants to handle it themselves: the thread is *deferred*. Post nothing, list it under left-to-the-user in the report, and never ask about it again in this loop; earlier iterations in the transcript count for this, as they do for the caps.
 
 After the fixes are committed, `git push` once per branch, then post and resolve through GraphQL (`THREAD_ID` is the thread's `id`):
 
@@ -95,9 +101,7 @@ mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { t
 - **justified**: reply `Fixed in <short SHA>.` (`Fixed in <short SHA> (#<PR>).` when another PR in the stack carries it) with one line on what changed, then resolve.
 - **unjustified** or **question** from a bot (`author.__typename == "Bot"`): post the reply, then resolve.
 - **unjustified** or **question** from a human: post the reply and leave the thread unresolved; it is now awaiting and theirs to resolve.
-- **decision**, from anyone: post the reply and leave the thread unresolved; it is handed over.
-
-A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report unhandled.
+A deferred decision gets no reply and stays unresolved; it is handed over. A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report unhandled.
 
 ## 4. Decide: stop or wake
 
@@ -105,7 +109,7 @@ A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report 
 
 Otherwise stop when one of these holds:
 
-- Every required check is green and every unresolved thread is either *handed over* (two rebuttals already posted, a decision reply posted, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
+- Every required check is green and every unresolved thread is either *handed over* (two rebuttals already posted, a decision the owner deferred, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
 - A stop named in steps 1 to 3 fired.
 - This is iteration 48 of the loop.
 
@@ -118,4 +122,4 @@ End every iteration with one status line (one per PR in a stack): checks green/r
 
 ## Final report
 
-On every stop: why it stopped; commits pushed during the loop (short SHA and subject); threads fixed, rebutted and answered, with URLs; every thread or check left to the user, each decision with its options, and what it needs from them.
+On every stop: why it stopped; commits pushed during the loop (short SHA and subject); threads fixed, rebutted and answered, with URLs; decisions the owner made, with the option chosen; every thread or check left to the user, each deferred decision with its options, and what it needs from them.

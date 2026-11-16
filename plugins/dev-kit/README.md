@@ -62,17 +62,17 @@ Running it authorizes commits and pushes to the pull request's branch, and count
 - It hands every red check to `ci-fix`, which may push without asking; it never fixes or reruns CI itself. A red check that is not required gets one `ci-fix` run; if it stays red, the report lists it for you instead of holding the loop.
 - It judges each open review comment on its merits. For a comment it agrees with, it makes the change, commits and pushes it, replies `Fixed in <sha>`, and resolves the thread.
 - It answers a comment it disagrees with, or a question, with evidence and an @-mention of the author. It resolves bot threads after replying and leaves human threads for the reviewer to resolve.
-- A comment whose fix is a trade-off only you can make (security posture, scope) gets one reply listing the options and their cost; the thread stays open for you, and the report lists it.
+- A comment whose fix is a trade-off only you can make (security posture, scope), or two reviewers asking for incompatible changes, is put to you: it describes each option and its cost, recommends one, then asks you to choose. It applies your choice and replies in the thread. If you dismiss the question or keep it for yourself, it posts nothing, does not ask again, and the report lists the thread.
 - In a stack, each pull request gets its own worktree. A fix lands on the lowest branch that owns the code and reaches the branches above it by a plain merge of each base into its child, never a rebase; it never merges the default branch in.
 - It waits 5 minutes while checks run, and 30, then 60 minutes while it waits for reviewers.
 
-It never asks you anything mid-run. It stops and reports when any of these happens:
+Apart from those decisions, it never asks you anything mid-run; while a decision question is open, the loop waits for your answer. It stops and reports when any of these happens:
 
 - Every required check is green and no review thread is open (success).
 - The branch has no open pull request, uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
 - GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files; it never resolves the conflict, and running it again before you do stops the same way.
 - `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix or rerun cycles, whichever step made them.
-- Every required check is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals or its reply on a decision, or cannot be replied to.
+- Every required check is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals, is a decision you kept for yourself, or cannot be replied to.
 - It has run 48 rounds.
 
 Output: a final report listing the commits pushed, the threads fixed, answered or rebutted (with links), and everything left for you.
