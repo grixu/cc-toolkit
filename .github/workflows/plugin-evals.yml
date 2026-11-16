@@ -104,7 +104,7 @@ jobs:
           out="$RUNNER_TEMP/eval-$SUITE"
           case "$SUITE" in
             anti-slop)
-              # One case is known to score 0.83 on a flaky run.
+              # Below 1.0 because the model sometimes edits clean-text-untouched's already-plain text; that case runs 5 times.
               args=(plugins/anti-slop --threshold 0.8 --max-cost-usd 15
                 --allow-tools Bash Write Edit) ;;
             code-story)

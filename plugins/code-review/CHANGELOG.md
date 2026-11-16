@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `severity.md` showed the `standards` bullet with a bare `L<lines>`; it now carries `path:L<lines>`,
   the shape the Scanner contract requires, as the new `hookify` bullet does.
 
+## [0.7.1] - 2026-11-16
+
+### Changed
+
+- shorter description in `plugin.json` and the marketplace listing, at most two sentences
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

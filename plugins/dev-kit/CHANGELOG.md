@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pr-open`: after a backend question, suggests saving the answer with `/plugin configure dev-kit@cc-toolkit` instead of `/config`, and uses `## Release notes` instead of `## Code story`, which it now writes itself, as its example of a section a rewrite keeps.
 - README: links one Gemini Decision page, the Decisions API guide; gives the closing order of the description's sections (**Code story**, **Proof**, **Risk**) and documents the **Code story** section and its report line; the proof manifest's `<repo>` is the repository name from the `origin` remote's URL without `.git`; old overflow comments are deleted only on an existing pull request, by a run that finds a manifest.
 
+## [0.11.2] - 2026-11-16
+
+### Changed
+
+- shorter description in `plugin.json` and the marketplace listing, at most two sentences
+
+## [0.11.1] - 2026-11-16
+
+### Fixed
+- `pr_risk` takes an optional `repo`, the working tree to assess, and `pr-open` always passes it, so a branch in a git worktree outside the session's directory is no longer assessed against the session's checkout and reported as `no changes between origin/main and HEAD`; that message now names the checkout it read
+
 ## [0.11.0] - 2026-11-13
 
 ### Added

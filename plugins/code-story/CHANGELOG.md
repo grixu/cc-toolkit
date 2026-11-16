@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `check.mjs` names the ref it compared against when a quoted file is missing, instead of always saying `HEAD`.
 - README: the quoted-line check is described as it runs: tagged blocks and trees are skipped, and uncommitted stories are checked against the working tree.
 
+## [0.1.1] - 2026-11-16
+
+### Changed
+
+- shorter description in `plugin.json` and the marketplace listing, at most two sentences
+
 ## [0.1.0] - 2026-11-13
 
 ### Added

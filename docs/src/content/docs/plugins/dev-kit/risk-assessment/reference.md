@@ -36,6 +36,7 @@ Claude calls the tool as `mcp__dev-kit__pr_risk`. `pr-open` calls it for you, an
 | Input | Required | What it does |
 |---|---|---|
 | `base` | yes | The branch the change merges into, such as `main`. The tool diffs `origin/<base>...HEAD`, or `<base>...HEAD` without a remote branch. |
+| `repo` | no | The absolute path of the working tree to assess, such as a git worktree outside the session's directory. `pr-open` always passes it. Without it the tool reads the session's working directory, then the directory the session started in. A relative path or a directory outside git makes the assessment unavailable; it never falls back to another checkout. |
 | `slices` | no | The changed files grouped by purpose, each `{title, files}`. Without it, Claude Haiku groups the files. See [Group the files into slices](/plugins/dev-kit/risk-assessment/how-it-works/#step-2-group-the-files-into-slices). |
 | `context` | no | The pull request's and ticket's titles and descriptions. It tells Jev what each slice is for, and it's where the tool looks for manual evidence. A **Risk** section that `pr-open` wrote earlier is removed before it's sent. |
 | `testing_policy` | no | The repository's testing rules, in a few sentences. It decides whether a slice without tests breaks those rules. |

@@ -1,4 +1,4 @@
-// Diff helpers copied from dev-kit's hooks at e20a572: a plugin cannot import another plugin's files, and a symlink
+// Diff helpers copied from dev-kit's hooks at 61d0b88: a plugin cannot import another plugin's files, and a symlink
 // breaks under --plugin-dir and local-path marketplaces. A fix to the originals has to be copied here by hand.
 
 export const STATE_CHAR_BUDGET = 72_000 // the whole state: diff + commits + diffstat
@@ -158,14 +158,28 @@ export function isSafeRef(ref: unknown): ref is string {
 }
 
 // The session's working directory follows the model's `cd`, which can leave the repository for a scratchpad or a
-// work dir, so fall back to the directory the session started in.
-export async function repoRoot($): Promise<string> {
-  const here = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { timeoutMs: 60_000 })
-  if (here.exitCode === 0) return here.stdout.trim()
+// work dir, so fall back to the directory the session started in. Neither finds a worktree outside the session's
+// directories, so a caller-named `repo` wins, and it never falls back: judging another checkout is worse than none.
+export async function repoRoot($, repo?: unknown): Promise<string> {
+  if (repo !== undefined) {
+    if (typeof repo !== 'string' || !/^(\/|[A-Za-z]:[\\/])/.test(repo)) throw new Error('`repo` must be an absolute path')
+    const given = await toplevelOf($, repo)
+    if (given) return given
+    throw new Error(`${repo} is not in a git repository`)
+  }
+  const here = await toplevelOf($)
+  if (here) return here
   const root = await $.session.root()
-  const started = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: root, timeoutMs: 60_000 })
-  if (started.exitCode === 0) return started.stdout.trim()
+  const started = await toplevelOf($, root)
+  if (started) return started
   throw new Error(`neither the session's working directory (${await $.session.cwd()}) nor the directory it started in (${root}) is in a git repository`)
+}
+
+// The host rejects an empty cwd, so the session's own directory is the one asked with none.
+async function toplevelOf($, cwd?: string): Promise<string | undefined> {
+  const init = cwd === undefined ? { timeoutMs: 60_000 } : { cwd, timeoutMs: 60_000 }
+  const r = await $.process.run(['git', 'rev-parse', '--show-toplevel'], init).catch(() => undefined)
+  return r?.exitCode === 0 ? r.stdout.trim() : undefined
 }
 
 export async function git($, cwd: string, args: string[]): Promise<string> {

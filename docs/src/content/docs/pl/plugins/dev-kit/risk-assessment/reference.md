@@ -36,6 +36,7 @@ Claude woła narzędzie jako `mcp__dev-kit__pr_risk`. `pr-open` woła je za cieb
 | Wejście | Wymagane | Co robi |
 |---|---|---|
 | `base` | tak | Branch, do którego trafi zmiana, na przykład `main`. Narzędzie liczy diff `origin/<base>...HEAD` albo `<base>...HEAD`, gdy nie ma brancha zdalnego. |
+| `repo` | nie | Bezwzględna ścieżka drzewa roboczego do oceny, na przykład worktree gita poza katalogiem sesji. `pr-open` zawsze ją przekazuje. Bez niej narzędzie czyta katalog roboczy sesji, a potem katalog, w którym sesja wystartowała. Ścieżka względna albo katalog poza gitem sprawia, że ocena jest niedostępna; narzędzie nigdy nie sięga po inny checkout. |
 | `slices` | nie | Zmienione pliki pogrupowane według celu, każdy jako `{title, files}`. Bez tego pliki grupuje Claude Haiku. Zobacz [grupowanie plików w slice’y](/pl/plugins/dev-kit/risk-assessment/how-it-works/#krok-2-grupowanie-plików-w-slicey). |
 | `context` | nie | Tytuły i opisy pull requesta i ticketu. Mówi Jev, czemu służy każdy slice, i to w nim narzędzie szuka ręcznych dowodów. Sekcja **Risk** napisana wcześniej przez `pr-open` jest usuwana przed wysłaniem. |
 | `testing_policy` | nie | Zasady testowania repozytorium w kilku zdaniach. Rozstrzyga, czy slice bez testów łamie te zasady. |

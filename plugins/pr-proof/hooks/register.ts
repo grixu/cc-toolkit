@@ -39,6 +39,11 @@ export function register(on, options) {
             type: 'object',
             properties: {
               base: { type: 'string', description: 'The branch the change merges into, such as main' },
+              repo: {
+                type: 'string',
+                description:
+                  "Optional. The absolute path of the working tree the branch is checked out in, such as a git worktree outside the session's directory. Without it the tool reads the session's working directory, then the directory the session started in.",
+              },
               backend: {
                 type: 'string',
                 enum: [...MODES],
@@ -57,7 +62,7 @@ export function register(on, options) {
 
   on('tool.call', { tool: `mcp__pr-proof__${TOOL}` }, async ($, e) => {
     try {
-      const out = await proofSignals($, e.base, e.backend, options)
+      const out = await proofSignals($, e.base, e.backend, options, e.repo)
       return { result: typeof out === 'string' ? out : JSON.stringify(out, null, 2) }
     } catch (error) {
       return unavailable(error instanceof Error ? error.message : String(error))
@@ -69,13 +74,13 @@ function unavailable(reason: string) {
   return { result: 'Proof signals unavailable: ' + reason }
 }
 
-async function proofSignals($, base: unknown, requested: unknown, options) {
+async function proofSignals($, base: unknown, requested: unknown, options, repo?: unknown) {
   if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
   const keys = await providerKeys($, options)
   const chosen = chooseBackends(options, requested, keys, 'pr-proof')
   if (chosen === 'choose') return choiceNeeded(`mcp__pr-proof__${TOOL}`)
 
-  const cwd = await repoRoot($)
+  const cwd = await repoRoot($, repo)
   const ref = await resolveBase($, cwd, base)
   const range = `${ref}...HEAD`
   // --no-relative: a user's diff.relative=true would limit the diff to the current directory.
@@ -85,7 +90,7 @@ async function proofSignals($, base: unknown, requested: unknown, options) {
   ])
 
   const entries = changedEntries(numstat)
-  if (!entries.length) throw new Error(`no changes between ${ref} and HEAD`)
+  if (!entries.length) throw new Error(`no changes between ${ref} and HEAD in ${cwd}`)
   const reviewable = entries.filter((f) => !f.binary && !isExcluded(f.path)).map((f) => f.path)
   const filesExcluded = entries.length - reviewable.length
   if (!reviewable.length) throw new Error('no reviewable text files in the change')

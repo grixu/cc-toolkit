@@ -14,6 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `prepare-proof`: the plan step no longer says it asks nothing else before producing proof. The plan confirmation is the only question it asks besides the backend choice, and the skills it runs keep their own approval gates, such as `walkthrough-video`'s confirmation of derived requirements.
 - README: `compare.jsonl`'s `base` is documented as the resolved ref, such as `origin/main`; `jq` is listed as a requirement for writing the manifest; `gh` 2.103 is required only when `walkthrough-video` runs on its own and attaches the video, not under `prepare-proof`'s `record-only` mode.
 
+## [0.4.0] - 2026-11-16
+
+### Added
+
+- Option `video_speed` (`0.5x`, `1x`, `2x`, `3x`, `5x`) for `walkthrough-video`: the take is still recorded at the calm pace, now called `0.5x`, and the render plays it faster, so a new speed needs only a re-render
+- Option `caption_density` (`normal`, `2x`, `4x`): captions hold up to 60, 120 or 240 characters, in type shrunk to cover the same area (40, 28, 20 px)
+
+### Changed
+
+- Walkthrough videos render at `1x` by default, twice as fast as before; set `video_speed` to `0.5x` for the old pace
+- Shorter description in `plugin.json` and the marketplace listing, at most two sentences
+
+## [0.3.1] - 2026-11-16
+
+### Fixed
+- `proof_signals` takes an optional `repo`, the working tree to judge, and `prepare-proof` always passes it, so a branch in a git worktree outside the session's directory is no longer judged against the session's checkout and reported as `no changes between origin/main and HEAD`; that message now names the checkout it read
+
 ## [0.3.0] - 2026-11-13
 
 ### Added

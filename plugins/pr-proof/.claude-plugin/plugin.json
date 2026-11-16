@@ -1,7 +1,7 @@
 {
   "name": "pr-proof",
-  "description": "Proof that a pull request's change works: prepare-proof judges which proof a branch needs, with signals from TypeSafe Jev or Gemini Decision when a key is set, then produces each kind, a narrated walkthrough video with playwright-recast, screenshots at the project's breakpoints, and masked terminal or API transcripts, and hands it to pr-open through the branch's proof manifest.",
-  "version": "0.3.0",
+  "description": "Records proof that a pull request's change works: a narrated video of the feature in your running app, screenshots or terminal transcripts. Picks the proof the change needs and attaches it to the pull request once you accept it.",
+  "version": "0.4.0",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
@@ -69,6 +69,30 @@
       "type": "string",
       "title": "Screenshot widths",
       "description": "Comma-separated viewport widths in pixels, such as 375,768,1440. Leave empty to use the project's breakpoints, or 375, 768 and 1440."
+    },
+    "video_speed": {
+      "type": "string",
+      "title": "Walkthrough video speed",
+      "description": "How fast the rendered walkthrough plays. 0.5x is the slow, calm pace; 1x plays twice as fast, 5x ten times. The recording stays calm, so viewers can pause on any frame.",
+      "options": [
+        "0.5x",
+        "1x",
+        "2x",
+        "3x",
+        "5x"
+      ],
+      "default": "1x"
+    },
+    "caption_density": {
+      "type": "string",
+      "title": "Walkthrough caption density",
+      "description": "How much text one caption holds: normal is up to 60 characters; 2x and 4x hold two and four times as much in smaller type covering the same area.",
+      "options": [
+        "normal",
+        "2x",
+        "4x"
+      ],
+      "default": "normal"
     }
   }
 }

@@ -1,6 +1,7 @@
 // Usage: pnpm dlx --package playwright-recast@0.23.0 --package @playwright/test@1.63.0 \
 //          node render.mts <test-results/<take>/<test dir>> <out/name.mp4>
-// Env: CAPTION_POSITION=top|bottom, NO_ZOOM=1, RESOLUTION=<width>x<height> (default 1080p)
+// Env: SPEED=0.5x|1x|2x|3x|5x (default 1x), CAPTION_DENSITY=normal|2x|4x (default normal),
+//      CAPTION_POSITION=top|bottom, NO_ZOOM=1, RESOLUTION=<width>x<height> (default 1080p)
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -18,7 +19,13 @@ const recastEntry = path.join(dlxBin, '..', 'playwright-recast', 'dist', 'index.
 const { Recast } = await import(pathToFileURL(recastEntry).href);
 
 const HIDDEN_STEP = 'prepare';
-const IDLE_SPEED = 1.0;
+// The take is recorded at the calm 0.5x pace; every other speed is a multiple of it applied here.
+const SPEED_FACTOR = choose('SPEED', { '0.5x': 1, '1x': 2, '2x': 4, '3x': 6, '5x': 10 }, '1x');
+const DENSITY = choose('CAPTION_DENSITY', { normal: 1, '2x': 2, '4x': 4 }, 'normal');
+const IDLE_SPEED = 1.0 * SPEED_FACTOR;
+const WAIT_SPEED = 1.5 * SPEED_FACTOR;
+// Denser captions keep the area of a normal one, so type shrinks by the square root of the density.
+const CAPTION_SCALE = 1 / Math.sqrt(DENSITY);
 const CAPTION_POSITION = process.env.CAPTION_POSITION === 'top' ? 'top' : 'bottom';
 const ZOOM = process.env.NO_ZOOM !== '1';
 const RESOLUTION = parseResolution(process.env.RESOLUTION);
@@ -35,9 +42,9 @@ let pipeline = Recast.from(source)
   // idle runs 4x by default and would swallow every pause and caption hold
   .speedUp({
     duringIdle: IDLE_SPEED,
-    duringUserAction: 1.0,
-    duringNetworkWait: 1.5,
-    duringNavigation: 1.5,
+    duringUserAction: 1.0 * SPEED_FACTOR,
+    duringNetworkWait: WAIT_SPEED,
+    duringNavigation: WAIT_SPEED,
     // no dead-time rule: narrate() is not a user action, so one would fast-forward caption-only scenes
     rules: [{ name: 'open-socket-is-idle', match: onlySocketsOpen, speed: IDLE_SPEED }],
   })
@@ -56,14 +63,24 @@ await pipeline
     fps: 30,
     burnSubtitles: true,
     subtitleStyle: {
-      fontSize: 40,
-      padding: 14,
+      fontSize: Math.round(40 * CAPTION_SCALE),
+      padding: Math.round(14 * CAPTION_SCALE),
       position: CAPTION_POSITION,
       marginVertical: 80,
-      chunkOptions: { maxCharsPerLine: 60 },
+      wrapStyle: 'smart',
+      chunkOptions: { maxCharsPerLine: 60 * DENSITY },
     },
   })
   .toFile(output);
+
+function choose(name: string, values: Record<string, number>, fallback: string): number {
+  const value = process.env[name] || fallback;
+  if (!Object.hasOwn(values, value)) {
+    throw new Error(`${name} must be one of ${Object.keys(values).join(', ')}, got ${value}`);
+  }
+
+  return values[value];
+}
 
 function parseResolution(value: string | undefined): '1080p' | { width: number; height: number } {
   const match = value?.match(/^(\d+)x(\d+)$/);
