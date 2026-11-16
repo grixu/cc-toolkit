@@ -1,7 +1,7 @@
 {
   "name": "codex-plan-improver",
   "description": "When you leave plan mode, sends Claude's plan to OpenAI Codex and revises it until Codex approves, for up to 5 rounds.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
