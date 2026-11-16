@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "cc-toolkit",
-  "version": "1.10.10",
+  "version": "1.10.11",
   "owner": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
@@ -176,7 +176,7 @@
       "name": "code-story",
       "source": "./plugins/code-story",
       "description": "Explains a branch or pull request as a chaptered page for someone who has never seen the code, with notes pinned to the lines they explain. Publishes it as a private claude.ai page and updates it under the same link.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Mateusz Gostański",
         "email": "mg@grixu.dev"
