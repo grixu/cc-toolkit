@@ -1,6 +1,6 @@
 {
   "name": "researcher",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Answers a research question with an HTML report in which every claim links to a numbered source. Follow-up questions extend the same report.",
   "author": {
     "name": "Mateusz Gostański",
