@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-11-16
+
+### Changed
+
+- shorter description in `plugin.json` and the marketplace listing, at most two sentences
+- the README no longer points at the removed `feature-delivery` plugin
+
 ## [0.5.2] - 2026-10-28
 
 ### Fixed

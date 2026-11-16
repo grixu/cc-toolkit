@@ -291,9 +291,3 @@ An interview question looks like this:
   active lens is one review agent.
 - Boy-scout finding: a review finding about code the branch did not change. fd3 fixes one
   automatically only when its fix is rated safe, and never under `gated`.
-
-## Relationship to `feature-delivery`
-
-fd3 covers the same ground as the [`feature-delivery`](../feature-delivery) plugin, rebuilt around
-skills and dynamic workflows. The two share no commands or file formats, so use one or the other
-for a given piece of work.

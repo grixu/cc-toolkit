@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
 ### Added
 
 - Option `video_speed` (`0.5x`, `1x`, `2x`, `3x`, `5x`) for `walkthrough-video`: the take is still recorded at the calm pace, now called `0.5x`, and the render plays it faster, so a new speed needs only a re-render
@@ -15,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Walkthrough videos render at `1x` by default, twice as fast as before; set `video_speed` to `0.5x` for the old pace
+- Shorter description in `plugin.json` and the marketplace listing, at most two sentences
 
 ## [0.3.1] - 2026-11-16
 
