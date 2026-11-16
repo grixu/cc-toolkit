@@ -13,7 +13,7 @@ Invoking this skill authorizes every commit and push it describes, on the branch
 
 This skill body is one *iteration* of a self-paced `/loop`. When the arguments carry `iteration`, or this turn is already a `/loop` fire, run the iteration. Otherwise invoke the `loop` skill with the arguments `/dev-kit:pr-shepherd <PR numbers, if any> iteration` and end the turn: the loop runs the first iteration at once and paces the rest. When the `loop` skill is unavailable, run one iteration and tell the user the loop could not start.
 
-Every iteration re-reads the whole state from git and GitHub; the transcript of earlier iterations counts only toward the caps.
+Every iteration re-reads the whole state from git and GitHub; the transcript of earlier iterations counts only toward the caps and for the decisions the owner deferred.
 
 **Stacks.** With no PR number in the arguments, the PR is the current branch's; with one, it is that PR, and when the current branch is not its `headRefName`, steps 1–3 run in a worktree on that branch, as for a stack: never pull, commit or push from another branch. With several, they form a stack: run steps 1–3 for each PR in its own worktree on its head branch (`git worktree add <dir> <headRefName>` outside the repository, or the worktree `git worktree list` already shows on that branch), lowest PR first. A fix lands on the lowest branch in the stack that owns the code and reaches the PRs above it by a plain merge of base into child: after pushing the base, run `git fetch` and `git merge --no-edit origin/<baseRefName>` in the child's worktree, then push the child, one level at a time. Never rebase. This is the one exception to the base-merge ban, and only between branches of the set; merging the default branch into any of them stays forbidden. When such a merge conflicts, `git merge --abort` and stop, naming the files. Mergeability is judged per PR, as GitHub reports it. Step 4 decides over the whole set: done needs every PR done, and a stop that fires for one PR stops the loop once every PR has finished this iteration's steps 1–3.
 
@@ -48,6 +48,7 @@ query($owner: String!, $repo: String!, $number: Int!, $endCursor: String) {
 
 Classify each unresolved thread by its last comment:
 
+- **deferred**: a decision the owner deferred earlier in this loop (step 3), whatever its last comment. It is handed over and needs nothing this iteration.
 - **open**: the last comment is someone else's (`viewerDidAuthor` false). It needs handling this iteration.
 - **awaiting**: the last comment is ours. It waits for the reviewer; when that comment reports a fix, resolve the thread now instead (a resolve that failed last time).
 
@@ -80,12 +81,12 @@ Judge each comment on its merits, whoever wrote it, into one verdict:
 
 An outdated thread (`isOutdated`) whose point a later commit already addresses, or a thread whose point another PR in the stack already fixes, is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, it is a decision whose options include each human's change. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
 
-**Asking for decisions.** Once every thread is judged, and before committing, collect this iteration's decisions across every PR in the set and ask about them together, so the chosen changes land in this iteration's push. `AskUserQuestion` has room only for short labels, so first write the decisions out in prose. For each one, give the thread URL, what the reviewer asks for and why, then every option with what it changes and what it costs, and which one you recommend and why. Only then call `AskUserQuestion`: one question per decision, naming the thread, with each option's label matching the prose. Put the recommended option first, marked `(Recommended)`. Offer a "leave as is" option whenever keeping the code unchanged is a real option. The tool takes at most four questions per call, so with more decisions, make further calls. Act on each answer:
+**Asking for decisions.** Once every thread is judged, and before committing, collect this PR's decisions and ask about them together, so the chosen changes land in this PR's push; in a stack, each PR asks in its own step 3. `AskUserQuestion` has room only for short labels, so first write the decisions out in prose. For each one, give the thread URL, what the reviewer asks for and why, then every option with what it changes and what it costs, and which one you recommend and why. Only then call `AskUserQuestion`: one question per decision, naming the thread, with each option's label matching the prose. Put the recommended option first, marked `(Recommended)`. Offer a "leave as is" option whenever keeping the code unchanged is a real option. The tool takes at most four questions per call, so with more decisions, make further calls. Act on each answer:
 
 - an option that changes code: the thread is justified; its reply also says the owner chose that option.
 - leave as is: the thread is answered like an unjustified one, giving the owner's reason; between two humans, reply in both, linking each to the other.
 - the owner's own text: follow it as one of the two above, or as a deferral.
-- the question was dismissed, or the owner wants to handle it themselves: the thread is *deferred*. Post nothing, list it under left-to-the-user in the report, and never ask about it again in this loop; earlier iterations in the transcript count for this, as they do for the caps.
+- the question was dismissed, or the owner wants to handle it themselves: the thread is *deferred*. Post nothing, list it under left-to-the-user in the report, and never ask about it again in this loop.
 
 After the fixes are committed, `git push` once per branch, then post and resolve through GraphQL (`THREAD_ID` is the thread's `id`):
 
@@ -117,7 +118,7 @@ Otherwise stop when one of these holds:
 Else call `ScheduleWakeup` for the next iteration, choosing the delay by what is still moving:
 
 - something was pushed or checks are pending: 5 minutes, longer when the pending checks took longer on earlier runs;
-- every required check is green and only awaiting threads remain: 30 minutes, then 60 once an iteration found nothing new.
+- every required check is green and only awaiting and deferred threads remain: 30 minutes, then 60 once an iteration found nothing new.
 
 End every iteration with one status line (one per PR in a stack): checks green/red/pending counts, threads open/awaiting, and what this iteration did.
 
