@@ -75,26 +75,19 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 |---|---|---|
 | [dev-kit](plugins/dev-kit/README.md) | Four small skills: fix a failed CI run at its root cause; keep fixing a pull request until CI is green and review comments are resolved; check whether a dependency upgrade breaks your code; open a pull request filled in from the repository's template. | `/dev-kit:ci-fix <run URL>`, `/dev-kit:pr-shepherd`, `/dev-kit:dep-upgrade-check <package>@<version>`, `/dev-kit:pr-open` |
 
-### Research, media, and naming
+### Research and writing
 
 | Plugin | What it does | Start with |
 |---|---|---|
 | [researcher](plugins/researcher/README.md) | Answers a research question with an HTML report in which every claim links to a numbered source. Follow-up questions extend the same report. | `/researcher:research "<question>"` |
 | [scribe](plugins/scribe/README.md) | Transcribes YouTube videos or local audio and video files, then summarizes them, pulls out news on a topic, or applies your own prompt. Transcripts are cached, so asking again about the same item does not transcribe it again. | Paste a YouTube link or file path and ask for a summary |
 | [anti-slop](plugins/anti-slop/README.md) | Rewrites English or Polish prose so it reads plain and human: common words over rare exact ones, no staged contrasts, closers or forced lists of three, and no claim the source does not back. Every fact, number and caveat stays. code-story and dev-kit run it on what they write. | `/anti-slop:anti-slop <file or text>` |
-| [namesmith](plugins/namesmith/README.md) | Suggests names for a business or product, scores each one, and checks which domains are free. | `/namesmith:namesmith <description>` |
 
 ### Improve Claude Code itself
 
 | Plugin | What it does | Start with |
 |---|---|---|
-| [session-learner](plugins/session-learner/README.md) | At the end of a session, finds where you had to correct or repeat yourself and proposes updates to `CLAUDE.md` or `.claude/rules/`, so the next session starts with that knowledge. You approve each change. | `/session-learner:learn` |
 | [stop-sound](plugins/stop-sound/README.md) | Chimes when Claude waits for you: when it finishes a turn and when it asks a question. Silent while subagents work. | Runs on its own once installed |
-
-### Deprecated
-
-- [feature-delivery](plugins/feature-delivery/README.md) is deprecated; use fd3 instead. The two share
-  no file formats, so finish a project in the plugin you started it with.
 
 ## Requirements
 
@@ -113,7 +106,6 @@ Most plugins need only Claude Code. These need more:
 | code-story | Node.js 22 or later, git, `gh`; installs anti-slop with it |
 | anti-slop | Node.js 22 or later for its scan script |
 | pr-proof | A web app that runs locally; Node.js 22.18 or later, `pnpm`, `ffmpeg` with libass, `timeout` (coreutils on macOS), `gh` 2.103 or later |
-| namesmith | Nothing to install; domain checks use a remote MCP server bundled with the plugin |
 
 Dynamic workflows are available on paid plans and with Anthropic API access. On Pro, turn them on
 in the Dynamic workflows row of `/config`.
@@ -123,6 +115,8 @@ in the Dynamic workflows row of `/config`.
 - `yt` was renamed to `scribe`. See the [scribe changelog](plugins/scribe/CHANGELOG.md).
 - `comment-review` and `quality-review` were replaced by `code-review` and are no longer published.
   Uninstall them if you still have them, or you will see duplicate skill names.
+- `feature-delivery` was replaced by `fd3`, and `namesmith` and `session-learner` were removed. None
+  of them is published any more.
 
 ## Contributing
 
