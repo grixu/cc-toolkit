@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-11-16
+
 ### Fixed
 - `pr_risk` takes an optional `repo`, the working tree to assess, and `pr-open` always passes it, so a branch in a git worktree outside the session's directory is no longer assessed against the session's checkout and reported as `no changes between origin/main and HEAD`; that message now names the checkout it read
 
