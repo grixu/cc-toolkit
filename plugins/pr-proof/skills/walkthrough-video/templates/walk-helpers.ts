@@ -8,12 +8,18 @@ import { blockOutsideRequests, blockWrites, patchJson, stubJson } from './mocks'
 const FAST = process.env.RECAST_FAST === '1';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5005';
 const API_URL = process.env.API_URL ?? 'http://localhost:3000';
+// A 2x or 4x caption holds that much more text, so it needs that much longer on screen.
+const DENSITIES: Record<string, number> = { normal: 1, '2x': 2, '4x': 4 };
+const CAPTION_DENSITY = DENSITIES[process.env.CAPTION_DENSITY || 'normal'];
+if (!CAPTION_DENSITY) {
+  throw new Error(`CAPTION_DENSITY must be normal, 2x or 4x, got ${process.env.CAPTION_DENSITY}`);
+}
 
 setupRecast(test, {
   typingDelayMs: FAST ? 10 : 140,
   hoverDwellMs: FAST ? 0 : 500,
   clickSettleMs: FAST ? 0 : 400,
-  narrateAutoWait: FAST ? false : { charactersPerSecond: 12, minMs: 2500, maxMs: 6000 },
+  narrateAutoWait: FAST ? false : { charactersPerSecond: 12, minMs: 2500, maxMs: 6000 * CAPTION_DENSITY },
 });
 
 const HIGHLIGHT_MS = 2500;

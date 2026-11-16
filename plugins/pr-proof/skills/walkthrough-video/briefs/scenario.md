@@ -33,19 +33,19 @@ Never create, change or delete data on a shared or external service any other wa
 - id, title, and the FR/AC it demonstrates;
 - precondition;
 - exact steps: route, element (the real `data-testid`, or role and accessible name), exact text typed;
-- captions: short English sentences describing user value (never an API, a service, a policy id). Each caption is **at most 60 characters** and at most 12 words: the renderer splits anything longer into a second cue that starts mid-sentence in lowercase. Count the characters;
+- captions: short English sentences describing user value (never an API, a service, a policy id). Each caption is **at most 60 × caption density characters** and at most 12 × density words (normal 60 and 12, 2x 120 and 24, 4x 240 and 48): the renderer splits anything longer into a second cue that starts mid-sentence in lowercase. Count the characters. At a higher density, write fewer, fuller captions that say what several short ones would, rather than the same short ones;
 - pacing: pauses, which element to zoom or highlight, typing speed;
 - the visible outcome to wait for (toast text, row, dialog closing).
 
 ## Sections
 
-- **Recording settings**: viewport, the `setupRecast` options, `speedUp` with idle at 1×, caption style and position (top when a dropdown or footer opens at the bottom). Start from the tested values in `recast-notes.md`.
+- **Recording settings**: viewport, the `setupRecast` options, the speed and caption density from your dispatch (the render applies both through `SPEED` and `CAPTION_DENSITY`; the take itself stays at the calm pace), caption position (top when a dropdown or footer opens at the bottom). Start from the tested values in `recast-notes.md`.
 - **Setup / data preconditions**: logged-in state via API, which demo-data tier each precondition uses, everything staged in the browser, flags, reset, teardown.
 - **Scenes**.
-- **Length estimate**: per scene, captions at 12 characters a second (2.5 s minimum each) plus typing at 140 ms a character plus holds; the total.
+- **Length estimate**: per scene, the recorded length: captions at 12 characters a second (2.5 s minimum, 6 s × density maximum each) plus typing at 140 ms a character plus holds; the recorded total, and the rendered total, which is the recorded one divided by speed ÷ 0.5 (half of it at `1x`, a tenth at `5x`).
 - **Spec coverage**: FR/AC → scene id, plus each requirement intentionally not shown and why.
 - **Findings**: every place where the built UI and the requirements disagree, and every UX concern the scenes show, with evidence. List them; never paper over one in the story.
 
 ## Finish line
 
-Every scene maps to an FR/AC and names real selectors found in the code, every FR the audience asked about is covered or listed as not shown with a reason, every caption is within 60 characters, and the length is what the story needs: a PR's change usually runs one to three minutes, a whole feature at most about five. Never pad to reach a length. Return at most 12 lines: scene count, the story arc in one line, length estimate, setup preconditions and what is staged, findings.
+Every scene maps to an FR/AC and names real selectors found in the code, every FR the audience asked about is covered or listed as not shown with a reason, every caption is within the density's limit, and the recorded length is what the story needs: a PR's change usually runs one to three minutes recorded, a whole feature at most about five. Never pad to reach a length. Return at most 12 lines: scene count, the story arc in one line, recorded and rendered length estimates, setup preconditions and what is staged, findings.
