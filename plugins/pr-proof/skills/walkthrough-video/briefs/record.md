@@ -31,11 +31,11 @@ All in `recast/`:
 
 Implement the scenes faithfully: same order, selectors, typed text, captions, zooms, highlights, pauses. The walk file copied from `walk-helpers.ts` carries the tested beats (`pointAt`, `hold`, `expectNoErrorToast`, `RECAST_FAST`) and the `prepare` step. Put everything a viewer should not see (closing release notes, a consent banner that mounts seconds after load, a dev-tools pill, expanding a collapsed sidebar, forcing a feature flag or staging data through `page.route`) inside `test.step('prepare', …)`, which the render cuts. Assert each scene's visible outcome before the next beat, and assert that no error toast appeared, so a broken take fails instead of recording garbage.
 
-When the built UI deviates from the scenario, adapt minimally and record the deviation; invent no new scene. A caption longer than 60 characters, even one handed to you in a retake message, is shortened, never fitted by raising `maxCharsPerLine`.
+When the built UI deviates from the scenario, adapt minimally and record the deviation; invent no new scene. A caption longer than the density's limit (60 × caption density characters), even one handed to you in a retake message, is shortened, never fitted by raising `maxCharsPerLine`: the density sets it, in `render.mts`.
 
 ## 4. Dry run, record, render
 
-All commands run from the work dir, with `FRONTEND_URL` and `API_URL` exported.
+All commands run from the work dir, with `FRONTEND_URL` and `API_URL` exported, and with `SPEED` and `CAPTION_DENSITY` exported as your dispatch names them (`render.mts` applies both; `<slug>.walk.ts` holds denser captions longer). The take always runs at the calm pace: the speed exists only in the render.
 
 1. Dry run until the test passes; fix selectors and timing there: `RECAST_FAST=1 timeout 600 recast/pw.sh --project=walkthrough`.
 2. Record a real take: `TAKE=<take> timeout 1200 recast/pw.sh --project=walkthrough`.
@@ -43,14 +43,16 @@ All commands run from the work dir, with `FRONTEND_URL` and `API_URL` exported.
 
 ## 5. Review the footage
 
-Run `<this skill dir>/templates/frames.sh out/<slug>.mp4 recast/tests/<slug>.walk.ts` and look at what it writes to `out/frames/`: `timeline/` sheets of a frame every 5 s, `cue-sheet*.png` with one row per caption (its middle and its end), plus a printed list of `narrate` captions over 60 characters and of split cues. Check that:
+Run `CAPTION_MAX=<60 × density> <this skill dir>/templates/frames.sh out/<slug>.mp4 recast/tests/<slug>.walk.ts` (with `SPEED` exported) and look at what it writes to `out/frames/`: `timeline/` sheets of frames sampled more often the faster the speed, `cue-sheet*.png` with one row per caption (its middle and its end), plus a printed list of `narrate` captions over the limit and of split cues. Check that:
 
-- captions are readable, within 60 characters, start with a capital letter, and cover nothing that matters (move them to the top with `CAPTION_POSITION=top` when a dropdown or footer opens at the bottom);
-- every caption stays on screen long enough to read (about 12 characters a second) and none is sped through;
+- captions are readable at the density's type size when paused, within the density's limit, start with a capital letter, and cover nothing that matters (move them to the top with `CAPTION_POSITION=top` when a dropdown or footer opens at the bottom);
+- every caption is held long enough in the take to read at about 12 characters a second; in the render it lasts that time divided by speed ÷ 0.5, so above `0.5x` a short on-screen cue is expected (viewers pause), but a dropped cue or one that never reaches the screen is a failure;
 - no action is cut mid-way and no caption runs ahead of its action;
 - no error toast, blank screen or lingering spinner shows;
 - zoom never hides the next action or crops an open dropdown;
-- the length is within the scenario's estimate; say so when it is not, and never pad.
+- the length is within the scenario's rendered estimate; say so when it is not, and never pad.
+
+A request for another speed alone is a re-render of the last take with the new `SPEED` and a fresh review, never a new take.
 
 Re-record up to two more times when a check fails; when the third take still fails one, stop and report which check and why. When a scene writes shared data that cannot be reset, rehearse pacing on a take that stages the same data in the browser first, but only when `## User decisions` allows staging there; the real take then runs once. Note any UI defect the camera caught: it is a finding for the report, not something to fix.
 
@@ -64,4 +66,4 @@ When resumed with fixes: apply each, record a new take under a new `TAKE` name, 
 
 ## Finish line
 
-The final take passes every review check. Report to whoever dispatched or last resumed you, in at most 20 lines: video path, duration, size; takes and what each fixed; the frame-review result per check; stack URLs, who started the stack and how to stop it, and whether a seed script ran; the exact record and render commands; deviations from the scenario; data staged in the browser; UI defects seen on camera; what is left running or changed.
+The final take passes every review check. Report to whoever dispatched or last resumed you, in at most 20 lines: video path, duration, size, speed and caption density; takes and what each fixed; the frame-review result per check; stack URLs, who started the stack and how to stop it, and whether a seed script ran; the exact record and render commands; deviations from the scenario; data staged in the browser; UI defects seen on camera; what is left running or changed.

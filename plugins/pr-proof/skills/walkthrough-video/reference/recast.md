@@ -30,6 +30,14 @@ Helpers write **marker** `test.step()`s into the trace. `setupRecast(test, opts)
 
 Video time is real test time remapped by `speedUp()`. Only clicks, typing, fills, presses, checks, selects and hovers count as user action (1×); navigation and network waits run 2×; **everything else is idle and runs 4× by default** — `pace()`, `narrate` auto-waits, click settle and hover dwell included. A calm video therefore needs `speedUp({ duringIdle: 1.0 })`; a rule can still fast-forward long dead time. Without TTS, a caption lasts exactly the real time until the next marker; a zero-length cue is dropped.
 
+`speedUp` also takes `maxSpeed` (a cap on every segment: 100 in 0.23.0's code, though the README's example shows 8) and `minSegmentDuration` (default 500 ms). Caption cues and click ripples are remapped through the speed processing, so a uniformly faster render keeps them in sync.
+
+## Speed and caption density
+
+The skill records every take at the calm pace above, called **0.5x**, and applies the configured speed (`SPEED`) only at render: `render.mts` multiplies every `speedUp` value, the socket rule included, by speed ÷ 0.5 (1x → 2, 2x → 4, 3x → 6, 5x → 10); the fastest segment, a network wait at 5x, runs at 15×, under the default cap. A new speed is a re-render of the same take.
+
+Caption density (`CAPTION_DENSITY`: normal, 2x, 4x) multiplies the caption limit (60 × d characters, 12 × d words) and `maxCharsPerLine`, shrinks `fontSize` and `padding` by √d so the caption covers the same area (40, 28, 20 px), and turns on `wrapStyle: 'smart'` so a 4x caption wraps into two lines. `walk-helpers.ts` raises the `narrateAutoWait` maximum to 6 s × d, so density reaches the take too.
+
 ## Tested settings
 
 Test side (`templates/walk-helpers.ts`):
@@ -41,14 +49,14 @@ Test side (`templates/walk-helpers.ts`):
 
 Render side (`templates/render.mts`):
 
-- `speedUp`: idle 1.0, user action 1.0, network and navigation 1.5, and a rule that plays a network wait at idle speed when every open request is a websocket (gotcha 9); no dead-time rule (gotcha 10);
+- `speedUp` at 0.5x (multiplied for other speeds, see above): idle 1.0, user action 1.0, network and navigation 1.5, and a rule that plays a network wait at idle speed when every open request is a websocket (gotcha 9); no dead-time rule (gotcha 10);
 - `subtitlesFromTrace()`;
 - `autoZoom({ inputLevel: 1.3, clickLevel: 1.0, transitionMs: 700, containInCue: true })`, off with `NO_ZOOM=1`;
 - `cursorOverlay({ moveDurationMs: 700, hideAfterMs: 1500, approachMs: 0 })`;
 - `clickEffect({ duration: 600 })`;
-- `render` 1080p (`RESOLUTION=<w>x<h>` for another aspect ratio), 30 fps, `burnSubtitles`, `subtitleStyle` font 40, padding 14, `marginVertical` 80 (lifts captions off sidesheet footers), position bottom (`CAPTION_POSITION=top` when a dropdown or footer opens at the bottom), `maxCharsPerLine` 60.
+- `render` 1080p (`RESOLUTION=<w>x<h>` for another aspect ratio), 30 fps, `burnSubtitles`, `subtitleStyle` font 40, padding 14, `marginVertical` 80 (lifts captions off sidesheet footers), position bottom (`CAPTION_POSITION=top` when a dropdown or footer opens at the bottom), `maxCharsPerLine` 60 (all three at normal density).
 
-Captions: **at most 60 characters** and 12 words, one cue. The renderer chunks anything over 60 characters at punctuation into a second cue that starts mid-sentence, in lowercase; a caption of 12 short words can still be too long. Shorten the text; never raise `maxCharsPerLine`, which makes lines too wide to read.
+Captions: **at most 60 characters** and 12 words, one cue (times the density). The renderer chunks anything over 60 characters at punctuation into a second cue that starts mid-sentence, in lowercase; a caption of 12 short words can still be too long. Shorten the text; never raise `maxCharsPerLine` by hand, which makes lines too wide to read: only the density changes it, together with the type size.
 
 ## Running without installing (`pnpm dlx`)
 

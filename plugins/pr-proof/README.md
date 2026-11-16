@@ -39,6 +39,8 @@ pr-proof asks for these when you enable it. Every one may stay empty.
 | `decision_backend` | `auto` | `auto` uses the backend whose key is set, and with both keys `prepare-proof` asks which to use; `typesafe` or `gemini` uses that one; `both` asks both side by side. |
 | `primary_backend` | `typesafe` | With both backends, whose signals `prepare-proof` plans from; the other's stand beside them. |
 | `screenshot_widths` | none | Comma-separated viewport widths in pixels, such as `375,768,1440`. Empty uses the project's breakpoints from its styling configuration, or 375, 768 and 1440 when it has none. |
+| `video_speed` | `1x` | How fast `walkthrough-video` plays its video: `0.5x` (the slow, calm pace), `1x` (twice as fast), `2x`, `3x` or `5x` (ten times as fast). The take is always recorded calmly, so any frame can be paused on, and a new speed only needs a re-render. |
+| `caption_density` | `normal` | How much text one caption holds: `normal` up to 60 characters, `2x` up to 120 and `4x` up to 240, in smaller type (40, 28 and 20 px at 1080p) covering the same area. |
 
 ## The proof manifest
 
@@ -110,7 +112,7 @@ With a pull request or branch, the video shows what that change made different f
 1. **Requirements**: one requirement with acceptance criteria per user-visible change, from the spec, the ticket or the code, each marked `stated` or `derived`. In parallel, a **tool check** picks the playwright-recast and Playwright versions to run and checks the machine.
 2. **Scenario**: the video's scenes, each mapped to a requirement.
 3. **Validation**: a separate subagent checks the scenario against the requirements and the code, and fixes it.
-4. **Recording**: starts the stack when nobody else has, records the Playwright test, renders an MP4 with burned-in captions, and reviews its own frames for readable captions, calm pacing and no error toasts. It retakes up to two times.
+4. **Recording**: starts the stack when nobody else has, records the Playwright test, renders an MP4 with burned-in captions at the `video_speed` and `caption_density` options, and reviews its own frames for readable captions, calm pacing in the take and no error toasts. It retakes up to two times.
 5. **Report**: the video, then the UX defects and bugs seen on camera, first.
 
 Before the scenario is written, it asks you to confirm every derived requirement and open decision, such as real or staged data. A defect seen on camera is reported, never captioned as a success.

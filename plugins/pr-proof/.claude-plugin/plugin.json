@@ -69,6 +69,30 @@
       "type": "string",
       "title": "Screenshot widths",
       "description": "Comma-separated viewport widths in pixels, such as 375,768,1440. Leave empty to use the project's breakpoints, or 375, 768 and 1440."
+    },
+    "video_speed": {
+      "type": "string",
+      "title": "Walkthrough video speed",
+      "description": "How fast the rendered walkthrough plays. 0.5x is the slow, calm pace; 1x plays twice as fast, 5x ten times. The recording stays calm, so viewers can pause on any frame.",
+      "options": [
+        "0.5x",
+        "1x",
+        "2x",
+        "3x",
+        "5x"
+      ],
+      "default": "1x"
+    },
+    "caption_density": {
+      "type": "string",
+      "title": "Walkthrough caption density",
+      "description": "How much text one caption holds: normal is up to 60 characters; 2x and 4x hold two and four times as much in smaller type covering the same area.",
+      "options": [
+        "normal",
+        "2x",
+        "4x"
+      ],
+      "default": "normal"
     }
   }
 }
