@@ -1,6 +1,6 @@
 {
   "name": "code-review",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Reviews a branch or pull request for correctness, security, naming, docs and more in parallel, and merges the findings into one report per file. Changes nothing until you pick the fixes to apply.",
   "author": {
     "name": "Mateusz Gostański",
