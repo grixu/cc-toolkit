@@ -1,7 +1,7 @@
 {
   "name": "hookify",
   "version": "0.5.0",
-  "description": "Easily create hooks to prevent unwanted behaviors by analyzing conversation patterns",
+  "description": "Stops Claude from repeating a mistake. Describe the behavior and it writes a hook rule that blocks or warns when it happens again.",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"

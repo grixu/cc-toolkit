@@ -11,7 +11,7 @@
     {
       "name": "codex-plan-improver",
       "source": "./plugins/codex-plan-improver",
-      "description": "Intercepts ExitPlanMode to automatically review implementation plans via OpenAI Codex CLI. Includes /codex-review command for manual invocation.",
+      "description": "When you leave plan mode, sends Claude's plan to OpenAI Codex and revises it until Codex approves, for up to 5 rounds.",
       "version": "1.1.1",
       "author": {
         "name": "Mateusz Gostański",
@@ -44,7 +44,7 @@
     {
       "name": "hookify",
       "source": "./plugins/hookify",
-      "description": "Easily create hooks to prevent unwanted behaviors by analyzing conversation patterns",
+      "description": "Stops Claude from repeating a mistake. Describe the behavior and it writes a hook rule that blocks or warns when it happens again.",
       "version": "0.5.0",
       "author": {
         "name": "Mateusz Gostański",
@@ -118,7 +118,7 @@
     {
       "name": "code-review",
       "source": "./plugins/code-review",
-      "description": "Unified code review that fans out parallel scanners over a change — one per active lens, up to eleven per run — and merges them into one per-file report. Eleven lenses: comment quality, four quality/craft lenses (readability & tests, naming & module, objects & patterns, simplicity & types), an always-on correctness lens (wrong conditions, unhandled cases, off-by-one, swallowed errors, races, broken call contracts), an always-on narrow security lens (secrets, injection, access checks, boundary validation, insecure settings, IaC exposure, access widening, plus access policies and CI workflows), an always-on coherence lens (docs, contracts, migrations, config and sibling listings that disagree with the code or each other, code breaking a rule an accepted ADR or CONTEXT.md states), an always-on assumptions lens (code relying on library, runtime, CI or platform behaviour the installed source or the locked version contradicts, test doubles the real dependency would not match), a performance lens for executable source (N+1, unbounded fetch, blocking-in-async, wasted renders, missing indexes), and a spec lens via --spec <path> or a spec file the diff carries. Explicit rules in a root CODING_STANDARDS.md (plus a gitignored .local.md overlay) generate standards findings. The standalone comment-review and quality-review skills stay invocable for a single-lens pass. Reviews the current branch diff by default (or explicit paths / --base, or a GitHub PR with --pr). Quality findings are tagged family · rule · severity; comment verdicts are R1–R12 · KEEP/REMOVE/REWRITE/MOVE/ADD, shown side by side and applied through a single risk-cut menu. Successor to the comment-review and quality-review plugins.",
+      "description": "Reviews a branch or pull request for correctness, security, naming, docs and more in parallel, and merges the findings into one report per file. Changes nothing until you pick the fixes to apply.",
       "version": "0.7.0",
       "author": {
         "name": "Mateusz Gostański",
@@ -140,7 +140,7 @@
     {
       "name": "researcher",
       "source": "./plugins/researcher",
-      "description": "Source-grounded research assistant: an interactive skill gathers a research brief, then launches a bundled Dynamic Workflow that fans out firecrawl retrieval (WebSearch fallback) into cited findings, gates rounds on coverage and contradictions, and renders a self-contained HTML report where every claim traces to a numbered source. The report evolves across follow-up runs.",
+      "description": "Answers a research question with an HTML report in which every claim links to a numbered source. Follow-up questions extend the same report.",
       "version": "0.1.1",
       "author": {
         "name": "Mateusz Gostański",
@@ -158,7 +158,7 @@
     {
       "name": "tester",
       "source": "./plugins/tester",
-      "description": "On-demand manual verification of a running app by an agent: one command discovers the live stack, builds an ephemeral environment brief, derives test suites from a spec's acceptance criteria (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, agent-browser for UI, and fault-injection (dependency pause/stop or a WireMock proxy) for error handling — each returning an evidence-backed PASS/FAIL table under a hard assertion contract. The light counterpart to mt: no config, no persisted plan. User-run only.",
+      "description": "Tests your running app's API, UI and failure handling with checks drawn from a spec or your git diff. Returns a pass/fail table with evidence for each check.",
       "version": "0.1.1",
       "author": {
         "name": "Mateusz Gostański",
@@ -177,7 +177,7 @@
     {
       "name": "fd3",
       "source": "./plugins/fd3",
-      "description": "Spec-driven delivery pipeline: grill a topic into ratified decisions, write and validate a spec against it, split the spec into dependency-ordered tasks, then implement them in isolated worktrees with batched validation.",
+      "description": "Turns a rough idea into working code: settles the design with you, writes and checks a spec, and splits it into tasks. Then implements the tasks in parallel git worktrees and validates the result.",
       "version": "0.5.2",
       "author": {
         "name": "Mateusz Gostański",
@@ -192,7 +192,7 @@
     {
       "name": "dev-kit",
       "source": "./plugins/dev-kit",
-      "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template and labelled with its risk, assessed by TypeSafe Jev, Gemini Decision or both.",
+      "description": "Fixes failed CI runs, keeps fixing a pull request until CI is green and review is resolved, and checks dependency upgrades against your code. Also opens pull requests from the repository's template, labelled with how risky the change is.",
       "version": "0.11.1",
       "author": {
         "name": "Mateusz Gostański",
@@ -210,7 +210,7 @@
     {
       "name": "pr-proof",
       "source": "./plugins/pr-proof",
-      "description": "Proof that a pull request's change works: prepare-proof judges which proof a branch needs, with signals from TypeSafe Jev or Gemini Decision when a key is set, then produces each kind, a narrated walkthrough video with playwright-recast, screenshots at the project's breakpoints, and masked terminal or API transcripts, and hands it to pr-open through the branch's proof manifest.",
+      "description": "Records proof that a pull request's change works: a narrated video of the feature in your running app, screenshots or terminal transcripts. Picks the proof the change needs and attaches it to the pull request once you accept it.",
       "version": "0.3.1",
       "author": {
         "name": "Mateusz Gostański",
@@ -249,7 +249,7 @@
     {
       "name": "code-story",
       "source": "./plugins/code-story",
-      "description": "Turn a branch, a pull request or a stack of them into a code story: a chaptered page that teaches how and why the change works, re-cut into the steps it could have been reviewed in, with notes pinned to the lines they explain, built-in dark diagrams, English plus an optional second language, and updates published under the same link.",
+      "description": "Explains a branch or pull request as a chaptered page for someone who has never seen the code, with notes pinned to the lines they explain. Publishes it as a private claude.ai page and updates it under the same link.",
       "version": "0.1.0",
       "author": {
         "name": "Mateusz Gostański",
@@ -267,7 +267,7 @@
     {
       "name": "anti-slop",
       "source": "./plugins/anti-slop",
-      "description": "Clean AI slop out of English and Polish prose so it reads plain and human without changing what it says: unsupported claims, staged contrasts and closers, forced triads, rare words where common ones fit, inflated and corporate language. One skill merging cw-ai-check, humanizer, Strunk's composition rules and miodkuj, with a scan script for the mechanical tells.",
+      "description": "Rewrites AI-sounding English or Polish prose so it reads plain and human, keeping every fact, number and caveat.",
       "version": "0.1.0",
       "author": {
         "name": "Mateusz Gostański",
