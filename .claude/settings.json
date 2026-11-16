@@ -1,4 +1,5 @@
 {
+  "plansDirectory": ".ai/plans",
   "hooks": {
     "PostToolUse": [
       {
