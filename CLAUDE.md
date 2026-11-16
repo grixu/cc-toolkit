@@ -35,6 +35,14 @@ Plugins may also include: `commands/`, `hooks/`, `skills/`, `agents/`, `referenc
 
 The root `.claude-plugin/marketplace.json` must list every plugin with matching name, version, source path, description, author, category, and tags.
 
+### Plugin descriptions
+
+The `/plugin` view shows each `description`, so keep it short:
+- At most two sentences, in English, identical in `plugin.json` and in the plugin's `marketplace.json` entry.
+- Say what the plugin does for the user, not how it works inside: no lens lists, model names or tool chains. Detail belongs in the README.
+- A deprecated plugin opens with "Deprecated — use <successor>."
+- Every new or changed description goes through `/compound-writing:cw-scribe` (draft from the README), `/compound-writing:cw-reader` (cold read as a Claude Code user scanning `/plugin`) and `/compound-writing:cw-ai-check`. Repeat until reader and ai-check raise nothing that matters.
+
 ## Hookify Upstream Sync
 
 The hookify plugin is forked from `anthropics/claude-plugins-official`. Upstream syncs go to the `hookify-upstream` branch via `scripts/sync-hookify.sh` and CI (`.github/workflows/sync-hookify.yml`). Merge conflicts may arise when local changes overlap with upstream.
