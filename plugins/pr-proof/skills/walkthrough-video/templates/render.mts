@@ -45,8 +45,6 @@ let pipeline = Recast.from(source)
     duringUserAction: 1.0 * SPEED_FACTOR,
     duringNetworkWait: WAIT_SPEED,
     duringNavigation: WAIT_SPEED,
-    // the default cap of 8 would quietly slow the fastest speeds down
-    maxSpeed: Math.max(8, WAIT_SPEED),
     // no dead-time rule: narrate() is not a user action, so one would fast-forward caption-only scenes
     rules: [{ name: 'open-socket-is-idle', match: onlySocketsOpen, speed: IDLE_SPEED }],
   })

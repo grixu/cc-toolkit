@@ -30,11 +30,11 @@ Helpers write **marker** `test.step()`s into the trace. `setupRecast(test, opts)
 
 Video time is real test time remapped by `speedUp()`. Only clicks, typing, fills, presses, checks, selects and hovers count as user action (1×); navigation and network waits run 2×; **everything else is idle and runs 4× by default** — `pace()`, `narrate` auto-waits, click settle and hover dwell included. A calm video therefore needs `speedUp({ duringIdle: 1.0 })`; a rule can still fast-forward long dead time. Without TTS, a caption lasts exactly the real time until the next marker; a zero-length cue is dropped.
 
-`speedUp` also takes `maxSpeed` (default **8**, a cap on every segment) and `minSegmentDuration` (default 500 ms). Caption cues and click ripples are remapped through the speed processing, so a uniformly faster render keeps them in sync.
+`speedUp` also takes `maxSpeed` (a cap on every segment: 100 in 0.23.0's code, though the README's example shows 8) and `minSegmentDuration` (default 500 ms). Caption cues and click ripples are remapped through the speed processing, so a uniformly faster render keeps them in sync.
 
 ## Speed and caption density
 
-The skill records every take at the calm pace above, called **0.5x**, and applies the configured speed (`SPEED`) only at render: `render.mts` multiplies every `speedUp` value, the socket rule included, by speed ÷ 0.5 (1x → 2, 2x → 4, 3x → 6, 5x → 10) and raises `maxSpeed` to at least 1.5 times that, or the default cap of 8 would slow 5x down. A new speed is a re-render of the same take.
+The skill records every take at the calm pace above, called **0.5x**, and applies the configured speed (`SPEED`) only at render: `render.mts` multiplies every `speedUp` value, the socket rule included, by speed ÷ 0.5 (1x → 2, 2x → 4, 3x → 6, 5x → 10); the fastest segment, a network wait at 5x, runs at 15×, under the default cap. A new speed is a re-render of the same take.
 
 Caption density (`CAPTION_DENSITY`: normal, 2x, 4x) multiplies the caption limit (60 × d characters, 12 × d words) and `maxCharsPerLine`, shrinks `fontSize` and `padding` by √d so the caption covers the same area (40, 28, 20 px), and turns on `wrapStyle: 'smart'` so a 4x caption wraps into two lines. `walk-helpers.ts` raises the `narrateAutoWait` maximum to 6 s × d, so density reaches the take too.
 
