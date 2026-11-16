@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `pr-shepherd`: a review comment whose fix is the owner's trade-off, or two reviewers asking for incompatible changes, is no longer answered with options in the thread. The skill describes the options and their costs in prose, recommends one, asks you through `AskUserQuestion`, then applies your choice and replies. A decision you dismiss or keep for yourself gets no reply and is not asked again in that loop.
+
 ## [0.11.2] - 2026-11-16
 
 ### Changed

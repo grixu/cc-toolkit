@@ -2,19 +2,18 @@
 name: pr-shepherd
 description: Shepherd the current branch's pull request, or a stack of pull requests named by number, in a self-paced loop until CI is green and every review thread is resolved, fixing failures and review comments with commits and pushes, and answering the unjustified ones in-thread. Use when the user asks to babysit, watch or drive a PR to green, or to keep fixing CI and review comments until the PR is clean.
 argument-hint: "[PR …] [iteration]"
-allowed-tools: Read Edit Write Grep Glob Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git merge-tree *) Bash(git merge *) Bash(git worktree *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
-disallowed-tools: AskUserQuestion
+allowed-tools: Read Edit Write Grep Glob AskUserQuestion Bash(git status *) Bash(git fetch) Bash(git fetch *) Bash(git rev-list *) Bash(git pull --ff-only *) Bash(git log *) Bash(git diff *) Bash(git merge-tree *) Bash(git merge *) Bash(git worktree *) Bash(git add *) Bash(git commit *) Bash(git push) Bash(git push *) Bash(gh pr view *) Bash(gh pr checks *) Bash(gh pr comment *) Bash(gh api graphql *) Skill(dev-kit:ci-fix *)
 ---
 
 Arguments: **$ARGUMENTS**
 
-Invoking this skill authorizes every commit and push it describes, on the branches of the PRs it shepherds only. It does not cover merging or rebasing the base into the branch (the stack merge under Entry is the one exception), resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. It runs unattended: wherever it needs a human, it *stops* (below) with a report instead of asking.
+Invoking this skill authorizes every commit and push it describes, on the branches of the PRs it shepherds only. It does not cover merging or rebasing the base into the branch (the stack merge under Entry is the one exception), resolving conflicts, force-pushing, or changing the PR itself (close, reopen, base, title, body unless this skill's step says so); a later user message grants one of these only when it names it explicitly. This invocation is the explicit, per-branch consent that repository rules reserving `git push` for humans ask for; say so once in the first status line. The user running it is the PR's owner. It runs unattended with one exception: a review *decision* (step 3) is the owner's call, so it asks them. Wherever else it needs a human, it *stops* (below) with a report instead of asking.
 
 ## Entry
 
 This skill body is one *iteration* of a self-paced `/loop`. When the arguments carry `iteration`, or this turn is already a `/loop` fire, run the iteration. Otherwise invoke the `loop` skill with the arguments `/dev-kit:pr-shepherd <PR numbers, if any> iteration` and end the turn: the loop runs the first iteration at once and paces the rest. When the `loop` skill is unavailable, run one iteration and tell the user the loop could not start.
 
-Every iteration re-reads the whole state from git and GitHub; the transcript of earlier iterations counts only toward the caps.
+Every iteration re-reads the whole state from git and GitHub; the transcript of earlier iterations counts only toward the caps and for the decisions the owner deferred.
 
 **Stacks.** With no PR number in the arguments, the PR is the current branch's; with one, it is that PR, and when the current branch is not its `headRefName`, steps 1–3 run in a worktree on that branch, as for a stack: never pull, commit or push from another branch. With several, they form a stack: run steps 1–3 for each PR in its own worktree on its head branch (`git worktree add <dir> <headRefName>` outside the repository, or the worktree `git worktree list` already shows on that branch), lowest PR first. A fix lands on the lowest branch in the stack that owns the code and reaches the PRs above it by a plain merge of base into child: after pushing the base, run `git fetch` and `git merge --no-edit origin/<baseRefName>` in the child's worktree, then push the child, one level at a time. Never rebase. This is the one exception to the base-merge ban, and only between branches of the set; merging the default branch into any of them stays forbidden. When such a merge conflicts, `git merge --abort` and stop, naming the files. Mergeability is judged per PR, as GitHub reports it. Step 4 decides over the whole set: done needs every PR done, and a stop that fires for one PR stops the loop once every PR has finished this iteration's steps 1–3.
 
@@ -49,6 +48,7 @@ query($owner: String!, $repo: String!, $number: Int!, $endCursor: String) {
 
 Classify each unresolved thread by its last comment:
 
+- **deferred**: a decision the owner deferred earlier in this loop (step 3), whatever its last comment. It is handed over and needs nothing this iteration.
 - **open**: the last comment is someone else's (`viewerDidAuthor` false). It needs handling this iteration.
 - **awaiting**: the last comment is ours. It waits for the reviewer; when that comment reports a fix, resolve the thread now instead (a resolve that failed last time).
 
@@ -77,9 +77,16 @@ Judge each comment on its merits, whoever wrote it, into one verdict:
 - **justified**: it names a real defect or a clear improvement within the PR's scope. Make the change, verify it with the repository's own lint/test commands for the touched files, and commit it (one commit per thread, or per group of threads fixed by one change; conventional commit style matching `git log`). Stage by explicit file path (`git add <file>…`), never a directory, `-A` or `-a`.
 - **unjustified**: wrong, out of scope, or contradicted by the codebase. Write a *rebuttal*: the concrete reason, with file/line or doc evidence, opening with an @-mention of the comment's author.
 - **question**: it asks rather than requests. Answer it the same way, @-mentioning the author. When the honest answer reveals a defect, the verdict is justified.
-- **decision**: the fix is a trade-off only the PR's owner can make (security posture, a scope or spec change). Change nothing; reply once with the options and the cost of each, @-mentioning the author, and list it under left-to-the-user in the report.
+- **decision**: the fix is a trade-off only the PR's owner can make (security posture, a scope or spec change). Ask the owner (below); never put the options to the reviewer in the thread.
 
-An outdated thread (`isOutdated`) whose point a later commit already addresses, or a thread whose point another PR in the stack already fixes, is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, apply neither and reply in both, linking each to the other and @-mentioning both authors. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
+An outdated thread (`isOutdated`) whose point a later commit already addresses, or a thread whose point another PR in the stack already fixes, is justified with that commit as its fix. Two comments demanding incompatible changes: a human's outranks a bot's (the bot's gets a rebuttal naming the human's thread); between two humans, it is a decision whose options include each human's change. A thread already holding two rebuttals of ours is left to the user: list it in the report and post nothing more.
+
+**Asking for decisions.** Once every thread is judged, and before committing, collect this PR's decisions and ask about them together, so the chosen changes land in this PR's push; in a stack, each PR asks in its own step 3. `AskUserQuestion` has room only for short labels, so first write the decisions out in prose. For each one, give the thread URL, what the reviewer asks for and why, then every option with what it changes and what it costs, and which one you recommend and why. Only then call `AskUserQuestion`: one question per decision, naming the thread, with each option's label matching the prose. Put the recommended option first, marked `(Recommended)`. Offer a "leave as is" option whenever keeping the code unchanged is a real option. The tool takes at most four questions per call, so with more decisions, make further calls. Act on each answer:
+
+- an option that changes code: the thread is justified; its reply also says the owner chose that option.
+- leave as is: the thread is answered like an unjustified one, giving the owner's reason; between two humans, reply in both, linking each to the other.
+- the owner's own text: follow it as one of the two above, or as a deferral.
+- the question was dismissed, or the owner wants to handle it themselves: the thread is *deferred*. Post nothing, list it under left-to-the-user in the report, and never ask about it again in this loop.
 
 After the fixes are committed, `git push` once per branch, then post and resolve through GraphQL (`THREAD_ID` is the thread's `id`):
 
@@ -95,9 +102,8 @@ mutation($threadId: ID!) { resolveReviewThread(input: {threadId: $threadId}) { t
 - **justified**: reply `Fixed in <short SHA>.` (`Fixed in <short SHA> (#<PR>).` when another PR in the stack carries it) with one line on what changed, then resolve.
 - **unjustified** or **question** from a bot (`author.__typename == "Bot"`): post the reply, then resolve.
 - **unjustified** or **question** from a human: post the reply and leave the thread unresolved; it is now awaiting and theirs to resolve.
-- **decision**, from anyone: post the reply and leave the thread unresolved; it is handed over.
 
-A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report unhandled.
+A deferred decision gets no reply and stays unresolved; it is handed over. A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report unhandled.
 
 ## 4. Decide: stop or wake
 
@@ -105,17 +111,17 @@ A thread with `viewerCanReply` or `viewerCanResolve` false goes into the report 
 
 Otherwise stop when one of these holds:
 
-- Every required check is green and every unresolved thread is either *handed over* (two rebuttals already posted, a decision reply posted, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
+- Every required check is green and every unresolved thread is either *handed over* (two rebuttals already posted, a decision the owner deferred, or `viewerCanReply`/`viewerCanResolve` false) or awaiting a human whose newest reply of ours is older than 24 hours: nothing left is ours to move.
 - A stop named in steps 1 to 3 fired.
 - This is iteration 48 of the loop.
 
 Else call `ScheduleWakeup` for the next iteration, choosing the delay by what is still moving:
 
 - something was pushed or checks are pending: 5 minutes, longer when the pending checks took longer on earlier runs;
-- every required check is green and only awaiting threads remain: 30 minutes, then 60 once an iteration found nothing new.
+- every required check is green and only awaiting and deferred threads remain: 30 minutes, then 60 once an iteration found nothing new.
 
 End every iteration with one status line (one per PR in a stack): checks green/red/pending counts, threads open/awaiting, and what this iteration did.
 
 ## Final report
 
-On every stop: why it stopped; commits pushed during the loop (short SHA and subject); threads fixed, rebutted and answered, with URLs; every thread or check left to the user, each decision with its options, and what it needs from them.
+On every stop: why it stopped; commits pushed during the loop (short SHA and subject); threads fixed, rebutted and answered, with URLs; decisions the owner made, with the option chosen; every thread or check left to the user, each deferred decision with its options, and what it needs from them.
