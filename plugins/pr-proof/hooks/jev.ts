@@ -1,4 +1,4 @@
-// Diff helpers copied from dev-kit's hooks at e20a572: a plugin cannot import another plugin's files, and a symlink
+// Diff helpers copied from dev-kit's hooks at 61d0b88: a plugin cannot import another plugin's files, and a symlink
 // breaks under --plugin-dir and local-path marketplaces. A fix to the originals has to be copied here by hand.
 
 export const STATE_CHAR_BUDGET = 72_000 // the whole state: diff + commits + diffstat
