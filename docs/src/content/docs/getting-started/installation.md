@@ -57,3 +57,5 @@ Run `/reload-plugins` in open sessions, or restart them, to load the new version
 
 - `comment-review` and `quality-review` were replaced by [code-review](/plugins/code-review/) and are no longer published. Uninstall them if you still have them, or you'll see duplicate skill names.
 - `feature-delivery` was removed. Use [fd3](/plugins/fd3/) instead, and uninstall it if you still have it.
+- `namesmith` and `session-learner` were removed and are no longer published.
+- `scribe` moved to its own marketplace, [grixu/cc-leaner](https://github.com/grixu/cc-leaner). Run `/plugin marketplace add grixu/cc-leaner`, then `/plugin install scribe@cc-leaner`.

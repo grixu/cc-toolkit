@@ -96,7 +96,7 @@ The agent does the work in every stage; you decide at the gates.
 | [Self-review](/lifecycle/self-review/) | Reviews the change through every lens that applies and merges the findings into one report | Choose which fixes to apply | A review report and the fixes |
 | [Test](/lifecycle/test/) | Works out what to test, runs each check against the running app and records the evidence | Point it at a local or staging stack, or let it start one, and answer its questions | A test report in the session, with a verdict per check |
 | [Human review](/lifecycle/human-review/) | Produces proof, opens the pull request with that proof, a code story and a risk label, answers comments and fixes CI | Approve the proof plan, each screenshot and the video, review and approve the change, and settle what the agent hands back | A pull request with green checks and settled threads, ready for approval |
-| [Maintain](/lifecycle/maintain/) | Checks dependency upgrades and finds the corrections in a session | Accept or skip each proposed rule | A verdict on the upgrade, or new rules |
+| [Maintain](/lifecycle/maintain/) | Checks dependency upgrades and turns your corrections into hookify rules | Accept or skip each proposed rule | A verdict on the upgrade, or new rules |
 
 Table 1. What the agent does and what you decide in each stage
 
@@ -113,18 +113,14 @@ The following diagram shows how a correction becomes a rule:
 
 ```mermaid
 flowchart LR
-  Session[A session in any stage] -->|you correct the agent| Learn[session-learner]
-  Learn --> Rules[Rules files and CLAUDE.md]
-  Learn --> Hooks[hookify rules]
-  Rules -->|read at the start of every session| Next[The next change]
-  Hooks -->|warn or block each edit| Next
+  Session[A session in any stage] -->|you correct the agent| Hookify[hookify]
+  Hookify --> Hooks[hookify rules]
+  Hooks -->|warn or block each edit| Next[The next change]
 ```
 
 Figure 2. How a correction becomes a rule for the next change
 
-[`/session-learner:learn`](/plugins/session-learner/) proposes a rule for each correction that isn't documented yet, and writes only the ones you accept.
-A rule goes to `.claude/rules/`, `CLAUDE.md`, or, when hookify is installed, a hookify rule.
-[`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule from your description.
+[`/hookify:hookify`](/plugins/hookify/hookify/) writes a hookify rule from your description, or from the mistakes in the current conversation.
 In Self-review, code-review reads your rules files as conventions, so it doesn't flag what they allow.
 Its hookify lens replays your file-edit hookify rules over the diff and reports each match.
 

@@ -96,7 +96,7 @@ Agent wykonuje pracę na każdym etapie; ty decydujesz na bramkach.
 | [Self-review](/pl/lifecycle/self-review/) | Przegląda zmianę każdą pasującą soczewką i scala znaleziska w jeden raport | Wybierasz, które poprawki zastosować | Raport z review i poprawki |
 | [Testy](/pl/lifecycle/test/) | Ustala, co przetestować, uruchamia każde sprawdzenie na działającej aplikacji i zapisuje dowody | Wskazujesz lokalne albo stagingowe środowisko albo pozwalasz mu je uruchomić i odpowiadasz na jego pytania | Raport z testów w sesji, z werdyktem dla każdego sprawdzenia |
 | [Review człowieka](/pl/lifecycle/human-review/) | Przygotowuje dowody, otwiera pull request z tymi dowodami, historią zmiany i etykietą ryzyka, odpowiada na komentarze i naprawia CI | Akceptujesz plan dowodów, każdy zrzut ekranu i wideo, przeglądasz i akceptujesz zmianę oraz rozstrzygasz to, co agent ci odda | Pull request z zielonymi checkami i rozstrzygniętymi wątkami, gotowy do akceptacji |
-| [Utrzymanie](/pl/lifecycle/maintain/) | Sprawdza aktualizacje zależności i znajduje poprawki z sesji | Akceptujesz albo pomijasz każdą proponowaną regułę | Werdykt o aktualizacji albo nowe reguły |
+| [Utrzymanie](/pl/lifecycle/maintain/) | Sprawdza aktualizacje zależności i zamienia twoje poprawki w reguły hookify | Akceptujesz albo pomijasz każdą proponowaną regułę | Werdykt o aktualizacji albo nowe reguły |
 
 Tabela 1. Co robi agent, a o czym decydujesz ty na każdym etapie
 
@@ -113,18 +113,14 @@ Poniższy diagram pokazuje, jak poprawka staje się regułą:
 
 ```mermaid
 flowchart LR
-  Session[Sesja na dowolnym etapie] -->|poprawiasz agenta| Learn[session-learner]
-  Learn --> Rules[Pliki reguł i CLAUDE.md]
-  Learn --> Hooks[Reguły hookify]
-  Rules -->|czytane na starcie każdej sesji| Next[Następna zmiana]
-  Hooks -->|ostrzegają albo blokują edycję| Next
+  Session[Sesja na dowolnym etapie] -->|poprawiasz agenta| Hookify[hookify]
+  Hookify --> Hooks[Reguły hookify]
+  Hooks -->|ostrzegają albo blokują edycję| Next[Następna zmiana]
 ```
 
 Rysunek 2. Jak poprawka staje się regułą dla następnej zmiany
 
-[`/session-learner:learn`](/pl/plugins/session-learner/) proponuje regułę dla każdej poprawki, której nie ma jeszcze w dokumentacji, i zapisuje tylko te, które zaakceptujesz.
-Reguła trafia do `.claude/rules/`, do `CLAUDE.md` albo, gdy hookify jest zainstalowany, do reguły hookify.
-[`/hookify:hookify`](/pl/plugins/hookify/hookify/) pisze regułę hookify z twojego opisu.
+[`/hookify:hookify`](/pl/plugins/hookify/hookify/) pisze regułę hookify z twojego opisu albo z błędów w bieżącej rozmowie.
 W Self-review code-review czyta twoje pliki reguł jako konwencje, więc nie zgłasza tego, na co pozwalają.
 Jego soczewka hookify odtwarza na diffie twoje reguły hookify dla edycji plików i zgłasza każde dopasowanie.
 

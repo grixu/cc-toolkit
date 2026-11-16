@@ -134,8 +134,6 @@ export const skills: Skill[] = [
     does: { en: 'A rule that stops a repeated mistake', pl: 'Reguła, która zatrzymuje powtarzany błąd' } },
   { id: 'rule-hooks', plugin: 'hookify', cmd: 'hooks', label: 'rule hooks', stage: 'build', href: 'plugins/hookify/', auto: true,
     does: { en: 'Warn or block an edit that breaks your rules, as the agent writes it', pl: 'Ostrzeż albo zablokuj edycję łamiącą twoje reguły, w chwili gdy agent ją pisze' } },
-  { id: 'learn', plugin: 'session-learner', cmd: '/session-learner:learn', stage: 'maintain', href: 'plugins/session-learner/',
-    does: { en: "Turn a session's corrections into rules", pl: 'Zamień poprawki z sesji w reguły' } },
 ]
 export const skillById = Object.fromEntries(skills.map((s) => [s.id, s])) as Record<string, Skill>
 export const shortName = (s: Skill) => s.label ?? s.cmd.split(':')[1] ?? s.cmd
@@ -181,8 +179,6 @@ const raw: Omit<Plugin, 'version' | 'cmd'>[] = [
     desc: { en: 'Answers a research question with a report where every claim cites a source.', pl: 'Odpowiada na pytanie badawcze raportem, w którym każde twierdzenie ma źródło.' } },
   { name: 'hookify', core: false, promise: { en: '', pl: '' },
     desc: { en: 'Stops Claude from repeating a mistake with a rule that warns or blocks.', pl: 'Powstrzymuje Claude’a przed powtarzaniem błędu regułą, która ostrzega albo blokuje.' } },
-  { name: 'session-learner', core: false, promise: { en: '', pl: '' },
-    desc: { en: 'Turns the corrections from a session into project rules.', pl: 'Zamienia poprawki z sesji w reguły projektu.' } },
   { name: 'code-story', core: false, promise: { en: '', pl: '' },
     desc: { en: 'Turns a branch, a pull request or a stack of them into a chaptered page that teaches how and why the change works.', pl: 'Zamienia branch, pull request albo ich stos w stronę z rozdziałami, która wyjaśnia, jak i dlaczego zmiana działa.' } },
   { name: 'anti-slop', core: false, promise: { en: '', pl: '' },
