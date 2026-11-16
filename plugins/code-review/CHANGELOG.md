@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- shorter description in `plugin.json` and the marketplace listing, at most two sentences
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

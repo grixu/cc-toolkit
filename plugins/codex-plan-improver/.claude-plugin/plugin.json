@@ -1,6 +1,6 @@
 {
   "name": "codex-plan-improver",
-  "description": "Intercepts ExitPlanMode to automatically review implementation plans via OpenAI Codex CLI. Includes /codex-review command for manual invocation.",
+  "description": "When you leave plan mode, sends Claude's plan to OpenAI Codex and revises it until Codex approves, for up to 5 rounds.",
   "version": "1.1.1",
   "author": {
     "name": "Mateusz Gostański",
