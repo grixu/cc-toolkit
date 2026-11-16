@@ -1,16 +1,26 @@
 #!/bin/bash
-# Review sheets for a rendered walkthrough: a frame every 5 s, each caption's middle and end, caption length checks.
+# Review sheets for a rendered walkthrough: a timeline of frames, each caption's middle and end, caption length checks.
 # Usage: frames.sh <video.mp4> [<slug>.walk.ts]   (the .srt must sit next to the video; output lands in <video dir>/frames/)
+# Env: SPEED=0.5x|1x|2x|3x|5x (default 1x) scales the timeline interval; CAPTION_MAX (default 60) is the caption limit.
 set -euo pipefail
 VIDEO=$1
 WALK=${2:-}
+CAPTION_MAX=${CAPTION_MAX:-60}
+# Faster videos are shorter, so the timeline samples more often: every 5 s at 0.5x down to every 1 s at 5x.
+case ${SPEED:-1x} in
+  0.5x) INTERVAL=5 ;;
+  1x) INTERVAL=3 ;;
+  2x) INTERVAL=2 ;;
+  3x | 5x) INTERVAL=1 ;;
+  *) echo "SPEED must be 0.5x, 1x, 2x, 3x or 5x, got $SPEED" >&2; exit 1 ;;
+esac
 SRT=${VIDEO%.*}.srt
 OUT=$(dirname "$VIDEO")/frames
 rm -rf "$OUT/timeline" "$OUT/cues" "$OUT"/*.png
 mkdir -p "$OUT/timeline" "$OUT/cues" "$OUT/fixes"
 
 ffprobe -v error -show_entries format=duration,size -of compact "$VIDEO"
-ffmpeg -nostdin -v error -i "$VIDEO" -vf "fps=1/5,scale=640:-1,tile=3x3" "$OUT/timeline/sheet%02d.png"
+ffmpeg -nostdin -v error -i "$VIDEO" -vf "fps=1/$INTERVAL,scale=640:-1,tile=3x3" "$OUT/timeline/sheet%02d.png"
 
 # 35% into each cue and 0.6 s before it ends: catches a caption that runs ahead of its action.
 awk -F' --> ' '/-->/ {
@@ -29,10 +39,11 @@ ffmpeg -nostdin -v error -i "$OUT/cues/f%03d.png" -vf "scale=640:-1,tile=2x4" "$
 if [ -n "$WALK" ]; then
   # shellcheck disable=SC2016 # a JavaScript program: its ${…} and backticks are node's, not the shell's
   node -e '
-    const source = require("fs").readFileSync(process.argv[1], "utf8");
+    const [file, max] = process.argv.slice(1);
+    const source = require("fs").readFileSync(file, "utf8");
     for (const [, , text] of source.matchAll(/narrate\(\s*([\x27"`])(.*?)\1/g)) {
-      if ([...text].length > 60) console.log(`over 60 chars (${[...text].length}): ${text}`);
-    }' "$WALK"
+      if ([...text].length > Number(max)) console.log(`over ${max} chars (${[...text].length}): ${text}`);
+    }' "$WALK" "$CAPTION_MAX"
 fi
 # Captions that start lowercase are the second half of a split cue.
 awk 'prev ~ /-->/ && $0 ~ /^[a-z]/ { print "split cue: " $0 } { prev = $0 }' "$SRT"
