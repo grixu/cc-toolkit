@@ -1,7 +1,7 @@
 {
   "name": "dev-kit",
   "description": "Fixes failed CI runs, keeps fixing a pull request until CI is green and review is resolved, and checks dependency upgrades against your code. Also opens pull requests from the repository's template, labelled with how risky the change is.",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
