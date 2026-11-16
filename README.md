@@ -5,7 +5,7 @@ Plugins for [Claude Code](https://code.claude.com/docs), Anthropic's coding agen
 A plugin adds commands, skills, helper agents, or hooks to Claude Code. This repository is a plugin
 marketplace: a catalog you add to Claude Code once, then install only the plugins you want from it.
 Each plugin solves one problem, such as reviewing a change, turning an idea into a spec and then into
-code, fixing a failed CI run, or transcribing a video, and works on its own.
+code, or fixing a failed CI run, and works on its own.
 
 ## Install
 
@@ -80,7 +80,6 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 | Plugin | What it does | Start with |
 |---|---|---|
 | [researcher](plugins/researcher/README.md) | Answers a research question with an HTML report in which every claim links to a numbered source. Follow-up questions extend the same report. | `/researcher:research "<question>"` |
-| [scribe](plugins/scribe/README.md) | Transcribes YouTube videos or local audio and video files, then summarizes them, pulls out news on a topic, or applies your own prompt. Transcripts are cached, so asking again about the same item does not transcribe it again. | Paste a YouTube link or file path and ask for a summary |
 | [anti-slop](plugins/anti-slop/README.md) | Rewrites English or Polish prose so it reads plain and human: common words over rare exact ones, no staged contrasts, closers or forced lists of three, and no claim the source does not back. Every fact, number and caveat stays. code-story and dev-kit run it on what they write. | `/anti-slop:anti-slop <file or text>` |
 
 ### Improve Claude Code itself
@@ -100,7 +99,6 @@ Most plugins need only Claude Code. These need more:
 | hookify | Python 3 |
 | fd3 | git; [dynamic workflows](https://code.claude.com/docs/en/workflows) for `/fd3:implement`; code-review 0.4.0 or later for its optional review step |
 | researcher | [Dynamic workflows](https://code.claude.com/docs/en/workflows); the [firecrawl](https://www.firecrawl.dev) MCP server with `FIRECRAWL_API_KEY`; optional `mmdc` for diagrams |
-| scribe | Node.js 20 or later, `ffmpeg`, `ELEVENLABS_API_KEY`; `yt-dlp` for YouTube |
 | tester | A running, non-production app; optional [`agent-browser`](https://github.com/vercel-labs/agent-browser) for UI checks; Docker for one failure-injection mode |
 | dev-kit | git, the GitHub CLI (`gh`); installs code-story and anti-slop with it |
 | code-story | Node.js 22 or later, git, `gh`; installs anti-slop with it |
@@ -112,7 +110,8 @@ in the Dynamic workflows row of `/config`.
 
 ## Renamed and removed plugins
 
-- `yt` was renamed to `scribe`. See the [scribe changelog](plugins/scribe/CHANGELOG.md).
+- `scribe` (formerly `yt`) moved to its own marketplace, [grixu/cc-leaner](https://github.com/grixu/cc-leaner):
+  `/plugin marketplace add grixu/cc-leaner`, then `/plugin install scribe@cc-leaner`.
 - `comment-review` and `quality-review` were replaced by `code-review` and are no longer published.
   Uninstall them if you still have them, or you will see duplicate skill names.
 - `feature-delivery` was replaced by `fd3`, and `namesmith` and `session-learner` were removed. None

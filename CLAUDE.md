@@ -49,4 +49,4 @@ The hookify plugin is forked from `anthropics/claude-plugins-official`. Upstream
 
 ## Per-Plugin Conventions
 
-Plugins with complex conventions get a path-scoped rule in `.claude/rules/<plugin>.md` with `paths: ["plugins/<plugin>/**"]` frontmatter (e.g., `.claude/rules/scribe.md`). Do not put a `CLAUDE.md` inside a plugin directory: it ships with the plugin, is never loaded as context for installed plugins, and `claude plugin validate` warns about it.
+Plugins with complex conventions get a path-scoped rule in `.claude/rules/<plugin>.md` with `paths: ["plugins/<plugin>/**"]` frontmatter (e.g., `.claude/rules/tester.md`). Do not put a `CLAUDE.md` inside a plugin directory: it ships with the plugin, is never loaded as context for installed plugins, and `claude plugin validate` warns about it.
