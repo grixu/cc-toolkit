@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "cc-toolkit",
-  "version": "1.10.14",
+  "version": "1.10.15",
   "owner": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
@@ -28,7 +28,7 @@
       "name": "hookify",
       "source": "./plugins/hookify",
       "description": "Stops Claude from repeating a mistake. Describe the behavior and it writes a hook rule that blocks or warns when it happens again.",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "author": {
         "name": "Mateusz Gostański",
         "email": "mg@grixu.dev"
