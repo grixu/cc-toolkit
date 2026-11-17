@@ -1,0 +1,4 @@
+{
+  "description": "code-review mod: the apply_decision tool that lets a decision model (TypeSafe Jev or Gemini Decision) settle structural-walk fixes the owner would not need to see",
+  "modules": ["./register.ts"]
+}
