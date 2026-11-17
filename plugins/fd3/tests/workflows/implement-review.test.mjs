@@ -200,9 +200,11 @@ test('codexReview adds --codex to the first prepare prompt only, never to the de
   const r = await runCodex(true, [['cr-merge:app:feat-x:review', crMerged([F.plain])]])
   assert.match(r.call('cr-prep:app:feat-x:review').prompt, /--spec \S+ --codex`/)
   assert.doesNotMatch(r.call('cr-prep:app:feat-x:delta').prompt, /--codex/)
+})
 
-  const off = await runCodex(false)
-  assert.doesNotMatch(off.call('cr-prep:app:feat-x:review').prompt, /--codex/)
+test('codexReview false never adds --codex', async () => {
+  const r = await runCodex(false)
+  assert.doesNotMatch(r.call('cr-prep:app:feat-x:review').prompt, /--codex/)
 })
 
 test('the codex lens gets its own scanner beside the single all-lens scanner', async () => {
@@ -224,4 +226,18 @@ test('a skipped or dead Codex review merges without a dead-lens verdict', async 
     assert.ok(!r.result.hil.some((h) => /the review did not run/.test(h.reason)))
     assert.deepEqual(status(r), ['done', 'done'])
   }
+})
+
+test('a Codex scanner that throws still reaches cr-merge without a dead-lens verdict', async () => {
+  const r = await runCodex(true, [
+    ['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security', 'codex'])],
+    [
+      'cr:app:feat-x:review:codex',
+      () => {
+        throw new Error('codex scanner crashed')
+      },
+    ],
+  ])
+  assert.ok(r.has('cr-merge:app:feat-x:review'))
+  assert.ok(!r.result.hil.some((h) => /did not report/.test(h.reason)))
 })

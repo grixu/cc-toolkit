@@ -1248,17 +1248,16 @@ const CODEX_LENS = 'codex'
 
 // Returns the lenses that did not report — a lens the single scanner left out of its list is one —
 // and those that judged only part of their files.
-const scanLenses = async (active, dir, files, tag, pass) => {
-  const lenses = active.filter((l) => l !== CODEX_LENS)
+const scanLenses = async (lenses, withCodex, dir, files, tag, pass) => {
   // One attempt only: a retry would restart a Codex run of up to an hour, and its failure is a skip.
-  const codex = active.includes(CODEX_LENS)
-    ? () => agent(STEP_GUARD + scanPrompt(CODEX_LENS, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${CODEX_LENS}`, phase: 'Validate', schema: SCAN_RESULT }).catch(() => null)
-    : null
+  const codexScan = withCodex
+    ? [() => agent(STEP_GUARD + scanPrompt(CODEX_LENS, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${CODEX_LENS}`, phase: 'Validate', schema: SCAN_RESULT }).catch(() => null)]
+    : []
   let results
   if (lenses.length > 1 && files <= SINGLE_SCAN_MAX_FILES) {
     const scanAll = () =>
       tryTwice(scanAllPrompt(lenses, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
-    const [r] = await parallel([scanAll, ...(codex ? [codex] : [])])
+    const [r] = await parallel([scanAll, ...codexScan])
     const reported = new Map((r && r.invoked ? r.lenses || [] : []).map((e) => [norm(e.lens), { ...e, invoked: true }]))
     results = lenses.map((l) => reported.get(l))
   } else {
@@ -1266,7 +1265,7 @@ const scanLenses = async (active, dir, files, tag, pass) => {
       ...lenses.map((lens) => () =>
         tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
       ),
-      ...(codex ? [codex] : []),
+      ...codexScan,
     ])
   }
   const dead = lenses.filter((_, i) => lensDead(results[i]))
@@ -1347,7 +1346,7 @@ const runReview = async (unit, base, pass, tag, only) => {
   if (lenses.length === 0 || (!(prep.files > 0) && !specOnly)) {
     return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
   }
-  const scan = await scanLenses(scanned, dir, prep.files || 0, tag, pass)
+  const scan = await scanLenses(lenses, scanned.includes(CODEX_LENS), dir, prep.files || 0, tag, pass)
   if (scan.dead.length > 0) return { dir, dead: `lens ${scan.dead.join(', ')} did not report` }
   const merged = await tryTwice(crMergePrompt(dir, unit), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {
