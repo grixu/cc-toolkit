@@ -67,6 +67,11 @@ The following diagram shows the steps of a run:
 A typical story has 4 to 8 chapters, in the order understanding has to build.
 Each chapter answers one question, and its heading is that question.
 
+A chapter is built from the lines it is about, changed or not, and two cases reach past the diff:
+
+- **A fix whose cause sits in unchanged lines.** The chapter quotes those lines and shows how they produced the bug, so you see why the fix works.
+- **A change that makes code elsewhere redundant,** such as a guard every caller repeats. The chapter shows one real caller, quoted from the file, as it is now and as it could be, and says whether this branch removes it or leaves it for later.
+
 The skill works in its scratchpad, in `code-story/<branch>/`, with each `/` in the branch name replaced by `-`.
 It never edits, stages or commits files in your repository, and it never pushes or edits a pull request.
 
