@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `pr-open` creates the body directory with `mktemp -d "${TMPDIR:-/tmp}/pr-body.XXXXXX"`. The `-t` form ignores `$TMPDIR` on macOS, so it failed in a sandboxed shell that may write only there.
+- `pr-open` writes each `--attach` flag out in the `gh` command. Collected in a variable, the flags reached `gh` as one word under zsh and no proof media were uploaded.
+- `pr-shepherd` reads the check status from `gh pr checks` JSON and ignores the exit code, which is non-zero while a check is pending or failing, and with `--required` when no check is required.
+
 ## [0.12.0] - 2026-11-17
 
 ### Added
