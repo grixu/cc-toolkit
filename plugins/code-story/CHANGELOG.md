@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- A fix whose cause sits in unchanged lines quotes those lines, and a change that makes code elsewhere redundant shows one real caller before and after, saying whether the branch removes it or leaves it for later.
+
 ## [0.1.2] - 2026-11-17
 
 ### Fixed
