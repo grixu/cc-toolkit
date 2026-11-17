@@ -20,10 +20,10 @@ OUT=$(dirname "$VIDEO")/frames
 rm -rf "$OUT/timeline" "$OUT/cues" "$OUT"/*.png
 mkdir -p "$OUT/timeline" "$OUT/cues" "$OUT/fixes"
 
-ffprobe -v error -show_entries format=duration,size -of compact "$VIDEO"
+IFS=, read -r DURATION SIZE < <(ffprobe -v error -show_entries format=duration,size -of csv=p=0 "$VIDEO")
+echo "duration=$DURATION size=$SIZE"
 VIDEO_STREAMS=$(ffprobe -v error -select_streams v -show_entries stream=index -of csv=p=0 "$VIDEO" | wc -l | tr -d ' ')
 FRAME_RATE=$(ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate -of csv=p=0 "$VIDEO")
-SIZE=$(ffprobe -v error -show_entries format=size -of csv=p=0 "$VIDEO")
 [ "$VIDEO_STREAMS" = 1 ] || echo "WARN: $VIDEO_STREAMS video streams, expected 1"
 [ "$FRAME_RATE" = 30/1 ] || echo "WARN: frame rate $FRAME_RATE, expected 30/1"
 # GitHub's smallest limit for a video in a comment or PR body; paid plans allow more.
@@ -46,7 +46,6 @@ ffmpeg -nostdin -v error -i "$VIDEO" -vf "fps=1/$INTERVAL,scale=640:-1,tile=3x3"
 # 35% into each cue and just before it ends: catches a caption that runs ahead of its action.
 # The end offset is 0.6 s, or 15% of the cue when that is shorter: fast renders have sub-second cues.
 # The last cue can end after the video does, where a seek finds no frame.
-DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$VIDEO")
 awk -F' --> ' -v duration="$DURATION" '/-->/ {
   split($1, a, /[:,]/); split($2, b, /[:,]/)
   start = a[1]*3600 + a[2]*60 + a[3] + a[4]/1000; end = b[1]*3600 + b[2]*60 + b[3] + b[4]/1000
