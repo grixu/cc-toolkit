@@ -1,17 +1,16 @@
 # yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-description: code-review plugin — comment verdicts (R1–R12) and quality findings (family · rule · severity)
+description: code-review plugin — lens verdicts (comments, R1–R12) and findings (family · rule · severity)
 
 prompts:
-  # Natural-language triggers (not literal "/comment-review" slashes — the Agent SDK reads a
-  # leading "/" as a command and rejects it; the skills fire on description match instead).
-  # Each test binds to one label, so the two tracks don't cross-run.
-  - id: file://prompts/review.txt
+  # Every lens runs only through a Scanner, and the Agent SDK rejects a prompt that starts with
+  # "/", so these prompts emulate the Scanner brief — read the rules file, review the files,
+  # return findings or verdicts only. Each test binds to one label, so the tracks don't cross-run.
+  - id: file://prompts/comments.txt
     label: comment-track
-  - id: file://prompts/quality.txt
+  # The four craft lenses in turn, as cr-scan runs a lens list; a `standards` var adds the
+  # CODING_STANDARDS pair from that directory as the standards slot.
+  - id: file://prompts/craft.txt
     label: quality-track
-  # Scanner track: the security / performance / spec lenses have no standalone skill (they
-  # exist only inside /start-cr), so these prompts emulate the orchestrator's Scanner
-  # brief — read the rules file, review the file, return findings only.
   - id: file://prompts/security.txt
     label: security-track
   - id: file://prompts/performance.txt
@@ -20,10 +19,9 @@ prompts:
     label: security-diff-track
   - id: file://prompts/spec.txt
     label: spec-track
-  # Standards track: quality-review with the fixture dir declared as the repository root
-  # for the CODING_STANDARDS pair.
-  - id: file://prompts/standards.txt
-    label: standards-track
+  # start-cr Step 1 over named paths, with the kinds and lens set Step 2b settles.
+  - id: file://prompts/scope-paths.txt
+    label: scope-track
   # Headless track: the three model-only skills a workflow drives, run in sequence against a
   # committed change in a git sandbox that reset-sandbox.sh rebuilds.
   - id: file://prompts/headless.txt
@@ -56,6 +54,9 @@ prompts:
   # The assumptions lens, over a repository with its dependencies installed.
   - id: file://prompts/assumptions.txt
     label: assumptions-track
+  # The hookify lens, over a branch whose base commits the project's hookify rule files.
+  - id: file://prompts/hookify.txt
+    label: hookify-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -66,7 +67,7 @@ providers:
       permission_mode: bypassPermissions # the skill's Read/Grep/Bash run unattended
       allow_dangerously_skip_permissions: true # required alongside bypassPermissions
       working_dir: ../../.. # repo root, so the plugin path and {{file}} paths resolve
-      # Per-run cost guard. The quality track needs the higher cap: quality-review reads
+      # Per-run cost guard. The quality track needs the higher cap: the craft prompt reads
       # four rules files plus severity.md and scope.md before it judges, and a $1 cap
       # aborted the calibration test mid-run with an empty result.
       max_budget_usd: 3
@@ -103,7 +104,7 @@ defaultTest:
 
 tests:
   # ============================================================================
-  # Comment track — comment-review, verdicts R1–R12
+  # Comment track — the comments lens, verdicts R1–R12
   # ============================================================================
 
   - description: 'eval-0 banners-and-doc-refs (datadog-integration.tf)'
@@ -115,11 +116,9 @@ tests:
       # performance lens), and cases/spec-conformance/ dodges the test-kind spec/ name.
       file: plugins/code-review/evals/comment-track/datadog-integration.tf
     assert:
-      # "skill actually ran" proxy: plugin skills load via Agent-Skills injection, not a
-      # Skill() tool call, so `skill-used` / metadata.skillCalls stay empty. Assert the
-      # report closes on the skill's own tally line instead.
+      # "rules were read" proxy: the output opens on the contract's Lens header.
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: 'Lens: comments · files judged: \d+ of \d+'
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: '# ===== Datadog =====', verdict: REMOVE, rule: R5 }
@@ -163,7 +162,7 @@ tests:
       file: plugins/code-review/evals/comment-track/scheduler.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: 'Lens: comments · files judged: \d+ of \d+'
       # cross-file / internal-doc references
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
@@ -197,7 +196,7 @@ tests:
       file: plugins/code-review/evals/comment-track/dlq-codes.ts plugins/code-review/evals/comment-track/dlq.handler.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: 'Lens: comments · files judged: \d+ of \d+'
       # rationale parked on a declaration
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
@@ -233,7 +232,7 @@ tests:
       file: plugins/code-review/evals/comment-track/payment-validator.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: 'Lens: comments · files judged: \d+ of \d+'
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
         config: { quote: 'F1: users can submit', verdict: REMOVE, rule: R4 }
@@ -282,7 +281,7 @@ tests:
       file: plugins/code-review/evals/comment-track/host-allowlist.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed(?: \([^)]*\))? · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: 'Lens: comments · files judged: \d+ of \d+'
       # each carries a real WHY: neither a blanket REMOVE nor KEEP-as-is
       - type: javascript
         value: file://checks/report.mjs:commentVerdict
@@ -304,15 +303,15 @@ tests:
           rather than rationalizing the spec-id `R2` as a code value.
 
   # ============================================================================
-  # Quality track — quality-review, findings tagged family · rule · severity
+  # Quality track — the four craft lenses, findings tagged family · rule · severity
   # ============================================================================
 
-  - description: 'eval-5 vocabulary-and-skeleton (quality-vocabulary.ts)'
+  - description: 'eval-5 vocabulary (quality-vocabulary.ts)'
     prompts: [quality-track]
     vars:
       file: plugins/code-review/evals/cases/quality-vocabulary.ts
     assert:
-      # "skill actually ran" proxy: the report uses the skill's own family vocabulary.
+      # "rules were read" proxy: the findings carry the lenses' own family tags.
       - type: regex
         value: '`(readability|tests|naming|module|objects|patterns|simplicity|security|performance|spec|standards)\b'
       - type: javascript
@@ -329,16 +328,6 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:collapsedRepeats
         config: { rule: openness }
-      # a high finding exists, so the headline must not call the change clean
-      - type: javascript
-        value: file://checks/report.mjs:headlineHonest
-        config: {}
-      - type: javascript
-        value: file://checks/report.mjs:skeletonPreamble
-      - type: javascript
-        value: file://checks/report.mjs:fileHeaders
-      - type: javascript
-        value: file://checks/report.mjs:findingBullets
       - type: javascript
         value: file://checks/report.mjs:noCodeBlocks
 
@@ -375,10 +364,10 @@ tests:
     vars:
       file: plugins/code-review/evals/cases/quality-calibration.ts
     assert:
-      # This fixture is deliberately clean, so a family tag may be absent from a collapsed
-      # report. Use the skeleton's tally line as the "skill actually ran" proxy instead.
+      # This fixture is deliberately clean, so a family tag may be absent. Proxy on the four
+      # Lens headers instead.
       - type: regex
-        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+        value: 'Lens: readability-tests[\s\S]*Lens: naming-module[\s\S]*Lens: objects-patterns[\s\S]*Lens: simplicity-types'
       # narrowing an `unknown` boundary is the documented exception
       - type: javascript
         value: file://checks/report.mjs:noFinding
@@ -452,9 +441,9 @@ tests:
     vars:
       file: plugins/code-review/evals/cases/quality-calibration-2.ts plugins/code-review/evals/cases/quality-calibration-2.types.ts
     assert:
-      # Deliberately clean fixture — proxy on the skeleton's tally line, as in eval-7.
+      # Deliberately clean fixture — proxy on the four Lens headers, as in eval-7.
       - type: regex
-        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+        value: 'Lens: readability-tests[\s\S]*Lens: naming-module[\s\S]*Lens: objects-patterns[\s\S]*Lens: simplicity-types'
       # a DTO mapper reads another object because that is its job
       - type: javascript
         value: file://checks/report.mjs:noFinding
@@ -700,9 +689,10 @@ tests:
   # ============================================================================
 
   - description: 'eval-15 standards-pair (standards/service.ts)'
-    prompts: [standards-track]
+    prompts: [quality-track]
     vars:
       file: plugins/code-review/evals/cases/standards/service.ts
+      standards: plugins/code-review/evals/cases/standards
     assert:
       - type: regex
         value: '`standards`'
@@ -836,39 +826,35 @@ tests:
         value: file://checks/report.mjs:noFinding
         config: { family: security, atSeverity: high }
   - description: 'eval-19 scope-classification (scope-mix/)'
-    prompts: [quality-track]
+    prompts: [scope-track]
     vars:
       # Outside fixtures/: scope.md makes everything under a fixtures/ directory `test` kind,
       # which would hide the source-vs-test classification this eval checks.
       file: plugins/code-review/evals/scope-mix
     assert:
-      - type: javascript
-        value: file://checks/report.mjs:fileReviewed
-        config: { files: [build.mjs, legacy-report.cjs] }
       # both are source files, never dismissed as tooling
-      - type: javascript
-        value: file://checks/report.mjs:notSkipped
-        config: { patterns: ['build\.mjs', 'legacy-report'] }
-      # a test file outside a `test` directory still gets the tests family
-      - type: javascript
-        value: file://checks/report.mjs:finding
-        config: { family: tests, under: checkout.spec.ts }
-      - type: javascript
-        value: file://checks/report.mjs:notSkipped
-        config: { patterns: ['checkout\.spec'] }
-      # a policy file is the security lens's alone
-      - type: javascript
-        value: file://checks/report.mjs:noFinding
-        config: { under: ci.yml }
       - type: regex
-        value: 'ci\.yml.*(security|[Ss]kipped)|([Ss]kipped|security).*ci\.yml'
+        value: '(?:^|\n)files:[^\n]*build\.mjs \(source\)'
       - type: regex
-        value: '/security-review'
-      - type: javascript
-        value: file://checks/report.mjs:skippedNames
-        config: { patterns: ['notes\.txt'] }
+        value: '(?:^|\n)files:[^\n]*legacy-report\.cjs \(source\)'
+      # a test file outside a `test` directory is still test kind
       - type: regex
-        value: '[Ss]kipped'
+        value: '(?:^|\n)files:[^\n]*checkout\.spec\.ts \(test\)'
+      - type: regex
+        value: '(?:^|\n)lenses:[^\n]*readability-tests:[^;\n]*checkout\.spec\.ts'
+      # a policy file is the security lens's, never a craft lens's
+      - type: regex
+        value: '(?:^|\n)files:[^\n]*ci\.yml \(policy\)'
+      - type: regex
+        value: '(?:^|\n)lenses:[^\n]*security:[^;\n]*ci\.yml'
+      - type: not-regex
+        value: '(?:^|\n)lenses:[^\n]*(?:readability-tests|naming-module|objects-patterns|simplicity-types|comments):[^;\n]*ci\.yml'
+      - type: regex
+        value: '(?:^|\n)skipped:[^\n]*/security-review'
+      - type: regex
+        value: '(?:^|\n)skipped:[^\n]*notes\.txt'
+      - type: not-regex
+        value: '(?:^|\n)skipped:[^\n]*(?:build\.mjs|legacy-report|checkout\.spec)'
 
   - description: 'eval-20 headless-pipeline (cr-prepare → cr-scan × N → cr-merge)'
     prompts: [headless-track]
@@ -1064,7 +1050,7 @@ tests:
       file: plugins/code-review/evals/.sandbox/arch-marker/src/order-handler.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ comments reviewed · \d+ remove · \d+ rewrite · \d+ move · \d+ add · \d+ keep-as-is'
+        value: 'Lens: comments · files judged: \d+ of \d+'
       - type: javascript
         value: file://checks/report.mjs:commentKept
         config: { quote: 'Stamp coupling' }
@@ -1318,7 +1304,7 @@ tests:
       file: plugins/code-review/evals/cases/tests-mutation/loyalty.ts plugins/code-review/evals/cases/tests-mutation/loyalty.test.ts
     assert:
       - type: regex
-        value: '\*\*Tally:\*\* \d+ findings? · \d+ high · \d+ medium · \d+ nit'
+        value: 'Lens: readability-tests[\s\S]*Lens: naming-module[\s\S]*Lens: objects-patterns[\s\S]*Lens: simplicity-types'
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { rule: mutation-gap }
@@ -1412,3 +1398,108 @@ tests:
         config: { families: [coherence], severities: [high, medium], rules: true }
       - type: javascript
         value: file://checks/handoff-families.mjs
+
+  - description: 'eval-43 hookify-recall (hookify/ a block rule on an added file, a warn rule over two hunks)'
+    prompts: [hookify-track]
+    vars:
+      # hookify/DEFECTS.md lists every rule, how it settles, and what hookify's own engine fires on.
+      checkout: plugins/code-review/evals/.sandbox/hookify
+      file: src/payments/client.ts src/orders/sync.ts
+      rules: >-
+        .claude/hookify.warn-typescript-any.local.md
+        .claude/hookify.block-force-push.rule.md
+        .claude/hookify.block-hardcoded-token.rule.md
+        .claude/hookify.warn-config-secrets.rule.md
+        .claude/hookify.warn-console-log.rule.md
+        .claude/hookify.warn-raw-sql.rule.md
+        .claude/hookify.warn-todo.rule.md
+        .claude/hookify.warn-typescript-any.rule.md
+    # The lens reads its hunks with git diff and settles a regex with python3: both need Bash.
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: 'Lens: hookify · files judged: \d+ of \d+'
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: block-hardcoded-token, under: payments/client.ts, lines: [1], severity: high }
+      # the quoted message and the rule file are what make it a hookify finding
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: block-hardcoded-token, under: payments/client.ts, all: ['"[^"]*environment variables[^"]*"', 'hookify\.block-hardcoded-token\.rule\.md'] }
+      # no action reads as warn; two hunks of one file are one bullet
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: warn-console-log, under: orders/sync.ts, lines: [7, 25], severity: medium }
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: hookify, rule: warn-console-log, under: orders/sync.ts, all: ['"[^"]*logger[^"]*"', 'hookify\.warn-console-log\.rule\.md'] }
+      - type: javascript
+        value: file://checks/report.mjs:findingShape
+        config: { family: hookify, pattern: '^- `hookify` · [a-z]+(-[a-z]+)* · (high|medium) · `[\w./-]+:L\d+[^`]*` — "[^"]+" \(hookify\.[\w-]+\.(rule|local)\.md\) .+ → .+' }
+      # rule slugs are the project's own names, so only the family and severity are fixed
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [hookify], severities: [high, medium] }
+      - type: javascript
+        value: file://checks/handoff-families.mjs
+
+  - description: 'eval-44 hookify-calibration (hookify/ removed lines, shadowed, disabled, bash and anchored rules, path-only, comment and test matches)'
+    prompts: [hookify-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/hookify
+      file: >-
+        src/orders/legacy.ts
+        src/reports/export.ts
+        scripts/release.sh
+        config/app.yaml
+        src/payments/keys.ts
+        src/orders/sync.test.ts
+      rules: >-
+        .claude/hookify.warn-typescript-any.local.md
+        .claude/hookify.block-force-push.rule.md
+        .claude/hookify.block-hardcoded-token.rule.md
+        .claude/hookify.warn-config-secrets.rule.md
+        .claude/hookify.warn-console-log.rule.md
+        .claude/hookify.warn-raw-sql.rule.md
+        .claude/hookify.warn-todo.rule.md
+        .claude/hookify.warn-typescript-any.rule.md
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: 'Lens: hookify · files judged: \d+ of \d+'
+      # the key and the console.log sit in removed lines only
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: legacy.ts }
+      # shadowed any rule, disabled TODO rule, ^src/-anchored raw-SQL rule
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: export.ts }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: release.sh }
+      # a path-only rule whose added line commits no credential
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: app.yaml }
+      # hookify fires on a comment and on a test asserting absence: candidates, not findings
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: keys.ts }
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: hookify, under: sync.test.ts }
+      - type: regex
+        value: 'CANDIDATES[\s\S]*keys\.ts'
+      - type: regex
+        value: 'CANDIDATES[\s\S]*sync\.test\.ts'
+      # the closing line names each rule set aside with its reason
+      - type: regex
+        value: 'block-force-push[\s\S]{0,80}bash'
+      - type: regex
+        value: 'warn-todo[\s\S]{0,80}(disabled|enabled: false)'
+      - type: regex
+        value: 'warn-typescript-any[\s\S]{0,80}(shadow|\.local)'
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [hookify], severities: [high, medium] }

@@ -1,4 +1,5 @@
 {
+  "plansDirectory": ".ai/plans",
   "hooks": {
     "PostToolUse": [
       {
@@ -16,7 +17,11 @@
   },
   "enabledPlugins": {
     "agent-engineer@agent-engineer": true,
-    "code-review@cc-toolkit": true
+    "code-review@cc-toolkit": true,
+    "dev-kit@cc-toolkit": true,
+    "code-story@cc-toolkit": true,
+    "anti-slop@cc-toolkit": true,
+    "pr-proof@cc-toolkit": true
   },
   "extraKnownMarketplaces": {
     "agent-engineer": {

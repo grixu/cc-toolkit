@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-17
+
+### Removed
+
+- **Breaking:** the `review-changes` skill (`/hookify:review-changes`) and its `get_changes.py` and
+  `list_rules.py` scripts. Reviewing a diff against hookify rules is now the `code-review` plugin's
+  `hookify` lens, which runs inside `/code-review:start-cr` whenever the project's `.claude/` holds
+  hookify rule files and reports its matches in the same report as the other lenses. It no longer
+  reads rules from `~/.claude/`, and the saved report and Plan Mode follow-up are gone with the skill.
+
+### Fixed
+
+- `/hookify:help` matches the current rule format: it covers `conditions`, `tool_matcher`, and what a match does per event, and its "require tests" example uses a `transcript` condition instead of a stop `pattern` that never matched.
+- `/hookify:hookify` without arguments launches the plugin's `conversation-analyzer` agent, which its text named, instead of a `general-purpose` agent with an inline prompt, and passes it the recent messages it analyzes.
+
+## [0.5.1] - 2026-11-16
+
+### Changed
+
+- shorter description in `plugin.json` and the marketplace listing, at most two sentences
+
+## [0.5.0] - 2026-11-13
+
 ### Added
 
 - `references/rule-syntax.md`: every frontmatter key, field, operator, event outcome and parser limit.

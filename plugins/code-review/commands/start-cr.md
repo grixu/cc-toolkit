@@ -2,17 +2,18 @@
 description: >-
   Explicit-invocation orchestrator that runs the review lenses (comments,
   readability & tests, naming & module, objects & patterns, simplicity & types,
-  correctness, security, coherence, assumptions, performance, spec) in parallel over a change and merges them
+  correctness, security, coherence, assumptions, performance, spec, hookify) in parallel over a change and merges them
   into one per-file report. Lenses are gated by the input, never by the user:
   correctness, security, coherence and assumptions are always on, performance runs only when executable source files are in scope,
   spec only when a spec file is named — by `--spec <path>`, or by the user accepting
-  the one the diff itself carries. Manual only — never auto-triggered. It resolves
+  the one the diff itself carries — and hookify only when the project keeps hookify rule
+  files in its `.claude/`. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
   With `--pr <number>` it reviews a GitHub pull request's head against its base; on
   someone else's pull request it drafts review comments instead of applying fixes. Without
   `--pr`, on a branch that is someone else's open pull request, it offers that reviewer mode.
-allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
+allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write, mcp__code-review__apply_decision
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
 
@@ -28,8 +29,8 @@ This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
 user choice: the five craft Lenses, `correctness`, `security`, `coherence` and `assumptions`
 always run (`objects & patterns` except over infrastructure code alone), `performance` runs
-when executable source is in scope, `spec` when a spec file is named. For a partial
-review the user invokes `/code-review:comment-review` or `/code-review:quality-review` directly.
+when executable source is in scope, `spec` when a spec file is named, `hookify` when the
+checkout carries hookify rule files.
 
 Arguments: `$ARGUMENTS`
 
@@ -179,7 +180,8 @@ about a skipped dependency manifest that is the substance of the change — is i
 list. Then classify every surviving file by that file's `## File kinds` section —
 `source`, `test`, `iac`, or `policy` — and record the kind beside each path: Step 2b gates the
 `performance` Lens on the `source` subset, sends `policy` files to `security`, `assumptions`,
-`coherence` and `spec` alone and skipped files to `coherence` and `spec` alone, and the
+`coherence`, `spec` and `hookify` alone and skipped files to `coherence`, `spec` and `hookify`
+alone, and the
 `comments` Scanner's test-file bar (R11) keys off the same classification.
 
 ## Step 2 — Read project conventions and standards (once)
@@ -206,7 +208,7 @@ directory**, in exactly that shape:
 - `scope.json` — `checkout` the absolute path of the checkout under review (the PR worktree with
   `--pr`), `base` and `diff_args` from the script, `files` with each judged file's `status`, `kind` and
   `untracked`, `skipped` with its reasons, `spec` the absolute spec path or `null`, `spec_focus`
-  `null`, and `lenses` with every Lens once — active with its own `files`, inactive with its
+  `null`, `hookify` the rule files the lens set recorded or `null`, and `lenses` with every Lens once — active with its own `files`, inactive with its
   reason — named by its rules file's basename (`readability-tests`, `naming-module`, …).
 
 A review of named paths has no diff: write `diff_args` as `null` and `base` as `null`, and each
@@ -399,7 +401,8 @@ mark on it, with `Edit`, never `cat >>`, `tee -a` or `sed -i`: this file is a fi
 other. Read it back rather than recalling it, and say where it is in the wrap-up.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
-without an explicit yes**. Only findings confirmed in Step 4 enter an apply batch.
+without an explicit yes** — the user's own, or the decision model's they configured (see the
+walk below). Only findings confirmed in Step 4 enter an apply batch.
 
 **`Edit` means the tool, not "an edit".** No `sed -i`, no Python or heredoc rewrite, no `awk`,
 however convenient the shell looks for a repeated change: `Edit` fails loudly when the text it
@@ -468,10 +471,32 @@ family's commit is still pending on waits until that commit is made.
 
 **Walk the structural fixes yourself, one at a time — never fan these out.** They
 move code, must be sequenced, and are verified by build/tests, so they stay under
-your control even when the safe batch is parallelized. **Each one gets its own yes**:
-picking the bucket in the menu chose the walk, not every edit in it. Before each, one
+your control even when the safe batch is parallelized. **Each one gets its own yes** — the
+user's, or the decision model's below: picking the bucket in the menu chose the walk, not every
+edit in it. Before each, one
 `AskUserQuestion` naming the finding, the site and the exact edit — apply it, skip it,
 or (when you have one) a different approach — and apply only on that answer.
+
+**Let the decision model settle the fixes the user would wave through.** When the session has
+`mcp__code-review__apply_decision` — it exists only when the user configured a backend — call it
+once, after the user picked the walk and before its first question, with `context` the context
+directory, `scope` and `conventions` the report's lines, and one `findings` entry per walk fix:
+`id`, `severity`, `family`, `rule`, `path`, `lines`, `boy_scout` (`true` or `false`, never left out), and the bullet split at its `→`
+into `problem` and `fix`, both verbatim. Send the bullet as the report states it, not the question
+you would ask: the model's thresholds were measured on report bullets. Then:
+
+- **`apply`** — apply the fix without its own question, in the walk's order, as if the user had
+  said yes; the user's pick of the walk bucket is the consent, the model only spares the question.
+- **`ask`** — walk it as above. The tool returns `ask` for every `security`, `spec` and boy-scout
+  finding, and for any it could not decide.
+- **A "Backend choice needed" result** — one `AskUserQuestion`, **Jev (TypeSafe)** or **Gemini
+  Decision**, then call again with `backend` set to `typesafe` or `gemini`.
+- **No tool, or a result that opens "Apply decision unavailable"** — walk every fix, and say why in
+  one line.
+
+Never call it for the safe batch, which needs no question, nor in reviewer mode, which applies
+nothing. The wrap-up lists the fixes applied on the model's decision under their own heading, with
+the backend that decided them, so the user can review or revert them.
 
 **Tick the approved list off as you go.** Mark each fix in the scratchpad file the moment it
 lands, is skipped, or goes back to the user. Before the wrap-up, read the list back: an

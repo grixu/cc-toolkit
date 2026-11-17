@@ -1,0 +1,9 @@
+commit 4be81c2e
+Author: Dev <dev@example.com>
+
+    perf(importer): raise batch size to 500, retry once on ECONNRESET
+
+    importBatch sends 500 rows per request (was 200) and retries a request once
+    when the socket is reset. parseRow only gains the retry wrapper.
+
+    Measured on the 1.2 GB fixture: 73 s before, 41 s after.

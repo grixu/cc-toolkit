@@ -1,0 +1,90 @@
+---
+title: stop-sound
+description: Plays a sound when Claude needs you, when it finishes a turn or asks a question, and stays silent while subagents work.
+group: start
+sidebar:
+  order: 1
+---
+
+A plain `Stop` hook that runs `afplay` chimes far too often.
+The main session ends its turn every time it waits for background subagents.
+It then wakes up and ends the turn again as each one reports back, so you hear a chime for every subagent that finishes.
+stop-sound chimes only when you're the one Claude is waiting for.
+
+## Where it works
+
+stop-sound belongs to no stage of the [lifecycle](/lifecycle/).
+It's a supporting plugin that works in every session, whatever you're doing.
+There's no command to type: once it's installed, it listens for the end of each turn and for questions.
+
+## When it chimes
+
+| Moment | Sound |
+|---|---|
+| The main session ends its turn, and nothing in the background will wake it | `done`: two falling notes |
+| Claude asks you a question (`AskUserQuestion`) or presents a plan (`ExitPlanMode`) | `question`: three rising notes |
+| The session ends its turn while a subagent or teammate is still running | None |
+| A subagent finishes | None |
+| You interrupt the turn yourself | None |
+
+Table 1. When stop-sound plays a sound.
+
+The question chime plays as the question appears, before you answer it.
+
+Two kinds of background work don't keep it silent, so you still hear a chime when Claude ends its turn to wait for them:
+
+- **Workflows.** Their agents don't appear in the list of running agents that stop-sound checks. You hear one chime when Claude starts waiting for a workflow and another when the workflow finishes.
+- **Background shell commands**, such as a build or `gh run watch`.
+
+## Requirements
+
+- **Claude Code with mods turned on.** The plugin is tested on Claude Code 2.1.322. On a Team or Enterprise plan, an admin setting such as `allowManagedModsOnly` can turn off mods that you install, and then nothing plays.
+- **macOS.** Claude Code plays the clips with `afplay`. A Linux or Windows terminal has no player, so nothing plays.
+
+## Install
+
+Run `/reload-plugins` if the install summary asks for it.
+
+If you already have your own `Stop` hook that plays a sound, remove it from `settings.json`.
+Otherwise you'll hear both.
+
+## Configuration
+
+You can replace either sound with your own file.
+Set the options in `/plugin` → stop-sound → configure, or under `pluginConfigs` in `settings.json`:
+
+| Option | What it does |
+|---|---|
+| `stop_sound` | The sound file played when the session ends its turn |
+| `question_sound` | The sound file played when Claude asks a question or presents a plan |
+
+Table 2. stop-sound options.
+
+A file can be `.wav`, `.mp3`, `.aiff`, `.aif`, `.m4a` or `.ogg`, up to 4 MiB.
+Claude Code refuses to read a larger file for a mod.
+Leave an option empty to keep the bundled sound.
+When the file is missing, too large, has another extension, or fails to play, the bundled sound plays instead.
+Nothing plays only when the bundled sound fails too.
+
+## How it decides
+
+stop-sound is a mod, not a hook.
+At the end of every turn, it checks three things:
+
+1. The turn ran in the main session, not inside a subagent.
+2. You didn't interrupt it.
+3. No subagent or teammate is still `running`, `pending` or `waiting`. Claude Code wakes the session again when such an agent reports back, so this end of turn is only a pause.
+
+When all three hold, it plays the `done` sound.
+
+It reacts to the end of the turn rather than to the `Stop` hook event.
+On Team and Enterprise plans, Claude Code's built-in guard skips the `Stop` hooks of mods that you install.
+It still lets the end of a turn through.
+
+A failed chime never blocks anything: the turn or the question goes on unchanged.
+On a machine with no audio output, the plugin stays silent.
+
+## Next steps
+
+- [Plugins](/plugins/): the other plugins in the marketplace.
+- [Lifecycle](/lifecycle/): the stages that the core plugins cover.

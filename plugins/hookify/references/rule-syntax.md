@@ -156,17 +156,14 @@ Limits:
 - The frontmatter must be the first thing in the file. It must not contain `---` anywhere else, not
   even inside a value.
 
-## Reviewing a diff: how `/hookify:review-changes` works
+## Reviewing a diff
 
-1. Lists committed changes (against the detected base branch) and uncommitted changes, and asks which
-   to review when both exist.
-2. Loads enabled `file` and `all` rules. It skips `bash`, `prompt` and `stop` rules.
-3. Splits the changed files into groups by the rules that apply to them, with each file in exactly one
-   group.
-4. Starts one subagent per group in parallel. Each returns violations as JSON.
-5. Reports violations per rule, and lists rules with no violations too.
-6. Offers to save the report to `.claude/hookify-review-<YYYY-MM-DD>-<HHMM>.md` (with a numeric
-   suffix if the name is taken) or to open Plan Mode with a fix plan grouped by file.
+Hookify itself checks edits only as Claude makes them. The `code-review` plugin's hookify lens checks
+a whole change: when the project's `.claude/` holds `hookify.*.local.md` or `hookify.*.rule.md` files,
+`/code-review:start-cr` replays every enabled `file` and `all` rule over the diff, one hunk at a time,
+with the same name overrides and operators as above. A hunk's added lines stand in for `new_text`,
+its removed lines for `old_text`, and the file's absolute path for `file_path`. Rules in
+`~/.claude/`, `bash`, `prompt` and `stop` rules, and conditions on any other field are left out.
 
 ## Troubleshooting
 

@@ -1,0 +1,94 @@
+---
+title: fd3
+description: Od pomysłu na funkcję do branchy po review. Claude wypytuje cię, aż każda decyzja zapadnie, pisze spec sprawdzony z twoim kodem, a potem buduje zadania równolegle w worktree.
+group: start
+sidebar:
+  label: Przegląd
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Daj agentowi prośbę o funkcję w jednym zdaniu, a każdą lukę wypełni zgadywaniem: która tabela, jaka polityka ponowień, który zespół odpowiada za deploy.
+Te domysły wychodzą późno, jako poprawki w review.
+fd3 przenosi te decyzje na początek, gdzie podejmujesz je ty, i zapisuje je w specu, który kolejne kroki czytają zamiast historii czatu.
+Każdy krok przekazuje następnemu plik, więc przebieg przerwany w połowie rusza dalej z tych plików.
+
+## Gdzie działa
+
+fd3 obejmuje planowanie i budowę.
+Jego krok `implement` może uruchomić [code-review](/pl/plugins/code-review/) na każdym branchu, a dalej branche przejmują pluginy od testów i review człowieka.
+
+<LifeMap focus="fd3" animate={false} />
+
+## Co robi
+
+Trzy kroki uruchamiasz samodzielnie, w tej kolejności:
+
+| Komenda | Co robi | Co zostawia |
+|---|---|---|
+| [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/) | Wypytuje cię, aż każda decyzja projektowa zapadnie, pisze spec i sprawdza jego twierdzenia z twoim kodem. | Spec w twoim repozytorium, zakończony linią werdyktu. |
+| [`/fd3:split-to-tasks`](/pl/plugins/fd3/split-to-tasks/) | Tnie spec z werdyktem `ready` na pliki zadań i grupuje je na branche, jeden pull request na branch. | Katalog `tasks/` i raport `<spec>.split.md`. |
+| [`/fd3:implement`](/pl/plugins/fd3/implement/) | Buduje zadania falami równoległych agentów, jeden worktree na zadanie, a potem na każdym branchu uruchamia twoje checki i opcjonalne code review. | Branche, worktree i propozycję pusha oraz pull requestów. |
+
+Tabela 1. Trzy kroki fd3
+
+Czwarta komenda, [`/fd3:grill-topic`](/pl/plugins/fd3/grill-topic/), uruchamia sam wywiad.
+Użyj jej, żeby przegadać pomysł bez rozpoczynania dostawy.
+
+## Kiedy po niego sięgnąć
+
+| Co masz | Po co sięgnąć |
+|---|---|
+| Pomysł, ticket albo szkic planu i repozytorium, do którego trafi | `/fd3:build-spec <pomysł albo ścieżka do planu>` |
+| Spec edytowany po werdykcie albo kod, który od tamtej pory się zmienił | `/fd3:build-spec <ścieżka do specu>`, który pomija wywiad i sprawdza spec ponownie |
+| Pomysł do sprawdzenia, jeszcze bez dostawy | `/fd3:grill-topic <temat>` |
+| Drobną zmianę, którą opiszesz w dwóch zdaniach | Zwykły Claude Code. Wywiad kosztuje więcej, niż daje. |
+
+Tabela 2. Która komenda pasuje do tego, co masz
+
+## Zanim zaczniesz
+
+Do pierwszego specu potrzebujesz:
+
+- Checkoutu git każdego repozytorium, którego dotyczy praca, z remote'em `origin`. Każdy krok fd3 zaczyna od `git fetch`.
+- Serwerów MCP context7 i firecrawl. Sub-agent fd3 do researchu szuka w nich dokumentacji bibliotek i API.
+
+Budowa zadań wymaga później więcej: dynamicznych workflow, CLI `gh` i opcjonalnie pluginu code-review.
+Wymienia je [dokumentacja referencyjna](/pl/plugins/fd3/reference/#wymagania).
+
+## Napisz pierwszy spec
+
+Wywiad toczy się w twojej rozmowie i zadaje ci pytania, więc przygotuj się na kilka tur.
+Żeby napisać spec:
+
+1. Otwórz Claude Code w repozytorium, do którego trafi praca.
+2. Uruchom `/fd3:build-spec` z pomysłem w jednym zdaniu albo ze ścieżką do szkicu planu:
+
+   <Strip cmd="/fd3:build-spec our retry strategy for the payment webhook" />
+
+3. Przeczytaj rundę 1. Claude sprawdza pomysł z kodem, specami i rejestrami decyzji repozytorium oraz z wersjami bibliotek z lockfile'a. Runda 1 zaczyna się od każdego miejsca, w którym pomysł okazał się błędny.
+4. Odpowiadaj na każdą rundę numerem pytania i literą opcji, na przykład `3 a, 4.1 b`. Każda runda kończy się listą etykiet, których oczekuje.
+5. Potwierdź podsumowanie końcowe, gdy nie zostało nic do decyzji. Osobno wymienia ono każdą decyzję, którą Claude podjął bez twojej bezpośredniej odpowiedzi.
+6. Odpowiedz na pytania wielokrotnego wyboru, które zadają kroki pisania i walidacji. Zalecana opcja jest pierwsza.
+7. Przeczytaj linię werdyktu na końcu specu. `ready` oznacza, że spec można pociąć na zadania.
+
+Jeśli zakończysz sesję bez potwierdzenia podsumowania, fd3 zatrzymuje się po wywiadzie i mówi, co zostało otwarte.
+Żaden spec nie powstaje.
+
+Spec trafia tam, gdzie twoje repozytorium trzyma specy albo dokumenty projektowe.
+Gdy repozytorium nie ma takiego miejsca, ostatnia runda wywiadu pyta, gdzie go zapisać.
+
+## Czego fd3 nie zrobi
+
+- Nie zrobi pusha ani nie otworzy pull requestów bez twojej wyraźnej zgody.
+- Nie zmieni specu podczas cięcia ani implementacji. Spec zmienia się tylko przez `/fd3:build-spec <spec>`, który sprawdza zmianę ponownie.
+- Nie skopiuje specu na branch roboczy. Każdy agent czyta go tam, gdzie zapisał go `build-spec`.
+- Nie uruchomi dwóch workflow implementacji naraz, więc na twojej maszynie działa tylko jeden pipeline build, lint i testów.
+
+## Następne kroki
+
+- [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/) szczegółowo opisuje wywiad, spec i werdykt.
+- Gdy werdykt brzmi `ready`, [potnij spec na zadania](/pl/plugins/fd3/split-to-tasks/).
+- [Jak działa fd3](/pl/plugins/fd3/how-it-works/) objaśnia części stojące za komendami i to, co każda zostawia na dysku.

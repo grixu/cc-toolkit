@@ -1,0 +1,71 @@
+---
+import Cmd from './Cmd.astro'
+import { ui, href, langOf } from '../lib/i18n'
+import { cycle, skillById, stagePath, lineStyle } from '../lib/lifecycle'
+
+interface Step {
+  name: string
+  does: string
+  /** A file, branch or report the step leaves behind. */
+  leaves?: string
+  /** When the step repeats, and until what. */
+  loop?: string
+  optional?: boolean
+}
+interface Props {
+  /** A lifecycle skill id; an unknown one fails the build. */
+  skill: string
+  /** What the reader hands the skill. */
+  input: string
+  steps: Step[]
+  /** Skill ids that pick up what this one leaves. */
+  next?: string[]
+  /** Figure number in the caption. */
+  n?: number
+  caption?: string
+}
+const { skill, input, steps, next = [], n = 1, caption } = Astro.props
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const s = skillById[skill]
+if (!s) throw new Error(`SkillFlow: unknown skill "${skill}"`)
+const defaultCaption = lang === 'pl' ? `Co robi ${s.cmd}, od tego, co mu dajesz, do tego, co przekazuje dalej` : `What ${s.cmd} does, from what you give it to what it hands over`
+---
+
+<figure class="sf not-content" style={lineStyle(s.plugin) ?? '--pc: var(--diagram-line)'}>
+  <ol class="sf-stages" aria-label={t.whereRuns}>
+    {cycle.map((st) => (
+      <li class:list={[{ 'is-on': st.id === s.stage }]}>
+        <a href={href(stagePath(st.id), lang)} aria-current={st.id === s.stage ? 'step' : undefined}><span class="tnum">{st.n}</span> {st.title[lang]}</a>
+      </li>
+    ))}
+  </ol>
+
+  <ol class="sf-steps">
+    <li class="sf-io">
+      <span class="label">{t.youGive}</span>
+      <span class="sf-io-v">{input}</span>
+    </li>
+    {steps.map((st, i) => (
+      <li class:list={['sf-step', { 'is-opt': st.optional }]} style={`--i: ${i}`}>
+        <span class="sf-node" aria-hidden="true">{i + 1}</span>
+        <span class="sf-name">{st.name}{st.optional && <span class="sf-opt"> · {t.optional}</span>}</span>
+        <span class="sf-does">{st.does}</span>
+        {st.leaves && <code class="sf-leaves">{st.leaves}</code>}
+        {st.loop && <span class="caption"><span aria-hidden="true">↻</span> {st.loop}</span>}
+      </li>
+    ))}
+    {next.length > 0 && (
+      <li class="sf-io">
+        <span class="label">{t.handsOver}</span>
+        <span class="sf-io-v">
+          {next.map((id) => {
+            const x = skillById[id]
+            return <a href={href(x.href, lang)}><code><Cmd text={x.cmd} /></code></a>
+          })}
+        </span>
+      </li>
+    )}
+  </ol>
+  <figcaption class="caption">{t.figure} {n}. {caption ?? defaultCaption}</figcaption>
+</figure>

@@ -1,0 +1,143 @@
+---
+title: code-story
+description: Zamienia branch, pull request albo ich stos w stronę z rozdziałami, która czytelnikowi nieznającemu kodu wyjaśnia, jak i dlaczego zmiana działa.
+group: start
+sidebar:
+  label: Przegląd
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Diff pokazuje, co się zmieniło, plik po pliku, w kolejności alfabetycznej.
+Nie pokazuje, która zmiana tłumaczy pozostałe ani dlaczego autor ją wprowadził.
+code-story zamienia zmianę w **historię zmiany** (code story): stronę z rozdziałami dla kogoś, kto nigdy nie widział tego kodu.
+Zmiana zostaje pocięta na kroki, w jakich dałoby się ją przejrzeć.
+Każdy rozdział odpowiada na jedno pytanie i pokazuje linie, których dotyczy, a notatki są przypięte do tych linii.
+
+## Gdzie działa
+
+Mapa pokazuje, gdzie w cyklu leży code-story.
+
+<LifeMap focus="code-story" animate={false} />
+
+code-story to plugin pomocniczy w etapie [03c Review człowieka](/pl/lifecycle/human-review/).
+Tam pull requestem kieruje [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).
+Zleca historię zmiany subagentowi w tle i dodaje do opisu pull requesta sekcję `## Code story` z linkiem.
+Sam code-story przepuszcza swoją prozę przez [anti-slop](/pl/plugins/anti-slop/), zanim złoży stronę.
+
+Możesz go też uruchomić samodzielnie, na dowolnym branchu albo pull requeście.
+
+## Kiedy po niego sięgnąć
+
+- Reviewer nie zna części kodu, której dotyczy zmiana.
+- Zmiana jest duża, a jej pliki mają sens tylko w określonej kolejności.
+- Chcesz wyjaśnić stos pull requestów jako jedną zmianę.
+- Wracasz do zmiany po czasie i chcesz wiedzieć, skąd taki kształt kodu.
+
+Każde twierdzenie w historii opiera się na czymś, co skill przeczytał.
+Może to być diff, commit, pull request, review, ticket, spec albo kod.
+Gdy powodu zmiany nie da się nigdzie znaleźć, historia mówi to wprost, zamiast go wymyślać.
+
+## Instalacja
+
+Razem z code-story instaluje się [anti-slop](/pl/plugins/anti-slop/), który czyści prozę każdego rozdziału przed złożeniem strony.
+
+:::caution[Starszy skill osobisty]
+Jeśli `code-story` był wcześniej twoim osobistym skillem, po instalacji usuń `~/.claude/skills/code-story`.
+Inaczej dwa skille o tej samej nazwie będą ze sobą konkurować.
+:::
+
+## Wymagania
+
+- Node.js 22 lub nowszy, dla skryptów, które składają i sprawdzają stronę.
+- `git` i zalogowane GitHub CLI `gh`, żeby znaleźć bazę, pull request i jego stos.
+- Narzędzie Artifact (claude.ai), żeby opublikować historię. Bez niego historia otwiera się jako lokalny plik HTML.
+- Claude Code 2.1.271 lub nowszy, bo tego wymagają listy wyboru w ustawieniach.
+
+## Uruchom go
+
+<Strip cmd="/code-story:code-story" />
+
+Bez argumentów skill opowiada historię bieżącego brancha.
+Porównuje go z bazą jego otwartego pull requesta, z najbliższym pull requestem w stosie albo z domyślnym branchem.
+[`/code-story:code-story`](/pl/plugins/code-story/code-story/) opisuje argumenty, kroki przebiegu i zawartość strony.
+
+## Ustawienia
+
+Ustawisz je w `/plugin` → code-story → configure.
+Mod pluginu przekazuje je skillowi przez swoje narzędzie `config`.
+
+| Ustawienie | Domyślnie | Co robi |
+|---|---|---|
+| `second_language` | puste | Tag języka, na przykład `pl`. Puste oznacza tylko angielski. Nazwy z kodu i terminy programistyczne zostają po angielsku w każdym języku. |
+| `gloss_first_use` | `true` | W drugim języku po pierwszym użyciu angielskiego terminu pojawia się w nawiasie jego tłumaczenie. |
+| `diagram_skill` | puste | Zainstalowany skill do diagramów, na przykład `fireworks-tech-graph`. Puste oznacza wbudowane diagramy. |
+| `uncommitted` | `ignore` | `ignore` opowiada zmianę z commitów bez pytania. `include` bez pytania dołącza zmiany niezacommitowane. `ask` pyta za każdym razem. |
+| `stack` | `ask` | Dla brancha w stosie otwartych pull requestów: `ask`, czy opowiedzieć cały stos, `always` albo `never`. |
+
+Tabela 1. Ustawienia code-story.
+
+Zamiast nieprawidłowej wartości skill bierze domyślną i powtarza ostrzeżenie w raporcie.
+Bez narzędzia `config` skill używa wartości domyślnych i o tym informuje.
+
+Prośba zmienia ustawienie na jeden przebieg:
+
+- „po polsku” albo „in German” ustawia drugi język.
+- `stack` i `no stack` rozstrzygają pytanie o stos.
+- `uncommitted` dołącza zmiany niezacommitowane.
+
+Gdy nikt nie może odpowiedzieć na pytanie, na przykład w subagencie, ustawienie `ask` przyjmuje bezpieczną odpowiedź: tylko ten branch, bez zmian niezacommitowanych.
+Pliki nieśledzone nigdy nie trafiają do historii.
+
+## Aktualizacje pod tym samym linkiem
+
+Historia opisuje jeden branch albo jeden stos i zostaje pod jednym linkiem.
+Gdy uruchomisz skill ponownie, szuka istniejącej historii w tej kolejności:
+
+1. Link do historii w twojej prośbie.
+2. Historia, którą opublikował dla tego brancha wcześniej w tej samej rozmowie.
+3. Sekcja `## Code story` z linkiem `claude.ai` w opisie pull requesta.
+
+Strona zapisuje swoje repozytorium, branch, bazę i commit head.
+Gdy repozytorium i branch się zgadzają, skill aktualizuje historię, zamiast zaczynać od nowa.
+Przepisuje rozdziały, w których zmienił się kod, dodaje rozdziały o nowych mechanizmach i usuwa te o mechanizmach, których już nie ma.
+Potem publikuje nową wersję pod tym samym linkiem.
+
+Po rebase albo force-pushu stary commit head nie należy już do historii brancha.
+Skill czyta wtedy całą zmianę od nowa, ale nadal publikuje pod tym samym linkiem.
+
+Nie przeszukuje twojej galerii Artifactów.
+Gdy żadne z trzech powyższych źródeł nie wskazuje historii, zaczyna nową.
+
+## Historie stosów pull requestów
+
+Twój branch może należeć do stosu: jego pull request celuje w branch innego otwartego pull requesta albo inny pull request celuje w twój.
+Skill idzie łańcuchem otwartych pull requestów w dół i w górę od twojego brancha.
+Łańcuch dwóch lub więcej pull requestów to stos.
+
+Przy ustawieniu `stack` na `always` albo z `stack` w prośbie jedna historia obejmuje cały stos.
+Biegnie od bazy najniższego pull requesta do heada najwyższego, a raport wymienia pull requesty, które obejmuje.
+Przy `never` albo z `no stack` obejmuje tylko twój branch.
+
+Strona zapisuje też ref swojego heada.
+Aktualizacja historii całego stosu nadal biegnie więc do heada najwyższego pull requesta, nawet gdy uruchamiasz ją z niższego brancha.
+
+Skill pomija pull requesty z forków i branche o nazwach z nietypowymi znakami, a te, które pominął, wymienia w raporcie.
+
+## Kto może zobaczyć historię
+
+Nowa historia to prywatny Artifact na claude.ai.
+Dopóki jej nie udostępnisz, otworzysz ją tylko ty.
+Udostępnij ją na claude.ai, zanim link trafi do pull requesta, bo inaczej reviewerzy jej nie otworzą.
+pr-open przypomina o tym, gdy dodaje link do nowej historii.
+
+Strona cytuje linie twojego kodu i zawiera nazwę repozytorium, branch, bazę i commit head.
+Widzi je każdy, komu ją udostępnisz.
+
+## Następne kroki
+
+- [Opowiedz pierwszą historię](/pl/plugins/code-story/code-story/).
+- [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/): otwórz pull request z linkiem do historii w opisie.
+- [anti-slop](/pl/plugins/anti-slop/): czyszczenie, przez które przechodzi każdy rozdział.

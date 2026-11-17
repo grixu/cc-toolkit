@@ -1,0 +1,92 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'brand/**'
+      - '.claude-plugin/**'
+      - 'plugins/*/.claude-plugin/**'
+      - 'plugins/*/CHANGELOG.md'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'brand/**'
+      - '.claude-plugin/**'
+      - 'plugins/*/.claude-plugin/**'
+      - 'plugins/*/CHANGELOG.md'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# On main, runs queue instead of cancelling, so an older build never deploys last;
+# GitHub keeps one pending run per group, so a burst of merges deploys only the newest.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CF_SEND_TELEMETRY: 'false'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter cc-toolkit-docs --filter cc-toolkit-docs-cloudflare
+      - name: Build
+        run: pnpm -C docs build
+      # Needs no credentials, so a broken deploy config fails here instead of on main.
+      - name: Check the deploy
+        run: pnpm -C docs/cloudflare exec cf deploy --dry-run
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-dist
+          path: docs/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://cct.grixu.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter cc-toolkit-docs-cloudflare
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-dist
+          path: docs/dist
+      - name: Deploy
+        run: pnpm -C docs/cloudflare exec cf deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

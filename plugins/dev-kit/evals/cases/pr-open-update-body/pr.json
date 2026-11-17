@@ -1,0 +1,11 @@
+{
+  "number": 4288,
+  "title": "feat(fup): count bandwidth per instance-day from the source it was on (PL-5820)",
+  "author": { "login": "eval-user" },
+  "headRefName": "feat/PL-5820",
+  "baseRefName": "feature/fup-and-contracts",
+  "state": "OPEN",
+  "isDraft": false,
+  "labels": [],
+  "body": "### Issue\n\nPL-5820\n\n### Description\n\nFUP contract consumption now counts each instance-day from the source that instance was on that day, using the Fastly switch dates Farmer reports.\n\n| | Before | After |\n|---|---|---|\n| Bandwidth | whole period through one source, picked by the current fastlyEnabled flag | per day: Fastly days from Fastly egress, other days from NAT |\n| Farmer unavailable | — | counted as zero |\n\nBackend unit tests pass locally.\n\n### Dependencies\n\n- None\n\n## Code story\nhttps://claude.ai/artifact/Md1YuWXvdm9yFyyEkSrMYH\n\n[PL-5820]: https://alokai.atlassian.net/browse/PL-5820?atlOrigin=eyJpIjoiNWRkNTljNzYifQ\n"
+}

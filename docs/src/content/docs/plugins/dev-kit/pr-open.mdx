@@ -1,0 +1,220 @@
+---
+title: /dev-kit:pr-open
+description: Pushes the branch and opens a pull request a reviewer can read on one screen, with every claim traced to the diff and a label that says how risky the change is.
+group: guides
+skill: pr-open
+sidebar:
+  label: pr-open
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+A reviewer reads many pull requests a day, and a long description written from memory wastes their time.
+`pr-open` writes a short, reviewer-first description from evidence only: the diff, the commits, a linked issue, a command run in the session, or a check you report.
+It fills your repository's pull request template, so the result looks like every other pull request in the repository.
+It also brings in the work of three other plugins: the proof [pr-proof](/plugins/pr-proof/) recorded, a [code story](/plugins/code-story/) that explains the change, and [anti-slop](/plugins/anti-slop/), which cleans the sentences it writes.
+With a TypeSafe or Gemini Decision key, it also tells the reviewer how risky the change is.
+
+## When to reach for it
+
+- Your commits are ready for review, and [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) has recorded its proof, if you use pr-proof.
+- A pull request already exists and its description or risk label is out of date.
+- You attached a screenshot or a video to the description, and want the risk label to count it.
+
+## Run it
+
+<Strip cmd="/dev-kit:pr-open" />
+
+Add `draft` for a draft pull request, and a branch name to set the base:
+
+```
+/dev-kit:pr-open draft develop
+```
+
+Without a base, `pr-open` targets the default branch.
+When your branch builds on another open pull request's branch, it targets that branch instead and says so.
+While it looks for that branch, it skips pull requests from forks. It also skips any whose branch name holds anything other than letters, digits, `.`, `_`, `/` and `-`, so a crafted branch name never reaches a git command. The report names each pull request it skipped.
+Running it authorizes the push, and counts as the per-branch push consent that a repository rule reserving `git push` for humans asks for.
+
+## How it runs
+
+<SkillFlow
+  skill="pr-open"
+  input="A branch with commits ready for review"
+  steps={[
+    { name: 'Check', does: 'Stops on the default branch, looks for an existing pull request, picks the base, and starts the code story in a background subagent.' },
+    { name: 'Read', does: 'Reads the diff, the commits, a linked issue and the pr-proof manifest, and collects the testing evidence and deploy steps.' },
+    { name: 'Assess risk', does: 'Groups the files into slices and asks the pr_risk tool to rate them.', leaves: '## Risk', optional: true },
+    { name: 'Fill', does: 'Finds the template, fills it with a short description and a Before / After table, and cleans its sentences through anti-slop.' },
+    { name: 'Add proof', does: 'Renders each entry of the manifest as its claim and its proof.', leaves: '## Proof', optional: true },
+    { name: 'Open', does: 'Pushes, opens the pull request with the proof media attached, assigns it to you and adds the risk label.', leaves: 'risk: <level>' },
+    { name: 'Link the story', does: 'Waits for the code story and links it in the description.', leaves: '## Code story', optional: true },
+  ]}
+  next={['pr-shepherd']}
+/>
+
+`pr-open` looks for the template in the repository root, `docs/`, `.github/`, a `PULL_REQUEST_TEMPLATE/` directory, or the owner's `.github` repository.
+When there's none, it uses a short default.
+
+## What the description holds
+
+`pr-open` keeps every heading and checklist item of the template.
+The section that describes the change gets these parts, each only when it has content:
+
+1. One to three plain sentences: what changes for a user, caller or operator, and why.
+2. A **Before / After** table, with one row per thing a reviewer or user would notice.
+3. **Testing:** what was verified, and what wasn't checked where a reviewer would assume it was.
+4. **Reviewer notes:** only when something needs a hard look, such as a migration or security-relevant logic.
+5. **Go deeper:** links to the specs and ADRs the branch adds or its commits name.
+
+The rest of the template is filled the same way:
+
+- A ticket field gets the key from the branch, the commits or the conversation, or `None`. It never gets a guessed key.
+- A dependency section lists the deploy steps found in the diff, such as migrations, infrastructure code, env vars and secrets, permission changes, feature flags and other repositories' pull requests. With none, it gets `- None`.
+- A checkbox is ticked only when there's evidence that the item is true.
+- Work the base already has, such as a squash-merged commit, is left out.
+
+The body fits on one screen, about 40 non-blank lines outside the **Proof** and **Risk** sections.
+Long logs go in a `<details>` block, and the body stays valid MDX for repositories that feed it to MDX tools.
+
+Before it opens the pull request, `pr-open` passes the sentences it wrote to [anti-slop](/plugins/anti-slop/), with the commits and the diff as the source of facts.
+Headings, checkboxes, links, the **Risk** section, your own kept sentences and table cells that hold names or values stay as they are.
+
+Three sections can follow the template, in this order: **Code story**, **Proof** and **Risk**.
+Any link reference definitions that end the body stay below them.
+
+The title follows Conventional Commits when the base branch's history does.
+It ends with the ticket key in parentheses when the history does that too.
+
+## The proof from pr-proof
+
+pr-proof's skills record the proof they take in a manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`.
+`<repo>` is the repository name from the `origin` remote's URL, without `.git`, and `<branch>` is the current branch with `/` written as `%2F`.
+`pr-open` only reads that file, so it needs no other part of pr-proof.
+`pr-open` doesn't start [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/), so run it yourself first.
+
+From the manifest, `pr-open` adds a **Proof** section directly before **Risk**:
+
+- **No manifest** means no **Proof** section. A manifest that doesn't parse, or has a `version` other than `1`, is ignored, and the report says so.
+- **An empty list of entries** means the proof was judged unnecessary, so there's no section either.
+- **Each entry** renders in manifest order as its claim, then its proof. Screenshots with a width become a table with a row per screen and a column per width. A video, or an image without a width, stands on its own line. A terminal or API transcript becomes a code block, folded into `<details>` past 20 lines.
+- **A stale entry** carries a note naming the commits that changed its files after the proof was taken. When history was rewritten since a proof was taken, one note under the heading says so.
+- **An entry whose media or transcript file is missing** is left out and named in the report.
+
+The media are attached with `gh`'s `--attach` flag, which needs `gh` 2.99.0 or later.
+The description then holds GitHub's `user-attachments` URLs.
+`pr-open` re-reads the description after the upload and reports anything that didn't upload.
+
+With more than 50 media files, the description carries the first 50 and says how many follow.
+The rest go in comments of at most 50 each, marked `<!-- pr-proof:overflow -->`.
+When it reads a manifest for an existing pull request, `pr-open` first deletes the marked comments you posted earlier and leaves every other comment alone.
+
+The **Proof** section doesn't count toward the one-screen length.
+
+## The code story
+
+While the rest of `pr-open` runs, a background subagent builds the branch's [code story](/plugins/code-story/): a page that explains the change chapter by chapter.
+On a pull request that already links a story, the subagent updates that story instead of starting a new one.
+
+After the push, `pr-open` waits for the subagent and adds a **Code story** section with the link:
+
+```markdown
+## Code story
+
+[How and why this change works, chapter by chapter](https://claude.ai/...)
+```
+
+When the description already links the same story, it stays as it is.
+A new story is private until you share it on claude.ai, and the report says so, because reviewers can't open the link before then.
+When the story is saved only locally, or the subagent fails, the description stays as it is.
+The report then gives the story's path or the failure.
+
+## The risk label
+
+With a TypeSafe or Gemini Decision key configured, `pr-open` rates the branch's risk before it opens the pull request.
+It groups the changed files into slices, one per purpose of the change, and passes them to the `pr_risk` tool.
+It also passes the why of the change and the linked issue, and your testing rules when `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING`, `.claude/rules/` or CI state them.
+
+The result goes in two places:
+
+- A **Risk** section at the end of the description, with the level of the whole change, its risk flags and a table with one row per slice.
+- A label with the level, such as `risk: high`. `pr-open` creates the label once when it's missing, and never changes an existing one.
+
+```markdown
+## Risk
+
+**high** · impact core · complexity interacting logic · confidence 0.61 · assessed by jev-1.14.0
+
+- Changes a public contract
+
+| Slice | Risk | Impact | Complexity | Evidence | What it does | Change types |
+|---|---|---|---|---|---|---|
+| Order export endpoint | **high** | core | interacting logic | api_dump missing | new_functionality | api_contract, data_access |
+| Export docs | **low** | none | edits | — | new_functionality | documentation |
+```
+
+`pr-open` quotes the level as the tool returns it and never adjusts it.
+Without either key, nothing is sent, the pull request opens without a **Risk** section or label, and the report says `Risk: not assessed`.
+
+When both keys are set and you haven't chosen a backend, `pr-open` asks you once: TypeSafe, Gemini or both.
+It then suggests that you save the answer as the **Decision backend** option (`decision_backend`) with `/plugin configure dev-kit@cc-toolkit`, so it doesn't ask again.
+With both backends, the primary one sets the level and the label, unless it fails and the other one answers.
+The **Risk** section adds a line for the other backend:
+
+```markdown
+Also assessed by gemini-decision-1: **medium** · impact feature · complexity interacting logic · confidence 0.58 · levels differ
+```
+
+`levels differ` appears only when the two levels aren't the same.
+A backend that failed shows as `Also assessed by gemini: failed`, and the report gives the error.
+The [risk label](/plugins/dev-kit/risk-assessment/#choose-a-backend) page explains which backend to make primary.
+
+:::tip[Attach the evidence, then run it again]
+A screenshot, a video or an API request and response in the description can lower a low-stakes slice's risk.
+`pr-open` rates the risk before it writes the description, so a new pull request doesn't get credit even for its own **Proof** section.
+Run `pr-open` again once the pull request is open, or after you attach more evidence, to refresh the **Risk** section.
+:::
+
+[The risk label](/plugins/dev-kit/risk-assessment/) explains what each level asks of a reviewer, what leaves your machine and how to set the key.
+
+## When the pull request already exists
+
+`pr-open` pushes, refreshes the risk, and reports the pull request.
+It swaps the old risk label for the new one and replaces the **Risk** section, so the description never contradicts the label.
+It also refreshes the code story and its link.
+
+When it finds a manifest, it updates the **Proof** section in the same edit: it replaces the section, inserts it when the description has none, or removes it when the manifest's list is empty.
+With no manifest, the **Proof** section and its overflow comments stay as they are.
+
+It rewrites the rest of the description only when you ask for it.
+Otherwise the report offers the rewrite in one line.
+A rewrite edits the current description: your own sentences, bot lines, sections outside the template such as **Release notes**, and the tracker's link line at the end stay as they are.
+
+## What it leaves
+
+- A pushed branch and an open pull request, assigned to you.
+- The **Proof** section, when pr-proof left a manifest with entries.
+- The **Code story** section, when the story was built.
+- The **Risk** section and the risk label, when a key is configured.
+- A report with the pull request URL, its base and the template it used. It names the sections and checkboxes left for you, and the risk level and flags with the backend that set them. It also lists the proof entries it rendered or left out, anything that failed to upload, and the code story link and its status.
+
+The report ends with a one-line suggestion to run `/dev-kit:pr-shepherd`.
+`pr-open` never runs it for you.
+
+## What can go wrong
+
+- **You're on the default branch or a detached HEAD.** `pr-open` stops and says so.
+- **Tracked files have uncommitted changes.** It asks whether to open the pull request from the committed state or stop so you can commit. It never commits itself. Untracked files stay out of the pull request and are listed in the report.
+- **The base has moved ahead.** It reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never merges, rebases or force-pushes.
+- **The push is rejected.** It reports the error and stops. Resolving a diverged branch is your call.
+- **The assignment or the label fails.** The pull request stays open, and the report says why.
+- **Your `gh` is older than 2.99.0.** With a **Proof** section, `gh pr create` fails on the `--attach` flag. Update `gh` and run `pr-open` again.
+- **A proof file is missing or fails to upload.** A missing file leaves its entry out of the **Proof** section. An upload that fails is named in the report.
+- **The code story fails.** The pull request opens without a **Code story** section, and the report says why.
+
+## Next steps
+
+- Run [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) to answer review comments and keep CI green until approval.
+- Read [how a risk level is computed](/plugins/dev-kit/risk-assessment/how-it-works/) to understand a level you didn't expect.

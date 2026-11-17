@@ -1,0 +1,119 @@
+---
+title: /code-story:code-story
+description: Build or update a code story for a branch, a pull request or a stack, and publish it as an Artifact under a stable link.
+group: guides
+skill: code-story
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Reach for `/code-story:code-story` when a change needs explaining to someone who doesn't know the code.
+The skill reads the change and the reasons behind it, writes one chapter per mechanism, and checks every quoted line against the real file.
+It then publishes the page.
+
+## Before you start
+
+- Commit the change you want told. By default, uncommitted changes stay out of the story.
+- Log in to the GitHub CLI `gh`, so the skill can find the pull request, its reviews and its stack.
+- Install Node.js 22 or later.
+
+The [overview](/plugins/code-story/#requirements) lists every requirement.
+
+## Run it
+
+<Strip cmd="/code-story:code-story" />
+
+Every argument is optional, and you can combine them:
+
+- **`base <branch>`** sets the base. Without it, the skill uses the base of the branch's open pull request, then the nearest stacked pull request, then the default branch.
+- **`story <link>`** names the story to update.
+- **`stack` or `no stack`** decides whether one story covers the whole stack of pull requests.
+- **`uncommitted`** includes uncommitted changes.
+- **A spec, ticket keys, or a question** give the skill more material. A question names what the story must explain.
+
+For example, to compare against a named base:
+
+<Strip cmd="/code-story:code-story base feature/fup-and-contracts" />
+
+To tell a whole stack, with a spec, a ticket, and a question to answer:
+
+<Strip cmd='/code-story:code-story stack @docs/domains/flags/SPEC.md PL-5955 "why the lock in findUserRoles"' />
+
+You can also ask in plain words ("write a code story for this branch"), and Claude picks the skill.
+
+## How it runs
+
+The following diagram shows the steps of a run:
+
+<SkillFlow
+  skill="code-story"
+  input="A branch, a pull request or a stack, and optionally a spec, tickets or a question"
+  steps={[
+    { name: 'Settings', does: 'Reads the plugin settings through the mod, then applies overrides from your request.' },
+    { name: 'Scope', does: 'Finds the base, the stack and any uncommitted changes, and stops when the range is empty.' },
+    { name: 'New or update', does: 'Looks for an existing story for this branch, and unpacks it when it finds one.' },
+    { name: 'Read', does: 'Reads the commits, the diff, the pull request and its reviews, tickets, specs and the code around the change.' },
+    { name: 'Write', does: 'Writes one chapter per mechanism in every story language, then cleans the prose through anti-slop.' },
+    { name: 'Diagrams', does: 'Draws the built-in diagrams, or calls the diagram skill named in the settings.' },
+    { name: 'Assemble and check', does: 'Fills in what git knows and checks the page, until the check passes.', loop: 'until check passed', leaves: 'story.html' },
+    { name: 'Publish', does: 'Publishes a new Artifact, or a new version under the same link.' },
+  ]}
+  next={['pr-open']}
+/>
+
+A typical story has 4 to 8 chapters, in the order understanding has to build.
+Each chapter answers one question, and its heading is that question.
+
+The skill works in its scratchpad, in `code-story/<branch>/`, with each `/` in the branch name replaced by `-`.
+It never edits, stages or commits files in your repository, and it never pushes or edits a pull request.
+
+## What the scripts check
+
+Facts that git can answer come from scripts, not from the model.
+`assemble.mjs` fills in the head commit, base, repository, counts and labels.
+The page's own script computes the line ranges.
+`assemble.mjs` then runs `check.mjs`, which checks:
+
+- that every marker in a code block has a note, and every note a marker;
+- each quoted line of this repository's files against the real file at the story's commit, or the working tree when uncommitted changes are included;
+- that every chapter has its title and each text block in every story language;
+- escaping;
+- that diagram labels fit.
+
+Blocks tagged as a dependency or another ref, and file trees, skip the quoted-line check.
+The skill fixes every error and runs the check again.
+It publishes only after the check passes.
+
+## What is in the page
+
+- A chapter rail, back and next buttons, and arrow-key navigation.
+- A language switch, when the story has a second language. It also swaps the diagram labels.
+- Diff blocks with computed line numbers and line ranges.
+- Notes that highlight the line they explain.
+- Built-in diagrams drawn as inline SVG in one dark style.
+- Meta tags with the repository, branch, base, and head commit. An update uses them to find its story.
+
+Code names and programming terms stay in English in every language.
+
+## What you get
+
+The skill reports what the story covers, which chapters changed in an update, and every setting warning.
+It also names the uncommitted or untracked files it left out, and where the change's reasoning is missing.
+For a new story, it reminds you that the Artifact is private until you share it.
+
+The last line of the reply is a result line that pr-open reads:
+
+```
+CODE_STORY url=<artifact url|none> status=<created|updated|local> head=<sha> base=<ref> languages=<en[,xx]> chapters=<n> path=<story.html path>
+```
+
+`status=local` means there was no Artifact tool: the story opened as a local HTML file at `path`.
+
+## Next steps
+
+- [Updates under the same link](/plugins/code-story/#updates-under-the-same-link): how a later run finds and updates the story.
+- [Who can see the story](/plugins/code-story/#who-can-see-the-story): share it before the link goes into a pull request.
+- [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/): open the pull request, with the story's link in its description.

@@ -1,0 +1,24 @@
+---
+import Icon from '../Icon.astro'
+import SidebarList from '../SidebarList.astro'
+import { ui, langOf, canonicalPath } from '../../lib/i18n'
+import { sidebarFor } from '../../lib/nav'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const path = canonicalPath(Astro.url.pathname)
+const sb = await sidebarFor(path, lang)
+const current = sb?.groups.flatMap((g) => g.pages).find((p) => p.path === path)
+---
+
+{sb && (
+  <>
+    <details class="sb-bar">
+      <summary><span>{t.pages} ·</span> <span class="sb-bar-v">{current?.label ?? sb.label}</span><Icon name="chevron" size={12} /></summary>
+      <SidebarList sb={sb} path={path} lang={lang} />
+    </details>
+    <aside class="sb">
+      <SidebarList sb={sb} path={path} lang={lang} />
+    </aside>
+  </>
+)}

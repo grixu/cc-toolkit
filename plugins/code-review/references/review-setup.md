@@ -52,8 +52,9 @@ never from a preference:
   **`coherence`** and **`assumptions`** are **always active**, on any change however small
   — except that a Lens whose own `<files>` comes out empty is inactive with that reason: a
   change of `policy` files only runs `security`, `assumptions` and `coherence`, plus `spec`
-  when one is active; a change whose every file is skipped — documents, changesets, config
-  data — runs `coherence` alone, plus `spec` when one is active, and `coherence` reads the
+  and `hookify` when they are active; a change whose every file is skipped — documents,
+  changesets, config data — runs `coherence` alone, plus `spec` and `hookify` when they are
+  active, and `coherence` reads the
   code side of each claim from the repository;
 - **`objects & patterns`** is inactive, with the reason `declarative files only`, when
   every file in its `<files>` is `iac` — both its families are N/A for infrastructure code,
@@ -62,7 +63,15 @@ never from a preference:
   **minus `.sh` files and `*.config.*` modules**, is non-empty — a tests-only, IaC-only, or shell-only change
   skips it;
 - **`spec`** is active iff a spec resolved to a readable local file during the scope resolution — from
-  `--spec`, or from the offer the user accepted when the change carried its own spec.
+  `--spec`, or from the offer the user accepted when the change carried its own spec;
+- **`hookify`** is active iff the checkout under review carries hookify rule files —
+  `.claude/hookify.*.local.md` or `.claude/hookify.*.rule.md` at its root, found with a Glob, never
+  `~/.claude/` — and at least one of them has an `enabled:` line that is not `false` and an
+  `event:` line that is `file`, `all` or absent. Record the files, every one found whatever its
+  `enabled` or `event`, as absolute paths in hookify's load order: the `.local.md` tier first, then
+  the `.rule.md` tier, each alphabetical — a disabled `.local.md` switches off the team rule of the
+  same name, so the lens needs it too. Which rules then apply is the lens's to settle
+  (`rules/hookify.md`); the gate reads two frontmatter lines and no further.
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
 `performance` gets the source subset it was gated on; `security` and `assumptions` get the
@@ -73,8 +82,10 @@ gets the full resolved list plus every skipped file except lockfiles, generated 
 generator's `.d.ts`, `*_pb.*`, anything under `dist/`, `build/`, `node_modules/`, minified files,
 snapshots) and real env
 files, and minus the active spec,
-which is `spec`'s alone; every other Lens gets the resolved list minus its
+which is `spec`'s alone; `hookify` gets the same list as `coherence` with the active spec kept,
+since a rule may target any file the change wrote; every other Lens gets the resolved list minus its
 `policy` files. Record every **inactive** Lens with its reason (`performance — no executable
-code`, `spec — no spec named`, `coherence — lockfiles, generated and env files only`, `assumptions
+code`, `spec — no spec named`, `hookify — no hookify rule files`, `hookify — no enabled file or
+all rules`, `coherence — lockfiles, generated and env files only`, `assumptions
 — no judged files`, `correctness — policy or skipped files only`); the Tally prints them. From here on
 **N** means this count: N Scanners run, N outputs awaited, N outputs merged.

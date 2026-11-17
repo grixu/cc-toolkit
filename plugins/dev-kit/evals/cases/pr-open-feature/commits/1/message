@@ -1,0 +1,5 @@
+feat(backend): store internal admin notes for organizations and instances (PL-5880)
+
+Support engineers kept internal context about a customer in Slack threads, where nobody on
+the next shift found it. The note lives with the organization or instance now. Notes are
+sanitized server-side because the editor sends HTML.

@@ -1,0 +1,20 @@
+---
+import { href, type Lang } from '../lib/i18n'
+import type { sidebarFor } from '../lib/nav'
+
+interface Props {
+  sb: NonNullable<Awaited<ReturnType<typeof sidebarFor>>>
+  path: string
+  lang: Lang
+}
+const { sb, path, lang } = Astro.props
+---
+
+<nav aria-label={sb.label} class="sb-list">
+  {sb.groups.map((g) => (
+    <>
+      <p class="label sb-h">{g.label}</p>
+      <ul>{g.pages.map((p) => <li><a href={href(p.path, lang)} aria-current={p.path === path ? 'page' : undefined}>{p.label}</a></li>)}</ul>
+    </>
+  ))}
+</nav>

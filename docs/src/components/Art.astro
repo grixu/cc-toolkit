@@ -1,0 +1,13 @@
+---
+import hero from '../assets/art/hero.svg?raw'
+import fd3 from '../assets/art/fd3.svg?raw'
+import codeReview from '../assets/art/code-review.svg?raw'
+import devKit from '../assets/art/dev-kit.svg?raw'
+import prProof from '../assets/art/pr-proof.svg?raw'
+import tester from '../assets/art/tester.svg?raw'
+
+const art: Record<string, string> = { hero, fd3, 'code-review': codeReview, 'dev-kit': devKit, 'pr-proof': prProof, tester }
+const { name, class: cls } = Astro.props as { name: string; class?: string }
+---
+
+{art[name] && <div class:list={['art-wrap', cls]} aria-hidden="true" set:html={art[name]} />}

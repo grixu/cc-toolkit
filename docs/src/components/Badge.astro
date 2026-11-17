@@ -1,0 +1,10 @@
+---
+interface Props {
+  tone?: 'success' | 'info' | 'warning' | 'danger' | 'neutral'
+  /** Inside running text: a shorter badge that keeps the paragraph's line height. */
+  inline?: boolean
+}
+const { tone = 'neutral', inline = true } = Astro.props
+---
+
+<span class:list={['badge', `badge--${tone}`, { 'badge--inline': inline }]}><slot /></span>

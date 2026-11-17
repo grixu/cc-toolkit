@@ -127,17 +127,17 @@ rules share a `name`, the one higher in the table wins. To switch off a team rul
 | `/hookify:list` | Lists every rule with its event, status and source file |
 | `/hookify:configure` | Lets you pick rules to enable or disable |
 | `/hookify:help` | Explains hookify inside Claude Code |
-| `/hookify:review-changes` | Reviews your diff against your rules (see below) |
 
 To edit or delete a rule, edit or delete its file. The change applies on the next tool call.
 
 ### Review a diff against your rules
 
-Run `/hookify:review-changes`, or ask "review my changes against hookify rules". Claude checks
-committed and uncommitted changes against every enabled `file` and `all` rule, using parallel
-subagents, and reports violations per rule. It can then save the report to
-`.claude/hookify-review-<date>-<time>.md` or open Plan Mode with a plan to fix them. It skips `bash`,
-`prompt` and `stop` rules, because a diff cannot trigger them.
+Hookify's hooks only see edits Claude makes while the plugin runs. To check a whole change against
+your project's rules, use the [code-review](../code-review/README.md) plugin: in a project whose
+`.claude/` holds hookify rule files, `/code-review:start-cr` runs a hookify lens that replays every
+enabled `file` and `all` rule over the diff and reports each match in the same report as its other
+findings. `bash`, `prompt` and `stop` rules and rules in `~/.claude/` are left out, because a diff
+cannot show what they match.
 
 ## What this fork adds
 
@@ -148,7 +148,6 @@ Compared with the upstream plugin in
   `.rule.md` team rules, global rules in `~/.claude/`, and overrides by `name` between them.
 - Clearer block output. When a rule blocks a tool call, Claude gets the rule's message as the reason,
   and you see which rule blocked it.
-- Diff review with `/hookify:review-changes`.
 - Fixes. `prompt` rules match the prompt text, `file` patterns check new files created with Write,
   `stop` and `prompt` rules no longer fire on tool calls, and double-quoted patterns follow YAML
   escaping.

@@ -1,0 +1,42 @@
+{
+  "en": {
+    "chapters": "Chapters", "chapterOf": "Chapter {n} of {m}", "back": "← Back", "next": "Next chapter →",
+    "keys": "← / → to move between chapters", "keyInsight": "Key insight", "watchOut": "Watch out",
+    "cast": "Everything else in this change", "sources": "Where each why came from",
+    "given": "given", "before": "before", "after": "after",
+    "unchanged": "unchanged", "dependency": "in a dependency", "beforeChange": "before this change",
+    "callTree": "call tree", "fileTree": "file tree"
+  },
+  "pl": {
+    "chapters": "Rozdziały", "chapterOf": "Rozdział {n} z {m}", "back": "← Wstecz", "next": "Następny rozdział →",
+    "keys": "← / → przełączają rozdziały", "keyInsight": "Kluczowa myśl", "watchOut": "Uwaga",
+    "cast": "Reszta tej zmiany", "sources": "Skąd wzięło się każde „dlaczego”",
+    "given": "przypadek", "before": "przed", "after": "po",
+    "unchanged": "bez zmian", "dependency": "w zależności", "beforeChange": "przed zmianą",
+    "callTree": "drzewo wywołań", "fileTree": "drzewo plików"
+  },
+  "de": {
+    "chapters": "Kapitel", "chapterOf": "Kapitel {n} von {m}", "back": "← Zurück", "next": "Nächstes Kapitel →",
+    "keys": "← / → wechseln das Kapitel", "keyInsight": "Kernidee", "watchOut": "Achtung",
+    "cast": "Alles andere in dieser Änderung", "sources": "Woher jedes „Warum“ stammt",
+    "given": "Fall", "before": "vorher", "after": "nachher",
+    "unchanged": "unverändert", "dependency": "in einer Abhängigkeit", "beforeChange": "vor dieser Änderung",
+    "callTree": "Aufrufbaum", "fileTree": "Dateibaum"
+  },
+  "es": {
+    "chapters": "Capítulos", "chapterOf": "Capítulo {n} de {m}", "back": "← Atrás", "next": "Siguiente capítulo →",
+    "keys": "← / → para cambiar de capítulo", "keyInsight": "Idea clave", "watchOut": "Atención",
+    "cast": "Todo lo demás en este cambio", "sources": "De dónde sale cada «por qué»",
+    "given": "caso", "before": "antes", "after": "después",
+    "unchanged": "sin cambios", "dependency": "en una dependencia", "beforeChange": "antes de este cambio",
+    "callTree": "árbol de llamadas", "fileTree": "árbol de archivos"
+  },
+  "fr": {
+    "chapters": "Chapitres", "chapterOf": "Chapitre {n} sur {m}", "back": "← Retour", "next": "Chapitre suivant →",
+    "keys": "← / → pour changer de chapitre", "keyInsight": "Idée clé", "watchOut": "Attention",
+    "cast": "Tout le reste de ce changement", "sources": "D’où vient chaque « pourquoi »",
+    "given": "cas", "before": "avant", "after": "après",
+    "unchanged": "inchangé", "dependency": "dans une dépendance", "beforeChange": "avant ce changement",
+    "callTree": "arbre d’appels", "fileTree": "arborescence"
+  }
+}

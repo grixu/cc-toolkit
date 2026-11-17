@@ -1,7 +1,7 @@
 {
   "name": "researcher",
-  "version": "0.1.0",
-  "description": "Source-grounded research assistant: an interactive skill gathers a research brief, then launches a bundled Dynamic Workflow that fans out firecrawl retrieval (WebSearch fallback) into cited findings, gates rounds on coverage and contradictions, and renders a self-contained HTML report where every claim traces to a numbered source. The report evolves across follow-up runs.",
+  "version": "0.1.2",
+  "description": "Answers a research question with an HTML report in which every claim links to a numbered source. Follow-up questions extend the same report.",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"

@@ -1,0 +1,137 @@
+---
+title: pr-proof
+description: Shows a reviewer that your change works before they read the code, with the proof the change needs, a narrated video, screenshots, or a terminal or API transcript, handed to the pull request through pr-open.
+group: start
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+A reviewer who opens a pull request sees code, and has to imagine what it does when it runs.
+pr-proof shows them instead.
+It works out which proof your change needs, produces it from your running app or your terminal, and hands it to the pull request.
+The reviewer checks that the change works without running the branch, then reads the code with that picture in mind.
+
+## Four kinds of proof
+
+Each kind fits a different change.
+A branch can need several kinds, or none:
+
+| Kind | Fits a change that alters | Produced by |
+|---|---|---|
+| Video | what a user does across steps in the UI, or how the UI responds to a click, typing or a choice | [`walkthrough-video`](/plugins/pr-proof/walkthrough-video/) |
+| Screenshots | how a screen looks at rest: layout, styling, visible text, a new component or state | [`screenshot-proof`](/plugins/pr-proof/screenshot-proof/) |
+| Terminal transcript | what a command, script, migration, job or build prints or does | [`terminal-proof terminal`](/plugins/pr-proof/terminal-proof/) |
+| API transcript | what an HTTP or RPC endpoint returns: status, body, fields, errors, headers or who may call it | [`terminal-proof api`](/plugins/pr-proof/terminal-proof/) |
+
+Table 1. The kinds of proof and the skill that produces each.
+
+Documentation, comments, agent instructions, refactors that keep behavior, version bumps and changelogs need no proof.
+Tests are never proof on their own: a test run's output belongs in the pull request's testing notes.
+
+## Where it works
+
+The map shows where pr-proof sits in the lifecycle:
+
+<LifeMap focus="pr-proof" animate={false} />
+
+pr-proof works in [human review](/lifecycle/human-review/), after the branch is reviewed and tested.
+In that step, dev-kit's [`pr-open`](/plugins/dev-kit/pr-open/) builds the pull request, and pr-proof feeds it the proof.
+
+Today you start the two yourself, in this order:
+
+1. Run `/pr-proof:prepare-proof` on the branch. It plans the proof, produces it, and records it in the branch's proof manifest.
+2. Run `/dev-kit:pr-open`. It reads the manifest and writes a `## Proof` section into the pull request.
+
+`pr-open` never runs pr-proof for you; it only reads what pr-proof left.
+Under `prepare-proof`, the proof stays on your machine until you run `pr-open`.
+
+## Prepare the proof
+
+`prepare-proof` is the command you run:
+
+<Strip cmd="/pr-proof:prepare-proof" />
+
+It decides each kind with a one-line reason and shows you the whole plan once.
+After your yes, it brings up the app when a planned kind needs it, and runs the other skills in order.
+The [prepare-proof guide](/plugins/pr-proof/prepare-proof/) walks through a run.
+
+You can also run each producing skill on its own, for example to retake the screenshots after a fix:
+
+| Skill | What it does |
+|---|---|
+| [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) | Plans which kinds the branch needs, brings up the app, runs the skills below and records the result |
+| [`/pr-proof:walkthrough-video`](/plugins/pr-proof/walkthrough-video/) | Records a narrated video of the change in the running app |
+| [`/pr-proof:screenshot-proof`](/plugins/pr-proof/screenshot-proof/) | Screenshots the changed screens at each breakpoint, from an app that is already running |
+| [`/pr-proof:terminal-proof`](/plugins/pr-proof/terminal-proof/) | Captures a masked, reviewed transcript of a command or of HTTP requests |
+
+Table 2. The pr-proof skills.
+
+You can also describe the task ("prepare proof for this branch"), and Claude picks the matching skill.
+
+## How the proof reaches the pull request
+
+Every pr-proof skill records what it produced in one JSON file per branch:
+
+```
+~/.cache/pr-proof/<repo>/<branch>/manifest.json
+```
+
+`<repo>` is the repository name from the `origin` remote's URL, and each `/` in the branch name becomes `%2F`.
+Each entry holds the kind, a one-sentence claim, the commit it was produced at, the files it proves, and its images, video or transcript.
+A new entry replaces the earlier one of the same kind and keeps the others.
+An empty list means the branch needs no proof.
+
+`pr-open` reads the manifest and writes the `## Proof` section, uploading each image and video to GitHub.
+It marks an entry as stale when later commits changed the files that entry proves.
+The [reference](/plugins/pr-proof/reference/#the-proof-manifest) gives the full format.
+
+## Before you start
+
+- Claude Code v2.1.271 or later.
+- For the video, screenshots and API transcripts: a web app that runs locally from the checkout, with test users whose credentials live in a file, usually an e2e credentials file. The skills read how to start, seed and stop the stack from the project's `CLAUDE.md` files. A terminal transcript needs the app only when its command talks to the app.
+- Node.js 22.18 or later and `pnpm`. playwright-recast and `@playwright/test` run through `pnpm dlx`, so nothing is installed into the repository.
+- `ffmpeg` and `ffprobe` on `PATH`, with libass for the video's burned-in captions.
+- `timeout` on `PATH`. On macOS it comes from coreutils.
+- `jq` on `PATH`. Every skill that produces proof writes the manifest with it.
+- The GitHub CLI `gh` 2.103 or later, logged in, for a standalone `walkthrough-video` that attaches the video itself. Under `prepare-proof`, `pr-open` attaches the video.
+- Optional: `agent-browser` on `PATH` for screenshots. Without it, `screenshot-proof` uses Playwright through `pnpm dlx`.
+- Optional: the firecrawl MCP server, which the video's tool check uses to read playwright-recast's release notes. `gh` works for that too.
+- Optional: a TypeSafe API key, a Gemini Developer API key with access to `gemini-decision-1`, or both, for the `proof_signals` tool.
+
+:::caution[An older personal skill]
+If you used walkthrough-video as a personal skill before, delete `~/.claude/skills/walkthrough-video` after installing.
+Otherwise two skills with the same description compete for the same requests.
+:::
+
+## What leaves your machine
+
+Without a TypeSafe or Gemini key, no diff leaves it.
+Proof leaves only when `pr-open` uploads it, or when a standalone `walkthrough-video` attaches its video to the pull request.
+The `proof_signals` tool is not registered at all, and `prepare-proof` judges the proof from the diff alone.
+
+With a key, `prepare-proof` calls `proof_signals`, which asks a decision model which kinds the change needs.
+TypeSafe's Jev or Google's Gemini Decision answers.
+The tool sends the diffstat, the list of changed files and the diff of `<base>...HEAD`.
+It doesn't send the diffs of lockfiles, minified files, source maps, snapshots, binary files and files under `dist/`, `build/`, `vendor/` and `node_modules/`.
+Their names and line counts still appear in the diffstat.
+It sends no commit messages.
+
+The [reference](/plugins/pr-proof/reference/#options) lists the options that set the keys and the backend.
+
+## What it never does
+
+- Install packages into the repository or change tracked files.
+- Touch containers that belong to another checkout or session.
+- Create, change or delete data on shared or external services, unless you name the resource. The video stages such data in the browser instead.
+- Print a credential. The skills read credentials only inside the scripts that use them, and you pass a path, never a value.
+- Count a video or screenshot you haven't approved as proof.
+
+## Next steps
+
+- [Prepare the proof for a branch](/plugins/pr-proof/prepare-proof/).
+- Open the pull request with [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/), which adds the proof.
+- Look up the options, the tool and the manifest in the [reference](/plugins/pr-proof/reference/).

@@ -1,0 +1,100 @@
+---
+title: researcher
+description: Odpowiada na pytanie badawcze raportem HTML, w którym każde twierdzenie ma numerowane źródło z sieci, i rozbudowuje ten sam raport o kolejne pytania.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Niektóre decyzje w planowaniu zależą od faktu, na który kod nie odpowie: co obsługuje API dostawcy, czym różnią się dwa protokoły, co mówią dowody o danym podejściu.
+researcher odpowiada na takie pytanie samodzielnym raportem HTML.
+Każde twierdzenie ma w nim numerowane źródło z sieci, a każde ustalenie za nim przechowuje dosłowny cytat z tego źródła.
+
+## Gdzie działa
+
+<LifeMap focus="researcher" animate={false} />
+
+researcher to plugin pomocniczy w etapie [Planowanie](/pl/lifecycle/plan/).
+Sięgnij po niego przed napisaniem specu, gdy decyzja zależy od czegoś spoza repozytorium.
+
+## Uruchom
+
+Wpisz komendę z pytaniem:
+
+<Strip cmd='/researcher:research "How does HTTP/3 differ from HTTP/2 in practice?"' />
+
+Skill działa tylko wtedy, gdy wpiszesz komendę.
+Zwykła prośba „zbadaj X” w rozmowie go nie uruchamia.
+
+Skill wyciąga brief z twojego pytania: głębokość, aktualność, rodzaje źródeł i odbiorcę.
+O ustawienia, których nie da się wywnioskować, pyta raz, jednym zbiorczym pytaniem, a często wcale.
+Raport powstaje w języku pytania; żeby to zmienić, napisz to w pytaniu („…po polsku”).
+Wszystkie ustawienia opisuje [Dokumentacja](/pl/plugins/researcher/reference/#ustawienia-briefu).
+
+Przebieg trwa kilka minut i zużywa dużo tokenów.
+Te tokeny zostają w workflow działającym w tle, a nie w twojej sesji.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="research"
+  input="Pytanie badawcze"
+  steps={[
+    { name: 'Brief', does: 'Wyciąga głębokość, aktualność, źródła i odbiorcę, o resztę pyta raz.' },
+    { name: 'Plan', does: 'Dzieli pytanie na odrębne kierunki, po jednym na równoległe wyszukiwanie.' },
+    { name: 'Rundy badań', does: 'Równoległe wyszukiwania zbierają ustalenia z cytatami, a asesor sprawdza, czy zostały luki.', loop: 'do 1, 2 lub 3 rund, zależnie od głębokości' },
+    { name: 'Odpowiedź', does: 'Pisze jedną odpowiedź ze źródłami, potem redaguje ją pod odbiorcę.' },
+    { name: 'Render', does: 'Zapisuje ustalenia, answer.md i state.json, potem renderuje raport.', leaves: 'research/<slug>/output.html' },
+    { name: 'Dalsze pytania', does: 'Proponuje do czterech pytań, które rozbudowują ten sam raport.', leaves: 'snapshots/', optional: true },
+  ]}
+  next={['build-spec']}
+  n={2}
+/>
+
+Każdy krok i pracę agentów opisuje strona [Jak to działa](/pl/plugins/researcher/how-it-works/).
+
+## Co dostajesz
+
+Po zakończeniu skill wypisuje tytuł raportu, jego sekcje oraz liczbę źródeł i rund.
+Potem podaje ścieżkę i proponuje otwarcie raportu; sam go nie otwiera.
+
+Raport trafia do `research/<slug>/output.html` w bieżącym katalogu.
+To jedna strona:
+
+- Przypisy `[n]` w tekście prowadzą do numerowanej listy źródeł. Każde źródło ma poziom zaufania i datę dostępu.
+- Nierozstrzygnięte sprzeczności i otwarte pytania dostają osobne ramki.
+- Wykresy, diagramy i tabele pojawiają się tylko tam, gdzie pomagają.
+- Obsługuje tryb jasny i ciemny, dobrze się drukuje i niczego nie ładuje z CDN.
+
+Przypis znaczy „źródło tak mówi”, a nie „to prawda”.
+Zanim oprzesz decyzję na twierdzeniu, przeczytaj cytat, który za nim stoi.
+
+## Rozbudowa raportu
+
+Raport rośnie razem z twoimi pytaniami, zamiast rozpadać się na nowe pliki:
+
+- **W tej samej sesji:** po przebiegu skill proponuje do czterech dalszych pytań. Wybierz dowolne albo wpisz własne. Skill je zbada i przepisze ten sam raport, a poprzednia wersja trafi do `snapshots/`.
+- **W nowej sesji:** uruchom komendę z powiązanym pytaniem. Gdy raport na ten temat już istnieje, skill pyta, czy go rozbudować, czy zacząć od nowa.
+- **Inny raport:** poproś o jego rozbudowę, a skill wypisze raporty z `./research/`.
+
+Numery przypisów pozostają ważne po kolejnych pytaniach: źródło zachowuje swój numer, a nowe źródła dostają kolejne wolne.
+
+## Zanim zaczniesz
+
+researcher potrzebuje dynamic workflows i serwera MCP firecrawl.
+Bez narzędzia `Workflow` skill się zatrzymuje i prosi o ich włączenie.
+
+:::caution
+Agenci badawczy stosują twoje reguły uprawnień, a prośba o zgodę wstrzymuje cały przebieg, dopóki na nią nie odpowiesz.
+Najpierw zezwól na narzędzia wyszukiwania, jak w sekcji [Uprawnienia](/pl/plugins/researcher/reference/#uprawnienia).
+:::
+
+## Następne kroki
+
+- [Dokumentacja](/pl/plugins/researcher/reference/): ustawienia, wymagania, uprawnienia, pliki i kody błędów.
+- [Jak to działa](/pl/plugins/researcher/how-it-works/): pętla badań i to, co zostaje na dysku.
+- [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/): zamień zdobytą wiedzę w spec sprawdzony z twoim kodem.

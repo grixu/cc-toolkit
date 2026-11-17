@@ -1,0 +1,59 @@
+---
+title: Test
+description: The running app checked against the spec, with evidence for each verdict.
+group: cycle
+sidebar:
+  label: 03b · Test
+  order: 4
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Test is the second of three steps in Review & test, the third stage of the [ADLC](/lifecycle/).
+It checks that the change works in the running app, not only in the code.
+
+## What goes wrong without it
+
+A review reads the code; it can't tell you the app behaves.
+Unit tests pass, the review is clean, and the feature still fails when a user clicks through it or a dependency returns an error.
+And an agent that says "it works" without a command behind it asks the reviewer to take that on trust.
+
+## Who does what
+
+- **The agent** works out what to test and finds the live ports, routes and test users. It runs each check as a real command and records the output behind every verdict.
+- **You** point it at a local or staging stack, or let it start one. You answer its questions: which suites to run, which changes it may make, and what you can unlock.
+
+## On the map
+
+The highlighted column shows where it sits in the cycle.
+
+<LifeMap stage="test" animate={false} />
+
+## How it runs
+
+[`/tester:run`](/plugins/tester/run/) runs the whole step:
+
+1. **Scope.** It reads the acceptance criteria from a spec, the code behind a named area, or the diff against the main branch.
+2. **Discover.** It finds what is running and takes a snapshot of the current state to restore later.
+3. **Derive.** It turns each expected behavior into API, UI and fault checks, grouped into suites.
+4. **Ask.** It asks once which suites to run and which changes it may make. A change it didn't clear then is asked about when it comes up.
+5. **Run.** API and UI suites run in parallel, then the fault suite runs on its own.
+6. **Report.** Each failure is tied to its acceptance criterion and classified. The report also lists what it couldn't check, and what it changed and reverted.
+
+tester stops when a base URL looks like production.
+It reports problems; it doesn't fix your code.
+
+## What to run
+
+<StageCommands stage="test" />
+
+## What arrives and what leaves
+
+- **Arrives:** a branch that builds, and its spec or its diff.
+- **Leaves:** a test report in the session, with a verdict and the evidence for each check.
+
+## When to skip it
+
+Skip it for a change with no behavior to run, such as documentation or a refactor that unit tests already cover.
+Say so in the pull request, so the reviewer knows the app wasn't checked.

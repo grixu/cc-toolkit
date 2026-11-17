@@ -60,6 +60,71 @@ for s in pr-clear-private pr-transitive-rerun pr-escalated-accept pr-merge-check
   fi
 done
 
+# pr-open scenarios: a base history in Conventional Commits (`base-log`), an optional shared branch the
+# PR is based on (`feature/`), then the PR branch's own commits. A commit directory holding `push`
+# is pushed and stands as the open PR of that number (`pr.json`); later commits stay local.
+apply_commits() {
+  local repo="$1" dir="$2" origin="$3" c
+  for c in "$dir"/*/; do
+    cp -R "$c/tree/." "$repo/"
+    git -C "$repo" add -A
+    commit "$repo" "$(cat "$c/message")"
+    [ -f "$c/push" ] || continue
+    local n branch
+    n="$(cat "$c/push")"
+    branch="$(git -C "$repo" branch --show-current)"
+    git -C "$repo" push -q origin "HEAD:refs/heads/$branch" "HEAD:refs/pull/$n/head"
+    git -C "$repo" fetch -q origin
+    git -C "$repo" branch -q --set-upstream-to="origin/$branch"
+    mkdir -p ".sandbox/prs/$n"
+    cp "$(dirname "$dir")/pr.json" ".sandbox/prs/$n/pr.json"
+    printf '%s\n' "$origin" > ".sandbox/prs/$n/origin"
+    echo '[]' > ".sandbox/prs/$n/comments.json"
+  done
+}
+
+for s in pr-open-feature pr-open-no-ticket pr-open-update-body pr-open-proof; do
+  src="cases/$s"
+  repo=".sandbox/$s"
+  origin="$(pwd)/.sandbox/$s-origin.git"
+  checkout "$repo" "$src/base"
+  while IFS= read -r subject; do
+    git -C "$repo" -c user.name='dev-kit-evals' -c user.email='dev-kit-evals@localhost' commit -q --allow-empty --no-gpg-sign -m "$subject"
+  done < "$src/base-log"
+  git clone -q --bare "$repo" "$origin"
+  git -C "$repo" remote add origin "$origin"
+  git -C "$repo" fetch -q origin
+  git -C "$repo" branch -q --set-upstream-to=origin/main main
+  if [ -d "$src/feature" ]; then
+    feature="$(cat "$src/feature/branch")"
+    git -C "$repo" switch -q -c "$feature"
+    apply_commits "$repo" "$src/feature/commits" "$origin"
+    git -C "$repo" push -q -u origin "$feature"
+  fi
+  git -C "$repo" switch -q -c "$(cat "$src/branch")"
+  apply_commits "$repo" "$src/commits" "$origin"
+done
+
+# pr-open reads a branch's proof manifest from where pr-proof writes it under $HOME, named by the
+# origin's basename and the URL-encoded branch, so pr-open-proof's manifest has to live there too.
+proof_media="$(pwd)/.sandbox/pr-open-proof-proof"
+cp -R cases/pr-open-proof/proof "$proof_media"
+proof_cache="${HOME:?}/.cache/pr-proof/pr-open-proof-origin"
+rm -rf "$proof_cache"
+proof_manifest="$proof_cache/$(sed 's#/#%2F#g' cases/pr-open-proof/branch)/manifest.json"
+mkdir -p "$(dirname "$proof_manifest")"
+proof_head="$(git -C .sandbox/pr-open-proof rev-parse HEAD)"
+git -C .sandbox/pr-open-proof diff-tree --no-commit-id --name-only -r HEAD |
+  jq -R -s --arg head "$proof_head" --arg media "$proof_media" '
+    split("\n") | map(select(length > 0)) as $files
+    | {version: 1, head: $head, base: "main", entries: [
+        {kind: "screenshots", claim: "The CheckoutSummary component shows the order summary at every width.",
+         head: $head, files: $files,
+         media: [("Cart", "Checkout") as $screen | (375, 768, 1440) as $width
+           | {path: "\($media)/\($screen)-\($width).png", screen: $screen, width: $width}]},
+        {kind: "terminal", claim: "The order-summary script prints the discounted total for a sample cart.",
+         head: $head, files: $files, transcript: "\($media)/terminal.txt"}]}' > "$proof_manifest"
+
 # A one-package repository whose lockfile pins <pkg>@<current>, for the scenarios picked at reset time.
 fresh_repo() {
   local dir="$1" field="$2" pkg="$3" current="$4" integrity
@@ -135,6 +200,48 @@ if [ -n "$picked" ]; then
   fresh_repo .sandbox/blocked-cooldown devDependencies "$picked" "$current"
 else
   unavailable blocked-cooldown 'no candidate package has a release under 6 days old without advisories'
+fi
+
+# The repository-config scenario needs a patch release past the repository's 3-day patch rule but
+# inside the 7-day default, so only the configured value can clear it. The graph must stay the same,
+# or a fresh transitive version would decide the outcome instead.
+in_window() {
+  jq -r --arg v "$2" '((.[$v] // "1970-01-01T00:00:00")[:19] + "Z" | fromdateiso8601) as $t
+    | $t > (now - 6 * 86400) and $t < (now - 3 * 86400 - 3600)' <<<"$1"
+}
+picked=''
+for pkg in @types/node @types/react prettier typescript vite @biomejs/biome next renovate; do
+  times="$(npm view "$pkg" time --json 2>/dev/null)" || continue
+  while read -r target; do
+    [ "$(in_window "$times" "$target")" = true ] || continue
+    current="$(jq -r --arg t "$target" '($t | split(".")) as [$ma, $mi, $pa]
+      | [keys[] | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) | split(".")
+        | select(.[0] == $ma and .[1] == $mi and (.[2] | tonumber) < ($pa | tonumber))]
+      | max_by(.[2] | tonumber) // empty | join(".")' <<<"$times")"
+    [ -n "$current" ] || continue
+    [ "$(osv_count "$pkg" "$target")" = 0 ] && [ "$(osv_count "$pkg" "$current")" = 0 ] || continue
+    [ "$(npm view "$pkg@$current" dependencies --json | jq -S -c .)" = "$(npm view "$pkg@$target" dependencies --json | jq -S -c .)" ] || continue
+    before="$(graph "$pkg" "$current")" || continue
+    after="$(graph "$pkg" "$target")" || continue
+    [ -z "$(comm -13 <(printf '%s\n' "$before") <(printf '%s\n' "$after") | sed '/^$/d')" ] || continue
+    published="$(jq -r --arg v "$target" '.[$v]' <<<"$times")"
+    picked="$pkg"
+    break
+  done < <(jq -r 'to_entries | map(select(.key | test("^[0-9]+\\.[0-9]+\\.[1-9][0-9]*$")))
+    | sort_by(.value) | reverse | .[:40][] | .key' <<<"$times")
+  [ -n "$picked" ] && break
+done
+
+if [ -n "$picked" ]; then
+  jq -n --arg pkg "$picked" --arg current "$current" --arg target "$target" --arg published "$published" \
+    '{package: $pkg, current: $current, target: $target, published: $published}' > .sandbox/cooldown-repo-config.json
+  printf '%s@%s' "$picked" "$target" > .sandbox/cooldown-repo-config-input.txt
+  fresh_repo .sandbox/cooldown-repo-config dependencies "$picked" "$current"
+  cp cases/cooldown-repo-config/renovate.json .sandbox/cooldown-repo-config/
+  git -C .sandbox/cooldown-repo-config add -A
+  commit .sandbox/cooldown-repo-config 'chore: configure Renovate'
+else
+  unavailable cooldown-repo-config 'no candidate package has a clean patch release 3 to 6 days old with an unchanged dependency graph'
 fi
 
 # The exemption needs a release under 6 days old that patches a moderate-or-above advisory of the

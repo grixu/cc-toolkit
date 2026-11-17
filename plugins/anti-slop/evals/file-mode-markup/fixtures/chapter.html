@@ -1,0 +1,31 @@
+<article>
+  <div class="hd">
+    <span class="eb" data-lang="en">one label</span><span class="eb" data-lang="pl">jedna etykieta</span>
+    <h2 data-lang="en">Which labels may be bold?</h2><h2 data-lang="pl">Które etykiety mogą być pogrubione?</h2>
+    <p class="q" data-lang="en">It is worth noting that the default template meticulously delineates four labels — and this is not merely a formatting detail, but a crucial cornerstone of reviewer trust, clarity and consistency.</p><p class="q" data-lang="pl">Warto zauważyć, że domyślny szablon precyzyjnie definiuje cztery etykiety – i nie jest to jedynie kwestia formatowania, lecz kluczowy fundament zaufania, przejrzystości i spójności.</p>
+  </div>
+  <figure class="svg">
+    <div class="canvas"><svg viewBox="0 0 480 120" role="img" aria-label="labels">
+      <rect class="fx-bg" width="480" height="120"/>
+      <path class="fx-edge add" d="M 200,60 L 264,60"/>
+      <rect class="fx-node" x="24" y="36" width="176" height="48" rx="6"/>
+      <text class="fx-label" x="112" y="65" text-anchor="middle"><tspan data-lang="en">bold rule</tspan><tspan data-lang="pl">reguła pogrubienia</tspan></text>
+      <rect class="fx-node add" x="264" y="36" width="184" height="48" rx="6"/>
+      <text class="fx-label" x="356" y="65" text-anchor="middle">Dependencies:</text>
+    </svg></div>
+    <figcaption data-lang="en">The rule now comprehensively enumerates every label, ensuring a seamless experience.</figcaption><figcaption data-lang="pl">Reguła kompleksowo wylicza teraz każdą etykietę, zapewniając płynne doświadczenie.</figcaption>
+  </figure>
+  <div class="dx">
+    <div class="dh"><b>plugins/dev-kit/skills/pr-open/SKILL.md</b></div>
+    <pre class="diff" style="counter-reset:l 98"><code
+><i class=c>- Short, plain sentences with concrete nouns: the endpoint, the flag, the error message. Specific verbs (adds, removes, renames, fixes) over adjectives, numbers over intensifiers, and no preamble or closing summary.</i
+><i class=d>- Bold only the labels (**Testing:**, **Reviewer notes:**, **Go deeper:**); leave everything else plain.</i
+><i class=a data-n=1>- Bold only the labels (**Testing:**, **Reviewer notes:**, <mark>**Dependencies:**</mark>, **Go deeper:**); leave everything else plain.</i
+></code></pre>
+  </div>
+  <ol class="nt" start="1" data-lang="en"><li>The <code>Dependencies:</code> label was conspicuously absent, likely because the author overlooked it during a hurried refactor.</li></ol>
+  <ol class="nt" start="1" data-lang="pl"><li>W ramach dokonanej zmiany nastąpiło uzupełnienie brakującej etykiety <code>Dependencies:</code>, co stanowi istotny krok naprzód.</li></ol>
+  <h3 data-ui="cast"></h3>
+  <ul class="cast" data-lang="en"><li data-file="plugins/dev-kit/skills/pr-open/SKILL.md">the only file.</li></ul>
+  <ul class="cast" data-lang="pl"><li data-file="plugins/dev-kit/skills/pr-open/SKILL.md">jedyny plik.</li></ul>
+</article>

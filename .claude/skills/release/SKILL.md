@@ -7,9 +7,10 @@ disable-model-invocation: true
 # Release a plugin
 
 `scripts/release.sh <plugin-name> <patch|minor|major>` does the whole release: bumps the
-version in `plugin.json` and `marketplace.json`, stamps `## [Unreleased]` in
-`CHANGELOG.md` with the version and today's date, commits, tags `<plugin>/vX.Y.Z`, and
-pushes plus creates the GitHub release.
+version in `plugin.json` and `marketplace.json`, bumps the marketplace's top-level
+`version` by the same level, stamps `## [Unreleased]` in `CHANGELOG.md` with the version
+and today's date, commits, tags `<plugin>/vX.Y.Z` and `marketplace/vX.Y.Z`, and pushes
+plus creates the GitHub release.
 
 ## Always run it with `CI=true`
 
@@ -29,17 +30,20 @@ that confirmation replaces the prompts you just suppressed.
 
 ## Preflight
 
-All four are `die` conditions inside the script; the only non-fatal item in the list is
-`gh` in item 3. Hitting one after a partial run is worse than checking first.
+All five are `die` conditions inside the script; the only non-fatal item in the list is
+`gh` in item 4. Hitting one after a partial run is worse than checking first.
 
 1. `## [Unreleased]` exists in `plugins/<name>/CHANGELOG.md` **and is not empty** — the
    script refuses on either.
-2. The tag `<plugin>/vX.Y.Z` for the version you are about to create does not exist
-   (`git tag --list '<plugin>/*' | tail -5`).
-3. `jq` and `git` are on PATH. `gh` is **optional**: without it the script pushes the
-   commit and tag and prints `gh CLI not found — skipping GitHub Release`. Do not block
+2. `.claude-plugin/marketplace.json` has a top-level `version`
+   (`jq -e '.version' .claude-plugin/marketplace.json`).
+3. Neither tag you are about to create exists: `<plugin>/vX.Y.Z` and
+   `marketplace/vX.Y.Z`, the marketplace version bumped by the same level
+   (`git tag --list '<plugin>/vX.Y.Z' 'marketplace/vX.Y.Z'` prints nothing).
+4. `jq` and `git` are on PATH. `gh` is **optional**: without it the script pushes the
+   commit and both tags and prints `gh CLI not found — skipping GitHub Release`. Do not block
    a release on `gh`; just say the GitHub Release will be missing.
-4. `git diff --quiet -- plugins/<name> .claude-plugin/marketplace.json` is clean — the
+5. `git diff --quiet -- plugins/<name> .claude-plugin/marketplace.json` is clean — the
    script dies on it, and that narrow pair is all it checks. It does not look at the
    rest of the working tree or at which branch you are on, and it commits and pushes
    whatever it stamps, so confirm the branch yourself.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Stand-in for gh, copied to .sandbox/bin/gh by reset-sandbox.sh. The eval sandbox denies gh's
-# credentials, so PR reads come from .sandbox/prs/<n>/ and the PR's bare origin, comment writes are
-# kept as .sandbox/gh-posted-*.md for the checks, and advisory lookups go to the public REST API
+# credentials, so PR reads come from .sandbox/prs/<n>/ and the PR's bare origin, comment and PR
+# writes are kept as .sandbox/gh-posted-*.md for the checks, and advisory lookups go to the public REST API
 # unauthenticated. Every call is logged to .sandbox/gh-calls.log with the directory it ran in.
 set -uo pipefail
 
@@ -75,15 +75,148 @@ record_comment() {
   echo $((9100 + k))
 }
 
+# The value of a --flag / --flag=value pair among the remaining arguments.
+flag() {
+  local name="$1"
+  shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      "$name") printf '%s' "${2:-}"; return ;;
+      "$name"=*) printf '%s' "${1#"$name"=}"; return ;;
+    esac
+    shift
+  done
+}
+
+# gh's repeated --attach <path>: like gh, one missing file refuses the whole call before it does anything.
+attachments=()
+collect_attachments() {
+  local a
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --attach) attachments+=("${2:-}"); shift ;;
+      --attach=*) attachments+=("${1#--attach=}") ;;
+    esac
+    shift
+  done
+  for a in ${attachments[@]+"${attachments[@]}"}; do
+    [ -f "$a" ] || fail "$a: no such file"
+  done
+}
+
+# A body from stdin as GitHub stores it after the upload: each ./<name> of an attached file becomes
+# a user-attachments URL, numbered in --attach order. Like gh, ./ resolves against the body's
+# directory ($1), so an attached file elsewhere leaves its ./<name> untouched.
+attached_body() {
+  local body_dir a names=()
+  body_dir="$(cd "$1" && pwd)" || fail "$1: no such directory"
+  for a in ${attachments[@]+"${attachments[@]}"}; do
+    if [ "$(cd "$(dirname "$a")" && pwd)" = "$body_dir" ]; then names+=("$(basename "$a")"); else names+=(''); fi
+  done
+  jq -R -s -j 'reduce range($ARGS.positional | length) as $i (.;
+      if $ARGS.positional[$i] == "" then . else
+        split("./" + $ARGS.positional[$i]) | join("https://github.com/user-attachments/assets/\($i + 1)") end)' \
+    --args ${names[@]+"${names[@]}"}
+}
+
+# The open fixture PR whose head is the given branch, as a directory; empty when there is none.
+pr_dir_for_head() {
+  local f
+  for f in "$sandbox"/prs/*/pr.json; do
+    [ -e "$f" ] || continue
+    jq -e --arg head "$1" '.headRefName == $head and .state == "OPEN"' "$f" > /dev/null && { dirname "$f"; return; }
+  done
+}
+
+# The PR a `gh pr <cmd> [<number|url>]` call names, or like gh the current branch's without one.
+target_dir() {
+  local dir
+  case "${1:-}" in
+    ''|-*)
+      dir="$(pr_dir_for_head "$(git branch --show-current)")"
+      [ -n "$dir" ] || fail "no pull requests found for branch \"$(git branch --show-current)\"" ;;
+    *) dir="$(pr_dir "$1")" || exit 1 ;;
+  esac
+  printf '%s' "$dir"
+}
+
 case "${1:-} ${2:-}" in
   'auth status') echo "github.com: Logged in to github.com account $caller"; exit 0 ;;
   'repo view')
     echo '{"nameWithOwner":"example/web","name":"web","owner":{"login":"example"},"url":"https://github.com/example/web","defaultBranchRef":{"name":"main"}}' | emit
     exit 0 ;;
   'pr view')
-    dir="$(pr_dir "${3:-}")"
+    dir="$(target_dir "${3:-}")" || exit 1
     pr_json "$dir" | emit
     exit 0 ;;
+  'pr list')
+    shift 2
+    head="$(flag --head "$@")"
+    state="$(flag --state "$@" | tr '[:lower:]' '[:upper:]')"
+    for f in "$sandbox"/prs/*/pr.json; do
+      [ -e "$f" ] && cat "$f"
+    done | jq -s --arg head "$head" --arg state "${state:-OPEN}" \
+      'map(select(($head == "" or .headRefName == $head) and ($state == "ALL" or .state == $state))
+        | . + {url: "https://github.com/example/web/pull/\(.number)"})' | emit
+    exit 0 ;;
+  'pr create')
+    shift 2
+    collect_attachments "$@"
+    head="$(flag --head "$@")"
+    [ -n "$head" ] || head="$(git branch --show-current)"
+    [ -z "$(pr_dir_for_head "$head")" ] || fail "a pull request for branch \"$head\" already exists"
+    body_file="$(flag --body-file "$@")"
+    [ -n "$body_file" ] || body_file="$(flag -F "$@")"
+    [ -n "$body_file" ] || fail "pr create without --body-file"
+    # Like gh, an unreadable body file refuses the call before a PR exists.
+    [ -r "$body_file" ] || fail "$body_file: no such file or directory"
+    git ls-remote --exit-code origin "refs/heads/$head" > /dev/null 2>&1 || fail "head branch \"$head\" is not on the remote"
+    key="$(printf '%s' "$head" | tr '/' '-')"
+    body_dir="$(dirname "$body_file")"
+    attached_body "$body_dir" < "$body_file" > "$sandbox/gh-posted-pr-create-$key.md"
+    title="$(flag --title "$@")"
+    base="$(flag --base "$@")"
+    draft="$(case " $* " in *' --draft '*) echo true ;; *) echo false ;; esac)"
+    jq -n --arg title "$title" --arg base "$base" --arg head "$head" --argjson draft "$draft" \
+      '{title: $title, base: $base, head: $head, draft: $draft}' > "$sandbox/gh-posted-pr-create-$key.json"
+    # Scenarios of one trial run concurrently; mkdir claims a number atomically.
+    n=9001
+    until mkdir "$sandbox/prs/$n" 2> /dev/null; do n=$((n + 1)); done
+    origin="$(git remote get-url origin)"
+    git --git-dir="$origin" update-ref "refs/pull/$n/head" "refs/heads/$head"
+    printf '%s\n' "$origin" > "$sandbox/prs/$n/origin"
+    echo '[]' > "$sandbox/prs/$n/comments.json"
+    jq -n --argjson n "$n" --arg title "$title" --arg base "${base:-main}" --arg head "$head" --argjson draft "$draft" \
+      --rawfile body "$sandbox/gh-posted-pr-create-$key.md" \
+      '{number: $n, title: $title, author: {login: "eval-user"}, headRefName: $head, baseRefName: $base,
+        state: "OPEN", isDraft: $draft, labels: [], assignees: [], body: $body}' > "$sandbox/prs/$n/pr.json"
+    echo "https://github.com/example/web/pull/$n"
+    exit 0 ;;
+  'pr edit')
+    shift 2
+    collect_attachments "$@"
+    target=''
+    case "${1:-}" in ''|-*) ;; *) target="$1"; shift ;; esac
+    dir="$(target_dir "$target")" || exit 1
+    n="$(basename "$dir")"
+    body_file="$(flag --body-file "$@")"
+    [ -n "$body_file" ] || body_file="$(flag -F "$@")"
+    if [ -n "$body_file" ]; then
+      [ -r "$body_file" ] || fail "$body_file: no such file or directory"
+      body_dir="$(dirname "$body_file")"
+      attached_body "$body_dir" < "$body_file" > "$sandbox/gh-posted-pr-edit-$n.md"
+      jq --rawfile body "$sandbox/gh-posted-pr-edit-$n.md" '.body = $body' "$dir/pr.json" > "$dir/pr.json.tmp" && mv "$dir/pr.json.tmp" "$dir/pr.json"
+    fi
+    inline="$(flag --body "$@")$(flag -b "$@")"
+    [ -z "$inline" ] || printf '%s\n' "$inline" > "$sandbox/gh-posted-pr-edit-inline-$n.md"
+    add="$(flag --add-label "$@")"
+    remove="$(flag --remove-label "$@")"
+    jq --arg add "$add" --arg remove "$remove" \
+      '.labels = ([(.labels // [])[] | select(.name != $remove)] + (if $add == "" then [] else [{name: $add}] end) | unique_by(.name))' \
+      "$dir/pr.json" > "$dir/pr.json.tmp" && mv "$dir/pr.json.tmp" "$dir/pr.json"
+    echo "https://github.com/example/web/pull/$n"
+    exit 0 ;;
+  'label create') exit 0 ;;
   'pr diff')
     dir="$(pr_dir "${3:-}")"
     n="$(basename "$dir")"
@@ -95,21 +228,24 @@ case "${1:-} ${2:-}" in
     exit 0 ;;
   'pr checks') fail "no checks reported on the pull request" ;;
   'pr comment')
+    collect_attachments "$@"
     dir="$(pr_dir "${3:-}")"
     n="$(basename "$dir")"
     shift 3
-    kind=comment body=''
+    kind=comment body='' body_dir="$PWD"
     while [ $# -gt 0 ]; do
       case "$1" in
-        --body-file|-F) body="$(cat "$2")"; shift ;;
-        --body-file=*) body="$(cat "${1#--body-file=}")" ;;
+        --body-file|-F) body="$(cat "$2")"; body_dir="$(dirname "$2")"; shift ;;
+        --body-file=*) body="$(cat "${1#--body-file=}")"; body_dir="$(dirname "${1#--body-file=}")" ;;
         --body|-b) body="$2"; shift ;;
         --body=*) body="${1#--body=}" ;;
         --edit-last) kind=edit-last ;;
+        --attach) shift ;;
       esac
       shift
     done
     [ -n "$body" ] || fail "pr comment without a body"
+    body="$(printf '%s' "$body" | attached_body "$body_dir")"
     echo "https://github.com/example/web/pull/$n#issuecomment-$(record_comment "$kind" "$n" "$body")"
     exit 0 ;;
 esac
@@ -132,6 +268,8 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+path="${path//\{owner\}/example}"
+path="${path//\{repo\}/web}"
 # Like gh: without -X, a request that carries parameters is a POST.
 if [ -z "$method" ]; then
   method=GET
@@ -139,6 +277,9 @@ if [ -z "$method" ]; then
 fi
 
 case "$path" in
+  repos/example/.github/contents*)
+    echo 'gh: Not Found (HTTP 404)' >&2
+    exit 1 ;;
   user)
     [ "$caller" = eval-user ] || { echo 'gh: Resource not accessible by integration (HTTP 403)' >&2; exit 1; }
     echo '{"login":"eval-user"}' | emit
@@ -202,7 +343,7 @@ case "$path" in
     exit 0 ;;
   repos/example/web/issues/comments/*)
     id="${path##*/}"
-    [ "$method" = PATCH ] || fail "only PATCH is supported on a single comment"
+    case "$method" in PATCH|DELETE) ;; *) fail "only PATCH and DELETE are supported on a single comment" ;; esac
     owner_file=''
     for f in "$sandbox"/prs/*/comments.json; do
       jq -e --argjson id "$id" 'any(.[]; .id == $id)' "$f" > /dev/null && { owner_file="$f"; break; }
@@ -210,6 +351,10 @@ case "$path" in
     if [ -z "$owner_file" ]; then
       echo 'gh: Not Found (HTTP 404)' >&2
       exit 1
+    fi
+    if [ "$method" = DELETE ]; then
+      jq --argjson id "$id" 'map(select(.id != $id))' "$owner_file" > "$owner_file.tmp" && mv "$owner_file.tmp" "$owner_file"
+      exit 0
     fi
     n="$(basename "$(dirname "$owner_file")")"
     # No ownership check: GitHub lets any token with write access edit anyone's comment.

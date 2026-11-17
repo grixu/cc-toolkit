@@ -1,0 +1,98 @@
+{
+  "name": "pr-proof",
+  "description": "Records proof that a pull request's change works: a narrated video of the feature in your running app, screenshots or terminal transcripts. Picks the proof the change needs and attaches it to the pull request once you accept it.",
+  "version": "0.4.1",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "pull-request",
+    "proof",
+    "demo",
+    "walkthrough",
+    "video",
+    "playwright",
+    "screenshots",
+    "terminal",
+    "api"
+  ],
+  "userConfig": {
+    "typesafe_api_key": {
+      "type": "string",
+      "title": "TypeSafe API key",
+      "description": "Key for the TypeSafe API. Leave empty to read TYPESAFE_API_KEY.",
+      "sensitive": true
+    },
+    "typesafe_endpoint": {
+      "type": "string",
+      "title": "TypeSafe endpoint",
+      "description": "Base URL of the TypeSafe API",
+      "default": "https://api.typesafe.ai"
+    },
+    "typesafe_model": {
+      "type": "string",
+      "title": "Jev model",
+      "description": "Model name or alias, such as jev-latest or jev-1.14.0",
+      "default": "jev-1.14.0"
+    },
+    "gemini_api_key": {
+      "type": "string",
+      "title": "Gemini API key",
+      "description": "Gemini Developer API key for Gemini Decision. Leave empty to read GEMINI_DECISIONS_API_KEY, then GEMINI_API_KEY.",
+      "sensitive": true
+    },
+    "decision_backend": {
+      "type": "string",
+      "title": "Decision backend",
+      "description": "Which model answers the proof signals: auto uses the one key that is set and asks when both are; both runs TypeSafe and Gemini side by side and logs the pair for comparison.",
+      "options": [
+        "auto",
+        "typesafe",
+        "gemini",
+        "both"
+      ],
+      "default": "auto"
+    },
+    "primary_backend": {
+      "type": "string",
+      "title": "Primary backend",
+      "description": "With both backends, the one whose answer is used for the proof signals; the other is shown beside it.",
+      "options": [
+        "typesafe",
+        "gemini"
+      ],
+      "default": "typesafe"
+    },
+    "screenshot_widths": {
+      "type": "string",
+      "title": "Screenshot widths",
+      "description": "Comma-separated viewport widths in pixels, such as 375,768,1440. Leave empty to use the project's breakpoints, or 375, 768 and 1440."
+    },
+    "video_speed": {
+      "type": "string",
+      "title": "Walkthrough video speed",
+      "description": "How fast the rendered walkthrough plays. 0.5x is the slow, calm pace; 1x plays twice as fast, 5x ten times. The recording stays calm, so viewers can pause on any frame.",
+      "options": [
+        "0.5x",
+        "1x",
+        "2x",
+        "3x",
+        "5x"
+      ],
+      "default": "1x"
+    },
+    "caption_density": {
+      "type": "string",
+      "title": "Walkthrough caption density",
+      "description": "How much text one caption holds: normal is up to 60 characters; 2x and 4x hold two and four times as much in smaller type covering the same area.",
+      "options": [
+        "normal",
+        "2x",
+        "4x"
+      ],
+      "default": "normal"
+    }
+  }
+}

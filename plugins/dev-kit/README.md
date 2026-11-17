@@ -11,14 +11,16 @@ dev-kit is a Claude Code plugin. Add the `cc-toolkit` marketplace once, then ins
 /plugin install dev-kit@cc-toolkit
 ```
 
+This also installs two plugins `pr-open` calls: `code-story`, which builds the code story linked from the PR, and `anti-slop`, which cleans the description's prose. dev-kit does not load while either is disabled.
+
 ## Requirements
 
-- The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it.
+- The GitHub CLI `gh`, logged in (`gh auth status`) with access to the repository. Every skill calls it. A `## Proof` section in `pr-open` needs `gh` 2.99.0 or later, the first with `--attach`; an older `gh` fails `gh pr create` on that flag.
 - A GitHub repository. `ci-fix` and `pr-shepherd` handle GitHub Actions runs and GitHub check runs only.
 - To push a fix to a file under `.github/workflows/`, a token with the `workflow` scope.
 - For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
 - Optional, for `dep-upgrade-check`: the firecrawl and context7 MCP servers, which it uses to find migration guides. Without them it still reads GitHub releases, changelogs and guide files in the package's repository, then fetches the guide the release notes link to, and reports a guide it could not find as `no guide found`.
-- Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment-typesafe-jev).
+- Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key, a [Gemini Decision](https://aistudio.google.com/docs/decisions-api) key, or both, and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment).
 
 ## Skills
 
@@ -60,17 +62,17 @@ Running it authorizes commits and pushes to the pull request's branch, and count
 - It hands every red check to `ci-fix`, which may push without asking; it never fixes or reruns CI itself. A red check that is not required gets one `ci-fix` run; if it stays red, the report lists it for you instead of holding the loop.
 - It judges each open review comment on its merits. For a comment it agrees with, it makes the change, commits and pushes it, replies `Fixed in <sha>`, and resolves the thread.
 - It answers a comment it disagrees with, or a question, with evidence and an @-mention of the author. It resolves bot threads after replying and leaves human threads for the reviewer to resolve.
-- A comment whose fix is a trade-off only you can make (security posture, scope) gets one reply listing the options and their cost; the thread stays open for you, and the report lists it.
+- A comment whose fix is a trade-off only you can make (security posture, scope), or two reviewers asking for incompatible changes, is put to you: it describes each option and its cost, recommends one, then asks you to choose. It applies your choice and replies in the thread. If you dismiss the question or keep it for yourself, it posts nothing, does not ask again, and the report lists the thread.
 - In a stack, each pull request gets its own worktree. A fix lands on the lowest branch that owns the code and reaches the branches above it by a plain merge of each base into its child, never a rebase; it never merges the default branch in.
 - It waits 5 minutes while checks run, and 30, then 60 minutes while it waits for reviewers.
 
-It never asks you anything mid-run. It stops and reports when any of these happens:
+Apart from those decisions, it never asks you anything mid-run; while a decision question is open, the loop waits for your answer. It stops and reports when any of these happens:
 
 - Every required check is green and no review thread is open (success).
 - The branch has no open pull request, uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
 - GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files; it never resolves the conflict, and running it again before you do stops the same way.
 - `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix or rerun cycles, whichever step made them.
-- Every required check is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals or its reply on a decision, or cannot be replied to.
+- Every required check is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals, is a decision you kept for yourself, or cannot be replied to.
 - It has run 48 rounds.
 
 Output: a final report listing the commits pushed, the threads fixed, answered or rebutted (with links), and everything left for you.
@@ -89,9 +91,18 @@ It starts from the version your lockfile resolves today and lists every change u
 
 Before the compatibility work, it checks the target's security record in [OSV.dev](https://osv.dev) and the GitHub Advisory Database, for the target and for every new or changed transitive version the upgrade brings in:
 
-- **blocked**: malware, a version the registry has taken down, or a version published less than 7 days ago. A recent version passes when it fixes a moderate-or-above vulnerability of the version it replaces. The report names the lowest safe version instead.
+- **blocked**: malware, a version the registry has taken down, or a version younger than its release-age cooldown. A recent version passes when it fixes a moderate-or-above vulnerability of the version it replaces. The report names the lowest safe version instead.
 - **escalated**: a known vulnerability of moderate severity or above. The check reports whether your code uses the vulnerable function, but that never lowers the severity: it asks you to accept the risk, switch to the lowest safe version, or hold.
 - **clear**: neither.
+
+The cooldown follows your repository's own policy, so a check does not block what your dependency bot already waited for:
+
+- **Renovate**: `minimumReleaseAge`, top level and per `packageRules` entry. The check evaluates the update type, package name, datasource, manager, dependency type and file name matchers. A rule with a matcher it cannot evaluate, such as `matchCurrentVersion`, counts at the stricter of its value and the one it overrides. An explicit `null` means no cooldown; a configuration that never sets `minimumReleaseAge` falls through to the sources below. Presets in `extends` are not resolved, except the 3 days on npm that `config:best-practices` adds.
+- **Dependabot**: the `cooldown` block of the matching `updates` entry, or Dependabot's own 3 days without one.
+- **pnpm**: `minimumReleaseAge` in `pnpm-workspace.yaml`, with `minimumReleaseAgeExclude`.
+- **None of them**: 7 days.
+
+For a pull request the configuration is read from the base branch, so a pull request cannot lower its own cooldown. The report names the value and its source, such as `cooldown 3 days (renovate.json packageRules[2]: matchUpdateTypes patch)` or `cooldown 7 days (default)`.
 
 Package names are sent to api.osv.dev, api.github.com and api.deps.dev. Packages from a private registry are never sent and are listed as not checked. On a pull request it always posts one security comment with the outcome, the advisories and your decision, and updates that comment on a re-run.
 
@@ -120,7 +131,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
   checks: read
   actions: read
 concurrency:
@@ -157,6 +168,8 @@ jobs:
         run: |
           pnpm dlx @anthropic-ai/claude-code@<version> -p "/dev-kit:dep-upgrade-check $PR_URL unattended" \
             --plugin-dir ../cc-toolkit/plugins/dev-kit \
+            --plugin-dir ../cc-toolkit/plugins/code-story \
+            --plugin-dir ../cc-toolkit/plugins/anti-slop \
             --permission-mode dontAsk \
             --strict-mcp-config \
             --setting-sources user \
@@ -179,7 +192,7 @@ jobs:
 - To make the check required before merging, add the job as a required status check on the default branch. A job that its `if:` skips reports success, so pull requests from people and other bots are not blocked. Renovate's lockfile-maintenance pull request is skipped the same way, which keeps its automerge working; it then gets no security check.
 - The run reads release notes and guides it cannot trust, and the skill pre-approves commands that reach the network: `gh api` (writes included), the OSV and deps.dev `curl` calls, whose rules match any text after the URL, and `WebFetch` to any domain. A prompt injection in that text can send out whatever those commands can read:
   - `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1` strips `ANTHROPIC_API_KEY` and other credentials from the commands' environment and leaves the GitHub token in place, so `gh` keeps working. Keep it.
-  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head. `issues: write` is enough to create and update the comments, and `pull-requests` stays `read` so that an injected command cannot approve the pull request.
+  - The GitHub token is what `gh api` can act with: grant only the permissions above, and never use `pull_request_target` with a checkout of the pull request's head. Commenting on a pull request takes `pull-requests: write`: with `pull-requests: read`, GitHub refuses the comment with a 403 even when `issues: write` is granted, and the result block's `reason` names the missing permission. With `pull-requests: write`, the token could also approve the pull request if the repository or organization setting **Allow GitHub Actions to create and approve pull requests** were on. It is off by default; keep it off, so that an injected command cannot approve the pull request.
   - Repository code is within reach of `WebFetch`. For a private repository where that matters, add a deny rule such as `--disallowedTools WebFetch`; migration guides then come from the package's repository only.
 - Self-hosted Renovate posts under its own bot login; use that in the `if`.
 - On a pull request Dependabot opens, the token is read-only unless `permissions` raises it, as above, and only Dependabot secrets are available: store `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN`) as a Dependabot secret too.
@@ -195,44 +208,52 @@ Use it when your commits are ready for review. Add `draft` for a draft pull requ
 
 It pushes the current branch and fills the repository's pull request template. It looks for the template in the repository root, `docs/`, `.github/`, a `PULL_REQUEST_TEMPLATE/` directory, or the owner's `.github` repository, and uses a short default when none exists.
 
-- Every claim in the description comes from the diff, the commits, a linked issue, or a command run in the session.
-- The description stays around 250 words, with long logs folded into a `<details>` block, and links the specs and ADRs the branch adds or its commits name under **Go deeper**.
+- Every claim in the description comes from the diff, the commits, a linked issue, a command run in the session, or a check you report.
+- The change is described in one to three plain sentences and a **Before / After** table, then **Testing:** (including what was not checked), **Reviewer notes:** when something needs a hard look, and **Go deeper:** for the specs and ADRs the branch adds or its commits name. The body fits on one screen, folds long logs into a `<details>` block, and stays valid MDX.
+- A ticket field gets the key from the branch, commits or conversation, or `None`. A dependency section lists the deploy steps found in the diff (migrations, infrastructure code, env vars and secrets, permission changes, feature flags, other repositories' pull requests), or `- None`. Work the base already has, such as a squash-merged commit, is left out.
 - It ticks a checkbox only when it has evidence that the item is true.
-- It writes a Conventional Commits title when the base branch's history uses that style.
+- It writes a Conventional Commits title when the base branch's history uses that style, ending with the ticket key in parentheses when the history does that too.
 - It assigns the pull request to you.
 - When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
-- When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line.
-- With a TypeSafe key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
+- When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line. A rewrite edits the current description: your own sentences, bot lines, extra sections such as `## Release notes` and the tracker's link line at the end stay as they are.
+- With a TypeSafe or Gemini key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
+- When the [pr-proof](../pr-proof/README.md) plugin's skills have left proof for the branch, it adds a **Proof** section. See [Proof](#proof-from-pr-proof).
+- A background `code-story` run builds the branch's code story, or updates the one the description already links, and the description gets a **Code story** section with its link, on a new pull request and an existing one alike. A new story is private until you share it on claude.ai.
+- These sections close the description in this order: **Code story**, **Proof**, **Risk**, each only when it has content, above any link reference definitions that end the body.
 
 When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
-Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label (or why it was not assessed), and a one-line suggestion to run `pr-shepherd` next.
+Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label with the backend that set it (or why it was not assessed), the proof entries it rendered or left out and anything that failed to upload, the code story link with its status (or why there is none), and a one-line suggestion to run `pr-shepherd` next.
 
-## Risk assessment (TypeSafe Jev)
+#### Proof from pr-proof
 
-dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It sends the commits, the diffstat and the diff of `<base>...HEAD` to [TypeSafe's Jev model](https://docs.typesafe.ai/introduction) and returns a risk level, the model's confidence, and risk flags: security, persisted data, public contracts, CI and deployment, hard-to-reverse operations, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
+The pr-proof plugin's skills (videos, screenshots, terminal transcripts, API calls) record what they took in a manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, where `<repo>` is the repository name from the `origin` remote's URL, without `.git`, and `<branch>` the current branch with `/` written as `%2F`. `pr-open` only reads that file; it needs no other part of pr-proof installed.
 
-**The diff leaves your machine.** The tool exists only when a key is configured, so without one nothing is sent.
+- No manifest means no **Proof** section. A manifest that does not parse, or has a `version` other than `1`, is ignored, and the report says so. An empty list of entries means proof was judged unnecessary: no section.
+- Each entry renders in manifest order as its claim, then its proof: screenshots taken at several widths as a table with a row per screen and a column per width, a video or a single image on its own line, a terminal or API transcript as a code block, folded into `<details>` past 20 lines.
+- When commits after an entry's proof changed the files it covers, the entry carries a note naming those commits. When history was rewritten since a proof was taken, one note under the heading says so.
+- An entry whose media or transcript file is missing is left out and named in the report.
+- The media are attached with `gh --attach`, so the description holds GitHub's `user-attachments` URLs. `pr-open` re-reads the description after the upload and reports anything that did not upload.
+- More than 50 media files: the description carries the first 50 and says how many follow; the rest go in comments of at most 50 each, marked `<!-- pr-proof:overflow -->`. On an existing pull request, a run that finds a manifest first deletes the marked comments you posted earlier, even when the new manifest needs no overflow, and leaves every other comment alone.
+- On an existing pull request it replaces the **Proof** section, inserts it when the description has none, or removes it when the manifest's list is empty. With no manifest, the section and its comments stay as they are.
+- The section does not count toward the one-screen length budget.
 
-Set the key in one of two ways:
+## Risk assessment
 
-- Export `TYPESAFE_API_KEY` in the shell you start Claude Code from (the default).
-- Or enter it as the plugin's **TypeSafe API key** option, which Claude Code keeps in your system's credential store. It takes precedence over the variable.
+dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It groups the changed files of `<base>...HEAD` into slices, one per purpose of the change, and asks a decision model, [TypeSafe's Jev](https://docs.typesafe.ai/introduction) or Google's [Gemini Decision](https://aistudio.google.com/docs/decisions-api), fixed questions about each slice: the impact of a mistake, how complex the logic is, what the slice does, and which risky areas it touches. Code turns the answers into a level (`low`, `medium`, `high` or `critical`) and risk flags: security, persisted data, public contracts, CI and infrastructure, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
 
-Open the options with `/plugin configure dev-kit@cc-toolkit`:
+**The diff, the commit messages and the pull request and ticket descriptions passed as `context` leave your machine.** The tool exists only when a key is configured, so without one nothing is sent.
 
-| Option | Default | What it does |
-|---|---|---|
-| `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The API key |
-| `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the API; `/v1/systemone` is appended |
-| `typesafe_model` | `jev-latest` | Model name or alias; pin a version such as `jev-1.14.0` to keep levels stable across Jev releases |
-| `risk_label` | `true` | Whether `pr-open` labels the pull request |
-| `risk_label_name` | `risk: {level}` | The label name; `{level}` becomes the level |
-| `risk_levels` | `low`, `medium`, `high`, `critical` | Level names from lowest to highest, 2 to 5 of them; the model rates the change on exactly these levels, and with fewer than 5 some levels cover more than one of the built-in descriptions |
+Set a key in one of two ways:
 
-`pr-open` creates a missing label once and never changes an existing one. A key set or changed during a session takes effect after `/reload-plugins`.
+- Export `TYPESAFE_API_KEY`, or `GEMINI_DECISIONS_API_KEY` (falling back to `GEMINI_API_KEY`), in the shell you start Claude Code from (the default).
+- Or enter it as the plugin's **TypeSafe API key** or **Gemini API key** option (`/plugin configure dev-kit@cc-toolkit`), which Claude Code keeps in your system's credential store. It takes precedence over the variable.
 
-Large diffs are compacted and split. Lockfiles, binaries, minified, generated and build output files are left out of the diff but stay in the diffstat, and context lines are cut to one. When the rest exceeds what Jev reads in one request, it is split by file, and a large file by hunk, into up to 8 requests. The riskiest part sets the level, and a flag raised by any part counts. Anything beyond 8 requests is not assessed, and the **Risk** section says so.
+With both keys set, `pr-open` asks which backend to use, TypeSafe, Gemini or both, until you save the answer as the **Decision backend** option. With both, the **Primary backend** option (TypeSafe by default) sets the level and label, the other backend's level appears beside it in the **Risk** section, and each pair is logged to `~/.cache/dev-kit/compare.jsonl` for later comparison. The levels were calibrated on Jev. On the development cohort Gemini matches Jev's overall cost but rates more high-risk changes too low, so keep TypeSafe as the primary backend for now; see the [evaluation guide](evals/pr-risk/README.md#gemini-decision-on-v5-2026-11-12).
+
+A key set or changed during a session takes effect after `/reload-plugins`.
+
+[The risk label](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/) explains what the **Risk** section shows, [How it works](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/how-it-works/) how a level is computed, [Reliability](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reliability/) what partial and low-confidence results mean, and the [Risk label reference](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reference/) every option, input and output field. The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
 
 ## Permissions
 

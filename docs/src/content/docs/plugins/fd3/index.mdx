@@ -1,0 +1,94 @@
+---
+title: fd3
+description: Take a feature idea to reviewed branches. Claude interviews you until every decision is made, writes a spec it checks against your code, then builds the tasks in parallel worktrees.
+group: start
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Give an agent a one-line feature request and it fills every gap with a guess: which table, which retry policy, which team owns the deploy.
+The guesses surface late, as rework in review.
+fd3 moves those decisions to the start, where you make them, and writes them into a spec that the later steps read instead of your chat history.
+Each step hands the next one a file, so a run that stops halfway restarts from those files.
+
+## Where it works
+
+fd3 covers Plan and Build.
+Its `implement` step can run [code-review](/plugins/code-review/) on every branch, and the test and human-review plugins take the branches from there.
+
+<LifeMap focus="fd3" animate={false} />
+
+## What it does
+
+You start three steps yourself, in this order:
+
+| Command | What it does | What it leaves |
+|---|---|---|
+| [`/fd3:build-spec`](/plugins/fd3/build-spec/) | Interviews you until every design decision is made, writes a spec, and checks its claims against your code. | A spec in your repository, ending in a verdict line. |
+| [`/fd3:split-to-tasks`](/plugins/fd3/split-to-tasks/) | Cuts a spec whose verdict is `ready` into task files and groups them onto branches, one pull request per branch. | A `tasks/` directory and a `<spec>.split.md` report. |
+| [`/fd3:implement`](/plugins/fd3/implement/) | Builds the tasks in waves of parallel agents, one worktree per task, then runs your checks and an optional code review on each branch. | Branches, worktrees, and a push and pull-request proposal. |
+
+Table 1. The three fd3 steps
+
+A fourth command, [`/fd3:grill-topic`](/plugins/fd3/grill-topic/), runs only the interview.
+Use it to argue an idea through without starting a delivery.
+
+## When to reach for it
+
+| What you have | Reach for |
+|---|---|
+| An idea, a ticket or a rough plan, and a repository it lands in | `/fd3:build-spec <idea or path to the plan>` |
+| A spec that was edited after its verdict, or code that moved on since | `/fd3:build-spec <path to the spec>`, which skips the interview and checks the spec again |
+| An idea you want to stress-test, with no delivery yet | `/fd3:grill-topic <topic>` |
+| A small change you can describe in two sentences | Plain Claude Code. The interview costs more than it saves. |
+
+Table 2. Which command fits what you have
+
+## Before you start
+
+For your first spec you need:
+
+- A git checkout of each repository the work touches, with an `origin` remote. Every fd3 step runs `git fetch` first.
+- The context7 and firecrawl MCP servers. fd3's research sub-agent uses them to look up library and API documentation.
+
+Building the tasks later needs more: dynamic workflows, the `gh` CLI, and optionally the code-review plugin.
+The [reference](/plugins/fd3/reference/#requirements) lists them.
+
+## Write your first spec
+
+The interview runs in your conversation and asks you questions, so plan for some back and forth.
+To write a spec:
+
+1. Open Claude Code in the repository the work lands in.
+2. Run `/fd3:build-spec` with your idea in a sentence, or with the path to a draft plan:
+
+   <Strip cmd="/fd3:build-spec our retry strategy for the payment webhook" />
+
+3. Read round 1. Claude checks your idea against the code, the repository's specs and decision records, and the library versions your lockfile resolves. Round 1 opens with every place the idea turned out to be wrong.
+4. Answer each round by question number and option letter, for example `3 a, 4.1 b`. Each round ends with the labels it expects back.
+5. Confirm the closing summary when nothing is left to decide. It lists separately every decision Claude made that you didn't answer directly.
+6. Answer the multiple-choice questions that the writing and validation steps ask. The recommended option comes first.
+7. Read the verdict line at the end of the spec. `ready` means the spec can be split into tasks.
+
+If you end the session without confirming the summary, fd3 stops after the interview and says what is still open.
+No spec is written.
+
+The spec lands where your repository keeps its specs or design docs.
+When the repository has no such place, the last interview round asks where.
+
+## What fd3 will not do
+
+- Push or open pull requests without your explicit yes.
+- Change the spec during the split or the implementation. A spec changes only through `/fd3:build-spec <spec>`, which checks the change again.
+- Copy the spec onto a work branch. Every agent reads it where `build-spec` wrote it.
+- Run two implementation workflows at once, so only one build, lint and test pipeline runs on your machine.
+
+## Next steps
+
+- [`/fd3:build-spec`](/plugins/fd3/build-spec/) covers the interview, the spec and the verdict in detail.
+- Once the verdict is `ready`, [split the spec into tasks](/plugins/fd3/split-to-tasks/).
+- [How fd3 works](/plugins/fd3/how-it-works/) explains the parts behind the commands and what each one leaves on disk.

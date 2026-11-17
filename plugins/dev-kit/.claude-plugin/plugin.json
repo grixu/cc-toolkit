@@ -1,12 +1,16 @@
 {
   "name": "dev-kit",
-  "description": "Small everyday development skills: diagnose and fix failed CI pipelines, shepherd a pull request until CI is green and review is resolved, check a dependency upgrade against the codebase, and push a branch as a pull request filled from the repository's template and labelled with its risk, assessed by the TypeSafe Jev model.",
-  "version": "0.5.0",
+  "description": "Fixes failed CI runs, keeps fixing a pull request until CI is green and review is resolved, and checks dependency upgrades against your code. Also opens pull requests from the repository's template, labelled with how risky the change is.",
+  "version": "0.11.4",
   "author": {
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
   },
   "repository": "https://github.com/grixu/cc-toolkit",
+  "dependencies": [
+    "code-story",
+    "anti-slop"
+  ],
   "keywords": [
     "ci",
     "github-actions",
@@ -32,7 +36,35 @@
       "type": "string",
       "title": "Jev model",
       "description": "Model name or alias, such as jev-latest or jev-1.14.0",
-      "default": "jev-latest"
+      "default": "jev-1.14.0"
+    },
+    "gemini_api_key": {
+      "type": "string",
+      "title": "Gemini API key",
+      "description": "Gemini Developer API key for Gemini Decision. Leave empty to read GEMINI_DECISIONS_API_KEY, then GEMINI_API_KEY.",
+      "sensitive": true
+    },
+    "decision_backend": {
+      "type": "string",
+      "title": "Decision backend",
+      "description": "Which model answers the risk assessment: auto uses the one key that is set and asks when both are; both runs TypeSafe and Gemini side by side and logs the pair for comparison.",
+      "options": [
+        "auto",
+        "typesafe",
+        "gemini",
+        "both"
+      ],
+      "default": "auto"
+    },
+    "primary_backend": {
+      "type": "string",
+      "title": "Primary backend",
+      "description": "With both backends, the one whose answer is used for the risk assessment; the other is shown beside it.",
+      "options": [
+        "typesafe",
+        "gemini"
+      ],
+      "default": "typesafe"
     },
     "risk_label": {
       "type": "boolean",
@@ -50,7 +82,7 @@
       "type": "string",
       "multiple": true,
       "title": "Risk levels",
-      "description": "Risk level names from lowest to highest, 2 to 5 of them",
+      "description": "Names of the four risk levels, from lowest to highest",
       "default": [
         "low",
         "medium",

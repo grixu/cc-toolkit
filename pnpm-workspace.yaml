@@ -1,3 +1,8 @@
+packages:
+  - docs
+  # cf builds an Astro 6+ project only through the SSR adapter, so the static site deploys from a package cf doesn't detect as Astro
+  - docs/cloudflare
+
 # promptfoo's transitive deps ship build scripts (esbuild, sharp, onnxruntime, …) that
 # we don't need to run for evals. Decline each one explicitly so `pnpm install` exits 0
 # instead of failing with ERR_PNPM_IGNORED_BUILDS (which also breaks pnpm's pre-run
@@ -9,3 +14,4 @@ allowBuilds:
   onnxruntime-node: false
   protobufjs: false
   sharp: false
+  workerd: false
