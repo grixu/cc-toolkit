@@ -15,7 +15,11 @@
     "store would both move the app out from under the run and break its store-restored invariant.",
     "KNOWN AMBIGUITY, deliberately unscored: PATCH accepts `{\"status\":\"rejected\"}`, which the",
     "Domain's two-value lifecycle makes unsupported (422) but which no AC names. Reporting it is",
-    "legitimate and reporting it is optional, so it counts as neither a miss nor a false positive."
+    "legitimate and reporting it is optional, so it counts as neither a miss nor a false positive.",
+    "`explore` items are defects no AC names, so only the exploratory suite has a reason to find",
+    "them. They are reported beside the score, not in it, and count only as a FAIL row from an",
+    "executor — a reproduced lead. `match` is a list of term groups; a row must carry one term",
+    "from every group."
   ],
   "personas": {
     "admin": { "email": "admin@example.test", "password": "eval-admin-pw" },
@@ -93,6 +97,19 @@
         "comparing; pdpCheck itself classifies correctly and DELETE consumes that classification,",
         "so reading one function, or a blanket claim about PDP errors, both stay wrong.",
         "Non-mutating by construction: an over-long id cannot exist, so nothing is ever written."
+      ]
+    }
+  ],
+  "explore": [
+    {
+      "id": "E1",
+      "surface": "api",
+      "summary": "a body that is not valid JSON on POST /api/session (and PATCH /api/memberships/{id}) answers 500 internal_error: client input reported as a server fault, where any 4xx would do",
+      "probe": { "persona": null, "method": "POST", "path": "/api/session", "rawBody": "{\"email\":" },
+      "actual": 500,
+      "match": [
+        ["json", "malformed", "parse", "truncated", "not valid", "invalid body"],
+        ["500", "internal_error", "internal error", "server error"]
       ]
     }
   ],

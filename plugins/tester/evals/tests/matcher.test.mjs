@@ -251,3 +251,16 @@ test('prose failing blocks carry their text into keyword attribution', () => {
   assert.ok(caught.has('X1'));
   assert.ok(!caught.has('X2'));
 });
+
+// ---- exploratory items ----------------------------------------------------------------------
+
+test('an explore item is found only by a FAIL row carrying a term from every group', () => {
+  const items = [{ id: 'E9', match: [['json', 'malformed'], ['500', 'internal_error']] }];
+  const rows = (lines) => m.failingBlocksFromRows(lines.map((text) => ({ text, verdict: /FAIL/.test(text) ? 'FAIL' : 'PASS', acs: [] })));
+  const reproduced = '| EXP-1 | POST /api/session, malformed JSON body | 4xx (spec silent) | 500 internal_error | ❌ FAIL |';
+  assert.ok(m.matchExplore(rows([reproduced]), items).has('E9'));
+  const notReproduced = '| EXP-1 | POST /api/session, malformed JSON body | 4xx (spec silent) | 400 | PASS |';
+  assert.ok(!m.matchExplore(rows([notReproduced]), items).has('E9'));
+  const oneGroupOnly = '| EXP-2 | GET /api/projects as member | 200 | 500 internal_error | FAIL |';
+  assert.ok(!m.matchExplore(rows([oneGroupOnly]), items).has('E9'));
+});

@@ -6,7 +6,7 @@
   "scripts": {
     "eval": "bash scripts/run-evals.sh",
     "eval:code-review": "bash scripts/run-evals.sh code-review",
-    "eval:tester": "bash plugins/tester/evals/reset-sandbox.sh && promptfoo eval -c plugins/tester/evals/promptfooconfig.yaml --no-cache --no-share -o /tmp/eval-tester.json",
+    "eval:tester": "bash plugins/tester/evals/reset-sandbox.sh && TESTER_RUNS_DIR=\"$PWD/plugins/tester/evals/.sandbox/runs\" promptfoo eval -c plugins/tester/evals/promptfooconfig.yaml --no-cache --no-share -o /tmp/eval-tester.json",
     "eval:tester:fixture": "bash plugins/tester/evals/reset-sandbox.sh",
     "eval:tester:replay": "node plugins/tester/evals/replay.js"
   },

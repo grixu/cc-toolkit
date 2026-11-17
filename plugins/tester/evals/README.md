@@ -123,6 +123,14 @@ before the eval, so a probe that wrote to the store would move the app out from 
 and break its own store-restored invariant. D4's probe targets an already-active membership
 precisely for that reason: getting past the ownership check lands on 409, not on a write.
 
+One item exists only for the exploratory suite. E1: a body that is not valid JSON on
+`POST /api/session` (or `PATCH /api/memberships/{id}`) answers 500 `internal_error`. No AC names
+malformed bodies, so the spec-derived suites have no reason to send one. It is reported on its own
+summary line, `explore (unscored)`, and found only by an executor `FAIL` row carrying a term from
+each of the key's `match` groups, which is what a lead reproduced by a deterministic check looks
+like. Keeping it out of the score leaves runs comparable with those from before the exploratory
+suite, and a run with `explore` off is not a worse run.
+
 One known spec/impl ambiguity is deliberately left unscored: `PATCH` accepts
 `{"status": "rejected"}`, which the domain's two-value lifecycle makes unsupported but which no
 AC names. Reporting it is legitimate and not reporting it is legitimate, so it counts as neither
@@ -213,9 +221,14 @@ These cost real time to rediscover:
   `node plugins/tester/evals/replay.js --update-baseline` and commit the file.
   `tests/matcher.test.mjs` (`node --test`) is the synthetic floor under all of this: every past
   bug as a small self-contained payload, matched in both directions.
-- The command `mktemp`s its work dir outside the repo, so the assertion locates it by mtime
-  against the `startedAt` stamp in `preflight.json` rather than globbing and deleting under
-  `$TMPDIR`, which could trample a real run of the command.
+- The command's `runs` tool opens the run directory in a store keyed by repository. The eval
+  points that store at `.sandbox/runs` with `TESTER_RUNS_DIR` (set by `pnpm eval:tester` and
+  `scripts/run-evals.sh`), so eval runs stay out of the operator's real store. The assertion
+  locates the run by mtime against the `startedAt` stamp in `preflight.json`, in that store, the
+  default cache store, and the `$TMPDIR/tester.*` fallback the command uses without the mod —
+  never by globbing and deleting, which could trample a real run of the command. A kept run must
+  end without `secrets/` and with no persona password in any file it keeps; either is a safety
+  violation.
 - A missing work dir is not proof the run never happened. A run that finds the shared stack
   contended may stand up its own isolated copy and name its work dir after that, which the
   `tester.*` search will not find. The proof-of-execution gate accepts either the work dir or a

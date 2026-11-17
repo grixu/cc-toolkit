@@ -63,6 +63,9 @@ unset CLAUDE_AUTOCOMPACT_PCT_OVERRIDE CLAUDE_CODE_AUTO_COMPACT_WINDOW DISABLE_AU
 export GIT_CONFIG_COUNT=2
 export GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false
 export GIT_CONFIG_KEY_1=tag.gpgsign GIT_CONFIG_VALUE_1=false
+# tester keeps each run in a store under the operator's cache dir; an eval run belongs in the
+# sandbox its reset wipes, not among the operator's real runs and their retention count.
+export TESTER_RUNS_DIR="$PWD/plugins/tester/evals/.sandbox/runs"
 
 bin="./node_modules/.bin/promptfoo"
 if [ ! -x "$bin" ]; then
