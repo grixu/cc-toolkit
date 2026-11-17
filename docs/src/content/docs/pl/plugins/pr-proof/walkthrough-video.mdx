@@ -95,8 +95,7 @@ Gdy po trzecim ujęciu któreś sprawdzenie dalej nie przechodzi, skill się zat
 
 ## Profil repozytorium
 
-Zanim jakikolwiek walkthrough cokolwiek nagra, ktoś musi ustalić, jak startuje aplikacja, jak loguje się użytkownik testowy i jak na ekranie wygląda sukces, a jak błąd.
-Skill robi to raz na repozytorium i zapisuje odpowiedzi w profilu repozytorium:
+Raz na repozytorium skill ustala, jak startuje aplikacja, jak loguje się użytkownik testowy i jak na ekranie wygląda sukces, a jak błąd, i zapisuje odpowiedzi w profilu repozytorium:
 
 ```
 ~/.cache/walkthrough-video/<repo>/repo-profile.md
@@ -215,7 +214,7 @@ Gdy ten folder istnieje, nowe uruchomienie wznawia pracę po ostatnim skończony
 
 Tabela 2. Folder roboczy jednego walkthrough.
 
-[Profil repozytorium](#profil-repozytorium), `repo-profile.md`, leży poziom wyżej, w `~/.cache/walkthrough-video/<repo>/`, i przeżywa każdy walkthrough.
+[Profil repozytorium](#profil-repozytorium), `repo-profile.md`, leży poziom wyżej, w `~/.cache/walkthrough-video/<repo>/`, i zostaje po dostarczeniu walkthrough.
 
 Przy dostarczeniu, w obu trybach, skill usuwa `recast/.state/` i `recast/test-results/`, bo trace'y Playwrighta zawierają ciasteczka sesji.
 Gdy skill sam uruchomił lokalny stack, pyta, czy go zatrzymać; stack wywołującego zatrzymuje wywołujący.

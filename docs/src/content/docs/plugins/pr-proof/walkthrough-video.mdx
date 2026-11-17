@@ -95,8 +95,7 @@ When a check still fails after the third take, it stops and reports which check 
 
 ## The repo profile
 
-Before any walkthrough can record, someone has to work out how the app starts, how a test user logs in and how a success or an error looks on screen.
-The skill does that once per repository and keeps the answers in a repo profile:
+Once per repository, the skill works out how the app starts, how a test user logs in and how a success or an error looks on screen, and keeps the answers in a repo profile:
 
 ```
 ~/.cache/walkthrough-video/<repo>/repo-profile.md
@@ -215,7 +214,7 @@ When that folder exists, a new run resumes after the last finished step.
 
 Table 2. The work folder of one walkthrough.
 
-The [repo profile](#the-repo-profile), `repo-profile.md`, sits one level up, in `~/.cache/walkthrough-video/<repo>/`, and outlives every walkthrough.
+The [repo profile](#the-repo-profile), `repo-profile.md`, sits one level up, in `~/.cache/walkthrough-video/<repo>/`, and stays after a walkthrough is delivered.
 
 On delivery, in either mode, the skill deletes `recast/.state/` and `recast/test-results/`, because Playwright traces hold session cookies.
 When the skill started the local stack, it asks whether to stop it; a caller's stack is the caller's to stop.
