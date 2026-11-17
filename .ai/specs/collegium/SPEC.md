@@ -5,7 +5,7 @@ Adds a `collegium` plugin that runs one task or skill on OpenAI Codex with a cho
 | | |
 |---|---|
 | Epic / ticket | None; see section 11 |
-| Status | Draft, written 2026-11-17; D52–D62 ratified 2026-11-17; validate-spec pass 4 (post-verdict), 2026-11-17: ready |
+| Status | Draft, written 2026-11-17; D52–D62 ratified 2026-11-17; validate-spec pass 4 (post-verdict), 2026-11-17: ready; post-verdict decision P1 (D63–D65, OpenAI workload identity federation) applied 2026-11-17; validate-spec pass 5, 2026-11-17: ready |
 | Date | 2026-11-17 |
 | Repository | `grixu/cc-toolkit` at `d7f6da87`, branch `feat/collegium` |
 
@@ -20,7 +20,7 @@ No earlier spec, plan or ADR exists for collegium: `.ai/specs/` held only `prepa
 
 Nothing else in code-review's or fd3's written rules is reversed. The question-ledger proposal in Q18 option a (branch-only write mode) was widened by the user's Q20 answer into three modes (D24); it is not a reversal of a written rule.
 
-Decision numbering: `D1`–`D38` are the closing notes' ratified `R1`–`R38`; `D39`–`D51` are the notes' assistant-taken `D1`–`D13`; `D52`–`D61` were taken while writing this spec and ratified by the user on 2026-11-17; `D62` is the user's answer to the landing-unit size question the same day.
+Decision numbering: `D1`–`D38` are the closing notes' ratified `R1`–`R38`; `D39`–`D51` are the notes' assistant-taken `D1`–`D13`; `D52`–`D61` were taken while writing this spec and ratified by the user on 2026-11-17; `D62` is the user's answer to the landing-unit size question the same day; `D63` is the closing notes' post-verdict decision `P1`, and `D64`–`D65` were taken while applying it and ratified by the user the same day.
 
 ## 2. Problem and goal
 
@@ -44,7 +44,7 @@ Secondary goal that shapes the structure: further harnesses (oh-my-pi, Cursor, G
 | D3 | **Write access is a per-request parameter, read-only by default, and writing happens only in a separate git worktree.** | Q3 a. The caller's checkout is never written by Codex; cost accepted: a worktree per write run. |
 | D4 | **v1 covers harness detection and enabling, model catalogue, tiers, the decision-model choice, prompt wrapping with a result contract, and auth checks; Claude as an external harness, cost and limit accounting, session resume and the reverse direction are out.** | Q4 a. The out items are in section 10. |
 | D5 | **The decision model picks model and effort; the caller may give either or both and the decision fills only what is missing. Tier mapping (high/medium/low) is optional and empty by default, and then the choice is from the harness's whole palette. A palette is the models of one provider inside one harness, and a model is named `provider/model`.** | Q5 a plus the user's extension. oh-my-pi lists models as `provider/id` across several providers (`SPEC.session/research/oh-my-pi.md`, section 3), so the name survives a second harness. |
-| D6 | **The decision backend is a fourth copy of the TypeSafe Jev (`jev-1.14.0`) / Gemini `gemini-decision-1` client with the same auto/typesafe/gemini choice; without a key it falls back to Haiku through `$.model.complete`.** | Q6 b. Plugins cannot import each other, so the client is copied (`plugins/dev-kit/hooks/decision.ts:1-3`); the Haiku precedent is `plugins/dev-kit/hooks/register.ts:336`. |
+| D6 | **The decision backend is a fourth copy of the TypeSafe Jev (`jev-1.14.0`) / Gemini `gemini-decision-1` client with the same auto/typesafe/gemini choice; without a key it falls back to Haiku through `$.model.complete`.** | Q6 b. Plugins cannot import each other, so the client is copied (`plugins/dev-kit/hooks/decision.ts:1-3`); the Haiku precedent is `plugins/dev-kit/hooks/register.ts:454`. |
 | D7 | **Effort is chosen from the efforts the chosen model supports, read from the Codex catalogue.** | Q7 a. Efforts differ per model: `ultra` is missing on luna and hidden models (`SPEC.session/research/live-harnesses.md`, Models and effort). |
 | D8 | **v1 supports Codex only, behind a written harness-adapter contract.** | Q8 a. Codex is the only harness installed and logged in with models (`SPEC.session/research/live-harnesses.md`, Summary). |
 | D9 | **Harness update handling is dropped from v1.** | Q9, user: "Odpuszczamy aktualizacje". `codex exec` never runs an update check (`SPEC.session/research/harness-docs.md`, auth/update answer). |
@@ -71,7 +71,7 @@ Secondary goal that shapes the structure: further harnesses (oh-my-pi, Cursor, G
 | D30 | **No concurrency limit; quota errors from Codex surface as `failed` with the reason.** | Q24 a. |
 | D31 | **Tests: mod unit tests with a stubbed `$` (`claude plugin test`), a manual live script against real Codex, and a `claude plugin eval` suite for `/collegium:run`.** | Q25 b. `claude plugin test` runs `*.test.ts` against `claude-code/testing` (`SPEC.session/research/ci-evals.md`, section 2). |
 | D32 | **One integration in v1: code-review gets an additional Codex review through Collegium, with no declared plugin dependency.** | Q26 b and Q27 a. A missing declared dependency silently unloads the dependent plugin (user memory `cc-plugin-dependencies.md`, quoted in `SPEC.session/research/code-review-integration.md`, section 4). |
-| D33 | **The eval also runs in CI with an OpenAI API key secret. The first implementation task is a CI spike: the key reaches the run as `EVAL_OPENAI_API_KEY`, and the mod logs Codex into a temporary `CODEX_HOME` with `codex login --with-api-key`; if the mod cannot see the variable, the eval stays local-only and CI runs a new `claude plugin test` job instead. The user adds the secret.** | Q28 b and Q34 a. Only `EVAL_*` variables pass into an eval run, and whether a mod sees them is undocumented (`SPEC.session/research/ci-evals.md`, section 4). |
+| D33 | **The eval also runs in CI. The first implementation task is a CI spike; if it fails (G3), the eval stays local-only and CI runs a new `claude plugin test` job instead. CI authenticates Codex as D63 says.** | Q28 b and Q34 a. Only `EVAL_*` variables pass into an eval run, and whether a mod sees them is undocumented (`SPEC.session/research/ci-evals.md`, section 4); the original API key secret, `EVAL_OPENAI_API_KEY` and one login per session fell to D63. |
 | D34 | **The Codex review runs in interactive `/start-cr` and in the headless skills fd3 uses; it is configurable, and when not configured fd3 `implement-tasks` asks in step 2 whether to review and whether with Codex.** | Q29 b. Scope spans three plugins: collegium, code-review, fd3. |
 | D35 | **The Codex review is on whenever the Collegium tool is available and Codex is enabled in Collegium, governed by D38's setting.** | Q30 b. |
 | D36 | **Codex gets code-review's family and rule table and the schema `{family, rule, severity, path, lines, loss, fix}`; the result is rendered into `<ctx>/codex.md` in scanner-contract format and added to `lenses.active`; items fitting no rule go to `CANDIDATES`.** | Q31 a. The merge reads whatever `lenses.active` lists, with no lens-name whitelist (`plugins/code-review/skills/cr-merge/SKILL.md:28-34`). |
@@ -101,6 +101,9 @@ Secondary goal that shapes the structure: further harnesses (oh-my-pi, Cursor, G
 | D60 | **"Field by field" (D27) means: tier keys merge one by one (project wins per tier), an exclude list in the project replaces the user's list for that palette, `harnesses.order` in the project replaces the user's, and `disabled` names harnesses the project switches off.** | assistant-taken while writing, ratified by the user 2026-11-17 (writing report question batch); following D27. |
 | D61 | **Commits in `branch` and `merge` modes use the user's git configuration as it is, signing included, but repository hooks do not run on them: a mod's git runs with repo hooks off (host behaviour, K5). A commit that fails ends the run `failed` with git's message and keeps the worktree. `merge` runs in the caller's checkout, and a merge git refuses because of local changes is status `conflict`.** | assistant-taken while writing, ratified by the user 2026-11-17 (writing report question batch); following D24 and D50. Collegium never bypasses signing itself. Hooks-off was accepted by the user on 2026-11-17 (validate-spec pass 1, question 1, option a), because `$.process.run` git "runs with repo hooks off" (`SPEC.session/research/mod-api.md`, section 1). |
 | D62 | **Landing unit 1 (phases 1–3) stays one pull request; it is not split.** | The user's answer, 2026-11-17, to the writing report's subdivision question, which proposed a read-only PR 1a and a write-modes, config, eval and CI PR 1b. Cost accepted: one review of about 35 files and 3,500–4,000 changed lines (estimate in section 7). |
+| D63 | **CI uses OpenAI workload identity federation, not a stored key: no `OPENAI_API_KEY` secret; the eval job gets `id-token: write`; right before every Codex start the mod fetches a fresh GitHub OIDC JWT, exchanges it at `POST https://auth.openai.com/oauth/token`, and logs that run's temporary `CODEX_HOME` in with the `access_token` through `codex login --with-api-key`. Tokens and JWTs never reach logs, and the workflow's token guard also covers the OIDC request token.** | P1 (closing notes, post-verdict), option (a) of (a) re-exchange per Codex start, (b) keep the key, (c) exchange once and keep the eval under 5 minutes; ratified by the user 2026-11-17. It supersedes D33's key secret because the user chose WIF; per start, because an exchanged token never outlives GitHub's 300 s JWT and has no refresh (`SPEC.session/research/openai-wif.md`; `evidence/12-appendix.md`). |
+| D64 | **The eval step passes `EVAL_ACTIONS_ID_TOKEN_REQUEST_URL`, `EVAL_ACTIONS_ID_TOKEN_REQUEST_TOKEN`, `EVAL_OPENAI_WIF_AUDIENCE`, `EVAL_OPENAI_IDENTITY_PROVIDER_ID` and `EVAL_OPENAI_SERVICE_ACCOUNT_ID`; the mod takes the CI path when the request token is non-empty, and each run's `CODEX_HOME` is `<os tmpdir>/collegium-codex-home/<run-id>`.** | assistant-taken while applying P1, ratified by the user 2026-11-17 (P1 writing report, question 1); P1 fixes the five values but not their names or the home's path. Names are the source names with the `EVAL_` prefix an eval run requires (`SPEC.session/research/ci-evals.md`, section 4); a home per run keeps concurrent runs (D30) from overwriting each other's login. |
+| D65 | **Every TEST-3 case pins `openai/gpt-6-luna` at effort `low`.** | assistant-taken while applying P1, ratified by the user 2026-11-17 (P1 writing report, question 2); P1 requires a fast model at low effort so each `codex exec` ends inside the ~5-minute token and names `gpt-6-luna` or `gpt-6.1-sol` + `low` as examples. The catalogue describes `gpt-6-luna` as "Fast and affordable model for easier tasks" and `low` as "Fast responses with lighter reasoning" (`SPEC.session/research/codex-models.json`); cost accepted: the eval does not exercise the model the user runs by default. |
 
 ### Risks accepted
 
@@ -111,6 +114,9 @@ Secondary goal that shapes the structure: further harnesses (oh-my-pi, Cursor, G
 | K3 | The 65-minute spawn spike had not finished at confirmation. | A run over the spawn limit loses its stream or exit code. | Resolved after confirmation: the spike passed (I25), so D16 stands. What it left untested, an interactive session and a spawn outliving its handler, is gap G1, with D29's fallback as the rule. |
 | K4 | Whether a mod inside `claude plugin eval` sees `EVAL_*` variables is undocumented. | The CI eval cannot log Codex in. | D33 covers both outcomes (gap G3). |
 | K5 | Collegium's commits and merges run with repo hooks off (D61). | Pre-commit and commit-msg checks are skipped on `collegium/*` commits, and post-merge hooks are skipped on the caller's merge. | The hooks still run on the caller's next own commit or push, and CI runs the same checks. |
+| K6 | The GitHub OIDC request token is visible to the eval run's environment for the job's duration (D63, accepted with P1). | Anything in the run can mint OIDC JWTs for this job and exchange them for OpenAI tokens. | The JWTs serve only this repository's job, the OpenAI mapping limits them to the plugin-evals workflow (assertions as suggested, not read back), fork pull requests get no `id-token`, and the token guard drops run directories that captured the request token. |
+| K7 | An exchanged OpenAI token lives about 5 minutes (D63). | A `codex exec` running longer loses API access mid-run and the case fails. | D65 pins a fast model at low effort; the eval cases are small tasks on a fixture repository (TEST-3). |
+| K8 | `codex login --with-api-key` writes the exchanged token into the run's `CODEX_HOME`, which the eval step may keep with the run's home and tmp (`--keep-temp`) and upload to the private R2 bucket; the workflow's guard looks only for the Claude Code OAuth token (accepted by the user, validate-spec pass 5). | Anyone who reads the bucket before the token expires can make OpenAI API calls as the service account. | The token never outlives its GitHub OIDC JWT, about 300 s (K7), so it has usually expired by the time the upload lands; the bucket is private. No mod-side deletion and no upload guard. |
 
 ## 4. Target architecture
 
@@ -185,6 +191,7 @@ interface HarnessAdapter {
   id: string                                   // 'codex'
   detect($): Promise<{ installed: boolean; version?: string; path?: string }>
   catalogue($): Promise<Palette[]>             // cached in $.store by the caller (D13)
+  prepare($, runId: string): Promise<Record<string, string>>  // env merged into every harness call of the run; Codex: the CI path, else {}
   loginStatus($, env): Promise<{ loggedIn: boolean; fix: string }>   // fix: '! codex login'
   invocation(run: RunSpec): { argv: string[]; env: Record<string, string>; cwd: string }
   parseEvent(line: string): RunEvent | null    // progress for collegium_status
@@ -203,7 +210,11 @@ The contract holds every harness-specific fact; `runs.ts`, `choose.ts` and the t
 - `catalogue`: `codex debug models` (JSON, top key `models`), one palette `openai`; each model `openai/<slug>`, `hidden = visibility === 'hide'`, `efforts = supported_reasoning_levels[].effort`, `defaultEffort = default_reasoning_level` (K1).
 - `loginStatus`: `codex login status`, exit 0 logged in, 1 not (D10).
 - `invocation`: the D46 argv; `-s read-only` without a write mode, `-s workspace-write` with one; `-C` is the caller's checkout or the run's worktree; `-o <run>/last.json`; `--output-schema <run>/schema.json`; prompt from `<run>/prompt.md` passed as the positional argument, stdin empty; the returned `cwd` is the run directory (INTEGRATION-5).
-- CI path (D33): when `$.env.get('EVAL_OPENAI_API_KEY')` is non-empty, every Codex call gets `CODEX_HOME=<os tmpdir>/collegium-codex-home`, and the first call of a session pipes the key into `codex login --with-api-key` there.
+- CI path (D63, D64), run by `prepare`: when `$.env.get('EVAL_ACTIONS_ID_TOKEN_REQUEST_TOKEN')` is non-empty (each D64 name read by a literal `$.env.get`), every Codex call of a run gets `CODEX_HOME=<os tmpdir>/collegium-codex-home/<run-id>`, where `<os tmpdir>` is `$.env.get('TMPDIR')`, or `/tmp` when unset (a hooks module has no Node), and right before the run's Codex start, ahead of the D10 login check, the mod:
+  1. `$.http.fetch(GET <EVAL_ACTIONS_ID_TOKEN_REQUEST_URL>&audience=<url-encoded EVAL_OPENAI_WIF_AUDIENCE>, Authorization: bearer <request token>)` → JWT from the JSON `value`;
+  2. `$.http.fetch(POST https://auth.openai.com/oauth/token, JSON { grant_type: "urn:ietf:params:oauth:grant-type:token-exchange", subject_token_type: "urn:ietf:params:oauth:token-type:jwt", subject_token, identity_provider_id, service_account_id })` → `access_token`;
+  3. `$.process.run(['codex', 'login', '--with-api-key'], { env: { CODEX_HOME }, stdin: access_token })`.
+  A failed step ends the run `failed` naming the step and its HTTP status or exit code, never a token, JWT or response body.
 - `parseEvent`: JSONL from `--json`; `item.completed` with `item.type == "agent_message"` → message, command items → command, `item.type == "error"` → warning (never a failure), `turn.failed` → failed (D46).
 - `finalMessage`: the `-o` file.
 
@@ -356,7 +367,7 @@ Added to `plugins/code-review/.claude-plugin/plugin.json` `userConfig` (`:21-` b
 
 ### TEST-1: collegium unit tests
 
-`plugins/collegium/tests/*.test.ts`, `claude-code/testing` kit, `on('process.run', …)` stubs branching on `e.argv`, no `node:` imports (`SPEC.session/research/ci-evals.md`, section 2). Cover: config merge (D60, D27 disable-only), palette filtering (D12, D47), choice paths (D5, D48, D56, D59), strict-schema check (D40), Codex argv (D46), event parsing incl. warning-not-failure, state transitions incl. `timeout` and `conflict`, sweep (D20), skill substitution (D23), write-mode git sequences (INTEGRATION-6).
+`plugins/collegium/tests/*.test.ts`, `claude-code/testing` kit, `on('process.run', …)` stubs branching on `e.argv`, no `node:` imports (`SPEC.session/research/ci-evals.md`, section 2). Cover: config merge (D60, D27 disable-only), palette filtering (D12, D47), choice paths (D5, D48, D56, D59), strict-schema check (D40), Codex argv (D46), the CI path's fetch, exchange and login with stubbed `http.fetch` and a failure message free of tokens (D63, D64), event parsing incl. warning-not-failure, state transitions incl. `timeout` and `conflict`, sweep (D20), skill substitution (D23), write-mode git sequences (INTEGRATION-6).
 
 ### TEST-2: manual live script
 
@@ -364,7 +375,7 @@ Added to `plugins/code-review/.claude-plugin/plugin.json` `userConfig` (`:21-` b
 
 ### TEST-3: eval suite
 
-`plugins/collegium/evals/<case>/` (`case.yaml`, `prompt.md`, `graders/*.md`): `/collegium:run` on a fixture repository returns a `done` envelope whose `result` answers the task; a second case asks for a skill run. Allow-tools `ToolSearch 'mcp__collegium__*'`.
+`plugins/collegium/evals/<case>/` (`case.yaml`, `prompt.md`, `graders/*.md`): `/collegium:run` on a fixture repository returns a `done` envelope whose `result` answers the task; a second case asks for a skill run. Every case passes model `openai/gpt-6-luna` and effort `low` (D65). Allow-tools `ToolSearch 'mcp__collegium__*'`.
 
 ### TEST-4: fd3 workflow tests
 
@@ -376,7 +387,7 @@ Three probes recorded in `evidence/spikes.md`: in an interactive session, an un-
 
 ### CICD-1: CI eval spike and eval arm
 
-Spike first (D33): a throwaway branch adds a `collegium` arm to `.github/workflows/plugin-evals.yml` — paths filter (`:4-10`), picker branch (`:47-55`), workflow_dispatch list (`:42`), `case` arm (`:105-115`) — installs Codex `0.169.0` with pnpm, passes `EVAL_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}` into the eval step's env, and extends the token guard (`:143-146`) to the OpenAI key. Outcome rule: the mod sees the variable and a `done` envelope comes back → the arm lands with TEST-3; otherwise CICD-2 lands instead and TEST-3 stays local.
+Spike first (D33): a throwaway branch adds a `collegium` arm to `.github/workflows/plugin-evals.yml` — paths filter (`:4-10`), picker branch (`:47-55`), workflow_dispatch list (`:42`), `case` arm (`:105-115`) — installs Codex `0.169.0` with pnpm, gives the `eval` job (`:57`) `permissions: { contents: read, id-token: write }` (the workflow grants only `contents: read`, `:13-14`), passes the D64 variables into the eval step — the three `vars.OPENAI_*` values through `env:`, and `ACTIONS_ID_TOKEN_REQUEST_URL`/`_TOKEN` exported under their `EVAL_` names in the step script — and extends the token guard (`:143-146`) to `ACTIONS_ID_TOKEN_REQUEST_TOKEN` (D63). Outcome rule (G3): the mod sees the variables, reaches GitHub's token URL and `auth.openai.com`, `codex login --with-api-key` accepts the exchanged token and a `done` envelope comes back → the arm lands with TEST-3; otherwise CICD-2 lands instead and TEST-3 stays local.
 
 ### CICD-2: unit-test CI job (conditional)
 
@@ -401,7 +412,7 @@ Lands only on the negative CICD-1 outcome: a workflow job that installs Claude C
 | Codex CLI installed and logged in on the author's machine | Met — `codex-cli 0.169.0`, standalone install, `codex login status` exit 0, ChatGPT login (`SPEC.session/research/live-harnesses.md`, Summary). |
 | Claude Code with mods and `userConfig` `options` | Met locally — 2.1.326; mods need ≥ 2.1.287, `options` ≥ 2.1.271 (`SPEC.session/research/repo-prior-art.md`, section 3). CI pins 2.1.322 (`.github/workflows/plugin-evals.yml:21`). |
 | `$.process.spawn` holds a 65-minute child | Met in `claude -p` on 2.1.326: 65 of 65 ticks and exit code 7 in 3901 s, no spawn time cap (I25). Open for an interactive session and a spawn outliving its handler (gap G1). |
-| Repo secret `OPENAI_API_KEY` | Missing — `gh secret list` on 2026-11-17 shows only `CLAUDE_CODE_OAUTH_TOKEN` and `R2_*` (I23); the user adds it with `gh secret set OPENAI_API_KEY -R grixu/cc-toolkit` before CICD-1. |
+| OpenAI WIF provider, service-account mapping and Actions variables (D63) | Met — the user created the provider (issuer `https://token.actions.githubusercontent.com`, audience `https://api.openai.com/v1`) and the mapping on 2026-11-17, and `gh variable list` shows `OPENAI_WIF_AUDIENCE`, `OPENAI_IDENTITY_PROVIDER_ID`, `OPENAI_SERVICE_ACCOUNT_ID` (I26). The mapping's assertions were suggested, not read back from OpenAI. |
 | TypeSafe or Gemini Decision key | Optional — without one D6's Haiku fallback chooses. |
 
 ## 5. Ownership
@@ -437,7 +448,7 @@ All items are in `grixu/cc-toolkit`.
 | C12 | Unit tests | TEST-1 | `tests/*.test.ts` | new | 2 | one PR |
 | C13 | Manual live script | TEST-2 | `scripts/live-check.sh` | new | 2 | one PR |
 | C14 | README in full, root README rows, description through D51 | DOCS-1 | `plugins/collegium/README.md`, `README.md`, `plugin.json`, `marketplace.json` | changed | 2 | one PR |
-| C15 | CI spike: throwaway branch with the eval arm and the secret | CICD-1 | `.github/workflows/plugin-evals.yml` | changed | 3 | no merge — a spike branch, outcome recorded in `evidence/spikes.md` |
+| C15 | CI spike: throwaway branch with the eval arm and the WIF exchange | CICD-1 | `.github/workflows/plugin-evals.yml` | changed | 3 | no merge — a spike branch, outcome recorded in `evidence/spikes.md` |
 | C16 | Eval suite, and the eval arm or the unit-test job per C15's outcome | TEST-3, CICD-1 or CICD-2 | `plugins/collegium/evals/**`, `.github/workflows/plugin-evals.yml` or a new workflow job | new / changed | 3 | one PR (PR 1, with phases 1–2, D62) |
 
 ### `plugins/code-review`
@@ -467,7 +478,7 @@ All items are in `grixu/cc-toolkit`.
 |---|---|---|---|---|
 | 1 | Probes: spawn spike result, notice delivery, `hookEnv` (C1) | Local | No | No |
 | 2 | collegium plugin (C2–C14) | `feat/collegium` | No — new plugin, Codex disabled by default (D26) | No |
-| 3 | CI spike on a throwaway branch (C15), then eval suite and CI per its outcome (C16); needs the `OPENAI_API_KEY` secret | Spike branch, then `feat/collegium` | No | Yes — PR 1 merged, `release.sh collegium minor` (v0.1.0), installed locally |
+| 3 | CI spike on a throwaway branch (C15), then eval suite and CI per its outcome (C16); needs the WIF variables (met, I26) | Spike branch, then `feat/collegium` | No | Yes — PR 1 merged, `release.sh collegium minor` (v0.1.0), installed locally |
 | 4 | code-review integration (R1–R7) | New branch stacked on `main` after PR 1 merged | Yes — reviews offer or run Codex per `collegium_run` | Yes — PR 2 merged, `release.sh code-review minor`, installed |
 | 5 | fd3 integration (F1–F4) | New branch after PR 2 merged | Yes — fd3 asks about or runs the Codex review | Yes — PR 3 merged, `release.sh fd3 minor` |
 
@@ -553,7 +564,7 @@ The tracker holds two open issues, #1 (awesome-codex-plugins listing) and #9 (co
 | The decision client is byte-identical in dev-kit, pr-proof and code-review | `cmp` of `hooks/decision.ts` and `hooks/providers/{index,gemini,typesafe}.ts` across the three plugins, run 2026-11-17, all equal. |
 | Keys fall back to `TYPESAFE_API_KEY`, `GEMINI_DECISIONS_API_KEY`, `GEMINI_API_KEY`; `auto` with two keys returns `choose` | `plugins/dev-kit/hooks/providers/index.ts:33-39,60-67`. |
 | Jev model id `jev-1.14.0` | `plugins/dev-kit/hooks/providers/typesafe.ts:3`. |
-| Haiku via `$.model.complete` from a mod has a precedent | `plugins/dev-kit/hooks/register.ts:336` with `SLICING_MODEL = 'haiku'` at `:50`. |
+| Haiku via `$.model.complete` from a mod has a precedent | `plugins/dev-kit/hooks/register.ts:454` with `SLICING_MODEL = 'haiku'` at `:64`. |
 | The merge reads only `lenses.active` and each `<lens>.md`, failing `incomplete` on a missing or headerless file | `plugins/code-review/skills/cr-merge/SKILL.md:28-34`; `plugins/code-review/references/merge-contract.md:13-20`. |
 | A `files judged: 0 of M` header reads as undelivered | `plugins/code-review/references/merge-contract.md:16-17`. |
 | Convergence of independent lenses raises confidence, never severity | `plugins/code-review/references/merge-contract.md:55-62`. |
@@ -571,6 +582,15 @@ The tracker holds two open issues, #1 (awesome-codex-plugins listing) and #9 (co
 | The eval workflow's opt-in points, CC pin 2.1.322 and token guard | `.github/workflows/plugin-evals.yml:4-10,21,42,47-55,105-115,143-146`. |
 | No CI job runs `claude plugin test` today | Workflow list `code-review-scripts, docs, fd3-evals, lint, plugin-evals, pullfrog, sync-hookify` (`SPEC.session/research/ci-evals.md`, section 2). |
 | Repo secrets hold no `OPENAI_API_KEY` | `gh secret list -R grixu/cc-toolkit`, 2026-11-17 (`SPEC.session/research/INDEX.md` entry I23, inline). |
+| The workflow grants only `contents: read`; the eval job starts at `:57` | `.github/workflows/plugin-evals.yml:13-14,57`, read at `d7f6da87`. |
+| WIF exchange: endpoint, token-exchange body, Bearer `access_token`, no refresh token, never outlives the subject JWT; authorizes like a service-account key | developers.openai.com/api/reference/workload-identity-federation (`SPEC.session/research/openai-wif.md`, "Token exchange"; quotes in `evidence/12-appendix.md`). |
+| The job needs `id-token: write`; the JWT comes from `ACTIONS_ID_TOKEN_REQUEST_URL` + `&audience=` with the request token as bearer; ids are variables, not secrets | developers.openai.com/api/docs/guides/workload-identity-federation/github-actions (`SPEC.session/research/openai-wif.md`, "GitHub Actions side"). |
+| A GitHub OIDC JWT lives 300 s, so an exchanged token lives about 5 minutes (K7) | docs.github.com/en/actions/concepts/security/openid-connect example `iat`/`exp`; google-github-actions/auth#474 (`SPEC.session/research/openai-wif.md`, "GitHub OIDC token lifetime"). The 300 s is read from an example token, not a stated limit. |
+| Codex's native WIF path is a ChatGPT-workspace beta, not usable here | WIF guide's Codex section (`SPEC.session/research/openai-wif.md`, "Codex native WIF"). |
+| `codex login --with-api-key` accepting a WIF access token | Unverified; both are Bearer tokens, so inference only — gap G3, settled by C15. |
+| The WIF provider, mapping and three Actions variables exist | `gh variable list -R grixu/cc-toolkit` by the user, 2026-11-17 (`SPEC.session/research/openai-wif.md`, "Repository state"); mapping assertions not read back. |
+| A mod can make HTTP requests through `$.http.fetch` | `plugins/dev-kit/hooks/decision.ts:54`. |
+| `gpt-6-luna` is "Fast and affordable model for easier tasks"; `low` is "Fast responses with lighter reasoning" (D65) | `jq` over `SPEC.session/research/codex-models.json` (`description`); `SPEC.session/research/live-harnesses.md`, effort descriptions. |
 | New-plugin scaffold and marketplace entry shape; marketplace at 1.17.0 with 11 plugins | `.claude/skills/new-plugin/SKILL.md`; `.claude-plugin/marketplace.json:4`, `jq '.plugins\|length'` = 11. |
 | fd3 worktrees live beside the repository as `<repo>.worktrees/` | `plugins/fd3/workflows/implement-run.js:77`. |
 | Landing unit 1 exceeds the size the user reviews in one PR | Estimate from C2–C16 and the 317-line decision copy (`wc -l plugins/dev-kit/hooks/decision.ts plugins/dev-kit/hooks/providers/*.ts`); inference, not a measurement. |
@@ -581,7 +601,7 @@ The tracker holds two open issues, #1 (awesome-codex-plugins listing) and #9 (co
 |---|---|---|---|
 | G1 | Whether, in an interactive session, a spawn started un-awaited from the `collegium_run` handler survives the handler's return and a later user Stop; the d.ts says a hook's return does not kill it, but a `next.signal` abort does. Rule: it survives → INTEGRATION-5 uses spawn; it is killed → the detached fallback of D29, whose child C1 also probes. | Spec team | Blocks C8; settled by C1 (TEST-5) |
 | G2 | Whether `$.prompt.submit` issued after the `collegium_run` handler returned (from the completion path or a `$.clock.after` timer) is accepted. Rule: accepted → submit at completion so an idle session gets the notice at once; refused → main-thread `turn.complete` only (D43), and an idle session sees it at its next turn. | Spec team | Blocks C8; settled by C1 |
-| G3 | Whether a mod inside `claude plugin eval` sees `EVAL_OPENAI_API_KEY`, and whether Codex reaches the network from there (K4). Rule: D33. | Spec team; the secret is the user's to add | Blocks C16; settled by C15 |
+| G3 | Whether a mod inside `claude plugin eval` sees the D64 variables and reaches GitHub's token URL and `auth.openai.com` through `$.http.fetch`, whether `codex login --with-api-key` accepts a WIF access token, and whether Codex reaches the network from there (K4). Rule: CICD-1's outcome rule (D33). | Spec team | Blocks C16; settled by C15 |
 | G4 | Whether `$.process.hookEnv()` returns `CLAUDE_PLUGIN_DATA` on 2.1.326 and 2.1.322. Rule: returned → CONFIG-2 as written; not → the user-level config is kept in `$.store` under key `user-config` and `/collegium:config` writes it through an added `collegium_config` tool. | Spec team | Blocks C4; settled by C1 |
 | G5 | Whether naming the Collegium tools in `agents/scanner.md` `tools:` lets a workflow scanner call them without a permission prompt. Substitute: the phase-5 triggered fd3 run; a denied call shows as `skipped: codex — permission denied` (D55), never as a dead review. | Spec team | Phase 5 verification row |
 | G6 | Whether `claude plugin configure code-review --json` prints the saved `collegium_run` on the installed version. Rule: printed → D54; not → step 2 asks whenever Collegium is installed with Codex enabled. | Spec team | Phase 5, F1 |
@@ -656,3 +676,27 @@ Checked at: grixu/cc-toolkit @ d7f6da87 (remote `main`, fetched 2026-11-17)
 | Finding (non-blocking, closed): INTEGRATION-1's `invocation` returns a `cwd` that INTEGRATION-2 never set, while INTEGRATION-5 now fixes the process `cwd` to the run directory | INTEGRATION-2 now returns the run directory as `cwd`; Codex's working directory stays `-C`. |
 | Finding (non-blocking, open): section 10 places nothing a committed reader can open | Unchanged from pass 3. |
 | Finding (non-blocking, open): a fourth byte-identical copy keeps `decision.ts:1-3` naming three plugins | Unchanged from pass 3. |
+
+### Validation 2026-11-17 (validate-spec pass 5, on P1's edits: D63–D65)
+
+Verdict: not ready — claims: 50 verified / 6 deferred / 0 blocked, 1 open (exchanged token in the uploaded run directories, handed to the user) — spec 698 lines at this verdict
+Checked at: grixu/cc-toolkit @ d7f6da87 (the base of `feat/collegium` and of every citation); `origin/main` is at 28b8dde9, whose one commit touches no cited file but `plugins/dev-kit/hooks/register.ts` (`:50` is now `:64`, `:336` is now `:454`)
+
+| Claim | How it was verified |
+|---|---|
+| WIF exchange contract behind D63 and INTEGRATION-2 step 2 | developers.openai.com/api/reference/workload-identity-federation re-read 2026-11-17: `POST https://auth.openai.com/oauth/token`, `Content-Type: application/json`, the five body fields, response `access_token`, `token_type: "Bearer"`, no refresh token, never outlives the subject JWT. |
+| The three Actions variables exist and no `OPENAI_API_KEY` secret does | `gh variable list -R grixu/cc-toolkit` and `gh secret list -R grixu/cc-toolkit`, run 2026-11-17. |
+| `.github/workflows/plugin-evals.yml:13-14` grants only `contents: read`, `:57` opens the `eval` job, `:143-146` guards only `CLAUDE_CODE_OAUTH_TOKEN` | Printed at `d7f6da87`; the file is unchanged on `origin/main`. |
+| D64: the `EVAL_` names reach the run unchanged, so the mod reads the prefixed names | `SPEC.session/research/plugin-evals-doc.md:496,546` (the run inherits `EVAL_*`; "export it as an EVAL_* variable"). |
+| `$.http.fetch` takes `method`, `headers` and a string `body`, and its time is outside the 10 s budget; a computed URL still loads | `SPEC.session/research/claude-code.d.ts:4114-4156,6221-6235` and the `hosts.unread` rule at `:9385-9400`; budget quote in `evidence/12-appendix.md`. |
+| `codex login --with-api-key` reads the key from stdin | `codex login --help` on 0.169.0. Whether it accepts a WIF token stays G3. |
+| D65's model and effort pass INTEGRATION-3's catalogue check in CI, where the catalogue is read before any run's login | Probe: `CODEX_HOME=<empty dir> codex debug models` on 0.169.0 exits 0 with its bundled list, which holds `gpt-6-luna` with `low`. |
+| D65's catalogue descriptions | `jq` over `SPEC.session/research/codex-models.json`: "Fast and affordable model for easier tasks."; `low`: "Fast responses with lighter reasoning". |
+| Finding (non-blocking, closed): INTEGRATION-1 named no adapter method that runs the CI path, while `invocation` is synchronous without `$` and `runs.ts` may name no CLI flag | INTEGRATION-1 gains `prepare($, runId)`, whose env joins every harness call of the run; INTEGRATION-2's CI path runs in it. |
+| Finding (non-blocking, closed): `<os tmpdir>` has no source in a hooks module | `claude-code.d.ts:23-24` ("no DOM, no Node"); INTEGRATION-2 now reads it as `$.env.get('TMPDIR')`, `/tmp` when unset. |
+| Finding (non-blocking, open, repair choice): `codex login --with-api-key` stores the exchanged token in `CODEX_HOME`, which the mod puts under its temp directory; `--keep-temp` seals each run's home and tmp, the step copies them into `$out/runs` and uploads them to R2 (`plugin-evals.yml:130-140,150-164`), and the guard checks only the OAuth token, so a token valid for up to 5 minutes may be stored in the bucket. D63 keeps tokens out of logs but accepts no stored token | Handed to the user. |
+| Finding (non-blocking, open): section 10 places nothing a committed reader can open | Unchanged from pass 4. |
+| Finding (non-blocking, open): a fourth byte-identical copy keeps `decision.ts:1-3` naming three plugins | Unchanged from pass 4. |
+| Stored-token repair: the user chose option (c), accept the risk (2026-11-17) | Risk K8 added to section 3; its bound is the 300 s JWT lifetime already recorded for K7 (`evidence/12-appendix.md`, OpenAI workload identity federation). The finding stays non-blocking in this record, closed by that repair. |
+
+Verdict: ready — claims: 51 verified / 6 deferred / 0 blocked — spec 702 lines at this verdict

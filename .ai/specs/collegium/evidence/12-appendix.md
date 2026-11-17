@@ -55,3 +55,17 @@ Source: https://code.claude.com/docs/en/plugin-evals.md.
 > To pass the plugin anything else … export it as an EVAL_* variable.
 
 A case-level `env:` key must match `EVAL_[A-Z0-9_]*`; hooks and servers run outside the agent's sandbox. No sentence states whether a mod's `$.env.get` sees an `EVAL_*` variable.
+
+## OpenAI workload identity federation
+
+Source: https://developers.openai.com/api/reference/workload-identity-federation, read 2026-11-17.
+
+The exchange is `POST https://auth.openai.com/oauth/token` with a JSON body of `grant_type: "urn:ietf:params:oauth:grant-type:token-exchange"`, `subject_token_type: "urn:ietf:params:oauth:token-type:jwt"`, `subject_token`, `identity_provider_id` and `service_account_id`; the response carries `access_token`, `token_type: "Bearer"`, `expires_in` and `expires_at`.
+
+> Access tokens expire after at most one hour. A JWT exchange token never outlives its external subject token ... Token exchange doesn't return a refresh token.
+
+> On OpenAI API surfaces, they authorize like service-account API credentials rather than user OAuth tokens.
+
+Source: https://developers.openai.com/api/docs/guides/workload-identity-federation/github-actions. The job needs `permissions: id-token: write`; the JWT comes from `curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=<url-encoded audience>" | jq -r .value`; the provider and service-account ids are stored as Actions variables because "they identify the provider and service account but are not bearer credentials". The guide's Codex path (`OPENAI_IDENTITY_TOKEN_FILE`) maps to a ChatGPT workspace principal and is a per-workspace beta.
+
+Source: https://docs.github.com/en/actions/concepts/security/openid-connect. The example token has `iat 1632493567` and `exp 1632493867`, 300 s apart; google-github-actions/auth#474 records GitHub shortening the lifetime from 10 to 5 minutes. So an exchanged OpenAI token lives about 5 minutes at most.
