@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-11-17
+
 ### Fixed
 
 - The README and the task template described `done` as "nothing left for a human". Under review
