@@ -1,6 +1,6 @@
 ---
 title: How tester works
-description: The command, the three agents that run the suites, the brief they share, how dependencies are made to fail, and the rules that keep your environment intact.
+description: The command, the four agents that run the suites, the brief they share, readiness probes, exploration, how dependencies are made to fail, kept runs, and the rules that keep your environment intact.
 group: concepts
 sidebar:
   label: How it works
@@ -14,18 +14,22 @@ You don't need it to use tester; read it when a verdict surprises you or before 
 
 `/tester:run` is the only part you start.
 It discovers the stack, derives the suites, asks the questions and writes the report.
-It hands each suite to one of three agents:
+It hands each suite to one of four agents:
 
 | Agent | Runs | With | Model |
 |---|---|---|---|
 | `tester:api` | API checks, plus read-only database queries where a check needs them | `curl` | `sonnet` |
 | `tester:ui` | browser checks, with a screenshot of every failing check | agent-browser | `sonnet` |
+| `tester:explore` | exploratory charters, returning leads rather than verdicts | `curl`, agent-browser | your session model |
 | `tester:fault` | error-handling checks, by making a dependency fail | Docker, WireMock | your session model |
 
 Table 1. The agents `/tester:run` dispatches, one per suite.
 
 `tester:api` and `tester:ui` run on `sonnet` to save cost, because the brief has already settled every open question for them.
+`tester:explore` uses your session model, because its charters ask for judgment rather than a fixed list of checks.
 `tester:fault` uses your session model, because it is the one agent that disrupts the shared stack.
+
+A plugin mod provides one tool, `runs`, that opens the run's directory, prunes old runs and finds the run a `--rerun` repeats.
 
 ## The flow
 
@@ -34,17 +38,26 @@ The following diagram shows the order in which the suites run:
 ```mermaid
 flowchart LR
   Run["/tester:run"] --> Brief["BRIEF.md"]
-  Brief --> API["tester:api"]
-  Brief --> UI["tester:ui"]
-  API --> Fault["tester:fault"]
-  UI --> Fault
+  Brief --> Doctor["readiness probes"]
+  Doctor --> API["tester:api"]
+  Doctor --> UI["tester:ui"]
+  API --> Explore["tester:explore"]
+  UI --> Explore
+  Explore --> Repro["reproduction checks"]
+  Repro --> Fault["tester:fault"]
   Fault --> Health["stack health check"]
   Health --> Report["report"]
 ```
 
-Figure 1. API and UI suites run in parallel; the fault suite runs alone and last.
+Figure 1. API and UI suites run in parallel; exploration and its reproduction follow; the fault suite runs alone and last.
+
+Before any suite starts, the main thread runs a few read-only readiness probes: one API call outside the scope under test, each test user's session, the start page of each UI suite, and each dependency the fault suite will disrupt.
+A failed probe becomes a question, or `BLOCKED "doctor: <probe>"` on the suites that rest on it, never a `FAIL`.
+The probes stay outside the scope so that a real defect in the feature isn't mistaken for a broken environment, and they run again after every restart.
 
 The API and UI suites run in parallel, one agent per suite.
+The exploratory suite runs after them, on the scope's surface, so its attempts don't disturb checks still running.
+Its leads go back to `tester:api` or `tester:ui` as ordinary checks with a command and an expected result; only a lead that check reproduces becomes a `FAIL`.
 The fault suite waits until they finish, because pausing a dependency or putting a proxy in front of it would corrupt checks still running.
 After the fault suite, `/tester:run` checks that the stack is healthy itself rather than trusting the agent.
 
@@ -81,11 +94,20 @@ tester skips a fault check only after it has ruled out all three ways, and the r
 
 ## What stays on disk
 
-The brief, session cookies, the teardown ledger `TEARDOWN.md` and screenshots live in a temporary directory, `$TMPDIR/tester.XXXXXX`, whose path the report gives.
-Nothing in it is committed, and it holds secrets, so tester never writes it into your repository.
+Each run gets a directory in `~/.cache/tester/<repository>/`, outside your repository and shared by all its worktrees; the report gives its path.
+It keeps the brief, the checks as derived in `SUITES.md`, the command and output behind every row in `evidence/`, the teardown ledger `TEARDOWN.md` and screenshots.
+Session cookies and generated passwords sit in `secrets/`, which is deleted when the run ends; the next run also deletes any a crashed run left behind.
+The oldest runs beyond the `run_retention` setting are deleted when a run starts.
 
 Your repository changes only when you approve an injection point or keep a change in place on purpose.
 The ledger lists either.
+
+## Repeating failed checks
+
+An LLM derives slightly different checks each time, so a fresh run after a fix doesn't compare like with like.
+`--rerun` repeats the `FAIL`, `BLOCKED` and `ERROR` rows of a kept run with the exact commands recorded in its `evidence/`, instead of deriving them again.
+Discovery, the readiness probes, sessions, the starting snapshot and the questions are all redone, because none of them carry over between runs.
+The report groups the repeated rows as fixed, still failing and changed.
 
 ## Safety rules
 
@@ -96,8 +118,8 @@ The ledger lists either.
 - It keeps cookies, tokens and passwords out of the conversation.
 
 :::note
-tester keeps no test suite between runs.
-Every run derives its checks again from the spec or the diff, so there is nothing to update when the code changes.
+tester keeps no test suite to maintain.
+A fresh run derives its checks again from the spec or the diff, so there is nothing to update when the code changes; kept runs exist only for `--rerun` and are pruned by count.
 :::
 
 ## Next steps

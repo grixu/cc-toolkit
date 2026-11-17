@@ -14,8 +14,8 @@ Unit tests pass, but nobody has checked that the change works in the running app
 tester does that check against your local or staging stack.
 It works out what to test, runs each check as a real command, and reports what passed and failed with the recorded output behind every verdict.
 
-It keeps no configuration and saves no test plan.
-Each run discovers the environment from scratch and leaves a report.
+It saves no test plan to maintain.
+Each run discovers the environment from scratch, leaves a report, and keeps its checks outside your repository so that after a fix you can repeat exactly the ones that failed.
 
 ## Where it works
 
@@ -51,7 +51,8 @@ Give it a spec, a named area of the app, or nothing, and it checks what changed 
 
 ## What you get
 
-A report in the conversation: a result table per suite, every `FAIL` tied to its acceptance criterion and classified, the behaviors it could not check, and a ledger of every change it made to your environment and how it reverted it.
+A report in the conversation: a result table per suite, every `FAIL` tied to its acceptance criterion and classified, the defects an exploratory suite found beyond the spec and reproduced, the behaviors it could not check, and a ledger of every change it made to your environment and how it reverted it.
+After a fix, `/tester:run --rerun` repeats the checks that failed.
 
 ## Next steps
 

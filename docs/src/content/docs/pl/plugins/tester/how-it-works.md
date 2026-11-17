@@ -1,6 +1,6 @@
 ---
 title: Jak działa tester
-description: Komenda, trzej agenci, którzy uruchamiają zestawy, brief, który dzielą, sposoby wywoływania awarii zależności i zasady, które chronią twoje środowisko.
+description: Komenda, czterej agenci, którzy uruchamiają zestawy, brief, który dzielą, sondy gotowości, eksploracja, sposoby wywoływania awarii zależności, zachowane uruchomienia i zasady, które chronią twoje środowisko.
 group: concepts
 sidebar:
   label: Jak to działa
@@ -14,18 +14,22 @@ Do korzystania z testera nie jest potrzebna; zajrzyj tu, gdy werdykt cię zaskoc
 
 `/tester:run` to jedyna część, którą uruchamiasz.
 Komenda rozpoznaje środowisko, wyprowadza zestawy, zadaje pytania i pisze raport.
-Każdy zestaw przekazuje jednemu z trzech agentów:
+Każdy zestaw przekazuje jednemu z czterech agentów:
 
 | Agent | Uruchamia | Za pomocą | Model |
 |---|---|---|---|
 | `tester:api` | sprawdzenia API oraz zapytania do bazy tylko do odczytu, gdy sprawdzenie ich wymaga | `curl` | `sonnet` |
 | `tester:ui` | sprawdzenia w przeglądarce, ze zrzutem ekranu przy każdym nieudanym | agent-browser | `sonnet` |
+| `tester:explore` | eksploracyjne scenariusze (charters), które zwracają tropy, a nie werdykty | `curl`, agent-browser | model twojej sesji |
 | `tester:fault` | sprawdzenia obsługi błędów przez wywołanie awarii zależności | Docker, WireMock | model twojej sesji |
 
 Tabela 1. Agenci, których `/tester:run` uruchamia, po jednym na zestaw.
 
 `tester:api` i `tester:ui` działają na `sonnet`, żeby obniżyć koszt, bo brief rozstrzygnął już za nich każdą otwartą kwestię.
+`tester:explore` używa modelu twojej sesji, bo jego scenariusze wymagają osądu, a nie stałej listy sprawdzeń.
 `tester:fault` używa modelu twojej sesji, bo to jedyny agent, który zakłóca współdzielone środowisko.
+
+Mod pluginu dostarcza jedno narzędzie, `runs`, które otwiera katalog uruchomienia, usuwa stare uruchomienia i znajduje uruchomienie, które powtarza `--rerun`.
 
 ## Przebieg
 
@@ -34,17 +38,26 @@ Poniższy diagram pokazuje kolejność, w jakiej uruchamiają się zestawy:
 ```mermaid
 flowchart LR
   Run["/tester:run"] --> Brief["BRIEF.md"]
-  Brief --> API["tester:api"]
-  Brief --> UI["tester:ui"]
-  API --> Fault["tester:fault"]
-  UI --> Fault
+  Brief --> Doctor["sondy gotowości"]
+  Doctor --> API["tester:api"]
+  Doctor --> UI["tester:ui"]
+  API --> Explore["tester:explore"]
+  UI --> Explore
+  Explore --> Repro["sprawdzenia odtwarzające"]
+  Repro --> Fault["tester:fault"]
   Fault --> Health["sprawdzenie stanu środowiska"]
   Health --> Report["raport"]
 ```
 
-Rysunek 1. Zestawy API i interfejsu działają równolegle; zestaw awarii uruchamia się sam i na końcu.
+Rysunek 1. Zestawy API i interfejsu działają równolegle; po nich eksploracja i odtworzenie jej tropów; zestaw awarii uruchamia się sam i na końcu.
+
+Zanim ruszy jakikolwiek zestaw, główny wątek uruchamia kilka sond gotowości tylko do odczytu: jedno wywołanie API spoza testowanego zakresu, sesję każdego użytkownika testowego, stronę startową każdego zestawu interfejsu i każdą zależność, którą zakłóci zestaw awarii.
+Nieudana sonda staje się pytaniem albo werdyktem `BLOCKED "doctor: <probe>"` dla zestawów, które od niej zależą, nigdy `FAIL`.
+Sondy leżą poza zakresem, żeby prawdziwego błędu w funkcji nie wziąć za zepsute środowisko, i uruchamiają się ponownie po każdym restarcie.
 
 Zestawy API i interfejsu działają równolegle, po jednym agencie na zestaw.
+Zestaw eksploracyjny działa po nich, na powierzchni zakresu, żeby jego próby nie zakłócały sprawdzeń, które jeszcze trwają.
+Jego tropy wracają do `tester:api` albo `tester:ui` jako zwykłe sprawdzenia z komendą i oczekiwanym wynikiem; `FAIL` dostaje tylko trop, który to sprawdzenie odtworzy.
 Zestaw awarii czeka, aż skończą, bo wstrzymanie zależności albo postawienie przed nią proxy zepsułoby sprawdzenia, które jeszcze trwają.
 Po zestawie awarii `/tester:run` samodzielnie sprawdza, czy środowisko jest zdrowe, zamiast polegać na słowie agenta.
 
@@ -81,11 +94,20 @@ tester pomija sprawdzenie awarii dopiero po wykluczeniu wszystkich trzech sposob
 
 ## Co zostaje na dysku
 
-Brief, ciasteczka sesji, rejestr zmian `TEARDOWN.md` i zrzuty ekranu leżą w katalogu tymczasowym `$TMPDIR/tester.XXXXXX`, którego ścieżkę podaje raport.
-Nic z niego nie trafia do commita, a ponieważ zawiera sekrety, tester nigdy nie zapisuje go w twoim repozytorium.
+Każde uruchomienie dostaje katalog w `~/.cache/tester/<repository>/`, poza twoim repozytorium i wspólny dla wszystkich jego worktree; raport podaje jego ścieżkę.
+Leżą w nim brief, sprawdzenia w postaci, w jakiej je wyprowadzono, w `SUITES.md`, komenda i wynik za każdym wierszem w `evidence/`, rejestr zmian `TEARDOWN.md` i zrzuty ekranu.
+Ciasteczka sesji i wygenerowane hasła leżą w `secrets/`, który jest usuwany po zakończeniu uruchomienia; kolejne uruchomienie usuwa też to, co zostawiło po sobie uruchomienie przerwane awarią.
+Najstarsze uruchomienia ponad limit z ustawienia `run_retention` są usuwane, gdy startuje nowe uruchomienie.
 
 Twoje repozytorium zmienia się tylko wtedy, gdy zatwierdzisz punkt wstrzyknięcia albo celowo zostawisz jakąś zmianę.
 Rejestr wymienia jedno i drugie.
+
+## Powtarzanie nieudanych sprawdzeń
+
+LLM za każdym razem wyprowadza trochę inne sprawdzenia, więc świeże uruchomienie po poprawce nie porównuje tego samego z tym samym.
+`--rerun` powtarza wiersze `FAIL`, `BLOCKED` i `ERROR` zachowanego uruchomienia dokładnie tymi komendami, które zapisano w jego `evidence/`, zamiast wyprowadzać je od nowa.
+Rozpoznanie, sondy gotowości, sesje, migawka stanu początkowego i pytania odbywają się od nowa, bo żadne z nich nie przechodzi między uruchomieniami.
+Raport grupuje powtórzone wiersze na naprawione, nadal nieudane i zmienione.
 
 ## Zasady bezpieczeństwa
 
@@ -96,8 +118,8 @@ Rejestr wymienia jedno i drugie.
 - Nie wypisuje w rozmowie ciasteczek, tokenów ani haseł.
 
 :::note
-tester nie trzyma zestawu testów między uruchomieniami.
-Każde uruchomienie wyprowadza sprawdzenia od nowa ze specu albo diffu, więc po zmianie kodu nie ma czego aktualizować.
+tester nie trzyma zestawu testów, który trzeba utrzymywać.
+Świeże uruchomienie wyprowadza sprawdzenia od nowa ze specu albo diffu, więc po zmianie kodu nie ma czego aktualizować; zachowane uruchomienia służą tylko do `--rerun` i są usuwane według liczby.
 :::
 
 ## Następne kroki
