@@ -1,0 +1,4 @@
+{
+  "description": "collegium mod: the collegium_run, collegium_status and collegium_result tools that run work on another harness",
+  "modules": ["./register.ts"]
+}

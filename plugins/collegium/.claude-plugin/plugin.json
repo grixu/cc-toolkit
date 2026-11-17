@@ -1,0 +1,25 @@
+{
+  "name": "collegium",
+  "version": "0.0.0",
+  "description": "Hands a piece of work to another coding agent and model, such as OpenAI Codex, and brings its result back to Claude Code. Codex stays off until you turn it on.",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "codex",
+    "openai",
+    "delegation",
+    "second-opinion",
+    "multi-model"
+  ],
+  "userConfig": {
+    "codex": {
+      "type": "boolean",
+      "title": "Codex",
+      "description": "Let Collegium run tasks on OpenAI Codex. Turning it on sends the task and the code Codex reads to OpenAI.",
+      "default": false
+    }
+  }
+}
