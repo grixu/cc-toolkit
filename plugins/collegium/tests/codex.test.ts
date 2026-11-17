@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 import { TOKEN_EXCHANGE_URL, codex } from '../hooks/codex.ts'
+import { host, inHost } from './host.ts'
 
 const ok = (stdout = '') => ({ value: { exitCode: 0, stdout, stderr: '' } })
 const exit = (exitCode: number) => ({ value: { exitCode, stdout: '', stderr: '' } })
@@ -65,7 +66,7 @@ test('events map to progress kinds, and error events are warnings, never failure
   ])
 })
 
-test('the catalogue becomes one openai palette with hidden flags and per-model efforts', async ($, on) => {
+test('the catalogue becomes one openai palette with hidden flags and per-model efforts', { plugins: [host] }, async ($, on) => {
   on('process.run', ($, e) =>
     e.argv[1] === 'debug'
       ? ok(JSON.stringify({ models: [
@@ -74,7 +75,7 @@ test('the catalogue becomes one openai palette with hidden flags and per-model e
         ] }))
       : ok('codex-cli 0.165.0\n'),
   )
-  expect(await codex.catalogue($)).toEqual([
+  expect(await inHost($, codex.catalogue)).toEqual([
     {
       provider: 'openai',
       models: [
@@ -85,62 +86,63 @@ test('the catalogue becomes one openai palette with hidden flags and per-model e
   ])
 })
 
-test('an unreadable catalogue fails naming the Codex version', async ($, on) => {
+test('an unreadable catalogue fails naming the Codex version', { plugins: [host] }, async ($, on) => {
   on('process.run', ($, e) => (e.argv[1] === 'debug' ? ok('{"data":[]}') : ok('codex-cli 0.165.0\n')))
-  const message = await codex.catalogue($).then(() => 'resolved', (err) => err.message)
+  const message = await inHost($, codex.catalogue).then(() => 'resolved', (err) => err.message)
   expect(message).toContain('codex 0.165.0')
 })
 
-test('detection reads the version and reports a missing binary as not installed', async ($, on) => {
+test('detection reads the version and reports a missing binary as not installed', { plugins: [host] }, async ($, on) => {
   let installed = true
   on('process.run', () => (installed ? ok('codex-cli 0.165.0\n') : exit(127)))
-  expect(await codex.detect($)).toEqual({ installed: true, version: '0.165.0' })
+  expect(await inHost($, codex.detect)).toEqual({ installed: true, version: '0.165.0' })
   installed = false
-  expect(await codex.detect($)).toEqual({ installed: false })
+  expect(await inHost($, codex.detect)).toEqual({ installed: false })
 })
 
-test('a version output without a version is still installed', async ($, on) => {
+test('a version output without a version is still installed', { plugins: [host] }, async ($, on) => {
   on('process.run', () => ok(''))
-  expect(await codex.detect($)).toEqual({ installed: true })
+  expect(await inHost($, codex.detect)).toEqual({ installed: true })
 })
 
-test('a catalogue model without a slug or with a malformed effort fails naming the Codex version', async ($, on) => {
+test('a catalogue model without a slug or with a malformed effort fails naming the Codex version', { plugins: [host] }, async ($, on) => {
   const broken = [
     { visibility: 'list', supported_reasoning_levels: [{ effort: 'low' }], default_reasoning_level: 'low' },
     { slug: 'gpt-x', supported_reasoning_levels: [{ effort: 'low' }] },
     { slug: 'gpt-x', supported_reasoning_levels: [{}], default_reasoning_level: 'low' },
   ]
-  for (const model of broken) {
-    on('process.run', ($, e) => (e.argv[1] === 'debug' ? ok(JSON.stringify({ models: [model] })) : ok('codex-cli 0.165.0\n')))
-    const message = await codex.catalogue($).then(() => 'resolved', (err) => err.message)
+  let model: unknown
+  on('process.run', ($, e) => (e.argv[1] === 'debug' ? ok(JSON.stringify({ models: [model] })) : ok('codex-cli 0.165.0\n')))
+  for (model of broken) {
+    const message = await inHost($, codex.catalogue).then(() => 'resolved', (err) => err.message)
     expect(message).toContain('codex 0.165.0')
     expect(message).toContain('model without slug or efforts')
   }
 })
 
-test('login status follows the exit code and passes the run env', async ($, on) => {
+test('login status follows the exit code and passes the run env', { plugins: [host] }, async ($, on) => {
   const envs: unknown[] = []
   let code = 0
   on('process.run', ($, e) => {
     envs.push(e.init?.env)
     return exit(code)
   })
-  expect(await codex.loginStatus($, { CODEX_HOME: '/h' })).toEqual({ loggedIn: true, fix: '! codex login' })
+  expect(await inHost($, codex.loginStatus, { CODEX_HOME: '/h' })).toEqual({ loggedIn: true, fix: '! codex login' })
   expect(envs[0]).toEqual({ CODEX_HOME: '/h' })
   code = 1
-  expect((await codex.loginStatus($, {})).loggedIn).toBe(false)
+  expect((await inHost($, codex.loginStatus, {})).loggedIn).toBe(false)
 })
 
-test('outside CI prepare does nothing', async ($, on) => {
+test('outside CI prepare does nothing', { plugins: [host] }, async ($, on) => {
   mock.env(on, {})
   let calls = 0
   on('process.run', () => { calls++; return ok() })
   on('http.fetch', () => { calls++; return fetched(200) })
-  expect(await codex.prepare($, 'run1')).toEqual({})
+  expect(await inHost($, codex.prepare, 'run1')).toEqual({})
   expect(calls).toBe(0)
 })
 
-test('in CI prepare fetches the JWT, exchanges it and logs a per-run CODEX_HOME in', async ($, on) => {
+test('in CI prepare fetches the JWT, exchanges it and logs a per-run CODEX_HOME in', { plugins: [host] }, async ($, on) => {
   mock.env(on, CI_ENV)
   const requests: any[] = []
   on('http.fetch', ($, e) => {
@@ -153,7 +155,7 @@ test('in CI prepare fetches the JWT, exchanges it and logs a per-run CODEX_HOME 
     return ok()
   })
 
-  expect(await codex.prepare($, 'run1')).toEqual({ CODEX_HOME: '/var/tmp/collegium-codex-home/run1' })
+  expect(await inHost($, codex.prepare, 'run1')).toEqual({ CODEX_HOME: '/var/tmp/collegium-codex-home/run1' })
   expect(requests[0].url).toBe('https://gh.example/token?api-version=2.0&audience=openai%20wif')
   expect(requests[0].init.headers.authorization).toBe('bearer request-token-secret')
   expect(requests[1].url).toBe(TOKEN_EXCHANGE_URL)
@@ -171,7 +173,7 @@ test('in CI prepare fetches the JWT, exchanges it and logs a per-run CODEX_HOME 
   expect(login.init.stdin).toBe('access-secret')
 })
 
-test('a failed CI step names the step and status and never a token or body', async ($, on) => {
+test('a failed CI step names the step and status and never a token or body', { plugins: [host] }, async ($, on) => {
   mock.env(on, CI_ENV)
   let failAt = 1
   let call = 0
@@ -186,7 +188,7 @@ test('a failed CI step names the step and status and never a token or body', asy
   for (const at of [1, 2, 3]) {
     failAt = at
     call = 0
-    messages.push(await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message))
+    messages.push(await inHost($, codex.prepare, 'run1').then(() => 'resolved', (err) => err.message))
   }
   expect(messages[0]).toContain('GitHub OIDC token request: HTTP 401')
   expect(messages[1]).toContain('OpenAI token exchange: HTTP 401')
@@ -194,41 +196,40 @@ test('a failed CI step names the step and status and never a token or body', asy
   for (const m of messages) for (const secret of ['secret', 'jwt', 'access-']) expect(m).not.toContain(secret)
 })
 
-test('a CI request that never completes, or answers without the field, names the step', async ($, on) => {
+test('a CI request that never completes, or answers without the field, names the step', { plugins: [host] }, async ($, on) => {
   mock.env(on, CI_ENV)
   on('process.run', () => ok())
+  let completes = false
+  on('http.fetch', () => (completes ? fetched(200, {}) : { deny: 'network down' }))
 
-  on('http.fetch', () => {
-    throw new Error('network down')
-  })
-  const rejected = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
-  on('http.fetch', () => fetched(200, {}))
-  const empty = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
+  const rejected = await inHost($, codex.prepare, 'run1').then(() => 'resolved', (err) => err.message)
+  completes = true
+  const empty = await inHost($, codex.prepare, 'run1').then(() => 'resolved', (err) => err.message)
 
   expect(rejected).toContain('GitHub OIDC token request: request did not complete')
   expect(empty).toContain('GitHub OIDC token request: HTTP 200 without value')
 })
 
-test('a CODEX_HOME that cannot be created fails the CI login', async ($, on) => {
+test('a CODEX_HOME that cannot be created fails the CI login', { plugins: [host] }, async ($, on) => {
   mock.env(on, CI_ENV)
   let call = 0
   on('http.fetch', () => (++call === 1 ? fetched(200, { value: 'jwt-secret' }) : fetched(200, { access_token: 'access-secret' })))
   on('process.run', ($, e) => (e.argv[0] === 'mkdir' ? exit(1) : ok()))
 
-  const message = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
+  const message = await inHost($, codex.prepare, 'run1').then(() => 'resolved', (err) => err.message)
 
   expect(message).toContain('creating CODEX_HOME: exit 1')
 })
 
-test('the final message is the -o file, or null when Codex wrote none', async ($, on) => {
+test('the final message is the -o file, or null when Codex wrote none', { plugins: [host] }, async ($, on) => {
   const reads: string[] = []
   let written = '{"status":"done"}'
   on('fs.read', ($, e) => {
     reads.push(JSON.stringify(e))
     return { value: written }
   })
-  expect(await codex.finalMessage($, '/r/run1')).toBe('{"status":"done"}')
+  expect(await inHost($, codex.finalMessage, '/r/run1')).toBe('{"status":"done"}')
   expect(reads[0]).toContain('/r/run1/last.json')
   written = ''
-  expect(await codex.finalMessage($, '/r/run1')).toBe(null)
+  expect(await inHost($, codex.finalMessage, '/r/run1')).toBe(null)
 })
