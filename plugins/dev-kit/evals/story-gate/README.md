@@ -7,7 +7,7 @@ both import them, so the eval sends the model exactly what production sends.
 Run from the repository root with a Node version that strips TypeScript types:
 
 ```sh
-node --test plugins/dev-kit/evals/story-gate/
+node --test 'plugins/dev-kit/evals/story-gate/*.test.mjs'
 node plugins/dev-kit/evals/story-gate/data.mjs pull v1
 node plugins/dev-kit/evals/story-gate/extract.mjs --intent
 node plugins/dev-kit/evals/story-gate/run.mjs --backend typesafe --data plugins/dev-kit/evals/story-gate/local/states.intent.jsonl --tag e4-ts-1
