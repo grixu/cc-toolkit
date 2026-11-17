@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-17
+
 ### Added
 
 - `walkthrough-video` keeps a repo profile in `~/.cache/walkthrough-video/<repo>/repo-profile.md`: a new leg writes it on the repository's first walkthrough (how the stack starts, login, toast and overlay selectors, shared services), using the project's own skills for a job wherever one exists, and the recorder corrects it after each good take
