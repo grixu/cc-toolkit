@@ -120,7 +120,7 @@ Before the scenario is written, it asks you to confirm every derived requirement
 
 Once you accept the video, it copies it to `~/Downloads/<ticket-or-PR>-<slug>.mp4` and attaches it to the pull request under a `### Video walkthrough` section at the end of the description. A caller that names another place, or attaches the video itself, takes precedence.
 
-Before attaching a video over 10 MB, the size GitHub's free plan refuses, it asks whether to re-render it at a faster speed or attach it as it is.
+Before attaching a video over 10 MB, the size GitHub's free plan refuses, it asks whether to re-render it at a faster speed or a lower resolution, or attach it as it is.
 
 The work files live in `~/.cache/walkthrough-video/<repo>/<feature-slug>/`, so a run survives a reboot and resumes after the last finished step. Session state and traces are deleted on delivery, since traces hold session cookies.
 
