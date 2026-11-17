@@ -108,19 +108,23 @@ Use it when a reviewer should see a feature work, or to re-record the video afte
 /pr-proof:walkthrough-video docs/specs/invites.md "product owner, the invite flow end to end"
 ```
 
-With a pull request or branch, the video shows what that change made different for a user; without one, the whole feature. A relay of five subagents does the work, each from its own brief, handing over through files only:
+With a pull request or branch, the video shows what that change made different for a user; without one, the whole feature. A relay of five subagents does the work, six on a repository's first walkthrough, each from its own brief, handing over through files only:
 
-1. **Requirements**: one requirement with acceptance criteria per user-visible change, from the spec, the ticket or the code, each marked `stated` or `derived`. In parallel, a **tool check** picks the playwright-recast and Playwright versions to run and checks the machine.
-2. **Scenario**: the video's scenes, each mapped to a requirement.
+1. **Requirements**: one requirement with acceptance criteria per user-visible change, from the spec, the ticket or the code, each marked `stated` or `derived`. In parallel, a **tool check** picks the playwright-recast and Playwright versions to run and checks the machine, and on the repository's first walkthrough a **repo profile** records how the app starts, logs in and shows success and errors (see below).
+2. **Scenario**: the video's scenes, each mapped to a requirement. Scene 0 is a title card with the pull request's number and the change in plain words, so the video's poster names the change; the next captions say who the change helps before showing how.
 3. **Validation**: a separate subagent checks the scenario against the requirements and the code, and fixes it.
 4. **Recording**: starts the stack when nobody else has, records the Playwright test, renders an MP4 with burned-in captions at the `video_speed` and `caption_density` options, and reviews its own frames for readable captions, calm pacing in the take and no error toasts. It retakes up to two times.
-5. **Report**: the video, then the UX defects and bugs seen on camera, first.
+5. **Report**: the video, then the UX defects and bugs seen on camera, first, and the scenes as a numbered list with their times. Give feedback by scene number, by the time in your player or by a caption's words; "too fast" for the whole video is only a re-render at another speed.
 
 Before the scenario is written, it asks you to confirm every derived requirement and open decision, such as real or staged data. A defect seen on camera is reported, never captioned as a success.
 
 Once you accept the video, it copies it to `~/Downloads/<ticket-or-PR>-<slug>.mp4` and attaches it to the pull request under a `### Video walkthrough` section at the end of the description. A caller that names another place, or attaches the video itself, takes precedence.
 
+Before attaching a video over 10 MB, the size GitHub's free plan refuses, it asks whether to re-render it at a faster speed or a lower resolution, or attach it as it is.
+
 The work files live in `~/.cache/walkthrough-video/<repo>/<feature-slug>/`, so a run survives a reboot and resumes after the last finished step. Session state and traces are deleted on delivery, since traces hold session cookies.
+
+The repo profile, `~/.cache/walkthrough-video/<repo>/repo-profile.md`, is shared by every walkthrough in the repository: how the stack starts and where its ports are read, how a test user logs in, which selectors show a success or an error toast, which overlays to dismiss, and what reaches shared services. It is written on the first walkthrough and corrected by the recorder after each good take, so later runs skip that discovery. When the project has its own skills for a job, such as starting the stack, seeding or logging in, the profile names them and the recorder uses them. Edit the file or delete it to have it written again.
 
 What it never does: install packages into the repository, change tracked files, touch another checkout's containers, or create, change or delete data on shared services unless you name the resource. It stages such data in the browser instead.
 

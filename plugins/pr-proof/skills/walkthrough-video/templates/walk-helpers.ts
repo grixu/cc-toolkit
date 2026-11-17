@@ -27,6 +27,7 @@ const TOAST_BEAT_MS = 2000;
 // Longer prose types a little faster than the 140 ms default, or a paragraph drags.
 const PROSE_TYPING = { delayMs: FAST ? 10 : 110 };
 const OVERLAY_MOUNT_TIMEOUT_MS = FAST ? 3_000 : 15_000;
+const TITLE_HOLD_MS = 1500;
 
 test('<Feature> walkthrough', async ({ page }) => {
   // The render cuts this step: nothing in it is on camera.
@@ -35,10 +36,17 @@ test('<Feature> walkthrough', async ({ page }) => {
     await blockWrites(page, [/* globs of local endpoints whose writes reach a shared service */]);
     // stubJson / patchJson calls go after the blocks
     await hideDevTooling(page);
-    await page.goto('/');
+    await page.goto('/<first route>');
     await dismissOverlays(page);
     await hold(page, 1000);
+    // Last in prepare, so the card is the first frame on camera.
+    await showTitleCard(page, { kicker: 'PR #<n> · <repo>', headline: '<The change, in plain words>' });
   });
+
+  // Scene 0: the title card; its caption says why the change matters.
+  await narrate('<Who this helps, and how.>');
+  await hold(page, TITLE_HOLD_MS);
+  await hideTitleCard(page);
 
   // Example scene; replace.
   // await narrate('Short caption, at most sixty characters.');
@@ -49,6 +57,35 @@ test('<Feature> walkthrough', async ({ page }) => {
   // await hold(page, TOAST_BEAT_MS);
   // await expectNoErrorToast(page);
 });
+
+// The video's first frame is also the poster an inline player shows before play, so it names the change. The card
+// covers the page `prepare` readied instead of replacing it, so whatever prepare set up in memory survives scene 0.
+async function showTitleCard(page: Page, card: { kicker: string; headline: string }): Promise<void> {
+  // textContent, so a headline with < or & stays text.
+  await page.evaluate(({ kicker, headline }) => {
+    const root = document.createElement('div');
+    root.id = 'walkthrough-title-card';
+    root.style.cssText = 'position: fixed; inset: 0; z-index: 2147483647; display: grid; place-content: center;'
+      + ' gap: 28px; padding: 0 160px; background: #14171a; color: #f2f4f5;'
+      + ' font-family: system-ui, -apple-system, sans-serif;';
+    const kickerLine = document.createElement('div');
+    kickerLine.style.cssText = 'font-size: 34px; letter-spacing: 0.08em; text-transform: uppercase; color: #9aa4ad;';
+    kickerLine.textContent = kicker;
+    const headlineLine = document.createElement('div');
+    headlineLine.style.cssText = 'font-size: 96px; font-weight: 700; line-height: 1.1; text-wrap: balance;';
+    headlineLine.textContent = headline;
+    root.append(kickerLine, headlineLine);
+    document.body.append(root);
+  }, card);
+  // The render cuts `prepare` at its last screencast frame; without a painted card held here, that frame is the bare
+  // app, and it becomes the video's first frame.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await hold(page, 500);
+}
+
+async function hideTitleCard(page: Page): Promise<void> {
+  await page.evaluate(() => document.getElementById('walkthrough-title-card')?.remove());
+}
 
 async function pointAt(page: Page, target: Locator, durationMs = HIGHLIGHT_MS): Promise<void> {
   await expect(target).toBeVisible();
