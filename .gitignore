@@ -32,11 +32,6 @@ docs/.astro/
 docs/cloudflare/.cloudflare/
 docs/cloudflare/.env
 
-# Terraform working state and local values; this repository is public
-docs/infra/.terraform/
-docs/infra/backend.hcl
-docs/infra/*.tfvars
-
 # Python bytecode
 __pycache__/
 *.pyc

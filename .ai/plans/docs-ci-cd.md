@@ -1,8 +1,8 @@
 # Docs site: CI check and CD deploy
 
 Check the docs site on every pull request and deploy it to cct.grixu.dev on every push to `main`,
-with `cf` (Cloudflare's CLI), never Wrangler's CLI. The one lasting non-Worker resource, the CI deploy
-token, comes from Terraform.
+with `cf` (Cloudflare's CLI), never Wrangler's CLI. The CI deploy token is the only lasting
+resource outside the Worker; it is made by hand (step 3 explains why not Terraform).
 
 Branch: `ci/docs-deploy` from `origin/main` (`docs/starlight-site` is merged).
 
@@ -20,9 +20,6 @@ Branch: `ci/docs-deploy` from `origin/main` (`docs/starlight-site` is merged).
   takes `CF_SEND_TELEMETRY=false` (developers.cloudflare.com/cf/ci).
 - A deploy that sets a Custom Domain needs the Worker's account permission (Workers Scripts Write)
   and zone permission Workers Routes Write on grixu.dev (developers.cloudflare.com/workers/authorization/workers).
-- Terraform provider `cloudflare/cloudflare` v5 has `cloudflare_account_token` (policies of
-  permission group ids, sensitive `value`). grixu.dev/infra already uses provider `~> 5.26`,
-  Terraform `~> 1.9`, and an S3 backend in the R2 bucket `grixu-infra`.
 
 ## Steps
 
@@ -48,29 +45,25 @@ Branch: `ci/docs-deploy` from `origin/main` (`docs/starlight-site` is merged).
 
 ### 3. Terraform: the deploy token
 
-- [x] `docs/infra/versions.tf`: Terraform `~> 1.9`, provider `cloudflare ~> 5.26`, `backend "s3" {}`
-  in `grixu-infra` with key `cc-toolkit-docs/terraform.tfstate` (`backend.hcl.example`, same shape
-  as grixu.dev).
-- [x] `docs/infra/variables.tf`: `cloudflare_account_id`, `cloudflare_zone_id` (grixu.dev).
-- [x] `docs/infra/token.tf`: `cloudflare_account_token` "docs_deploy" with two policies, account →
-  Workers Scripts Write, zone grixu.dev → Workers Routes Write. Look up the permission group ids by
-  name with the provider's permission-groups data source (confirmed: `cloudflare_account_api_token_permission_groups_list`, matched by exact name with `one()`).
-- [x] `docs/infra/outputs.tf`: the token value, `sensitive = true`.
-- [x] `.gitignore`: `docs/infra/.terraform/`, `backend.hcl`, `*.tfvars` (the repo is public), plus a
-  committed `terraform.tfvars.example`; commit `.terraform.lock.hcl`.
-- [x] `docs/infra/README.md`: how to init, apply and load the secrets (step 4).
+- [x] ~~`docs/infra/`: a `cloudflare_account_token` with Workers Scripts Write on the account and
+  Workers Routes Write on grixu.dev, state in R2 `grixu-infra`.~~ Built, then removed: the token was
+  the root's only resource, and applying it needs a token that may edit account API tokens, which is
+  broader than the token it makes. Importing a hand-made token instead would be Terraform for its own
+  sake.
 
-### 4. Wire the secrets (you, once)
+### 4. Token and secrets (you, once)
 
-- [ ] `terraform apply` locally with an admin token that may write account API tokens.
+- [ ] Deploy once by hand from `docs/` with a local `cf auth login` (`pnpm -C docs deploy`).
+- [ ] Create the deploy token by hand, scoped as narrowly as Cloudflare allows to the
+  `cc-toolkit-docs` Worker, plus Workers Routes Edit on grixu.dev for the Custom Domain.
 - [ ] Create the `production` environment limited to `main`
   (`gh api -X PUT repos/grixu/cc-toolkit/environments/production` + a deployment branch policy).
-- [ ] `terraform output -raw docs_deploy_token | gh secret set CLOUDFLARE_API_TOKEN --env production`
-  and `gh secret set CLOUDFLARE_ACCOUNT_ID --env production`; the token never reaches the terminal.
+- [ ] Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as `production` environment secrets,
+  piping the token from 1Password so it never reaches the terminal.
 
 ### 5. Verify
 
-- [x] `terraform fmt -check` and `terraform validate` in `docs/infra`; actionlint on the workflow; the `check` job's install, build and dry run pass locally.
+- [x] actionlint on the workflow; the `check` job's install, build and dry run pass locally.
 - [ ] Pull request: the `check` job is green and its log shows the dry run; `deploy` is skipped.
 - [ ] After merge: `deploy` is green and https://cct.grixu.dev serves the merge commit's build.
 - [x] Remove the `deploy` script hint from wherever it says to deploy by hand, if CI now owns it. No docs named it; the `deploy` scripts in `docs/package.json` stay for a manual deploy.
