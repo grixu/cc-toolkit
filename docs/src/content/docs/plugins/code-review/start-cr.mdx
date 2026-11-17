@@ -148,7 +148,7 @@ Most structural fixes get a plain yes.
 With the **Walk decision backend** option set, a decision model answers those questions for you, and you are asked only about the rest.
 The option is off by default; see [Plugin options](/plugins/code-review/reference/#plugin-options).
 
-For each structural fix, the model gets the report bullet, about 25 lines of code around it, its diff hunk, the list of changed file paths and the report's conventions line.
+For each structural fix, the model gets the report bullet, the finding's lines with 12 more on either side, their diff hunk, the list of changed file paths and the report's scope and conventions lines.
 It answers two questions:
 
 - Does the fix depend on a fact the review cannot know, such as a migration's state, a business rule or what a deployed API sends?
