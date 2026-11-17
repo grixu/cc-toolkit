@@ -1,6 +1,6 @@
 {
   "name": "tester",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Tests your running app's API, UI and failure handling with checks drawn from a spec or your git diff. Returns a pass/fail table with evidence for each check.",
   "author": {
     "name": "Mateusz Gostański",

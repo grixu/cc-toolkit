@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-17
+
 ### Added
 
 - Doctor, a read-only readiness check after discovery: the API answers with the recorded envelope, every persona's session restores, the UI suites' start routes load (and get warmed, so a dev server's first-visit compile does not read as a broken page), and the fault suite's dependencies are up. A red probe becomes an unlock question or `BLOCKED "doctor: <probe>"` on the suites resting on it, never a FAIL. Doctor runs again right before dispatch and after every app restart.
