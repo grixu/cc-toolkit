@@ -1,4 +1,4 @@
 {
-  "description": "dev-kit mod: the pr_risk tool that assesses a branch's risk with TypeSafe Jev, Gemini Decision or both",
+  "description": "dev-kit mod: the pr_risk tool that assesses a branch's risk, and the story_signals tool that decides whether it is worth a code story, with TypeSafe Jev, Gemini Decision or both",
   "modules": ["./register.ts"]
 }

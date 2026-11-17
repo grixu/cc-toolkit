@@ -78,6 +78,29 @@
       "description": "Label name; {level} is replaced by the risk level",
       "default": "risk: {level}"
     },
+    "code_story": {
+      "type": "string",
+      "title": "Code story",
+      "description": "When pr-open writes a code story: auto asks a decision model whether the change is worth one and needs a TypeSafe or Gemini key, always writes one for every PR, never writes none.",
+      "options": [
+        "auto",
+        "always",
+        "never"
+      ],
+      "default": "auto"
+    },
+    "story_gate_backend": {
+      "type": "string",
+      "title": "Code story gate backend",
+      "description": "Which model decides whether a change is worth a code story: auto uses every key that is set, both needs both keys, typesafe or gemini uses that one.",
+      "options": [
+        "auto",
+        "typesafe",
+        "gemini",
+        "both"
+      ],
+      "default": "auto"
+    },
     "proof_label": {
       "type": "boolean",
       "title": "Proof label",

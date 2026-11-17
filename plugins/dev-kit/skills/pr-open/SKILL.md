@@ -21,7 +21,7 @@ Run `git fetch origin` first, then resolve each before moving on:
 - **Commits ahead.** `git log --oneline origin/<base>..HEAD` lists at least one commit. With none, stop: there is nothing to open.
 - **Behind base.** When `git rev-list --count HEAD..origin/<base>` is above zero, report the count and whether `git merge-tree --write-tree HEAD origin/<base>` conflicts (it exits 1), then open the PR as it stands. Never merge, rebase or commit here; offer the sync in the report as a separate step.
 
-With the base settled, for a new PR and an existing one alike, start the code story (step 6) when that skill is available. It runs while the rest of this skill does.
+With the base settled, for a new PR and an existing one alike, settle when the code story starts (step 6 **When**), provided that skill is available. Once started, it runs while the rest of this skill does.
 
 ## 2. Gather the change
 
@@ -176,6 +176,15 @@ Also assessed by <model>: **<level>** · impact <impact> · complexity <complexi
 
 ## 6. Code story
 
+**When.** Read the setting `${user_config.code_story}`; text that still starts with `${user_config.` means it is unset, which is `auto`.
+
+- `never`: no story. Skip **Start** and **Finish**, and the report says `Code story: off`.
+- `always`, or an existing PR whose body has a `## Code story` section with a `claude.ai` link: start the story now, so a linked story is always brought up to date.
+- `auto` otherwise: call `mcp__dev-kit__story_signals` with `base`, `repo` as for `pr_risk`, `title` and `description`, looking it up with tool search first when it is not loaded. For a new PR, or an existing PR whose description this run rewrites, call it with the drafted title and body once step 4 is done, anti-slop included, and before step 5: the decision needs what the description says the change is for. For an existing PR whose description stays, call it right away with its current title and body.
+  - `"story": true`, a result starting `Story gate unavailable:`, or no such tool: start the story then. A missing or failing gate never costs the PR its story.
+  - `"story": false`: no story. Skip **Start** and **Finish**, and the report says `Code story: skipped (<reason>, decided by <backend>)`.
+  - Either way the report names each backend in `failed` with its error.
+
 **Start.** Dispatch one background `general-purpose` subagent with the Agent tool, and give it no `name`, so its full reply arrives in the completion notice. Its prompt:
 
 - invoke the `code-story:code-story` skill with the arguments `base <base>`;
@@ -203,4 +212,4 @@ Do not wait for it before pushing or opening the PR.
 
 ## Report
 
-Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), a ticket field set to `None`, each section left `None` or checkbox left unticked for the author to complete, for a rewritten description what changed in it, the risk level with its flags and label and the backend that set it, each other backend's level and whether it differs, or why it was not assessed, for a manifest that was read its proof entries shown, left out for a missing file, marked as rewritten history or stale, the overflow comments posted and removed, and anything that failed to upload, or why the manifest was ignored, the proof label added, removed or left alone, the code story link with its status, or why there is none, the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.
+Done when the PR exists and its URL is printed. End with the URL, the base, the template used (or "default"), a ticket field set to `None`, each section left `None` or checkbox left unticked for the author to complete, for a rewritten description what changed in it, the risk level with its flags and label and the backend that set it, each other backend's level and whether it differs, or why it was not assessed, for a manifest that was read its proof entries shown, left out for a missing file, marked as rewritten history or stale, the overflow comments posted and removed, and anything that failed to upload, or why the manifest was ignored, the proof label added, removed or left alone, the code story link with its status, or why there is none (off, skipped by the gate with its reason, or a failure), the untracked paths that are not in the PR, and, when the branch is behind its base, by how many commits and with what conflict state. Close with one line suggesting `/dev-kit:pr-shepherd` to drive the PR to green; do not invoke it.

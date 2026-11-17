@@ -7,7 +7,7 @@ const DEFAULT_LEVELS = ['low', 'medium', 'high', 'critical']
 // Jev's default limits are 32k tokens for the state plus one question and 64k plus all of them, and real diffs
 // measured 3.5-3.8 chars a token; 72k chars (~20k tokens) leaves headroom for ~3k tokens of questions.
 export const STATE_CHAR_BUDGET = 72_000
-const COMMITS_CHAR_BUDGET = 12_000
+export const COMMITS_CHAR_BUDGET = 12_000
 // Requests are cheap and small ones read better, so a large change may take many; slices stay few for the reader.
 export const MAX_PARTS = 32
 export const MAX_SLICES = 8
@@ -710,7 +710,7 @@ export function fileStatuses(nameStatus: string, entries: { path: string; added:
   return statuses
 }
 
-function clip(text: string, max: number): string {
+export function clip(text: string, max: number): string {
   return text.length <= max ? text : text.slice(0, max) + '\n[… cut to fit the request]'
 }
 
@@ -788,7 +788,7 @@ export function halve(part: { files: string[]; diff: string }): { parts: { files
 }
 
 // `diff --git a/<path> b/<path>` with renames off: both paths are the same, so the first half of the rest is it.
-function diffPath(text: string): string | undefined {
+export function diffPath(text: string): string | undefined {
   const head = text.split('\n', 1)[0]
   if (!head.startsWith('diff --git a/')) return undefined
   const rest = head.slice('diff --git '.length)

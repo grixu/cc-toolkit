@@ -2,6 +2,20 @@ import { DecisionError, ask, limiter, type DecisionProvider, type DecisionReques
 import { MODES, appendLine, chooseBackends, choiceNeeded, createProvider, hasAnyKey, label, providerKeys, type ProviderName } from './providers/index.ts'
 import { EVIDENCE_BUDGET, atomicQuestions, evidenceForFiles, experimentalAnswers, stripTrailingRisk, validateEvidence, type ExecutionEvidence } from './evidence.ts'
 import { FACTOR_REPEATS, averageAnswers, factorGroup, factorReport, factorRequests, scoreFactors, testsInChange, type FactorGroup } from './factors.ts'
+import {
+  MAX_STORY_PARTS,
+  THRESHOLDS,
+  aggregateFacts,
+  averageFacts,
+  chooseGateBackends,
+  decide,
+  gateKey,
+  missingFact,
+  planStory,
+  storyDiffBudget,
+  storyIntent,
+  storyQuestions,
+} from './story.ts'
 
 import {
   MAX_PARTS,
@@ -52,6 +66,10 @@ const CONCURRENCY = 4
 // Each split halves the request, so three levels cover a part at eight times the token limit.
 const MAX_SPLIT_DEPTH = 3
 const COMPARE_LOG = '.cache/dev-kit/compare.jsonl'
+const STORY_TOOL = 'story_signals'
+const STORY_LOG = '.cache/dev-kit/story-gate.jsonl'
+const STORY_DESCRIPTION =
+  'Decide whether a branch is worth a code story, with a decision model: TypeSafe Jev, Gemini Decision, or both. Sends the diff of <base>...HEAD with its diffstat, the commits, and the pull request title and description you pass, asks fact questions about how large the change is and what it touches, and returns JSON: `story` (true or false), `reason` (the fact that decided, `too large`, or `no skip fact held`), `backend` and `models` (who answered), `failed` (a backend that did not), and each fact\'s probability. Call it once the pull request description is drafted.'
 const DESCRIPTION =
   'Assess the risk a branch introduces, with a decision model: TypeSafe Jev, Gemini Decision, or both side by side. Groups the changed files of <base>...HEAD into vertical slices, sends each slice\'s diff to the model and, separately, the change\'s purpose with each slice\'s file statistics, and returns JSON: for the change and for each slice, the risk level with the impact of a mistake, its complexity and likelihood, the manual evidence it needs and whether the description carries it, any rule that adjusted them, what the change does (adds, changes, fixes, restructures), the types of change, and risk flags; plus confidence, the GitHub label to apply, how much of the diff was assessed, and the backend and model that answered. With both backends, `comparison` holds each backend\'s levels. Call it when preparing or reviewing a pull request.'
 
@@ -140,9 +158,38 @@ export function register(on, options) {
       } catch {
         // A refused registration leaves the session without the tool, which pr-open treats as unconfigured.
       }
+      try {
+        await $.tool.register({
+          name: STORY_TOOL,
+          description: STORY_DESCRIPTION,
+          inputSchema: {
+            type: 'object',
+            properties: {
+              base: { type: 'string', description: 'The branch the change merges into, such as main' },
+              repo: {
+                type: 'string',
+                description: "Optional. The absolute path of the working tree the branch is checked out in. Without it the tool reads the session's working directory, then the directory the session started in.",
+              },
+              title: { type: 'string', description: "The pull request's title, drafted or current" },
+              description: { type: 'string', description: "The pull request's body, drafted or current. Generated Code story, Proof and Risk sections are dropped before it is sent." },
+            },
+            required: ['base'],
+          },
+        })
+      } catch {
+        // Without the tool pr-open generates the story, as it does without a key.
+      }
     }
     return next(e)
   })
+
+  on('tool.call', { tool: 'mcp__dev-kit__story_signals' }, async ($, e) => {
+    try {
+      return { result: JSON.stringify(await storySignals($, e.base, options, e.title, e.description, e.repo), null, 2) }
+    } catch (error) {
+      return { result: 'Story gate unavailable: ' + (error instanceof Error ? error.message : String(error)) }
+    }
+  }).catch(($, e, next) => ({ result: `Story gate unavailable: the hook failed (${next.error.kind}): ${next.error.message}` }))
 
   on('tool.call', { tool: 'mcp__dev-kit__pr_risk' }, async ($, e) => {
     try {
@@ -273,6 +320,77 @@ export async function assess($, base: unknown, options, config, proposed?: unkno
   return { ...answered.value, comparison }
 }
 
+export async function storySignals($, base: unknown, options, title?: unknown, description?: unknown, repo?: unknown) {
+  if (!isSafeRef(base)) throw new Error('`base` must be a branch name, such as main')
+  const keys = await providerKeys($, options)
+  const chosen = chooseGateBackends(options, keys)
+  const cwd = await repoRoot($, repo)
+  const ref = await resolveBase($, cwd, base)
+  const range = `${ref}...HEAD`
+  const [log, numstat, diffstat] = await Promise.all([
+    git($, cwd, ['log', '--reverse', '--no-color', '--format=%s%n%n%b%x00', `${ref}..HEAD`]),
+    git($, cwd, ['diff', '--no-relative', '--numstat', '-z', '--no-renames', range]),
+    git($, cwd, ['diff', '--no-relative', '--stat=200', '--no-color', range]),
+  ])
+  const entries = numstat.split('\0').filter(Boolean).map((line) => {
+    const [added, , ...path] = line.split('\t')
+    return { path: path.join('\t'), binary: added === '-' }
+  })
+  if (!entries.length) throw new Error(`no changes between ${ref} and HEAD in ${cwd}`)
+
+  const commits = log.split('\0').map((c) => c.trim()).filter(Boolean).join('\n\n---\n\n')
+  const intent = storyIntent(typeof title === 'string' ? title.trim() : '', typeof description === 'string' ? description : '', commits)
+  const reviewable = entries.filter((f) => !f.binary && !isExcluded(f.path)).map((f) => f.path)
+  const { files, unread } = await readDiffs($, cwd, range, reviewable, storyDiffBudget(intent), MAX_STORY_PARTS)
+  const plan = unread.length ? { tooLarge: true as const } : planStory(files, diffstat, intent)
+
+  let result
+  if (plan.tooLarge) {
+    result = { story: true, reason: 'too large', backend: chosen.length > 1 ? 'both' : chosen[0] }
+  } else {
+    const questions = storyQuestions()
+    const settled = await Promise.allSettled(
+      chosen.map(async (name) => {
+        const provider = createProvider(name, keys, options)
+        const limit = limiter(CONCURRENCY)
+        const parts = await Promise.all(plan.states.map((input) => ask($, provider, { input, questions }, limit)))
+        for (const p of parts) {
+          const missing = missingFact(p.answers)
+          if (missing) throw new Error(`${provider.label} returned no answer for "${missing}"`)
+        }
+        return { backend: name, model: parts[0].model, facts: aggregateFacts(parts.map((p) => p.answers)) }
+      }),
+    )
+    const answered = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value] : []))
+    const failed = settled.flatMap((s, i) => (s.status === 'rejected' ? [{ backend: chosen[i], error: s.reason instanceof Error ? s.reason.message : String(s.reason) }] : []))
+    if (!answered.length) throw new Error(failed.map((f) => `${label(f.backend)}: ${f.error}`).join('; '))
+    // With one of two backends down, the other decides alone, against the thresholds fitted for it alone.
+    const backend = gateKey(answered.map((a) => a.backend))
+    const facts = averageFacts(answered.map((a) => a.facts))
+    result = {
+      ...decide(facts, THRESHOLDS[backend]),
+      backend,
+      models: Object.fromEntries(answered.map((a) => [a.backend, a.model])),
+      ...(failed.length ? { failed } : {}),
+      facts: Object.fromEntries(Object.entries(facts).map(([k, v]) => [k, Math.round(v * 100) / 100])),
+    }
+  }
+  await logStory($, cwd, ref, result)
+  return result
+}
+
+// Every decision is kept, with no diff text, so the thresholds can be re-measured against stories the owner kept.
+async function logStory($, cwd: string, ref: string, result: Record<string, unknown>) {
+  const home = trimmedOption(await $.env.get('HOME'), '')
+  if (!home) return
+  try {
+    const [head, branch, repo] = await Promise.all([git($, cwd, ['rev-parse', 'HEAD']), git($, cwd, ['branch', '--show-current']), manifestRepo($, cwd)])
+    await appendLine($, `${home}/${STORY_LOG}`, JSON.stringify({ at: new Date().toISOString(), repo, branch: branch.trim(), head: head.trim(), base: ref, ...result }))
+  } catch {
+    // A log that cannot be written never costs the user their decision.
+  }
+}
+
 function summary(r) {
   return {
     backend: r.backend,
@@ -377,14 +495,14 @@ async function resolveBase($, cwd: string, base: string): Promise<string> {
   throw new Error(`base branch "${base}" not found locally or on origin; run git fetch origin`)
 }
 
-async function readDiffs($, cwd: string, range: string, paths: string[], budget: number): Promise<{ files: FileDiff[]; unread: string[]; clipped: number }> {
+async function readDiffs($, cwd: string, range: string, paths: string[], budget: number, maxParts = MAX_PARTS): Promise<{ files: FileDiff[]; unread: string[]; clipped: number }> {
   const files: FileDiff[] = []
   const unread: string[] = []
   let charsRead = 0
   let clipped = 0
-  // Stop reading once the diff cannot fit in MAX_PARTS requests; the rest is reported as not assessed.
+  // Stop reading once the diff cannot fit in maxParts requests; the rest is reported as not assessed.
   for (const path of paths) {
-    if (charsRead > budget * MAX_PARTS) {
+    if (charsRead > budget * maxParts) {
       unread.push(path)
       continue
     }

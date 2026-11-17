@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `pr-open`: labels the pull request `proof` while its proof from pr-proof matches the code, and removes the label once a later run finds the proof stale or behind rewritten history. The **Proof label** and **Proof label name** options turn it off or rename it.
+- `story_signals` tool and the **Code story** option (`auto`, `always`, `never`). With `auto`, the default, `pr-open` asks Jev, Gemini Decision or both whether the change is worth a code story once the description is drafted, and skips it for typo fixes, test-only changes, small local fixes and similar. Without a key, or when the gate fails, the story is written as before. The **Code story gate backend** option picks the model; each decision is logged to `~/.cache/dev-kit/story-gate.jsonl`.
+- `evals/story-gate/`: the calibration suite for the gate, with its data kept in R2.
+
+### Changed
+
+- `pr-open` starts a new pull request's code story after drafting the description, not right after settling the base, when the gate decides.
 
 ## [0.11.4] - 2026-11-17
 
