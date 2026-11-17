@@ -7,7 +7,7 @@ description: >-
   /start-cr.
 argument-hint: "--lens <lens>[,<lens>…] --context <dir>"
 user-invocable: false
-allowed-tools: Read, Bash, Grep, Glob, Write
+allowed-tools: Read, Bash, Grep, Glob, Write, ToolSearch, mcp__collegium__collegium_run, mcp__collegium__collegium_result
 ---
 
 # cr-scan — one lens, one pass, one output
@@ -15,7 +15,7 @@ allowed-tools: Read, Bash, Grep, Glob, Write
 Arguments: `$ARGUMENTS`
 
 You are the Scanner that `${CLAUDE_PLUGIN_ROOT}/references/scanner-contract.md` describes, for the
-lens named by `--lens`. Read that contract completely before anything else: it is the whole
+lens named by `--lens` — except `codex`, which **`--lens codex`** below covers. Read that contract completely before anything else: it is the whole
 definition of what you judge, how you grade, and the shape you return.
 
 Read every file this skill names — the contract, each rules file, `scope.json`, `conventions.md`,
@@ -30,6 +30,19 @@ listed order — see **Several lenses in one run**.
 
 A missing `--lens` or `--context`, or a context directory without `scope.json`, ends the run with
 `status: error` and the reason; write nothing.
+
+## `--lens codex`
+
+`codex` is not a lens with a rules file: it is the external Codex review, and
+`${CLAUDE_PLUGIN_ROOT}/references/codex-review.md` replaces the contract, the brief and **Output**
+below. Read it completely and do what its **The run** and **Rendering** say: call
+`collegium_run`, then `collegium_result` with `wait_seconds: 600` until the state is terminal, and
+write `<context>/codex.md` — always, delivered or skipped. `codex` runs only alone; in a list it
+gets an `error` block, `reason: codex runs as its own agent`, and the other lenses carry on.
+
+Its closing block is `status: scanned` with the rendered counts when Codex delivered, and
+`status: inactive` with `reason: <the skip reason>` as its last line when `codex.md` holds the
+skip header; `handoffs` is always 0.
 
 ## Your brief
 

@@ -6,7 +6,7 @@ description: >-
   lens set, and writes all of it to a context directory that cr-scan and cr-merge read. Asks
   nothing and edits nothing in the checkout. Not for interactive use: a person reviews with
   /start-cr.
-argument-hint: "--base <ref> --out <dir> [-C <checkout>] [--spec <path> [--spec-focus <codes>]]"
+argument-hint: "--base <ref> --out <dir> [-C <checkout>] [--spec <path> [--spec-focus <codes>]] [--codex]"
 user-invocable: false
 allowed-tools: Read, Bash, Grep, Glob, Write
 ---
@@ -25,6 +25,8 @@ you ask, so every decision below is taken from the input or reported back, never
 - `--spec-focus "<codes>"` — optional, only with `--spec`. Comma-separated spec element codes and
   decision ids (`DB-1,API-2,D3`) naming the part of the spec this change implements; the `spec`
   and `correctness` Lenses judge the change against those first.
+- `--codex` — optional. The caller adds an OpenAI Codex review through Collegium
+  (`${CLAUDE_PLUGIN_ROOT}/references/codex-review.md`); you check neither the setting nor the tools.
 
 A missing `--base` or `--out`, a `-C` that is not a git checkout, a `--spec-focus` without
 `--spec`, or a `--spec-focus` that holds no code ends the run with `status: error` and the reason.
@@ -110,7 +112,10 @@ list when the `hookify` lens is active, and `null` when it is inactive. `files` 
 `security` and `assumptions`, the whole judged list plus every skipped path but real `.env*` files (every one but `.env.example`, `.env.sample`, `.env.template` and `.env.dist`) for `spec`, the whole judged list plus
 every skipped path but lockfiles, generated output and real `.env*` files, minus the spec, for `coherence`, the
 same list with the spec kept for `hookify`, and the
-judged list minus its `policy` files for every other lens. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
+judged list minus its `policy` files for every other lens. With `--codex`, append
+`{ "lens": "codex", "files": <the whole judged list> }` to `lenses.active` — only when that list
+is not empty, and never in `lenses.inactive`; without `--codex` there is no `codex` entry. It is
+not a lens: it never turns an `empty` change `ready`. On `status: empty`, write `scope.json` with empty lists and the `alternate` object
 the script returned, so the caller can read what you saw.
 
 ## 4. Return
