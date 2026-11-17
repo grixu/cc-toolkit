@@ -47,11 +47,23 @@ export function startedMs(id: string): number {
   return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : 0
 }
 
+// FNV-1a: the mod runtime offers no crypto module, and the key only needs to tell paths apart.
+function hash8(text: string): string {
+  let h = 0x811c9dc5
+  for (const byte of new TextEncoder().encode(text)) {
+    h ^= byte
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
 // Every worktree of one repository shares its git common dir, so keying the store on the
-// main worktree pools their runs under one retention limit.
+// main worktree pools their runs under one retention limit. The name alone is readable but not
+// unique (`/a/b-c` and `/a-b/c` flatten alike), so the hash of the full path keeps stores apart.
 export function repoKey(commonDir: string): string {
-  const main = commonDir.replace(/\/+$/, '').replace(/\/\.git$/, '')
-  return main.replace(/^\/+/, '').replace(/[^A-Za-z0-9._-]+/g, '-') || 'root'
+  const main = commonDir.replace(/\/+$/, '').replace(/\/\.git$/, '') || '/'
+  const name = (main.split('/').pop() || 'root').replace(/[^A-Za-z0-9._-]+/g, '-')
+  return `${name}-${hash8(main)}`
 }
 
 export function parseListing(stdout: string): Run[] {

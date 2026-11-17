@@ -23,9 +23,15 @@ test('an unusable retention keeps the default with a warning', () => {
 })
 
 test('every worktree of one repository shares one store key', () => {
-  expect(repoKey('/Users/me/code/app/.git')).toBe('Users-me-code-app')
-  expect(repoKey('/Users/me/code/app/.git/')).toBe('Users-me-code-app')
-  expect(repoKey('/srv/bare.git')).toBe('srv-bare.git')
+  const key = repoKey('/Users/me/code/app/.git')
+  expect(key).toMatch(/^app-[0-9a-f]{8}$/)
+  expect(repoKey('/Users/me/code/app/.git/')).toBe(key)
+  expect(repoKey('/srv/bare.git')).toMatch(/^bare\.git-[0-9a-f]{8}$/)
+})
+
+test('paths that flatten alike still get different store keys', () => {
+  expect(repoKey('/home/u/a-b/c/.git')).not.toBe(repoKey('/home/u/a/b-c/.git'))
+  expect(repoKey('/home/u/my app/.git')).not.toBe(repoKey('/home/u/my-app/.git'))
 })
 
 test('a run id sorts by start time and names its scope', () => {
@@ -115,10 +121,11 @@ test('a rerun opens a new run beside the previous one and strips old secrets', a
 
   const answer = await $.tool.call({ tool: TOOL, scope: 'spec.md', rerun: 'last' })
   const out = JSON.parse(answer.result)
+  const store = `/runs/${repoKey('/repo/.git')}`
 
-  expect(out.work.startsWith('/runs/repo/')).toBe(true)
+  expect(out.work.startsWith(`${store}/`)).toBe(true)
   expect(out.previous.id).toBe('20261115T100000Z-spec-md')
-  expect(out.previous.path).toBe('/runs/repo/20261115T100000Z-spec-md')
+  expect(out.previous.path).toBe(`${store}/20261115T100000Z-spec-md`)
   expect(out.explore).toBe(true)
   expect(out.retention).toBe(50)
   expect(out.pruned).toEqual([])
@@ -127,7 +134,7 @@ test('a rerun opens a new run beside the previous one and strips old secrets', a
   expect(create?.[5]).toBe(out.work)
   expect(JSON.parse(create?.[6] ?? '{}').rerunOf).toBe('20261115T100000Z-spec-md')
   const removed = calls.find((c) => c[3] === 'tester-remove')?.slice(4)
-  expect(removed).toEqual(['/runs/repo/20261115T100000Z-spec-md/secrets', '/runs/repo/20261116T100000Z-spec-md/secrets'])
+  expect(removed).toEqual([`${store}/20261115T100000Z-spec-md/secrets`, `${store}/20261116T100000Z-spec-md/secrets`])
 })
 
 test('a rerun with nothing to repeat answers with the reason', async ($, on) => {
