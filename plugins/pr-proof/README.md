@@ -111,7 +111,7 @@ Use it when a reviewer should see a feature work, or to re-record the video afte
 With a pull request or branch, the video shows what that change made different for a user; without one, the whole feature. A relay of five subagents does the work, each from its own brief, handing over through files only:
 
 1. **Requirements**: one requirement with acceptance criteria per user-visible change, from the spec, the ticket or the code, each marked `stated` or `derived`. In parallel, a **tool check** picks the playwright-recast and Playwright versions to run and checks the machine.
-2. **Scenario**: the video's scenes, each mapped to a requirement.
+2. **Scenario**: the video's scenes, each mapped to a requirement. Scene 0 is a title card with the pull request's number and the change in plain words, so the video's poster names the change; the next captions say who the change helps before showing how.
 3. **Validation**: a separate subagent checks the scenario against the requirements and the code, and fixes it.
 4. **Recording**: starts the stack when nobody else has, records the Playwright test, renders an MP4 with burned-in captions at the `video_speed` and `caption_density` options, and reviews its own frames for readable captions, calm pacing in the take and no error toasts. It retakes up to two times.
 5. **Report**: the video, then the UX defects and bugs seen on camera, first, and the scenes as a numbered list with their times. Give feedback by scene number, by the time in your player or by a caption's words; "too fast" for the whole video is only a re-render at another speed.

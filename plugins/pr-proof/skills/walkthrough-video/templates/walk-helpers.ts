@@ -27,6 +27,7 @@ const TOAST_BEAT_MS = 2000;
 // Longer prose types a little faster than the 140 ms default, or a paragraph drags.
 const PROSE_TYPING = { delayMs: FAST ? 10 : 110 };
 const OVERLAY_MOUNT_TIMEOUT_MS = FAST ? 3_000 : 15_000;
+const TITLE_HOLD_MS = 1500;
 
 test('<Feature> walkthrough', async ({ page }) => {
   // The render cuts this step: nothing in it is on camera.
@@ -38,7 +39,14 @@ test('<Feature> walkthrough', async ({ page }) => {
     await page.goto('/');
     await dismissOverlays(page);
     await hold(page, 1000);
+    // Last in prepare, so the card is the first frame on camera.
+    await showTitleCard(page, { kicker: 'PR #<n> · <repo>', headline: '<The change, in plain words>' });
   });
+
+  // Scene 0: the title card; its caption says why the change matters.
+  await narrate('<Who this helps, and how.>');
+  await hold(page, TITLE_HOLD_MS);
+  await page.goto('/<first route>');
 
   // Example scene; replace.
   // await narrate('Short caption, at most sixty characters.');
@@ -49,6 +57,23 @@ test('<Feature> walkthrough', async ({ page }) => {
   // await hold(page, TOAST_BEAT_MS);
   // await expectNoErrorToast(page);
 });
+
+// The video's first frame is also the poster an inline player shows before play, so it names the change.
+async function showTitleCard(page: Page, card: { kicker: string; headline: string }): Promise<void> {
+  await page.setContent(`
+    <style>
+      body { margin: 0; height: 100vh; display: grid; place-content: center; gap: 28px; padding: 0 160px;
+             background: #14171a; color: #f2f4f5; font-family: system-ui, -apple-system, sans-serif; }
+      #kicker { font-size: 34px; letter-spacing: 0.08em; text-transform: uppercase; color: #9aa4ad; }
+      #headline { font-size: 96px; font-weight: 700; line-height: 1.1; text-wrap: balance; }
+    </style>
+    <div id="kicker"></div><div id="headline"></div>`);
+  // textContent, so a headline with < or & stays text.
+  await page.evaluate(({ kicker, headline }) => {
+    document.getElementById('kicker')!.textContent = kicker;
+    document.getElementById('headline')!.textContent = headline;
+  }, card);
+}
 
 async function pointAt(page: Page, target: Locator, durationMs = HIGHLIGHT_MS): Promise<void> {
   await expect(target).toBeVisible();

@@ -29,7 +29,7 @@ All in `recast/`:
 
 ## 3. The walkthrough test
 
-Implement the scenes faithfully: same order, selectors, typed text, captions, zooms, highlights, pauses. The walk file copied from `walk-helpers.ts` carries the tested beats (`pointAt`, `hold`, `expectNoErrorToast`, `RECAST_FAST`) and the `prepare` step. Put everything a viewer should not see (closing release notes, a consent banner that mounts seconds after load, a dev-tools pill, expanding a collapsed sidebar, forcing a feature flag or staging data through `page.route`) inside `test.step('prepare', …)`, which the render cuts. Assert each scene's visible outcome before the next beat, and assert that no error toast appeared, so a broken take fails instead of recording garbage.
+Implement the scenes faithfully: same order, selectors, typed text, captions, zooms, highlights, pauses. The walk file copied from `walk-helpers.ts` carries the tested beats (`pointAt`, `hold`, `expectNoErrorToast`, `RECAST_FAST`), the `prepare` step and the title card: `showTitleCard` runs last in `prepare` with scene 0's kicker and headline, so the card is the video's first frame and the poster a PR's player shows, and scene 0's caption plays over it before the first navigation. Put everything a viewer should not see (closing release notes, a consent banner that mounts seconds after load, a dev-tools pill, expanding a collapsed sidebar, forcing a feature flag or staging data through `page.route`) inside `test.step('prepare', …)`, which the render cuts. Assert each scene's visible outcome before the next beat, and assert that no error toast appeared, so a broken take fails instead of recording garbage.
 
 When the built UI deviates from the scenario, adapt minimally and record the deviation; invent no new scene. A caption longer than the density's limit (60 × caption density characters), even one handed to you in a retake message, is shortened, never fitted by raising `maxCharsPerLine`: the density sets it, in `render.mts`.
 
@@ -46,6 +46,7 @@ All commands run from the work dir, with `FRONTEND_URL` and `API_URL` exported, 
 Run `CAPTION_MAX=<60 × density> <this skill dir>/templates/frames.sh out/<slug>.mp4 recast/tests/<slug>.walk.ts` (with `SPEED` exported) and look at what it writes to `out/frames/`: `timeline/` sheets of frames sampled more often the faster the speed, `cue-sheet*.png` with one row per caption (its middle and its end), `cues.txt` with each caption's number, time range and text, plus a printed list of `narrate` captions over the limit, of split cues, and `WARN` lines for the file itself. Check that:
 
 - no `WARN` line reports other than one video stream or other than 30 fps; a size over 10 MB is not a failure, but goes in your report;
+- the first frame is the title card;
 - captions are readable at the density's type size when paused, within the density's limit, start with a capital letter, and cover nothing that matters (move them to the top with `CAPTION_POSITION=top` when a dropdown or footer opens at the bottom);
 - every caption is held long enough in the take to read at about 12 characters a second; in the render it lasts that time divided by speed ÷ 0.5, so above `0.5x` a short on-screen cue is expected (viewers pause), but a dropped cue or one that never reaches the screen is a failure;
 - no action is cut mid-way and no caption runs ahead of its action;
