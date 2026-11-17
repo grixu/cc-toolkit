@@ -134,8 +134,10 @@ Commit: `docs(code-story): quote the hidden cause and what the change makes simp
       sidebars.
 - [x] Every new link resolves (the build's link check, or open the built pages).
       — A script over `dist/` checked every in-page link and anchor on the 22 changed pages: 0 broken.
-- [ ] `/compound-writing:cw-ai-check` on the new EN sections; the PL sections read like the other
-      PL pages. — Skipped: the skill was not available in this session; the EN diffs were read by hand.
+- [x] `/compound-writing:cw-ai-check` on the new EN sections; the PL sections read like the other
+      PL pages. — Ran `/anti-slop:anti-slop` instead, on the added lines in EN and PL: cut two
+      unsupported reasons and an invented reader use, a run-up, a calque ("outlives", "żyje") and
+      bold labels in the gate's question list.
 - [ ] Cold read of the pr-open page as a user who only knew the old story-always behaviour.
       — Skipped, as above.
 
