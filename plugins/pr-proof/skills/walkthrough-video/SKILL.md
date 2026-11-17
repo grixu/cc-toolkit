@@ -40,7 +40,7 @@ Dispatch with `run_in_background: true` (a boolean; a string runs the leg in the
 1. **Requirements, tool check and repo profile**, in one message, two subagents or three:
    - `briefs/requirements.md` writes `requirements.md`. Done when every user-visible change in scope has an FR with at least one AC, each citing its source and marked `stated` or `derived`.
    - `briefs/tool-check.md` writes `recast-notes.md`: `reference/recast.md` plus any delta in newer releases. Done when the notes name the playwright-recast + `@playwright/test` version pair to use, with evidence.
-   - `briefs/profile.md` writes the repo profile, only when it does not exist yet. Done when every job in it names a project skill or a method found, with its source.
+   - `briefs/profile.md` writes the repo profile, only when it does not exist yet. When a stack for this checkout is already up (the caller's, or one an earlier run left), pass its URLs. Done when every job in it names a project skill or a method found, with its source.
 
    **Confirmation gate.** When any requirement is `derived`, or `requirements.md` lists UX concerns or open decisions (real or staged data, a negative case shown live or only in a caption), put them to the user in their language and wait for a yes or corrections before step 2: a scenario built on a guessed requirement costs a whole recording. Write the answers into `requirements.md` under `## User decisions`; every later leg treats them as binding.
 2. **Scenario**: `briefs/scenario.md` writes `scenario.md`. Done when scene 0 is the title card, every later scene maps to an FR/AC, and the setup, recording settings, coverage table and findings sections are filled.
