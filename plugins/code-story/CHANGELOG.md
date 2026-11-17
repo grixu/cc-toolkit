@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-17
+
 ### Fixed
 
 - README: the update lookup lists all three places a story is found, including a story link in the request; the base lookup starts with a base named in the request.
