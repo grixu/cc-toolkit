@@ -94,8 +94,8 @@ short notes list. No curl bodies, no logs, nothing else.
 SUITE <id> — <one-line what it covers>
 | AC/ref | check | expected | actual | PASS/FAIL |
 |---|---|---|---|---|
-| AC-77 | GET /organizations as member | 200 | 200 | PASS |
-| AC-80 | member DELETE /roles/{id} | 403 | 403 | PASS |
+| AC-77 S2-1 | GET /organizations as member | 200 | 200 | PASS |
+| AC-80 S2-4 | member DELETE /roles/{id} | 403 | 403 | PASS |
 
 NOTES:
 - up to 5 bullets: anomalies, blocked checks with the reason, limitations, suspected bugs
@@ -103,5 +103,6 @@ NOTES:
   explanation, however well the two seem to fit
 ```
 
-Use `PASS` / `FAIL` for executed checks; `BLOCKED` or `ERROR` (not FAIL) in the verdict cell
+The first cell names the criterion and the check id together, as in the brief's suite; a row
+without its criterion cannot be traced back to the spec. Use `PASS` / `FAIL` for executed checks; `BLOCKED` or `ERROR` (not FAIL) in the verdict cell
 when a check could not run. Keep it to the table + notes.

@@ -76,14 +76,15 @@ decides pass/fail.
 ## Return contract
 
 Your final message is only a compact markdown table — one row per check — plus up to 5
-notes.
+notes. The first cell names the criterion and the check id together, as in the brief's suite; a
+row without its criterion cannot be traced back to the spec.
 
 ```
 SUITE <id> — <one-line what it covers>
 | AC/ref | check | expected | actual | PASS/FAIL |
 |---|---|---|---|---|
-| AC-115 | Members nav visible for superadmin | visible | visible | PASS |
-| AC-116 | Members nav hidden for member | absent | absent | PASS |
+| AC-115 S6-1 | Members nav visible for superadmin | visible | visible | PASS |
+| AC-116 S6-2 | Members nav hidden for member | absent | absent | PASS |
 
 NOTES:
 - up to 5 bullets: anomalies, blocked checks with the reason, limitations, suspected bugs

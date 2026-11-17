@@ -61,6 +61,8 @@ resting on it, never a FAIL.
 - User-owned stores the app writes to: `<vault path / bucket / mailbox>` — contents at start
   `<count or listing method>`, and how to enumerate what *this run* created
   `<the DB column / API field / log line that records each artifact's exact name>`.
+- Full copies of rows holding passwords, hashes, tokens or keys: `$WORK/secrets/<file>` —
+  quote counts and ids here, never the rows.
 
 ## Domain topology (what exists to test against)
 - <entities, ids, ownership, relationships the checks rely on — e.g. orgs 1420/1483, who owns what>
@@ -156,6 +158,7 @@ thread, so a DB reachable only through MCP is not a reason to skip the fan-out.
 ## Return format
 Return only a compact markdown table — one row per check —
 `| AC/ref | check | expected | actual | PASS/FAIL |` — then `NOTES:` up to 5 bullets.
+The first cell names the criterion and the check id together, e.g. `AC-4 S4-2`.
 No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run.
 The commands and deciding output go to `$WORK/evidence/<suite id>.md` instead, secret files
 named by path, never quoted.

@@ -170,7 +170,9 @@ Discover the live stack fresh (this is what rots in stored config, so never assu
   ports are up, and what already exists in any user-owned store the app writes to. This is what
   "restored" gets measured against at step 7. Without it you are restoring to an *assumption* of
   what pristine looks like — and a state row the app creates during the run reads as pre-existing
-  or as litter with equal plausibility.
+  or as litter with equal plausibility. A snapshot that copies rows holding passwords, password
+  hashes, tokens or keys goes into `$WORK/secrets/`, since the run directory outlives the run;
+  the brief quotes only counts and ids from it.
 - **Dependencies for fault-injection** — the container/process name, how the app reaches
   it (so a suite can pause/stop it or front it with a proxy), and how the stack is
   supervised: read the launcher (compose flags, restart policy) to learn what a single
@@ -229,7 +231,8 @@ can change under both.
 
 Project the ACs (or the diff) into suites — one suite per coherent area (a resource, a
 flow, an error class), each a small list of checks. A check is
-`| AC/ref | check | expected | actual | PASS/FAIL |`. Positive per observable behavior;
+`| AC/ref | check | expected | actual | PASS/FAIL |`, whose first cell names the criterion and
+the check id together (`AC-4 S4-2`). Positive per observable behavior;
 negatives only for error paths the scope actually enumerates.
 
 #### 3a. Widen from the spec — scan the code's behavior, not just its routes
@@ -488,7 +491,9 @@ a permission prompt. A run without `RESULTS.md` is one a rerun cannot pick, and 
 tool call removes any `secrets/` a crashed run left behind.
 
 Report: a consolidated table per suite (pass/fail/blocked/skipped counts), every FAIL bound
-to its AC/ref with the verdict and actual-vs-expected, the reproduced exploratory findings, the
+to its AC/ref with the verdict and actual-vs-expected (a defect grouping rows names each
+criterion it breaks, not only the check ids, because the spec's owner reads by criterion), the
+reproduced exploratory findings, the
 `observation` rows (unreproduced leads among them), the uncovered gaps, the teardown ledger in
 full (what was changed, what was reverted, what deliberately stays and why) with restoration
 verified against the step-2 snapshot and quoted, and one line of suggested next action. Close
