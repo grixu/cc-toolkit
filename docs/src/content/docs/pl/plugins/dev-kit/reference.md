@@ -7,7 +7,7 @@ sidebar:
   order: 10
 ---
 
-Ta strona wymienia argumenty, z góry dozwolone komendy i bloki wyniku skilli dev-kit.
+Ta strona wymienia argumenty, opcje, z góry dozwolone komendy i bloki wyniku skilli dev-kit.
 Opcje etykiety ryzyka, wejścia narzędzia i pola wyniku są na stronie [Etykieta ryzyka: referencja](/pl/plugins/dev-kit/risk-assessment/reference/).
 
 ## Argumenty
@@ -27,6 +27,22 @@ Tabela 1. Argumenty skilli
 - **`checkout=<dir>`** (`ci-fix`) wskazuje lokalny checkout do naprawy, gdy wywołujący pracuje w worktree na branchu runu.
 - **`unattended`** (`dep-upgrade-check`) o nic nie pyta, kończy ze statusem `stopped` wszędzie tam, gdzie sprawdzenie inaczej by zapytało, i publikuje pełny raport na pull requeście. `GITHUB_ACTIONS=true` działa tak samo.
 
+## Opcje pluginu
+
+Ustawiasz je przez `/plugin configure dev-kit@cc-toolkit`.
+Te opcje sterują historią zmiany i etykietą dowodu w `pr-open`; klucze API i opcje etykiety ryzyka są na stronie [Etykieta ryzyka: referencja](/pl/plugins/dev-kit/risk-assessment/reference/#opcje-pluginu).
+
+| Opcja | Domyślnie | Co robi |
+|---|---|---|
+| `code_story` | `auto` | Kiedy `pr-open` pisze historię zmiany. `auto` pyta model decyzyjny, czy zmiana jest jej warta, i wymaga klucza TypeSafe albo Gemini; bez klucza historia powstaje. `always` pisze ją dla każdego pull requesta, `never` nie pisze żadnej. |
+| `story_gate_backend` | `auto` | Który model decyduje przy `auto`. `auto` używa każdego backendu z ustawionym kluczem, `both` wymaga obu kluczy, `typesafe` albo `gemini` używa tego jednego. |
+| `proof_label` | `true` | Czy `pr-open` dodaje etykietę do pull requesta, dopóki jego dowód z pr-proof jest aktualny. |
+| `proof_label_name` | `proof` | Nazwa tej etykiety. |
+
+Tabela 2. Opcje historii zmiany i etykiety dowodu
+
+Sekcje [Czy zmiana dostaje historię](/pl/plugins/dev-kit/pr-open/#czy-zmiana-dostaje-historię) i [Etykieta proof](/pl/plugins/dev-kit/pr-open/#etykieta-proof) opisują obie funkcje w pełni.
+
 ## Uprawnienia
 
 Każdy skill ma z góry dozwolone tylko niektóre z komend, które uruchamia.
@@ -39,7 +55,7 @@ O każdą inną pyta, chyba że twoje ustawienia już na nią pozwalają.
 | `ci-fix` | Edycja plików; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checki z aplikacji zewnętrznych); twoje komendy testów, lintera i buildu |
 | `dep-upgrade-check` | Zapis plików (zapytanie o advisory i treści komentarzy); `printenv GITHUB_ACTIONS`; `git fetch`, `show`; `gh repo view`; `gh pr view`, `diff`, `checks`; `gh run view`; `gh api`, łącznie z zapisami; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; `curl -s` do api.osv.dev i api.deps.dev; WebFetch; wyszukiwanie i scrape firecrawla; context7 | Zapytania dla npm, yarn, Python, Go, PHP, Rust, obrazów kontenerów i GitHub Actions; opcjonalny build w worktree |
 
-Tabela 2. Komendy, które każdy skill uruchamia bez pytania
+Tabela 3. Komendy, które każdy skill uruchamia bez pytania
 
 Pętla `pr-shepherd` bez nadzoru staje przy pierwszym pytaniu o uprawnienia.
 Zanim ją uruchomisz, zezwól na komendy checków swojego repozytorium w `.claude/settings.json`, na przykład `"Bash(pnpm test *)"`.

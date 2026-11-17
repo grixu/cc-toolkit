@@ -28,7 +28,7 @@ Three skills work in [human review](/lifecycle/human-review/), the last stage of
 
 | Skill | When you reach for it | What it does |
 |---|---|---|
-| [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) | Your commits are ready for review | Pushes the branch and opens a pull request that fills the repository's template from the diff, with the branch's proof and code story. With a TypeSafe or Gemini Decision key, it labels the pull request with its risk. |
+| [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) | Your commits are ready for review | Pushes the branch and opens a pull request that fills the repository's template from the diff, with the branch's proof and code story, and labels it `proof` while that proof is current. With a TypeSafe or Gemini Decision key, it labels the pull request with its risk and skips the story for a change too plain to need one. |
 | [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) | The pull request is open | Loops until every required check is green and no review thread is open. It fixes what it agrees with and answers the rest. |
 | [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/) | A check failed | Finds the cause of a red run, fixes it, verifies the fix locally, and commits one fix per cause. `pr-shepherd` calls it for you. |
 | [`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/) | A dependency bump arrives | Checks the target version's security record, then maps every change to where your code uses the package. Returns `safe`, `safe with changes` or `breaking`. |
@@ -45,7 +45,8 @@ It ends the description with a **Risk** section and labels the pull request, suc
 A reviewer then knows how closely to look before they open the diff.
 
 The diff, the commit messages and the pull request and ticket descriptions are sent to the backend you chose: TypeSafe, Google, or both.
-Without either key, nothing is sent, and the pull request opens without a label.
+The same key lets `pr-open` ask whether the change is worth a [code story](/plugins/dev-kit/pr-open/#whether-a-change-gets-a-story), which sends the diff, the commit messages and the drafted description too.
+Without either key, nothing is sent, the pull request opens without a label, and every pull request gets a story.
 [The risk label](/plugins/dev-kit/risk-assessment/) explains what the label means and how to turn it on.
 
 ## Requirements

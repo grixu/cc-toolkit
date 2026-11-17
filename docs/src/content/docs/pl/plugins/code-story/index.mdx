@@ -25,6 +25,7 @@ Mapa pokazuje, gdzie w cyklu leży code-story.
 code-story to plugin pomocniczy w etapie [03c Review człowieka](/pl/lifecycle/human-review/).
 Tam pull requestem kieruje [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).
 Zleca historię zmiany subagentowi w tle i dodaje do opisu pull requesta sekcję `## Code story` z linkiem.
+Z kluczem modelu decyzyjnego `pr-open` [pomija historię](/pl/plugins/dev-kit/pr-open/#czy-zmiana-dostaje-historię) przy zmianie zbyt prostej, żeby jej potrzebować, na przykład poprawce literówki albo zmianie tylko w testach.
 Sam code-story przepuszcza swoją prozę przez [anti-slop](/pl/plugins/anti-slop/), zanim złoży stronę.
 
 Możesz go też uruchomić samodzielnie, na dowolnym branchu albo pull requeście.

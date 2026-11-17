@@ -58,27 +58,67 @@ Diagram pokazuje kroki skilla i to, co zostawia każdy z nich:
   skill="walkthrough-video"
   input="Pull request, branch, spec albo funkcja i to, kto ogląda"
   steps={[
-    { name: 'Wymagania', does: 'Spisuje każdą zmianę widoczną dla użytkownika z kryteriami akceptacji; równolegle sprawdzenie narzędzi wybiera wersje.', leaves: 'requirements.md' },
+    { name: 'Wymagania', does: 'Spisuje każdą zmianę widoczną dla użytkownika z kryteriami akceptacji; równolegle sprawdzenie narzędzi wybiera wersje, a przy pierwszym walkthrough w repozytorium trzeci subagent pisze profil repozytorium.', leaves: 'requirements.md' },
     { name: 'Potwierdzenie', does: 'Prosi cię o potwierdzenie każdego wywnioskowanego wymagania, uwagi UX i otwartej decyzji.', optional: true },
-    { name: 'Scenariusz', does: 'Pisze sceny; osobny subagent sprawdza je z kodem i poprawia.', leaves: 'scenario.md' },
-    { name: 'Nagranie', does: 'Nagrywa test, renderuje MP4 i przegląda własne klatki.', leaves: 'out/<slug>.mp4', loop: 'do dwóch powtórek, dopóki sprawdzenie klatek nie przejdzie' },
-    { name: 'Raport', does: 'Daje ci wideo, a po nim błędy i bugi widoczne na nagraniu.' },
-    { name: 'Dostarczenie', does: 'Po twojej akceptacji zgłasza wideo do prepare-proof, a uruchomiony samodzielnie kopiuje je i dołącza do pull requesta.', leaves: 'out/<slug>.mp4 albo ~/Downloads/<ticket-or-PR>-<slug>.mp4' },
+    { name: 'Scenariusz', does: 'Zaczyna od planszy tytułowej i od tego, po co jest zmiana, potem pisze sceny; osobny subagent sprawdza je z kodem i poprawia.', leaves: 'scenario.md' },
+    { name: 'Nagranie', does: 'Nagrywa test, renderuje MP4, przegląda własne klatki i poprawia profil repozytorium.', leaves: 'out/<slug>.mp4', loop: 'do dwóch powtórek, dopóki sprawdzenie klatek nie przejdzie' },
+    { name: 'Raport', does: 'Daje ci wideo, a po nim błędy i bugi widoczne na nagraniu oraz listę scen z czasami.' },
+    { name: 'Dostarczenie', does: 'Po twojej akceptacji zgłasza wideo do prepare-proof, a uruchomiony samodzielnie kopiuje je i dołącza do pull requesta, najpierw pytając, gdy plik ma ponad 10 MB.', leaves: 'out/<slug>.mp4 albo ~/Downloads/<ticket-or-PR>-<slug>.mp4' },
   ]}
   next={['pr-open']}
 />
 
 Wymagania, sprawdzenie narzędzi, scenariusz, walidacja i nagranie działają każde w świeżym subagencie, według własnego briefu.
+Przy pierwszym walkthrough w repozytorium szósty subagent pisze, obok wymagań i sprawdzenia narzędzi, [profil repozytorium](#profil-repozytorium).
 Przekazują sobie pracę wyłącznie przez pliki, więc subagent, który sprawdza scenariusz, nie jest tym, który go napisał.
 Pytania, raport i dostarczenie wideo skill obsługuje sam.
 
 Wymagania pochodzą ze specu, z pull requesta i jego ticketu, z testów e2e i ze zbudowanego kodu.
 Każde jest oznaczone jako `stated`, gdy mówi o nim dokument, albo `derived`, gdy zostało odczytane z testów lub kodu.
 
+Scenariusz opowiada historię w kolejności, jakiej potrzebuje widz, który ogląda tylko raz:
+
+- **Scena 0 to plansza tytułowa**: nadtytuł, na przykład numer pull requesta i repozytorium, oraz tytuł do 40 znaków, który nazywa zmianę słowami użytkownika. To pierwsza klatka wideo, więc już poster w odtwarzaczu pull requesta mówi, czego dotyczy zmiana.
+- **Najpierw po co.** Napis sceny 0, najpóźniej następny, mówi, komu zmiana pomaga i jak, jako skutek, a nie mechanizm.
+- **Każdy element zbioru ma swoje miejsce.** Po napisie, który zapowiada trzy zapisane pola, każde z nich dostaje własny moment.
+- **Jeden ekran na jedną myśl.** Wideo zmienia ekran tylko między myślami, nigdy w trakcie pokazywania jednego wymagania.
+
+Subagent walidacji sprawdza tę kolejność razem z resztą.
+
 Krok nagrania uruchamia lokalny stack, jeśli nikt inny tego nie zrobił, nagrywa test i renderuje wideo.
 W trybie `record-only` korzysta ze stacka, który przygotował `prepare-proof`, i nigdy żadnego nie uruchamia ani nie zatrzymuje.
-Potem sprawdza własne klatki: czytelne napisy w limicie `caption_density` (domyślnie 60 znaków), dość czasu na przeczytanie każdego, żadnej akcji uciętej w połowie, żadnego toasta z błędem ani pustego ekranu.
+Plansza tytułowa przykrywa stronę pierwszej sceny, zamiast ją zastępować, więc to, co przygotował ukryty setup, na przykład rozwinięty sidebar albo zamknięte banery, zostaje na miejscu, gdy plansza znika, bez przeładowania na nagraniu.
+Potem sprawdza własne klatki: pierwsza klatka to plansza tytułowa, napisy są czytelne w limicie `caption_density` (domyślnie 60 znaków), każdy trwa dość długo, by go przeczytać, żadna akcja nie jest ucięta w połowie i nie pojawia się toast z błędem ani pusty ekran.
+Sprawdza też sam plik: jeden strumień wideo w 30 fps.
+Plik większy niż 10 MB, największe wideo, jakie przyjmuje darmowy plan GitHuba, nie jest błędem, ale raport o tym mówi.
 Gdy po trzecim ujęciu któreś sprawdzenie dalej nie przechodzi, skill się zatrzymuje i zgłasza, które i dlaczego.
+
+## Profil repozytorium
+
+Raz na repozytorium skill ustala, jak startuje aplikacja, jak loguje się użytkownik testowy i jak na ekranie wygląda sukces, a jak błąd, i zapisuje odpowiedzi w profilu repozytorium:
+
+```
+~/.cache/walkthrough-video/<repo>/repo-profile.md
+```
+
+Profil leży obok folderów roboczych, więc korzysta z niego każdy walkthrough w repozytorium.
+Zawiera:
+
+- jak uruchomić i zatrzymać stack oraz gdzie odczytać porty, które faktycznie zajął;
+- skrypt pobierający środowisko, skrypt seedujący i to, które klucze w pliku z danymi logowania należą do którego użytkownika testowego, tylko z nazwy;
+- jak loguje się użytkownik testowy;
+- selektory toasta sukcesu i toasta błędu, nakładki do zamknięcia i to, co jest domyślnie zwinięte;
+- lokalne akcje, których zapisy trafiają do współdzielonej usługi;
+- to, czego jeszcze nie potwierdzono.
+
+Gdy projekt ma własne skille do tych zadań, na przykład do uruchomienia stacka, pobrania środowiska, seedowania albo logowania, profil je wskazuje, a krok nagrania ich używa, zamiast składać kroki ze skryptów.
+Tylko dla zadania, którego nie obsługuje żaden skill, profil sięga do plików `CLAUDE.md` projektu, README, skryptów i setupu e2e, podając źródło każdej odpowiedzi.
+
+Profil powstaje przy pierwszym walkthrough w repozytorium.
+Po każdym udanym ujęciu krok nagrania poprawia to, co okazało się błędne, i zapisuje to, co zadziałało, więc kolejne uruchomienia nie muszą tego odkrywać od nowa.
+Każdy późniejszy krok traktuje profil jako wskazówki do sprawdzenia, a nie jako fakty.
+Profil nigdy nie zawiera wartości sekretów.
+Popraw plik ręcznie albo go usuń, a następne uruchomienie napisze go od nowa.
 
 ## O co pyta
 
@@ -107,7 +147,15 @@ Nie zatrzymuj stacka, dopóki nie zaakceptujesz wideo, bo na nim nagrywa się po
 
 ### Samodzielnie
 
-Uruchomiony bez `record-only` skill dostarcza wideo w dwa miejsca:
+Uruchomiony bez `record-only` skill najpierw sprawdza rozmiar pliku.
+Darmowy plan GitHuba odrzuca wideo większe niż 10 MB, więc przed dołączeniem takiego skill pyta, co zrobić:
+
+- wyrenderować je ponownie w szybszym tempie;
+- wyrenderować je ponownie w niższej rozdzielczości, na przykład 1280×720, co zachowuje wybrane tempo i jest jedyną drogą dla wideo już w `5x`;
+- dołączyć je bez zmian, gdy plan repozytorium przyjmuje większe pliki.
+
+Żaden z tych renderów nie wymaga nowego ujęcia.
+Potem dostarcza wideo w dwa miejsca:
 
 1. Kopiuje MP4 do `~/Downloads/<ticket-or-PR>-<slug>.mp4`. Powtórka dostaje `-v2`, `-v3`, a wcześniejszą wersję skill usuwa tylko na twoje polecenie.
 2. Gdy zmiana ma pull request, bez ponownego pytania dodaje na końcu opisu sekcję `### Video walkthrough`. Sekcja zawiera wideo, a gdy ujęcie podstawiało dane, także jedną linijkę o tym, co podstawiono.
@@ -123,7 +171,25 @@ Bez niego wideo zostaje w `~/Downloads/`, a `/dev-kit:pr-open` go stamtąd nie w
 
 Gdy pr-open przepisuje opis, zachowuje tekst, którego sam nie napisał, w tym sekcję `### Video walkthrough`.
 
-## Powtórka po poprawkach
+## Uwagi i powtórki
+
+Raport wypisuje sceny wideo jako numerowaną listę, każdą z zakresem czasu i tytułem, na przykład `3 · 0:24–0:41 · Saving a filter`.
+Miejsce w wideo wskażesz numerem sceny, czasem z odtwarzacza albo kilkoma słowami z napisu.
+Skill odnajduje napis w `out/frames/cues.txt`, który przypisuje numerowi każdego napisu jego zakres czasu i tekst, i wskazuje scenę subagentowi nagrania.
+
+To, co skill zrobi z uwagą, zależy od tego, co powiesz:
+
+| Mówisz | Co się dzieje |
+|---|---|
+| Za szybko albo za wolno, o całym wideo | Ponowny render w następnym tempie, bez nowego ujęcia |
+| Za szybko w jednym miejscu | Dłuższe zatrzymanie w tej scenie, w nowym ujęciu |
+| Za gęsto | Scena zostaje podzielona albo jej napis skrócony; przed podziałem skill o tym mówi |
+| Inne sformułowanie | Nowy napis, w nowym ujęciu, bo napisy są częścią testu |
+| Powtarza się albo się dłuży | Wskazane sceny zostają połączone albo wycięte, a napisy wokół nich przepisane |
+
+Tabela 1. Jak uwaga zamienia się w zmianę.
+
+Inna gęstość napisów też wymaga nowego ujęcia, bo zmienia się tekst napisów i ich czas.
 
 Gdy nagranie pokazuje błąd, decyzja o poprawce należy do ciebie.
 Po poprawce poproś o powtórkę i nazwij każdą poprawkę.
@@ -144,8 +210,11 @@ Gdy ten folder istnieje, nowe uruchomienie wznawia pracę po ostatnim skończony
 | `teardown-ledger.jsonl` | Zmiany z ujęcia, które teardown musi jeszcze cofnąć |
 | `stack.log` | Wyjście lokalnego stacka, gdy uruchomił go skill |
 | `out/` | Wideo, napisy `.srt` i `.vtt` oraz przejrzane klatki |
+| `out/frames/cues.txt` | Numer, zakres czasu i tekst każdego napisu, do uwag według czasu albo słów |
 
-Tabela 1. Folder roboczy jednego walkthrough.
+Tabela 2. Folder roboczy jednego walkthrough.
+
+[Profil repozytorium](#profil-repozytorium), `repo-profile.md`, leży poziom wyżej, w `~/.cache/walkthrough-video/<repo>/`, i zostaje po dostarczeniu walkthrough.
 
 Przy dostarczeniu, w obu trybach, skill usuwa `recast/.state/` i `recast/test-results/`, bo trace'y Playwrighta zawierają ciasteczka sesji.
 Gdy skill sam uruchomił lokalny stack, pyta, czy go zatrzymać; stack wywołującego zatrzymuje wywołujący.
@@ -159,7 +228,9 @@ Gdy wywołujący wskaże inne miejsce na wideo albo sam je dołącza, jego wybó
 
 ## Co może pójść źle
 
-- **Stack nie startuje przez brak zmiennych środowiskowych.** Krok nagrania uruchamia własny skrypt projektu do pobrania środowiska i nigdy nie wpisuje sekretów ręcznie. O tym, jak uruchomić, zasilić danymi i zatrzymać stack, dowiaduje się z plików `CLAUDE.md` projektu, więc trzymaj te kroki tam.
+- **Stack nie startuje przez brak zmiennych środowiskowych.** Krok nagrania uruchamia własny skrypt projektu do pobrania środowiska i nigdy nie wpisuje sekretów ręcznie. O tym, jak uruchomić, zasilić danymi i zatrzymać stack, dowiaduje się z profilu repozytorium, który najpierw sięga po własne skille projektu, a potem po jego pliki `CLAUDE.md`, więc trzymaj te kroki w skillu albo tam.
+- **Profil jest nieaktualny.** Każdy krok sprawdza z kodem to, co bierze z profilu, a udane ujęcie go poprawia. Gdy mimo to profil wprowadza uruchomienie w błąd, popraw `repo-profile.md` albo go usuń, żeby powstał od nowa.
+- **Wideo ma ponad 10 MB.** Darmowy plan GitHuba go nie przyjmie, więc przed dołączeniem skill proponuje ponowny render w szybszym tempie albo niższej rozdzielczości.
 - **Trzecie ujęcie dalej nie przechodzi sprawdzenia klatek.** Skill się zatrzymuje i zgłasza, które sprawdzenie nie przeszło, zamiast dostarczyć słabe wideo.
 - **Dane są we współdzielonej usłudze.** Skill nigdy tam nie zapisuje, chyba że wskażesz zasób. Podstawia dane w przeglądarce, a nagranie mówi o tym w napisie.
 
