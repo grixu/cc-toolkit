@@ -116,6 +116,39 @@ export const APPLY_QUESTIONS: Questions = {
   },
 }
 
+// The eval recovered each finding's code this way, so the tool must build it the same way for the measured
+// thresholds to hold.
+export const CONTEXT_LINES = 12
+
+export function linesOf(spec: string | null | undefined): { from: number; to: number } | null {
+  const nums = [...String(spec ?? '').matchAll(/(\d+)(?:\s*[-–]\s*(\d+))?/g)].flatMap((m) => [Number(m[1]), Number(m[2] ?? m[1])])
+  return nums.length ? { from: Math.min(...nums), to: Math.max(...nums) } : null
+}
+
+export function excerptAround(text: string, range: { from: number; to: number } | null): string {
+  const lines = text.split('\n')
+  const from = range ? Math.max(1, range.from - CONTEXT_LINES) : 1
+  const to = range ? Math.min(lines.length, range.to + CONTEXT_LINES) : Math.min(lines.length, 2 * CONTEXT_LINES)
+  return lines.slice(from - 1, to).map((l, i) => `${from + i}\t${l}`).join('\n')
+}
+
+export function hunksAround(diff: string, range: { from: number; to: number } | null): string | null {
+  if (!range) return null
+  const picked = diff
+    .split(/(?=^@@ )/m)
+    .filter((h) => {
+      const m = h.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/)
+      if (!m) return false
+      const start = Number(m[1])
+      const end = start + Number(m[2] ?? 1)
+      return start <= range.to + CONTEXT_LINES && end >= range.from - CONTEXT_LINES
+    })
+  return picked.join('').slice(0, FIELD_BUDGET.diff_hunk) || null
+}
+
+// A note that says no convention applies only distracts the model.
+export const INERT_CONVENTIONS = /none that change|nothing there changes|changes? (?:a|the) verdict|nic z tego|no code conventions|covers only PR/i
+
 export function applyDecisionRequest(finding: Finding, review: ReviewContext = {}): DecisionRequest {
   return { input: applyDecisionInput(finding, review), questions: APPLY_QUESTIONS }
 }

@@ -13,8 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (does it need a fact the review lacks, is there another remedy that behaves differently), the builder of its input
   (the finding, its problem and proposed remedy, the code around the site, its diff hunk, the change's files and
   conventions, each field cut to a budget), and `walkDecision`, which turns the answers into `apply` or `ask` with
-  per-backend thresholds. Not wired
-  into any command yet; `hooks/decision.ts` and `hooks/providers/` are copies of the dev-kit adapters.
+  per-backend thresholds. `hooks/decision.ts` and `hooks/providers/` are copies of the dev-kit adapters.
+- The `apply_decision` mod tool and the **Walk decision backend** option (`off`, `auto`, `typesafe`, `gemini`;
+  `off` by default): with a backend set, `/start-cr` asks the model about every structural-walk fix first and
+  applies the ones it clears without a question. `security`, `spec` and boy-scout fixes are always asked.
 - `evals/apply-decision/`: replays the owner's recorded structural-walk decisions through the model and scores
   automation against wrong auto-applies; the data stays in its ignored `local/` directory, with a copy in R2 that
   `data.mjs` pushes and pulls.

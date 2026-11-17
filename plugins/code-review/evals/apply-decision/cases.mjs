@@ -2,12 +2,10 @@
 // and review context applyDecisionRequest takes, and the owner's label.
 import fs from 'node:fs'
 import path from 'node:path'
+import { INERT_CONVENTIONS } from '../../hooks/apply-decision.ts'
 
 // The types that are a fix the walk offered; follow-ups and open design choices have no finding behind them.
 const FIX_TYPES = new Set(['walk', 'boy-scout'])
-
-// A conventions note that says nothing applies only distracts the model.
-const INERT_CONVENTIONS = /none that change|nothing there changes|changes? (?:a|the) verdict|nic z tego|no code conventions|covers only PR/i
 
 function reviewOf(report) {
   const line = (re) => (String(report ?? '').match(re)?.[1] ?? '').trim() || null

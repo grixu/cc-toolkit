@@ -12,7 +12,7 @@ description: >-
   With `--pr <number>` it reviews a GitHub pull request's head against its base; on
   someone else's pull request it drafts review comments instead of applying fixes. Without
   `--pr`, on a branch that is someone else's open pull request, it offers that reviewer mode.
-allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write
+allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write, mcp__code-review__apply_decision
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
 
@@ -399,7 +399,8 @@ mark on it, with `Edit`, never `cat >>`, `tee -a` or `sed -i`: this file is a fi
 other. Read it back rather than recalling it, and say where it is in the wrap-up.
 
 Apply with `Edit` only what the user selects; **auto-apply nothing structural
-without an explicit yes**. Only findings confirmed in Step 4 enter an apply batch.
+without an explicit yes** — the user's own, or the decision model's they configured (see the
+walk below). Only findings confirmed in Step 4 enter an apply batch.
 
 **`Edit` means the tool, not "an edit".** No `sed -i`, no Python or heredoc rewrite, no `awk`,
 however convenient the shell looks for a repeated change: `Edit` fails loudly when the text it
@@ -468,10 +469,32 @@ family's commit is still pending on waits until that commit is made.
 
 **Walk the structural fixes yourself, one at a time — never fan these out.** They
 move code, must be sequenced, and are verified by build/tests, so they stay under
-your control even when the safe batch is parallelized. **Each one gets its own yes**:
-picking the bucket in the menu chose the walk, not every edit in it. Before each, one
+your control even when the safe batch is parallelized. **Each one gets its own yes** — the
+user's, or the decision model's below: picking the bucket in the menu chose the walk, not every
+edit in it. Before each, one
 `AskUserQuestion` naming the finding, the site and the exact edit — apply it, skip it,
 or (when you have one) a different approach — and apply only on that answer.
+
+**Let the decision model settle the fixes the user would wave through.** When the session has
+`mcp__code-review__apply_decision` — it exists only when the user configured a backend — call it
+once, after the user picked the walk and before its first question, with `context` the context
+directory, `scope` and `conventions` the report's lines, and one `findings` entry per walk fix:
+`id`, `severity`, `family`, `rule`, `path`, `lines`, `boy_scout`, and the bullet split at its `→`
+into `problem` and `fix`, both verbatim. Send the bullet as the report states it, not the question
+you would ask: the model's thresholds were measured on report bullets. Then:
+
+- **`apply`** — apply the fix without its own question, in the walk's order, as if the user had
+  said yes; the user's pick of the walk bucket is the consent, the model only spares the question.
+- **`ask`** — walk it as above. The tool returns `ask` for every `security`, `spec` and boy-scout
+  finding, and for any it could not decide.
+- **A "Backend choice needed" result** — one `AskUserQuestion`, **Jev (TypeSafe)** or **Gemini
+  Decision**, then call again with `backend` set to `typesafe` or `gemini`.
+- **No tool, or a result that opens "Apply decision unavailable"** — walk every fix, and say why in
+  one line.
+
+Never call it for the safe batch, which needs no question, nor in reviewer mode, which applies
+nothing. The wrap-up lists the fixes applied on the model's decision under their own heading, with
+the backend that decided them, so the user can review or revert them.
 
 **Tick the approved list off as you go.** Mark each fix in the scratchpad file the moment it
 lands, is skipped, or goes back to the user. Before the wrap-up, read the list back: an
