@@ -1,6 +1,6 @@
 {
   "name": "code-story",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Explains a branch or pull request as a chaptered page for someone who has never seen the code, with notes pinned to the lines they explain. Publishes it as a private claude.ai page and updates it under the same link.",
   "author": {
     "name": "Mateusz Gostański",
