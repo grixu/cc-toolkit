@@ -1,4 +1,6 @@
-export const PREAMBLE = `You run unattended: nobody will answer a question. Never ask one. When something is unclear,
+import { withoutTrailingSlash } from './harness.ts'
+
+export const PREAMBLE =`You run unattended: nobody will answer a question. Never ask one. When something is unclear,
 choose, and record the choice under assumptions. If you truly cannot continue, finish with
 status "blocked" and say why in summary. User questions and Claude Code subagents are not
 available here. Your final message is JSON in the given schema.`
@@ -101,7 +103,7 @@ function pluginRoot(skillDir: string): string {
 }
 
 function dirname(path: string): string {
-  const cut = path.replace(/\/+$/, '').lastIndexOf('/')
+  const cut = withoutTrailingSlash(path).lastIndexOf('/')
   return cut <= 0 ? '/' : path.slice(0, cut)
 }
 

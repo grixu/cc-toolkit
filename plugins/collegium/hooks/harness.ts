@@ -12,7 +12,13 @@ export interface Palette {
   models: Model[]
 }
 
-export type RunEvent = { kind: 'message' | 'command' | 'warning' | 'failed'; text: string; at: number }
+export type ProcessResult = { exitCode: number; stdout: string; stderr: string }
+
+export function withoutTrailingSlash(path: string): string {
+  return path.replace(/\/+$/, '')
+}
+
+export type RunEvent ={ kind: 'message' | 'command' | 'warning' | 'failed'; text: string; at: number }
 
 export interface RunSpec {
   runDir: string

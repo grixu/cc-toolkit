@@ -1,10 +1,12 @@
-import type { HarnessAdapter, Palette, RunEvent, RunSpec } from './harness.ts'
+import { withoutTrailingSlash, type HarnessAdapter, type Palette, type ProcessResult, type RunEvent, type RunSpec } from './harness.ts'
 
-export const PROVIDER = 'openai'
-export const LOGIN_FIX = '! codex login'
+const PROVIDER = 'openai'
+const LOGIN_FIX = '! codex login'
 export const TOKEN_EXCHANGE_URL = 'https://auth.openai.com/oauth/token'
 
-type ProcessResult = { exitCode: number; stdout: string; stderr: string }
+function exitDetail(r: ProcessResult | undefined): string {
+  return `exit ${r?.exitCode ?? 'n/a'}`
+}
 
 async function run($, argv: string[], init: Record<string, unknown> = {}): Promise<ProcessResult | undefined> {
   return $.process.run(argv, { stdin: '', timeoutMs: 60_000, ...init }).catch(() => undefined)
@@ -17,14 +19,21 @@ async function detect($) {
   return version ? { installed: true, version } : { installed: true }
 }
 
-export function parseCatalogue(stdout: string): Palette[] {
+function parseCatalogue(stdout: string): Palette[] {
   const models = JSON.parse(stdout).models
   if (!Array.isArray(models)) throw new Error('no models array')
   return [
     {
       provider: PROVIDER,
       models: models.map((m) => {
-        if (typeof m?.slug !== 'string' || !Array.isArray(m.supported_reasoning_levels)) throw new Error('model without slug or efforts')
+        if (
+          typeof m?.slug !== 'string' ||
+          typeof m.default_reasoning_level !== 'string' ||
+          !Array.isArray(m.supported_reasoning_levels) ||
+          !m.supported_reasoning_levels.every((l) => typeof l?.effort === 'string')
+        ) {
+          throw new Error('model without slug or efforts')
+        }
         return {
           id: `${PROVIDER}/${m.slug}`,
           hidden: m.visibility === 'hide',
@@ -40,7 +49,7 @@ export function parseCatalogue(stdout: string): Palette[] {
 async function catalogue($): Promise<Palette[]> {
   const r = await run($, ['codex', 'debug', 'models'])
   try {
-    if (r?.exitCode !== 0) throw new Error(`exit ${r?.exitCode ?? 'n/a'}`)
+    if (r?.exitCode !== 0) throw new Error(exitDetail(r))
     return parseCatalogue(r.stdout)
   } catch (err) {
     const { version } = await detect($)
@@ -52,7 +61,7 @@ function ciFailure(step: string, detail: string): Error {
   return new Error(`Codex CI login failed at ${step}: ${detail}`)
 }
 
-async function fetchJson($, step: string, url: string, init: Record<string, unknown>, field: string): Promise<string> {
+async function fetchTokenField($, step: string, url: string, init: Record<string, unknown>, field: string): Promise<string> {
   const res = await $.http.fetch(url, init).catch(() => undefined)
   if (!res) throw ciFailure(step, 'request did not complete')
   if (!res.ok) throw ciFailure(step, `HTTP ${res.status}`)
@@ -75,17 +84,17 @@ async function prepare($, runId: string): Promise<Record<string, string>> {
   const identityProviderId = (await $.env.get('EVAL_OPENAI_IDENTITY_PROVIDER_ID')) ?? ''
   const serviceAccountId = (await $.env.get('EVAL_OPENAI_SERVICE_ACCOUNT_ID')) ?? ''
   // A hooks module has no Node, so the OS temp dir comes from the environment.
-  const tmp = ((await $.env.get('TMPDIR')) || '/tmp').replace(/\/+$/, '')
+  const tmp = withoutTrailingSlash((await $.env.get('TMPDIR')) || '/tmp')
   const home = `${tmp}/collegium-codex-home/${runId}`
 
-  const jwt = await fetchJson(
+  const jwt = await fetchTokenField(
     $,
     'the GitHub OIDC token request',
     `${requestUrl}&audience=${encodeURIComponent(audience)}`,
     { method: 'GET', headers: { authorization: `bearer ${requestToken}` } },
     'value',
   )
-  const accessToken = await fetchJson(
+  const accessToken = await fetchTokenField(
     $,
     'the OpenAI token exchange',
     TOKEN_EXCHANGE_URL,
@@ -105,9 +114,9 @@ async function prepare($, runId: string): Promise<Record<string, string>> {
 
   // Codex refuses a CODEX_HOME that does not exist yet.
   const mkdir = await run($, ['mkdir', '-p', home])
-  if (mkdir?.exitCode !== 0) throw ciFailure('creating CODEX_HOME', `exit ${mkdir?.exitCode ?? 'n/a'}`)
+  if (mkdir?.exitCode !== 0) throw ciFailure('creating CODEX_HOME', exitDetail(mkdir))
   const login = await run($, ['codex', 'login', '--with-api-key'], { env: { CODEX_HOME: home }, stdin: accessToken })
-  if (login?.exitCode !== 0) throw ciFailure('codex login --with-api-key', `exit ${login?.exitCode ?? 'n/a'}`)
+  if (login?.exitCode !== 0) throw ciFailure('codex login --with-api-key', exitDetail(login))
   return { CODEX_HOME: home }
 }
 

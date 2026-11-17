@@ -43,7 +43,7 @@ test('a write run uses workspace-write, the bare model slug and the effort overr
 })
 
 test('events map to progress kinds, and error events are warnings, never failures', () => {
-  const kinds = [
+  const events = [
     '{"type":"thread.started","thread_id":"t"}',
     '{"type":"item.completed","item":{"id":"0","type":"error","message":"[features].multi_agent is deprecated"}}',
     '{"type":"error","message":"reconnecting"}',
@@ -53,7 +53,7 @@ test('events map to progress kinds, and error events are warnings, never failure
     '{"type":"turn.failed","error":{"message":"quota exceeded"}}',
     'not json',
   ].map((line) => codex.parseEvent(line))
-  expect(kinds.map((e) => e && [e.kind, e.text])).toEqual([
+  expect(events.map((e) =>e && [e.kind, e.text])).toEqual([
     null,
     ['warning', '[features].multi_agent is deprecated'],
     ['warning', 'reconnecting'],
@@ -99,6 +99,25 @@ test('detection reads the version and reports a missing binary as not installed'
   expect(await codex.detect($)).toEqual({ installed: false })
 })
 
+test('a version output without a version is still installed', async ($, on) => {
+  on('process.run', () => ok(''))
+  expect(await codex.detect($)).toEqual({ installed: true })
+})
+
+test('a catalogue model without a slug or with a malformed effort fails naming the Codex version', async ($, on) => {
+  const broken = [
+    { visibility: 'list', supported_reasoning_levels: [{ effort: 'low' }], default_reasoning_level: 'low' },
+    { slug: 'gpt-x', supported_reasoning_levels: [{ effort: 'low' }] },
+    { slug: 'gpt-x', supported_reasoning_levels: [{}], default_reasoning_level: 'low' },
+  ]
+  for (const model of broken) {
+    on('process.run', ($, e) => (e.argv[1] === 'debug' ? ok(JSON.stringify({ models: [model] })) : ok('codex-cli 0.165.0\n')))
+    const message = await codex.catalogue($).then(() => 'resolved', (err) => err.message)
+    expect(message).toContain('codex 0.165.0')
+    expect(message).toContain('model without slug or efforts')
+  }
+})
+
 test('login status follows the exit code and passes the run env', async ($, on) => {
   const envs: unknown[] = []
   let code = 0
@@ -107,9 +126,9 @@ test('login status follows the exit code and passes the run env', async ($, on) 
     return exit(code)
   })
   expect(await codex.loginStatus($, { CODEX_HOME: '/h' })).toEqual({ loggedIn: true, fix: '! codex login' })
+  expect(envs[0]).toEqual({ CODEX_HOME: '/h' })
   code = 1
   expect((await codex.loginStatus($, {})).loggedIn).toBe(false)
-  expect(envs[0]).toEqual({ CODEX_HOME: '/h' })
 })
 
 test('outside CI prepare does nothing', async ($, on) => {
@@ -173,6 +192,32 @@ test('a failed CI step names the step and status and never a token or body', asy
   expect(messages[1]).toContain('OpenAI token exchange: HTTP 401')
   expect(messages[2]).toContain('codex login --with-api-key: exit 1')
   for (const m of messages) for (const secret of ['secret', 'jwt', 'access-']) expect(m).not.toContain(secret)
+})
+
+test('a CI request that never completes, or answers without the field, names the step', async ($, on) => {
+  mock.env(on, CI_ENV)
+  on('process.run', () => ok())
+
+  on('http.fetch', () => {
+    throw new Error('network down')
+  })
+  const rejected = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
+  on('http.fetch', () => fetched(200, {}))
+  const empty = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
+
+  expect(rejected).toContain('GitHub OIDC token request: request did not complete')
+  expect(empty).toContain('GitHub OIDC token request: HTTP 200 without value')
+})
+
+test('a CODEX_HOME that cannot be created fails the CI login', async ($, on) => {
+  mock.env(on, CI_ENV)
+  let call = 0
+  on('http.fetch', () => (++call === 1 ? fetched(200, { value: 'jwt-secret' }) : fetched(200, { access_token: 'access-secret' })))
+  on('process.run', ($, e) => (e.argv[0] === 'mkdir' ? exit(1) : ok()))
+
+  const message = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
+
+  expect(message).toContain('creating CODEX_HOME: exit 1')
 })
 
 test('the final message is the -o file, or null when Codex wrote none', async ($, on) => {

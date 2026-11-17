@@ -1,4 +1,6 @@
-export type WriteMode = 'worktree' | 'branch' | 'merge'
+import { withoutTrailingSlash, type ProcessResult } from './harness.ts'
+
+export type WriteMode ='worktree' | 'branch' | 'merge'
 
 export type WriteRun = {
   mode: WriteMode
@@ -24,17 +26,15 @@ export type WriteResult = {
 // Signing can wait on a pinentry prompt, so commits get more than the host's 30 s default.
 const GIT_TIMEOUT_MS = 120_000
 
-export function worktreePath(runDir: string): string {
-  return `${runDir.replace(/\/+$/, '')}/worktree`
+function worktreePath(runDir: string): string {
+  return `${withoutTrailingSlash(runDir)}/worktree`
 }
 
-export function branchName(id: string): string {
+function branchName(id: string): string {
   return `collegium/${id}`
 }
 
-type Git = { exitCode: number; stdout: string; stderr: string }
-
-async function git($, cwd: string, args: string[]): Promise<Git> {
+async function git($, cwd: string, args: string[]): Promise<ProcessResult> {
   return $.process.run(['git', ...args], { cwd, timeoutMs: GIT_TIMEOUT_MS }).catch((error: unknown) => ({
     exitCode: -1,
     stdout: '',
@@ -42,7 +42,7 @@ async function git($, cwd: string, args: string[]): Promise<Git> {
   }))
 }
 
-function gitError(args: string[], r: Git): string {
+function gitError(args: string[], r: ProcessResult): string {
   const detail = (r.stderr.trim() || r.stdout.trim()).slice(0, 500)
   return `git ${args[0]} failed${detail ? `: ${detail}` : ''}`
 }
@@ -57,14 +57,14 @@ export async function prepareWrite($, run: WriteRun): Promise<{ worktree: string
   return branch ? { worktree, branch } : { worktree }
 }
 
-export async function worktreeHasChanges($, worktree: string): Promise<boolean> {
+async function worktreeHasChanges($, worktree: string): Promise<boolean> {
   const args = ['status', '--porcelain', '--untracked-files=all']
   const r = await git($, worktree, args)
   if (r.exitCode !== 0) throw new Error(gitError(args, r))
   return r.stdout.trim() !== ''
 }
 
-/** Runs after Codex exits: commits, reports the diffstat, removes the worktree and, in `merge` mode, merges. */
+/** Runs after Codex exits. `worktree` mode only reports whether files changed; the other modes commit any change, report the diffstat, remove the worktree and, in `merge` mode, merge. */
 export async function finishWrite($, run: WriteRun, summary: string): Promise<WriteResult> {
   const worktree = worktreePath(run.runDir)
   const fail = (error: string, extra: Partial<WriteResult> = {}): WriteResult => ({ state: 'failed', mode: run.mode, changed: false, worktree, error, ...extra })
@@ -100,12 +100,26 @@ export async function finishWrite($, run: WriteRun, summary: string): Promise<Wr
   const done: WriteResult = { state: 'done', mode: run.mode, changed, branch, ...committedPart }
   if (run.mode === 'branch' || !changed) return done
 
+  // A merge the user left unfinished is theirs: merging or aborting here would destroy their resolution.
+  if (await mergeInProgress($, run.cwd)) {
+    return { ...done, state: 'conflict', merged: false, error: `a merge is already in progress in ${run.cwd}; ${branch} was left unmerged` }
+  }
+
   const mergeArgs = ['merge', '--ff', '--no-edit', branch]
   const merge = await git($, run.cwd, mergeArgs)
   if (merge.exitCode === 0) return { ...done, merged: true }
 
-  // A merge git refuses over local changes starts nothing, so only a started merge is aborted.
-  const inProgress = await git($, run.cwd, ['rev-parse', '-q', '--verify', 'MERGE_HEAD'])
-  if (inProgress.exitCode === 0) await git($, run.cwd, ['merge', '--abort'])
-  return { ...done, state: 'conflict', merged: false, error: gitError(mergeArgs, merge) }
+  const error = gitError(mergeArgs, merge)
+  if (await mergeInProgress($, run.cwd)) {
+    await git($, run.cwd, ['merge', '--abort'])
+    return { ...done, state: 'conflict', merged: false, error }
+  }
+  // A merge git refuses over local changes starts nothing, so there is nothing to abort.
+  const refused = /would be overwritten by merge/.test(`${merge.stderr}\n${merge.stdout}`)
+  return { ...done, state: refused ? 'conflict' : 'failed', merged: false, error }
+}
+
+async function mergeInProgress($, cwd: string): Promise<boolean> {
+  const r = await git($, cwd, ['rev-parse', '-q', '--verify', 'MERGE_HEAD'])
+  return r.exitCode === 0
 }

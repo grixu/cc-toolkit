@@ -6,15 +6,23 @@ const RUN_DIR = '/work/repo.collegium/r1'
 const WORKTREE = `${RUN_DIR}/worktree`
 
 type Reply = { exitCode?: number; stdout?: string; stderr?: string }
+type GitCall = { cwd: string; args: string[] }
 
-function fakeGit(replies: Record<string, Reply> = {}, calls: { cwd: string; args: string[] }[] = []) {
-  return ($, e) => {
+const NO_MERGE_HEAD = { 'rev-parse -q --verify MERGE_HEAD': { exitCode: 1 } }
+
+// A list of replies is consumed one call at a time, and its last reply repeats.
+function useFakeGit(on, replies: Record<string, Reply | Reply[]> = {}): GitCall[] {
+  const calls: GitCall[] = []
+  const all = { ...NO_MERGE_HEAD, ...replies }
+  on('process.run', ($, e) => {
     const args: string[] = e.argv.slice(1)
     calls.push({ cwd: e.init?.cwd, args })
-    const key = Object.keys(replies).find((k) => args.join(' ').startsWith(k))
-    const reply = key ? replies[key] : {}
+    const key = Object.keys(all).find((k) => args.join(' ').startsWith(k))
+    const entry = key ? all[key] : {}
+    const reply = Array.isArray(entry) ? (entry.length > 1 ? entry.shift() : entry[0]) : entry
     return { value: { exitCode: reply.exitCode ?? 0, stdout: reply.stdout ?? '', stderr: reply.stderr ?? '' } }
-  }
+  })
+  return calls
 }
 
 const run = (mode: WriteMode) => ({ mode, id: 'r1', runDir: RUN_DIR, cwd: CALLER })
@@ -22,8 +30,7 @@ const CHANGED = { 'status --porcelain': { stdout: ' M src/a.ts\n?? src/b.ts\n' }
 const STAT = { 'show --stat': { stdout: ' src/a.ts | 2 +-\n src/b.ts | 1 +\n 2 files changed, 2 insertions(+), 1 deletion(-)\n' } }
 
 test('worktree mode adds a detached worktree and leaves changes uncommitted', async ($, on) => {
-  const calls: { cwd: string; args: string[] }[] = []
-  on('process.run', fakeGit(CHANGED, calls))
+  const calls = useFakeGit(on, CHANGED)
 
   expect(await prepareWrite($, run('worktree'))).toEqual({ worktree: WORKTREE })
   const result = await finishWrite($, run('worktree'), 'did it')
@@ -36,8 +43,7 @@ test('worktree mode adds a detached worktree and leaves changes uncommitted', as
 })
 
 test('branch mode commits with the summary, reports the diffstat, removes the worktree and keeps the branch', async ($, on) => {
-  const calls: { cwd: string; args: string[] }[] = []
-  on('process.run', fakeGit({ ...CHANGED, ...STAT }, calls))
+  const calls = useFakeGit(on, { ...CHANGED, ...STAT })
 
   expect(await prepareWrite($, run('branch'))).toEqual({ worktree: WORKTREE, branch: 'collegium/r1' })
   const result = await finishWrite($, run('branch'), 'Add the b module')
@@ -57,8 +63,7 @@ test('branch mode commits with the summary, reports the diffstat, removes the wo
 })
 
 test('nothing is committed when Codex changed no file, and the result says so', async ($, on) => {
-  const calls: { cwd: string; args: string[] }[] = []
-  on('process.run', fakeGit({}, calls))
+  const calls = useFakeGit(on)
 
   const result = await finishWrite($, run('merge'), 'nothing')
 
@@ -68,8 +73,7 @@ test('nothing is committed when Codex changed no file, and the result says so', 
 })
 
 test('a failed commit ends the run failed with git\'s message and keeps the worktree', async ($, on) => {
-  const calls: { cwd: string; args: string[] }[] = []
-  on('process.run', fakeGit({ ...CHANGED, commit: { exitCode: 128, stderr: 'error: gpg failed to sign the data\n' } }, calls))
+  const calls = useFakeGit(on, { ...CHANGED, commit: { exitCode: 128, stderr: 'error: gpg failed to sign the data\n' } })
 
   const result = await finishWrite($, run('branch'), 'summary')
 
@@ -79,25 +83,31 @@ test('a failed commit ends the run failed with git\'s message and keeps the work
 })
 
 test('merge mode merges the branch into the caller\'s checkout, fast-forwarding when possible', async ($, on) => {
-  const calls: { cwd: string; args: string[] }[] = []
-  on('process.run', fakeGit({ ...CHANGED, ...STAT }, calls))
+  const calls = useFakeGit(on, { ...CHANGED, ...STAT })
 
   const result = await finishWrite($, run('merge'), 'summary')
 
-  expect(calls.slice(-2).map((c) => [c.cwd, c.args.join(' ')])).toEqual([
+  expect(calls.slice(-3).map((c) => [c.cwd, c.args.join(' ')])).toEqual([
     [CALLER, `worktree remove ${WORKTREE}`],
+    [CALLER, 'rev-parse -q --verify MERGE_HEAD'],
     [CALLER, 'merge --ff --no-edit collegium/r1'],
   ])
   expect(result).toMatchObject({ state: 'done', mode: 'merge', committed: true, merged: true, branch: 'collegium/r1' })
 })
 
 test('a merge conflict is aborted, keeps the branch and sets conflict', async ($, on) => {
-  const calls: { cwd: string; args: string[] }[] = []
-  on('process.run', fakeGit({ ...CHANGED, ...STAT, 'merge --ff': { exitCode: 1, stdout: 'CONFLICT (content): Merge conflict in src/a.ts\n' } }, calls))
+  const calls = useFakeGit(on, {
+    ...CHANGED,
+    ...STAT,
+    'merge --ff': { exitCode: 1, stdout: 'CONFLICT (content): Merge conflict in src/a.ts\n' },
+    'rev-parse -q --verify MERGE_HEAD': [{ exitCode: 1 }, { exitCode: 0 }],
+  })
 
   const result = await finishWrite($, run('merge'), 'summary')
 
-  expect(calls.slice(-2).map((c) => [c.cwd, c.args.join(' ')])).toEqual([
+  expect(calls.slice(-4).map((c) => [c.cwd, c.args.join(' ')])).toEqual([
+    [CALLER, 'rev-parse -q --verify MERGE_HEAD'],
+    [CALLER, 'merge --ff --no-edit collegium/r1'],
     [CALLER, 'rev-parse -q --verify MERGE_HEAD'],
     [CALLER, 'merge --abort'],
   ])
@@ -107,13 +117,11 @@ test('a merge conflict is aborted, keeps the branch and sets conflict', async ($
 })
 
 test('a merge refused over local changes is a conflict with nothing to abort', async ($, on) => {
-  const calls: { cwd: string; args: string[] }[] = []
-  on('process.run', fakeGit({
+  const calls = useFakeGit(on, {
     ...CHANGED,
     ...STAT,
     'merge --ff': { exitCode: 1, stderr: 'error: Your local changes to the following files would be overwritten by merge:\n\tsrc/a.ts\n' },
-    'rev-parse -q --verify MERGE_HEAD': { exitCode: 1 },
-  }, calls))
+  })
 
   const result = await finishWrite($, run('merge'), 'summary')
 
@@ -122,8 +130,64 @@ test('a merge refused over local changes is a conflict with nothing to abort', a
   expect(result.error).toContain('local changes')
 })
 
+test('a merge the user left in progress is neither merged into nor aborted', async ($, on) => {
+  const calls = useFakeGit(on, { ...CHANGED, ...STAT, 'rev-parse -q --verify MERGE_HEAD': { exitCode: 0 } })
+
+  const result = await finishWrite($, run('merge'), 'summary')
+
+  expect(calls.some((c) => c.args[0] === 'merge')).toBe(false)
+  expect(result).toMatchObject({ state: 'conflict', merged: false, committed: true, branch: 'collegium/r1' })
+  expect(result.error).toContain('already in progress')
+})
+
+test('a merge that neither conflicts nor is refused fails the run without an abort', async ($, on) => {
+  const calls = useFakeGit(on, { ...CHANGED, ...STAT, 'merge --ff': { exitCode: -1, stderr: 'timed out' } })
+
+  const result = await finishWrite($, run('merge'), 'summary')
+
+  expect(calls.some((c) => c.args.join(' ') === 'merge --abort')).toBe(false)
+  expect(result).toMatchObject({ state: 'failed', merged: false, committed: true, branch: 'collegium/r1' })
+  expect(result.error).toContain('timed out')
+})
+
+test('worktree mode with no change says Codex changed no file', async ($, on) => {
+  useFakeGit(on)
+
+  const result = await finishWrite($, run('worktree'), 'nothing')
+
+  expect(result).toEqual({ state: 'done', mode: 'worktree', changed: false, worktree: WORKTREE, note: 'Codex changed no file.' })
+})
+
+test('a status git cannot read fails the run with git\'s message', async ($, on) => {
+  useFakeGit(on, { status: { exitCode: 128, stderr: 'fatal: not a git repository\n' } })
+
+  const result = await finishWrite($, run('branch'), 'summary')
+
+  expect(result).toMatchObject({ state: 'failed', worktree: WORKTREE })
+  expect(result.error).toContain('not a git repository')
+})
+
+test('a failed add ends the run failed before any commit', async ($, on) => {
+  const calls = useFakeGit(on, { ...CHANGED, add: { exitCode: 128, stderr: 'fatal: index.lock exists\n' } })
+
+  const result = await finishWrite($, run('branch'), 'summary')
+
+  expect(calls.some((c) => c.args[0] === 'commit')).toBe(false)
+  expect(result).toMatchObject({ state: 'failed', changed: true, branch: 'collegium/r1' })
+  expect(result.error).toContain('index.lock exists')
+})
+
+test('a worktree git cannot remove fails the run but reports the commit', async ($, on) => {
+  useFakeGit(on, { ...CHANGED, ...STAT, 'worktree remove': { exitCode: 128, stderr: 'fatal: worktree contains modified files\n' } })
+
+  const result = await finishWrite($, run('merge'), 'summary')
+
+  expect(result).toMatchObject({ state: 'failed', committed: true, worktree: WORKTREE, branch: 'collegium/r1' })
+  expect(result.error).toContain('contains modified files')
+})
+
 test('a worktree git cannot add fails the preparation with git\'s message', async ($, on) => {
-  on('process.run', fakeGit({ 'worktree add': { exitCode: 128, stderr: "fatal: a branch named 'collegium/r1' already exists\n" } }))
+  useFakeGit(on, { 'worktree add': { exitCode: 128, stderr: "fatal: a branch named 'collegium/r1' already exists\n" } })
 
   const error = await prepareWrite($, run('branch')).then(() => undefined, (e: Error) => e)
 
