@@ -13,7 +13,8 @@ import Strip from '~/components/Strip.astro'
 
 A walkthrough is one Playwright test that tells the change's story scene by scene against your running app.
 playwright-recast renders it into an MP4 with burned-in captions.
-The pacing is calm on purpose: the viewer sees what is clicked, reads what is typed, and has time to read every caption.
+The take is recorded at a calm pace: the viewer sees what is clicked, reads what is typed, and has time to read every caption.
+The `video_speed` option sets how fast the rendered video plays, `1x` by default, twice the pace of the take. `caption_density` sets how much text one caption holds.
 
 [`prepare-proof`](/plugins/pr-proof/prepare-proof/) runs this skill for you when it plans a video, in `record-only` mode.
 You run it yourself for a video outside that flow, such as a whole feature for a product owner.
@@ -76,7 +77,7 @@ Each one is marked `stated` when a document says it, or `derived` when it was re
 
 The recording step starts the local stack when nobody else has, records the test and renders the video.
 Under `record-only`, it uses the stack `prepare-proof` brought up, and never starts or stops one.
-Then it checks its own frames: readable captions of at most 60 characters, enough time to read each one, no action cut mid-way, and no error toast or blank screen.
+Then it checks its own frames: readable captions within the `caption_density` limit (60 characters by default), enough time to read each one, no action cut mid-way, and no error toast or blank screen.
 When a check still fails after the third take, it stops and reports which check failed and why.
 
 ## What it asks you

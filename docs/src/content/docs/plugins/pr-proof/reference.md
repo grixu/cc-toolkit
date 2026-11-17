@@ -43,6 +43,8 @@ Every one may stay empty.
 | `decision_backend` | `auto` | `auto` uses the backend whose key is set, and with both keys `prepare-proof` asks you which to use. `typesafe` or `gemini` uses that one. `both` asks both side by side. |
 | `primary_backend` | `typesafe` | With both backends, whose signals `prepare-proof` plans from; the other's stand beside them. |
 | `screenshot_widths` | none | Comma-separated viewport widths in pixels, such as `375,768,1440`. Empty uses the project's breakpoints, or 375, 768 and 1440 when it has none. |
+| `video_speed` | `1x` | How fast `walkthrough-video` plays its video: `0.5x` (the calm pace of the take), `1x` (twice as fast), `2x`, `3x` or `5x` (ten times as fast). The take is always recorded at the calm pace, so a new speed needs only a re-render. |
+| `caption_density` | `normal` | How much text one caption holds: `normal` up to 60 characters, `2x` up to 120 and `4x` up to 240, in smaller type (40, 28 and 20 px at 1080p) covering the same area. |
 
 Table 2. The plugin options.
 
@@ -59,6 +61,7 @@ A `decision_backend` that names a backend without a key makes the tool return `P
 | Field | Required | Means |
 |---|---|---|
 | `base` | yes | the branch the change merges into, such as `main` |
+| `repo` | no | the absolute path of the working tree to judge, such as a git worktree outside the session's directory. `prepare-proof` always passes it. Without it the tool reads the session's directory. A relative path or a directory outside git makes the signals unavailable; it never falls back to another checkout. |
 | `backend` | no | `typesafe`, `gemini` or `both`: your answer after a `Backend choice needed` result. It wins over `decision_backend`. |
 
 Table 3. The tool's input.

@@ -13,7 +13,8 @@ import Strip from '~/components/Strip.astro'
 
 Walkthrough to jeden test Playwright, który scena po scenie opowiada historię zmiany na twojej działającej aplikacji.
 playwright-recast renderuje go do MP4 z wtopionymi napisami.
-Tempo jest celowo spokojne: widz widzi, co jest klikane, czyta, co jest wpisywane, i ma czas przeczytać każdy napis.
+Nagranie powstaje w spokojnym tempie: widz widzi, co jest klikane, czyta, co jest wpisywane, i ma czas przeczytać każdy napis.
+Opcja `video_speed` ustala, jak szybko odtwarza się wyrenderowane wideo, domyślnie `1x`, czyli dwa razy szybciej niż nagranie. `caption_density` ustala, ile tekstu mieści jeden napis.
 
 [`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) uruchamia ten skill za ciebie, gdy zaplanuje wideo, w trybie `record-only`.
 Sam uruchamiasz go, gdy potrzebujesz wideo spoza tego procesu, na przykład całej funkcji dla product ownera.
@@ -76,7 +77,7 @@ Każde jest oznaczone jako `stated`, gdy mówi o nim dokument, albo `derived`, g
 
 Krok nagrania uruchamia lokalny stack, jeśli nikt inny tego nie zrobił, nagrywa test i renderuje wideo.
 W trybie `record-only` korzysta ze stacka, który przygotował `prepare-proof`, i nigdy żadnego nie uruchamia ani nie zatrzymuje.
-Potem sprawdza własne klatki: czytelne napisy do 60 znaków, dość czasu na przeczytanie każdego, żadnej akcji uciętej w połowie, żadnego toasta z błędem ani pustego ekranu.
+Potem sprawdza własne klatki: czytelne napisy w limicie `caption_density` (domyślnie 60 znaków), dość czasu na przeczytanie każdego, żadnej akcji uciętej w połowie, żadnego toasta z błędem ani pustego ekranu.
 Gdy po trzecim ujęciu któreś sprawdzenie dalej nie przechodzi, skill się zatrzymuje i zgłasza, które i dlaczego.
 
 ## O co pyta

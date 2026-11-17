@@ -44,6 +44,8 @@ Każda może zostać pusta.
 | `decision_backend` | `auto` | `auto` używa backendu, którego klucz jest ustawiony, a przy obu kluczach `prepare-proof` pyta cię, którego użyć. `typesafe` albo `gemini` używa wskazanego. `both` odpytuje oba równolegle. |
 | `primary_backend` | `typesafe` | Przy obu backendach ten, na którego sygnałach `prepare-proof` opiera plan; sygnały drugiego są pokazywane obok. |
 | `screenshot_widths` | brak | Szerokości viewportu w pikselach, oddzielone przecinkami, na przykład `375,768,1440`. Gdy opcja jest pusta, skill używa breakpointów projektu albo 375, 768 i 1440, gdy projekt ich nie ma. |
+| `video_speed` | `1x` | Jak szybko `walkthrough-video` odtwarza wideo: `0.5x` (spokojne tempo nagrania), `1x` (dwa razy szybciej), `2x`, `3x` albo `5x` (dziesięć razy szybciej). Nagranie zawsze powstaje w spokojnym tempie, więc nowa prędkość wymaga tylko ponownego renderu. |
+| `caption_density` | `normal` | Ile tekstu mieści jeden napis: `normal` do 60 znaków, `2x` do 120, a `4x` do 240, mniejszą czcionką (40, 28 i 20 px przy 1080p) na tej samej powierzchni. |
 
 Tabela 2. Opcje pluginu.
 
@@ -60,6 +62,7 @@ Wywołuje je `prepare-proof`; ty go nie wywołujesz.
 | Pole | Wymagane | Znaczenie |
 |---|---|---|
 | `base` | tak | branch, do którego trafi zmiana, na przykład `main` |
+| `repo` | nie | bezwzględna ścieżka drzewa roboczego do oceny, na przykład worktree gita poza katalogiem sesji. `prepare-proof` zawsze ją przekazuje. Bez niej narzędzie czyta katalog sesji. Ścieżka względna albo katalog poza gitem sprawia, że sygnały są niedostępne; narzędzie nigdy nie sięga po inny checkout. |
 | `backend` | nie | `typesafe`, `gemini` albo `both`: twoja odpowiedź po wyniku `Backend choice needed`. Ma pierwszeństwo przed `decision_backend`. |
 
 Tabela 3. Wejście narzędzia.
