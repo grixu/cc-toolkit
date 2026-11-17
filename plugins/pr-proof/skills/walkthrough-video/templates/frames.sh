@@ -1,6 +1,6 @@
 #!/bin/bash
 # Review sheets for a rendered walkthrough: a timeline of frames, each caption's middle and end, caption length checks,
-# a numbered caption list with times (cues.txt), and WARN lines for a file that will not play or upload well.
+# a numbered caption list with times (cues.txt), and WARN lines for a file that will not play, upload or preview well.
 # Usage: frames.sh <video.mp4> [<slug>.walk.ts]   (the .srt must sit next to the video; output lands in <video dir>/frames/)
 # Env: SPEED=0.5x|1x|2x|3x|5x (default 1x) scales the timeline interval; CAPTION_MAX (default 60) is the caption limit.
 set -euo pipefail
