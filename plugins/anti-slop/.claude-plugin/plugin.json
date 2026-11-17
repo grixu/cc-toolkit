@@ -1,6 +1,6 @@
 {
   "name": "anti-slop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Rewrites AI-sounding English or Polish prose so it reads plain and human, keeping every fact, number and caveat.",
   "author": {
     "name": "Mateusz Gostański",
