@@ -16,8 +16,9 @@ The gate's questions get calibrated on the owner's own PRs before anything is wi
 - The owner approved sending the cohort's diffs (vuestorefront, bizwave-ai, grixu) to TypeSafe and Gemini.
 - `code_story` lives in dev-kit, because `pr-open` owns the dispatch.
 - The gate is a new `story_signals` tool in the dev-kit mod. It asks its own fact questions about how large the
-  change is and what it touches, not the `pr_risk` questions. It uses the existing Jev and Gemini providers and
-  `decision_backend`, including `both`.
+  change is and what it touches, not the `pr_risk` questions. It uses the existing Jev and Gemini providers, with its
+  own `story_gate_backend` option (`auto | typesafe | gemini | both`) rather than `decision_backend`, because
+  `pr-open` calls it mid-run and cannot stop to ask which backend to use (owner, 2026-11-17).
 - Errors fail open: no key, a tool error or uncertainty means the story is generated, and the report says why.
 - An existing PR that already links a story always gets the story updated.
 - The `CODE_STORY` result line does not change, because a skipped story never starts its subagent.
@@ -98,7 +99,13 @@ Dev and holdout together: no story PR skipped in 28. Eleven holdout story cases 
 95% confidence; the decision log in phase 2 is what tightens it.
 
 Holdout thresholds, frozen before the holdout run: both averaged skipAt 0.8 / storyAt 0.9; Jev 0.75 / 0.85;
-Gemini 0.825 / 0.9. No margin. The holdout is 17 owner-labelled PRs (12 skip, 5 story) under `local/holdout/`.
+Gemini 0.825 / 0.9 (the last two fitted on E3a). No margin. The holdout is 17 owner-labelled PRs (12 skip, 5 story)
+under `local/holdout/`.
+
+The shipped single-backend thresholds are not those. When the owner asked for one-key use, Jev and Gemini were refitted
+on the dev set's E4 answers alone (Jev 0.725 / 0.9, Gemini 0.775 / 0.9), after the pair's holdout result was known.
+Scored once on the whole 24-PR holdout: Jev 7/13 skips in each of 3 runs, Gemini 10/13, both 0/11 story PRs skipped.
+The holdout played no part in the fit, but these two rows are weaker evidence than the pair's.
 
 Still kept against the owner's skip on dev: landings#8, agent-deck#6, homepage#16.
 
