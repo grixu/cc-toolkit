@@ -169,8 +169,9 @@ export function decide(facts: Facts, t: Thresholds): { story: boolean; reason: s
 
 export type GateBackend = ProviderName | 'both'
 
-// Fitted on 37 owner-labelled PRs so that none labelled `story` is skipped, then confirmed once on 24 unseen ones:
-// 0 of 11 story PRs skipped by any of the three, and 8 (both), 7 (Jev) and 10 (Gemini) of 13 skip PRs skipped.
+// Fitted on 37 owner-labelled PRs so that none labelled `story` is skipped, then scored on 24 others: 0 of 11 story
+// PRs skipped by any of the three, and 8 (both), 7 (Jev) and 10 (Gemini) of 13 skip PRs skipped. Only `both` was
+// frozen before the holdout ran; the single-backend pairs were fitted on the dev set alone, after it.
 export const THRESHOLDS: Record<GateBackend, Thresholds> = {
   both: { skipAt: 0.8, storyAt: 0.9 },
   typesafe: { skipAt: 0.725, storyAt: 0.9 },
@@ -184,7 +185,7 @@ export function chooseGateBackends(options, keys: Keys): ProviderName[] {
   const configured = typeof options?.story_gate_backend === 'string' ? options.story_gate_backend.trim() : ''
   const mode = (GATE_MODES as readonly string[]).includes(configured) ? configured : 'auto'
   const names = mode === 'auto' ? PROVIDER_NAMES.filter((name) => keys[name]) : mode === 'both' ? [...PROVIDER_NAMES] : [mode as ProviderName]
-  if (!names.length) throw new Error(missingKey('typesafe', 'dev-kit'))
+  if (!names.length) throw new Error(PROVIDER_NAMES.map((name) => missingKey(name, 'dev-kit')).join('; or '))
   const missing = names.find((name) => !keys[name])
   if (missing) throw new Error(missingKey(missing, 'dev-kit'))
   return names

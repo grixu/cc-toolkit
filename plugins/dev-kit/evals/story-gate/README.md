@@ -63,9 +63,12 @@ runs three times because its answers vary; Gemini is deterministic.
 | E3a | + `behaviour_preserving`, `independent_small_edits`, `removes_working_mechanism`, `cause_outside_change` | 15–17/20, 0–1 | 14/20, 0 | kept |
 | E4 | E3a without two chance-level questions, Jev and Gemini averaged | 16/20, 0 in all 3 runs | | **frozen** |
 
-Holdout, 24 PRs at thresholds frozen from the dev set (`THRESHOLDS` in `hooks/story.ts`): both backends averaged
-skipped 8 of 13 skip PRs, Jev alone 7 and Gemini alone 10, and none of them skipped any of the 11 story PRs. The three
-Jev runs gave the same decisions.
+Holdout, 24 PRs at the thresholds in `THRESHOLDS` (`hooks/story.ts`): both backends averaged skipped 8 of 13 skip
+PRs, Jev alone 7 and Gemini alone 10, and none of them skipped any of the 11 story PRs. The three Jev runs gave the
+same decisions. Only the pair's 0.8 / 0.9 was frozen before the holdout ran. The single-backend pairs (Jev 0.725 / 0.9,
+Gemini 0.775 / 0.9) were fitted afterwards, on the dev set's E4 answers alone, when the owner asked for one-key use;
+the holdout was not used to fit them, but its pair result was already known, so their holdout rows are weaker evidence
+than the pair's.
 
 What the experiments showed:
 

@@ -91,7 +91,7 @@ test('auto runs every backend with a key, and a named backend needs its own key'
   expect(chooseGateBackends({ story_gate_backend: 'gemini' }, both)).toEqual(['gemini'])
   expect(chooseGateBackends({ story_gate_backend: 'both' }, both)).toEqual(['typesafe', 'gemini'])
   expect(() => chooseGateBackends({ story_gate_backend: 'both' }, { typesafe: 't', gemini: '' })).toThrow(/no Gemini API key/)
-  expect(() => chooseGateBackends({}, { typesafe: '', gemini: '' })).toThrow(/no TypeSafe API key/)
+  expect(() => chooseGateBackends({}, { typesafe: '', gemini: '' })).toThrow(/no TypeSafe API key.*; or no Gemini API key/)
 })
 
 test('skips the story for a typo, sending the intent without generated sections, and logs no diff text', async ($, on) => {

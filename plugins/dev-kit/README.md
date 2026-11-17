@@ -253,7 +253,7 @@ The **Code story** option sets the behaviour:
 
 An existing pull request whose description already links a story always gets it updated. The **Code story gate backend** option picks the model: `auto` (default) uses every backend with a key and averages their answers, `both` requires both keys, and `typesafe` or `gemini` uses one. Each decision, without the diff, is appended to `~/.cache/dev-kit/story-gate.jsonl`.
 
-The questions and thresholds were calibrated on the plugin author's own 37 pull requests and checked once on 24 more that played no part in the fit. On those 24, both backends together skipped 8 of the 13 pull requests the author would skip, Jev alone 7 and Gemini alone 10, and none of them skipped any of the 11 that should have a story. That is one person's judgement on a small sample; see the [evaluation guide](evals/story-gate/README.md).
+The questions and thresholds were calibrated on the plugin author's own 37 pull requests and checked once on 24 more that played no part in the fit. On those 24, both backends together skipped 8 of the 13 pull requests the author would skip, Jev alone 7 and Gemini alone 10, and none of them skipped any of the 11 that should have a story. Only the pair's thresholds were fixed before that check. That is one person's judgement on a small sample; see the [evaluation guide](evals/story-gate/README.md).
 
 ## Risk assessment
 
