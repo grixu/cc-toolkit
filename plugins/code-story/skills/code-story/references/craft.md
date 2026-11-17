@@ -16,6 +16,8 @@ Order the chapters the way understanding has to build.
 
 **Tell it around code.** Each chapter is built from the lines it is about, whether changed, unchanged or from a dependency, with a note pinning each claim to a line. Everything else exists to make those lines mean something.
 
+**Show what the change makes simpler.** When a fix's cause sits in lines the diff leaves alone, quote those lines (`data-ui="unchanged"`) and show how they produced the bug. When the change makes code elsewhere redundant, such as a guard every caller repeats, show one real caller as it is now and as it could be, and say whether this branch removes it or leaves it for later. Quote the caller from the file; do not write a made-up one.
+
 **Show before you tell.** Reach for a picture before a paragraph whenever one carries the same meaning:
 
 | Shape | What it shows | How to draw it |
