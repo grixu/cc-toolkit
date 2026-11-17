@@ -29,6 +29,8 @@ on:
 permissions:
   contents: read
 
+# On main, runs queue instead of cancelling, so an older build never deploys last;
+# GitHub keeps one pending run per group, so a burst of merges deploys only the newest.
 concurrency:
   group: docs-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -71,10 +73,6 @@ jobs:
     environment:
       name: production
       url: https://cct.grixu.dev
-    # Two quick merges must deploy in order, so an older build never lands last.
-    concurrency:
-      group: docs-deploy
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
