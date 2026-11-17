@@ -1,6 +1,10 @@
+---
+paths:
+  - "plugins/fd3/evals/**"
+---
 # fd3 eval suite — working rules
 
-Rules for working inside `plugins/fd3/evals/`. All of them were earned the hard way;
+Rules for working inside `plugins/fd3/evals/`; they load only when files there are touched. All of them were earned the hard way;
 follow them before improvising.
 
 ## Layout
