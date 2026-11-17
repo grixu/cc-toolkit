@@ -34,9 +34,12 @@ fi
 luma() { ffmpeg -nostdin -v error -ss "$1" -i "$VIDEO" -frames:v 1 -vf "signalstats,metadata=mode=print:key=lavfi.signalstats.YAVG:file=-" -f null - | sed -n 's/.*YAVG=\([0-9.]*\).*/\1/p'; }
 FIRST_LUMA=$(luma 0)
 CARD_LUMA=$(luma 0.5)
-if awk -v a="$FIRST_LUMA" -v b="$CARD_LUMA" 'BEGIN { d = a - b; exit !(d > 20 || d < -20) }'; then
+POSTER_LUMA_TOLERANCE=20
+if awk -v a="$FIRST_LUMA" -v b="$CARD_LUMA" -v tolerance="$POSTER_LUMA_TOLERANCE" \
+  'BEGIN { d = a - b; exit !(d > tolerance || d < -tolerance) }'; then
   echo "WARN: the first frame (brightness $FIRST_LUMA) differs from the title card at 0.5 s ($CARD_LUMA): the poster is not the card"
 fi
+
 ffmpeg -nostdin -v error -i "$VIDEO" -vf "fps=1/$INTERVAL,scale=640:-1,tile=3x3" "$OUT/timeline/sheet%02d.png"
 
 # 35% into each cue and just before it ends: catches a caption that runs ahead of its action.
@@ -69,6 +72,7 @@ if [ -n "$WALK" ]; then
 fi
 # Captions that start lowercase are the second half of a split cue.
 awk 'prev ~ /-->/ && $0 ~ /^[a-z]/ { print "split cue: " $0 } { prev = $0 }' "$SRT"
+
 # The user points at a moment by its player time or its words; this maps both to a caption number.
 awk 'BEGIN { RS = ""; FS = "\n" }
   function clock(stamp, part) { split(stamp, part, /[:,]/); return sprintf("%d:%02d", part[1] * 60 + part[2], part[3]) }
