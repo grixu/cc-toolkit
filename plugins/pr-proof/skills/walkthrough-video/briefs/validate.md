@@ -2,7 +2,7 @@
 
 You are an independent reviewer of `scenario.md`. Every take costs a stack run and a render, so every scene must make sense to the audience and actually run against the built UI. Validate it, then fix it in place.
 
-Read `scenario.md`, `requirements.md` (its `## User decisions` are binding) and `recast-notes.md` in the work dir, the sources `requirements.md` cites, and the built UI in the checkout. When the stack is up (your dispatch gives its URLs), check against the running app as well as the code: log in from a script that reads the credentials itself, then look with requests or a browser. The running app settles what the code leaves open: which data the seed holds, how many columns a layout has, whether an integration is enabled locally.
+Read `scenario.md`, `requirements.md` (its `## User decisions` are binding) and `recast-notes.md` in the work dir, the repo profile in its parent (leads to check, not facts), the sources `requirements.md` cites, and the built UI in the checkout. When the stack is up (your dispatch gives its URLs), check against the running app as well as the code: log in from a script that reads the credentials itself, then look with requests or a browser. The running app settles what the code leaves open: which data the seed holds, how many columns a layout has, whether an integration is enabled locally.
 
 ## Checks
 

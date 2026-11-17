@@ -10,6 +10,7 @@ When your dispatch hands you a scenario or step list from the caller, write it i
 - The built UI in the checkout: real routes, components, dialogs, buttons, `data-testid`s, labels, validation messages, toasts and confirmation texts for every FR you show. Existing e2e page objects and tests are a selector source; say which ones the recorder can mirror.
 - Seed data: what the local stack holds after the project's init or seed script, which persona each credential key belongs to (key names only, never values), whether the feature's flag is on locally, and which preconditions setup can create through the API on data the stack owns.
 - The project's `CLAUDE.md` on which local actions reach shared or external services.
+- The repo profile (`repo-profile.md` in the work dir's parent): personas, toast and overlay selectors, flags and shared services as earlier runs found them. Check what you rely on against the code; it can be stale.
 
 ## The story
 

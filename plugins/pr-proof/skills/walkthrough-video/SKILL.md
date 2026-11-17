@@ -5,7 +5,7 @@ description: Record a narrated walkthrough video of a built feature or a PR's ch
 
 `/pr-proof:walkthrough-video [feature, spec path or PR] [who watches and what they asked to see] [record-only]`
 
-A **walkthrough** is one Playwright test that tells a feature's story scene by scene against the running app, rendered by playwright-recast into an MP4 with burned-in captions. You are the orchestrator of a **relay**: five legs, each a fresh subagent handed one brief from `briefs/` and the files earlier legs wrote. Files are the only hand-off, so each leg sees only its own brief and its own finish line, the validator stays independent of the writer, and the recorder's long run stays out of your context.
+A **walkthrough** is one Playwright test that tells a feature's story scene by scene against the running app, rendered by playwright-recast into an MP4 with burned-in captions. You are the orchestrator of a **relay**: five legs, six on a repository's first walkthrough, each a fresh subagent handed one brief from `briefs/` and the files earlier legs wrote. Files are the only hand-off, so each leg sees only its own brief and its own finish line, the validator stays independent of the writer, and the recorder's long run stays out of your context.
 
 The viewer must be able to follow every beat: see what is clicked, read what is typed, read every caption, if need be by pausing. The take is always recorded at a **calm** pace, the bar every leg is held to; the configured speed only shortens the rendered video, so changing it is a re-render, never a new take. Length follows the story, never the other way round.
 
@@ -18,7 +18,7 @@ Settle these from the arguments and the conversation; look up what is missing; a
 - **Spec**: a path when given; otherwise the requirements leg searches for one.
 - **Audience and focus**: who watches and what they asked to see. Default: a product reviewer.
 - **Credentials**: where the local test users' credentials live (an e2e credentials file, usually). Pass the path, never a value.
-- **Stack**: how this project runs locally, and which local actions reach shared or external services, from its `CLAUDE.md` files. Pass both on to every leg.
+- **Stack**: how this project runs locally, and which local actions reach shared or external services, from its `CLAUDE.md` files and the repo profile. Pass both on to every leg.
 - **Speed and caption density**, from the pr-proof options. Each is the option's text when that is non-empty and does not still start with `${user_config.`, since an unset option reaches this skill literally; otherwise its default. A user who names a speed or density for this run overrides both.
   - Speed: `${user_config.video_speed}`, one of `0.5x`, `1x`, `2x`, `3x`, `5x`; default `1x`. The render plays the calm take at speed ÷ 0.5 times its real pace: `0.5x` is the recorded pace, `5x` ten times faster.
   - Caption density: `${user_config.caption_density}`, one of `normal`, `2x`, `4x`; default `normal`. A caption holds at most 60 × density characters and 12 × density words (normal 60, 2x 120, 4x 240), set in smaller type covering the same area.
@@ -27,17 +27,20 @@ Settle these from the arguments and the conversation; look up what is missing; a
 
 Work dir: `~/.cache/walkthrough-video/<repo>/<feature-slug>/`, never under the session scratchpad or `/tmp`: a reboot wipes those, and the legs' hand-off files and videos must survive one. Legs write `requirements.md`, `recast-notes.md`, `scenario.md`, `recast/` (code), `teardown-ledger.jsonl` (reverts still owed), `stack.log` and `out/` (video, captions, frames) there. When the work dir already exists, read what it holds and resume after the last leg whose finish line it meets; never re-ask a decision recorded under `## User decisions` in `requirements.md`.
 
+Repo profile: `~/.cache/walkthrough-video/<repo>/repo-profile.md`, beside the work dirs and shared by every walkthrough in the repo. It records how the app starts, logs in and shows success and errors, and which of the project's own skills do those jobs. The profile leg writes it on the repo's first walkthrough; the recorder corrects it after each good take.
+
 ## Dispatching a leg
 
-Every dispatch prompt carries: the brief's absolute path (`${CLAUDE_SKILL_DIR}/briefs/<leg>.md`) to read first, `${CLAUDE_SKILL_DIR}/../../references/rules.md` to read second, the skill dir `${CLAUDE_SKILL_DIR}` itself, which the briefs call `<this skill dir>`, the work dir, the inputs above, and the project's own hard rules from its `CLAUDE.md` files and memory (other sessions' Docker stacks, protected files, secret handling, git limits, what reaches shared services). Name things to look at, never conclusions to confirm: a claim another run or agent made goes in as "check whether…", not as a fact.
+Every dispatch prompt carries: the brief's absolute path (`${CLAUDE_SKILL_DIR}/briefs/<leg>.md`) to read first, `${CLAUDE_SKILL_DIR}/../../references/rules.md` to read second, the skill dir `${CLAUDE_SKILL_DIR}` itself, which the briefs call `<this skill dir>`, the work dir, the repo profile's path, the inputs above, and the project's own hard rules from its `CLAUDE.md` files and memory (other sessions' Docker stacks, protected files, secret handling, git limits, what reaches shared services). Name things to look at, never conclusions to confirm: a claim another run or agent made goes in as "check whether…", not as a fact.
 
 Dispatch with `run_in_background: true` (a boolean; a string runs the leg in the foreground and blocks you) and no `name`; keep the `agentId` the result returns. A leg that has written nothing to the work dir for 20 minutes is checked: read its last output, and dispatch a fresh one with the same brief when it died.
 
 ## Steps
 
-1. **Requirements and tool check**, two subagents in one message:
+1. **Requirements, tool check and repo profile**, in one message, two subagents or three:
    - `briefs/requirements.md` writes `requirements.md`. Done when every user-visible change in scope has an FR with at least one AC, each citing its source and marked `stated` or `derived`.
    - `briefs/tool-check.md` writes `recast-notes.md`: `reference/recast.md` plus any delta in newer releases. Done when the notes name the playwright-recast + `@playwright/test` version pair to use, with evidence.
+   - `briefs/profile.md` writes the repo profile, only when it does not exist yet. Done when every job in it names a project skill or a method found, with its source.
 
    **Confirmation gate.** When any requirement is `derived`, or `requirements.md` lists UX concerns or open decisions (real or staged data, a negative case shown live or only in a caption), put them to the user in their language and wait for a yes or corrections before step 2: a scenario built on a guessed requirement costs a whole recording. Write the answers into `requirements.md` under `## User decisions`; every later leg treats them as binding.
 2. **Scenario**: `briefs/scenario.md` writes `scenario.md`. Done when scene 0 is the title card, every later scene maps to an FR/AC, and the setup, recording settings, coverage table and findings sections are filled.
