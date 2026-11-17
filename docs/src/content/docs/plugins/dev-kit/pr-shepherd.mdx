@@ -1,6 +1,6 @@
 ---
 title: /dev-kit:pr-shepherd
-description: Drives an open pull request, or a stack of them, in a self-paced loop until every required check is green and no review thread is open, without asking you anything mid-run.
+description: Drives an open pull request, or a stack of them, in a self-paced loop until every required check is green and no review thread is open, asking you only about review decisions that are yours to make.
 group: guides
 skill: pr-shepherd
 sidebar:
@@ -68,9 +68,12 @@ It waits 5 minutes after a push or while checks run, and 30, then 60 minutes whi
 | justified | The comment names a real defect or a clear improvement within the pull request's scope | Makes the change, runs your lint and test commands for the touched files, commits, pushes, replies `Fixed in <sha>.` and resolves the thread |
 | unjustified | The comment is wrong, out of scope or contradicted by the codebase | Replies with the reason and file, line or doc evidence, and @-mentions the author |
 | question | The comment asks rather than requests | Answers it the same way. When the honest answer reveals a defect, the verdict becomes justified |
-| decision | The fix is a trade-off only you can make, such as security posture or scope | Changes nothing. Replies once with the options and the cost of each, and leaves the thread for you |
+| decision | The fix is a trade-off only you can make, such as security posture or scope | Asks you. It describes each option and its cost, recommends one, then applies your choice and replies in the thread |
 
 Table 1. Review verdicts
+
+Two reviewers asking for incompatible changes is also a decision: the options include each reviewer's change.
+If you dismiss a decision question or keep the decision for yourself, it posts nothing in that thread, doesn't ask again, and the report lists the thread.
 
 It resolves a bot's thread after replying.
 It leaves a human's thread open for that reviewer to resolve.
@@ -85,7 +88,7 @@ It reaches the branches above by a plain merge of each base into its child, one 
 
 ## When it stops
 
-It never asks you anything mid-run.
+Apart from review decisions, it never asks you anything mid-run. While a decision question is open, the loop waits for your answer.
 It stops and reports when one of these happens:
 
 - Every required check is green and no review thread is open. This is success.
@@ -102,7 +105,7 @@ If it stays red, the report lists it for you instead of holding the loop.
 
 - Commits pushed to the pull request's branch, one per thread or per group of threads fixed by one change.
 - Replies in the review threads, and resolved threads where it fixed the point or answered a bot.
-- A status line after each round, and a final report: why it stopped, the commits pushed, the threads fixed, answered and rebutted with links, and everything left for you.
+- A status line after each round, and a final report: why it stopped, the commits pushed, the threads fixed, answered and rebutted with links, the decisions you made, and everything left for you.
 
 ## What it never does
 

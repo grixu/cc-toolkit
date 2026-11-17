@@ -1,6 +1,6 @@
 ---
 title: /dev-kit:pr-shepherd
-description: Prowadzi otwarty pull request albo cały stack w samodzielnie taktowanej pętli, aż każdy wymagany check będzie zielony i nie zostanie żaden otwarty wątek review, nie pytając cię o nic w trakcie.
+description: Prowadzi otwarty pull request albo cały stack w samodzielnie taktowanej pętli, aż każdy wymagany check będzie zielony i nie zostanie żaden otwarty wątek review, pytając cię tylko o decyzje z review, które należą do ciebie.
 group: guides
 skill: pr-shepherd
 sidebar:
@@ -68,9 +68,12 @@ Po pushu albo gdy checki trwają, czeka 5 minut, a gdy zostali już tylko review
 | justified | Komentarz wskazuje prawdziwy błąd albo wyraźne ulepszenie w zakresie pull requesta | Wprowadza zmianę, uruchamia twoje komendy lintera i testów dla zmienionych plików, commituje, pushuje, odpowiada `Fixed in <sha>.` i rozwiązuje wątek |
 | unjustified | Komentarz jest błędny, wykracza poza zakres albo przeczy mu kod | Odpowiada z uzasadnieniem i dowodem w postaci pliku, linii albo dokumentacji, oznaczając autora przez @ |
 | question | Komentarz pyta, a nie prosi o zmianę | Odpowiada tak samo. Gdy uczciwa odpowiedź ujawnia błąd, werdykt zmienia się na justified |
-| decision | Poprawka to kompromis, który możesz wybrać tylko ty, na przykład poziom bezpieczeństwa albo zakres | Niczego nie zmienia. Odpowiada raz, podając opcje i koszt każdej, i zostawia wątek tobie |
+| decision | Poprawka to kompromis, który możesz wybrać tylko ty, na przykład poziom bezpieczeństwa albo zakres | Pyta ciebie. Opisuje każdą opcję i jej koszt, rekomenduje jedną, a potem stosuje twój wybór i odpowiada w wątku |
 
 Tabela 1. Werdykty review
+
+Dwaj reviewerzy proszący o zmiany, których nie da się pogodzić, to też decyzja: opcje obejmują zmianę każdego z nich.
+Jeśli zamkniesz pytanie o decyzję albo zostawisz ją sobie, nie pisze nic w tym wątku, nie pyta ponownie, a raport wymienia ten wątek.
 
 Wątek bota rozwiązuje po odpowiedzi.
 Wątek człowieka zostawia otwarty, żeby rozwiązał go reviewer.
@@ -85,7 +88,7 @@ Do branchy powyżej dociera zwykłym merge'em bazy do brancha potomnego, poziom 
 
 ## Kiedy się zatrzymuje
 
-W trakcie nigdy o nic nie pyta.
+Poza decyzjami z review w trakcie nigdy o nic nie pyta. Dopóki pytanie o decyzję jest otwarte, pętla czeka na twoją odpowiedź.
 Zatrzymuje się i składa raport, gdy zajdzie jedno z poniższych:
 
 - Każdy wymagany check jest zielony i nie ma otwartego wątku review. To sukces.
@@ -102,7 +105,7 @@ Jeśli dalej jest czerwony, raport wymienia go dla ciebie, zamiast wstrzymywać 
 
 - Commity wypchnięte na branch pull requesta, po jednym na wątek albo na grupę wątków naprawionych jedną zmianą.
 - Odpowiedzi w wątkach review i rozwiązane wątki tam, gdzie naprawił problem albo odpowiedział botowi.
-- Linię statusu po każdej rundzie i raport końcowy: dlaczego się zatrzymał, wypchnięte commity, wątki naprawione, z odpowiedzią i z ripostą, z linkami, oraz wszystko, co zostaje dla ciebie.
+- Linię statusu po każdej rundzie i raport końcowy: dlaczego się zatrzymał, wypchnięte commity, wątki naprawione, z odpowiedzią i z ripostą, z linkami, podjęte przez ciebie decyzje oraz wszystko, co zostaje dla ciebie.
 
 ## Czego nigdy nie robi
 
