@@ -358,6 +358,8 @@ Limits under Codex:
   `agents/scanner.md`'s, so a Scanner editing nothing rests on its prompt alone. This is an
   accepted difference.
 - Claude Code's `/security-review` and `/code-review` do not exist in Codex and are never offered.
+- The Walk decision backend is a Claude Code mod setting, so under Codex every structural fix in the
+  walk is asked one at a time.
 - Cost, as an indicative figure from one measurement (2026-10): a full review of a one-file change
   with ten lenses took 3.5–4 minutes, about 5M input tokens (about 95% cached) and 20k output
   tokens.
