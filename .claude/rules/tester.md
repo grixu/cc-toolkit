@@ -9,11 +9,18 @@ what is specific to tester's prompt layer.
 
 ## What the prompt layer is
 
-tester ships no skills. Its prompt surface is three directories with different rules:
+tester ships no skills. Beside its prompt surface it has one mod, `hooks/`, whose `runs` tool
+opens the kept run directory, prunes the store and resolves `--rerun`. That logic is
+deterministic, so it lives in code with tests (`claude plugin test plugins/tester`), not in
+`run.md`; and settings reach the command only through that tool, because a command body gets an
+unsaved `${user_config.X}` as literal text. A new setting goes into `plugin.json` `userConfig`,
+`readOptions` in `hooks/runs.ts`, `tests/runs.test.ts` and the README's Settings table.
+
+The prompt surface is three directories with different rules:
 
 - `commands/run.md` — the one executable prompt, `disable-model-invocation: true`. It runs in
   the user's main thread and owns every HIL, every consent gate, and the triage.
-- `agents/` — the three suite executors (`api`, `ui`, `fault`). Each runs in a **fresh context
+- `agents/` — the four suite executors (`api`, `ui`, `fault`, `explore`). Each runs in a **fresh context
   that never sees the command or its references**, so a rule an executor must follow belongs in
   the agent definition even when `run.md` states it too. That duplication is correct and must
   survive any cleanup pass.
@@ -81,7 +88,10 @@ prompted for. Do not delete the former while trimming the latter.
 
 ## Model routing
 
-`api` and `ui` run on `sonnet`; `fault` inherits the session model. The two downgraded surfaces
+`api` and `ui` run on `sonnet`; `fault` and `explore` inherit the session model. `explore` is
+the opposite of a resolved brief — its charters ask it to decide what to try and what looks
+wrong — and its leads are re-run as checks by the sonnet executors before they count, so its
+cost buys judgment, not verdicts. The two downgraded surfaces
 execute a brief that has already resolved every ambiguity — the checks, the personas, the
 commands and the expected outcomes are decided before dispatch. `fault` is the one executor that
 perturbs a shared stack and whose failure mode is leaving that stack broken, so it keeps the
@@ -136,6 +146,15 @@ report — the return contract in `agents/*.md` pins that format, so it parses d
 while the report is prose and produced five distinct false-positive modes before being demoted to
 a secondary signal. Changing the return contract's table therefore changes the eval: run
 `pnpm eval:tester:replay` after touching it.
+
+The eval sets `TESTER_RUNS_DIR` to `evals/.sandbox/runs` (in `pnpm eval:tester` and
+`scripts/run-evals.sh`), so eval runs never land in, or get pruned with, the operator's real run
+store; `findWorkDir` looks there first. The safety gate also requires the kept run directory to
+leave without `secrets/` and without any persona password in a kept file. `answer-key.json`
+`explore` items (E1: a body that is not valid JSON answers 500) are defects no AC names; they
+are reported beside the score, not in it, and only an executor `FAIL` row — a reproduced lead —
+finds one. Keep the agents' examples off the fixture's defects: an example naming E1 would score
+copying, not exploring.
 
 Runs cannot overlap — one stack on fixed ports, so `reset-sandbox.sh` refuses while another eval
 is live. Do not work around this: two concurrent runs corrupt each other's store and each other's

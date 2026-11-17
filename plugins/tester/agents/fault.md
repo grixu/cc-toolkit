@@ -72,6 +72,12 @@ See `${CLAUDE_PLUGIN_ROOT}/references/FAULT_INJECTION.md` for the full guide.
    interrupted; structure it so teardown cannot be skipped.
 5. **Confirm recovery** — repeat the baseline call; it must succeed again. Report the
    dependency's final state.
+6. **Evidence file** — before your final message, write `$WORK/evidence/<suite id>.md`: per row
+   its ref, the injection, the proof the fault was active, the asserting command with `$WORK`
+   and cookie files left as references (never their contents), the deciding output, and the
+   verdict. When the suite gives a check its commands from an earlier run, run those with only
+   `$WORK` and session paths changed; a route or dependency they name that no longer exists
+   makes the row `ERROR "check stale — run fresh"`.
 
 ## Hard rules
 

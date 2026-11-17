@@ -50,6 +50,14 @@ readable output decides pass/fail. You never decide by judgment.
    Capture status + the specific field/row each check asserts on.
 3. **Never perform an ALLOW mutation over HTTP** unless the brief's consent surface lists
    that exact endpoint. When in doubt, treat it as denial-only and note the limitation.
+4. **A recorded command is run as recorded.** When the suite gives a check its command from an
+   earlier run, run that command with only `$WORK` and session paths changed — do not compose
+   your own. If the route it calls no longer exists (404 on the route itself, not on a record),
+   the row is `ERROR "check stale — run fresh"`.
+5. **Evidence file** — before your final message, write `$WORK/evidence/<suite id>.md`: per row
+   its ref, the exact command as you ran it with `$WORK` and cookie files left as references
+   (never their contents), the part of the output that decided it, and the verdict. A later
+   rerun runs these commands verbatim, so each must work on its own.
 
 ## Hard rules
 

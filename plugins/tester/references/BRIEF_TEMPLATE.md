@@ -1,9 +1,11 @@
 # BRIEF_TEMPLATE — the shared environment brief
 
-`/tester:run` fills this in at step 2 and writes it to `$WORK/BRIEF.md`. It is the only
-artifact of a run and the single shared contract every suite subagent reads. It must be
-self-sufficient: a subagent that reads only the brief can run its suite without re-deriving
-anything. Everything below is discovered fresh each run — never copied from stale config.
+`/tester:run` fills this in at step 2 and writes it to `$WORK/BRIEF.md`. It is the
+single shared contract every suite subagent reads. It must be self-sufficient: a subagent that
+reads only the brief can run its suite without re-deriving anything. Everything below is
+discovered fresh each run — never copied from stale config, and on a rerun re-confirmed rather
+than carried over from the previous brief. The brief stays in the kept run directory, so it
+names secret files and never holds a secret value.
 
 Keep it tight. Delete sections that don't apply. Fill every `<…>`.
 
@@ -12,7 +14,7 @@ Keep it tight. Delete sections that don't apply. Fill every `<…>`.
 The template below, section by section — then *Why each section earns its place*, which gives
 the reason for the ones whose value is not obvious.
 
-- Base URLs & quirks · Personas & cookie files · Pre-state snapshot · Domain topology
+- Base URLs & quirks · Personas & cookie files · Doctor · Pre-state snapshot · Domain topology
 - Access patterns: curl · agent-browser (UI) · DB (read-only)
 - Dependency / fault surface · Environment generations · Expensive triggers & preconditions
 - Expected-behavior model (the assertion oracle) · Safety rules · Known issues · Return format
@@ -33,13 +35,25 @@ You are verifying <scope> on a LOCAL/STAGING running stack (branch `<branch>`, r
 - UI base (if any): `<http://localhost:PORT>`.
 
 ## Personas & cookie files
-Cookie header = one line, ready for `curl -H "Cookie: $(cat FILE)"`. Files live in `$WORK`.
+Cookie header = one line, ready for `curl -H "Cookie: $(cat FILE)"`. Files live in
+`$WORK/secrets/`, which step 7 removes.
 | Persona | Login/email | id | Expected roles/perms | Cookie header file |
 |---|---|---|---|---|
 | <name> | <email> | <id> | <roles> | `<name>.cookieheader.txt` |
 
-For UI login the plaintext password is in `$WORK/<persona>.pass` (generated for this run,
+For UI login the plaintext password is in `$WORK/secrets/<persona>.pass` (generated for this run,
 UI-login only — read into a shell var, never echoed into a table, note, or filename).
+
+## Doctor (instance readiness; re-run before dispatch and after every restart)
+| probe | command | result | gen |
+|---|---|---|---|
+| API | `<curl … <base>/<route outside the scope>>` | <200, envelope as above> | gen-1 |
+| session <persona> | `<curl -H "$A" <base>/<current-user route>>` | <returns id …> | gen-1 |
+| UI <route> | `<agent-browser is visible <landmark> --json>` | <true; route warmed> | gen-1 |
+| dependency <name> | `<docker inspect … ; probe through the app>` | <running, reachable> | gen-1 |
+
+A suite runs only on green probes. A red probe is `BLOCKED "doctor: <probe>"` for the suites
+resting on it, never a FAIL.
 
 ## Pre-state snapshot (taken before the first mutation — the restore target)
 - Rows: `<per-status counts, e.g. COMPLETED:15>`; singleton/state rows: `<table: present/absent>`.
@@ -54,7 +68,7 @@ UI-login only — read into a shell var, never echoed into a table, note, or fil
 ## curl pattern
 ```bash
 WORK=<the run's work dir>
-A="Cookie: $(cat $WORK/<persona>.cookieheader.txt)"
+A="Cookie: $(cat $WORK/secrets/<persona>.cookieheader.txt)"
 curl -s -o /tmp/body -w "HTTP %{http_code}\n" -H "$A" <base>/<route>; cat /tmp/body
 ```
 Cookies may expire mid-run (JWT ~1h). A 401 where 200/403 is expected → report
@@ -69,7 +83,7 @@ comes from an assertion command with `--json` (`is visible`, `get text`, `get ur
 `AGENT_BROWSER_SESSION=<suite id>` (e.g. `s3s4`) as its first command and closes only its own
 session at the end — never `agent-browser close --all`.
 ```bash
-PW="$(cat "$WORK/<persona>.pass")"          # read into a var; never echo it
+PW="$(cat "$WORK/secrets/<persona>.pass")"  # read into a var; never echo it
 agent-browser open <ui-base>/login
 agent-browser fill '[type=email]' '<email>'
 agent-browser fill '[type=password]' "$PW"
@@ -133,7 +147,8 @@ thread, so a DB reachable only through MCP is not a reason to skip the fan-out.
 - New-user flows (invite-new-user / sign-up) use the disposable email the user provided this
   run: `<address | none — new-user checks blocked>`. Never invent an address — real mail may be
   sent and the registration lands in a possibly-shared IdP.
-- Credentials/tokens stay in `$WORK` and env — never echoed into a returned table.
+- Credentials/tokens stay in `$WORK/secrets/` and env — never echoed into a returned table or
+  an evidence file.
 
 ## Known issues already found (verify precisely if in your suite, don't blindly re-confirm)
 - <🔴 endpoint X returns 500 because …>  (or "none yet")
@@ -142,6 +157,8 @@ thread, so a DB reachable only through MCP is not a reason to skip the fan-out.
 Return only a compact markdown table — one row per check —
 `| AC/ref | check | expected | actual | PASS/FAIL |` — then `NOTES:` up to 5 bullets.
 No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run.
+The commands and deciding output go to `$WORK/evidence/<suite id>.md` instead, secret files
+named by path, never quoted.
 ```
 
 ---
@@ -152,6 +169,11 @@ No curl bodies, no logs. Use BLOCKED/ERROR (not FAIL) when a check could not run
   route/prefix/envelope. Pin the real ones once, here.
 - **Personas & cookie files** — auth is stateful; establish it once in the main thread and
   hand subagents ready-to-use cookie headers, so five suites don't each re-login.
+- **Doctor** — a dead or half-ready instance otherwise surfaces inside parallel subagents as a
+  wall of `BLOCKED` rows, each having paid to find the same thing. One read-only pass in the main
+  thread finds it once, and its warm-up visit keeps a dev server's first-visit compile from
+  reading as a broken page. Its landmarks sit outside the scope, so a feature defect cannot hide
+  as an environment failure.
 - **agent-browser pattern** — the UI equivalent of the curl pattern: pin the login flow, the
   `--json`-assertion discipline, and the stable `data-testid` hooks once, here, so parallel UI
   suites don't each rediscover them. The session-isolation line is load-bearing — without a

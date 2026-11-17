@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Doctor, a read-only readiness check after discovery: the API answers with the recorded envelope, every persona's session restores, the UI suites' start routes load (and get warmed, so a dev server's first-visit compile does not read as a broken page), and the fault suite's dependencies are up. A red probe becomes an unlock question or `BLOCKED "doctor: <probe>"` on the suites resting on it, never a FAIL. Doctor runs again right before dispatch and after every app restart.
+- Kept runs: each run's brief, derived checks (`SUITES.md`), per-row evidence, results and ledger stay in `~/.cache/tester/<repository>/`, one store for all worktrees of a repository. Session secrets sit in `secrets/`, deleted when the run ends.
+- `/tester:run --rerun [last|<run-id>]` repeats an earlier run's `FAIL`, `BLOCKED` and `ERROR` rows with their recorded commands and reports what was fixed, what still fails and what changed.
+- An exploratory suite (`tester:explore`): charters that try what the spec never mentions. Its leads count only once a deterministic check reproduces them; the rest are reported as unreproduced observations.
+- Settings `run_retention` (runs kept per repository, default 50) and `explore` (default on), delivered by a new mod's `runs` tool.
+
+### Changed
+
+- Cookie headers and generated passwords move from the work dir's root to `$WORK/secrets/`; executors write `$WORK/evidence/<suite>.md` alongside their unchanged result tables.
+
 ## [0.1.2] - 2026-11-16
 
 ### Changed
