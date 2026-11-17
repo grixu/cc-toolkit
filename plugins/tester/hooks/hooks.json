@@ -1,0 +1,4 @@
+{
+  "description": "tester mod: the runs tool that opens a kept run directory, prunes old runs and finds the run to repeat",
+  "modules": ["./register.ts"]
+}

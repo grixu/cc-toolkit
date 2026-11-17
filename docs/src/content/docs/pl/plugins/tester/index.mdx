@@ -14,8 +14,8 @@ Testy jednostkowe przechodzą, ale nikt nie sprawdził, czy zmiana działa w uru
 tester robi to sprawdzenie w twoim lokalnym albo stagingowym środowisku.
 Ustala, co przetestować, uruchamia każde sprawdzenie jako prawdziwą komendę i raportuje, co przeszło, a co nie, z zapisanym wynikiem za każdym werdyktem.
 
-Nie trzyma konfiguracji i nie zapisuje planu testów.
-Każde uruchomienie odkrywa środowisko od zera i zostawia raport.
+Nie zapisuje planu testów, który trzeba utrzymywać.
+Każde uruchomienie odkrywa środowisko od zera, zostawia raport i trzyma swoje sprawdzenia poza twoim repozytorium, żeby po poprawce dało się powtórzyć dokładnie te, które się nie udały.
 
 ## Gdzie działa
 
@@ -51,7 +51,8 @@ Strona [`/tester:run`](/pl/plugins/tester/run/) prowadzi przez uruchomienie krok
 
 ## Co dostajesz
 
-Raport w rozmowie: tabelę wyników dla każdego zestawu, każdy `FAIL` powiązany z kryterium akceptacji i sklasyfikowany, zachowania, których nie dało się sprawdzić, oraz rejestr wszystkich zmian w twoim środowisku razem z tym, jak je cofnięto.
+Raport w rozmowie: tabelę wyników dla każdego zestawu, każdy `FAIL` powiązany z kryterium akceptacji i sklasyfikowany, błędy spoza specu, które znalazł i odtworzył zestaw eksploracyjny, zachowania, których nie dało się sprawdzić, oraz rejestr wszystkich zmian w twoim środowisku razem z tym, jak je cofnięto.
+Po poprawce `/tester:run --rerun` powtarza sprawdzenia, które się nie udały.
 
 ## Następne kroki
 

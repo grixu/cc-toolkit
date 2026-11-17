@@ -37,6 +37,8 @@ Pełna lista jest w [dokumentacji referencyjnej](/pl/plugins/tester/reference/#w
 
   <Strip cmd="/tester:run" />
 
+Żeby po poprawce powtórzyć nieudane sprawdzenia wcześniejszego uruchomienia, podaj `--rerun` zamiast zakresu; zobacz [Powtórz nieudane sprawdzenia](#powtórz-nieudane-sprawdzenia).
+
 Spec z [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/) nadaje się tu dobrze: tester wyprowadza sprawdzenia z kryteriów akceptacji specu, a potem poszerza je o kod wokół zmiany.
 
 ## Jak przebiega
@@ -47,10 +49,11 @@ Spec z [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/) nadaje się tu dobrze: t
   steps={[
     { name: 'Zakres', does: 'Czyta kryteria akceptacji, kod za obszarem albo diff.' },
     { name: 'Rozpoznanie', does: 'Znajduje porty, trasy, użytkowników testowych i zależności oraz zapisuje stan początkowy.', leaves: 'BRIEF.md' },
-    { name: 'Sprawdzenia', does: 'Zamienia każde oczekiwane zachowanie na sprawdzenia API, interfejsu i awarii, pogrupowane w zestawy.' },
+    { name: 'Gotowość', does: 'Potwierdza sondami tylko do odczytu, że aplikacja, każda sesja i każda zależność odpowiadają.' },
+    { name: 'Sprawdzenia', does: 'Zamienia każde oczekiwane zachowanie na sprawdzenia API, interfejsu i awarii oraz scenariusze dla zestawu eksploracyjnego.', leaves: 'SUITES.md' },
     { name: 'Pytania', does: 'Pyta raz, które zestawy uruchomić i jakie zmiany wolno mu zrobić.' },
-    { name: 'Uruchomienie', does: 'Uruchamia zestawy API i interfejsu równolegle, potem sam zestaw awarii.', leaves: 'TEARDOWN.md' },
-    { name: 'Raport', does: 'Klasyfikuje każdy błąd i raportuje werdykty, luki i rejestr zmian.' },
+    { name: 'Uruchomienie', does: 'Uruchamia zestawy API i interfejsu równolegle, potem eksplorację i odtworzenie jej tropów, a na końcu sam zestaw awarii.', leaves: 'TEARDOWN.md' },
+    { name: 'Raport', does: 'Klasyfikuje każdy błąd i raportuje werdykty, luki i rejestr zmian.', leaves: 'RESULTS.md' },
   ]}
   next={['prepare-proof']}
 />
@@ -58,11 +61,19 @@ Spec z [`/fd3:build-spec`](/pl/plugins/fd3/build-spec/) nadaje się tu dobrze: t
 Rozpoznanie odbywa się przy każdym uruchomieniu, bo porty, trasy i użytkownicy testowi to właśnie to, co w zapisanej konfiguracji najszybciej się dezaktualizuje.
 Jeśli czegoś nie da się ustalić, na przykład dostępu do bazy albo działającego logowania, brief zapisuje tę lukę, a sprawdzenia, których dotyczy, dostają `BLOCKED` zamiast fałszywego `FAIL`.
 
+Zanim wyprowadzi sprawdzenia, tester potwierdza, że środowisko nadaje się do testów: jedno wywołanie API tylko do odczytu, sesję każdego użytkownika testowego, stronę startową każdego zestawu interfejsu i każdą zależność, którą zakłóci zestaw awarii.
+Nieudana sonda zamienia się w pytanie albo w `BLOCKED` dla zestawów, które od niej zależą; nigdy nie jest `FAIL`.
+Sondy uruchamiają się ponownie tuż przed startem sprawdzeń i po każdym restarcie aplikacji.
+
+Gdy eksploracja jest włączona, tester pisze też kilka scenariuszy (charters): krótkich sesji, które próbują tego, o czym spec nie wspomina, na przykład zniekształconych danych wejściowych, podwójnego wysłania formularza albo nieaktualnej sesji.
+Zestaw eksploracyjny zwraca tropy, a nie werdykty.
+Każdy trop staje się sprawdzeniem, które uruchamia agent API albo interfejsu, i tylko trop odtworzony przez to sprawdzenie trafia do raportu jako błąd; pozostałe są wymienione jako obserwacje, nieodtworzone.
+
 ## Odpowiedz na pytania
 
 Zanim cokolwiek się uruchomi, tester pokazuje wyprowadzone zestawy i zadaje jedną rundę pytań:
 
-1. **Które zestawy uruchomić.** Wybierz wszystkie albo część.
+1. **Które zestawy uruchomić.** Wybierz wszystkie albo część; zestaw eksploracyjny jest na liście razem z pozostałymi.
 2. **Czy sprawdzenia mogą robić prawdziwe zmiany przez aplikację.** Odpowiedz `all`, `selected` albo `none`. Domyślnie `none`: tester uruchamia wtedy tylko odczyty i próby, które aplikacja powinna odrzucić.
 3. **Jakie zmiany w środowisku są dozwolone.** Na przykład uruchomienie usługi, dodanie wierszy do bazy, zastosowanie migracji albo restart aplikacji z innymi ustawieniami.
 4. **Co możesz dostarczyć, żeby odblokować zablokowane sprawdzenie.** Na przykład dane logowania, CLI na `PATH` albo jednorazowy adres e-mail do rejestracji lub zaproszenia.
@@ -82,10 +93,11 @@ Raport pojawia się w rozmowie i zaczyna od wyniku:
 - tabela wyników dla każdego zestawu, z każdym sprawdzeniem oznaczonym jako `PASS`, `FAIL`, `BLOCKED`, `ERROR` albo `SKIP`;
 - każdy `FAIL` powiązany z kryterium akceptacji, z oczekiwanym i faktycznym wynikiem, sklasyfikowany jako błąd implementacji, błąd testu albo błąd specu;
 - przyczyna błędu oznaczona jako `PLAUSIBLE` albo `CONFIRMED`, przy czym `CONFIRMED` dopiero po eksperymencie, który rozróżnia hipotezy;
-- anomalie zauważone po drodze, każda w osobnym wierszu `observation` oznaczonym jako niezbadany;
+- znaleziska z eksploracji, które odtworzyło sprawdzenie; takie, o którym spec nic nie mówi, to błąd specu, czyli pytanie do osoby odpowiedzialnej za spec;
+- anomalie zauważone po drodze i tropy z eksploracji, których żadne sprawdzenie nie odtworzyło, każde w osobnym wierszu `observation` oznaczonym jako niezbadany;
 - zachowania, których nie dało się sprawdzić, każde z powodem;
 - rejestr zmian (teardown ledger): każda zmiana w twoim środowisku, sposób jej cofnięcia i to, co zostało celowo, razem z powodem;
-- jeden proponowany następny krok.
+- jeden proponowany następny krok oraz linia z `--rerun`, gdy coś się nie udało.
 
 Gdy tester nie jest pewien, jak sklasyfikować błąd, uznaje go za błąd implementacji.
 [Dokumentacja referencyjna](/pl/plugins/tester/reference/#werdykty) definiuje każdy werdykt i każdą klasę błędu.
@@ -93,15 +105,31 @@ Gdy tester nie jest pewien, jak sklasyfikować błąd, uznaje go za błąd imple
 Po raporcie tester się zatrzymuje.
 Nie poprawia kodu i nie uruchamia kolejnej komendy.
 
+## Powtórz nieudane sprawdzenia
+
+Gdy poprawisz błąd, powtórz sprawdzenia, które się nie udały, zamiast wyprowadzać je od nowa:
+
+<Strip cmd="/tester:run --rerun" />
+
+`--rerun` bierze ostatnie zakończone uruchomienie w bieżącym worktree; `--rerun <run id>` bierze wskazane, a raport podaje identyfikator każdego uruchomienia.
+tester powtarza wiersze `FAIL`, `BLOCKED` i `ERROR` tego uruchomienia komendami, które zapisał, więc stan przed i po porównuje te same sprawdzenia.
+Rozpoznanie, sprawdzenie gotowości i pytania odbywają się od nowa, bo sesje i twoje odpowiedzi nigdy nie przechodzą między uruchomieniami.
+
+Raport grupuje wiersze na naprawione, nadal nieudane i zmienione.
+Wiersze, które wcześniej przeszły, nie są powtarzane, więc regresja wśród nich nie byłaby widoczna; żeby ją wykryć, uruchom świeże sprawdzenie z zakresem.
+Sprawdzenie, którego trasa albo strona już nie istnieje, dostaje `ERROR "check stale — run fresh"`, nigdy `FAIL`.
+
 ## Co może pójść nie tak
 
 - **Bazowy URL wygląda na produkcję.** tester przerywa pracę. Wskaż lokalne albo stagingowe środowisko.
 - **Nie ma zakresu.** Bez argumentu i przy pustym diffie tester prosi o wskazanie zakresu.
 - **Użytkownik testowy nie może się zalogować albo sesja wygasa w trakcie.** Sprawdzenia tego użytkownika dostają `BLOCKED`; pozostałe działają dalej.
+- **Sonda gotowości nie przechodzi.** tester prosi o poprawkę, na przykład uruchomienie usługi albo ponowne zalogowanie; jeśli odmówisz, zestawy, które od niej zależą, dostają `BLOCKED "doctor: <probe>"`.
 - **Sprawdzenie zmieniłoby więcej, niż pozwolono.** tester zgłasza różnicę i wstrzymuje zmiany tego rodzaju, dopóki znowu się nie zgodzisz.
+- **`--rerun` nie znajduje nic do powtórzenia.** Dla tego worktree nie ma zakończonego uruchomienia albo obok `--rerun` podano tekst zakresu. Uruchom świeże sprawdzenie albo podaj identyfikator uruchomienia.
 
 ## Następne kroki
 
-- Popraw błędy z raportu i uruchom `/tester:run` ponownie z tym samym zakresem.
+- Popraw błędy z raportu, a potem powtórz nieudane sprawdzenia przez `/tester:run --rerun`.
 - Gdy sprawdzenia przejdą, pokaż zmianę reviewerowi z [pr-proof](/pl/plugins/pr-proof/) na etapie [03c Review człowieka](/pl/lifecycle/human-review/).
 - [Jak działa tester](/pl/plugins/tester/how-it-works/) wyjaśnia brief, agentów i sposoby wywoływania awarii.

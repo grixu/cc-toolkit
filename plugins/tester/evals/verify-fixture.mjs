@@ -30,7 +30,7 @@ async function login(persona) {
   cookies.set(persona, `tsid=${tsid}`);
 }
 
-async function call({ persona, method = 'GET', path: p, ui, badLogin, body }) {
+async function call({ persona, method = 'GET', path: p, ui, badLogin, body, rawBody }) {
   if (badLogin) {
     await fetch(`${API}/login`, {
       method: 'POST',
@@ -43,12 +43,13 @@ async function call({ persona, method = 'GET', path: p, ui, badLogin, body }) {
   }
   const headers = {};
   if (persona) headers.cookie = cookies.get(persona);
-  if (body) headers['content-type'] = 'application/json';
+  if (body || rawBody) headers['content-type'] = 'application/json';
+  const payload = rawBody ?? (body ? JSON.stringify(body) : undefined);
   const r = await fetch(`${API}${p}`, {
     method,
     headers,
     redirect: 'manual',
-    ...(body ? { body: JSON.stringify(body) } : {}),
+    ...(payload !== undefined ? { body: payload } : {}),
   });
   return { status: r.status, body: await r.text(), ui };
 }
@@ -100,6 +101,10 @@ try {
 
   for (const d of key.defects.filter((x) => !isPaused(x))) await runDefect(d);
   for (const c of key.correct.filter((x) => !isPaused(x))) await runCorrect(c);
+  for (const x of key.explore || []) {
+    const got = await call(x.probe);
+    record(`${x.id} (explore, ${x.surface})`, got.status === x.actual, `expected the unspecified status ${x.actual}, got ${got.status}`);
+  }
 
   const paused = [
     ...key.defects.filter(isPaused).map((d) => ['defect', d]),
@@ -126,5 +131,5 @@ if (problems.length) {
   process.exit(1);
 }
 
-const counts = `${key.defects.length} planted defects + ${key.correct.length} correct behaviours`;
+const counts = `${key.defects.length} planted defects + ${(key.explore || []).length} explore-only + ${key.correct.length} correct behaviours`;
 console.log(`tester evals: fixture matches the answer key (${counts}).`);

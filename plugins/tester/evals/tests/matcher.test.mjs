@@ -187,6 +187,13 @@ test('a defect write-up citing other ACs as context condemns only its lead-in su
   assert.deepEqual(marked(report), ['AC-3']);
 });
 
+test('a one-line write-up takes its subject from the bold lead-in only', () => {
+  const report =
+    "**D6 — AC-3: an admin may patch another user's membership.** impl-defect. " +
+    'AC-1/AC-2 give admins blanket power, so the exception is defensible.';
+  assert.deepEqual(marked(report), ['AC-3']);
+});
+
 test('an H1 title announcing defects scopes nothing', () => {
   assert.deepEqual(marked('# Verdict: 2 defects across 8 ACs\n\n| AC-1 | login flow |'), []);
 });
@@ -250,4 +257,17 @@ test('prose failing blocks carry their text into keyword attribution', () => {
   const caught = m.matchDefects(m.markedFailedBlocks(report), defects);
   assert.ok(caught.has('X1'));
   assert.ok(!caught.has('X2'));
+});
+
+// ---- exploratory items ----------------------------------------------------------------------
+
+test('an explore item is found only by a FAIL row carrying a term from every group', () => {
+  const items = [{ id: 'E9', match: [['json', 'malformed'], ['500', 'internal_error']] }];
+  const rows = (lines) => m.failingBlocksFromRows(lines.map((text) => ({ text, verdict: /FAIL/.test(text) ? 'FAIL' : 'PASS', acs: [] })));
+  const reproduced = '| EXP-1 | POST /api/session, malformed JSON body | 4xx (spec silent) | 500 internal_error | ❌ FAIL |';
+  assert.ok(m.matchExplore(rows([reproduced]), items).has('E9'));
+  const notReproduced = '| EXP-1 | POST /api/session, malformed JSON body | 4xx (spec silent) | 400 | PASS |';
+  assert.ok(!m.matchExplore(rows([notReproduced]), items).has('E9'));
+  const oneGroupOnly = '| EXP-2 | GET /api/projects as member | 200 | 500 internal_error | FAIL |';
+  assert.ok(!m.matchExplore(rows([oneGroupOnly]), items).has('E9'));
 });

@@ -37,6 +37,8 @@ The full list is in the [reference](/plugins/tester/reference/#requirements).
 
   <Strip cmd="/tester:run" />
 
+To repeat an earlier run's failed checks after a fix, pass `--rerun` instead of a scope; see [Repeat the failed checks](#repeat-the-failed-checks).
+
 A spec from [`/fd3:build-spec`](/plugins/fd3/build-spec/) works here: tester derives its checks from the spec's acceptance criteria, then widens them from the code around the change.
 
 ## How it runs
@@ -47,10 +49,11 @@ A spec from [`/fd3:build-spec`](/plugins/fd3/build-spec/) works here: tester der
   steps={[
     { name: 'Scope', does: 'Reads the acceptance criteria, the code behind the area, or the diff.' },
     { name: 'Discover', does: 'Finds the live ports, routes, test users and dependencies, and snapshots the current state.', leaves: 'BRIEF.md' },
-    { name: 'Derive', does: 'Turns each expected behavior into API, UI and fault checks, grouped into suites.' },
+    { name: 'Check readiness', does: 'Confirms with read-only probes that the app, each session and each dependency answer.' },
+    { name: 'Derive', does: 'Turns each expected behavior into API, UI and fault checks, plus charters for an exploratory suite.', leaves: 'SUITES.md' },
     { name: 'Ask', does: 'Asks once which suites to run and which changes it may make.' },
-    { name: 'Run', does: 'Runs API and UI suites in parallel, then the fault suite alone.', leaves: 'TEARDOWN.md' },
-    { name: 'Report', does: 'Classifies each failure and reports the verdicts, the gaps and the ledger.' },
+    { name: 'Run', does: 'Runs API and UI suites in parallel, then exploration and the reproduction of its leads, then the fault suite alone.', leaves: 'TEARDOWN.md' },
+    { name: 'Report', does: 'Classifies each failure and reports the verdicts, the gaps and the ledger.', leaves: 'RESULTS.md' },
   ]}
   next={['prepare-proof']}
 />
@@ -58,11 +61,19 @@ A spec from [`/fd3:build-spec`](/plugins/fd3/build-spec/) works here: tester der
 Discovery happens on every run, because ports, routes and test users are what goes stale in stored configuration.
 If a piece can't be found, such as database access or a working login, the brief records the gap and the affected checks become `BLOCKED` instead of a false `FAIL`.
 
+Before deriving checks, tester confirms the stack is worth driving: one read-only call to the API, each test user's session, the start page of each UI suite, and each dependency the fault suite will disrupt.
+A failed probe turns into a question, or into `BLOCKED` on the suites that rest on it; it is never a `FAIL`.
+The probes run again just before the checks start and after every restart of the app.
+
+With exploration on, tester also writes a few charters: short sessions that try what the spec never mentions, such as malformed input, a double submit or a stale session.
+The exploratory suite returns leads, not verdicts.
+Each lead becomes a check that an API or UI agent runs, and only a lead that check reproduces is reported as a failure; the rest are listed as observations, not reproduced.
+
 ## Answer the questions
 
 Before anything runs, tester shows the suites it derived and asks one round of questions:
 
-1. **Which suites to run.** Pick all of them or a subset.
+1. **Which suites to run.** Pick all of them or a subset; the exploratory suite is listed with the rest.
 2. **Whether checks may make real changes through the app.** Answer `all`, `selected` or `none`. The default is `none`: tester then runs only reads and attempts that it expects the app to deny.
 3. **Which environment changes are allowed.** For example, starting a service, seeding rows, applying a migration or restarting the app with different settings.
 4. **What you could supply to unlock a blocked check.** For example, a credential, a CLI on `PATH`, or a disposable email address for a sign-up or invite flow.
@@ -82,10 +93,11 @@ The report arrives in the conversation and leads with the outcome:
 - a result table per suite, with each check marked `PASS`, `FAIL`, `BLOCKED`, `ERROR` or `SKIP`;
 - every `FAIL` tied to its acceptance criterion, with expected and actual output, and classified as an implementation defect, a test defect or a spec defect;
 - a root cause for a failure marked `PLAUSIBLE` or `CONFIRMED`, and `CONFIRMED` only after an experiment that tells the two apart;
-- anomalies noticed along the way, each in its own `observation` row marked as not investigated;
+- exploratory findings a check reproduced; one the spec says nothing about is a spec defect, a question for whoever owns the spec;
+- anomalies noticed along the way and exploratory leads no check reproduced, each in its own `observation` row marked as not investigated;
 - behaviors it could not check, each with its reason;
 - the teardown ledger: every change made to your environment, how it was reverted, and anything left in place on purpose with the reason;
-- one suggested next step.
+- one suggested next step, and the `--rerun` line when anything failed.
 
 When tester is unsure how to classify a failure, it calls it an implementation defect.
 The [reference](/plugins/tester/reference/#verdicts) defines each verdict and each defect class.
@@ -93,15 +105,31 @@ The [reference](/plugins/tester/reference/#verdicts) defines each verdict and ea
 tester stops after the report.
 It doesn't fix the code and doesn't start another command.
 
+## Repeat the failed checks
+
+After you fix a defect, repeat the checks that failed rather than deriving them again:
+
+<Strip cmd="/tester:run --rerun" />
+
+`--rerun` takes the current worktree's last finished run; `--rerun <run id>` takes a named one, and the report names each run's id.
+tester repeats that run's `FAIL`, `BLOCKED` and `ERROR` rows with the commands it recorded, so the before and after compare the same checks.
+Discovery, the readiness check and the questions run again, because sessions and your answers never carry over.
+
+The report groups the rows as fixed, still failing, and changed.
+Rows that passed before are not repeated, so a regression among them would not show; run fresh with the scope for that.
+A check whose route or page no longer exists is `ERROR "check stale — run fresh"`, never a `FAIL`.
+
 ## What can go wrong
 
 - **The base URL looks like production.** tester halts. Point it at a local or staging stack.
 - **There is no scope.** With no argument and an empty diff, tester asks you to name a scope.
 - **A test user can't log in, or a session expires mid-run.** That user's checks become `BLOCKED`; the rest still run.
+- **A readiness probe fails.** tester asks for the fix, such as starting a service or logging in again; if you decline, the suites that rest on it are `BLOCKED "doctor: <probe>"`.
 - **A check would change more than you allowed.** tester reports the difference and holds that kind of change until you agree again.
+- **`--rerun` finds nothing to repeat.** No finished run exists for this worktree, or scope text was given beside `--rerun`. Run fresh, or name a run id.
 
 ## Next steps
 
-- Fix the defects the report found, then run `/tester:run` again with the same scope.
+- Fix the defects the report found, then repeat the failed checks with `/tester:run --rerun`.
 - When the checks pass, prove the change to a reviewer with [pr-proof](/plugins/pr-proof/), in [03c Human review](/lifecycle/human-review/).
 - [How tester works](/plugins/tester/how-it-works/) explains the brief, the agents and the fault mechanisms.

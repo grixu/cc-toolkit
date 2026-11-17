@@ -1,19 +1,25 @@
 ---
-description: On-demand manual verification of a running app against a spec or a changed scope. Discovers the live stack, builds an ephemeral environment brief, derives test suites from ACs (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, agent-browser for UI, fault-injection (dependency pause/stop or a WireMock proxy) for error handling — each returning only an evidence-backed PASS/FAIL table. No persisted plan, no config. User-run only.
-argument-hint: "[<spec-path-or-url> | free-text scope]  (empty → scope from git diff)"
+description: On-demand manual verification of a running app against a spec or a changed scope. Discovers the live stack, builds an environment brief, derives test suites from ACs (or the git diff), and fans out one subagent per suite across three surfaces — curl for API, agent-browser for UI, fault-injection (dependency pause/stop or a WireMock proxy) for error handling — plus an exploratory suite whose findings count only once a deterministic check reproduces them. Each returns an evidence-backed PASS/FAIL table. Runs are kept outside the repo, so `--rerun` repeats the failed checks exactly. User-run only.
+argument-hint: "[<spec-path-or-url> | free-text scope]  (empty → scope from git diff) | --rerun [last|<run-id>]"
 disable-model-invocation: true
 ---
 
 `/tester:run` verifies a running application against what it is supposed to do. It is
-the light counterpart to `mt`: no config, no persisted test plan, no staleness tracking.
-One pass, one ephemeral brief, then it forgets. You stay in the execution loop, out
-of the verdict loop — every check is a concrete command whose recorded output decides
-pass/fail; a pass without command proof does not exist.
+the light counterpart to `mt`: no persisted test plan to maintain, no staleness tracking.
+One pass, one brief. The run's directory is kept outside the repo so that a later
+`--rerun` can repeat its failed checks without deriving them again, and it is never a
+corpus anyone maintains. You stay in the execution loop, out of the verdict loop — every
+check is a concrete command whose recorded output decides pass/fail; a pass without
+command proof does not exist.
 
 `$ARGUMENTS` is the scope:
 - **a spec path or URL** (e.g. `architecture/fd/<slug>/spec.md`) → derive checks from its ACs;
 - **free-text** ("the org-role assignment endpoints") → derive checks from that area;
-- **empty** → derive scope from `git diff` (see step 1).
+- **empty** → derive scope from `git diff` (see step 1);
+- **`--rerun [last|<run-id>]`** → repeat the `FAIL`, `BLOCKED` and `ERROR` rows of an earlier
+  run of this worktree (`last` when no id is given) with the checks it recorded; see *Rerun*.
+  A rerun takes its scope from that run, so scope text beside `--rerun` is a **block**: run
+  fresh or drop the text.
 
 Three verbs, used the same way throughout. **block** — a gate refuses; report why and where to
 go next, and change nothing. **halt** — the run cannot proceed at all; say so and end the
@@ -54,9 +60,9 @@ or `SKIP`, written in backticks wherever prose could confuse the two.
   response, the log line) and delete precisely those. A glob or a substring sweep over a directory
   you do not own deletes the user's data; a delete count that doesn't match what you created is a
   stop-and-report, not a cleanup to push through.
-- **Credentials and session tokens live in the ephemeral work dir and env, never in
+- **Credentials and session tokens live in `$WORK/secrets/` and env, never in
   context.** Do not echo cookie values, tokens, or passwords into your messages or into
-  any file that could be committed.
+  any file outside `secrets/` — the rest of the run directory outlives the run.
 - **A subagent's verdict is its returned table only.** The main thread triages; it does
   not re-run checks blindly.
 - **No verdict on an unfired stimulus.** Asserting an effect is *absent* (no trace, no
@@ -75,17 +81,30 @@ or `SKIP`, written in backticks wherever prose could confuse the two.
   enablement with a live effect probe or the app's own introspection, never a parallel
   process read.
 
-## Ephemeral work dir
+## Run directory
 
-Create one temp dir outside the repo for this run and use it for the brief, cookies,
-and evidence:
+Open the run directory first, with the `mcp__tester__runs` tool: `scope` is `$ARGUMENTS` (or
+`git diff` when empty), `repo` the absolute worktree path when the session's directory is not
+the worktree under test, and `rerun` the id or `last` on a rerun. It answers with `work`, the
+directory to use as `$WORK`; `previous`, the run being repeated; `explore`, whether the
+exploratory suite is on; and any `warnings` to pass on. The tool keeps the newest runs of the
+repository, all its worktrees together, and deletes older ones itself.
 
-```bash
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/tester.XXXXXX")"; echo "$WORK"
-```
+`$WORK` holds:
 
-Everything here is disposable and secret-bearing. Never write it into the repo, never
-commit it.
+| path | what | kept after the run |
+|---|---|---|
+| `BRIEF.md` | the environment brief (step 2) | yes |
+| `SUITES.md` | every suite's checks as derived (step 3) — what a rerun repeats | yes |
+| `evidence/<suite>.md` | the command and deciding output per row, written by each executor | yes |
+| `RESULTS.md` | every suite's rows, verdicts and triage (step 7) | yes |
+| `TEARDOWN.md` | the teardown ledger | yes |
+| `secrets/` | cookie headers, generated passwords, browser session state | **removed at step 7** |
+
+Nothing in `$WORK` goes into the repo or a commit. When the tool is missing or answers with an
+error, fall back to `WORK="$(mktemp -d "${TMPDIR:-/tmp}/tester.XXXXXX")"`, create `secrets/`
+in it, tell the user this run cannot be repeated with `--rerun`, and carry on; on a rerun the
+fallback is a **halt**, since there is nothing to repeat.
 
 ## Working rules
 
@@ -145,13 +164,15 @@ Discover the live stack fresh (this is what rots in stored config, so never assu
   seed. Record user ids and expected roles.
 - **Auth** — establish each persona's session once (log in via `agent-browser`, export the
   session cookie for curl; or a token/hook per the app). Store cookie headers as one-line
-  files in `$WORK`.
+  files in `$WORK/secrets/`.
 - **Pre-state snapshot** — before the first mutation of any kind, record the baseline the run
   will have to restore *to*: row counts per status, singleton/state rows, which processes and
   ports are up, and what already exists in any user-owned store the app writes to. This is what
   "restored" gets measured against at step 7. Without it you are restoring to an *assumption* of
   what pristine looks like — and a state row the app creates during the run reads as pre-existing
-  or as litter with equal plausibility.
+  or as litter with equal plausibility. A snapshot that copies rows holding passwords, password
+  hashes, tokens or keys goes into `$WORK/secrets/`, since the run directory outlives the run;
+  the brief quotes only counts and ids from it.
 - **Dependencies for fault-injection** — the container/process name, how the app reaches
   it (so a suite can pause/stop it or front it with a proxy), and how the stack is
   supervised: read the launcher (compose flags, restart policy) to learn what a single
@@ -160,7 +181,7 @@ Discover the live stack fresh (this is what rots in stored config, so never assu
 
 **If discovery finds the stack down** — no processes, a missing `.env`, a stopped Docker daemon —
 bringing it up is a first-class path, not an automatic block. Starting the servers, provisioning a
-test persona (generate its password into `$WORK`, never print it, never a real user), and seeding
+test persona (generate its password into `$WORK/secrets/`, never print it, never a real user), and seeding
 any DB fixture a state needs (e.g. a `COMPLETED` row so the 409/duplicate path is drivable) are
 **environment mutations**: clear them through step 4 (or ask the moment one becomes necessary),
 ledger each as you make it, and start only what discovery proved absent. Consent declined → the
@@ -176,11 +197,42 @@ If a piece cannot be discovered (no DB access, a persona won't log in, a route c
 confirmed), record the concrete lack in the brief — the affected checks become `blocked`,
 never guessed and never a false FAIL.
 
+#### 2a. Doctor — is this instance worth driving?
+
+Before deriving suites against the stack, prove it answers the way the brief says it does.
+Doctor is read-only and runs in the main thread, a handful of commands:
+
+- **API** — one `GET` per base URL on a route outside the scope under test, asserting the status
+  and envelope the brief recorded. One call proves the port, the prefix and the envelope.
+- **Sessions** — per persona, the current-user endpoint with that persona's cookie file returns
+  its id. A session that does not restore is that persona's problem, not the stack's.
+- **UI** — when a UI suite is planned, `agent-browser` opens each route those suites start from
+  and asserts one landmark with `--json`. This also warms the routes: a dev server that compiles
+  a route on its first visit answers slowly once, and a suite meeting that first visit reads it
+  as a broken page.
+- **Fault dependencies** — when a fault suite is planned, each dependency it will perturb is
+  running and reachable through the app, so a later "dependency down" observation has a known-up
+  baseline.
+
+Pick landmarks the scope does not touch. A Doctor probe on the feature under test turns a
+feature defect into an environment failure, and the defect leaves the report as `BLOCKED`.
+
+Record each probe in the brief's Doctor table with its command, result and generation. A red
+probe is a fact about the environment, never a verdict on the scope: it becomes an unlock
+question at step 4 (start, restart, re-login) or, once declined, `BLOCKED "doctor: <probe>"` on
+exactly the suites that rest on it. A suite is never dispatched into a stack already known to be
+down.
+
+Doctor runs again right before dispatch at step 5 and after every restart of the app under test.
+The question round and any environment mutation sit between discovery and dispatch, and the stack
+can change under both.
+
 ### 3. Derive suites
 
 Project the ACs (or the diff) into suites — one suite per coherent area (a resource, a
 flow, an error class), each a small list of checks. A check is
-`| AC/ref | check | expected | actual | PASS/FAIL |`. Positive per observable behavior;
+`| AC/ref | check | expected | actual | PASS/FAIL |`, whose first cell names the criterion and
+the check id together (`AC-4 S4-2`). Positive per observable behavior;
 negatives only for error paths the scope actually enumerates.
 
 #### 3a. Widen from the spec — scan the code's behavior, not just its routes
@@ -230,11 +282,35 @@ accounts for all three — a `none` that only rules out A and B is the failure m
 exists to catch. Same bar as 3b. The step-6 skip gate can only fire on a check that exists: a
 fault surface never stated is how fail-open/fail-closed behavior escapes verification silently.
 
+#### 3c. Exploration charters
+
+When the run directory answered `explore: true`, also write charters for one `tester:explore`
+suite (id `X`). The derived suites cover what the scope says should happen; exploration looks for
+what nobody wrote down — input the spec never names, sequences it never orders, states it never
+reaches. A charter is one line, `id | surface | posture | charter`:
+
+- **surface** — `api` or `ui`;
+- **posture** — `fuzzer` (malformed, empty, oversized, duplicated, wrong-type input),
+  `skeptic` (the claims the scope makes, tested from the side: back button, double submit, a
+  stale session, a direct URL to a step) or `newcomer` (the flow as a first-time user walks it);
+- **charter** — one sentence naming the area and what to try, e.g. `the cart line endpoint —
+  zero, negative and huge quantities, a missing product id`.
+
+Write one or two charters per area of the scope, six at most, each aimed at the scope rather than
+at the app at large. With `explore: false`, write none and say so in one line.
+
+#### 3d. Freeze the suites
+
+Write every suite to `$WORK/SUITES.md`: per suite its id, surface, executor and a check table
+`| ref | check | steps | expected |`, then the charters. It is what a later rerun repeats, so a
+check reads on its own: the route or page, the persona, the input and the expected outcome, with
+no "as above".
+
 ### 4. Confirm scope + mutation consent (HIL)
 
 Ask once with `AskUserQuestion` (group choices into at most 4 options per question — the
 tool rejects more):
-- **which suites** to run (or all);
+- **which suites** to run (or all), the exploratory suite listed among them;
 - **mutation consent** — `all` / `selected` / `none` (default `none`): whether real ALLOW
   mutations may be performed, and for which endpoints. Under `none`, the matrix runs
   read-only + expected-denial as above. Cover both classes: alongside the feature mutations,
@@ -257,12 +333,35 @@ tool rejects more):
 
 ### 5. Execute — fan out, one subagent per suite
 
+Re-run Doctor (2a) first and dispatch only the suites whose probes are green.
+
 Dispatch the API and UI suites in parallel, each in its own subagent
 (`tester:api` / `tester:ui`), every one pointed at `$WORK/BRIEF.md`. Each returns only
-its results table plus up to 5 notes — no curl bodies, no logs, no context flooding. The
-assertion contract holds: every row backed by a concrete command whose output is recorded;
+its results table plus up to 5 notes — no curl bodies, no logs, no context flooding — and
+writes `$WORK/evidence/<suite id>.md` with the command and deciding output behind each row.
+The assertion contract holds: every row backed by a concrete command whose output is recorded;
 `blocked` (precondition unavailable, e.g. cookie expired) and `error` (harness broke) are
 distinct from `FAIL`.
+
+**Exploratory suite, then its reproduction.** Once the API and UI suites have reported,
+dispatch `tester:explore` alone with the brief and the charters: it may drive the same records
+those suites assert on, so it never runs beside them. It returns leads, not verdicts — what it
+tried, what happened, and why that looks wrong. A lead is a claim from a model, so none reaches
+the report as a finding until a deterministic check reproduces it:
+
+1. Turn each lead into a check with ref `EXP-<n>`: the exact request or browser steps the lead
+   describes, and the outcome the lead says is wrong stated as the expected behaviour's
+   opposite. Where the scope pins the right behaviour, cite it; where it is silent, write the
+   expectation as a reasonable one and mark it `(spec silent)`.
+2. Dispatch those checks as one more suite (`R`, appended to `SUITES.md`) to `tester:api` or
+   `tester:ui` by surface — the same executors, the same contract.
+3. A `FAIL` row there is a reproduced finding and is triaged at step 7 like any other. A lead
+   whose check passes, or that could not be turned into a check, is an `observation` marked
+   "not reproduced", with the lead's own words.
+
+Mutation consent covers exploration like any suite: under `none` it explores read-only and
+with expected-denial attempts, and an environment mutation it would need is asked for, not
+taken.
 
 Dispatch the batch in one message, pass `run_in_background: false`, and give no subagent a
 `name`: an unnamed subagent hands you its final message, while a named one answers only a
@@ -333,7 +432,8 @@ hold further mutations of that class until re-consented.
 
 ### 6. Fault-injection suite — solo, last
 
-Run any `tester:fault` suite alone, after the read suites finish — it perturbs the
+Run any `tester:fault` suite alone, after every other suite, the exploratory one and its
+reproduction included, has reported — it perturbs the
 shared stack, and pausing a dependency or fronting it with a proxy would corrupt parallel
 suites. It picks the mechanism per fault kind from
 `${CLAUDE_PLUGIN_ROOT}/references/FAULT_INJECTION.md`. **Teardown is mandatory** — the
@@ -360,7 +460,11 @@ classify:
 - **spec-defect** — faithful check, defensible impl, the conflict is rooted in an
   ambiguous/contradictory spec.
 
-**Default under uncertainty = impl-defect**; the other two need concrete evidence.
+**Default under uncertainty = impl-defect**; the other two need concrete evidence. A reproduced
+`EXP-<n>` row whose check was marked `(spec silent)` is the exception: the scope never said what
+should happen, so it defaults to **spec-defect** — a question for whoever owns the spec — unless
+it breaks a rule the scope states elsewhere (its error-envelope or status table, a security
+property), which makes it an impl-defect.
 
 Before triaging a subagent's finding, cross-check its cited evidence against the suite's
 own stimulus window and its environment generation: a trace/row id or timestamp that
@@ -380,20 +484,64 @@ budget allows, a loop that ran twice, a state that shouldn't exist — gets its 
 explains what it was tested against, not everything sitting next to it; folding the odd number
 into the neighbouring defect's narrative is how a second defect leaves the run undiscovered.
 
+Write `$WORK/RESULTS.md` — every executed row as `| suite | AC/ref | check | expected | actual |
+verdict | triage |`, then the observations, gaps and ledger — and then remove `$WORK/secrets/`
+with `rm -rf --` and its absolute path typed out literally; a variable in an `rm` path stops for
+a permission prompt. A run without `RESULTS.md` is one a rerun cannot pick, and the next run's
+tool call removes any `secrets/` a crashed run left behind.
+
 Report: a consolidated table per suite (pass/fail/blocked/skipped counts), every FAIL bound
-to its AC/ref with the verdict and actual-vs-expected, the `observation` rows, the uncovered
-gaps, the teardown ledger in full (what was changed, what was reverted, what deliberately stays and why) with
-restoration verified against the step-2 snapshot and quoted, and one line of suggested next
-action. Then stop — never auto-run a follow-up. The brief and `$WORK`
-are ephemeral; mention the path but do not commit anything.
+to its AC/ref with the verdict and actual-vs-expected (a defect grouping rows names each
+criterion it breaks, not only the check ids, because the spec's owner reads by criterion), the
+reproduced exploratory findings, the
+`observation` rows (unreproduced leads among them), the uncovered gaps, the teardown ledger in
+full (what was changed, what was reverted, what deliberately stays and why) with restoration
+verified against the step-2 snapshot and quoted, and one line of suggested next action. Close
+with the run directory and, when any row is `FAIL`, `BLOCKED` or `ERROR`, the line that repeats
+them after a fix: `/tester:run --rerun <run id>`. Then stop — never auto-run a follow-up, and
+commit nothing.
+
+## Rerun
+
+`--rerun` repeats an earlier run's `FAIL`, `BLOCKED` and `ERROR` rows with the checks that run
+recorded, so the before and after compare the same checks instead of two derivations. Rows that
+passed are not run again.
+
+- **Read** the previous run's `BRIEF.md`, `SUITES.md`, `RESULTS.md` and `evidence/` from the
+  `previous.path` the tool returned. Skip steps 1 and 3: the scope and the checks are those.
+  Copy the `SUITES.md` entries of the rows to repeat into this run's `$WORK/SUITES.md`, so this
+  run can itself be repeated after the next fix.
+- **Step 2 runs in full.** Sessions, the pre-state snapshot and the stack itself belong to now,
+  not to the previous run, and its `secrets/` is gone. Write a new brief: the previous one's
+  oracle and topology, with every discovered fact re-confirmed. Doctor runs as usual.
+- **Step 4 asks again.** Consent never carries over between runs; list the rows to repeat,
+  grouped by their suite.
+- **Step 5 repeats rows, not suites.** Each executor gets its suite's rows to repeat with the
+  recorded command from the previous `evidence/<suite>.md`, and runs that command with only
+  `$WORK` and session paths changed. A row with no recorded command, such as one `BLOCKED`
+  before its suite was dispatched, runs from its `SUITES.md` steps. A check whose route, page or
+  selector no longer exists is `ERROR "check stale — run fresh"`, never a `FAIL`. The
+  exploratory suite is not repeated; its
+  reproduced findings are rows of suite `R` and repeat like any other. Fault rows still run solo
+  and last.
+- **Step 7 reports the change.** The report's table is `| suite | AC/ref | check | before | now |`,
+  grouped as fixed (now `PASS`), still failing, and changed (any other move). Say plainly that
+  rows which passed before were not run, so a regression among them would not show.
+  `RESULTS.md` keeps the step-7 row format with the current verdict, for the repeated rows only,
+  plus the run id it repeated, so a later `--rerun` reads it like a fresh run's.
 
 ## Gate table
 
 | Gate | Where | Type |
 |---|---|---|
 | Production-looking base-URL | step 2 | halt |
+| `mcp__tester__runs` missing or erroring | start | fresh run: temporary work dir, say `--rerun` is unavailable; rerun: halt |
+| `--rerun` with scope text beside it, or no finished run to repeat | start | block — run fresh, or name a run id |
+| Exploratory lead | step 5 | never a finding by itself — reproduced by an `EXP-<n>` check (`FAIL`) or reported as an `observation`, "not reproduced" |
+| Recorded check whose route, page or selector is gone (rerun) | step 5 | `ERROR "check stale — run fresh"`, never `FAIL` |
 | Scope unresolvable (no spec, empty diff, no code) | step 1 | block — ask the user to name a scope |
 | No live stack reachable | step 2 | bring it up under consent (env mutation: start servers, provision persona, seed fixtures → ledger); block only what consent declines |
+| Doctor probe red (API, session, UI landmark, fault dependency) | step 2a, again before dispatch and after every restart | HIL — the unlock that turns it green; declined → `BLOCKED "doctor: <probe>"` on the suites resting on it, never a dispatch into a known-down stack |
 | Suite dispatch | step 5 | one message, `run_in_background: false`, no `name` on any subagent |
 | A suite's table has arrived | step 5 | a completion notification's `<result>` block is the table — aggregate it; never wait, poll, or schedule a wakeup for a suite that already reported |
 | Persona login fails | step 2 | that persona's checks `blocked` (no cascade) |
@@ -412,4 +560,5 @@ are ephemeral; mention the path but do not commit anything.
 
 A persisted, versioned test corpus that reconciles with spec drift (hashed `deps`,
 staleness, lock files, a DoR-gated plan) is `mt`'s job. `tester` is the "verify it now"
-pass — it deliberately keeps no artifacts beyond the ephemeral brief.
+pass. Its kept runs are a record for `--rerun`, outside the repo and pruned by age; nothing
+reconciles them with the spec, and a rerun after the scope changed is a fresh run.
