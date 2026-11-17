@@ -123,7 +123,8 @@ The gate needs the drafted description, so `pr-open` runs it after step 4 drafts
   label, with `gh label create` on first use. Add a `proof_label` option (default on) and a `proof_label_name` option
   (default `proof`). _(Step 5.8; with no manifest the label is left alone.)_
 - [x] dev-kit `README.md` settings table and `CHANGELOG.md` `[Unreleased]`.
-- [ ] `claude plugin test plugins/dev-kit`, and the `pr-open` eval cases touched by the step order.
-  _(Plugin tests: 92 pass. Evals `pr-open-update-body` and `pr-open-proof` running.)_
+- [x] `claude plugin test plugins/dev-kit`, and the `pr-open` eval cases touched by the step order.
+  _(Plugin tests: 92 pass. Evals `pr-open-update-body` and `pr-open-proof`: 2/2 pass, one trial, with no decision
+  key in the sandbox, so they cover the no-gate path and the proof label, not the gate's decision.)_
 - [x] code-story `references/craft.md`: show the cause in unchanged lines, and a real caller before and after when the
   change makes code elsewhere redundant (owner, on console#4599).
