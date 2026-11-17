@@ -73,6 +73,10 @@ async function showTitleCard(page: Page, card: { kicker: string; headline: strin
     document.getElementById('kicker')!.textContent = kicker;
     document.getElementById('headline')!.textContent = headline;
   }, card);
+  // The render cuts `prepare` at its last screencast frame; without a painted card held here, that frame is the blank
+  // page setContent navigated through, and it becomes the video's first frame.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForTimeout(500);
 }
 
 async function pointAt(page: Page, target: Locator, durationMs = HIGHLIGHT_MS): Promise<void> {

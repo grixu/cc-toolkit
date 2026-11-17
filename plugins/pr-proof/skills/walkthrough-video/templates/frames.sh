@@ -30,6 +30,13 @@ SIZE=$(ffprobe -v error -show_entries format=size -of csv=p=0 "$VIDEO")
 if [ "$SIZE" -gt 10000000 ]; then
   echo "WARN: $((SIZE / 1000000)) MB, over 10 MB: GitHub refuses videos this large on the free plan"
 fi
+# The first frame is the poster a PR's player shows, so it must already be the title card the next half second holds.
+luma() { ffmpeg -nostdin -v error -ss "$1" -i "$VIDEO" -frames:v 1 -vf "signalstats,metadata=mode=print:key=lavfi.signalstats.YAVG:file=-" -f null - | sed -n 's/.*YAVG=\([0-9.]*\).*/\1/p'; }
+FIRST_LUMA=$(luma 0)
+CARD_LUMA=$(luma 0.5)
+if awk -v a="$FIRST_LUMA" -v b="$CARD_LUMA" 'BEGIN { d = a - b; exit !(d > 20 || d < -20) }'; then
+  echo "WARN: the first frame (brightness $FIRST_LUMA) differs from the title card at 0.5 s ($CARD_LUMA): the poster is not the card"
+fi
 ffmpeg -nostdin -v error -i "$VIDEO" -vf "fps=1/$INTERVAL,scale=640:-1,tile=3x3" "$OUT/timeline/sheet%02d.png"
 
 # 35% into each cue and just before it ends: catches a caption that runs ahead of its action.
