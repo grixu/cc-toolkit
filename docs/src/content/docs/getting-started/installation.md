@@ -53,6 +53,17 @@ claude plugin update dev-kit@cc-toolkit
 
 Run `/reload-plugins` in open sessions, or restart them, to load the new version.
 
+## OpenAI Codex CLI
+
+code-review also installs in the [OpenAI Codex CLI](https://github.com/openai/codex):
+
+```sh
+codex plugin marketplace add grixu/cc-toolkit
+codex plugin add code-review@cc-toolkit
+```
+
+Start it with `$code-review:start-cr`. Only code-review ships Codex adapters: Codex lists the marketplace's other plugins too, but they are not supported there. [Run it in Codex CLI](/plugins/code-review/codex/) covers usage and the limits under Codex.
+
 ## Renamed and removed plugins
 
 - `comment-review` and `quality-review` were replaced by [code-review](/plugins/code-review/) and are no longer published. Uninstall them if you still have them, or you'll see duplicate skill names.
