@@ -53,17 +53,18 @@ Branch: `ci/docs-deploy` from `origin/main` (`docs/starlight-site` is merged).
 
 ### 4. Token and secrets (you, once)
 
-- [ ] Deploy once by hand from `docs/` with a local `cf auth login` (`pnpm -C docs deploy`).
-- [ ] Create the deploy token by hand, scoped as narrowly as Cloudflare allows to the
-  `cc-toolkit-docs` Worker, plus Workers Routes Edit on grixu.dev for the Custom Domain.
-- [ ] Create the `production` environment limited to `main`
+- [x] Deploy once by hand from `docs/` with a local `cf auth login` (`pnpm -C docs deploy`).
+- [x] Create the deploy token by hand, scoped as narrowly as Cloudflare allows to the
+  `cc-toolkit-docs` Worker, plus Workers Routes Edit on grixu.dev for the Custom Domain. A local
+  `cf deploy` with only this token deployed the Worker and its Custom Domain.
+- [x] Create the `production` environment limited to `main`
   (`gh api -X PUT repos/grixu/cc-toolkit/environments/production` + a deployment branch policy).
-- [ ] Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as `production` environment secrets,
+- [x] Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as `production` environment secrets,
   piping the token from 1Password so it never reaches the terminal.
 
 ### 5. Verify
 
 - [x] actionlint on the workflow; the `check` job's install, build and dry run pass locally.
-- [ ] Pull request: the `check` job is green and its log shows the dry run; `deploy` is skipped.
+- [x] Pull request: the `check` job is green and its log shows the dry run; `deploy` is skipped.
 - [ ] After merge: `deploy` is green and https://cct.grixu.dev serves the merge commit's build.
 - [x] Remove the `deploy` script hint from wherever it says to deploy by hand, if CI now owns it. No docs named it; the `deploy` scripts in `docs/package.json` stay for a manual deploy.
