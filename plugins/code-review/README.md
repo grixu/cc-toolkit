@@ -210,6 +210,31 @@ down to the reviewed file), `CONTRIBUTING.md`, `.cursor/rules`, and `.claude/rul
 of them documents a style, the review stops flagging it. When two project files disagree, the more
 specific one wins, and the report names the conflict on its `Conventions` line.
 
+## Fewer questions in the structural walk
+
+When you pick **Walk the structural ones**, `/start-cr` asks about each fix before it applies it.
+A decision model can answer the questions you would only wave through. Set the plugin option
+**Walk decision backend** (`/plugin` → code-review → configure):
+
+| Value | What happens |
+|---|---|
+| `off` (default) | Every fix gets its own question. Nothing is sent anywhere. |
+| `typesafe` | TypeSafe Jev decides. Needs `TYPESAFE_API_KEY` or the plugin's key option. |
+| `gemini` | Gemini Decision decides. Needs `GEMINI_DECISIONS_API_KEY`, `GEMINI_API_KEY` or the plugin's key option. |
+| `auto` | Uses whichever key is set, and asks you to pick Jev or Gemini when both are. |
+
+For each fix the model is sent the report bullet, about 25 lines of code around it, its diff
+hunk, the list of changed file paths and the report's conventions line. It answers two
+questions: does the fix need a fact the review cannot know (a migration's state, a business
+rule), and is there another remedy that would behave differently. When both answers are no,
+the fix is applied without a question; otherwise you are asked as before. `security`, `spec`
+and boy-scout fixes are always asked, and so is any fix the model could not decide. The
+wrap-up lists the fixes applied this way, with the backend that decided them.
+
+The thresholds come from 209 recorded walk decisions. Gemini settled about a third of them
+without applying a fix its owner had declined; Jev settled a similar share but applied two
+declined fixes. The eval that measures this is in `evals/apply-decision/`.
+
 ## What it reviews and what it skips
 
 Reviewed: source files with the extensions `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .rs .java
