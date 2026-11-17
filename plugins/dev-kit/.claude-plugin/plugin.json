@@ -78,6 +78,18 @@
       "description": "Label name; {level} is replaced by the risk level",
       "default": "risk: {level}"
     },
+    "proof_label": {
+      "type": "boolean",
+      "title": "Proof label",
+      "description": "Label the pull request when its proof from pr-proof is current",
+      "default": true
+    },
+    "proof_label_name": {
+      "type": "string",
+      "title": "Proof label name",
+      "description": "Name of the proof label",
+      "default": "proof"
+    },
     "risk_levels": {
       "type": "string",
       "multiple": true,

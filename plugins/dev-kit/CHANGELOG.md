@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `pr-open`: labels the pull request `proof` while its proof from pr-proof matches the code, and removes the label once a later run finds the proof stale or behind rewritten history. The **Proof label** and **Proof label name** options turn it off or rename it.
+
 ## [0.11.4] - 2026-11-17
 
 ### Fixed
