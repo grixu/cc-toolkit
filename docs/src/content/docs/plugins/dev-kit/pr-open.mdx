@@ -44,12 +44,13 @@ Running it authorizes the push, and counts as the per-branch push consent that a
   skill="pr-open"
   input="A branch with commits ready for review"
   steps={[
-    { name: 'Check', does: 'Stops on the default branch, looks for an existing pull request, picks the base, and starts the code story in a background subagent.' },
+    { name: 'Check', does: 'Stops on the default branch, looks for an existing pull request and picks the base. When every pull request gets a story, or this one already links one, it starts the code story in a background subagent.' },
     { name: 'Read', does: 'Reads the diff, the commits, a linked issue and the pr-proof manifest, and collects the testing evidence and deploy steps.' },
     { name: 'Assess risk', does: 'Groups the files into slices and asks the pr_risk tool to rate them.', leaves: '## Risk', optional: true },
     { name: 'Fill', does: 'Finds the template, fills it with a short description and a Before / After table, and cleans its sentences through anti-slop.' },
     { name: 'Add proof', does: 'Renders each entry of the manifest as its claim and its proof.', leaves: '## Proof', optional: true },
-    { name: 'Open', does: 'Pushes, opens the pull request with the proof media attached, assigns it to you and adds the risk label.', leaves: 'risk: <level>' },
+    { name: 'Gate the story', does: 'Asks the story_signals tool whether the change is worth a code story, and starts the story unless the answer is no.', optional: true },
+    { name: 'Open', does: 'Pushes, opens the pull request with the proof media attached, assigns it to you, and adds the risk label and the proof label.', leaves: 'risk: <level>, proof' },
     { name: 'Link the story', does: 'Waits for the code story and links it in the description.', leaves: '## Code story', optional: true },
   ]}
   next={['pr-shepherd']}
@@ -113,10 +114,62 @@ When it reads a manifest for an existing pull request, `pr-open` first deletes t
 
 The **Proof** section doesn't count toward the one-screen length.
 
+### The proof label
+
+The `proof` label tells a reviewer, from the pull request list, that the change comes with proof that still matches the code.
+The pull request carries it while the **Proof** section shows at least one entry and none of them is stale or follows rewritten history.
+A later run that finds stale proof removes it, so the label comes back only after you take the proof again.
+
+- **No manifest on this machine** leaves the labels as they are, since the manifest lives where the proof was taken.
+- **A missing label** is created once with the description "Proof from pr-proof matches the code". An existing label is never changed.
+- **The Proof label option** (`proof_label`) turns the label off, and **Proof label name** (`proof_label_name`) renames it.
+
 ## The code story
 
-While the rest of `pr-open` runs, a background subagent builds the branch's [code story](/plugins/code-story/): a page that explains the change chapter by chapter.
+A background subagent builds the branch's [code story](/plugins/code-story/): a page that explains the change chapter by chapter.
+It runs while `pr-open` pushes and opens the pull request.
 On a pull request that already links a story, the subagent updates that story instead of starting a new one.
+
+### Which pull requests get a story
+
+A typo fix, a change to tests only or a small local fix doesn't need a chapter-by-chapter explanation.
+The **Code story** option (`code_story`) decides:
+
+| Value | What happens |
+|---|---|
+| `auto` (default) | A decision model judges whether the change is worth a story. Without a key, when the tool fails, or for a diff too large to send, the story is written. |
+| `always` | Every pull request gets a story. |
+| `never` | No pull request gets a story. |
+
+A pull request whose description already links a story always gets it updated, whatever the option says.
+
+With `auto`, `pr-open` calls the `story_signals` tool once the description is drafted, because the decision needs what the description says the change is for.
+The tool sends the diff, its diffstat, the commit messages, and the drafted title and description, without the **Code story**, **Proof** and **Risk** sections, to Jev or Gemini Decision.
+It asks thirteen yes-or-no questions about the change:
+
+- **Nine say the change is too plain for a story:** cosmetic, documentation, tests only, one local fix, more of an existing pattern, mostly a removal, behaviour preserved, unrelated small edits, or configuration values.
+- **Four say a reader needs one:** a new flow across files, a change to what an agent does, removing a mechanism that was doing work, or a defect whose cause sits outside the changed lines.
+
+The story is skipped when a skip answer clears its threshold and no story answer clears its own.
+The report then says `Code story: skipped`, with the reason and the backend that decided.
+Each decision, without the diff, is appended to `~/.cache/dev-kit/story-gate.jsonl`.
+
+The **Code story gate backend** option (`story_gate_backend`) picks the model:
+
+| Value | What happens |
+|---|---|
+| `auto` (default) | Uses every backend with a key and averages their answers. |
+| `both` | Needs both keys. |
+| `typesafe` or `gemini` | Uses that one backend. |
+
+When one of two backends fails, the other decides on its own thresholds, and the report names the failure.
+
+:::note[How well the gate works]
+The questions and thresholds were calibrated on the plugin author's own 37 pull requests, then checked once on 24 more that played no part in the fit.
+On those 24, both backends together skipped 8 of the 13 pull requests the author would skip, Jev alone 7 and Gemini alone 10.
+None of them skipped any of the 11 that should have a story.
+That is one person's judgement on a small sample, so a skipped story is worth a second look until your own log says otherwise.
+:::
 
 After the push, `pr-open` waits for the subagent and adds a **Code story** section with the link:
 
@@ -130,6 +183,7 @@ When the description already links the same story, it stays as it is.
 A new story is private until you share it on claude.ai, and the report says so, because reviewers can't open the link before then.
 When the story is saved only locally, or the subagent fails, the description stays as it is.
 The report then gives the story's path or the failure.
+When the gate skips the story, or `code_story` is `never`, nothing starts and the description gets no **Code story** section.
 
 ## The risk label
 
@@ -183,9 +237,10 @@ Run `pr-open` again once the pull request is open, or after you attach more evid
 
 `pr-open` pushes, refreshes the risk, and reports the pull request.
 It swaps the old risk label for the new one and replaces the **Risk** section, so the description never contradicts the label.
-It also refreshes the code story and its link.
+A story the description already links is always updated, along with its link.
+Without one, the **Code story** option and the gate decide as for a new pull request, using the current title and description.
 
-When it finds a manifest, it updates the **Proof** section in the same edit: it replaces the section, inserts it when the description has none, or removes it when the manifest's list is empty.
+When it finds a manifest, it updates the **Proof** section and the proof label in the same run: it replaces the section, inserts it when the description has none, or removes it when the manifest's list is empty.
 With no manifest, the **Proof** section and its overflow comments stay as they are.
 
 It rewrites the rest of the description only when you ask for it.
@@ -195,10 +250,10 @@ A rewrite edits the current description: your own sentences, bot lines, sections
 ## What it leaves
 
 - A pushed branch and an open pull request, assigned to you.
-- The **Proof** section, when pr-proof left a manifest with entries.
+- The **Proof** section, when pr-proof left a manifest with entries, and the proof label while that proof is current.
 - The **Code story** section, when the story was built.
 - The **Risk** section and the risk label, when a key is configured.
-- A report with the pull request URL, its base and the template it used. It names the sections and checkboxes left for you, and the risk level and flags with the backend that set them. It also lists the proof entries it rendered or left out, anything that failed to upload, and the code story link and its status.
+- A report with the pull request URL, its base and the template it used. It names the sections and checkboxes left for you, and the risk level and flags with the backend that set them. It also lists the proof entries it rendered or left out, anything that failed to upload and what happened to the proof label. It ends with the code story link and its status, or why there is none: off, skipped by the gate with its reason, or a failure.
 
 The report ends with a one-line suggestion to run `/dev-kit:pr-shepherd`.
 `pr-open` never runs it for you.
@@ -213,6 +268,7 @@ The report ends with a one-line suggestion to run `/dev-kit:pr-shepherd`.
 - **Your `gh` is older than 2.99.0.** With a **Proof** section, `gh pr create` fails on the `--attach` flag. Update `gh` and run `pr-open` again.
 - **A proof file is missing or fails to upload.** A missing file leaves its entry out of the **Proof** section. An upload that fails is named in the report.
 - **The code story fails.** The pull request opens without a **Code story** section, and the report says why.
+- **The story gate can't decide.** Without a key, with the tool failing, or for a diff too large to send, the story is written. A missing or failing gate never costs a pull request its story.
 
 ## Next steps
 

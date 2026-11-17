@@ -44,12 +44,13 @@ Uruchomienie go zezwala na push i liczy się jako zgoda na push dla tego brancha
   skill="pr-open"
   input="Branch z commitami gotowymi do review"
   steps={[
-    { name: 'Sprawdzenie', does: 'Zatrzymuje się na domyślnym branchu, szuka istniejącego pull requesta, wybiera bazę i uruchamia w tle subagenta, który buduje historię zmiany.' },
+    { name: 'Sprawdzenie', does: 'Zatrzymuje się na domyślnym branchu, szuka istniejącego pull requesta i wybiera bazę. Gdy historię dostaje każdy pull request albo ten już ją linkuje, uruchamia w tle subagenta, który ją buduje.' },
     { name: 'Odczyt', does: 'Czyta diff, commity, podlinkowany ticket i manifest pr-proof oraz zbiera dowody testów i kroki wdrożenia.' },
     { name: 'Ocena ryzyka', does: 'Grupuje pliki w slice’y i prosi narzędzie pr_risk o ich ocenę.', leaves: '## Risk', optional: true },
     { name: 'Wypełnienie', does: 'Znajduje szablon, wypełnia go krótkim opisem i tabelą Before / After, a swoje zdania oczyszcza przez anti-slop.' },
     { name: 'Dowód', does: 'Zamienia każdy wpis manifestu w twierdzenie i jego dowód.', leaves: '## Proof', optional: true },
-    { name: 'Otwarcie', does: 'Pushuje, otwiera pull request z dołączonymi plikami dowodu, przypisuje go do ciebie i dodaje etykietę ryzyka.', leaves: 'risk: <level>' },
+    { name: 'Bramka historii', does: 'Pyta narzędzie story_signals, czy zmiana zasługuje na historię, i uruchamia ją, chyba że odpowiedź brzmi nie.', optional: true },
+    { name: 'Otwarcie', does: 'Pushuje, otwiera pull request z dołączonymi plikami dowodu, przypisuje go do ciebie i dodaje etykietę ryzyka oraz etykietę dowodu.', leaves: 'risk: <level>, proof' },
     { name: 'Link do historii', does: 'Czeka na historię zmiany i linkuje ją w opisie.', leaves: '## Code story', optional: true },
   ]}
   next={['pr-shepherd']}
@@ -113,10 +114,62 @@ Gdy przy istniejącym pull requeście odczyta manifest, `pr-open` najpierw usuwa
 
 Sekcja **Proof** nie wlicza się do limitu jednego ekranu.
 
+### Etykieta dowodu
+
+Etykieta `proof` mówi reviewerowi już na liście pull requestów, że zmiana ma dowód zgodny z obecnym kodem.
+Pull request ma ją, dopóki sekcja **Proof** pokazuje co najmniej jeden wpis i żaden z nich nie jest nieaktualny ani sprzed przepisania historii.
+Kolejne uruchomienie, które znajdzie nieaktualny dowód, zdejmuje etykietę, więc wraca ona dopiero po ponownym zebraniu dowodu.
+
+- **Brak manifestu na tym komputerze** zostawia etykiety bez zmian, bo manifest jest tam, gdzie zebrano dowód.
+- **Brakująca etykieta** powstaje raz z opisem „Proof from pr-proof matches the code”. Istniejąca etykieta nigdy nie jest zmieniana.
+- **Opcja Proof label** (`proof_label`) wyłącza etykietę, a **Proof label name** (`proof_label_name`) zmienia jej nazwę.
+
 ## Historia zmiany
 
-Gdy reszta `pr-open` pracuje, subagent w tle buduje [historię zmiany](/pl/plugins/code-story/) brancha: stronę, która wyjaśnia zmianę rozdział po rozdziale.
+Subagent w tle buduje [historię zmiany](/pl/plugins/code-story/) brancha: stronę, która wyjaśnia zmianę rozdział po rozdziale.
+Pracuje, gdy `pr-open` pushuje i otwiera pull request.
 Gdy pull request linkuje już historię, subagent aktualizuje ją zamiast zaczynać nową.
+
+### Które pull requesty dostają historię
+
+Poprawka literówki, zmiana wyłącznie w testach albo drobna lokalna poprawka nie potrzebują wyjaśnienia rozdział po rozdziale.
+Decyduje opcja **Code story** (`code_story`):
+
+| Wartość | Co się dzieje |
+|---|---|
+| `auto` (domyślnie) | Model decyzyjny ocenia, czy zmiana zasługuje na historię. Bez klucza, gdy narzędzie zawiedzie, albo przy diffie zbyt dużym do wysłania historia powstaje. |
+| `always` | Każdy pull request dostaje historię. |
+| `never` | Żaden pull request nie dostaje historii. |
+
+Pull request, którego opis linkuje już historię, zawsze dostaje jej aktualizację, niezależnie od opcji.
+
+Przy `auto` `pr-open` wywołuje narzędzie `story_signals`, gdy opis jest już gotowy, bo decyzja potrzebuje tego, co opis mówi o celu zmiany.
+Narzędzie wysyła do Jev albo Gemini Decision diff, jego diffstat, wiadomości commitów oraz przygotowany tytuł i opis bez sekcji **Code story**, **Proof** i **Risk**.
+Zadaje trzynaście pytań tak-albo-nie o zmianę:
+
+- **Dziewięć mówi, że zmiana jest zbyt prosta na historię:** kosmetyka, dokumentacja, same testy, jedna lokalna poprawka, kolejny przypadek istniejącego wzorca, głównie usuwanie kodu, zachowanie bez zmian, niezależne drobne edycje albo wartości konfiguracji.
+- **Cztery mówią, że czytelnik jej potrzebuje:** nowy przepływ przez kilka plików, zmiana tego, co robi agent, usunięcie mechanizmu, który coś robił, albo błąd, którego przyczyna leży poza zmienionymi liniami.
+
+Historia jest pomijana, gdy któraś odpowiedź „pomiń” przekracza swój próg, a żadna odpowiedź „historia” nie przekracza swojego.
+Raport podaje wtedy `Code story: skipped` z powodem i backendem, który zdecydował.
+Każda decyzja, bez diffu, trafia na koniec pliku `~/.cache/dev-kit/story-gate.jsonl`.
+
+Model wybiera opcja **Code story gate backend** (`story_gate_backend`):
+
+| Wartość | Co się dzieje |
+|---|---|
+| `auto` (domyślnie) | Używa każdego backendu, który ma klucz, i uśrednia ich odpowiedzi. |
+| `both` | Wymaga obu kluczy. |
+| `typesafe` albo `gemini` | Używa tego jednego backendu. |
+
+Gdy jeden z dwóch backendów zawiedzie, drugi decyduje na własnych progach, a raport podaje błąd.
+
+:::note[Jak dobrze działa bramka]
+Pytania i progi skalibrowano na 37 pull requestach autora pluginu, a potem raz sprawdzono na 24 kolejnych, które nie brały udziału w dopasowaniu.
+Na tych 24 oba backendy razem pominęły 8 z 13 pull requestów, które autor by pominął, sam Jev 7, a sam Gemini 10.
+Żaden wariant nie pominął żadnego z 11, które powinny mieć historię.
+To ocena jednej osoby na małej próbie, więc pominiętej historii warto się przyjrzeć, dopóki twój własny log nie pokaże czegoś innego.
+:::
 
 Po pushu `pr-open` czeka na subagenta i dodaje sekcję **Code story** z linkiem:
 
@@ -130,6 +183,7 @@ Gdy opis linkuje już tę samą historię, zostaje bez zmian.
 Nowa historia jest prywatna, dopóki nie udostępnisz jej na claude.ai, i raport o tym przypomina, bo wcześniej reviewerzy nie otworzą linku.
 Gdy historia jest zapisana tylko lokalnie albo subagent zawiedzie, opis zostaje bez zmian.
 Raport podaje wtedy ścieżkę historii albo błąd.
+Gdy bramka pominie historię albo `code_story` ma wartość `never`, nic nie startuje, a opis nie dostaje sekcji **Code story**.
 
 ## Etykieta ryzyka
 
@@ -183,9 +237,10 @@ Uruchom `pr-open` ponownie, gdy pull request jest już otwarty albo gdy dołącz
 
 `pr-open` pushuje, odświeża ocenę ryzyka i podaje pull request w raporcie.
 Zamienia starą etykietę ryzyka na nową i podmienia sekcję **Risk**, żeby opis nigdy nie przeczył etykiecie.
-Odświeża też historię zmiany i link do niej.
+Historię, którą opis już linkuje, zawsze aktualizuje razem z linkiem.
+Gdy opis jej nie linkuje, decydują opcja **Code story** i bramka, tak jak przy nowym pull requeście, na podstawie obecnego tytułu i opisu.
 
-Gdy znajdzie manifest, w tej samej edycji aktualizuje sekcję **Proof**: podmienia ją, wstawia, gdy opis jej nie ma, albo usuwa, gdy lista w manifeście jest pusta.
+Gdy znajdzie manifest, w tym samym uruchomieniu aktualizuje sekcję **Proof** i etykietę dowodu: sekcję podmienia, wstawia, gdy opis jej nie ma, albo usuwa, gdy lista w manifeście jest pusta.
 Bez manifestu sekcja **Proof** i komentarze z nadmiarowymi plikami zostają bez zmian.
 
 Resztę opisu przepisuje tylko na twoją prośbę.
@@ -195,10 +250,10 @@ Przepisanie edytuje obecny opis: twoje zdania, linie botów, sekcje spoza szablo
 ## Co zostawia
 
 - Wypchnięty branch i otwarty pull request przypisany do ciebie.
-- Sekcję **Proof**, gdy pr-proof zostawił manifest z wpisami.
+- Sekcję **Proof**, gdy pr-proof zostawił manifest z wpisami, i etykietę dowodu, dopóki ten dowód jest aktualny.
 - Sekcję **Code story**, gdy historia zmiany powstała.
 - Sekcję **Risk** i etykietę ryzyka, gdy klucz jest skonfigurowany.
-- Raport z URL-em pull requesta, jego bazą i użytym szablonem. Raport wymienia sekcje i checkboxy do uzupełnienia przez ciebie oraz poziom i flagi ryzyka z backendem, który je ustalił. Raport wymienia też pokazane i pominięte wpisy dowodu, wszystko, czego nie udało się wysłać, oraz link do historii zmiany i jej status.
+- Raport z URL-em pull requesta, jego bazą i użytym szablonem. Raport wymienia sekcje i checkboxy do uzupełnienia przez ciebie oraz poziom i flagi ryzyka z backendem, który je ustalił. Raport wymienia też pokazane i pominięte wpisy dowodu, wszystko, czego nie udało się wysłać, i to, co stało się z etykietą dowodu. Kończy się linkiem do historii zmiany i jej statusem albo powodem, dla którego jej nie ma: wyłączona, pominięta przez bramkę z podanym powodem albo błąd.
 
 Raport kończy się jednolinijkową sugestią, żeby uruchomić `/dev-kit:pr-shepherd`.
 `pr-open` nigdy nie uruchamia go sam.
@@ -213,6 +268,7 @@ Raport kończy się jednolinijkową sugestią, żeby uruchomić `/dev-kit:pr-she
 - **Twoje `gh` jest starsze niż 2.99.0.** Przy sekcji **Proof** `gh pr create` pada na fladze `--attach`. Zaktualizuj `gh` i uruchom `pr-open` ponownie.
 - **Brakuje pliku dowodu albo nie udaje się go wysłać.** Wpis z brakującym plikiem wypada z sekcji **Proof**. Nieudane wysłanie jest wymienione w raporcie.
 - **Historia zmiany się nie udaje.** Pull request otwiera się bez sekcji **Code story**, a raport mówi dlaczego.
+- **Bramka historii nie może zdecydować.** Bez klucza, gdy narzędzie zawiedzie, albo przy diffie zbyt dużym do wysłania historia powstaje. Brakująca albo zawodząca bramka nigdy nie odbiera pull requestowi historii.
 
 ## Następne kroki
 
