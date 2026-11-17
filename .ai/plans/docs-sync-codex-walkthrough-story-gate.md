@@ -138,8 +138,11 @@ Commit: `docs(code-story): quote the hidden cause and what the change makes simp
       PL pages. — Ran `/anti-slop:anti-slop` instead, on the added lines in EN and PL: cut two
       unsupported reasons and an invented reader use, a run-up, a calque ("outlives", "żyje") and
       bold labels in the gate's question list.
-- [ ] Cold read of the pr-open page as a user who only knew the old story-always behaviour.
-      — Skipped, as above.
+- [x] Cold read of the pr-open page as a user who only knew the old story-always behaviour.
+      — Done after #63 merged, with cw-reader. Fixed in EN and PL: two passages still described
+      the story as always starting at Check, the undefined "gate", the "always … except never"
+      sentence, a repeated sentence, unexplained thresholds and averaging, the bare "Jev", the
+      proof label's default and its other-machine case, and no pointer to the 0.12.0 change.
 
 ## Out of scope
 
