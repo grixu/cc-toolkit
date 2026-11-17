@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pr-open`: after a backend question, suggests saving the answer with `/plugin configure dev-kit@cc-toolkit` instead of `/config`, and uses `## Release notes` instead of `## Code story`, which it now writes itself, as its example of a section a rewrite keeps.
 - README: links one Gemini Decision page, the Decisions API guide; gives the closing order of the description's sections (**Code story**, **Proof**, **Risk**) and documents the **Code story** section and its report line; the proof manifest's `<repo>` is the repository name from the `origin` remote's URL without `.git`; old overflow comments are deleted only on an existing pull request, by a run that finds a manifest.
 
+## [0.11.3] - 2026-11-16
+
+### Changed
+- `pr-shepherd`: a review comment whose fix is the owner's trade-off, or two reviewers asking for incompatible changes, is no longer answered with options in the thread. The skill describes the options and their costs in prose, recommends one, asks you through `AskUserQuestion`, then applies your choice and replies. A decision you dismiss or keep for yourself gets no reply and is not asked again in that loop.
+
 ## [0.11.2] - 2026-11-16
 
 ### Changed
