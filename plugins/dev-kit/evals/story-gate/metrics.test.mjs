@@ -17,6 +17,7 @@ test('repeat runs are averaged per PR, and a PR failed in any run fails', () => 
   const [a, b] = combineRuns(runs)
   assert.equal(a.facts.localized_fix, 0.75)
   assert.deepEqual(b, { id: 'b', ok: false, error: 'timeout' })
+  assert.deepEqual(combineRuns([[{ id: 'c', ok: true, facts: { x: 1 } }], []]), [{ id: 'c', ok: false, error: 'missing in a run' }])
 })
 
 test('a too-large PR is never skipped, and a story fact over its threshold beats any skip fact', () => {

@@ -16,8 +16,8 @@ const readJsonl = (f) => fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).
 export function combineRuns(runs) {
   return runs[0].map((first) => {
     const all = runs.map((r) => r.find((a) => a.id === first.id))
-    const failed = all.find((a) => !a?.ok)
-    if (failed !== undefined) return failed ?? { id: first.id, ok: false, error: 'missing in a run' }
+    const failed = all.findIndex((a) => !a?.ok)
+    if (failed !== -1) return all[failed] ?? { id: first.id, ok: false, error: 'missing in a run' }
     if (first.tooLarge) return first
     const facts = Object.fromEntries(Object.keys(first.facts).map((k) => [k, all.reduce((s, a) => s + a.facts[k], 0) / all.length]))
     return { ...first, facts }
