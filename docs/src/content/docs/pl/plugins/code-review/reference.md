@@ -126,6 +126,23 @@ Pusta zmiana albo soczewka, która się nie zgłosiła, wraca jako status, nigdy
 
 Tabela 7. Pliki zapisywane przez review
 
+## Opcje pluginu
+
+Opcje otworzysz przez `/plugin configure code-review@cc-toolkit`.
+Narzędzie `apply_decision` rejestruje się na starcie sesji, więc zmiana działa od następnej sesji.
+
+| Opcja | Domyślnie | Co robi |
+|---|---|---|
+| `decision_backend` | `off` | Model, który odpowiada na [pytania o poprawki strukturalne](/pl/plugins/code-review/start-cr/#model-odpowiada-na-pytania-o-poprawki). `off` pyta o każdą poprawkę i niczego nie wysyła. `typesafe` używa TypeSafe Jev, `gemini` używa Gemini Decision. `auto` używa backendu, którego klucz jest ustawiony; przy obu kluczach `start-cr` pyta, którego użyć. |
+| `typesafe_api_key` | puste, czyta `TYPESAFE_API_KEY` | Klucz API TypeSafe. |
+| `typesafe_endpoint` | `https://api.typesafe.ai` | Bazowy URL API TypeSafe. |
+| `typesafe_model` | `jev-1.14.0` | Nazwa albo alias modelu. Progi zmierzono na `jev-1.14.0`. |
+| `gemini_api_key` | puste, czyta `GEMINI_DECISIONS_API_KEY`, potem `GEMINI_API_KEY` | Klucz Gemini Developer API z dostępem do `gemini-decision-1`. |
+
+Tabela 8. Opcje pluginu
+
+Backend bez klucza działa jak `off`.
+
 ## Ograniczenia
 
 - **To nie jest audyt bezpieczeństwa.** Soczewka security nie skanuje zależności, plików `.env`, lockfile'i ani przypięcia wersji akcji. Do tego uruchom `/security-review` z Claude Code.
