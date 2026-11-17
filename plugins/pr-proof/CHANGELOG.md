@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `frames.sh` warns when the MP4 has other than one video stream or 30 fps, or is over 10 MB, GitHub's free-plan limit; the orchestrator offers a faster re-render before attaching an oversized video
+- The report lists the scenes with their times, and feedback can name a scene number, a player time or a caption's words; `frames.sh` writes `cues.txt` to map them
+
 ## [0.4.1] - 2026-11-17
 
 ### Fixed

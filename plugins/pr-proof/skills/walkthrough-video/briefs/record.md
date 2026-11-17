@@ -43,8 +43,9 @@ All commands run from the work dir, with `FRONTEND_URL` and `API_URL` exported, 
 
 ## 5. Review the footage
 
-Run `CAPTION_MAX=<60 × density> <this skill dir>/templates/frames.sh out/<slug>.mp4 recast/tests/<slug>.walk.ts` (with `SPEED` exported) and look at what it writes to `out/frames/`: `timeline/` sheets of frames sampled more often the faster the speed, `cue-sheet*.png` with one row per caption (its middle and its end), plus a printed list of `narrate` captions over the limit and of split cues. Check that:
+Run `CAPTION_MAX=<60 × density> <this skill dir>/templates/frames.sh out/<slug>.mp4 recast/tests/<slug>.walk.ts` (with `SPEED` exported) and look at what it writes to `out/frames/`: `timeline/` sheets of frames sampled more often the faster the speed, `cue-sheet*.png` with one row per caption (its middle and its end), `cues.txt` with each caption's number, time range and text, plus a printed list of `narrate` captions over the limit, of split cues, and `WARN` lines for the file itself. Check that:
 
+- no `WARN` line reports other than one video stream or other than 30 fps; a size over 10 MB is not a failure, but goes in your report;
 - captions are readable at the density's type size when paused, within the density's limit, start with a capital letter, and cover nothing that matters (move them to the top with `CAPTION_POSITION=top` when a dropdown or footer opens at the bottom);
 - every caption is held long enough in the take to read at about 12 characters a second; in the render it lasts that time divided by speed ÷ 0.5, so above `0.5x` a short on-screen cue is expected (viewers pause), but a dropped cue or one that never reaches the screen is a failure;
 - no action is cut mid-way and no caption runs ahead of its action;
@@ -66,4 +67,4 @@ When resumed with fixes: apply each, record a new take under a new `TAKE` name, 
 
 ## Finish line
 
-The final take passes every review check. Report to whoever dispatched or last resumed you, in at most 20 lines: video path, duration, size, speed and caption density; takes and what each fixed; the frame-review result per check; stack URLs, who started the stack and how to stop it, and whether a seed script ran; the exact record and render commands; deviations from the scenario; data staged in the browser; UI defects seen on camera; what is left running or changed.
+The final take passes every review check. Report to whoever dispatched or last resumed you, in at most 20 lines: video path, duration, size, speed and caption density, and any `WARN` line; takes and what each fixed; the frame-review result per check; stack URLs, who started the stack and how to stop it, and whether a seed script ran; the exact record and render commands; deviations from the scenario; data staged in the browser; UI defects seen on camera; what is left running or changed.
