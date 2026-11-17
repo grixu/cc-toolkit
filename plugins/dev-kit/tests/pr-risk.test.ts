@@ -106,7 +106,7 @@ test('registers the tool only when a key is set', async ($, on) => {
   })
   on('session.start', () => ({ cwd: '/work' }))
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
-  expect(registered).toEqual(['pr_risk'])
+  expect(registered).toEqual(['pr_risk', 'story_signals'])
 })
 
 test('without a key the tool is not registered', async ($, on) => {
@@ -1155,7 +1155,7 @@ test('registers the tool with only a Gemini key', async ($, on) => {
   })
   on('session.start', () => ({ cwd: '/work' }))
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
-  expect(registered).toEqual(['pr_risk'])
+  expect(registered).toEqual(['pr_risk', 'story_signals'])
 })
 
 test('assesses with Gemini, sending its key and the state as text, and reports its model', async ($, on) => {

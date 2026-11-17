@@ -217,13 +217,13 @@ It pushes the current branch and fills the repository's pull request template. I
 - When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
 - When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line. A rewrite edits the current description: your own sentences, bot lines, extra sections such as `## Release notes` and the tracker's link line at the end stay as they are.
 - With a TypeSafe or Gemini key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
-- When the [pr-proof](../pr-proof/README.md) plugin's skills have left proof for the branch, it adds a **Proof** section. See [Proof](#proof-from-pr-proof).
-- A background `code-story` run builds the branch's code story, or updates the one the description already links, and the description gets a **Code story** section with its link, on a new pull request and an existing one alike. A new story is private until you share it on claude.ai.
+- When the [pr-proof](../pr-proof/README.md) plugin's skills have left proof for the branch, it adds a **Proof** section and labels the pull request `proof` while that proof matches the code. See [Proof](#proof-from-pr-proof).
+- A background `code-story` run builds the branch's code story, or updates the one the description already links, and the description gets a **Code story** section with its link, on a new pull request and an existing one alike. A new story is private until you share it on claude.ai. With a TypeSafe or Gemini key, a decision model first judges whether the change is worth a story, and a typo fix, a test-only change or a small local fix gets none. See [Code story gate](#code-story-gate).
 - These sections close the description in this order: **Code story**, **Proof**, **Risk**, each only when it has content, above any link reference definitions that end the body.
 
 When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
-Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label with the backend that set it (or why it was not assessed), the proof entries it rendered or left out and anything that failed to upload, the code story link with its status (or why there is none), and a one-line suggestion to run `pr-shepherd` next.
+Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label with the backend that set it (or why it was not assessed), the proof entries it rendered or left out, anything that failed to upload and what happened to the `proof` label, the code story link with its status (or why there is none: off, skipped by the gate with its reason, or a failure), and a one-line suggestion to run `pr-shepherd` next.
 
 #### Proof from pr-proof
 
@@ -237,6 +237,23 @@ The pr-proof plugin's skills (videos, screenshots, terminal transcripts, API cal
 - More than 50 media files: the description carries the first 50 and says how many follow; the rest go in comments of at most 50 each, marked `<!-- pr-proof:overflow -->`. On an existing pull request, a run that finds a manifest first deletes the marked comments you posted earlier, even when the new manifest needs no overflow, and leaves every other comment alone.
 - On an existing pull request it replaces the **Proof** section, inserts it when the description has none, or removes it when the manifest's list is empty. With no manifest, the section and its comments stay as they are.
 - The section does not count toward the one-screen length budget.
+- The pull request carries the `proof` label while the section shows at least one entry and none is stale or follows rewritten history; a later run that finds stale proof removes it. With no manifest on the machine the label stays as it is. The **Proof label** option turns this off, and **Proof label name** renames it.
+
+#### Code story gate
+
+The mod's `story_signals` tool (`mcp__dev-kit__story_signals`) decides whether a branch is worth a code story. It sends the diff, its diffstat, the commit messages and the drafted title and description (without the **Code story**, **Proof** and **Risk** sections) to Jev or Gemini Decision and asks thirteen yes/no questions about the change. Nine say it is too plain for a story: cosmetic, documentation, tests only, one local fix, more of an existing pattern, mostly a removal, behaviour preserved, unrelated small edits, or configuration values. Four say a reader needs one: a new flow across files, a change to what an agent does, removing a mechanism that was doing work, or a defect whose cause sits outside the changed lines. The story is skipped when a skip answer clears its threshold and no story answer clears its own. `pr-open` calls it after drafting the description, so a new story starts a little later than before.
+
+The **Code story** option sets the behaviour:
+
+| Value | What happens |
+|---|---|
+| `auto` (default) | The gate decides. Without a key, with the tool failing, or for a diff too large to send, the story is written. |
+| `always` | Every pull request gets a story. |
+| `never` | No story. |
+
+An existing pull request whose description already links a story always gets it updated. The **Code story gate backend** option picks the model: `auto` (default) uses every backend with a key and averages their answers, `both` requires both keys, and `typesafe` or `gemini` uses one. Each decision, without the diff, is appended to `~/.cache/dev-kit/story-gate.jsonl`.
+
+The questions and thresholds were calibrated on the plugin author's own 37 pull requests and checked once on 24 more that played no part in the fit. On those 24, both backends together skipped 8 of the 13 pull requests the author would skip, Jev alone 7 and Gemini alone 10, and none of them skipped any of the 11 that should have a story. Only the pair's thresholds were fixed before that check. That is one person's judgement on a small sample; see the [evaluation guide](evals/story-gate/README.md).
 
 ## Risk assessment
 
