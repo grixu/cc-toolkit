@@ -1,0 +1,31 @@
+{
+  "name": "code-review",
+  "version": "0.9.0",
+  "description": "Reviews a branch or pull request for correctness, security, naming, docs and more in parallel, and merges the findings into one report per file. Changes nothing until you pick the fixes to apply.",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "code-review",
+    "code-quality",
+    "comments",
+    "clean-code",
+    "refactoring",
+    "security",
+    "performance",
+    "spec",
+    "coding-standards"
+  ],
+  "skills": "./codex/skills/",
+  "interface": {
+    "displayName": "Code Review",
+    "shortDescription": "Multi-lens review of a change, merged into one per-file report",
+    "developerName": "Mateusz Gostański",
+    "category": "Developer Tools",
+    "defaultPrompt": [
+      "Review my branch with $code-review:start-cr"
+    ]
+  }
+}

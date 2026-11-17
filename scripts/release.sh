@@ -9,8 +9,9 @@ set -euo pipefail
 #
 # What it does:
 #   1. Validates the plugin exists and CHANGELOG has an [Unreleased] section
-#   2. Bumps the version in plugin.json and marketplace.json, and bumps the
-#      marketplace's own version by the same level
+#   2. Bumps the version in plugin.json (plus .codex-plugin/plugin.json when the
+#      plugin has one) and marketplace.json, and bumps the marketplace's own
+#      version by the same level
 #   3. Stamps [Unreleased] in CHANGELOG.md with version + date
 #   4. Commits, tags (plugin-name/vX.Y.Z and marketplace/vX.Y.Z), and optionally
 #      pushes + creates GH release
@@ -81,6 +82,7 @@ BUMP_TYPE="$2"
 
 PLUGIN_DIR="$REPO_ROOT/plugins/$PLUGIN_NAME"
 PLUGIN_JSON="$PLUGIN_DIR/.claude-plugin/plugin.json"
+CODEX_PLUGIN_JSON="$PLUGIN_DIR/.codex-plugin/plugin.json"
 CHANGELOG="$PLUGIN_DIR/CHANGELOG.md"
 
 # ── Validations ──────────────────────────────────────────────
@@ -111,6 +113,14 @@ fi
 # ── Version calculation ──────────────────────────────────────
 
 CURRENT_VERSION=$(jq -r '.version' "$PLUGIN_JSON")
+
+# Checked before any file changes, so a bad Codex manifest cannot leave a half-bumped tree
+if [[ -f "$CODEX_PLUGIN_JSON" ]]; then
+  jq -e . "$CODEX_PLUGIN_JSON" >/dev/null || die "invalid JSON: $CODEX_PLUGIN_JSON"
+  CODEX_VERSION=$(jq -r '.version' "$CODEX_PLUGIN_JSON")
+  [[ "$CODEX_VERSION" == "$CURRENT_VERSION" ]] \
+    || die ".codex-plugin/plugin.json version $CODEX_VERSION differs from plugin.json $CURRENT_VERSION"
+fi
 NEW_VERSION=$(bump_version "$CURRENT_VERSION" "$BUMP_TYPE")
 TAG_NAME="$PLUGIN_NAME/v$NEW_VERSION"
 TODAY=$(date +%Y-%m-%d)
@@ -150,6 +160,12 @@ info "Updating plugin.json"
 jq --arg v "$NEW_VERSION" '.version = $v' "$PLUGIN_JSON" > "$PLUGIN_JSON.tmp"
 mv "$PLUGIN_JSON.tmp" "$PLUGIN_JSON"
 
+if [[ -f "$CODEX_PLUGIN_JSON" ]]; then
+  info "Updating .codex-plugin/plugin.json"
+  jq --arg v "$NEW_VERSION" '.version = $v' "$CODEX_PLUGIN_JSON" > "$CODEX_PLUGIN_JSON.tmp"
+  mv "$CODEX_PLUGIN_JSON.tmp" "$CODEX_PLUGIN_JSON"
+fi
+
 # 2. Bump version in marketplace.json
 info "Updating marketplace.json"
 jq --arg name "$PLUGIN_NAME" --arg v "$NEW_VERSION" --arg mv "$NEW_MARKET_VERSION" \
@@ -169,7 +185,11 @@ _sed_i "/^and this project adheres to/a\\
 # ── Git commit & tag ─────────────────────────────────────────
 
 info "Creating commit"
-git add "$PLUGIN_JSON" "$MARKETPLACE" "$CHANGELOG"
+RELEASE_FILES=("$PLUGIN_JSON" "$MARKETPLACE" "$CHANGELOG")
+if [[ -f "$CODEX_PLUGIN_JSON" ]]; then
+  RELEASE_FILES+=("$CODEX_PLUGIN_JSON")
+fi
+git add "${RELEASE_FILES[@]}"
 git commit -m "$(cat <<EOF
 release: $PLUGIN_NAME v$NEW_VERSION
 
