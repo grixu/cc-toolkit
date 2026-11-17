@@ -236,6 +236,34 @@ The thresholds come from 209 recorded walk decisions. Gemini settled about a thi
 without applying a fix its owner had declined; Jev settled a similar share but applied two
 declined fixes. The eval that measures this is in `evals/apply-decision/`.
 
+## Codex review (external)
+
+With the [collegium](../collegium/README.md) plugin installed and Codex enabled in it, a review
+can add a second, outside reader: OpenAI Codex reviews the same change beside the Claude lenses.
+It sends the change to OpenAI. Set the plugin option **Codex review through Collegium**
+(`/plugin` → code-review → configure):
+
+| Value | What happens |
+|---|---|
+| `ask` (default, also when never saved) | When the Collegium tools are present, `/start-cr` asks once per review whether to add the Codex review. Without them it asks nothing and runs no Codex review. |
+| `always` | Every review adds the Codex review without asking. When the Collegium tools are missing, the report says why it did not run. |
+| `never` | No Codex review, no question. |
+
+The Codex review starts together with the lens scanners, runs read-only in the checkout under
+review (the pull request's worktree with `--pr`), and the merge waits for it, up to 60 minutes.
+Codex gets the same scope, conventions and standards as the lenses and the plugin's family and
+rule table, and answers in a fixed schema. A Codex finding that names a row of that table is
+merged and re-graded like any lens finding, and one that lands on the same code as a Claude lens
+counts as independent agreement; anything else is a candidate the merge decides.
+
+It is an external review, not a lens: it is not counted in `Lenses: L of A`. A delivered run adds
+`External review: codex` to the report's tally. A run that fails, times out or cannot start reads
+`External review: skipped: codex — <reason>` there, and the review goes on without it: it never
+triggers the menu a missing lens does.
+
+Automated workflows turn it on with `cr-prepare --codex`. Under the Codex CLI the Codex review
+does not exist and is never offered.
+
 ## What it reviews and what it skips
 
 Reviewed: source files with the extensions `.ts .tsx .mts .cts .js .jsx .mjs .cjs .py .go .rs .java
@@ -282,8 +310,8 @@ uses `cr-scan` too: it writes the same context directory itself and runs each le
 
 | Skill | Arguments | Writes |
 |---|---|---|
-| `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path> [--spec-focus <codes>]]` | `scope.json`, `conventions.md`, `standards.md` |
-| `code-review:cr-scan` | `--lens <lens>[,<lens>…] --context <dir>`: one agent per active lens, or one agent judging a comma-separated list in turn | `<lens>.md` per lens |
+| `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path> [--spec-focus <codes>]] [--codex]` | `scope.json`, `conventions.md`, `standards.md` |
+| `code-review:cr-scan` | `--lens <lens>[,<lens>…] --context <dir>`: one agent per active lens, or one agent judging a comma-separated list in turn; `--lens codex` runs the Codex review in an agent of its own | `<lens>.md` per lens, `codex.md` for the Codex review |
 | `code-review:cr-merge` | `--context <dir>` | `cr-report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only`, plus the real problems no rule names and the files left to `/security-review` |
 
 `--spec-focus "DB-1,D3"` names, by element code or decision id, the part of the spec a change
