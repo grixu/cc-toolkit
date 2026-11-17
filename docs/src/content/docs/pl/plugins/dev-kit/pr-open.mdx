@@ -117,9 +117,8 @@ Sekcja **Proof** nie wlicza się do limitu jednego ekranu.
 ### Etykieta proof
 
 Dopóki sekcja **Proof** pokazuje co najmniej jeden wpis i żaden nie jest nieaktualny ani nie pochodzi sprzed przepisania historii, `pr-open` oznacza pull request etykietą `proof`.
-Reviewer może wtedy odfiltrować pull requesty, których dowód wciąż zgadza się z kodem.
 Późniejszy run, który znajdzie nieaktualny dowód albo pustą listę, zdejmuje etykietę.
-Bez manifestu na komputerze etykieta zostaje bez zmian, bo manifest żyje na komputerze, na którym zebrano dowód.
+Bez manifestu na komputerze etykieta zostaje bez zmian, bo manifest jest tylko na komputerze, na którym zebrano dowód.
 Gdy etykiety brakuje, `pr-open` tworzy ją raz i nigdy nie zmienia istniejącej.
 
 Opcja **Proof label** (`proof_label`) to wyłącza, a **Proof label name** (`proof_label_name`) zmienia nazwę etykiety.
@@ -145,8 +144,7 @@ Raport podaje wtedy ścieżkę historii albo błąd.
 
 ### Czy zmiana dostaje historię
 
-Poprawka literówki albo zmiana tylko w testach nie potrzebuje rozdziałów.
-Z kluczem TypeSafe albo Gemini Decision model decyzyjny ocenia, czy zmiana jest warta historii, a prosta zmiana jej nie dostaje.
+Z kluczem TypeSafe albo Gemini Decision model decyzyjny ocenia, czy zmiana jest warta historii, a poprawka literówki, zmiana tylko w testach czy mała lokalna poprawka jej nie dostaje.
 Opcja **Code story** (`code_story`) ustala zachowanie:
 
 | Wartość | Co się dzieje |
@@ -160,19 +158,19 @@ Tabela 1. Opcja `code_story`
 Pull request, którego opis linkuje już historię, zawsze dostaje jej aktualizację, niezależnie od opcji, chyba że to `never`.
 
 Przy `auto` `pr-open` woła narzędzie `story_signals`, gdy opis jest już napisany, bo decyzja potrzebuje tego, co opis mówi o celu zmiany.
-Nowa historia startuje więc nieco później niż reszta pracy nad opisem.
+Przy `auto` nowa historia startuje więc dopiero po napisaniu opisu, a nie zaraz po ustaleniu bazy.
 Przy istniejącym pull requeście, którego opis zostaje bez zmian, `pr-open` woła narzędzie od razu, z obecnym tytułem i opisem.
 
 Narzędzie wysyła do modelu diff, jego diffstat, opisy commitów oraz tytuł i opis.
-Najpierw usuwa sekcje **Code story**, **Proof** i **Risk**, bo podsunęłyby modelowi odpowiedź.
+Najpierw usuwa sekcje **Code story**, **Proof** i **Risk**.
 Zadaje trzynaście pytań tak/nie o zmianę:
 
-- **Dziewięć mówi, że zmiana jest zbyt prosta na historię:** tylko kosmetyka, tylko dokumentacja, tylko testy, jedna lokalna poprawka, kolejny przypadek istniejącego wzorca, głównie usunięcie kodu, zachowanie bez zmian, niezwiązane drobne edycje albo tylko wartości konfiguracji.
-- **Cztery mówią, że czytelnik jej potrzebuje:** nowy przepływ przez kilka plików, zmiana tego, co agent robi w runie, usunięcie mechanizmu, który wykonywał pracę, albo błąd, którego przyczyna leży poza zmienionymi liniami.
+- Dziewięć mówi, że zmiana jest zbyt prosta na historię: tylko kosmetyka, tylko dokumentacja, tylko testy, jedna lokalna poprawka, kolejny przypadek istniejącego wzorca, głównie usunięcie kodu, zachowanie bez zmian, niezwiązane drobne edycje albo tylko wartości konfiguracji.
+- Cztery mówią, że czytelnik jej potrzebuje: nowy przepływ przez kilka plików, zmiana tego, co agent robi w runie, usunięcie mechanizmu, który wykonywał pracę, albo błąd, którego przyczyna leży poza zmienionymi liniami.
 
 Historia jest pomijana, gdy odpowiedź za pominięciem przekroczy swój próg, a żadna odpowiedź za historią nie przekroczy swojego.
 Raport podaje wtedy `Code story: skipped (<reason>, decided by <backend>)`.
-Diff, który wymagałby więcej niż czterech zapytań, nigdy nie jest wysyłany i dostaje historię.
+Gdy diff wymagałby więcej niż czterech zapytań, nic nie jest wysyłane, a historia powstaje.
 
 Opcja **Code story gate backend** (`story_gate_backend`) wybiera model.
 `auto`, domyślnie, używa każdego backendu z kluczem i uśrednia ich odpowiedzi; w przeciwieństwie do etykiety ryzyka nigdy nie pyta, którego użyć.
@@ -184,7 +182,8 @@ Każda decyzja, bez diffu, jest dopisywana do `~/.cache/dev-kit/story-gate.jsonl
 Pytania i progi skalibrowano na 37 pull requestach autora pluginu, a potem sprawdzono raz na 24 kolejnych, które nie brały udziału w dopasowaniu.
 Na tych 24 żadne z trzech ustawień backendu nie pominęło żadnego z 11 pull requestów, które powinny mieć historię.
 Z 13, które autor by pominął, oba backendy razem pominęły 8, sam Jev 7, a sam Gemini 10.
-To ocena jednej osoby na małej próbie, więc ustaw `code_story` na `always`, gdy każdy pull request w twoim repozytorium ma mieć historię.
+To ocena jednej osoby na małej próbie.
+Gdy każdy pull request w twoim repozytorium ma mieć historię, ustaw `code_story` na `always`.
 :::
 
 ## Etykieta ryzyka
@@ -255,7 +254,7 @@ Przepisanie edytuje obecny opis: twoje zdania, linie botów, sekcje spoza szablo
 - Sekcję **Proof**, gdy pr-proof zostawił manifest z wpisami, i etykietę `proof`, dopóki ten dowód jest aktualny.
 - Sekcję **Code story**, gdy historia zmiany powstała.
 - Sekcję **Risk** i etykietę ryzyka, gdy klucz jest skonfigurowany.
-- Raport z URL-em pull requesta, jego bazą i użytym szablonem. Raport wymienia sekcje i checkboxy do uzupełnienia przez ciebie oraz poziom i flagi ryzyka z backendem, który je ustalił. Raport wymienia też pokazane i pominięte wpisy dowodu, wszystko, czego nie udało się wysłać, i czy etykieta `proof` została dodana, zdjęta albo zostawiona. Na końcu podaje link do historii zmiany i jej status albo powód, dla którego jej nie ma: wyłączona, pominięta przez bramkę z podaniem powodu albo błąd.
+- Raport z URL-em pull requesta, jego bazą i użytym szablonem. Raport wymienia sekcje i checkboxy do uzupełnienia przez ciebie oraz poziom i flagi ryzyka z backendem, który je ustalił. Wymienia też pokazane i pominięte wpisy dowodu, wszystko, czego nie udało się wysłać, i czy etykieta `proof` została dodana, zdjęta albo zostawiona. Na końcu podaje link do historii zmiany i jej status albo powód, dla którego jej nie ma: wyłączona, pominięta przez bramkę z podaniem powodu albo błąd.
 
 Raport kończy się jednolinijkową sugestią, żeby uruchomić `/dev-kit:pr-shepherd`.
 `pr-open` nigdy nie uruchamia go sam.
