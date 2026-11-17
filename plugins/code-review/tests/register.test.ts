@@ -47,7 +47,7 @@ function fake(env: Record<string, string>, answer: (state: any) => Wire | number
   return { $, sent, runs }
 }
 
-const FINDING = { id: 'f1', family: 'simplicity', rule: 'over-complex', severity: 'high', path: 'src/a.ts', lines: 'L30', problem: 'two copies drift', fix: 'collapse them' }
+const FINDING = { id: 'f1', boy_scout: false, family: 'simplicity', rule: 'over-complex', severity: 'high', path: 'src/a.ts', lines: 'L30', problem: 'two copies drift', fix: 'collapse them' }
 const OPTIONS = { decision_backend: 'typesafe' }
 const LOW = { needs_owner_facts: 0.05, remedy_choice: 0.05 }
 
@@ -93,9 +93,12 @@ test('security, spec and boy-scout findings are never sent', async () => {
     { ...FINDING, id: 's', family: 'security' },
     { ...FINDING, id: 'p', family: 'spec' },
     { ...FINDING, id: 'b', boy_scout: true },
+    { ...FINDING, id: 'tick', family: '`Security`' },
+    { ...FINDING, id: 'nofamily', family: undefined },
+    { ...FINDING, id: 'nobs', boy_scout: undefined },
   ]
   const result = await decideWalk($, { context: '/ctx', findings }, OPTIONS)
-  assert.deepEqual(result.decisions.map((d) => d.decision), ['ask', 'ask', 'ask'])
+  assert.deepEqual(result.decisions.map((d) => d.decision), ['ask', 'ask', 'ask', 'ask', 'ask', 'ask'])
   assert.equal(sent.length, 0)
 })
 

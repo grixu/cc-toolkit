@@ -479,7 +479,7 @@ or (when you have one) a different approach — and apply only on that answer.
 `mcp__code-review__apply_decision` — it exists only when the user configured a backend — call it
 once, after the user picked the walk and before its first question, with `context` the context
 directory, `scope` and `conventions` the report's lines, and one `findings` entry per walk fix:
-`id`, `severity`, `family`, `rule`, `path`, `lines`, `boy_scout`, and the bullet split at its `→`
+`id`, `severity`, `family`, `rule`, `path`, `lines`, `boy_scout` (`true` or `false`, never left out), and the bullet split at its `→`
 into `problem` and `fix`, both verbatim. Send the bullet as the report states it, not the question
 you would ask: the model's thresholds were measured on report bullets. Then:
 

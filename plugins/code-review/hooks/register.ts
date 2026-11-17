@@ -40,7 +40,7 @@ export function register(on, options) {
                 description: 'The fixes the walk would ask about, one entry per report bullet.',
                 items: {
                   type: 'object',
-                  required: ['id', 'path', 'problem'],
+                  required: ['id', 'family', 'path', 'boy_scout', 'problem'],
                   properties: {
                     id: { type: 'string', description: 'Any id that is unique within this call; the result echoes it.' },
                     severity: { type: 'string' },
@@ -114,13 +114,16 @@ export async function decideWalk($, input, options) {
   const decisions = await Promise.all(
     findings.map(async (f, i) => {
       const id = text(f?.id) || String(i + 1)
-      if (ALWAYS_ASK_FAMILIES.has(text(f?.family))) return { id, decision: 'ask', reasons: [`${f.family} fixes are always walked`] }
-      if (f?.boy_scout) return { id, decision: 'ask', reasons: ['boy-scout fixes are always walked'] }
+      // Fails closed: the agent may pass the family as the report prints it (`security`), capitalised, or not at all.
+      const family = text(f?.family).replace(/`/g, '').toLowerCase()
+      if (!family) return { id, decision: 'ask', reasons: ['no family given'] }
+      if (ALWAYS_ASK_FAMILIES.has(family)) return { id, decision: 'ask', reasons: [`${family} fixes are always walked`] }
+      if (f?.boy_scout !== false) return { id, decision: 'ask', reasons: ['boy-scout fixes are always walked, and boy_scout was not false'] }
       try {
         const code = await codeFor($, scope, f)
         const finding: Finding = {
           severity: f.severity,
-          family: f.family,
+          family,
           rule: f.rule,
           path: f.path,
           lines: f.lines,
