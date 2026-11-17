@@ -135,51 +135,71 @@ Before editing, back up each file to `<file>.bak-retro-20261117`.
 - [x] Add `.agentkit/` to `.gitignore`.
 - [ ] PR via `dev-kit:pr-open`, shepherd to green, merge with `--admin`.
 
-### 3. Repo PR "checks" (branch `ci/plugin-checks` from `origin/main` after step 2)
+Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branches, by the owner's
+2026-11-18 go-ahead to keep one branch.
 
-- [ ] Move the checker out of `.claude/skills/verify/SKILL.md` into `scripts/verify-plugins.mjs`
+### 3. Repo PR "checks"
+
+- [x] Move the checker out of `.claude/skills/verify/SKILL.md` into `scripts/verify-plugins.mjs`
   (Node, per the Bash > Node > Python rule). Add:
   - each description is at most two sentences and identical in `plugin.json` and `marketplace.json`;
   - no `CLAUDE.md` anywhere in a plugin tree except under `fixtures/`;
   - `cmp` of the hand-copied `hooks/decision.ts` and `providers/*` sets across plugins.
-- [ ] Reduce the `verify` skill to running the script and judging what it cannot.
-- [ ] `lint.yml`: a `verify-plugins` job; a job that installs Claude Code at the version
+  (each check proven on a deliberately broken temp worktree)
+- [x] Reduce the `verify` skill to running the script and judging what it cannot.
+- [x] `lint.yml`: a `verify-plugins` job; a job that installs Claude Code at the version
   `plugin-evals.yml` pins and runs `claude plugin validate` and `claude plugin test` for every plugin
-  the PR changed.
-- [ ] Add a CI check that fails a PR containing `fixup!` commits.
-- [ ] `CLAUDE.md`, one "Checks:" line with these commands; mod code has no tsc or tsconfig.
-- [ ] PR, shepherd, merge.
+  the PR changed. (changed: `validate` without `--strict`, which fails four plugins on mod TypeScript
+  warnings; code-review's two test files were rewritten from `node:assert` to `claude-code/testing`,
+  since `claude plugin test` had never been able to load them)
+- [x] Add a CI check that fails a PR containing `fixup!` commits.
+- [x] `CLAUDE.md`, one "Checks:" line with these commands; mod code has no tsc or tsconfig.
+- [x] PR, shepherd. (merge with step 5)
 
-### 4. Eval harness (branch `chore/eval-harness`)
+### 4. Eval harness
 
-- [ ] Baseline: run `work-g9/agg.mjs` (copy it into `plugins/*/evals/` local tooling first, the
-  scratchpad is temporary) over the latest eval sessions; record error counts per cluster.
-- [ ] `scripts/evals-isolation.json`: narrow the `~/.ccs` block to the secret files `permissions.deny`
-  names, so oversized tool results under `~/.ccs/…/tool-results/` stay readable.
-- [ ] `plugins/code-review/evals/promptfooconfig.yaml`: `reset-sandbox.sh` copies the inputs into a
-  sandbox directory and `working_dir` points there instead of `../../..`.
-- [ ] `scripts/run-evals.sh`: `TMPDIR` and `npm_config_cache` inside the sandbox; pr-open
-  `reset-sandbox.sh` presets the branch upstream.
-- [ ] Re-run the affected suites with `--trials`; compare with the baseline. zsh errors (~33%) will
-  remain by the owner's shell decision; report them separately.
+- [x] Baseline: `work-g9/agg.mjs` and the per-group evidence are kept, git-ignored, in
+  `.ai/specs/harness-retro/retro.session/` (changed: not copied into a plugin's `evals/`; it reads
+  session transcripts, not eval output).
+- [ ] ~~`scripts/evals-isolation.json`: narrow the `~/.ccs` block~~ — skipped: the paths under `~/.ccs`
+  that hold secrets vary by ccs profile (`config.yaml`, per-instance settings, `.session-secret`), so a
+  file list would leak the next new one; the Read tool already reaches `tool-results/` (its deny rules
+  name only the secret files), and the 17 failures were `grep`/`cat` on those files, a one-retry cost.
+- [ ] ~~code-review `working_dir` into a sandbox~~ — skipped: every code-review prompt names the
+  plugin's rule files by repo-root path and pins conventions to "none", so isolating it means
+  rewriting ~20 prompts and a full Opus re-run of the suite, against a cost g9 measured only as
+  failed reads (48), with no verdict effect shown. Left as a follow-up.
+- [x] `TMPDIR`: a probe in the real eval sandbox showed it already points inside the sandbox; the
+  failures came from `mktemp -t`, which ignores `$TMPDIR` on macOS. Fixed at the source in dev-kit
+  pr-open (step 5) instead of in `run-evals.sh`. `npm_config_cache` and the `push -u` upstream: not
+  changed (2 and 4 hits, no run blocked; g9 advised leaving them).
+- [x] Re-run: dev-kit `pr-open-feature|pr-open-proof` after the pr-open fix. `mktemp` now succeeds in
+  the sandbox; feature passed; proof failed because the agent collected `--attach` flags in `$A`,
+  which zsh passes as one word. pr-open now says to write each flag out; proof re-run passed (1/1,
+  $1.09). `git push -u` still cannot write `.git/config` (push itself succeeds).
+  zsh errors stay by the owner's shell decision; `echo ====` no longer fails, since Claude Code now
+  runs zsh with `NO_EQUALS`; unmatched globs still abort.
 
-### 5. Plugin fixes (one PR and release per plugin)
+### 5. Plugin fixes
 
-- [ ] dev-kit `skills/pr-shepherd/SKILL.md`: `gh pr checks` exits non-zero while checks are pending or
-  none are required; read the JSON, never chain it with `&&`.
-- [ ] fd3 `skills/split-to-tasks/SKILL.md:107-115`: an unchanged cited text whose line numbers moved
-  clears; update the pins and name them in the report.
-- [ ] Each: `CHANGELOG.md` `[Unreleased]`, PR, merge, then the `release` skill.
+- [x] dev-kit `skills/pr-shepherd/SKILL.md`: `gh pr checks` exits non-zero while checks are pending or
+  none are required; read the JSON, never chain it with `&&`. (added: pr-open `mktemp -d
+  "${TMPDIR:-/tmp}/…"`)
+- [x] fd3 `skills/split-to-tasks/SKILL.md:107-115`: an unchanged cited text whose line numbers moved
+  clears; update the pins and name them in the report. (changed: the tasks cite the new lines and the
+  spec stays as it is, since only build-spec may edit a spec)
+- [ ] Each: `CHANGELOG.md` `[Unreleased]`, merge, then the `release` skill.
 
 ### 6. Memory
 
-- [ ] New reference memory: launch recipes for `codex exec`, `ccs mm`/`ccs zai` and agy, taken from
-  the g1 session (`cced5ee1`) where they were rebuilt four times.
-- [ ] `docs-site-line-map-decision.md`: replace "Look" with a pointer to `docs/DESIGN.md`; drop
+- [x] New reference memory: launch recipes for `codex exec`, `ccs mm`/`ccs zai` and agy, taken from
+  the g1 session (`cced5ee1`) where they were rebuilt four times. (agy: no working launch was ever
+  recorded; the note says so)
+- [x] `docs-site-line-map-decision.md`: replace "Look" with a pointer to `docs/DESIGN.md`; drop
   `/proto/site`.
-- [ ] Rename `pr-risk-secrets-file.md` → `pr-risk-credentials-runbook.md` and its index line (the old
+- [x] Rename `pr-risk-secrets-file.md` → `pr-risk-credentials-runbook.md` and its index line (the old
   name trips the secrets hook).
-- [ ] Shorten every `MEMORY.md` line to a one-line pointer.
+- [x] Shorten every `MEMORY.md` line to a one-line pointer.
 
 ## Verification
 
