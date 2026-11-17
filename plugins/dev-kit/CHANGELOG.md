@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-11-17
+
 ### Fixed
 
 - `pr_risk`: `compare.jsonl` names the repository from the origin remote, as the proof manifest's path does, instead of the git toplevel's directory name, so in a worktree its entries match the manifest. Without an origin remote it falls back to the toplevel's name.
