@@ -39,8 +39,9 @@ Branch: `ci/docs-deploy` from `origin/main` (`docs/starlight-site` is merged).
 ### 2. CD: deploy every push to `main`
 
 - [x] Add a `deploy` job to the same workflow: `needs: check`, runs only on `push` to `main` and on
-  `workflow_dispatch` (manual redeploy), `environment: production` (url https://cct.grixu.dev),
-  concurrency `deploy-docs` with `cancel-in-progress: false` so deploys land in order.
+  `workflow_dispatch` (manual redeploy), `environment: production` (url https://cct.grixu.dev).
+  Changed: no job-level concurrency group, since the workflow-level `docs-${{ github.ref }}` group
+  already queues runs on `main`.
 - [x] It downloads the `docs/dist` artifact and runs `pnpm -C docs/cloudflare exec cf deploy`
   with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from the `production` environment's secrets.
 - [x] Keep the existing path filter, so plugin releases (manifests, changelogs) also redeploy.
