@@ -1,0 +1,3 @@
+# Copy to terraform.tfvars (gitignored: this repository is public).
+cloudflare_account_id = "<account id>"
+cloudflare_zone_id    = "<grixu.dev zone id>"
