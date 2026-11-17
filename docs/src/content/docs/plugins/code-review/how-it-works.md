@@ -132,7 +132,7 @@ Every kept finding gets one risk class for its fix: `safe`, `structural` or `rep
 The apply menu offers those classes as its options, at most four, and only those that have findings:
 
 - **Safe fixes** are mechanical and easy to check by eye. A fix that changes a signature, edits a second file, creates a module or adds an import is never safe.
-- **Structural fixes** move or remove code. You walk them one at a time, and each needs its own yes.
+- **Structural fixes** move or remove code. You walk them one at a time, and each needs its own yes, unless the [decision model](/plugins/code-review/start-cr/#let-a-model-answer-walk-questions) settles it.
 - **Security fixes are never safe.** However small, they change behavior at a boundary.
 - **Spec findings are report only.** A missing requirement is work to do, not an edit. The exception is a verified wrong implementation that one edit fixes.
 - **Some coherence and assumptions fixes are report only**, wherever the side the fix would rewrite may be the right one, or the fix lives outside the repository, such as a dependency bump.

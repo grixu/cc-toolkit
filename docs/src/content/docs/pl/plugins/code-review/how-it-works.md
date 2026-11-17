@@ -132,7 +132,7 @@ Każda zachowana uwaga dostaje jedną klasę ryzyka poprawki: `safe`, `structura
 Menu pokazuje te klasy jako opcje, najwyżej cztery i tylko te, w których są uwagi:
 
 - **Bezpieczne poprawki** są mechaniczne i łatwe do sprawdzenia wzrokiem. Poprawka, która zmienia sygnaturę, edytuje drugi plik, tworzy moduł albo dodaje import, nigdy nie jest bezpieczna.
-- **Poprawki strukturalne** przenoszą albo usuwają kod. Przechodzisz je po jednej i każda wymaga osobnego „tak”.
+- **Poprawki strukturalne** przenoszą albo usuwają kod. Przechodzisz je po jednej i każda wymaga osobnego „tak”, chyba że rozstrzygnie ją [model decyzyjny](/pl/plugins/code-review/start-cr/#model-odpowiada-na-pytania-o-poprawki).
 - **Poprawki security nigdy nie są bezpieczne.** Nawet najmniejsze zmieniają zachowanie na granicy.
 - **Uwagi ze specu są tylko do raportu.** Brakujące wymaganie to praca do wykonania, nie edycja. Wyjątkiem jest zweryfikowana błędna implementacja, którą naprawia jedna edycja.
 - **Część poprawek coherence i assumptions jest tylko do raportu**: tam, gdzie racja może leżeć po stronie, którą poprawka by przepisała, albo gdy poprawka leży poza repozytorium, np. podbicie zależności.

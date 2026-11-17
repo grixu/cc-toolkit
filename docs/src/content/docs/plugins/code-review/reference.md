@@ -125,6 +125,23 @@ An empty change or a lens that didn't report comes back as a status, never as a 
 
 Table 7. Files a review writes
 
+## Plugin options
+
+Open the options with `/plugin configure code-review@cc-toolkit`.
+The `apply_decision` tool is registered when a session starts, so a change takes effect in the next session.
+
+| Option | Default | What it does |
+|---|---|---|
+| `decision_backend` | `off` | The model that answers [walk questions](/plugins/code-review/start-cr/#let-a-model-answer-walk-questions). `off` asks about every fix and sends nothing anywhere. `typesafe` uses TypeSafe Jev, `gemini` uses Gemini Decision. `auto` uses the backend whose key is set; with both keys, `start-cr` asks which to use. |
+| `typesafe_api_key` | empty, reads `TYPESAFE_API_KEY` | The TypeSafe API key. |
+| `typesafe_endpoint` | `https://api.typesafe.ai` | Base URL of the TypeSafe API. |
+| `typesafe_model` | `jev-1.14.0` | Model name or alias. The thresholds were measured on `jev-1.14.0`. |
+| `gemini_api_key` | empty, reads `GEMINI_DECISIONS_API_KEY`, then `GEMINI_API_KEY` | A Gemini Developer API key with access to `gemini-decision-1`. |
+
+Table 8. Plugin options
+
+A backend without a key is treated as off.
+
 ## Limits
 
 - **It isn't a security audit.** The security lens doesn't scan dependencies, `.env` files, lockfiles or action pinning. Run Claude Code's `/security-review` for those.

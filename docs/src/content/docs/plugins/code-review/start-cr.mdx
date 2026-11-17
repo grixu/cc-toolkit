@@ -132,7 +132,7 @@ Right after the report, one menu offers only the groups that have findings:
 | Option | What it holds |
 |---|---|
 | Safe fixes | Mechanical edits: named constants, renames, guard clauses, blank lines, comment removals and rewrites. |
-| Walk the structural ones | Extractions, moves, splits, and every correctness, security, coherence, assumptions and performance fix that isn't report only. Each one gets its own yes. |
+| Walk the structural ones | Extractions, moves, splits, and every correctness, security, coherence, assumptions and performance fix that isn't report only. Each one gets its own yes, unless a [decision model](#let-a-model-answer-walk-questions) settles it. |
 | Boy-scout extras | Fixes outside the change. |
 | Report only | Change nothing. |
 
@@ -141,6 +141,27 @@ Table 1. The apply menu
 Security fixes are never in the safe batch.
 When one of the other groups is empty, security fixes can get an option of their own, still walked one at a time.
 Spec findings describe work to do, so they are report only.
+
+### Let a model answer walk questions
+
+Most structural fixes get a plain yes.
+With the **Walk decision backend** option set, a decision model answers those questions for you, and you are asked only about the rest.
+The option is off by default; see [Plugin options](/plugins/code-review/reference/#plugin-options).
+
+For each structural fix, the model gets the report bullet, the finding's lines with 12 more on either side, their diff hunk, the list of changed file paths and the report's scope and conventions lines.
+It answers two questions:
+
+- Does the fix depend on a fact the review cannot know, such as a migration's state, a business rule or what a deployed API sends?
+- Is there another reasonable remedy that would behave differently?
+
+When both answers are no, the fix is applied without a question.
+Otherwise you are asked, as before.
+Security, spec and boy-scout fixes are always asked, and so is any fix the model could not decide.
+The wrap-up lists the fixes applied this way, with the backend that decided each one.
+
+:::note
+The thresholds come from 209 recorded walk decisions. Gemini Decision settled about a third of them without applying a fix its owner had declined. Jev settled a similar share, but applied two declined fixes.
+:::
 
 The same menu asks how to commit what lands:
 

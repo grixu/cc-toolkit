@@ -223,8 +223,9 @@ A decision model can answer the questions you would only wave through. Set the p
 | `gemini` | Gemini Decision decides. Needs `GEMINI_DECISIONS_API_KEY`, `GEMINI_API_KEY` or the plugin's key option. |
 | `auto` | Uses whichever key is set, and asks you to pick Jev or Gemini when both are. |
 
-For each fix the model is sent the report bullet, about 25 lines of code around it, its diff
-hunk, the list of changed file paths and the report's conventions line. It answers two
+For each fix the model is sent the report bullet, the finding's lines with 12 more on
+either side, their diff hunk, the list of changed file paths and the report's scope and
+conventions lines. It answers two
 questions: does the fix need a fact the review cannot know (a migration's state, a business
 rule), and is there another remedy that would behave differently. When both answers are no,
 the fix is applied without a question; otherwise you are asked as before. `security`, `spec`

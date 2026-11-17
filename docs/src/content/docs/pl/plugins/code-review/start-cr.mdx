@@ -132,7 +132,7 @@ Zaraz po raporcie jedno menu pokazuje tylko te grupy, w których są uwagi:
 | Opcja | Co zawiera |
 |---|---|
 | Safe fixes | Mechaniczne edycje: nazwane stałe, zmiany nazw, guard clauses, puste linie, usunięcia i przepisania komentarzy. |
-| Walk the structural ones | Wydzielenia, przeniesienia, podziały oraz każda poprawka correctness, security, coherence, assumptions i performance, która nie jest tylko do raportu. Każda wymaga osobnego „tak”. |
+| Walk the structural ones | Wydzielenia, przeniesienia, podziały oraz każda poprawka correctness, security, coherence, assumptions i performance, która nie jest tylko do raportu. Każda wymaga osobnego „tak”, chyba że rozstrzygnie ją [model decyzyjny](#model-odpowiada-na-pytania-o-poprawki). |
 | Boy-scout extras | Poprawki poza zmianą. |
 | Report only | Niczego nie zmieniaj. |
 
@@ -141,6 +141,27 @@ Tabela 1. Menu poprawek
 Poprawki security nigdy nie trafiają do bezpiecznej paczki.
 Gdy któraś z pozostałych grup jest pusta, poprawki security mogą dostać własną opcję, nadal przechodzoną po jednej.
 Uwagi ze specu opisują pracę do wykonania, więc są tylko do raportu.
+
+### Model odpowiada na pytania o poprawki
+
+Większość poprawek strukturalnych dostaje zwykłe „tak”.
+Gdy ustawisz opcję **Walk decision backend**, model decyzyjny odpowiada na te pytania za ciebie, a ty dostajesz tylko pozostałe.
+Domyślnie opcja jest wyłączona; zobacz [Opcje pluginu](/pl/plugins/code-review/reference/#opcje-pluginu).
+
+Dla każdej poprawki strukturalnej model dostaje punkt raportu, linie znaleziska z 12 dodatkowymi liniami z każdej strony, ich hunk z diffa, listę zmienionych plików oraz linie raportu o zakresie i konwencjach.
+Odpowiada na dwa pytania:
+
+- Czy poprawka zależy od faktu, którego review nie zna, np. stanu migracji, reguły biznesowej albo tego, co wysyła wdrożone API?
+- Czy jest inny sensowny wariant poprawki, który zachowa się inaczej?
+
+Gdy obie odpowiedzi brzmią „nie”, poprawka wchodzi bez pytania.
+W przeciwnym razie pytanie trafia do ciebie, jak dotąd.
+Poprawki security, spec i boy-scout zawsze idą do pytania, tak samo jak każda, której model nie rozstrzygnął.
+Podsumowanie wymienia poprawki wprowadzone w ten sposób, z backendem, który o każdej zdecydował.
+
+:::note
+Progi pochodzą z 209 zapisanych decyzji. Gemini Decision rozstrzygnął około jednej trzeciej z nich i nie wprowadził żadnej poprawki odrzuconej przez właściciela. Jev rozstrzygnął podobną część, ale wprowadził dwie odrzucone poprawki.
+:::
 
 To samo menu pyta, jak zacommitować to, co wejdzie:
 
