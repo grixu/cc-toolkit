@@ -33,6 +33,11 @@ presents itself as an amendment or a partial list is a lens that has **not** rep
 around it. Return `status: incomplete` with those lenses named and write no report — the caller
 runs them again. A review missing a lens is never passed off as whole.
 
+A `codex` entry is the exception: the Codex review is an external review, not a lens. A `codex.md`
+that is missing, has no header, or reads `Lens: codex · skipped: <reason>` is `skipped: codex —
+<reason>` (`no output` for the first two), never `incomplete`; the merge goes on without it, as
+the contract's Codex clause says.
+
 ## 2. Merge and render
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/merge-contract.md` completely and follow it: the **Merge and
@@ -40,8 +45,8 @@ re-grade** half over the lens files, then **Fix risk** to give every kept findin
 the **Report** half's skeleton. Pre-read the change the way `/start-cr` does while its Scanners
 run — `git -C <checkout> diff <diff_args> -- <path>` per file in `scope.json` — so `(verify)`
 resolution and the fix checks read the code, not the lens's account of it; the file-growth check
-runs here too. Its `Conventions` line comes from `conventions.md`, and the `Tally`'s lens count and
-skipped reasons from `scope.json`.
+runs here too. Its `Conventions` line comes from `conventions.md`, the `Tally`'s lens count and
+skipped reasons from `scope.json`, and its `External review` clause from `codex.md`.
 
 Write the rendered report, `Reconciliation` line first, to `<context>/cr-report.md` with the
 `Write` tool. That and nothing else is what you write. A write that fails leaves the merge standing:
@@ -63,6 +68,8 @@ unowned:
 - <each Not flagged bullet that is a real problem merely without a rule, verbatim>
 security-review: <the Skipped line's /security-review pointer clause verbatim, naming the files>
 ```
+
+`codex` never appears on the `lenses` line, skipped or not; the report's `Tally` carries it.
 
 A `spec` · missing-requirement anchors to the spec's own path and lines. A boy-scout finding says
 `boy-scout` after its class. With nothing to report, write `findings: none` — the report still

@@ -18,6 +18,15 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   reads `files judged: <K> of <M>` with `K` below `M` delivered in part: merge it, and name the
   lens with its `K of M` in the `Tally`'s lens clause, so a lens that skipped files never reads
   as one that judged them all.
+- **The Codex review is an external review, not a lens.** When `scope.json`'s `lenses.active`
+  holds a `codex` entry, read `codex.md` from the context directory as `codex-review.md`'s
+  **Rendering** wrote it, whatever its scanner's `<result>` said. A header `Lens: codex ·
+  skipped: <reason>` is `skipped: codex — <reason>`; a `codex.md` that is missing or has no
+  `Lens:` header — its scanner died — is `skipped: codex — no output`. Neither is a lens that
+  did not deliver, and neither stops the merge. A header `Lens: codex · files judged: <M> of <M>`
+  is a delivered external review: merge its `FINDINGS` and `CANDIDATES` like any lens's, and a
+  Codex finding landing on the same code as a Claude lens counts as independent convergence.
+  Codex never counts in `Lenses: L of A`; the `Tally`'s `External review` clause carries it.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses, and across **every family**, craft and `correctness` /
   `security` / `performance` / `spec` / `coherence` / `assumptions` / `standards` / `hookify` alike — re-grade each against the table
@@ -262,7 +271,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
 
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of A (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files). Spec: R of T requirements met. Skipped: <files + reason>.
+**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of A (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files). External review: codex | skipped: codex — <reason>. Spec: R of T requirements met. Skipped: <files + reason>.
 ```
 
 A filled-in report reads like this:
@@ -360,7 +369,10 @@ Rules for filling it in:
   every Lens the lens set names, active or inactive — with each skipped Lens
   and its lens-set reason in the parenthesis (`skipped: performance — no executable
   code; spec — no spec named`), and each lens that judged only part of its files after them
-  (`partial: security — 3 of 5 files`); drop the parenthesis when every Lens ran in full. When a spec was
+  (`partial: security — 3 of 5 files`); drop the parenthesis when every Lens ran in full. The
+  Codex review is in neither `L` nor `A`: when `lenses.active` holds a `codex` entry, add
+  `External review: codex` for a delivered `codex.md`, or `External review: skipped: codex —
+  <reason>` for a skipped, missing or headerless one; omit the clause otherwise. When a spec was
   given, add the `spec` Scanner's met-requirements count as `Spec: R of T requirements
   met`; omit that clause otherwise.
 
