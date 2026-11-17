@@ -54,6 +54,17 @@
       "title": "Gemini API key",
       "description": "Gemini Developer API key for Gemini Decision. Leave empty to read GEMINI_DECISIONS_API_KEY, then GEMINI_API_KEY.",
       "sensitive": true
+    },
+    "collegium_run": {
+      "type": "string",
+      "title": "Codex review through Collegium",
+      "description": "Add an OpenAI Codex review to every code review when the collegium plugin is installed with Codex enabled: always, never, or ask each time. Sends the change to OpenAI.",
+      "options": [
+        "always",
+        "never",
+        "ask"
+      ],
+      "default": "ask"
     }
   }
 }
