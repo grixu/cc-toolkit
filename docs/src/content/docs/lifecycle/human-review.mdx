@@ -1,0 +1,58 @@
+---
+title: Human review
+description: Proof it works, a pull request a person can read in one screen, checks kept green and comments answered.
+group: cycle
+sidebar:
+  label: 03c · Human review
+  order: 5
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import StageCommands from '~/components/StageCommands.astro'
+
+Human review is the last of three steps in Review & test, and the last gate of the [ADLC](/lifecycle/).
+By now the change is reviewed and tested, and the one thing left is a person's approval.
+
+## What goes wrong without it
+
+A reviewer who opens a pull request sees code and has to imagine what it does for a user.
+A large diff with no hint of its risk gets the same attention in every file, so the risky file gets too little.
+And while the reviewer waits, a check goes red overnight and the comments wait for answers.
+
+## Who does what
+
+- **The agent** produces proof that the change works and opens a pull request a reviewer can read in one screen. The pull request carries that proof, a code story that explains the change, and a risk label. Then the agent answers comments and fixes failed checks.
+- **You** approve the proof plan, each screenshot and the video. Then you review the change and approve it. You also settle what the agent hands back: merge conflicts and comments that need a decision.
+
+## On the map
+
+The highlighted column shows where it sits in the cycle.
+`pr-open` sits on the main line, and the plugins that feed its pull request hang above it.
+
+<LifeMap stage="human" animate={false} />
+
+## How it runs
+
+[`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) is the center of this step.
+It builds the pull request from what the other plugins produce:
+
+1. **Prove it.** [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) decides which proof the change needs: a narrated video, screenshots, a terminal transcript or an API transcript. After you approve the plan, it produces each kind and records them in a manifest for the branch. Run it before `pr-open`; `pr-open` reads the manifest and doesn't start it for you.
+2. **Open the pull request.** `pr-open` fills the repository's template from the diff, with a short description and a before and after table. It then does three more things:
+   - It attaches the proof from the manifest in a **Proof** section.
+   - It asks [code-story](/plugins/code-story/) for a page that explains the change chapter by chapter, in a background subagent, and links it in a **Code story** section.
+   - It cleans its own sentences through [anti-slop](/plugins/anti-slop/) before it opens the pull request.
+
+   With a TypeSafe or Gemini key, it also adds a [risk label](/plugins/dev-kit/risk-assessment/), such as `risk: high`. The label tells the reviewer how closely to look.
+3. **Keep it green.** [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) loops until every required check is green and every thread is resolved or handed to you. It fixes the comments it agrees with, answers the rest in the thread, and hands each red check to [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/).
+
+A new code story is private until you share it on claude.ai, so share it before reviewers open the link.
+You rarely run `ci-fix` by hand: pr-shepherd calls it when a check fails.
+
+## What to run
+
+<StageCommands stage="human" />
+
+## What arrives and what leaves
+
+- **Arrives:** a reviewed and tested branch.
+- **Leaves:** a pull request with green checks and settled threads. Once you approve it, it's ready to merge. The merge closes the cycle, and the next change starts at [Plan](/lifecycle/plan/).

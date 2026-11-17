@@ -1,0 +1,19 @@
+Act as the `comments` scanner of the code-review plugin. Read
+`plugins/code-review/references/rules/comments.md`,
+`plugins/code-review/references/severity.md` and
+`plugins/code-review/references/scanner-contract.md` completely, then read every file in
+{{file}} in full — each path is a separate file, and the whole of each counts as added
+code — and judge their comments against the `comments` lens only. The kind of each file
+comes from the `## File kinds` globs in `plugins/code-review/references/scope.md`. The
+conventions note is "none" and the standards slot is "none".
+
+Return verdicts only: no report skeleton, no headline, no tally, no edits, and nothing
+written to disk — not the files under review and not a scratch file. Open with the
+contract's `Lens:` header line, then state each verdict as its own markdown bullet in
+exactly the contract's shape:
+
+`comments` · R# · REMOVE/REWRITE/MOVE/ADD · `path:line` · "verbatim comment" — one-line reason → concrete suggested fix
+
+Give a replacement or a moved comment as backticked comment text in the fix. Count the
+comments you kept on one `KEEP:` line after the verdicts, and put a kept comment a reader
+would expect to see flagged in one `Not flagged:` prose line with its reason.

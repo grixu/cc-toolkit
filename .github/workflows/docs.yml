@@ -1,0 +1,40 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'brand/**'
+      - '.claude-plugin/**'
+      - 'plugins/*/.claude-plugin/**'
+      - 'plugins/*/CHANGELOG.md'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'brand/**'
+      - '.claude-plugin/**'
+      - 'plugins/*/.claude-plugin/**'
+      - 'plugins/*/CHANGELOG.md'
+      - 'pnpm-workspace.yaml'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install
+        run: pnpm install --filter cc-toolkit-docs
+      - name: Build
+        run: pnpm -C docs build

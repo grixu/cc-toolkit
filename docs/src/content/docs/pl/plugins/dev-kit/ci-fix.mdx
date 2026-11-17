@@ -1,0 +1,61 @@
+---
+title: /dev-kit:ci-fix
+description: Naprawia nieudany run CI u źródła, sprawdza poprawkę lokalnie i robi jeden commit na przyczynę. pr-shepherd woła go przy każdym czerwonym checku.
+group: guides
+skill: ci-fix
+sidebar:
+  label: ci-fix
+  order: 4
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+`ci-fix` rzadko uruchamiasz ręcznie.
+[`pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/) woła go przy każdym czerwonym checku na prowadzonym pull requeście i pozwala mu pushować bez pytania.
+Uruchom go sam, gdy check padnie, a nie potrzebujesz całej pętli.
+
+## Uruchom go
+
+<Strip cmd="/dev-kit:ci-fix" />
+
+Podaj URL runu, joba, pull requesta albo commita, ID runu, numer pull requesta albo nic, żeby użyć bieżącego brancha:
+
+```
+/dev-kit:ci-fix https://github.com/owner/repo/actions/runs/123456
+/dev-kit:ci-fix 42
+```
+
+## Jak przebiega
+
+<SkillFlow
+  skill="ci-fix"
+  input="Nieudany run, pull request albo bieżący branch"
+  steps={[
+    { name: 'Lokalizacja', does: 'Zamienia cel na nieudane runy, joby i kroki.' },
+    { name: 'Przyczyna', does: 'Czyta logi błędów i plik workflow i wskazuje zmianę, która zepsuła build.' },
+    { name: 'Poprawka', does: 'Odtwarza błąd lokalnie, naprawia go i uruchamia tę samą komendę, aż przejdzie.' },
+    { name: 'Commit', does: 'Robi jeden commit na przyczynę i pushuje po twojej zgodzie.', leaves: 'ci-fix result' },
+  ]}
+/>
+
+Nie każdy błąd kończy się zmianą w kodzie:
+
+- **Błąd przejściowy** (utracony runner, timeout sieci, rate limit) albo **niestabilny test** dostaje jedno ponowne uruchomienie. Test, którego przedmiot zmienia branch, uznaje za niestabilny dopiero wtedy, gdy przejdzie lokalnie dwa razy.
+- **Problem ze środowiskiem** (brakujący sekret, wygasłe poświadczenie, uprawnienia, płatności) trafia do raportu dla administratora i nie jest łatany.
+- **Przyczyna już naprawiona na branchu**, gdy nowy run nie przyjdzie, na przykład przy workflow wdrożenia, kończy się statusem `nothing-to-fix`. Raport podaje komendę `gh workflow run`, a `ci-fix` nigdy sam nie uruchamia wdrożenia.
+
+## Co zostawia
+
+Każdy run kończy się blokiem `ci-fix result`: status (`fixed`, `rerun`, `nothing-to-fix`, `not-fixable` albo `blocked`), przyczyna, commity, sposób weryfikacji poprawki, czy została wypchnięta i co zostaje dla ciebie.
+
+## Czego nigdy nie robi
+
+- Nie naprawia poza lokalnym klonem repozytorium, w którym padł run. Pyta, zanim przełączy się na branch runu.
+- Nie pomija, nie łagodzi ani nie usuwa checku bez pytania. Dopasowanie asercji do udokumentowanego kontraktu to poprawka, a commit cytuje linię kontraktu.
+- Nie merguje ani nie rebase'uje bazy do brancha, nie rozwiązuje konfliktów, nie robi force-pusha i nie edytuje pull requesta, chyba że wprost o to poprosisz.
+
+## Następne kroki
+
+- Pozwól [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/) wołać `ci-fix` za ciebie, gdy obsługuje review.
+- [Dokumentacja referencyjna](/pl/plugins/dev-kit/reference/) wymienia argument `push-authorized`, blok wyniku i komendy, które `ci-fix` uruchamia bez pytania.

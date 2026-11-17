@@ -1,0 +1,174 @@
+---
+title: /code-review:start-cr
+description: Przejrzyj branch, wybrane pliki albo pull request wszystkimi pasującymi soczewkami naraz, a potem wybierz, które poprawki zastosować.
+group: guides
+skill: start-cr
+sidebar:
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+`/code-review:start-cr` przegląda zmianę każdą soczewką, która do niej pasuje, scala uwagi w jeden raport pogrupowany według plików i pokazuje jedno menu poprawek.
+W trakcie review nigdy nie edytuje kodu i startuje tylko wtedy, gdy go wywołasz.
+
+## Kiedy go uruchomić
+
+- Twój branch jest gotowy i chcesz go przejrzeć, zanim przeczyta go człowiek.
+- Zmiana powstała poza fd3. Po [`/fd3:implement`](/pl/plugins/fd3/implement/) każdy branch ma już review.
+- Chcesz sprawdzić zmianę z jej specem.
+- Robisz review cudzego pull requesta i potrzebujesz szkicu komentarzy.
+
+## Jak przebiega
+
+<SkillFlow
+  skill="start-cr"
+  input="Branch, ścieżki albo numer pull requesta"
+  steps={[
+    { name: 'Zakres', does: 'Raz ustala zmienione pliki względem brancha bazowego albo pull requesta.' },
+    { name: 'Konwencje', does: 'Raz czyta reguły projektu i CODING_STANDARDS.md, wspólne dla wszystkich soczewek.', leaves: 'conventions.md' },
+    { name: 'Wybór soczewek', does: 'Ustala, które soczewki ruszają, na podstawie plików i specu, nigdy z preferencji.', leaves: 'scope.json' },
+    { name: 'Skan', does: 'Uruchamia równolegle jednego agenta scanner na każdą aktywną soczewkę.', leaves: '<lens>.md' },
+    { name: 'Scalanie', does: 'Usuwa duplikaty, ponownie ocenia każdą uwagę według jednej tabeli i składa jeden raport.' },
+    { name: 'Poprawki', does: 'Jedno menu pyta, co zastosować i jak to zacommitować.', optional: true },
+  ]}
+  next={['tester']}
+/>
+
+## Review twojego brancha
+
+Uruchom bez argumentów:
+
+<Strip cmd="/code-review:start-cr" />
+
+Review obejmuje zmiany zacommitowane, niezacommitowane i nieśledzone.
+Mierzy je względem pierwszej istniejącej bazy: brancha upstream, `origin/main`, `origin/master`, `main`, a na końcu `master`.
+
+- **Są zmiany zacommitowane i niezacommitowane:** review pyta, które przejrzeć: niezacommitowane, zacommitowane czy obie grupy.
+- **Jedna strona to same lockfile'e albo wygenerowany kod:** review bierze drugą stronę bez pytania.
+- **Względem wybranej bazy nic nie ma, ale względem innej są commity:** tak wygląda branch wypchnięty na własny odpowiednik w remote. Review wskazuje drugą bazę i proponuje ponowny przebieg względem niej.
+
+Żeby mierzyć względem innego brancha, podaj `--base`:
+
+<Strip cmd="/code-review:start-cr --base develop" />
+
+Jeśli bieżący branch to cudzy otwarty pull request, review najpierw pyta, czy przejrzeć go jako reviewer, czy przejrzeć lokalne zmiany.
+Zobacz [Review cudzego pull requesta](#review-cudzego-pull-requesta).
+
+## Review wybranych plików
+
+Podaj ścieżki plików albo katalogów, żeby przejrzeć je w całości, a nie jako diff:
+
+<Strip cmd="/code-review:start-cr src/auth.ts src/billing/" />
+
+## Sprawdzenie zmiany ze specem
+
+Podaj lokalny plik specu, żeby dołączyć soczewkę spec:
+
+<Strip cmd="/code-review:start-cr --spec docs/feature.md" />
+
+`--spec` przyjmuje tylko lokalny plik.
+Przy adresie URL albo identyfikatorze zgłoszenia review prosi o lokalną ścieżkę i niczego nie pobiera.
+
+Bez `--spec` review samo szuka specu i proponuje go raz:
+
+1. Plik Markdown w kształcie specu w samej zmianie: w `specs/`, `spec/`, `docs/adr/` albo `tasks/`, albo o nazwie `*SPEC*.md`, `*ADR*.md`, `*.spec.md` lub `*-plan.md`. Spec ma pierwszeństwo przed ADR-em i planem.
+2. `SPEC.md`, który już jest w repozytorium i którego nazwa albo katalog pasuje do nazwy brancha.
+3. W głównym worktree: `SPEC.split.md` albo plik zadania, który wymienia branch, i `SPEC.md` obok niego.
+
+Soczewka spec rusza tylko wtedy, gdy przyjmiesz propozycję.
+
+## Review pull requesta
+
+Podaj numer pull requesta:
+
+<Strip cmd="/code-review:start-cr --pr 42" />
+
+Review pobiera pull request przez `gh` i ocenia jego head względem bazy, tak jak widzą go reviewerzy.
+`--pr` nie przyjmuje ścieżek ani `--base`; `--spec` nadal działa.
+
+Gdy checkout nie stoi na headzie pull requesta, review dodaje odłączony worktree w `<repo>.worktrees/cr-pr-<number>` i tam robi wszystko, łącznie z poprawkami.
+Twój checkout nigdy nie zostaje przełączony ani schowany do stasha.
+Po commitach jeszcze jedno pytanie: czy wypchnąć je na branch pull requesta.
+Pull request z innego repozytorium dostaje tę propozycję tylko wtedy, gdy pozwala na edycję maintainerom.
+
+## Review cudzego pull requesta
+
+Gdy autor pull requesta to nie twój użytkownik `gh`, review działa w trybie reviewera.
+Niczego nie edytuje, nie commituje ani nie wypycha, bo o tym, co trafia na branch, decyduje autor.
+Zamiast tego przygotowuje szkic review:
+
+- Każdy komentarz siedzi na linii wewnątrz hunka diffu, bo tylko tam GitHub przyjmuje komentarze w kodzie. Uwaga spoza wszystkich hunków trafia do treści review pod nazwą swojego pliku.
+- Szkic jest po angielsku. Każdy komentarz zaczyna się etykietą [Conventional Comments](https://conventionalcomments.org/) zależną od wagi: `high` to `issue:`, `medium` to `suggestion:`, `nit` to `nitpick:`. Werdykt o komentarzu dostaje `issue:`, gdy komentarz przeczy kodowi (R9), a w pozostałych przypadkach `suggestion:`.
+- Punkt, który inny reviewer już zgłosił na tych samych liniach, zostaje pominięty, a podsumowanie mówi, kto go zgłosił.
+- Poprawka, która tylko podmienia komentowane linie, kończy się blokiem `suggestion`, który autor zatwierdza jednym kliknięciem.
+
+Ostatnie pytanie: opublikować szkic jako jedno review typu `COMMENT` czy zostawić go w pliku.
+Review nigdy nie zatwierdza pull requesta i nigdy nie żąda zmian.
+
+## Jak czytać raport
+
+Raport grupuje uwagi według plików.
+Uwagi do kodu i werdykty o komentarzach stoją obok siebie, każde w swoim kształcie:
+
+```text
+- `security` · injection-sink · high · L70, L72 — `couponCode` from `req.query` reaches the raw WHERE string → bind it as a query parameter
+- `comments` · R1 · REMOVE · L17 — "// multiply by the rate" restates the line beneath it → delete these lines
+```
+
+Listing 1. Uwaga do kodu i werdykt o komentarzu z jednego raportu
+
+- **Waga** to `high`, `medium` albo `nit`. Uwaga z rodziny `security`, `correctness`, `spec`, `coherence` albo `assumptions` nigdy nie jest `nit`.
+- **Werdykty o komentarzach** to `KEEP`, `REMOVE`, `REWRITE`, `MOVE` albo `ADD`.
+- **Not flagged** wymienia to, co wyglądało na problem, ale nim nie jest, oraz prawdziwe problemy, których nie nazywa żadna reguła.
+- **Boy-scout** zbiera opcjonalne poprawki w kodzie, którego zmiana nie dotknęła.
+- **Tally** zamyka raport: liczby, soczewki, które ruszyły (`Lenses: L of 12`), każda, która nie ruszyła, z powodem, i pominięte pliki.
+
+## Wybór poprawek
+
+Zaraz po raporcie jedno menu pokazuje tylko te grupy, w których są uwagi:
+
+| Opcja | Co zawiera |
+|---|---|
+| Safe fixes | Mechaniczne edycje: nazwane stałe, zmiany nazw, guard clauses, puste linie, usunięcia i przepisania komentarzy. |
+| Walk the structural ones | Wydzielenia, przeniesienia, podziały oraz każda poprawka correctness, security, coherence, assumptions i performance, która nie jest tylko do raportu. Każda wymaga osobnego „tak”. |
+| Boy-scout extras | Poprawki poza zmianą. |
+| Report only | Niczego nie zmieniaj. |
+
+Tabela 1. Menu poprawek
+
+Poprawki security nigdy nie trafiają do bezpiecznej paczki.
+Gdy któraś z pozostałych grup jest pusta, poprawki security mogą dostać własną opcję, nadal przechodzoną po jednej.
+Uwagi ze specu opisują pracę do wykonania, więc są tylko do raportu.
+
+To samo menu pyta, jak zacommitować to, co wejdzie:
+
+- jeden commit na rodzinę uwag, a każda poprawka security w osobnym commicie (zalecane);
+- commity fixup do commitów brancha, które wprowadziły edytowane linie, gdy branch ma własne commity (wcielenie ich przez `git rebase -i --autosquash <base>` to twój krok);
+- jeden commit na wszystko;
+- bez commita.
+
+Commity obejmują tylko pliki edytowane przez review, więc twoja własna niezacommitowana praca do nich nie trafia.
+Po edycjach twój build i testy uruchamiają się raz.
+Podsumowanie wymienia zrobione commity i każdą zatwierdzoną poprawkę, którą pominięto albo której nie dało się zastosować tak, jak ją zatwierdzono.
+
+:::caution
+Gdy poprawka usuwa sekret ze źródeł, sam sekret nadal jest ważny. Jego rotacja to twój krok; review tego nie zrobi.
+:::
+
+## Co może pójść nie tak
+
+- **Nie da się ustalić brancha bazowego.** Review mówi o tym i proponuje przejrzenie samych niezacommitowanych zmian; możesz też podać `--base`.
+- **Brakuje `gh` albo nie może on odczytać pull requesta.** Przy `--pr` review podaje powód i się zatrzymuje. Nigdy nie przegląda zamiast tego twojego lokalnego brancha.
+- **W sesji nie ma narzędzia `Agent`**, na przykład wewnątrz innego agenta albo kroku workflowu. Review mówi o tym na początku i wymienia soczewki, które by nie ruszyły. Workflow korzysta wtedy z [kroków bez interakcji](/pl/plugins/code-review/reference/#kroki-bez-interakcji).
+- **Soczewka nie dostarcza wyniku.** Review uruchamia ją jeszcze raz. Jeśli znów zawiedzie, pyta, czy iść dalej bez niej, czy przerwać. Nigdy nie łata luki własnym czytaniem.
+- **Zatwierdzonej poprawki nie da się zastosować tak, jak ją zatwierdzono**, na przykład blokuje ją hook. Review mówi, co ją zatrzymało i co zrobiłoby zamiast niej, i nigdy nie podstawia innej edycji.
+- **Numer linii w uwadze się nie zgadza.** Numery linii są szacunkowe. Przed każdą edycją review szuka kodu po treści i pomija uwagę, której kodu nie ma.
+- **Długie stosowanie poprawek przerywa kompakcja kontekstu.** Raport i twój wybór trafiają do pliku w katalogu roboczym sesji przed pierwszą edycją, a podsumowanie podaje jego ścieżkę.
+
+## Następne kroki
+
+- Dowiedz się, [które soczewki ruszają i jak scalane są uwagi](/pl/plugins/code-review/how-it-works/).
+- Sprawdź działającą aplikację ze specem przy pomocy [testera](/pl/plugins/tester/).
+- Otwórz pull request przez [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/).

@@ -70,10 +70,10 @@ A story describes one branch, or one stack, and is updated in place under the sa
 2. a code story you published earlier in this conversation for this branch;
 3. a `## Code story` section with a `claude.ai` link in this branch's PR body (`gh pr view <n> --json body --jq .body`).
 
-Read a candidate with the Artifact tool's `read` action and save the page locally. It is the same story when its `code-story:repo` and `code-story:branch` meta match.
+Read a candidate with the Artifact tool's `read` action and save the page locally. It is the same story when its `code-story:repo` and `code-story:branch` meta match, or, for a whole-stack story, when this branch's PR number is in its `code-story:stack`.
 
 **Update.**
-1. Run `node ${CLAUDE_SKILL_DIR}/scripts/unpack.mjs <saved.html> <workdir>`. This writes the old chapters, `story.json`, and `previous.json` holding the old meta.
+1. Run `node ${CLAUDE_SKILL_DIR}/scripts/unpack.mjs <saved.html> <workdir>`. This writes the old chapters, `story.json`, and `previous.json` holding the old meta. `story.json` keeps the old `head`; when this run's scope from step 2 differs (for example the top PR has merged), set `head`, `base`, `branch`, `stack` and `pr` again from step 2. When the stored story is a whole stack and this run tells one branch, start a new story instead of updating it.
 2. Compare `git diff --stat <previous head>..<head>` and the new commits with the chapters.
 3. Rewrite the chapters whose code changed, add chapters for new mechanisms, and drop chapters for removed ones. Leave the rest as they are.
 4. When the old head is no longer an ancestor (a rebase or force-push), re-read the whole change, still under the same URL.

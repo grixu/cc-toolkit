@@ -1,0 +1,81 @@
+---
+import Strip from './Strip.astro'
+import PluginSkills from './PluginSkills.astro'
+import Badge from './Badge.astro'
+import { ui, href, langOf } from '../lib/i18n'
+import { plugins, stages, stagesOf, stageTitles, installPlugin, lineStyle, pluginPath, pluginsIn, type StageId } from '../lib/lifecycle'
+
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const pl = lang === 'pl'
+const labels = {
+  filter: pl ? 'Filtruj pluginy' : 'Filter plugins',
+  stage: pl ? 'Etap cyklu' : 'Lifecycle stage',
+  kind: pl ? 'Rodzaj' : 'Kind',
+  all: pl ? 'Wszystkie' : 'All',
+  core: pl ? 'Główne' : 'Core',
+  aux: pl ? 'Pomocnicze' : 'Supporting',
+  count: pl ? 'pluginów' : 'plugins',
+}
+const count = (id: StageId) => pluginsIn(id).length
+---
+
+<div class="catalog-grid not-content">
+  <form class="filters" aria-label={labels.filter}>
+    <fieldset>
+      <legend>{labels.stage}</legend>
+      {stages.map((s) => (
+        <label class="opt">
+          <input type="checkbox" name="stage" value={s.id} />
+          <span class="glyph" aria-hidden="true"></span>
+          <span>{s.title[lang]}</span>
+          <span class="opt-n tnum">{count(s.id)}</span>
+        </label>
+      ))}
+    </fieldset>
+    <fieldset>
+      <legend>{labels.kind}</legend>
+      {(['all', 'core', 'aux'] as const).map((k) => (
+        <label class="opt"><input type="radio" name="kind" value={k} checked={k === 'all'} /><span class="glyph glyph--radio" aria-hidden="true"></span><span>{labels[k]}</span></label>
+      ))}
+    </fieldset>
+  </form>
+  <div>
+    <p class="caption catalog-count" aria-live="polite"><span data-count>{plugins.length}</span> {labels.count}</p>
+    <ul class="catalog-list">
+      {plugins.map((p) => (
+        <li class="card card--link ccard" data-stages={stagesOf(p.name).map((s) => s.id).join(' ')} data-kind={p.core ? 'core' : 'aux'} style={lineStyle(p.name)}>
+          <div class="ccard-head">
+            <h2 class="ccard-name"><span class:list={['swatch', { 'swatch--aux': !p.core }]} aria-hidden="true"></span><a href={href(pluginPath(p.name), lang)}>{p.name}</a></h2>
+            {!p.core && <Badge inline={false}>{t.supporting}</Badge>}
+          </div>
+          <p class="label">{stageTitles(p.name, lang)}</p>
+          <p class="ccard-desc">{p.desc[lang]}</p>
+          <PluginSkills plugin={p.name} class="ccard-skills" />
+          <Strip cmd={installPlugin(p.name)} inCard />
+        </li>
+      ))}
+    </ul>
+  </div>
+</div>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('.filters')
+  if (form) {
+    const cards = [...document.querySelectorAll<HTMLElement>('.ccard')]
+    const out = document.querySelector<HTMLElement>('[data-count]')!
+    form.addEventListener('change', () => {
+      const data = new FormData(form)
+      const picked = data.getAll('stage') as string[]
+      const kind = data.get('kind')
+      let n = 0
+      cards.forEach((c) => {
+        const okStage = !picked.length || picked.some((s) => c.dataset.stages!.split(' ').includes(s))
+        const okKind = kind === 'all' || c.dataset.kind === kind
+        c.hidden = !(okStage && okKind)
+        if (!c.hidden) n++
+      })
+      out.textContent = String(n)
+    })
+  }
+</script>

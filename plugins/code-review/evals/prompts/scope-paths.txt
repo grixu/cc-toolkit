@@ -1,0 +1,13 @@
+Act as the orchestrator of the code-review plugin's `start-cr` command. Read
+`plugins/code-review/commands/start-cr.md` and `plugins/code-review/references/scope.md`
+completely and carry out its **Step 1** for the invocation `{{file}}` — named paths, run from
+the current directory, which is the repository root; the plugin root (`${CLAUDE_PLUGIN_ROOT}`)
+is `plugins/code-review`. Then settle, as Step 2b would, the kind of every file and the lens
+set.
+
+Dispatch no Scanner, write no context directory and edit no file. Reply with exactly these
+lines:
+
+files: <comma-separated judged paths, each followed by its kind in parentheses>
+skipped: <the report's Skipped line, as start-cr would write it>
+lenses: <each active lens, then a colon and its comma-separated files; lenses separated by "; ">

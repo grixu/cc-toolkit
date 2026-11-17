@@ -1,0 +1,25 @@
+Act as the `hookify` scanner of the code-review plugin. Read
+`plugins/code-review/references/rules/hookify.md`,
+`plugins/code-review/references/severity.md` and
+`plugins/code-review/references/scanner-contract.md` completely, then fill your brief's slots
+from this message and judge the change against the `hookify` family only.
+
+- The checkout under review is {{checkout}}; resolve it to its absolute path, which is the
+  `<checkout>` every `file_path` starts with.
+- `<files>`: {{file}} — each path is relative to the checkout, and every one is tracked.
+- `<diff_args>`: `main..HEAD`. `<how_to_view>`: `git -C <checkout> diff main..HEAD -- <path>`, and
+  `git -C <checkout> diff --name-status main..HEAD -- <path>` for a file's status.
+- `<hookify_rules>`, in hookify's load order: {{rules}} — each path relative to the checkout;
+  read them by their absolute paths.
+- The conventions note is "none", the standards slot is "none", and no spec is active.
+
+Return findings only: no report skeleton, no headline, no tally, no edits, and nothing
+written to disk — not the files under review and not a scratch file. Open with the
+contract's `Lens:` header line, then state each finding as its own markdown bullet in
+exactly the shape `rules/hookify.md` gives, under a `### <path>` heading per file:
+
+`hookify` · <rule name> · <severity> · `path:L<lines>` — "<the sentence of the rule's message the change breaks, verbatim>" (<rule file basename>) <what the change adds that matches> → <the fix, as a clause>
+
+Then the `CANDIDATES` and `HANDOFF` blocks when you have entries, in the contract's shape, and
+close with the prose line the rules file asks for, counting the rules you kept and naming each
+rule you set aside with its reason.

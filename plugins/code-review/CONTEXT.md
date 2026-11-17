@@ -2,7 +2,6 @@
 
 Merged review plugin: one orchestrator fans out parallel scanners over a change,
 each scanner judging a fixed rule subset; findings are merged into one report.
-Successor of the `comment-review` and `quality-review` plugins.
 
 ## Language
 
@@ -15,17 +14,17 @@ One parallel review subagent running exactly one Lens — the `code-review:scann
 _Avoid_: role, reviewer, worker
 
 **Lens**:
-One of the eleven rule clusters: comments (`R1`–`R12`), readability & tests, naming & module, objects & patterns, simplicity & types, correctness, security, coherence, assumptions, performance, spec. Six sit beyond the craft five: correctness, security, coherence and assumptions (always on), and two gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user). Comments is a Lens like any other, not a special case; the six added Lenses have no standalone skill.
+One of the twelve rule clusters: comments (`R1`–`R12`), readability & tests, naming & module, objects & patterns, simplicity & types, correctness, security, coherence, assumptions, performance, spec, hookify. Seven sit beyond the craft five: correctness, security, coherence and assumptions (always on), and three gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user), hookify (hookify rule files in the checkout's `.claude/`). Comments is a Lens like any other, not a special case. No Lens has a standalone skill: every one runs through a Scanner.
 _Avoid_: theme, dimension
 
 **Rules file**:
-The single source of truth for one Lens's rule text: `references/rules/<lens>.md`, named after the lens with no numeric prefix (`comments.md`, `readability-tests.md`, `naming-module.md`, `objects-patterns.md`, `simplicity-types.md`, `correctness.md`, `security.md`, `coherence.md`, `assumptions.md`, `performance.md`, `spec.md`).
+The single source of truth for one Lens's rule text: `references/rules/<lens>.md`, named after the lens with no numeric prefix (`comments.md`, `readability-tests.md`, `naming-module.md`, `objects-patterns.md`, `simplicity-types.md`, `correctness.md`, `security.md`, `coherence.md`, `assumptions.md`, `performance.md`, `spec.md`, `hookify.md`).
 
 **Family**:
-One of the fourteen stable top-level labels in the quality vocabulary: `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, and `standards`. Thirteen are fixed by the plugin; `standards` is repo-defined (its rules come from the Standards file).
+One of the fifteen stable top-level labels in the quality vocabulary: `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, `standards`, and `hookify`. Thirteen are fixed by the plugin; `standards` and `hookify` are repo-defined (their rules come from the Standards file and the Hookify rule files).
 
 **Rule**:
-A specific sub-tag under a Family — one of the 68 fixed rules across the thirteen plugin-defined Families, or a repo-defined `standards` rule whose slug derives from the quoted rule — or one of the comment rules `R1`–`R12`.
+A specific sub-tag under a Family — one of the 68 fixed rules across the thirteen plugin-defined Families, a repo-defined `standards` rule whose slug derives from the quoted rule, or a `hookify` rule named by its rule file's `name` — or one of the comment rules `R1`–`R12`.
 
 **Finding**:
 The quality-side unit of output: `family` · rule · severity · lines → fix.
@@ -41,32 +40,37 @@ _Avoid_: maybe-finding, soft finding, low-confidence finding
 The root pair `CODING_STANDARDS.md` + `CODING_STANDARDS.local.md`, read together under LAYER semantics — both apply, `.local` wins per statement on conflict — and only at the repository root. Unlike every other convention file, a Standards file **generates** `standards` Findings from its explicit, quotable rules; vague prose in it generates nothing.
 _Avoid_: style guide, conventions file (a conventions file — `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.claude/rules`, `.cursor/rules` — only suppresses)
 
+**Hookify rule files**:
+The checkout's own `.claude/hookify.*.local.md` and `.claude/hookify.*.rule.md`, the rules the hookify plugin's hooks enforce on every edit. Like a Standards file they **generate** Findings — `hookify` Findings, from each enabled `file` or `all` rule replayed over the diff — and their presence is what activates the hookify Lens. `~/.claude/` rules are personal and never count.
+_Avoid_: hookify config, hooks (the hooks are the plugin's runtime; the files are the rules)
+
 **Active lens set**:
-The N Lenses (up to 11) that Step 2b of **start-cr** resolves for one run: the five craft Lenses, correctness, security, coherence and assumptions always — objects & patterns except over a list of `iac` files alone, and each needs files of its own, so a change of policy files only runs security, assumptions and coherence, and a change whose every file is skipped (documents, changesets, config data) runs coherence alone, each plus spec when one is named — performance when the source-kind subset of the resolved files (minus `.sh` and `*.config.*`) is non-empty, spec when a spec file was named. The report's `Lenses: L of 11` line records it, naming every inactive Lens with its reason.
+The N Lenses (up to 12) that Step 2b of **start-cr** resolves for one run: the five craft Lenses, correctness, security, coherence and assumptions always — objects & patterns except over a list of `iac` files alone, and each needs files of its own, so a change of policy files only runs security, assumptions and coherence, and a change whose every file is skipped (documents, changesets, config data) runs coherence alone, each plus spec and hookify when they are active — performance when the source-kind subset of the resolved files (minus `.sh` and `*.config.*`) is non-empty, spec when a spec file was named, hookify when the checkout carries Hookify rule files with an enabled `file` or `all` rule. The report's `Lenses: L of 12` line records it, naming every inactive Lens with its reason.
 _Avoid_: lens selection (the user never picks), enabled lenses
 
 ## Relationships
 
-- **start-cr** fans out to the **Active lens set** — up to 11 **Scanners**, one per active **Lens**
-- Every **Lens** has exactly one **Rules file**; a craft Lens's file is read by both its standalone skill and **start-cr**, a gated Lens's file by **start-cr** only
+- **start-cr** fans out to the **Active lens set** — up to 12 **Scanners**, one per active **Lens**
+- Every **Lens** has exactly one **Rules file**; the Scanner is its only reader
 - Conventions suppress, **Standards files** generate: a convention file turns a would-be **Finding** into a non-finding, a **Standards file** produces `standards` **Findings**
 - Every **Scanner** reads the **Standards file** pair and raises `standards` **Findings** only inside its own Lens's subject
-- The six added **Lenses** (correctness, security, coherence, assumptions, performance, spec) have no standalone skill
+- Only the **hookify** Lens reads the **Hookify rule files**; a rule's `action` sets the severity (`block` high, otherwise medium)
+- No **Lens** has a standalone skill; a single-lens run is `cr-scan` with one `--lens`
 - **coherence** also reads the skipped files (documents, config data, migrations), never lockfiles, generated output or real `.env*` files (templates such as `.env.example` stay; a real one is Grepped for key names only); **assumptions** reads the installed dependency source and lockfile as evidence, never as files it judges
 - An accepted ADR, `CONTEXT.md` or a decision document in the diff generates `coherence` · invariant-breach **Findings**; `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` and `.claude/rules` stay suppress-only
 - A **Scanner** returns **Findings**/**Verdicts** only; the **Orchestrator** merges, dedups, and re-grades severity centrally
 - A **Scanner** detects; the **Orchestrator** filters. Uncertainty travels as a **Candidate** rather than being dropped at detection, so the filter decides it with the whole review in view
-- The skills `comment-review` and `quality-review` stay independently invocable alongside **start-cr**
 - The **start-cr** report groups by **file**, not by Scanner; **Findings** and **Verdicts** keep their own vocabularies side by side (no severity↔verdict mapping)
 
 ## Example dialogue
 
 > **Dev:** "Can I run just the comment **Scanner**?"
-> **Domain expert:** "Invoke the `comment-review` skill directly — **start-cr** always runs its whole **Active lens set**; a **Scanner** is its internal unit of fan-out, not a user-facing switch. The set is decided by the change and by whether a spec file is named, never by picking lenses."
+> **Domain expert:** "No — **start-cr** always runs its whole **Active lens set**; a **Scanner** is its internal unit of fan-out, not a user-facing switch. The set is decided by the change and by whether a spec file is named, never by picking lenses."
 
 ## Flagged ambiguities
 
-- "scanner" was earlier sketched as 3 thematic groups (words / structure / reuse) — resolved: a Scanner is lens-granular; the first release had 5 Lenses, matching quality-review's existing fan-out lenses plus comments, and the Active lens set now spans 11.
+- "scanner" was earlier sketched as 3 thematic groups (words / structure / reuse) — resolved: a Scanner is lens-granular; the first release had 5 Lenses, matching quality-review's existing fan-out lenses plus comments, and the Active lens set now spans 12.
+- the hookify plugin once shipped its own diff-review skill (`review-changes`) — resolved: it became the gated `hookify` Lens, so a project's hookify rules are judged inside the one review, merged and re-graded with every other Finding, instead of in a second report.
 - comments was earlier sketched as a special case beside the 4 quality lenses — resolved: comments is an equal Lens with its own Rules file.
 - architecture, structural, and code-smell reviews were proposed as three more Scanners — resolved: folded into existing Lenses (four `module` rules, three `objects` rules, flag bullets on `composed-method`, `intent-name`, `dead-code`) because their rules overlapped the existing families by roughly 80%.
 - middle-man, needless-indirection, and pass-through were proposed as three rules — resolved: one rule, `module` · pass-through, absorbs all three.

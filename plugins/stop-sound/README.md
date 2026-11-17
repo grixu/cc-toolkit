@@ -44,8 +44,9 @@ Both sounds can be replaced with your own file in `/plugin` → stop-sound → c
 | `stop_sound` | Sound file played when the session ends its turn |
 | `question_sound` | Sound file played when Claude asks a question or presents a plan |
 
-Files may be `.wav`, `.mp3`, `.aiff`, `.aif`, `.m4a` or `.ogg`, up to 4 MiB. Leave an option empty to keep
-the bundled sound. If a file is missing or has another extension, the bundled sound plays instead.
+Files may be `.wav`, `.mp3`, `.aiff`, `.aif`, `.m4a` or `.ogg`, up to 4 MiB: Claude Code refuses to
+read a larger file for a mod. Leave an option empty to keep the bundled sound. If a file is missing,
+too large, has another extension or fails to play, the bundled sound plays instead.
 
 ## How it decides
 

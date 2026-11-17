@@ -1,0 +1,100 @@
+---
+title: researcher
+description: Answers a research question with an HTML report in which every claim cites a numbered web source, and extends the same report with follow-up questions.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Some planning decisions depend on a fact your code can't answer: what a vendor's API supports, how two protocols differ, what the evidence says about an approach.
+researcher answers that question with a self-contained HTML report.
+Every claim in it cites a numbered web source, and each finding behind it keeps a verbatim quote from that source.
+
+## Where it works
+
+<LifeMap focus="researcher" animate={false} />
+
+researcher is a supporting plugin in [Plan](/lifecycle/plan/).
+Reach for it before you write a spec, when a decision rests on something outside the repository.
+
+## Run it
+
+Type the command with your question:
+
+<Strip cmd='/researcher:research "How does HTTP/3 differ from HTTP/2 in practice?"' />
+
+The skill runs only when you type the command.
+A plain "research X" request in the conversation doesn't start it.
+
+The skill infers the brief from your question: depth, recency, source types, and audience.
+It asks one combined question about only the settings it can't infer, and often none.
+The report is written in the language of your question; to change that, say so in the question ("…in English").
+[Reference](/plugins/researcher/reference/#brief-settings) lists every setting.
+
+A run takes several minutes and uses many tokens.
+Those tokens stay inside a background workflow, not in your session.
+
+## How it runs
+
+<SkillFlow
+  skill="research"
+  input="A research question"
+  steps={[
+    { name: 'Brief', does: 'Infers depth, recency, sources and audience, and asks once about the rest.' },
+    { name: 'Plan', does: 'Splits the question into distinct search angles, one per parallel search.' },
+    { name: 'Research rounds', does: 'Parallel searches extract quoted findings, then an assessor decides whether gaps remain.', loop: 'up to 1, 2 or 3 rounds, by depth' },
+    { name: 'Write', does: 'Writes one cited answer, then edits it for your audience.' },
+    { name: 'Render', does: 'Saves the findings, answer.md and state.json, then renders the report.', leaves: 'research/<slug>/output.html' },
+    { name: 'Follow-up', does: 'Offers up to four follow-up questions that extend the same report.', leaves: 'snapshots/', optional: true },
+  ]}
+  next={['build-spec']}
+  n={2}
+/>
+
+[How it works](/plugins/researcher/how-it-works/) explains each step and what the agents do.
+
+## What you get
+
+When the run finishes, the skill prints the report title, its sections, and the source and round counts.
+It then prints the path and offers to open the report; it doesn't open it on its own.
+
+The report lives in `research/<slug>/output.html` under your current directory.
+It's one page:
+
+- Inline `[n]` citations link to a numbered source list. Each source shows a trust tier and an access date.
+- Unresolved contradictions and open questions get their own boxes.
+- Charts, diagrams, and tables appear only where they help.
+- It supports light and dark mode, prints cleanly, and loads nothing from a CDN.
+
+A citation means "the source says this," not "this is true."
+Read the quote behind a claim before you build a decision on it.
+
+## Continue a report
+
+The report grows with your questions instead of splitting into new files:
+
+- **In the same session:** after a run, the skill offers up to four follow-up questions. Pick any, or write your own. It researches them and rewrites the same report, and the previous version moves to `snapshots/`.
+- **In a new session:** run the command with a related question. When a report on the same topic exists, the skill asks whether to extend it or start fresh.
+- **A different report:** ask to extend it, and the skill lists the reports under `./research/`.
+
+Citation numbers stay valid across follow-ups: a source keeps its number, and new sources get the next free ones.
+
+## Before you start
+
+researcher needs dynamic workflows and the firecrawl MCP server.
+Without the `Workflow` tool, the skill stops and tells you to enable it.
+
+:::caution
+The research agents follow your permission rules, and a permission prompt pauses the whole run until you answer it.
+Allow the search tools first, as shown in [Permissions](/plugins/researcher/reference/#permissions).
+:::
+
+## Next steps
+
+- [Reference](/plugins/researcher/reference/): settings, requirements, permissions, files, and error codes.
+- [How it works](/plugins/researcher/how-it-works/): the research loop and what stays on disk.
+- [`/fd3:build-spec`](/plugins/fd3/build-spec/): turn what you learned into a spec checked against your code.

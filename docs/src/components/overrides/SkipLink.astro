@@ -1,0 +1,6 @@
+---
+import { ui, langOf } from '../../lib/i18n'
+const t = ui[langOf(Astro.url.pathname)]
+---
+
+<a class="skip btn btn--secondary" href="#content">{t.skip}</a>

@@ -1,0 +1,12 @@
+---
+import Cmd from './Cmd.astro'
+import { skillsOf, cmdName } from '../lib/lifecycle'
+
+interface Props {
+  plugin: string
+  class: string
+}
+const { plugin, class: cls } = Astro.props
+---
+
+<p class={cls}>{skillsOf(plugin).map((s, i) => <>{i > 0 && ' · '}<code><Cmd text={cmdName(s)} /></code></>)}</p>

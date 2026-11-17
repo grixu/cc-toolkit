@@ -52,7 +52,7 @@ The passes run in a fixed order, structure before words:
 6. **Sentences:** active voice when the actor matters, positive form, emphasis at the end.
 7. **Check:** nothing lost, nothing added, the scan rerun.
 
-`scripts/scan.mjs <file> [--lang en|pl]` lists the mechanical tells with line and column. It skips code, markup and URLs, and always exits 0: its hits are leads for the model, not verdicts.
+`scripts/scan.mjs <file> [--lang en|pl]` lists the mechanical tells with line and column. It skips code, markup and URLs. It exits 0 whatever it finds, because its hits are leads for the model, not verdicts, and 2 on bad usage: no file, a file it cannot read, or a `--lang` without `en` or `pl` after it.
 
 ## Evals
 

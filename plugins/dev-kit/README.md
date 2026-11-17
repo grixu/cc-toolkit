@@ -20,7 +20,7 @@ This also installs two plugins `pr-open` calls: `code-story`, which builds the c
 - To push a fix to a file under `.github/workflows/`, a token with the `workflow` scope.
 - For `pr-shepherd`: Claude Code's built-in `/loop`. Without it, `pr-shepherd` runs one round and tells you the loop could not start.
 - Optional, for `dep-upgrade-check`: the firecrawl and context7 MCP servers, which it uses to find migration guides. Without them it still reads GitHub releases, changelogs and guide files in the package's repository, then fetches the guide the release notes link to, and reports a guide it could not find as `no guide found`.
-- Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key, a [Gemini Decision](https://aistudio.google.com/docs/models/gemini-decision-1) key, or both, and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment).
+- Optional, for the risk assessment in `pr-open`: a [TypeSafe](https://docs.typesafe.ai/introduction) API key, a [Gemini Decision](https://aistudio.google.com/docs/decisions-api) key, or both, and Claude Code v2.1.287 or later, which loads the plugin's mod. See [Risk assessment](#risk-assessment).
 
 ## Skills
 
@@ -215,24 +215,26 @@ It pushes the current branch and fills the repository's pull request template. I
 - It writes a Conventional Commits title when the base branch's history uses that style, ending with the ticket key in parentheses when the history does that too.
 - It assigns the pull request to you.
 - When your branch builds on another open pull request's branch, it targets that branch. When it also carries a second open pull request's commits that the target does not contain, the report and the description name that pull request and say its commits show in the diff until it merges.
-- When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line. A rewrite edits the current description: your own sentences, bot lines, extra sections such as `## Code story` and the tracker's link line at the end stay as they are.
+- When a pull request already exists, it pushes and reports the pull request. It rewrites the description only when you ask for that, and otherwise mentions the option in one line. A rewrite edits the current description: your own sentences, bot lines, extra sections such as `## Release notes` and the tracker's link line at the end stay as they are.
 - With a TypeSafe or Gemini key configured, it assesses the branch's risk, ends the description with a **Risk** section, and labels the pull request with the level, such as `risk: high`. On an existing pull request it swaps the old risk label for the new one and refreshes the description's **Risk** section, leaving the rest of the description as it is. Without a key, nothing is sent and the report says the risk was not assessed.
-- When the [pr-proof](../pr-proof/README.md) plugin's skills have left proof for the branch, it adds a **Proof** section just before **Risk**. See [Proof](#proof-from-pr-proof).
+- When the [pr-proof](../pr-proof/README.md) plugin's skills have left proof for the branch, it adds a **Proof** section. See [Proof](#proof-from-pr-proof).
+- A background `code-story` run builds the branch's code story, or updates the one the description already links, and the description gets a **Code story** section with its link, on a new pull request and an existing one alike. A new story is private until you share it on claude.ai.
+- These sections close the description in this order: **Code story**, **Proof**, **Risk**, each only when it has content, above any link reference definitions that end the body.
 
 When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
-Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label (or why it was not assessed), the proof entries it rendered or left out and anything that failed to upload, and a one-line suggestion to run `pr-shepherd` next.
+Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label with the backend that set it (or why it was not assessed), the proof entries it rendered or left out and anything that failed to upload, the code story link with its status (or why there is none), and a one-line suggestion to run `pr-shepherd` next.
 
 #### Proof from pr-proof
 
-The pr-proof plugin's skills (videos, screenshots, terminal transcripts, API calls) record what they took in a manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, where `<repo>` is the name of the `origin` remote and `<branch>` the current branch with `/` written as `%2F`. `pr-open` only reads that file; it needs no other part of pr-proof installed.
+The pr-proof plugin's skills (videos, screenshots, terminal transcripts, API calls) record what they took in a manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, where `<repo>` is the repository name from the `origin` remote's URL, without `.git`, and `<branch>` the current branch with `/` written as `%2F`. `pr-open` only reads that file; it needs no other part of pr-proof installed.
 
 - No manifest means no **Proof** section. A manifest that does not parse, or has a `version` other than `1`, is ignored, and the report says so. An empty list of entries means proof was judged unnecessary: no section.
 - Each entry renders in manifest order as its claim, then its proof: screenshots taken at several widths as a table with a row per screen and a column per width, a video or a single image on its own line, a terminal or API transcript as a code block, folded into `<details>` past 20 lines.
 - When commits after an entry's proof changed the files it covers, the entry carries a note naming those commits. When history was rewritten since a proof was taken, one note under the heading says so.
 - An entry whose media or transcript file is missing is left out and named in the report.
 - The media are attached with `gh --attach`, so the description holds GitHub's `user-attachments` URLs. `pr-open` re-reads the description after the upload and reports anything that did not upload.
-- More than 50 media files: the description carries the first 50 and says how many follow; the rest go in comments of at most 50 each, marked `<!-- pr-proof:overflow -->`. On every run it first deletes your earlier marked comments, and leaves every other comment alone.
+- More than 50 media files: the description carries the first 50 and says how many follow; the rest go in comments of at most 50 each, marked `<!-- pr-proof:overflow -->`. On an existing pull request, a run that finds a manifest first deletes the marked comments you posted earlier, even when the new manifest needs no overflow, and leaves every other comment alone.
 - On an existing pull request it replaces the **Proof** section, inserts it when the description has none, or removes it when the manifest's list is empty. With no manifest, the section and its comments stay as they are.
 - The section does not count toward the one-screen length budget.
 
@@ -251,7 +253,7 @@ With both keys set, `pr-open` asks which backend to use, TypeSafe, Gemini or bot
 
 A key set or changed during a session takes effect after `/reload-plugins`.
 
-The [risk assessment docs](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/index.md) explain what the **Risk** section shows, [how a level is computed](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/how-it-works.md), [what partial and low-confidence results mean](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/reliability.md), and [every option, input and output field](https://github.com/grixu/cc-toolkit/blob/main/docs/dev-kit/risk-assessment/reference.md). The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
+[The risk label](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/) explains what the **Risk** section shows, [How it works](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/how-it-works/) how a level is computed, [Reliability](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reliability/) what partial and low-confidence results mean, and the [Risk label reference](https://cct.grixu.dev/plugins/dev-kit/risk-assessment/reference/) every option, input and output field. The [evaluation guide](evals/pr-risk/README.md) explains how the scorer is measured.
 
 ## Permissions
 

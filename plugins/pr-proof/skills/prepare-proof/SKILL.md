@@ -41,7 +41,7 @@ Work dir: the manifest's directory, `~/.cache/pr-proof/<repo>/<branch>/`, comput
    - a second stack you start from a temporary worktree of `base`, which the plan names: `~/.cache/pr-proof/<repo>/<branch>/base-worktree`;
    - neither, so the before shots are skipped.
 
-   Under an agent caller, end your turn with a `Confirmation needed` block as the rules' agent-caller section says, and continue when the caller resumes you with the answers. Ask nothing else before producing proof: this is the one confirmation of the plan.
+   Under an agent caller, end your turn with a `Confirmation needed` block as the rules' agent-caller section says, and continue when the caller resumes you with the answers. Besides step 2's backend choice, this is the only question prepare-proof itself asks before producing proof. The skills it runs keep their own gates, such as `walkthrough-video`'s confirmation of derived requirements and the approval of each video and screenshot.
 
    For **no proof**, the yes takes you straight to step 8.
 6. **Stack.** Only when a planned kind needs the running app: `screenshots` and `video` always do, `api` always does, `terminal` when the command it runs talks to the app. With none of those planned, start nothing.

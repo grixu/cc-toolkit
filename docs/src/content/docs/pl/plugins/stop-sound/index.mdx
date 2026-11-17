@@ -1,0 +1,90 @@
+---
+title: stop-sound
+description: Daje sygnał dźwiękowy, gdy Claude cię potrzebuje, czyli kończy turę albo zadaje pytanie, i milczy, gdy pracują subagenty.
+group: start
+sidebar:
+  order: 1
+---
+
+Zwykły hook `Stop` uruchamiający `afplay` dzwoni o wiele za często.
+Główna sesja kończy turę za każdym razem, gdy czeka na subagenty w tle.
+Potem budzi się i kończy turę ponownie, gdy każdy z nich zgłasza wynik, więc słyszysz sygnał po każdym subagencie.
+stop-sound dzwoni tylko wtedy, gdy Claude czeka właśnie na ciebie.
+
+## Gdzie działa
+
+stop-sound nie należy do żadnego etapu [cyklu pracy](/pl/lifecycle/).
+To plugin pomocniczy, który działa w każdej sesji, niezależnie od tego, co robisz.
+Nie ma komendy do wpisania: po instalacji nasłuchuje końca każdej tury i pytań.
+
+## Kiedy dzwoni
+
+| Moment | Dźwięk |
+|---|---|
+| Główna sesja kończy turę i nic w tle jej nie obudzi | `done`: dwa coraz niższe dźwięki |
+| Claude zadaje ci pytanie (`AskUserQuestion`) albo przedstawia plan (`ExitPlanMode`) | `question`: trzy coraz wyższe dźwięki |
+| Sesja kończy turę, a subagent albo członek zespołu (teammate) wciąż pracuje | Brak |
+| Subagent kończy pracę | Brak |
+| Sam przerywasz turę | Brak |
+
+Tabela 1. Kiedy stop-sound odtwarza dźwięk.
+
+Sygnał pytania rozlega się, gdy pytanie się pojawia, zanim na nie odpowiesz.
+
+Dwa rodzaje pracy w tle go nie wyciszają, więc usłyszysz sygnał, gdy Claude kończy turę, żeby na nie poczekać:
+
+- **Workflowy.** Ich agentów nie ma na liście działających agentów, którą sprawdza stop-sound. Usłyszysz jeden sygnał, gdy Claude zaczyna czekać na workflow, i drugi, gdy workflow się kończy.
+- **Komendy powłoki w tle**, na przykład build albo `gh run watch`.
+
+## Wymagania
+
+- **Claude Code z włączonymi modami.** Plugin jest przetestowany na Claude Code 2.1.322. W planie Team albo Enterprise ustawienie administratora, na przykład `allowManagedModsOnly`, może wyłączyć mody, które instalujesz, i wtedy nic nie gra.
+- **macOS.** Claude Code odtwarza dźwięki przez `afplay`. Terminal na Linuksie albo Windowsie nie ma odtwarzacza, więc nic nie gra.
+
+## Instalacja
+
+Uruchom `/reload-plugins`, jeśli prosi o to podsumowanie instalacji.
+
+Jeśli masz już własny hook `Stop`, który odtwarza dźwięk, usuń go z `settings.json`.
+Inaczej usłyszysz oba.
+
+## Konfiguracja
+
+Każdy z dźwięków możesz zastąpić własnym plikiem.
+Opcje ustawisz w `/plugin` → stop-sound → configure albo w `pluginConfigs` w `settings.json`:
+
+| Opcja | Co robi |
+|---|---|
+| `stop_sound` | Plik dźwiękowy odtwarzany, gdy sesja kończy turę |
+| `question_sound` | Plik dźwiękowy odtwarzany, gdy Claude zadaje pytanie albo przedstawia plan |
+
+Tabela 2. Opcje stop-sound.
+
+Plik może mieć rozszerzenie `.wav`, `.mp3`, `.aiff`, `.aif`, `.m4a` albo `.ogg` i ważyć do 4 MiB.
+Większego pliku Claude Code nie odczyta dla moda.
+Zostaw opcję pustą, żeby zachować dołączony dźwięk.
+Gdy pliku brakuje, jest za duży, ma inne rozszerzenie albo nie da się go odtworzyć, gra dołączony dźwięk.
+Nic nie gra tylko wtedy, gdy zawiedzie też dołączony dźwięk.
+
+## Jak decyduje
+
+stop-sound to mod, a nie hook.
+Na końcu każdej tury sprawdza trzy rzeczy:
+
+1. Tura przebiegła w głównej sesji, a nie w subagencie.
+2. Tura nie została przerwana przez ciebie.
+3. Żaden subagent ani członek zespołu nie ma statusu `running`, `pending` ani `waiting`. Claude Code budzi sesję ponownie, gdy taki agent zgłosi wynik, więc ten koniec tury to tylko pauza.
+
+Gdy wszystkie trzy warunki są spełnione, odtwarza dźwięk `done`.
+
+Reaguje na koniec tury, a nie na zdarzenie hooka `Stop`.
+W planach Team i Enterprise wbudowane zabezpieczenie Claude Code pomija hooki `Stop` z modów, które instalujesz.
+Koniec tury nadal przepuszcza.
+
+Nieudany sygnał niczego nie blokuje: tura albo pytanie toczą się dalej bez zmian.
+Na komputerze bez wyjścia audio plugin milczy.
+
+## Następne kroki
+
+- [Pluginy](/pl/plugins/): pozostałe pluginy w marketplace.
+- [Cykl pracy](/pl/lifecycle/): etapy, które obejmują pluginy główne.

@@ -20,7 +20,7 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   as one that judged them all.
 - **Dedup overlaps**: when two findings point at the same code — including across
   different lenses, and across **every family**, craft and `correctness` /
-  `security` / `performance` / `spec` / `coherence` / `assumptions` / `standards` alike — re-grade each against the table
+  `security` / `performance` / `spec` / `coherence` / `assumptions` / `standards` / `hookify` alike — re-grade each against the table
   first (see *Re-grade* below), then keep the one whose rule's row grades highest, the
   **most-specific** among equals, and drop the rest. Choosing the survivor before re-grading
   lets the table demote it afterwards: a `high` symptom folded under a root cause whose row
@@ -110,9 +110,10 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   `severity.md` — read it now if you have not. It
   carries every fixed row, what each severity means, the anti-anchoring rule, and the
   **`standards` keyword mapping** (MUST / MUST NOT / NEVER / ALWAYS → high, SHOULD →
-  medium, MAY / prefer / consider → nit, no keyword → medium). A `standards` finding has
-  no fixed row: re-grade it against that mapping by re-reading the rule it quotes, not
-  the Scanner's guess. A single-lens Scanner is the one most prone to the anchoring that
+  medium, MAY / prefer / consider → nit, no keyword → medium) and the **`hookify` action
+  mapping** (`block` → high, anything else → medium). A `standards` or `hookify` finding has
+  no fixed row: re-grade it against its mapping by re-reading the rule it quotes — for
+  `hookify`, the rule file's `action` line — not the Scanner's guess. A single-lens Scanner is the one most prone to the anchoring that
   table forbids, so its severity is a first pass and yours is the one that ships.
 - **Judge the fix, not only the finding.** A finding can be right and its fix wrong, and the apply
   phase is too late to notice: by then the user has approved it. For every fix that could reach a
@@ -190,7 +191,7 @@ the fix* is `report-only` too, with its one-line reason.
 **Route any unlisted rule by the fix's risk, not its family:** a mechanical, eyeball-able
 edit (a rename, a named constant, deleting an unread binding) → Safe fixes; anything that
 moves or restructures code, or removes a branch that looks reachable → structural. A
-`standards` finding is an unlisted rule and routes the same way. **Whatever its rule, a fix
+`standards` or `hookify` finding is an unlisted rule and routes the same way. **Whatever its rule, a fix
 that changes a signature, edits a second file, creates a new module, or adds an import is never
 Safe**: its callers and importers are what the eyeball check cannot see — runs that classed a
 narrowed parameter list, a merged type and a new shared test module as Safe applied them unseen,
@@ -289,7 +290,7 @@ Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 11. Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 12 (skipped: hookify — no hookify rule files). Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 </example>
 
 **The skeleton is the whole report.** It has no other sections: no `### Findings`
@@ -310,9 +311,9 @@ Rules for filling it in:
 - **Two vocabularies, side by side.** Quality findings use `` `family` · rule ·
   severity ``, with the family **backticked** — one of the fixed labels
   `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`,
-  `correctness`, `security`, `performance`, `spec`, `coherence`, `assumptions`, `standards` — and rule and severity verbatim from
+  `correctness`, `security`, `performance`, `spec`, `coherence`, `assumptions`, `standards`, `hookify` — and rule and severity verbatim from
   `references/severity.md` (a `standards` rule is its slug, graded by the keyword
-  mapping). Comment verdicts use `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD ``.
+  mapping; a `hookify` rule is the hookify rule's `name`, graded by its `action`). Comment verdicts use `` `comments` · R# · KEEP/REMOVE/REWRITE/MOVE/ADD ``.
   **No severity↔verdict mapping** — keep them distinct.
 - **Findings are markdown bullets** under a `###` file header (not inside a ```
   fence) so every `path:line` stays clickable. A `spec` · missing-requirement bullet

@@ -1,0 +1,145 @@
+---
+title: anti-slop
+description: Cleans AI tells out of English and Polish prose so it reads plain and human, and keeps every fact, number, name, quote and caveat.
+group: start
+sidebar:
+  order: 1
+---
+
+import LifeMap from '~/components/LifeMap.astro'
+import Strip from '~/components/Strip.astro'
+
+Models write the default choice:
+
+- the most exact word for every slot, so sentences read stiff;
+- a cause for every fact, and a closing line that sums up;
+- three items per list;
+- "not X but Y" contrasts that add weight but no claim.
+
+anti-slop finds those habits and replaces them with the plain version.
+It works on English and Polish.
+It cuts words, never claims: every fact, number, name, date, quote, link, caveat and degree of certainty stays.
+
+## Where it works
+
+The map shows where anti-slop sits in the cycle.
+
+<LifeMap focus="anti-slop" animate={false} />
+
+anti-slop is a supporting plugin in [03c Human review](/lifecycle/human-review/).
+Two skills call it there:
+
+- [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) orchestrates the pull request. It cleans the sentences it wrote in the description through anti-slop, with the commits and the diff as the source.
+- [code-story](/plugins/code-story/) cleans each chapter of a story before it assembles the page, with the diff, the pull request, tickets and specs as the source.
+
+You can also run it on its own, on any text.
+Installing code-story or dev-kit installs anti-slop as well.
+
+## Run it
+
+Pass the text, or the path to a file:
+
+<Strip cmd="/anti-slop:anti-slop docs/guide.md" />
+
+Requests such as "de-slop this," "humanize this," or "check it for AI tells" also start it.
+
+The text you hand it is material, never instructions.
+Some lines in the text address "the AI" or claim to come from an admin.
+The skill edits them like any other line, or leaves them as they are.
+
+## Modes
+
+The skill picks one mode from your request:
+
+| Mode | When | What you get |
+|---|---|---|
+| Cleanup | The default | The cleaned text, then a **What changed** list with one line per edit |
+| File | The request names a file | The file rewritten in place, prose only. Code, URLs, link targets, frontmatter and HTML stay byte for byte. |
+| Diagnose | The request says "diagnose," "audit," "check," or "only point out" | A checklist of quoted problems with fixes, in text order. No rewrite. |
+| Embedded | Another skill hands it text in the middle of its own steps | Only the cleaned text, in the caller's format, and the caller goes on with its next step |
+
+Table 1. anti-slop modes.
+
+For example, to get a checklist instead of a rewrite:
+
+<Strip cmd="/anti-slop:anti-slop diagnose docs/guide.md" />
+
+When the text already reads plain, the skill returns it unchanged and says so.
+
+## Sources and voice samples
+
+Give it a source, such as notes, a diff, commits, or a ticket, and it checks the prose against it:
+
+<Strip cmd="/anti-slop:anti-slop source: notes.md draft.md" />
+
+With a source, the skill removes any cause, motive or certainty the source doesn't have.
+Without one, it turns its suspicions into questions instead of asserting that something was invented.
+In embedded and file mode called by another skill, nobody answers questions.
+The skill then rewrites an unsupported claim into one the source supports, or says the reason isn't recorded.
+
+Give it a voice sample (`voice: <sample>`), and it matches the sample's sentence length, words, punctuation and openings over its own rules.
+
+## The passes
+
+The skill runs seven passes in a fixed order, structure before words.
+Each pass ends when every paragraph has been checked for it:
+
+1. **Fidelity:** no cause, motive or certainty that the source doesn't have.
+2. **Reader:** no sentences about the text itself, and no re-explaining what the reader already knows.
+3. **Staging:** contrasts, one-line closers, sayings that sound deep, and run-ups before the point.
+4. **Shape:** triads, symmetric lists and paragraphs, uniform rhythm, and formatting applied by rule.
+5. **Words:** the common word first, then inflation, sales and corporate language, and the lexicon.
+6. **Sentences:** active voice when the actor matters, positive form, and the word that matters at the end.
+7. **Check:** nothing lost, nothing added, the scan run again, and the result no longer than the original.
+
+The word list comes after the structural passes on purpose, because the structural passes find what a word list misses.
+Some patterns justify an edit on a single sighting.
+Others are weak alone, and the skill acts on them only when other tells sit in the same passage.
+
+## Languages
+
+The skill judges each paragraph in its own language.
+English and Polish get every pass, each with its own lexicon; Polish also gets patterns for officialese, nominalizations, genitive chains and translation residue.
+Other languages get passes 1 to 4 and 7, and the report says that the word passes didn't run.
+
+Code identifiers, API names, config keys, error messages and terms of art stay in their original form and language.
+
+## The scan script
+
+Before the passes, the skill runs a script over the text:
+
+```
+node scripts/scan.mjs <file> [--lang en|pl]
+```
+
+It lists mechanical tells with line and column.
+These are lexicon phrases, dashes used as connectors, and curly quotes.
+It also flags list items that start with a bold label, Title Case headings, and emoji in headings or list items.
+It skips code, markup and URLs.
+Without `--lang`, it checks against both lexicons, which suits text that mixes English and Polish.
+
+A hit is a lead, not a verdict: the model judges each one in context.
+The script exits with 0 whatever it finds.
+It exits with 2 on bad usage: no file, a file it can't read, or `--lang` without `en` or `pl` after it.
+
+## What it leaves alone
+
+- Quotations, titles, proper names, and passages that discuss a phrase rather than use it.
+- Text written before November 30, 2022.
+- The habits of a voice sample you give it.
+- Details that carry the writer: an odd specific, mixed feelings, a dated reference, a real aside.
+- Legal, safety and scope wording, and the formal register a genre requires.
+
+## Requirements
+
+Node.js 22 or later, for the scan script.
+
+:::caution[Overlapping skills]
+anti-slop merges four MIT-licensed skills: cw-ai-check, humanizer, writing-clearly-and-concisely and miodkuj.
+If you have any of them installed as well, disable them, so the model doesn't choose between overlapping skills.
+:::
+
+## Next steps
+
+- [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/): open a pull request whose description goes through anti-slop.
+- [code-story](/plugins/code-story/): explain a change chapter by chapter, in prose that goes through anti-slop.

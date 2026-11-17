@@ -13,7 +13,7 @@ Real runs went wrong where the model typed facts by hand: line ranges, `+N/−N`
 
 ## Three files share one markup contract
 
-`references/template.html` (CSS and JS), `references/craft.md` (what the model writes) and `scripts/check.mjs` (what is verified) describe the same classes and attributes: `data-lang`, `data-ui`, `data-n`, `data-file`, `data-stat`, `data-src`, `data-part`, and the `fx-*` diagram classes. Change all three together. `scripts/unpack.mjs` strips what `assemble.mjs` injects (`code.cf`, `span.st`, `data-stat` text), so an injected element needs its strip rule there too.
+`references/template.html` (CSS and JS), `references/craft.md` (what the model writes) and `scripts/check.mjs` (what is verified) describe the same classes and attributes: `data-lang`, `data-ui`, `data-n`, `data-file`, `data-stat`, `data-src`, `data-part`, and the `fx-*` diagram classes. Change all three together. `scripts/parse-story.mjs` (used by `unpack.mjs`) strips what `assemble.mjs` injects (`code.cf`, `span.st`, `data-stat` text), so an injected element needs its strip rule there too, and a case in `tests/parse-story.test.ts`. Keep `parse-story.mjs` free of Node imports: the plugin's test runner refuses to load a file that imports `node:*`.
 
 ## Settings
 

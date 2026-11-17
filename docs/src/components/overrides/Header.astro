@@ -1,0 +1,35 @@
+---
+import SectionLinks from '../SectionLinks.astro'
+import Icon from '../Icon.astro'
+import { ui, href, langOf, canonicalPath } from '../../lib/i18n'
+import { sectionOf } from '../../lib/nav'
+import { repoUrl } from '../../lib/lifecycle'
+
+const lang = langOf(Astro.url.pathname)
+const other = lang === 'en' ? 'pl' : 'en'
+const t = ui[lang]
+const path = canonicalPath(Astro.url.pathname)
+const current = sectionOf(path)
+---
+
+<header class="hd">
+  <a class="hd-logo" href={href('', lang)} aria-label={t.home}>
+    <img class="only-light hd-lockup" src="/brand/lockup-on-light.svg" alt="cc-toolkit" height="28" width="140" />
+    <img class="only-dark hd-lockup" src="/brand/lockup-on-dark.svg" alt="cc-toolkit" height="28" width="140" />
+    <img class="only-light hd-mark" src="/brand/mark-on-light.svg" alt="cc-toolkit" height="28" width="28" />
+    <img class="only-dark hd-mark" src="/brand/mark-on-dark.svg" alt="cc-toolkit" height="28" width="28" />
+  </a>
+  <nav class="hd-nav" aria-label={t.main}>
+    <SectionLinks current={current} lang={lang} />
+  </nav>
+  <div class="hd-tools">
+    <button class="search-trigger" type="button" data-open-palette aria-label={t.searchDocs}>
+      <Icon name="search" size={16} />
+      <span class="search-trigger-t">{t.search}</span>
+      <kbd class="keycap" data-keycap>⌘K</kbd>
+    </button>
+    <a class="lang" href={href(path, other)} hreflang={other} lang={other} aria-label={t.switchLang}>{t.otherShort}</a>
+    <a class="icon-btn hd-gh" href={repoUrl} aria-label={t.github}><Icon name="github" /></a>
+    <button class="icon-btn hd-menu" type="button" aria-label={t.menu} aria-expanded="false" aria-controls="drawer"><Icon name="menu" /></button>
+  </div>
+</header>

@@ -56,7 +56,7 @@ const uncommittedNote = uncommitted ? ' · incl. uncommitted' : ''
 const source = `${where} · +${added} / −${removed} · ${fileCount}${uncommittedNote}`
 
 const meta = {
-  repo, branch, base: story.base, 'base-sha': baseSha, head,
+  repo, branch, base: story.base, 'base-sha': baseSha, head, 'head-ref': headRef,
   pr: story.pr ? String(story.pr) : '', stack: stack.join(','), languages: languages.join(','),
   uncommitted: String(uncommitted), generated: new Date().toISOString(),
 }

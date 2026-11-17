@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-17
+
+### Fixed
+
+- `proof_signals`: `compare.jsonl` names the repository from the origin remote, as the proof manifest's path does, instead of the git toplevel's directory name, so in a worktree its entries match the manifest. Without an origin remote it falls back to the toplevel's name.
+- The mod's description in `hooks/hooks.json` names both decision backends, TypeSafe Jev and Gemini Decision.
+- `prepare-proof`: the plan step no longer says it asks nothing else before producing proof. The plan confirmation is the only question it asks besides the backend choice, and the skills it runs keep their own approval gates, such as `walkthrough-video`'s confirmation of derived requirements.
+- README: `compare.jsonl`'s `base` is documented as the resolved ref, such as `origin/main`; `jq` is listed as a requirement for writing the manifest; `gh` 2.103 is required only when `walkthrough-video` runs on its own and attaches the video, not under `prepare-proof`'s `record-only` mode.
+
 ## [0.4.0] - 2026-11-16
 
 ### Added

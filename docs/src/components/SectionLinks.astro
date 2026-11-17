@@ -1,0 +1,12 @@
+---
+import { href, type Lang } from '../lib/i18n'
+import { sections, type SectionId } from '../lib/nav'
+
+interface Props {
+  current?: SectionId
+  lang: Lang
+}
+const { current, lang } = Astro.props
+---
+
+{sections.map((s) => <a href={href(s.path, lang)} aria-current={s.id === current ? 'page' : undefined}>{s.label[lang]}</a>)}

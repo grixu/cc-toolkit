@@ -1,9 +1,37 @@
-# comment-review rules — R1–R12, exceptions, and false-positive traps
+# comments lens rules — R1–R12, exceptions, and false-positive traps
 
-This is the full rule set for Step 3 of the skill. Read it whole before judging
-comments; the one-line index in SKILL.md is only a map, not a substitute. Run the
-**deletion test** (SKILL.md intro) on every comment first — most findings fall
-out of it directly.
+The full rule set for the `comments` lens. Read it whole before judging a single
+comment. The lens reviews **comment quality only**, in every in-scope file, test files
+included: not logic, naming, architecture or whether a test is correct, only the comments
+in them. A comment that is fine gets no bullet.
+
+The default stance is **"no comment beats a bad comment."** Bias hard toward removal, and
+ask for a *new* comment only where a future reader is genuinely stuck without one.
+
+Every comment gets one verdict: **KEEP**, **REMOVE**, **REWRITE**, **MOVE**, or **ADD**
+(an R2 *missing WHY* at genuinely non-obvious code, the one verdict with no existing
+comment).
+
+**The deletion test — apply it to every comment first, especially the ones that sound
+like rationale.** Mentally delete the comment and read the code without it. If the only
+things lost are facts the code already states — its identifiers, its types, the shape of
+a data structure, what a test asserts — the comment was dead weight: REMOVE it. Domain
+vocabulary does not redeem a restatement: *"Dispatcher receives the flat v3 contract — one
+entry per audit row"* reads like insight but says exactly what the typed argument below it
+already says, so it fails the test. A comment survives only when deleting it loses a *why*
+the code cannot express — a constraint, a trade-off, an ordering rule, a non-obvious
+failure mode. When you catch yourself defending a comment as *"documents the domain rule"*
+or *"the mapping the code can't show,"* re-run the deletion test: usually the code *does*
+show it. Most findings fall out of it directly.
+
+A *why* that survives the deletion test can still be in the **wrong place** — pinned to a
+declaration (an enum member, a constant, a type field) when it actually explains the
+behavior of a method elsewhere. That is not a deletion case; it is a relocation case. R12
+covers it.
+
+When two rules collide, the most specific finding wins. When genuinely unsure, default to
+KEEP and move on (low signal is worse than a missed nitpick) — **except in test files,
+where R11 reverses this to default-REMOVE.**
 
 ## Contents
 - Preamble — a "note" prefix buys nothing
@@ -276,7 +304,7 @@ convention reads as an afterthought and almost always marks low-value prose.
 Tests are read top-to-bottom as an executable spec; the assertions *are* the
 documentation. A comment that narrates what the test does, or how the
 implementation under test behaves, states the same thing twice and rots when
-either side moves. **In test files, the Step 3 "when in doubt, KEEP" default is
+either side moves. **In test files, the "when in doubt, KEEP" default is
 reversed: when in doubt, the comment goes** — the spec reads fine without it.
 A "test file" is one the `test` kind in `references/scope.md` › File kinds matches
 (`*.test.*`, `*.spec.*`, `__tests__/`, `*_test.go`, `test_*.py`, …) — apply that

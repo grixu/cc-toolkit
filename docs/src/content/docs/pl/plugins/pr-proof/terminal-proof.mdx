@@ -1,0 +1,118 @@
+---
+title: /pr-proof:terminal-proof
+description: Zapisuje, co zmiana robi po uruchomieniu, wyjście komendy albo żądania HTTP z odpowiedziami, maskuje sekrety, daje transkrypt do przejrzenia drugiemu agentowi i zapisuje go w manifeście dowodów brancha.
+group: guides
+skill: terminal-proof
+sidebar:
+  label: terminal-proof
+  order: 4
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Niektóre zmiany nie mają czego pokazać na ekranie: nowa flaga w CLI, wyjście migracji, inny kod statusu z endpointu.
+`terminal-proof` uruchamia zmienioną rzecz i zapisuje transkrypt tego, co zrobiła, żeby reviewer mógł przeczytać wynik bez uruchamiania brancha.
+Nigdy nie uruchamia, nie zasila danymi ani nie zatrzymuje stacka.
+
+## Dwa tryby
+
+| Tryb | Zapisuje | Potrzebuje aplikacji |
+|---|---|---|
+| `terminal` | komendę CLI, skrypt, migrację, job albo build i to, co wypisuje | tylko gdy komenda łączy się z aplikacją |
+| `api` | żądania HTTP do działającej aplikacji, z kodem statusu, nagłówkami potrzebnymi do twierdzenia i treścią odpowiedzi | zawsze |
+
+Tabela 1. Dwa tryby. Każdy zapisuje własny wpis w manifeście, rodzaju `terminal` albo `api`, a `pr-open` pokazuje je jako osobne dowody.
+
+Wyjście z uruchomienia testów nie jest dowodem w żadnym trybie.
+Wyniki testów należą do opisu testowania w pull requeście, który pisze `pr-open`.
+
+## Uruchom go
+
+<Strip cmd="/pr-proof:terminal-proof" />
+
+Podaj tryb:
+
+```
+/pr-proof:terminal-proof terminal
+/pr-proof:terminal-proof api
+```
+
+[`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) uruchamia oba tryby za ciebie, gdy je zaplanuje, i przekazuje URL aplikacji, miejsce danych logowania i pliki, których dotyczy dowód.
+Uruchomiony ręcznie, skill pyta o URL, gdy przechwycenie potrzebuje aplikacji.
+Pyta też, gdzie leżą dane logowania, jako ścieżka albo źródło, nigdy wartość.
+Pliki, które transkrypt sprawdza, wybiera z diffu względem bazy, którą domyślnie jest domyślny branch repozytorium.
+Na domyślnym branchu albo przy odłączonym HEAD odmawia.
+
+## Jak przebiega
+
+Diagram pokazuje kroki skilla i to, co zostawia każdy z nich:
+
+<SkillFlow
+  skill="terminal-proof"
+  input="Tryb i URL działającej aplikacji, gdy przechwycenie go potrzebuje"
+  steps={[
+    { name: 'Plan', does: 'Nazywa zachowanie, które modyfikuje zmiana, w jednym zdaniu, które staje się twierdzeniem.' },
+    { name: 'Przechwycenie', does: 'Uruchamia każdą komendę albo żądanie bez interakcji, z limitem czasu, i zapisuje je razem z wyjściem.', leaves: '<kind>.raw.txt' },
+    { name: 'Maskowanie', does: 'Zamienia sekrety w transkrypcie na ***.', leaves: '<kind>.txt' },
+    { name: 'Przegląd', does: 'Świeży subagent szuka tego, co maska przeoczyła, i sprawdza, czy transkrypt pokazuje twierdzenie.' },
+    { name: 'Wpis', does: 'Usuwa surowy transkrypt i zapisuje wpis w manifeście dowodów.', leaves: 'manifest.json' },
+  ]}
+  next={['pr-open']}
+/>
+
+### Przechwycenie
+
+Każda komenda jest poprzedzona `$ `, a każde żądanie metodą i URL-em, a po nich następuje to, co wróciło.
+Gdy żądanie wymaga danych logowania, skrypt w folderze roboczym czyta je i wysyła żądanie.
+Transkrypt zapisuje żądanie bez danych logowania.
+Skill pomija niezwiązany szum, ale nigdy nie zmienia tego, co wypisała zmieniona rzecz.
+
+### Maskowanie
+
+Skrypt zamienia na `***` to, co wygląda na sekret, między innymi:
+
+- wartości obok nazw takich jak `token`, `secret`, `password`, `api_key`, `authorization`, `cookie` czy `session`, w JSON-ie, w postaci `name=value` i `Name: value`;
+- tokeny bearer, argumenty `-u user:password` i `--password` oraz dane logowania w URL-ach;
+- bloki kluczy prywatnych, JWT oraz klucze GitHuba, Slacka, Google, AWS i klucze `sk-`.
+
+Gdy skrypt zawiedzie, wpis odpada.
+
+### Przegląd
+
+Świeży subagent, a nie ten, który przechwytywał, czyta zamaskowany transkrypt z twierdzeniem i miejscem danych logowania, nigdy z ich wartościami.
+Odpowiada na dwa pytania:
+
+- Czy transkrypt zawiera sekret albo daną osobową, którą maska przeoczyła? Przykłady to token, ciasteczko, id sesji albo e-mail lub nazwisko prawdziwej osoby.
+- Czy pokazuje twierdzenie?
+
+Każda wątpliwość oznacza, że wpis odpada.
+Skill nie poprawia transkryptu ręcznie, żeby przeszedł przegląd.
+
+## Co zostawia
+
+| Plik | Zawiera |
+|---|---|
+| `~/.cache/pr-proof/<repo>/<branch>/terminal.txt` | zamaskowany i przejrzany transkrypt w trybie `terminal` |
+| `~/.cache/pr-proof/<repo>/<branch>/api.txt` | zamaskowany i przejrzany transkrypt w trybie `api` |
+
+Tabela 2. Pliki transkryptów. Surowy transkrypt i każdy skrypt, który czytał dane logowania, są usuwane.
+
+Manifest dostaje jeden wpis dla trybu, z twierdzeniem, plikami i ścieżką do transkryptu.
+`pr-open` pokazuje transkrypt jako blok kodu, zwinięty, gdy ma ponad 20 linii.
+
+Raport podaje tryb, twierdzenie, ścieżkę transkryptu, pliki i każdą poprawkę przekazanej listy plików.
+
+## Co może pójść źle
+
+Każda z tych sytuacji oznacza, że wpis odpada, a raport mówi dlaczego:
+
+- **Nic obserwowalnego się nie zmieniło.** Żadnego zachowania zmiany nie da się zobaczyć po jej uruchomieniu.
+- **Uruchomienie się nie udaje albo pokazuje inne zachowanie niż twierdzenie.** To ustalenie do raportu, nie dowód.
+- **Skrypt maskujący kończy się błędem.**
+- **Przegląd ma wątpliwość.** Transkrypt może nadal zawierać sekret lub daną osobową albo nie pokazuje twierdzenia.
+
+## Następne kroki
+
+- Uruchom [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/), żeby transkrypt trafił do pull requesta.
+- Pozwól [`prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) ocenić, czy branch potrzebuje też innego dowodu.

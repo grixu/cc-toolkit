@@ -38,10 +38,10 @@ If you used `code-story` as a personal skill before, delete `~/.claude/skills/co
 
 What happens:
 
-1. The skill measures the branch against the base of its open PR, the nearest stacked PR or the default branch.
+1. The skill measures the branch against the base named in the request, or else the base of its open PR, the nearest stacked PR or the default branch.
 2. It reads the diff, the PR and its reviews, the tickets and specs it is given, and the code around the change.
 3. It writes one chapter per mechanism, assembles the page, checks it and publishes it.
-4. When the branch already has a story, either published earlier in the session or linked in the PR body under `## Code story`, it updates the changed chapters and publishes a new version under the same link.
+4. When the branch already has a story, given as a link in the request (`story <link>`), published earlier in the session or linked in the PR body under `## Code story`, it updates the changed chapters and publishes a new version under the same link.
 
 A new story is private. Share it on claude.ai before its link goes into a PR. With `dev-kit` installed, `/dev-kit:pr-open` asks for a story in a subagent and puts the link into the PR body.
 
@@ -52,7 +52,7 @@ Set them in `/plugin` → code-story → configure. The plugin's mod hands them 
 | Setting | Default | Meaning |
 |---|---|---|
 | `second_language` | empty | A language tag such as `pl`. Empty means English only. Code names and programming terms stay in English in every language. |
-| `gloss_first_use` | `true` | In the second language, a term's first use gets its translation in parentheses. |
+| `gloss_first_use` | `true` | In the second language, an English term's first use is followed by its translation in parentheses. |
 | `diagram_skill` | empty | An installed diagram skill, such as `fireworks-tech-graph`. Empty means the built-in diagrams. |
 | `uncommitted` | `ignore` | `ignore`: tell the committed change without asking. `include`: add uncommitted changes without asking. `ask`: ask each time. |
 | `stack` | `ask` | For a branch in a stack of open PRs: `ask` whether to tell the whole stack, `always`, or `never`. |
@@ -63,7 +63,7 @@ A request overrides a setting for one run: "po polsku", `stack`, `no stack`, `un
 
 - A chapter rail, back/next buttons and arrow-key navigation.
 - An EN / second-language switch that also swaps the diagram labels.
-- Diff blocks whose line numbers and line ranges are computed. Every quoted line is checked against the real file at the story's commit.
+- Diff blocks whose line numbers and line ranges are computed. Every quoted line of this repository's files is checked against the real file at the story's commit, or the working tree when uncommitted changes are included. Blocks tagged as a dependency or another ref, and trees, are not checked.
 - Notes that light up the line they explain.
 - Built-in diagrams drawn as inline SVG in one dark style, adapted from [fireworks-tech-graph](https://github.com/yizhiyanhua-ai/fireworks-tech-graph) (MIT).
 - `<meta name="code-story:*">` with the repository, branch, base and head SHA. This is how an update finds its story.

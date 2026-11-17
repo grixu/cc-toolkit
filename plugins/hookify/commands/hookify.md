@@ -22,40 +22,29 @@ You will help the user create hookify rules to prevent unwanted behaviors. Follo
 - Look for examples of the behavior happening
 
 **If $ARGUMENTS is empty:**
-- Launch the conversation-analyzer agent to find problematic behaviors
+- Launch the `hookify:conversation-analyzer` agent to find problematic behaviors
 - Agent will scan user prompts for frustration signals
 - Agent will return structured findings
 
 **To analyze conversation:**
-Use the Task tool to launch conversation-analyzer agent:
+Use the Task tool to launch the `hookify:conversation-analyzer` agent. The agent carries its own
+analysis process and output format. It cannot see this conversation, so the prompt must contain the
+excerpt it analyzes:
 ```
 {
-  "subagent_type": "general-purpose",
+  "subagent_type": "hookify:conversation-analyzer",
   "description": "Analyze conversation for unwanted behaviors",
-  "prompt": "You are analyzing a Claude Code conversation to find behaviors the user wants to prevent.
+  "prompt": "Find behaviors the user wants to prevent with hookify rules in this Claude Code conversation excerpt.
 
-Read user messages in the current conversation and identify:
-1. Explicit requests to avoid something (\"don't do X\", \"stop doing Y\")
-2. Corrections or reversions (user fixing Claude's actions)
-3. Frustrated reactions (\"why did you do X?\", \"I didn't ask for that\")
-4. Repeated issues (same problem multiple times)
-
-For each issue found, extract:
-- What tool was used (Bash, Edit, Write, etc.)
-- Specific pattern or command
-- Why it was problematic
-- User's stated reason
-
-Return findings as a structured list with:
-- category: Type of issue
-- tool: Which tool was involved
-- pattern: Regex or literal pattern to match
-- context: What happened
-- severity: high/medium/low
-
-Focus on the most recent issues (last 20-30 messages). Don't go back further unless explicitly asked."
+<excerpt>
+{The last 20-30 user messages, verbatim and in order. Under each one, add a one-line summary of what
+Claude did just before it, naming the tool and the exact command, file path or code it used.}
+</excerpt>"
 }
 ```
+
+Build the excerpt from the conversation you can see. Copy the user's words as written; the agent
+matches frustration signals and corrections in them.
 
 ### Step 2: Present Findings to User
 

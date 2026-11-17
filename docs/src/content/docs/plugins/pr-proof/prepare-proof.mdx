@@ -1,0 +1,157 @@
+---
+title: /pr-proof:prepare-proof
+description: Decides which proof a branch needs, confirms the plan with you once, brings up the app, produces each kind and records it in the branch's proof manifest for pr-open.
+group: guides
+skill: prepare-proof
+sidebar:
+  label: prepare-proof
+  order: 2
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+A reviewer needs different proof for different changes: a video for a new flow, screenshots for a restyled page, a transcript for a changed endpoint or command.
+`prepare-proof` works out which of these the branch needs, asks you once, and then produces them.
+It owns the app's stack for the whole run, so the skills that produce the proof never start or stop anything.
+
+## When to reach for it
+
+- A feature branch is reviewed and tested, and you're about to open its pull request.
+- You want to know which proof a change needs, or whether it needs any.
+- The branch changed after its proof was taken, and the proof has to catch up.
+
+Run it before [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/): `pr-open` only reads what this skill leaves.
+
+## Run it
+
+<Strip cmd="/pr-proof:prepare-proof" />
+
+The command takes two optional arguments, the base branch and `before`:
+
+```
+/pr-proof:prepare-proof
+/pr-proof:prepare-proof main before
+```
+
+The base defaults to the repository's default branch.
+`before` asks for "before" screenshots of the base as well as "after" screenshots of the branch.
+
+The skill refuses on the default branch or a detached HEAD, because the manifest's path needs a branch.
+
+## How it runs
+
+The diagram shows the skill's steps and what each leaves:
+
+<SkillFlow
+  skill="prepare-proof"
+  input="A feature branch and its base"
+  steps={[
+    { name: 'Signals', does: 'Asks the proof_signals tool which kinds the change needs, when a key is set.', optional: true },
+    { name: 'Judge', does: 'Decides each kind, or no proof, with a one-line reason, and assigns the diff’s files to each kind.' },
+    { name: 'Confirm', does: 'Shows you the whole plan once and waits for a yes or corrections.' },
+    { name: 'Stack', does: 'Reuses or starts the app’s stack when a planned kind needs it.', optional: true },
+    { name: 'Produce', does: 'Runs terminal-proof terminal, terminal-proof api, screenshot-proof and walkthrough-video record-only, each only when planned.' },
+    { name: 'Record', does: 'Writes the result into the branch’s proof manifest and reports it.', leaves: 'manifest.json' },
+  ]}
+  next={['pr-open']}
+/>
+
+### Signals from a decision model
+
+With a TypeSafe or Gemini key set, the skill calls the `proof_signals` tool first.
+For each of the four kinds, the tool returns a signal: `suggest`, `reject` or `uncertain`.
+It also says whether the change affects program behavior at all.
+Without a key, or when the tool fails, the skill judges from the diff alone and the report says why no signals were used.
+
+When both keys are set and you haven't chosen a backend, the tool sends nothing and asks for a choice.
+The skill then asks you whether to use TypeSafe, Gemini or both, and suggests saving the answer as the `decision_backend` option in `/config`.
+With both backends, a kind on which one says `suggest` and the other `reject` counts as `uncertain`.
+
+### How it judges each kind
+
+The skill decides each kind on its own, from the commits, the diffstat and the diff:
+
+| Kind | Planned when the change alters |
+|---|---|
+| `screenshots` | how a screen looks at rest, or how an email renders; one still image per state can show it |
+| `video` | something a user does across steps, or a result that appears only after input; a still image can't show it |
+| `api` | what an HTTP or RPC endpoint returns to its caller, who may call it, or a file a site serves |
+| `terminal` | what a command, script, migration, job, build or log line prints or does |
+
+Table 1. When `prepare-proof` plans each kind.
+
+The plan is **no proof** when the change doesn't affect program behavior.
+Examples are documentation, agent instructions, comments, refactors that keep behavior, dead-code removal, version bumps and changelogs.
+Tests the change adds or edits never call for a kind by themselves.
+
+The signals are advice.
+The skill may plan a kind the signal rejects, or skip a kind the signal suggests.
+It calls either an overrule and gives the reason in one line.
+A `terminal` signal that comes only from changed tests is an expected overrule, since the tool counts what a test run prints.
+When the tool reads the change as not affecting behavior, planning any kind is an overrule too.
+
+## What it asks you
+
+Apart from the backend choice, the skill asks for one confirmation of the whole plan before it produces proof.
+The plan lists:
+
+- each kind, planned or not, with its reason, its signal and any overrule, and each backend's signal when both answered;
+- the files each planned kind proves;
+- the skills that will run, in order;
+- whether a stack is needed, and whether one is already up for this checkout or will be started.
+
+With `before`, the same question asks where the base comes from:
+
+- the URL of a stack already running at the base;
+- a second stack the skill starts from a temporary worktree of the base, at `~/.cache/pr-proof/<repo>/<branch>/base-worktree`;
+- neither, so the before shots are skipped.
+
+After that, the producing skills still ask you to approve each screenshot and the video, since no image counts as proof until you've seen it.
+`walkthrough-video` also asks you to confirm any derived requirement before it writes its scenario.
+
+## The app's stack
+
+Screenshots, video and API transcripts need the running app.
+A terminal transcript needs it only when its command talks to the app.
+When no planned kind needs the app, the skill starts nothing.
+
+The skill takes how the stack runs, how it's seeded and where the test users' credentials live from the project's `CLAUDE.md` files.
+It reuses a stack already up for this checkout, and never stops one it reused.
+Otherwise it starts the stack, seeds it, and waits until it responds.
+A stack that doesn't come up fails the kinds that need it; the other kinds still run.
+
+For the second stack, the skill gives the base worktree its own install and environment, the project's way.
+It runs that stack on ports that don't clash with the first one.
+When the base stack doesn't come up, only the before shots are dropped.
+
+## What it leaves
+
+- The branch's proof manifest, `~/.cache/pr-proof/<repo>/<branch>/manifest.json`, with one entry per kind that was produced and approved. The producing skills write their own entries; `prepare-proof` writes the video's entry, and an empty list for no proof.
+- The proof files themselves, in the same folder: screenshots and transcripts. The video stays in the walkthrough's own folder under `~/.cache/walkthrough-video/`.
+- A report: which backend answered, and each kind with its reason and signal. It also lists each failure or rejected proof, the before shots skipped and why, and each correction a producing skill made to the files.
+
+A kind that fails is reported and never enters the manifest.
+The report reminds you that `pr-open` must run for the proof to appear in the pull request.
+Then the skill asks before it stops each stack it started; stopping the base stack also removes its worktree.
+
+## When another agent runs it
+
+A coordinator can dispatch `prepare-proof`.
+It can't ask you directly then.
+Every question, including the plan and each screenshot approval, goes back to that agent as a `Confirmation needed` block.
+The agent asks you and resumes the skill with your answers.
+A dispatch that says not to ask you doesn't skip a confirmation; the block still goes to the caller.
+
+## What can go wrong
+
+- **Proof signals are unavailable.** The base branch isn't found, the key is rejected, or the rate limit is reached. The skill judges from the diff alone and says why.
+- **The tool assessed only part of the diff.** A large diff can exceed what the tool sends. The skill reads the rest itself.
+- **The stack doesn't come up.** The kinds that need it fail and the report names the failure. Terminal transcripts that don't need the app still run.
+- **The base worktree path is taken.** Another clone with the same name can leave a worktree there. The before shots are skipped, and the after shots go on.
+
+## Next steps
+
+- Run [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) to put the proof in the pull request.
+- See what each producing skill does: [walkthrough-video](/plugins/pr-proof/walkthrough-video/), [screenshot-proof](/plugins/pr-proof/screenshot-proof/), [terminal-proof](/plugins/pr-proof/terminal-proof/).
+- Set a key or the backend with the [options](/plugins/pr-proof/reference/#options).

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-17
+
+### Fixed
+
+- README: `scan.mjs` exits 0 whatever it finds and 2 on bad usage; it no longer claims the script always exits 0.
+- `scan.mjs` treats a file it cannot read and a `--lang` with no value as bad usage: it prints the reason and usage to stderr and exits 2, instead of crashing with exit 1 or silently scanning with both lexicons.
+
 ## [0.1.1] - 2026-11-16
 
 ### Changed

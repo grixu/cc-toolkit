@@ -2,11 +2,12 @@
 description: >-
   Explicit-invocation orchestrator that runs the review lenses (comments,
   readability & tests, naming & module, objects & patterns, simplicity & types,
-  correctness, security, coherence, assumptions, performance, spec) in parallel over a change and merges them
+  correctness, security, coherence, assumptions, performance, spec, hookify) in parallel over a change and merges them
   into one per-file report. Lenses are gated by the input, never by the user:
   correctness, security, coherence and assumptions are always on, performance runs only when executable source files are in scope,
   spec only when a spec file is named — by `--spec <path>`, or by the user accepting
-  the one the diff itself carries. Manual only — never auto-triggered. It resolves
+  the one the diff itself carries — and hookify only when the project keeps hookify rule
+  files in its `.claude/`. Manual only — never auto-triggered. It resolves
   scope once, dispatches one scanner subagent per active lens, re-grades severity
   centrally, and offers a single apply menu. It never edits code during the review.
   With `--pr <number>` it reviews a GitHub pull request's head against its base; on
@@ -28,8 +29,8 @@ This command is **explicit invocation only**; it is never auto-triggered. There
 is no lens selection — which Lenses run is decided by the input in Step 2b, never by
 user choice: the five craft Lenses, `correctness`, `security`, `coherence` and `assumptions`
 always run (`objects & patterns` except over infrastructure code alone), `performance` runs
-when executable source is in scope, `spec` when a spec file is named. For a partial
-review the user invokes `/code-review:comment-review` or `/code-review:quality-review` directly.
+when executable source is in scope, `spec` when a spec file is named, `hookify` when the
+checkout carries hookify rule files.
 
 Arguments: `$ARGUMENTS`
 
@@ -179,7 +180,8 @@ about a skipped dependency manifest that is the substance of the change — is i
 list. Then classify every surviving file by that file's `## File kinds` section —
 `source`, `test`, `iac`, or `policy` — and record the kind beside each path: Step 2b gates the
 `performance` Lens on the `source` subset, sends `policy` files to `security`, `assumptions`,
-`coherence` and `spec` alone and skipped files to `coherence` and `spec` alone, and the
+`coherence`, `spec` and `hookify` alone and skipped files to `coherence`, `spec` and `hookify`
+alone, and the
 `comments` Scanner's test-file bar (R11) keys off the same classification.
 
 ## Step 2 — Read project conventions and standards (once)
@@ -206,7 +208,7 @@ directory**, in exactly that shape:
 - `scope.json` — `checkout` the absolute path of the checkout under review (the PR worktree with
   `--pr`), `base` and `diff_args` from the script, `files` with each judged file's `status`, `kind` and
   `untracked`, `skipped` with its reasons, `spec` the absolute spec path or `null`, `spec_focus`
-  `null`, and `lenses` with every Lens once — active with its own `files`, inactive with its
+  `null`, `hookify` the rule files the lens set recorded or `null`, and `lenses` with every Lens once — active with its own `files`, inactive with its
   reason — named by its rules file's basename (`readability-tests`, `naming-module`, …).
 
 A review of named paths has no diff: write `diff_args` as `null` and `base` as `null`, and each

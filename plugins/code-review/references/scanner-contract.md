@@ -16,9 +16,9 @@ Send each Scanner a brief in this shape, filling every slot:
 
 ```
 <scanner_brief>
-  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness | coherence | assumptions</lens>
+  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness | coherence | assumptions | hookify</lens>
   <rules_file>rules/<lens>.md</rules_file>
-  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security` and `assumptions`, the full resolved list plus every skipped file except real `.env*` files (templates such as `.env.example` stay) for `spec`, the full resolved list plus every skipped file except lockfiles, generated output and real `.env*` files, minus the active spec, for `coherence`, the resolved list minus `policy` files for every other Lens --></files>
+  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security` and `assumptions`, the full resolved list plus every skipped file except real `.env*` files (templates such as `.env.example` stay) for `spec`, the full resolved list plus every skipped file except lockfiles, generated output and real `.env*` files, minus the active spec, for `coherence`, the same list with the active spec kept for `hookify`, the resolved list minus `policy` files for every other Lens --></files>
   <diff_args><!-- from the scope resolution; "none" when the user named paths --></diff_args>
   <how_to_view>
     diff_args "none" → read the file whole; every line is under review
@@ -28,6 +28,7 @@ Send each Scanner a brief in this shape, filling every slot:
   <conventions><!-- the conventions note, including any N/A families or rules --></conventions>
   <standards><!-- the CODING_STANDARDS pair's text, or this Lens's slice of it; "none" when the root has neither file --></standards>
   <spec><!-- `spec` and `correctness` Lenses: the --spec path and its full text, plus the spec-focus codes when the caller recorded any; `coherence`: the --spec path alone, so it leaves that file to `spec`; omit the slot for every other Lens, and for these three when no spec is active --></spec>
+  <hookify_rules><!-- `hookify` Lens only: the absolute paths of the checkout's hookify rule files, in hookify's load order; omit the slot for every other Lens --></hookify_rules>
   <scope_split>
     primary = the problem is in code this change added or modified, or structure
     the change introduced or made worse.
@@ -75,7 +76,8 @@ no transitive crawl, no repo listing, no `find`; a fact beyond the hop is `(veri
 it still writes nothing. Three other bounded read protocols sit beside it, each defined in its
 rules file: `coherence` Greps the repo for each claim's counterpart (`rules/coherence.md`),
 `assumptions` reads the lockfile and targeted lines of the installed dependency tree
-(`rules/assumptions.md`), and `tests` · mutation-gap Greps one hop for the changed unit's tests
+(`rules/assumptions.md`), `hookify` reads the rule files its `<hookify_rules>` slot names
+(`rules/hookify.md`), and `tests` · mutation-gap Greps one hop for the changed unit's tests
 (`rules/readability-tests.md`). No other Scanner reads across files beyond a doubt it settles.
 
 ## The Lenses
@@ -170,8 +172,17 @@ rules file: `coherence` Greps the repo for each claim's counterpart (`rules/cohe
     consequence** on the changed path as input → outcome; severity is `high` or `medium`,
     **never `nit`**.
 
+12. **hookify** → `rules/hookify.md`
+    Judges the `hookify` family; active only when the checkout carries hookify rule files. It
+    replays each enabled `file` or `all` rule in the `<hookify_rules>` slot over the diff, hunk
+    by hunk, the way hookify's hooks check an edit. The rule slot of a finding is the hookify
+    rule's `name`, and the finding **quotes the rule's message and names its rule file**;
+    severity is `high` for `action: block` and `medium` otherwise, **never `nit`**. Every
+    finding is primary, so `scope_split` is **N/A** and it returns one list. A doubtful regex is
+    settled with a `python3 -c` `re.search` on the quoted text — the one command it runs.
+
 For the finding-shaped Lenses (every Lens but `comments`) the Scanner returns **FINDINGS**,
-split into primary and boy-scout (the `spec` Lens excepted), each in this exact shape:
+split into primary and boy-scout (the `spec` and `hookify` Lenses excepted), each in this exact shape:
 
 ```
 `family` · rule · severity · `path:L<lines>` — <what the reader loses> → <the fix, as a clause>
@@ -195,7 +206,7 @@ mapping in `references/severity.md`.
 **Severity is exactly one of `high`, `medium`, or `nit`** — never `low`, never a
 number, never a paraphrase — and it is the one `severity.md` gives the rule's row. The
 vocabulary is shared; the grade is not free: a `security`, `spec`, `correctness`,
-`coherence` or `assumptions` finding is never `nit`, and a doubt about its grade goes to `CANDIDATES`, never to a softer severity. Tell each Scanner that **severity is a
+`coherence`, `assumptions` or `hookify` finding is never `nit`, and a doubt about its grade goes to `CANDIDATES`, never to a softer severity. Tell each Scanner that **severity is a
 first pass** — you re-grade every quality finding centrally in the merge, so it grades
 honestly against its rules without agonizing over the boundary.
 

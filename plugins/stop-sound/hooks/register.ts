@@ -43,11 +43,18 @@ export function register(on, options) {
   }).catch(() => undefined)
 }
 
-async function chime($, customPath: string | undefined, asset: string) {
+export async function chime($, customPath: string | undefined, asset: string) {
+  const clip = await clipFor($, customPath, asset)
   try {
-    await $.audio.play(await clipFor($, customPath, asset))
+    await $.audio.play(clip)
+    return
   } catch {
-    // A machine with no audio output, or a custom file that cannot play, stays silent.
+    if ('asset' in clip) return
+  }
+  try {
+    await $.audio.play({ asset })
+  } catch {
+    // A machine with no audio output stays silent.
   }
 }
 

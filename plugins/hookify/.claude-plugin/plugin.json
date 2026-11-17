@@ -1,6 +1,6 @@
 {
   "name": "hookify",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Stops Claude from repeating a mistake. Describe the behavior and it writes a hook rule that blocks or warns when it happens again.",
   "author": {
     "name": "Mateusz Gostański",

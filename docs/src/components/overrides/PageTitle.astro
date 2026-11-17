@@ -1,0 +1,62 @@
+---
+import Strip from '../Strip.astro'
+import Art from '../Art.astro'
+import Icon from '../Icon.astro'
+import { ui, href, langOf, canonicalPath, fmtDate } from '../../lib/i18n'
+import { sections, sectionOf, pluginOf, tocHeadings } from '../../lib/nav'
+import { pluginByName, releases, stagesOf, skillById, stageById, stagePath, stages, installPlugin, lineStyle, pluginPath } from '../../lib/lifecycle'
+
+const { entry, toc } = Astro.locals.starlightRoute
+const lang = langOf(Astro.url.pathname)
+const t = ui[lang]
+const path = canonicalPath(Astro.url.pathname)
+const section = sections.find((s) => s.id === sectionOf(path))
+const pluginName = pluginOf(path)
+const plugin = pluginName ? pluginByName[pluginName] : undefined
+const isOverview = !!plugin && path === pluginPath(pluginName)
+const stage = stages.find((s) => path === stagePath(s.id))
+
+const crumbs: { label: string; path?: string }[] = []
+if (section && section.path !== path) crumbs.push({ label: section.label[lang], path: section.path })
+if (plugin && !isOverview) crumbs.push({ label: plugin.name, path: pluginPath(plugin.name) })
+if (stage?.phase) crumbs.push({ label: stage.phase[lang] })
+crumbs.push({ label: isOverview ? plugin!.name : entry.data.title })
+
+const skill = entry.data.skill ? skillById[entry.data.skill] : undefined
+const where = plugin ? (skill ? [stageById[skill.stage]] : stagesOf(plugin.name)) : []
+const last = plugin ? releases().find((r) => r.plugin === plugin.name) : undefined
+const inline = tocHeadings(toc)
+---
+
+{!entry.data.landing && (
+  <header class:list={['dochead', { 'has-art': isOverview && plugin?.core }]} style={plugin ? lineStyle(plugin.name) : undefined}>
+    <div class="dochead-copy">
+      <nav class="crumbs" aria-label={t.breadcrumb}>
+        <ol>{crumbs.map((c, i) => <li>{c.path ? <a href={href(c.path, lang)}>{c.label}</a> : <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.label}</span>}</li>)}</ol>
+      </nav>
+      <h1 id="_top">{entry.data.title}</h1>
+      {plugin && (
+        <p class="meta">
+          {where.map((s) => <a class="meta-stage" href={href(stagePath(s.id), lang)}><span class="meta-n">{s.n}</span> {s.title[lang]}</a>)}
+          {where.length > 0 && <span class="meta-sep" aria-hidden="true">·</span>}
+          <span class="tnum">v{plugin.version}</span>
+          {last && <><span class="meta-sep" aria-hidden="true">·</span><span>{t.updated} <time datetime={last.date}>{fmtDate(last.date, lang)}</time></span></>}
+        </p>
+      )}
+      {entry.data.description && <p class="lead">{entry.data.description}</p>}
+      {isOverview && (
+        <div class="dochead-install">
+          <Strip cmd={installPlugin(plugin!.name)} />
+          <p class="hint">{t.firstTime} <a href={href('getting-started/installation/', lang)}>{t.addMarketplace}</a> {t.thenInstall}</p>
+        </div>
+      )}
+      {inline.length > 0 && (
+        <details class="toc-inline">
+          <summary><span class="label">{t.onPage}</span><Icon name="chevron" size={12} /></summary>
+          <ol>{inline.map((i) => <li><a href={`#${i.slug}`}>{i.text}</a></li>)}</ol>
+        </details>
+      )}
+    </div>
+    {isOverview && plugin?.core && <Art name={plugin.name} class="dochead-art" />}
+  </header>
+)}

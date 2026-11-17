@@ -49,6 +49,13 @@
 
   --diagram-line: light-dark(oklch(0.62 0.012 150), oklch(0.6 0.012 150)); /* #818882 / #7B827C */
 
+  /* Diagram palette: one line colour per core plugin. Graphics only, never text. */
+  --line-fd3:         light-dark(oklch(0.56 0.133 255), oklch(0.72 0.107 255)); /* #3875C0 / #76A7E7 */
+  --line-code-review: light-dark(oklch(0.63 0.093 85),  oklch(0.83 0.123 85));  /* #A38542 / #ECC162 */
+  --line-tester:      light-dark(oklch(0.42 0.162 300), oklch(0.62 0.175 300)); /* #5D2E96 / #9868DE */
+  --line-pr-proof:    light-dark(oklch(0.52 0.154 355), oklch(0.7 0.157 355));  /* #A93A6D / #E870A3 */
+  --line-dev-kit:     light-dark(oklch(0.62 0.076 195), oklch(0.8 0.098 195));  /* #489594 / #68D2D1 */
+
   /* Type */
   --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
   --font-text: "IBM Plex Sans Variable", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
