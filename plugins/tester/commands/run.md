@@ -509,6 +509,8 @@ passed are not run again.
 
 - **Read** the previous run's `BRIEF.md`, `SUITES.md`, `RESULTS.md` and `evidence/` from the
   `previous.path` the tool returned. Skip steps 1 and 3: the scope and the checks are those.
+  Copy the `SUITES.md` entries of the rows to repeat into this run's `$WORK/SUITES.md`, so this
+  run can itself be repeated after the next fix.
 - **Step 2 runs in full.** Sessions, the pre-state snapshot and the stack itself belong to now,
   not to the previous run, and its `secrets/` is gone. Write a new brief: the previous one's
   oracle and topology, with every discovered fact re-confirmed. Doctor runs as usual.
@@ -516,14 +518,17 @@ passed are not run again.
   grouped by their suite.
 - **Step 5 repeats rows, not suites.** Each executor gets its suite's rows to repeat with the
   recorded command from the previous `evidence/<suite>.md`, and runs that command with only
-  `$WORK` and session paths changed. A check whose route, page or selector no longer exists is
-  `ERROR "check stale — run fresh"`, never a `FAIL`. The exploratory suite is not repeated; its
+  `$WORK` and session paths changed. A row with no recorded command, such as one `BLOCKED`
+  before its suite was dispatched, runs from its `SUITES.md` steps. A check whose route, page or
+  selector no longer exists is `ERROR "check stale — run fresh"`, never a `FAIL`. The
+  exploratory suite is not repeated; its
   reproduced findings are rows of suite `R` and repeat like any other. Fault rows still run solo
   and last.
-- **Step 7 reports the change.** One table, `| suite | AC/ref | check | before | now |`, grouped
-  as fixed (now `PASS`), still failing, and changed (any other move). Say plainly that rows which
-  passed before were not run, so a regression among them would not show. `RESULTS.md` holds the
-  repeated rows only, plus the run id it repeated.
+- **Step 7 reports the change.** The report's table is `| suite | AC/ref | check | before | now |`,
+  grouped as fixed (now `PASS`), still failing, and changed (any other move). Say plainly that
+  rows which passed before were not run, so a regression among them would not show.
+  `RESULTS.md` keeps the step-7 row format with the current verdict, for the repeated rows only,
+  plus the run id it repeated, so a later `--rerun` reads it like a fresh run's.
 
 ## Gate table
 
