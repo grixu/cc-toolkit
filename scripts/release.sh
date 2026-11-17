@@ -220,7 +220,8 @@ else
 fi
 if [[ "$push_confirm" =~ ^[Yy]$ ]]; then
   info "Pushing commits and tag"
-  git push origin HEAD:main "$TAG_NAME" "$MARKET_TAG"
+  # Atomic, so a rejected main push (a PR merged since the fetch) does not leave the tags behind.
+  git push --atomic origin HEAD:main "$TAG_NAME" "$MARKET_TAG"
 
   if command -v gh >/dev/null 2>&1; then
     info "Creating GitHub Release"
@@ -240,5 +241,5 @@ else
   echo
   info "Done! Commit and tag created locally."
   info "When ready, run:"
-  echo "  git push origin HEAD:main $TAG_NAME $MARKET_TAG"
+  echo "  git push --atomic origin HEAD:main $TAG_NAME $MARKET_TAG"
 fi

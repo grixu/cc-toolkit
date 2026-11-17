@@ -57,22 +57,3 @@ jobs:
             claude plugin test "$d"
             echo "::endgroup::"
           done
-
-  no-fixup-commits:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Fail on unsquashed fixup commits
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          fixups=$(git log --format='%h %s' "$BASE_SHA..$HEAD_SHA" | grep -E '^[0-9a-f]+ (fixup|squash|amend)! ' || true)
-          if [ -n "$fixups" ]; then
-            echo "$fixups"
-            echo "::error::Squash these before merging: git rebase --autosquash origin/main && git push --force-with-lease"
-            exit 1
-          fi

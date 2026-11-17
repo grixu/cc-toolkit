@@ -13,7 +13,7 @@ Monorepo of Claude Code plugins, published as a marketplace at `grixu/cc-toolkit
 
 ## Checks
 
-`node scripts/verify-plugins.mjs`, `claude plugin validate <dir>` and `claude plugin test <dir>` (mod tests, written against `claude-code/testing`) run in CI (`lint.yml`); the `verify` skill runs them locally. Mod code (`hooks/*.ts`) has no tsc or tsconfig: `claude plugin validate` is its type check. Shell scripts go through ShellCheck. A PR with `fixup!` commits fails CI until they are squashed (`git rebase --autosquash origin/main`).
+`node scripts/verify-plugins.mjs`, `claude plugin validate <dir>` and `claude plugin test <dir>` (mod tests, written against `claude-code/testing`) run in CI (`lint.yml`); the `verify` skill runs them locally. Mod code (`hooks/*.ts`) has no tsc or tsconfig: `claude plugin validate` is its type check. Shell scripts go through ShellCheck.
 
 ## Script Language Preference
 
@@ -25,7 +25,7 @@ Release only when the user asks, through the `release` skill (`.claude/skills/re
 
 ## Merging
 
-`main` is protected by a required review the owner cannot give themselves. When the user says merge, run `gh pr merge <n> --merge --admin --delete-branch` without asking again.
+`main` is protected by a required review the owner cannot give themselves. When the user says merge, run `gh pr merge <n> --squash --admin --delete-branch` without asking again. PRs land as one squash commit, so `fixup!` commits never reach `main`.
 
 ## Commits
 

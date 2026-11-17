@@ -152,7 +152,9 @@ Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branche
   the PR changed. (changed: `validate` without `--strict`, which fails four plugins on mod TypeScript
   warnings; code-review's two test files were rewritten from `node:assert` to `claude-code/testing`,
   since `claude plugin test` had never been able to load them)
-- [x] Add a CI check that fails a PR containing `fixup!` commits.
+- [x] Add a CI check that fails a PR containing `fixup!` commits. (reverted after review on #64: PRs
+  #57–#63 landed as squash commits, so merging switched to `--squash`, which keeps `fixup!` commits
+  off `main` and makes the check redundant)
 - [x] `CLAUDE.md`, one "Checks:" line with these commands; mod code has no tsc or tsconfig.
 - [x] PR, shepherd. (merge with step 5)
 

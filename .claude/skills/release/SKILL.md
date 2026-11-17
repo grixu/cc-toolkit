@@ -55,7 +55,8 @@ item 4. Hitting one after a partial run is worse than checking first.
 When the user asks to release everything unreleased:
 
 1. List plugins whose `CHANGELOG.md` has a non-empty `## [Unreleased]`.
-2. Pick the level per plugin: `minor` when the section has `### Added`, otherwise `patch`.
+2. Pick the level per plugin: `minor` when the section has `### Added`, `### Changed` or `### Removed`
+   (on a `0.x` plugin, minor is what signals a breaking change), otherwise `patch`.
    `major` only when the user says so.
 3. Release them one at a time. Before each, `git fetch origin main` and move the worktree
    to the new `origin/main` (`git -C <worktree> checkout --detach origin/main`), since the
