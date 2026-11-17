@@ -187,6 +187,13 @@ test('a defect write-up citing other ACs as context condemns only its lead-in su
   assert.deepEqual(marked(report), ['AC-3']);
 });
 
+test('a one-line write-up takes its subject from the bold lead-in only', () => {
+  const report =
+    "**D6 — AC-3: an admin may patch another user's membership.** impl-defect. " +
+    'AC-1/AC-2 give admins blanket power, so the exception is defensible.';
+  assert.deepEqual(marked(report), ['AC-3']);
+});
+
 test('an H1 title announcing defects scopes nothing', () => {
   assert.deepEqual(marked('# Verdict: 2 defects across 8 ACs\n\n| AC-1 | login flow |'), []);
 });

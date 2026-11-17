@@ -424,7 +424,9 @@ function markedFailedBlocks(report) {
     // context — "the spec grants admins global reach everywhere else (AC-1, AC-2)" sits inside an
     // AC-3 finding. Attributing the failure to every id in the block condemned two criteria the
     // same report called passing. Blocks with no id in the lead-in fall back to naming them all.
-    const lead = text.split('\n').find((l) => l.trim()) || '';
+    // A write-up is often one line, bold lead-in and body together, so the bold span is the lead.
+    const firstLine = text.split('\n').find((l) => l.trim()) || '';
+    const lead = firstLine.match(/^\s*\*\*(.+?)\*\*/)?.[1] ?? firstLine;
     const subjects = allAcs.filter((ac) => acMentioned(lead, ac));
     const acs = subjects.length ? subjects : allAcs.filter((ac) => acMentioned(text, ac));
     if (acs.length) out.push({ text, acs });
