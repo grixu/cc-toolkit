@@ -16,5 +16,19 @@
     "browser-testing",
     "curl",
     "on-demand"
-  ]
+  ],
+  "userConfig": {
+    "run_retention": {
+      "type": "number",
+      "title": "Runs kept per repository",
+      "description": "How many past runs to keep for each repository, counting all its worktrees together. The oldest finished runs are deleted beyond it.",
+      "default": 50
+    },
+    "explore": {
+      "type": "boolean",
+      "title": "Exploratory suite",
+      "description": "Run an exploratory suite that looks for defects the spec does not describe. Its findings count only once a deterministic check reproduces them.",
+      "default": true
+    }
+  }
 }
