@@ -19,13 +19,17 @@ set -euo pipefail
 # Requirements: jq, git, gh (optional, for GitHub release)
 #
 # Edge cases / limitations:
-#   - Does not handle inter-plugin dependencies (none exist today)
+#   - Must run on a checkout whose HEAD equals origin/main (a detached worktree is fine);
+#     it pushes HEAD to main
+#   - Does not order releases by inter-plugin dependencies; dependencies are declared by
+#     bare name, so any released version satisfies them
 #   - Assumes marketplace.json has a single entry per plugin name
 #   - CHANGELOG must have an [Unreleased] section with content to release
 #   - Does not support pre-release versions (e.g. 1.0.0-beta.1)
 # ──────────────────────────────────────────────────────────────
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
 MARKETPLACE="$REPO_ROOT/.claude-plugin/marketplace.json"
 
 # ── Helpers ──────────────────────────────────────────────────
@@ -94,6 +98,10 @@ require_cmd git
 [[ -f "$PLUGIN_JSON" ]] || die "plugin.json not found: $PLUGIN_JSON"
 [[ -f "$CHANGELOG" ]]   || die "CHANGELOG.md not found: $CHANGELOG"
 [[ -f "$MARKETPLACE" ]] || die "marketplace.json not found: $MARKETPLACE"
+
+git fetch --quiet origin main
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] \
+  || die "HEAD is not origin/main. Release from an up-to-date main: git worktree add --detach <tmp> origin/main"
 
 # Check for clean working tree (only for the plugin being released)
 if ! git diff --quiet -- "$PLUGIN_DIR" "$MARKETPLACE"; then
@@ -212,8 +220,7 @@ else
 fi
 if [[ "$push_confirm" =~ ^[Yy]$ ]]; then
   info "Pushing commits and tag"
-  git push
-  git push origin "$TAG_NAME" "$MARKET_TAG"
+  git push origin HEAD:main "$TAG_NAME" "$MARKET_TAG"
 
   if command -v gh >/dev/null 2>&1; then
     info "Creating GitHub Release"
@@ -233,5 +240,5 @@ else
   echo
   info "Done! Commit and tag created locally."
   info "When ready, run:"
-  echo "  git push && git push origin $TAG_NAME $MARKET_TAG"
+  echo "  git push origin HEAD:main $TAG_NAME $MARKET_TAG"
 fi
