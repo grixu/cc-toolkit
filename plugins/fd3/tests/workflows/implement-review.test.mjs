@@ -192,3 +192,36 @@ test('coherence and assumptions findings pass the cr-merge family enum and are f
     assert.ok(r.call('fix-cr:app:feat-x').prompt.includes(`- ${line(f)}`), f.family)
   }
 })
+
+const runCodex = (codexReview, rules = []) =>
+  runWorkflow('implement-run.js', implementArgs({ codexReview }), [...rules, ...implementDefaults()])
+
+test('codexReview adds --codex to the first prepare prompt only, never to the delta review', async () => {
+  const r = await runCodex(true, [['cr-merge:app:feat-x:review', crMerged([F.plain])]])
+  assert.match(r.call('cr-prep:app:feat-x:review').prompt, /--spec \S+ --codex`/)
+  assert.doesNotMatch(r.call('cr-prep:app:feat-x:delta').prompt, /--codex/)
+
+  const off = await runCodex(false)
+  assert.doesNotMatch(off.call('cr-prep:app:feat-x:review').prompt, /--codex/)
+})
+
+test('the codex lens gets its own scanner beside the single all-lens scanner', async () => {
+  const r = await runCodex(true, [['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security', 'codex'], 2)]])
+  assert.deepEqual(r.callsMatching(/^cr:app:feat-x:review:/).map((c) => c.label).sort(), ['cr:app:feat-x:review:all', 'cr:app:feat-x:review:codex'])
+  assert.match(r.call('cr:app:feat-x:review:all').prompt, /--lens simplicity,security --context/)
+  assert.match(r.call('cr:app:feat-x:review:codex').prompt, /--lens codex --context/)
+  assert.equal(r.call('cr:app:feat-x:review:codex').opts.agentType, 'code-review:scanner')
+})
+
+test('a skipped or dead Codex review merges without a dead-lens verdict', async () => {
+  for (const reply of [{ status: 'error', invoked: true, filesJudged: 0, filesTotal: 0 }, null]) {
+    const r = await runCodex(true, [
+      ['cr-prep:app:feat-x:review', prepReady(['simplicity', 'security', 'codex'])],
+      ['cr:app:feat-x:review:codex', reply],
+    ])
+    assert.equal(r.callsMatching('cr:app:feat-x:review:codex').length, 1)
+    assert.ok(r.has('cr-merge:app:feat-x:review'))
+    assert.ok(!r.result.hil.some((h) => /the review did not run/.test(h.reason)))
+    assert.deepEqual(status(r), ['done', 'done'])
+  }
+})
