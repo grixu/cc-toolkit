@@ -56,7 +56,7 @@ const R2_VARS = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R
 function requireKeys() {
   const missing = R2_VARS.filter((k) => !process.env[k])
   if (missing.length) {
-    throw new Error(`missing ${missing.join(', ')}; run through pnpm eval:data, and if the key file is missing: bash scripts/r2-secrets-init.sh`)
+    throw new Error(`missing ${missing.join(', ')}; run through pnpm eval:data, and create the missing key file with: bash scripts/r2-secrets-init.sh`)
   }
 }
 
