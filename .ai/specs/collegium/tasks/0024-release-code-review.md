@@ -1,6 +1,6 @@
 ---
 name: Gate 4 — merge PR 2, release code-review, live checks
-status: blocked
+status: todo
 spec: ../SPEC.md
 elements: [CONFIG-3, INTEGRATION-7]
 decisions: [D35, D49]

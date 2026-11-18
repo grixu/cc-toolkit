@@ -1,6 +1,6 @@
 ---
 name: Register the three Collegium tools
-status: done
+status: todo
 spec: ../SPEC.md
 elements: [API-1, API-2, API-3, TEST-1]
 decisions: [D2, D11, D13, D14, D15, D20, D26, D53, D67, D76]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-tools-registration
+worktree:
 phase: 2
 depends-on: [collegium-scaffold, config-merge, codex-adapter, model-choice, prompt-wrapper, write-modes, run-lifecycle]
 tickets: []

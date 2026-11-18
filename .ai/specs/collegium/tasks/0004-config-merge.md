@@ -1,6 +1,6 @@
 ---
 name: Read and merge the JSON configuration
-status: done
+status: todo
 spec: ../SPEC.md
 elements: [CONFIG-2, TEST-1]
 decisions: [D25, D26, D27, D56, D60, D12, D47, D68]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-config-merge
+worktree:
 phase: 2
 depends-on: [probe-mod-host, collegium-scaffold]
 tickets: []

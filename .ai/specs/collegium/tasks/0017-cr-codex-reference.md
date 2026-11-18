@@ -1,6 +1,6 @@
 ---
 name: code-review Codex review reference
-status: merged
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-7]
 decisions: [D35, D36, D37, D38, D41, D42, D45, D49, D55]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/code-review-codex-review
 branch-base: main
 merge-after: [feat/collegium]
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-cr-codex-reference
+worktree:
 phase: 4
 depends-on: []
 tickets: []

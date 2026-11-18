@@ -1,6 +1,6 @@
 ---
 name: Model and effort choice
-status: done
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-3, TEST-1]
 decisions: [D5, D6, D7, D12, D47, D48, D56, D59, D72]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-model-choice
+worktree:
 phase: 2
 depends-on: [collegium-scaffold, decision-client-copy, config-merge, codex-adapter]
 tickets: []

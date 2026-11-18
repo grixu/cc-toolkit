@@ -1,6 +1,6 @@
 ---
 name: code-review collegium_run option
-status: merged
+status: todo
 spec: ../SPEC.md
 elements: [CONFIG-3]
 decisions: [D38, D45]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/code-review-codex-review
 branch-base: main
 merge-after: [feat/collegium]
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-cr-collegium-option
+worktree:
 phase: 4
 depends-on: []
 tickets: []

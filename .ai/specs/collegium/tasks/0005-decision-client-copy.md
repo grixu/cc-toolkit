@@ -1,6 +1,6 @@
 ---
 name: Copy the decision client into collegium
-status: done
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-3]
 decisions: [D6, D56]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-decision-client-copy
+worktree:
 phase: 2
 depends-on: []
 tickets: []

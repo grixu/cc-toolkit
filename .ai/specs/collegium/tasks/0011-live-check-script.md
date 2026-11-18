@@ -1,6 +1,6 @@
 ---
 name: Manual live-check script
-status: done
+status: todo
 spec: ../SPEC.md
 elements: [TEST-2]
 decisions: [D31, D75]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-live-check-script
+worktree:
 phase: 2
 depends-on: [tools-registration]
 tickets: []

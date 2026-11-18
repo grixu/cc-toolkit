@@ -1,6 +1,6 @@
 ---
 name: code-review merge reads the Codex skip and Tally
-status: merged
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-7]
 decisions: [D37, D41, D55]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/code-review-codex-review
 branch-base: main
 merge-after: [feat/collegium]
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-cr-merge-skip
+worktree:
 phase: 4
 depends-on: [cr-codex-reference]
 tickets: []

@@ -1,6 +1,6 @@
 ---
 name: Write modes (worktree, branch, merge)
-status: done
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-6, TEST-1]
 decisions: [D3, D24, D39, D50, D61]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-write-modes
+worktree:
 phase: 2
 depends-on: [collegium-scaffold]
 tickets: []

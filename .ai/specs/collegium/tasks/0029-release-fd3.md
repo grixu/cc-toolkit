@@ -1,6 +1,6 @@
 ---
 name: Gate 5 — merge PR 3, release fd3, triggered run (G5)
-status: blocked
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-8]
 decisions: [D44, D55]

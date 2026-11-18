@@ -1,6 +1,6 @@
 ---
 name: CI eval spike (G3)
-status: blocked
+status: todo
 spec: ../SPEC.md
 elements: [CICD-1]
 decisions: [D33, D63, D64]

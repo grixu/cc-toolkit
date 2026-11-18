@@ -1,6 +1,6 @@
 ---
 name: Probe claude plugin configure --json (G6)
-status: blocked
+status: todo
 spec: ../SPEC.md
 elements: []
 decisions: [D54]

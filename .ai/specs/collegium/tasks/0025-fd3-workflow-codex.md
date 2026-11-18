@@ -1,6 +1,6 @@
 ---
 name: fd3 workflow runs the Codex review, with tests
-status: merged
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-8, TEST-4]
 decisions: [D34, D37, D44, D52, D55]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/fd3-codex-review
 branch-base: main
 merge-after: [feat/code-review-codex-review]
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-fd3-workflow-codex
+worktree:
 phase: 5
 depends-on: []
 tickets: []

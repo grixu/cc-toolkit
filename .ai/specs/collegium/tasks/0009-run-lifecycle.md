@@ -1,6 +1,6 @@
 ---
 name: Run lifecycle, completion notice and sweep
-status: done
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-5, TEST-1]
 decisions: [D15, D16, D17, D18, D19, D20, D29, D43, D57, D66, D67, D69, D76]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-run-lifecycle
+worktree:
 phase: 2
 depends-on: [probe-mod-host, collegium-scaffold, codex-adapter, prompt-wrapper, write-modes]
 tickets: []

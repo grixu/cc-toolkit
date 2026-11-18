@@ -1,6 +1,6 @@
 ---
 name: /start-cr decides and dispatches the Codex review
-status: merged
+status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-7]
 decisions: [D35, D37, D38, D45, D49, D52]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/code-review-codex-review
 branch-base: main
 merge-after: [feat/collegium]
-worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-cr-start-cr-codex
+worktree:
 phase: 4
 depends-on: [cr-codex-reference, cr-collegium-option]
 tickets: []

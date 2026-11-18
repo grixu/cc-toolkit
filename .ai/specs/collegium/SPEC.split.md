@@ -34,6 +34,16 @@ changed, to point at D66–D76 instead of the G1/G2/G4 branches the probes settl
 run calls `collegium_run` directly), `run-and-config-ui` (D68, D75, D76), `collegium-readme`
 (D68, D75) and `collegium-evals-ci` (D68, D75). `task-graph.mjs` reports no problems.
 
+**Re-split 2026-11-18** (`/fd3:split-to-tasks`), against the same verdict (spec 773 lines, `wc -l`
+773). `origin/main` fetched 2026-11-18 is `7b8aa779` (#73); since `dd387afe`, the commit pass 7
+checked, it changed two cited paths, `plugins/code-review/CHANGELOG.md` (R7) and
+`plugins/fd3/CHANGELOG.md` (F4), both cited without line pins, so every claim on them holds. The
+cut, edges, branches, bases, `merge-after`, ordinals and the D66–D76 pointers above stand. The user
+chose to replace the existing files: every task is `status: todo` with no `worktree`, so the
+earlier run state (13 `done`, 8 `merged`, 5 `blocked`) is gone from the files. The code it built
+stays on `feat/collegium`, `feat/code-review-codex-review` and `feat/fd3-codex-review`.
+`task-graph.mjs` reports no problems, and every element code lands in at least one task.
+
 ## Tasks
 
 | # | slug | repository | branch | phase | depends-on | elements |
