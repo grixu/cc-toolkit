@@ -217,6 +217,12 @@ Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branche
   under `docs/` and check the rule appears).
 - Step 3: the new jobs pass on the PR and fail on a deliberately broken branch (description of three
   sentences, a stray `CLAUDE.md`, a diverged `decision.ts`, a `fixup!` commit).
-- Step 4: cluster counts against the baseline.
+- Step 4: cluster counts against the baseline. (done 2026-11-18 with `work-g9/agg.mjs` over the 20
+  headless sessions since the fixes; 16 were isolation probes with intended denials, left out. dk-pr-open,
+  4 runs: 0 hits in the targeted clusters (`mktemp` failures, Write before Read on a `mktemp` file,
+  `Operation not permitted` on saved tool results; dk-pr-open baseline 1 + 7 + 6 hits in 139 runs); its
+  failed-tool-call rate, 7.4% (4 of 54 tool calls, all `ls` on absent paths), against the dk-pr-open
+  baseline of 6.2% (104 of 1,676 tool calls; 3.3% across all families) is noise at n=4. The code-review before/after
+  verdict run is pending: its fixtures come from R2, and the R2 keys need the owner's 1Password session.)
 - Whole plan: in two weeks, rerun the retro aggregation over new sessions; compare gate blocks, hook
   false positives and `/verify`-type misses with this baseline.
