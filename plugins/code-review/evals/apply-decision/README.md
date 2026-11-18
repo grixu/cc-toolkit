@@ -42,8 +42,8 @@ The cases come from private repositories, so they live in the ignored `local/` d
 - `local/extract/`: the scripts that rebuild both, and the brief the annotators followed.
 
 `pnpm eval:data` keeps a copy in Cloudflare R2 as a tarball of `local/`, stored under its SHA-256, which
-`eval-data.json` pins. It needs the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and
-`R2_BUCKET`:
+`eval-data.json` pins. It needs the aws CLI and the R2 keys, from the environment or from the git-ignored
+`.r2-secrets.sh` that `bash scripts/r2-secrets-init.sh` writes from 1Password:
 
 ```sh
 pnpm eval:data pull code-review/apply-decision   # restores local/

@@ -48,7 +48,7 @@ evals/
 
 The fixtures under `cases/`, `scope-mix/` and `comment-track/` are drawn from private repositories, so new and changed fixtures stay out of this public repo; versions committed before the move remain in git history. They live in a Cloudflare R2 bucket as one tarball, stored under its sha256, and `eval-data.json` pins the one this commit's evals were written against. `reset-sandbox.sh` runs `pnpm eval:data pull code-review` first (the repo-wide `scripts/eval-data.mjs`), which skips the download when the pinned fixtures are already in place and refuses a tarball whose hash differs.
 
-Both commands need the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. After you change a fixture, upload the new set and commit the new pin:
+Both commands need the aws CLI and the R2 keys (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`), from the environment or from the git-ignored `.r2-secrets.sh` that `bash scripts/r2-secrets-init.sh` writes from 1Password. After you change a fixture, upload the new set and commit the new pin:
 
 ```sh
 pnpm eval:data push code-review
