@@ -64,6 +64,31 @@ Under `--plugin-dir`, `CLAUDE_PLUGIN_DATA` is `<config dir>/plugins/data/host-pr
 marketplace install the folder name probably differs (not probed). CONFIG-2 should take the path
 from `hookEnv()` and never build it by hand.
 
+## G3: a mod inside `claude plugin eval` (CICD-1 spike)
+
+Probed 2026-11-18 on Claude Code 2.1.327, macOS, with `claude plugin eval <probe> --trust-plugin
+--no-publish --keep-temp --ablation none --allow-tools 'mcp__eval-probe__*'`, one run. The case set
+`env: { EVAL_PROBE_VAR: visible }` and the shell exported `PROBE_PLAIN_VAR`; the mod's tool returned
+what it saw:
+
+| Question | Result |
+|---|---|
+| `$.env.get('EVAL_PROBE_VAR')` | `visible`; `PROBE_PLAIN_VAR` is `null` (not on the allowlist) |
+| `options` passed to `register` | the manifest defaults only: `{ on_by_default: true, off_by_default: false }`. No case field, CLI flag or `EVAL_*` variable sets a plugin option (`claude plugin eval --help`; `prompt.md` and `case.yaml` field tables) |
+| `$.http.fetch` to `auth.openai.com` and `api.github.com` | refused: `$.http.fetch: refused: nonessential network traffic is disabled for this session`. The eval child runs with `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, which this shell does not set |
+| `$.process.run(['curl', … 'https://auth.openai.com/.well-known/openid-configuration'])` | exit 0, HTTP 200: a child process reaches the network |
+| `codex --version` through `$.process.run` | exit 0, `codex-cli 0.169.0` |
+
+Outcome under CICD-1's rule: **negative**, without a CI run. Two facts the CI runner shares with
+this one stop the eval before WIF is reached:
+
+1. Collegium's `codex` option defaults to `false` and only `userConfig` enables a harness, so in an
+   eval run `collegium_run` refuses to start Codex. This also blocks TEST-3 locally.
+2. D63's token fetch and exchange go through `$.http.fetch`, which the eval session refuses.
+
+CICD-2's job already exists: `.github/workflows/lint.yml:54-57` runs `claude plugin test` on every
+plugin directory, collegium included.
+
 ## Probe plugin
 
 `host-probe` (`.claude-plugin/plugin.json`, `hooks/hooks.json` `{"modules":["./register.ts"]}`)
