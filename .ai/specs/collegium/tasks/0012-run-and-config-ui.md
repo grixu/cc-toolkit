@@ -23,7 +23,8 @@ config through `/collegium:config`.
 
 ## Done when
 
-- UI-1 row (section 8): the TEST-3 eval — branch-level, it passes once `collegium-evals-ci` lands.
+- UI-1 row (section 8): TEST-2's three `/collegium:run --wait` runs — **environment-level**
+  (author's machine), exercised in `release-collegium`.
 - UI-2 row: the triggered `/collegium:config` run is **environment-level** (author's machine),
   exercised in `release-collegium`.
 

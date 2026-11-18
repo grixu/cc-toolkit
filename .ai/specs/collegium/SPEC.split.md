@@ -62,8 +62,8 @@ stays on `feat/collegium`, `feat/code-review-codex-review` and `feat/fd3-codex-r
 | 0012 | run-and-config-ui | cc-toolkit-collegium | feat/collegium | 2 | tools-registration | UI-1, UI-2 |
 | 0013 | collegium-readme | cc-toolkit-collegium | feat/collegium | 2 | collegium-scaffold, run-and-config-ui | DOCS-1 |
 | 0014 | ci-eval-spike | none | — | 3 | run-and-config-ui | CICD-1 |
-| 0015 | collegium-evals-ci | cc-toolkit-collegium | feat/collegium | 3 | ci-eval-spike, run-and-config-ui | TEST-3, CICD-1, CICD-2 |
-| 0016 | release-collegium | none | — | 3 | collegium-evals-ci, collegium-readme, live-check-script | TEST-2 |
+| 0015 | remove-wif-path | cc-toolkit-collegium | feat/collegium | 3 | codex-adapter | INTEGRATION-2, TEST-1, CICD-2 |
+| 0016 | release-collegium | none | — | 3 | remove-wif-path, collegium-readme, live-check-script | TEST-2 |
 | 0017 | cr-codex-reference | cc-toolkit-collegium | feat/code-review-codex-review | 4 | — | INTEGRATION-7 |
 | 0018 | cr-collegium-option | cc-toolkit-collegium | feat/code-review-codex-review | 4 | — | CONFIG-3 |
 | 0019 | cr-merge-skip | cc-toolkit-collegium | feat/code-review-codex-review | 4 | cr-codex-reference | INTEGRATION-7 |

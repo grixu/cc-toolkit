@@ -40,5 +40,5 @@ No pull request exists: the spike lives on a throwaway branch that is never merg
 is a recorded outcome. It needs a CI run, which no implementation worktree can start. The spike branch is cut from
 `feat/collegium` once the plugin and `/collegium:run` exist there. Record the outcome in
 `.ai/specs/collegium/evidence/spikes.md`, which lands on `feat/collegium`. What has to come back,
-from the spec team (Mateusz Gostański): the G3 outcome — whether the eval arm or the
-`claude plugin test` job lands — which `collegium-evals-ci` is written against.
+from the spec team (Mateusz Gostański): the G3 outcome. It came back negative (D77): no eval suite
+and no new job, and the WIF path is removed by `remove-wif-path`.

@@ -10,7 +10,7 @@ branch-base:
 merge-after: []
 worktree:
 phase: 3
-depends-on: [collegium-evals-ci, collegium-readme, live-check-script]
+depends-on: [remove-wif-path, collegium-readme, live-check-script]
 tickets: []
 ---
 
@@ -27,6 +27,7 @@ the environment-level rows the delivery tasks name:
 
 - the TEST-2 parts of the INTEGRATION-1/2, -3, -4, -5, -6 and API-1–3 rows — `live-check.sh` run
   with Codex enabled;
+- the UI-1 row's three `/collegium:run --wait` runs (TEST-2);
 - the CONFIG-1 row's `/plugin configure collegium` toggle;
 - the UI-2 row's triggered `/collegium:config` run.
 
