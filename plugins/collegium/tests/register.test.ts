@@ -262,6 +262,18 @@ test('a dropped notice is submitted at the next main-thread turn end, and only o
   expect(h.submitted).toHaveLength(2)
 })
 
+test('a run started from a subagent is never notified', { options: { codex: true } }, async ($, on) => {
+  const h = host(on)
+  const out = await $.tool.call({ tool: RUN, agentId: 'scanner-1', task: 'Review it.', model: 'openai/gpt-6.1-sol', effort: 'high' })
+  const { id } = JSON.parse(out.result)
+
+  h.finish()
+  await settle(h, () => h.files[`${ROOT}/${id}/exit`] !== undefined)
+  await settle(h, () => false)
+  await $.turn.complete(TERMINAL_TURN)
+  expect(h.submitted).toEqual([])
+})
+
 test('status and result of an unknown id name it', async ($, on) => {
   host(on)
   expect((await $.tool.call({ tool: STATUS, id: '20261118T000000-000000' })).result).toContain('unknown run id 20261118T000000-000000')
