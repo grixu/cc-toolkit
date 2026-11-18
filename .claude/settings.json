@@ -1,7 +1,7 @@
 {
   "plansDirectory": ".ai/plans",
   "permissions": {
-    "deny": ["Read(/.r2-secrets.sh)"]
+    "deny": ["Read(/.r2-secrets.sh)", "Read(~/**/.r2-secrets.sh)"]
   },
   "hooks": {
     "PreToolUse": [
