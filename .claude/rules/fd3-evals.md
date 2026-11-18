@@ -81,7 +81,9 @@ lives in the file). What it confines:
   files straight to `/tmp`; those writes now fail and the agent has to fall back to `$TMPDIR`.
   Reads: `credentials.files` denies `~/.config/gcloud`, `~/.aws`, `~/.kube`, `~/.docker`,
   `~/.ssh`, `~/.netrc`, `~/.npmrc`, `~/.git-credentials`, `~/.config/gh`, `~/.config/op`,
-  `~/.ccs`, `~/.claude`, `~/.claude.json`; `credentials.envVars` unsets cloud, registry,
+  `~/.claude.json`, and this checkout's `CLAUDE.md`, `AGENTS.md` and `.claude/`;
+  `filesystem.denyRead` denies `~/.ccs` and `~/.claude`, and `allowRead` re-opens only the CLI's
+  project dirs for this checkout (where it saves oversized tool results); `credentials.envVars` unsets cloud, registry,
   GitHub, Anthropic and MCP tokens. Network: `strictAllowlist` with only the package registries,
   GitHub read hosts and vendor docs the grill research used (`registry.npmjs.org`,
   `registry.terraform.io`, `raw.githubusercontent.com`, `api.github.com`, `cloud.google.com` and
@@ -89,11 +91,14 @@ lives in the file). What it confines:
 - **File tools — permission deny rules**, which hold under `bypassPermissions` (deny is
   evaluated before the mode). `Read(...)` denies on the same credential paths and on the CLI's
   settings and credential files under `~/.claude` and `~/.ccs` (a `Read` deny also blocks
-  Edit/Write there), plus `Edit(~/.claude/**)` and `Edit(~/.ccs/**)`. The rest of those dirs
-  stays readable to Read on purpose: the CLI persists oversized tool results under its config
-  dir's `projects/`, and sandboxed Bash cannot reach them (an `allowRead` for that subtree does
-  not re-open it inside the credentials deny), so the agent reads them back with Read — a run
-  that greps such a file from Bash gets `Operation not permitted` and retries.
+  Edit/Write there), plus `Edit(~/.claude/**)` and `Edit(~/.ccs/**)`, and on this checkout's
+  `CLAUDE.md`, `AGENTS.md` and `.claude/**`, so an agent whose cwd is the repo root does not take
+  cc-toolkit's own conventions for those of the project under review.
+- **The paths are absolute.** The sandbox matches only literal paths (`*` and `**` in
+  `allowRead` match nothing), and a `credentials.files` deny cannot be re-opened by `allowRead`
+  at all. `scripts/run-evals.sh` therefore writes `scripts/.evals-isolation.host.json`
+  (git-ignored) from `evals-isolation.json` with this checkout's and this operator's paths, and
+  every config loads that copy — so a config run outside the runner fails to find its settings.
 - **`claude plugin …` / `claude plugins …`** — a Bash deny rule.
 
 Not confined: WebFetch and WebSearch (in-process; `allowedDomains` does not gate them), MCP

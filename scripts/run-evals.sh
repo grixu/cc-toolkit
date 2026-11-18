@@ -66,6 +66,30 @@ export GIT_CONFIG_KEY_1=tag.gpgsign GIT_CONFIG_VALUE_1=false
 # tester keeps each run in a store under the operator's cache dir; an eval run belongs in the
 # sandbox its reset wipes, not among the operator's real runs and their retention count.
 export TESTER_RUNS_DIR="$PWD/plugins/tester/evals/.sandbox/runs"
+# The suites load a copy of evals-isolation.json written here, because the sandbox matches only
+# literal absolute paths, and these differ per worktree and per operator:
+# - agents running from this repository would read its CLAUDE.md and rules as the conventions of
+#   the project under review;
+# - Claude Code saves an oversized tool result under its config dir's projects/, which the
+#   blanket config-dir deny makes unreadable. A credentials deny cannot be re-opened, so the
+#   config dirs move to denyRead and allowRead re-opens only this checkout's project dirs.
+config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+mkdir -p "$config_dir/projects"
+projects="$(cd "$config_dir/projects" && pwd -P)"
+own_project="$projects/$(printf '%s' "$PWD" | sed 's/[^A-Za-z0-9]/-/g')"
+mkdir -p "$own_project"
+allow_read="$(printf '%s\n' "$own_project"* | jq -R . | jq -s .)"
+jq --arg root "$PWD" --argjson allow "$allow_read" '
+  .permissions.deny += ["Read(/\($root)/CLAUDE.md)", "Read(/\($root)/AGENTS.md)", "Read(/\($root)/.claude/**)"]
+  | .sandbox.credentials.files |= map(select(.path != "~/.ccs" and .path != "~/.claude"))
+  | .sandbox.credentials.files += [
+      { path: "\($root)/CLAUDE.md", mode: "deny" },
+      { path: "\($root)/AGENTS.md", mode: "deny" },
+      { path: "\($root)/.claude", mode: "deny" }
+    ]
+  | .sandbox.filesystem.denyRead = ((.sandbox.filesystem.denyRead // []) + ["~/.ccs", "~/.claude"])
+  | .sandbox.filesystem.allowRead = ((.sandbox.filesystem.allowRead // []) + $allow)' \
+  scripts/evals-isolation.json > scripts/.evals-isolation.host.json
 
 bin="./node_modules/.bin/promptfoo"
 if [ ! -x "$bin" ]; then
