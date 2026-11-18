@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 import { choose, type ChoiceRequest } from '../hooks/choose.ts'
-import { stubEnv, stubbedHost } from './host.ts'
+import { failure, stubEnv, stubbedHost } from './host.ts'
 
 const PALETTE = {
   provider: 'openai',
@@ -18,7 +18,6 @@ function request(over: Partial<ChoiceRequest> = {}): ChoiceRequest {
 
 type Asked = { url: string; options: Record<string, string>; state: Record<string, unknown> }
 
-// Answers each choice question with the first listed option the test prefers, or `fallback` when none is listed.
 function backendHost(keys: Record<string, string>, prefer: string[], fallback?: string) {
   const { $, on } = stubbedHost()
   stubEnv(on, keys)
@@ -43,15 +42,6 @@ function haikuHost(reply: string) {
     return { value: { isAnswered: true, text: reply } }
   })
   return { $, prompts }
-}
-
-async function failure(work: () => unknown): Promise<string> {
-  try {
-    await work()
-  } catch (error) {
-    return (error as Error).message
-  }
-  return 'no error'
 }
 
 test('a caller giving both a known model and its effort asks no one', async () => {
@@ -177,6 +167,13 @@ test('a failing backend falls back to Haiku', async () => {
   on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: '' } }))
   on('model.complete', () => ({ value: { isAnswered: true, text: '{"model": "openai/sol", "effort": "high"}' } }))
   expect(await choose($, request())).toMatchObject({ model: 'openai/sol', effort: 'high', chosenBy: 'haiku' })
+})
+
+test('a configured backend without its key falls back to Haiku', async () => {
+  const { $, on } = stubbedHost()
+  stubEnv(on, { TYPESAFE_API_KEY: 'k' })
+  on('model.complete', () => ({ value: { isAnswered: true, text: '{"model": "openai/sol", "effort": "high"}' } }))
+  expect(await choose($, request({ backend: 'gemini' }))).toMatchObject({ model: 'openai/sol', effort: 'high', chosenBy: 'haiku' })
 })
 
 test('a backend answer outside the options falls back to Haiku', async () => {

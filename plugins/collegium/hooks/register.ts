@@ -18,7 +18,7 @@ import {
   whenSettled,
   type RunState,
 } from './runs.ts'
-import type { WriteMode } from './write.ts'
+import { WRITE_MODES } from './write.ts'
 
 const SERVER = 'collegium'
 const RUN = 'collegium_run'
@@ -27,13 +27,14 @@ const RESULT = 'collegium_result'
 
 const ADAPTERS: Record<string, HarnessAdapter> = { codex }
 const NAMES: Record<string, string> = { codex: 'Codex' }
-const WRITE_MODES: readonly WriteMode[] = ['worktree', 'branch', 'merge']
 const MAX_WAIT_SECONDS = 600
+const STATUS_MESSAGE_COUNT = 3
+const STATUS_COMMAND_COUNT = 5
 const RUN_ID = /^\d{8}T\d{6}-[0-9a-f]{6}$/
 const CATALOGUE_PREFIX = 'catalogue:'
 
 // Waits for the exit file, then gives the run's bookkeeping (envelope, write-mode commit) up to 30 s to turn
-// state.json terminal; the time inside `$.process.run` does not count toward the hook's budget (D53).
+// state.json terminal; the time inside `$.process.run` does not count toward the hook's budget.
 const WATCH_SCRIPT =
   'until [ -f exit ]; do sleep 1; done; i=0; while grep -q \'"state": "running"\' state.json && [ "$i" -lt 30 ]; do sleep 1; i=$((i+1)); done'
 
@@ -41,8 +42,7 @@ const RUN_DESCRIPTION =
   'Start a piece of work on another coding agent and model, such as OpenAI Codex, and return at once with a run id. The agent works unattended in the background: read-only on your checkout by default, or in its own git worktree with `write`. Poll with collegium_status, and fetch the result envelope (status, summary, result, assumptions, open_questions) with collegium_result. Without model or effort, a decision model picks them for the task.'
 const STATUS_DESCRIPTION =
   "Show how a Collegium run is going: its state, elapsed time and deadline, model and effort, and the agent's last messages and commands."
-const RESULT_DESCRIPTION =
-  'Return the result of a Collegium run once it ended: its state and envelope, plus the branch, diffstat or worktree of a write-mode run. With wait_seconds (at most 600) it waits that long for the run to end; a run still going returns state "running", so call again. A delivered result removes the run directory.'
+const RESULT_DESCRIPTION = `Return the result of a Collegium run once it ended: its state and envelope, plus the branch, diffstat or worktree of a write-mode run. With wait_seconds (at most ${MAX_WAIT_SECONDS}) it waits that long for the run to end; a run still going returns state "running", so call again. A delivered result removes the run directory.`
 
 const RUN_SCHEMA = {
   type: 'object',
@@ -73,10 +73,10 @@ const RESULT_SCHEMA = {
   },
 }
 
-type Detection = { installed: boolean; version?: string }
+type Detection = Awaited<ReturnType<HarnessAdapter['detect']>>
 
 export function register(on, options) {
-  // Detection is lazy and per session (D13); only a found harness is kept, so installing one mid-session is seen.
+  // Detection is lazy and per session; only a found harness is kept, so installing one mid-session is seen.
   const detected = new Map<string, Detection>()
 
   on('session.start', async ($, e, next) => {
@@ -106,7 +106,7 @@ export function register(on, options) {
     result: `collegium_result failed (${next.error.kind}): ${next.error.message}`,
   }))
 
-  // A notice the host dropped at completion goes out at the next main-thread turn end (D43, D67).
+  // A notice the host dropped at completion goes out at the next main-thread turn end.
   on('turn.complete', async ($, e, next) => {
     const out = await next(e)
     if (e.agentId === undefined) await flushNotices($).catch(() => undefined)
@@ -182,15 +182,13 @@ async function runTool($, e, options: Record<string, unknown> | undefined, detec
     adapter,
     env,
     cwd: e.cwd ?? (await sessionTop($)),
-    model: choice.model,
-    effort: choice.effort,
-    chosenBy: choice.chosenBy,
+    choice,
     write: e.write,
     task: e.task,
     skill: e.skill,
     resultSchema: e.result_schema,
     timeoutMinutes: e.timeout_minutes,
-    // The main thread answering a subagent's notice would take that subagent's result (D76).
+    // The main thread answering a subagent's notice would take that subagent's result.
     notify: e.agentId === undefined,
   })
   return 'error' in started ? started.error : JSON.stringify(started)
@@ -212,7 +210,7 @@ function checkInput(e): string | null {
   return null
 }
 
-// The first harness in the user's order that is enabled (D11); with none enabled, the first one, so the caller
+// The first harness in the user's order that is enabled; with none enabled, the first one, so the caller
 // hears why it cannot run.
 function pickHarness(config: Config, options: Record<string, unknown> | undefined): string {
   const known = Object.keys(ADAPTERS)
@@ -262,8 +260,8 @@ async function statusTool($, e): Promise<string> {
     deadlineSec: seconds(state.deadline - state.startedAt),
     model: state.model,
     effort: state.effort,
-    lastMessages: events.filter((ev) => ev.kind === 'message').slice(-3).map((ev) => ev.text),
-    lastCommands: events.filter((ev) => ev.kind === 'command').slice(-5).map((ev) => ev.text),
+    lastMessages: events.filter((ev) => ev.kind === 'message').slice(-STATUS_MESSAGE_COUNT).map((ev) => ev.text),
+    lastCommands: events.filter((ev) => ev.kind === 'command').slice(-STATUS_COMMAND_COUNT).map((ev) => ev.text),
   })
 }
 
@@ -273,10 +271,10 @@ async function resultTool($, e): Promise<string> {
   if (typeof found === 'string') return found
   const { runDir } = found
   let state = found.state
-  const wait = Math.min(MAX_WAIT_SECONDS, Math.max(0, Number(e.wait_seconds ?? 0) || 0))
+  const wait = Math.min(MAX_WAIT_SECONDS, Math.max(0, Number(e.wait_seconds) || 0))
 
   if (!isTerminal(state.state) && wait > 0) {
-    // Rejecting at its timeout means the run is still going, never an error (API-3).
+    // Rejecting at its timeout means the run is still going, never an error.
     await $.process.run(['sh', '-c', WATCH_SCRIPT], { cwd: runDir, timeoutMs: wait * 1000 }).catch(() => undefined)
     state = (await readRun($, state.id)) ?? state
   }

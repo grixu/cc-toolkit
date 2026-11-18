@@ -1,4 +1,4 @@
-import { withoutTrailingSlash, type Palette } from './harness.ts'
+import { isObject, withoutTrailingSlash, type Palette } from './harness.ts'
 
 export const TIERS = ['high', 'medium', 'low'] as const
 export type Tier = (typeof TIERS)[number]
@@ -31,11 +31,7 @@ const MODEL_ID = /^[^/\s]+\/\S+$/
 
 class ConfigError extends Error {}
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function object(value: unknown, field: string, allowed?: readonly string[]): Record<string, unknown> {
+function expectObject(value: unknown, field: string, allowed?: readonly string[]): Record<string, unknown> {
   if (!isObject(value)) throw new ConfigError(`${field} must be an object`)
   const extra = allowed && Object.keys(value).find((key) => !allowed.includes(key))
   if (extra) throw new ConfigError(`${field}.${extra} is not a known field`)
@@ -53,10 +49,10 @@ function stringList(value: unknown, field: string, pattern?: RegExp): string[] {
 }
 
 function parsePalette(value: unknown, field: string): FilePalette {
-  const palette = object(value, field, ['tiers', 'exclude'])
+  const palette = expectObject(value, field, ['tiers', 'exclude'])
   const out: FilePalette = {}
   if (palette.tiers !== undefined) {
-    const tiers = object(palette.tiers, `${field}.tiers`, TIERS)
+    const tiers = expectObject(palette.tiers, `${field}.tiers`, TIERS)
     for (const [tier, model] of Object.entries(tiers)) {
       if (typeof model !== 'string' || !MODEL_ID.test(model)) {
         throw new ConfigError(`${field}.tiers.${tier} must be a provider/model id`)
@@ -69,26 +65,26 @@ function parsePalette(value: unknown, field: string): FilePalette {
 }
 
 function parseFields(value: unknown): FileConfig {
-  const root = object(value, '$', ['harnesses', 'decision'])
+  const root = expectObject(value, '$', ['harnesses', 'decision'])
   const out: FileConfig = { palettes: {} }
   if (root.harnesses !== undefined) {
-    const harnesses = object(root.harnesses, 'harnesses')
+    const harnesses = expectObject(root.harnesses, 'harnesses')
     for (const [key, entry] of Object.entries(harnesses)) {
       const field = `harnesses.${key}`
       if (key === 'order' || key === 'disabled') {
         out[key] = stringList(entry, field)
         continue
       }
-      const harness = object(entry, field, ['palettes'])
+      const harness = expectObject(entry, field, ['palettes'])
       out.palettes[key] = {}
       if (harness.palettes === undefined) continue
-      for (const [provider, palette] of Object.entries(object(harness.palettes, `${field}.palettes`))) {
+      for (const [provider, palette] of Object.entries(expectObject(harness.palettes, `${field}.palettes`))) {
         out.palettes[key][provider] = parsePalette(palette, `${field}.palettes.${provider}`)
       }
     }
   }
   if (root.decision !== undefined) {
-    const decision = object(root.decision, 'decision', ['backend'])
+    const decision = expectObject(root.decision, 'decision', ['backend'])
     if (decision.backend !== undefined) {
       if (!BACKENDS.includes(decision.backend as Backend)) {
         throw new ConfigError(`decision.backend must be one of ${BACKENDS.join(', ')}`)

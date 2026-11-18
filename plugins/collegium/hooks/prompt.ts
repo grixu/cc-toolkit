@@ -1,4 +1,4 @@
-import { withoutTrailingSlash } from './harness.ts'
+import { isObject, withoutTrailingSlash } from './harness.ts'
 
 export const PREAMBLE =`You run unattended: nobody will answer a question. Never ask one. When something is unclear,
 choose, and record the choice under assumptions. If you truly cannot continue, finish with
@@ -20,13 +20,15 @@ export type RunInput = {
 
 export type PreparedRun = { promptPath: string; schemaPath: string } | { error: string }
 
+export const ENVELOPE_STATUSES = ['done', 'blocked', 'failed'] as const
+
 export function envelopeSchema(resultSchema?: Schema): Schema {
   return {
     type: 'object',
     additionalProperties: false,
     required: ['status', 'summary', 'result', 'assumptions', 'open_questions'],
     properties: {
-      status: { type: 'string', enum: ['done', 'blocked', 'failed'] },
+      status: { type: 'string', enum: ENVELOPE_STATUSES },
       summary: { type: 'string' },
       result: resultSchema ?? { type: ['string', 'null'] },
       assumptions: { type: 'array', items: { type: 'string' } },
@@ -81,10 +83,6 @@ function checkNode(node: unknown, at: string): string | null {
 function isObjectSchema(node: Schema): boolean {
   const type = node.type
   return type === 'object' || (Array.isArray(type) && type.includes('object')) || isObject(node.properties)
-}
-
-function isObject(value: unknown): value is Schema {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 export function substituteSkill(text: string, args: string, skillPath: string): string {

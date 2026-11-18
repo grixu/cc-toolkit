@@ -36,13 +36,11 @@ export async function choose($, req: ChoiceRequest): Promise<Choice> {
   if (given && req.effort) return { model: given.id, effort: req.effort, chosenBy: 'caller', source: { model: 'caller', effort: 'caller' } }
 
   const candidates = given ? [] : modelCandidates(req)
-  const provider = await decisionProvider($, req.backend)
-  if (provider) {
-    try {
-      return await askBackend($, provider, req, given, candidates)
-    } catch {
-      // A failed or unusable backend answer gets the same fallback as a missing key.
-    }
+  try {
+    const provider = await decisionProvider($, req.backend)
+    if (provider) return await askBackend($, provider, req, given, candidates)
+  } catch {
+    // A configured backend without its key, or a failed or unusable answer, gets the same fallback as no key at all.
   }
   return askHaiku($, req, given, candidates)
 }
@@ -68,7 +66,7 @@ function modelCandidates(req: ChoiceRequest): Candidate[] {
   return fitting
 }
 
-// Keys come from the environment only (D56), and two keys under `auto` take TypeSafe rather than asking anyone.
+// Keys come from the environment only, and two keys under `auto` take TypeSafe rather than asking anyone.
 async function decisionProvider($, backend: Backend): Promise<DecisionProvider | undefined> {
   const keys = await providerKeys($, undefined)
   if (!hasAnyKey(keys)) return undefined
@@ -114,7 +112,7 @@ function sources(req: ChoiceRequest): Choice['source'] {
 const HAIKU_SYSTEM =
   'You choose the model and reasoning effort for a coding agent run. Reply with only a JSON object {"model": "<id>", "effort": "<effort>"} using an id and an effort from the list given.'
 
-// One call for both values; an answer outside the allowed set leaves what was missing to the harness's defaults (D59).
+// One call for both values; an answer outside the allowed set leaves what was missing to the harness's defaults.
 async function askHaiku($, req: ChoiceRequest, given: Model | undefined, candidates: Candidate[]): Promise<Choice> {
   const allowed = given ? [given] : candidates.map((c) => c.model)
   const lines = allowed.map((m) => `- ${describe(m)}`)

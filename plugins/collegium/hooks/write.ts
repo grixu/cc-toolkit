@@ -1,6 +1,7 @@
 import { withoutTrailingSlash, type ProcessResult } from './harness.ts'
 
-export type WriteMode ='worktree' | 'branch' | 'merge'
+export const WRITE_MODES = ['worktree', 'branch', 'merge'] as const
+export type WriteMode = (typeof WRITE_MODES)[number]
 
 export type WriteRun = {
   mode: WriteMode

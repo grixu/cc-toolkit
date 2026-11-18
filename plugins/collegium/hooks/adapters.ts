@@ -14,7 +14,7 @@ function unknownHarness(adapter: HarnessAdapter): never {
   throw new Error(`unknown harness ${adapter.id}`)
 }
 
-export async function detect($, adapter: HarnessAdapter): Promise<{ installed: boolean; version?: string; path?: string }> {
+export async function detect($, adapter: HarnessAdapter): ReturnType<HarnessAdapter['detect']> {
   if (adapter.id === 'codex') return codexDetect($)
   return unknownHarness(adapter)
 }
@@ -29,7 +29,7 @@ export async function prepare($, adapter: HarnessAdapter, runId: string): Promis
   return unknownHarness(adapter)
 }
 
-export async function loginStatus($, adapter: HarnessAdapter, env: Record<string, string>): Promise<{ loggedIn: boolean; fix: string }> {
+export async function loginStatus($, adapter: HarnessAdapter, env: Record<string, string>): ReturnType<HarnessAdapter['loginStatus']> {
   if (adapter.id === 'codex') return codexLoginStatus($, env)
   return unknownHarness(adapter)
 }

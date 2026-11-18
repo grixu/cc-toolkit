@@ -55,3 +55,39 @@ export function stubbedHost() {
 export function stubEnv(on: (name: string, stub: Stub) => void, vars: Record<string, string>) {
   on('env.get', (_, e) => ({ value: vars[e.name] }))
 }
+
+export const CALLER = '/work/repo'
+export const ROOT = '/work/repo.collegium'
+export const NOW = Date.UTC(2026, 10, 18, 8, 33, 36)
+export const ENVELOPE = { status: 'done', summary: 'Reviewed it', result: 'fine', assumptions: [], open_questions: [] }
+
+export type End = { code: number | null; signal: string | null }
+export type GitReply = { exitCode?: number; stdout?: string; stderr?: string }
+
+export const ok = (stdout = '') => ({ value: { exitCode: 0, stdout, stderr: '' } })
+export const exit = (exitCode: number) => ({ value: { exitCode, stdout: '', stderr: '' } })
+export const notice = (id: string, state: string) => `Collegium run ${id} finished: ${state}. Call collegium_result.`
+
+export function removeUnder(files: Record<string, string>, dir: string, keep?: string) {
+  for (const key of Object.keys(files)) {
+    if (!key.startsWith(`${dir}/`)) continue
+    if (keep && key.startsWith(`${dir}/${keep}/`)) continue
+    delete files[key]
+  }
+}
+
+export function fakeGitReply(replies: Record<string, GitReply | GitReply[]>, args: string[]): GitReply {
+  const joined = args.join(' ')
+  const key = Object.keys(replies).find((k) => joined.startsWith(k))
+  const entry = key ? replies[key] : {}
+  return Array.isArray(entry) ? (entry.length > 1 ? entry.shift()! : entry[0]) : entry
+}
+
+export async function failure(work: () => unknown): Promise<string> {
+  try {
+    await work()
+  } catch (error) {
+    return (error as Error).message
+  }
+  return 'no error'
+}

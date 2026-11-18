@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Manual live check of collegium against real Codex: drives `claude -p` with this plugin loaded and
-# prints each run's state and envelope. Needs `claude`, a logged-in `codex` enabled in the collegium
-# config, `git` and `jq`. Every run works in a scratch repository under a fresh temporary directory,
+# prints each run's state and envelope. Needs `claude`, a logged-in `codex` enabled in /plugin
+# configure, `git` and `jq`. Every run works in a scratch repository under a fresh temporary directory,
 # which is kept so its logs can be read afterwards.
 #
 # Usage: live-check.sh [readonly] [branch] [skill] [timeout]   (no argument runs all four)

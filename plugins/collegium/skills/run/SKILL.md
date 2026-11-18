@@ -60,15 +60,16 @@ answers "unknown id".
 
 ## 5. Show the result
 
-`collegium_result` returns `{ id, state, envelope?, branch?, diffstat?, worktree?, reason? }`.
+`collegium_result` returns `{ id, state, envelope?, branch?, diffstat?, worktree?, reason?, note? }`.
 Show, in this order and leaving out what is absent:
 
-1. `Run <id>: <state>`, with `reason` beside a `failed` state.
+1. `Run <id>: <state>`, with `reason` beside a `failed` or `conflict` state.
 2. The envelope's `status` and `summary`.
 3. The envelope's `result`, in full: a string as Markdown, anything else as a fenced JSON block.
 4. `assumptions` and `open_questions`, each as a list, when not empty.
-5. For a write-mode run: the `branch` and its `diffstat`, or the `worktree` path. On `conflict`,
-   say the merge was aborted and the branch is kept for the user to merge.
+5. For a write-mode run: the `branch` and its `diffstat`, or the `worktree` path, and the `note`.
+   On `conflict`, say the branch is kept for the user to merge, and say the merge was aborted only
+   when `reason` names a merge conflict.
 
 Present the envelope as the other agent's work, not as your own conclusion: do not act on its
 result or answer its open questions unless the user asks.

@@ -1,12 +1,10 @@
 import { expect, mock, test } from 'claude-code/testing'
+import { CALLER, ENVELOPE, NOW, ROOT, exit, notice, ok, removeUnder, type End } from './host.ts'
 
 const RUN = 'mcp__collegium__collegium_run'
 const STATUS = 'mcp__collegium__collegium_status'
 const RESULT = 'mcp__collegium__collegium_result'
 
-const CALLER = '/work/repo'
-const ROOT = '/work/repo.collegium'
-const NOW = Date.UTC(2026, 10, 18, 8, 33, 36)
 const SEEDED = '20261118T080000-abc123'
 const LIVE_PID = 4242
 
@@ -16,10 +14,8 @@ const MODELS = JSON.stringify({
     { slug: 'gpt-6-luna', visibility: 'list', default_reasoning_level: 'low', supported_reasoning_levels: [{ effort: 'low' }] },
   ],
 })
-const ENVELOPE = { status: 'done', summary: 'Reviewed it', result: 'fine', assumptions: [], open_questions: [] }
 const TERMINAL_TURN = { answer: '', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
 
-type End = { code: number | null; signal: string | null }
 type Submit = 'accept' | 'drop'
 type Options = {
   files?: Record<string, string>
@@ -27,14 +23,6 @@ type Options = {
   loggedIn?: boolean
   submits?: Submit[]
   watcher?: 'timeout' | 'ends'
-}
-
-const ok = (stdout = '') => ({ value: { exitCode: 0, stdout, stderr: '' } })
-const exit = (exitCode: number) => ({ value: { exitCode, stdout: '', stderr: '' } })
-const notice = (id: string, state: string) => `Collegium run ${id} finished: ${state}. Call collegium_result.`
-
-function removeUnder(files: Record<string, string>, dir: string) {
-  for (const key of Object.keys(files)) if (key.startsWith(`${dir}/`)) delete files[key]
 }
 
 function seededState(extra: Record<string, unknown> = {}) {
@@ -55,8 +43,6 @@ function seededState(extra: Record<string, unknown> = {}) {
   })
 }
 
-// The host beneath the mod: an in-memory file system, a `codex` and `git` that answer by argument, a spawned
-// child the test ends, and a submit that answers from a queue.
 function host(on, o: Options = {}) {
   const files: Record<string, string> = { ...o.files }
   const runs: { argv: string[]; init?: Record<string, unknown> }[] = []
@@ -157,11 +143,12 @@ test('a detected Codex that is not enabled is refused with the enable instructio
   expect(launched(h)).toBe(false)
 })
 
-test('a missing Codex is refused before the enablement check', { options: { codex: true } }, async ($, on) => {
+test('a missing Codex is refused before the enablement check', async ($, on) => {
   const h = host(on, { installed: false })
   const out = await $.tool.call({ tool: RUN, task: 'Review it.' })
 
   expect(out.result).toContain('Codex is not installed')
+  expect(out.result).not.toContain('enable it')
   expect(launched(h)).toBe(false)
 })
 
@@ -217,6 +204,16 @@ test('a relative cwd is refused', { options: { codex: true } }, async ($, on) =>
   expect(launched(h)).toBe(false)
 })
 
+test('an unknown write mode and a timeout under a minute are refused', { options: { codex: true } }, async ($, on) => {
+  const h = host(on)
+  const write = await $.tool.call({ tool: RUN, task: 'Review it.', write: 'rebase' })
+  const timeout = await $.tool.call({ tool: RUN, task: 'Review it.', timeout_minutes: 0 })
+
+  expect(write.result).toBe('unknown write mode rebase; use one of worktree, branch, merge')
+  expect(timeout.result).toBe('timeout_minutes must be a number of at least 1')
+  expect(launched(h)).toBe(false)
+})
+
 test('a run starts at once, returns its id and runs Codex read-only in the session checkout', { options: { codex: true } }, async ($, on) => {
   const h = host(on)
   const out = await $.tool.call({ tool: RUN, task: 'Review it.', model: 'openai/gpt-6.1-sol', effort: 'high' })
@@ -230,7 +227,6 @@ test('a run starts at once, returns its id and runs Codex read-only in the sessi
   expect(argv.slice(argv.indexOf('-C'), argv.indexOf('-C') + 4)).toEqual(['-C', CALLER, '-s', 'read-only'])
   expect(codexCalls(h, 'login status')).toHaveLength(1)
 
-  // The catalogue is read once and kept in the store.
   await $.tool.call({ tool: RUN, task: 'Again.', model: 'openai/gpt-6.1-sol', effort: 'high' })
   expect(codexCalls(h, 'debug models')).toHaveLength(1)
   expect(codexCalls(h, '--version')).toHaveLength(1)

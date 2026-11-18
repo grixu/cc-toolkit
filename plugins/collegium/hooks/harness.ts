@@ -18,6 +18,10 @@ export function withoutTrailingSlash(path: string): string {
   return path.replace(/\/+$/, '')
 }
 
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export type RunEvent ={ kind: 'message' | 'command' | 'warning' | 'failed'; text: string; at: number }
 
 export interface RunSpec {

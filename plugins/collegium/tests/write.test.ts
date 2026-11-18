@@ -1,26 +1,23 @@
 import { expect, test } from 'claude-code/testing'
 import { finishWrite, prepareWrite, type WriteMode } from '../hooks/write.ts'
-import { stubbedHost } from './host.ts'
+import { fakeGitReply, stubbedHost, type GitReply } from './host.ts'
 
 const CALLER = '/work/repo'
 const RUN_DIR = '/work/repo.collegium/r1'
 const WORKTREE = `${RUN_DIR}/worktree`
 
-type Reply = { exitCode?: number; stdout?: string; stderr?: string }
 type GitCall = { cwd: string; args: string[] }
 
 const NO_MERGE_HEAD = { 'rev-parse -q --verify MERGE_HEAD': { exitCode: 1 } }
 
 // A list of replies is consumed one call at a time, and its last reply repeats.
-function useFakeGit(on, replies: Record<string, Reply | Reply[]> = {}): GitCall[] {
+function useFakeGit(on, replies: Record<string, GitReply | GitReply[]> = {}): GitCall[] {
   const calls: GitCall[] = []
   const all = { ...NO_MERGE_HEAD, ...replies }
   on('process.run', ($, e) => {
     const args: string[] = e.argv.slice(1)
     calls.push({ cwd: e.init?.cwd, args })
-    const key = Object.keys(all).find((k) => args.join(' ').startsWith(k))
-    const entry = key ? all[key] : {}
-    const reply = Array.isArray(entry) ? (entry.length > 1 ? entry.shift() : entry[0]) : entry
+    const reply = fakeGitReply(all, args)
     return { value: { exitCode: reply.exitCode ?? 0, stdout: reply.stdout ?? '', stderr: reply.stderr ?? '' } }
   })
   return calls

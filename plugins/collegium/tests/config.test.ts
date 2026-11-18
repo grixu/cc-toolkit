@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 import { effectivePalette, isEnabled, loadConfig, mergeConfig, parseConfig } from '../hooks/config.ts'
-import { stubbedHost } from './host.ts'
+import { failure, stubbedHost } from './host.ts'
 
 const USER_FILE = '/data/collegium/config.json'
 const PROJECT_FILE = '/repo/.claude/collegium.json'
@@ -11,15 +11,6 @@ function hostWith(files: Record<string, string>) {
   on('fs.exists', (_, e) => ({ value: e.path in files }))
   on('fs.read', (_, e) => (e.path in files ? { value: files[e.path] } : { deny: `ENOENT: ${e.path}` }))
   return $
-}
-
-async function failure(work: () => unknown): Promise<string> {
-  try {
-    await work()
-  } catch (error) {
-    return (error as Error).message
-  }
-  return 'no error'
 }
 
 const parse = (value: unknown) => parseConfig(JSON.stringify(value), 'f.json')
@@ -106,6 +97,18 @@ test('a file that is not JSON or cannot be read is an error naming it', async ()
   on('fs.exists', () => ({ value: true }))
   on('fs.read', () => ({ deny: 'EACCES: permission denied' }))
   expect(await failure(() => loadConfig($))).toContain(`cannot read config ${USER_FILE}: EACCES`)
+})
+
+test('a host env without CLAUDE_PLUGIN_DATA or CLAUDE_PROJECT_DIR is an error naming the variable', async () => {
+  const withEnv = (env: Record<string, string>) => {
+    const { $, on } = stubbedHost()
+    on('process.hookEnv', () => ({ value: env }))
+    return $
+  }
+  expect(await failure(() => loadConfig(withEnv({ CLAUDE_PROJECT_DIR: '/repo' })))).toBe('cannot locate the user config: CLAUDE_PLUGIN_DATA is not set')
+  expect(await failure(() => loadConfig(withEnv({ CLAUDE_PLUGIN_DATA: '/data/collegium' })))).toBe(
+    'cannot locate the project config: CLAUDE_PROJECT_DIR is not set',
+  )
 })
 
 const model = (id: string, hidden = false) => ({ id, hidden, efforts: ['low', 'high'], defaultEffort: 'high' })

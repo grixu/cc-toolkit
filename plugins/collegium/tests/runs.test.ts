@@ -1,18 +1,10 @@
 import { expect, test } from 'claude-code/testing'
 import { codex } from '../hooks/codex.ts'
 import { flushNotices, newRunId, pendingNoticeIds, removeRun, startRun, sweepOnce, sweepRuns, whenSettled, type StartRequest } from '../hooks/runs.ts'
-import { stubbedHost } from './host.ts'
+import { CALLER, ENVELOPE, NOW, ROOT, fakeGitReply, notice, removeUnder, stubbedHost, type End, type GitReply } from './host.ts'
 
-const CALLER = '/work/repo'
-const ROOT = '/work/repo.collegium'
-const NOW = Date.UTC(2026, 10, 18, 8, 33, 36)
-
-type Reply = { exitCode?: number; stdout?: string; stderr?: string }
 type Run = { argv: string[]; cwd?: string }
-type End = { code: number | null; signal: string | null }
 type SubmitAnswer = 'accept' | 'drop' | 'reject'
-
-const ENVELOPE = { status: 'done', summary: 'Reviewed it', result: 'fine', assumptions: [], open_questions: [] }
 
 function fakeChild(stderr = 'starting\n') {
   let finish: (end: End) => void = () => {}
@@ -24,24 +16,15 @@ function fakeChild(stderr = 'starting\n') {
   return { gen, finish: (end: End) => finish(end) }
 }
 
-function removeUnder(files: Record<string, string>, dir: string, keep?: string) {
-  for (const key of Object.keys(files)) {
-    if (!key.startsWith(`${dir}/`)) continue
-    if (keep && key.startsWith(`${dir}/${keep}/`)) continue
-    delete files[key]
-  }
-}
-
-// A host with an in-memory file system, a git that answers by argument prefix (a list is consumed one call at a
-// time, its last reply repeating), `kill` against a set of live pids, and a submit that answers from a queue.
-function fixture(options: { files?: Record<string, string>; git?: Record<string, Reply | Reply[]>; alive?: number[]; submits?: SubmitAnswer[]; stderr?: string } = {}) {
+// A git reply list is consumed one call at a time, and its last reply repeats.
+function fixture(options: { files?: Record<string, string>; git?: Record<string, GitReply | GitReply[]>; alive?: number[]; submits?: SubmitAnswer[]; stderr?: string } = {}) {
   const { $, on, timers } = stubbedHost()
   const files: Record<string, string> = { ...options.files }
   const runs: Run[] = []
   const spawned: Record<string, any>[] = []
   const submitted: string[] = []
   const answers = [...(options.submits ?? [])]
-  const git: Record<string, Reply | Reply[]> = { 'rev-parse --show-toplevel': { stdout: `${CALLER}\n` }, ...options.git }
+  const git: Record<string, GitReply | GitReply[]> = { 'rev-parse --show-toplevel': { stdout: `${CALLER}\n` }, ...options.git }
   const child = fakeChild(options.stderr)
 
   on('session.root', () => ({ value: CALLER }))
@@ -75,7 +58,7 @@ function fixture(options: { files?: Record<string, string>; git?: Record<string,
   on('process.run', (_, e) => {
     const argv: string[] = e.argv
     runs.push({ argv, cwd: e.init?.cwd })
-    const reply = (r: Reply = {}) => ({ value: { exitCode: r.exitCode ?? 0, stdout: r.stdout ?? '', stderr: r.stderr ?? '' } })
+    const reply = (r: GitReply = {}) => ({ value: { exitCode: r.exitCode ?? 0, stdout: r.stdout ?? '', stderr: r.stderr ?? '' } })
     if (argv[0] === 'kill' && argv[1] === '-0') return reply({ exitCode: (options.alive ?? []).includes(Number(argv[2])) ? 0 : 1 })
     if (argv[0] === 'kill') {
       child.finish({ code: null, signal: 'SIGTERM' })
@@ -89,12 +72,7 @@ function fixture(options: { files?: Record<string, string>; git?: Record<string,
       removeUnder(files, argv[1], 'worktree')
       return reply()
     }
-    if (argv[0] === 'git') {
-      const args = argv.slice(1).join(' ')
-      const key = Object.keys(git).find((k) => args.startsWith(k))
-      const entry = key ? git[key] : {}
-      return reply(Array.isArray(entry) ? (entry.length > 1 ? entry.shift() : entry[0]) : entry)
-    }
+    if (argv[0] === 'git') return reply(fakeGitReply(git, argv.slice(1)))
     return reply()
   })
   on('prompt.submit', (_, e) => {
@@ -115,16 +93,12 @@ function request(extra: Partial<StartRequest> = {}): StartRequest {
     adapter: codex,
     env: {},
     cwd: CALLER,
-    model: 'openai/gpt-6.1-sol',
-    effort: 'high',
-    chosenBy: 'caller',
+    choice: { model: 'openai/gpt-6.1-sol', effort: 'high', chosenBy: 'caller', source: { model: 'caller', effort: 'caller' } },
     task: 'Review it.',
     notify: true,
     ...extra,
   }
 }
-
-const notice = (id: string, state: string) => `Collegium run ${id} finished: ${state}. Call collegium_result.`
 
 test('a run id is the UTC second and six hex digits', () => {
   expect(newRunId(NOW)).toMatch(/^20261118T083336-[0-9a-f]{6}$/)
@@ -237,6 +211,27 @@ test('a final message that is not an envelope fails the run as unparsable', asyn
   expect(await whenSettled(req.id)).toMatchObject({ state: 'failed', reason: 'unparsable final message' })
 })
 
+test('a harness that exits 0 with no event and no final message fails the run as unparsable', async () => {
+  const f = fixture()
+  const req = request()
+  await startRun(f.$, req)
+
+  f.child.finish({ code: 0, signal: null })
+
+  expect(await whenSettled(req.id)).toMatchObject({ state: 'failed', reason: 'unparsable final message', exitCode: 0 })
+})
+
+test('a harness that exits non-zero after events but no failed one fails the run as unparsable', async () => {
+  const f = fixture()
+  const req = request()
+  await startRun(f.$, req)
+
+  f.files[`${ROOT}/${req.id}/events.jsonl`] = `${JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'hi' } })}\n`
+  f.child.finish({ code: 1, signal: null })
+
+  expect(await whenSettled(req.id)).toMatchObject({ state: 'failed', reason: 'unparsable final message', exitCode: 1 })
+})
+
 test('the deadline kills the harness by its recorded pid and ends the run timeout', async () => {
   const f = fixture()
   const req = request({ timeoutMinutes: 5 })
@@ -280,6 +275,54 @@ test('a merge run whose merge conflicts ends conflict with its branch kept', asy
   expect(final?.reason).toContain('Merge conflict in src/a.ts')
   expect(f.runs.some((r) => r.argv.join(' ') === `git commit -m ${ENVELOPE.summary}`)).toBe(true)
   expect(f.submitted).toEqual([notice(req.id, 'conflict')])
+})
+
+test('a branch run whose commit fails ends failed with git\'s message and its branch', async () => {
+  const f = fixture({
+    git: {
+      'status --porcelain': { stdout: ' M src/a.ts\n' },
+      commit: { exitCode: 128, stderr: 'error: gpg failed to sign the data\n' },
+    },
+  })
+  const req = request({ write: 'branch' })
+  await startRun(f.$, req)
+
+  f.files[`${ROOT}/${req.id}/last.json`] = JSON.stringify(ENVELOPE)
+  f.child.finish({ code: 0, signal: null })
+  const final = await whenSettled(req.id)
+
+  expect(final).toMatchObject({ state: 'failed', branch: `collegium/${req.id}`, envelope: ENVELOPE })
+  expect(final?.reason).toContain('gpg failed to sign the data')
+  expect(f.runs.some((r) => r.argv.join(' ').startsWith('git worktree remove'))).toBe(false)
+})
+
+test('a worktree run that ends done keeps its worktree in the state', async () => {
+  const f = fixture({ git: { 'status --porcelain': { stdout: '?? new.ts\n' } } })
+  const req = request({ write: 'worktree' })
+  const runDir = `${ROOT}/${req.id}`
+  await startRun(f.$, req)
+
+  f.files[`${runDir}/last.json`] = JSON.stringify(ENVELOPE)
+  f.child.finish({ code: 0, signal: null })
+  const final = await whenSettled(req.id)
+
+  expect(final).toMatchObject({ state: 'done', mode: 'worktree', worktree: `${runDir}/worktree` })
+  expect(final?.branch).toBeUndefined()
+  expect(final?.note).toBeUndefined()
+})
+
+test('a merge run that ends blocked is neither committed nor merged, and says so', async () => {
+  const f = fixture({ git: { 'status --porcelain': { stdout: ' M src/a.ts\n' } } })
+  const req = request({ write: 'merge' })
+  await startRun(f.$, req)
+
+  f.files[`${ROOT}/${req.id}/last.json`] = JSON.stringify({ ...ENVELOPE, status: 'blocked' })
+  f.child.finish({ code: 0, signal: null })
+  const final = await whenSettled(req.id)
+
+  expect(final).toMatchObject({ state: 'blocked', branch: `collegium/${req.id}` })
+  expect(final?.note).toBe(`The run ended blocked, so nothing was committed or merged; collegium/${req.id} stays as it started.`)
+  expect(f.runs.some((r) => ['commit', 'merge'].includes(r.argv[1]))).toBe(false)
 })
 
 test('a worktree that cannot be added is an error before launch and leaves no run directory', async () => {

@@ -1,12 +1,13 @@
 import { finalMessage } from './adapters.ts'
+import type { Choice } from './choose.ts'
 import { withoutTrailingSlash, type HarnessAdapter, type RunEvent } from './harness.ts'
-import { prepareRun } from './prompt.ts'
+import { ENVELOPE_STATUSES, prepareRun } from './prompt.ts'
 import { finishWrite, prepareWrite, type WriteMode, type WriteRun } from './write.ts'
 
 export type RunStateName = 'running' | 'done' | 'blocked' | 'failed' | 'timeout' | 'conflict'
 
 export type Envelope = {
-  status: 'done' | 'blocked' | 'failed'
+  status: (typeof ENVELOPE_STATUSES)[number]
   summary: string
   result: unknown
   assumptions: string[]
@@ -39,15 +40,13 @@ export type StartRequest = {
   adapter: HarnessAdapter
   env: Record<string, string> // what the adapter's prepare returned for this run
   cwd: string // the caller's checkout
-  model?: string
-  effort?: string
-  chosenBy: string
+  choice: Choice
   write?: WriteMode
   task: string
   skill?: string
   resultSchema?: Record<string, unknown>
   timeoutMinutes?: number
-  // Only a run started from the main loop is notified (D76): a subagent waits with collegium_result itself.
+  // Only a run started from the main loop is notified: a subagent waits with collegium_result itself.
   notify: boolean
 }
 
@@ -61,13 +60,30 @@ export type StartedRun = {
   runDir: string
 }
 
+type Child = AsyncGenerator<{ stream: string; text: string }, { code?: number | null; signal?: string | null } | undefined>
+
+type ExitStatus = { code: number | null; signal: string | null; stderr: string }
+
+// One started run's bookkeeping; `save` chains the writes of state.json so they land in order.
+type Supervisor = {
+  req: StartRequest
+  runDir: string
+  dir: string // where the harness works: the caller's checkout, or the run's worktree
+  writeRun: WriteRun | null
+  prompt: string
+  timeoutMinutes: number
+  state: RunState
+  save: (patch: Partial<RunState>) => Promise<void>
+  timedOut: boolean
+}
+
 export const DEFAULT_TIMEOUT_MINUTES = 60
 const TERMINAL: readonly RunStateName[] = ['done', 'blocked', 'failed', 'timeout', 'conflict']
 const EVENTS_TAIL_BYTES = 1_048_576
 const STDERR_TAIL_CHARS = 2000
 
-// `state.json` is the source of truth (D57); these only cache what this session started.
-const cache = new Map<string, RunState>()
+// `state.json` is the source of truth; these only cache what this session started.
+const sessionRuns = new Map<string, RunState>()
 const settled = new Map<string, Promise<RunState>>()
 const pendingNotices = new Map<string, string>()
 let swept = false
@@ -103,11 +119,6 @@ export async function readRun($, id: string): Promise<RunState | null> {
   return readState($, await runDirFor($, id))
 }
 
-/** Resolves once a run this session started reaches a terminal state; undefined for any other run. */
-export function whenSettled(id: string): Promise<RunState> | undefined {
-  return settled.get(id)
-}
-
 async function readState($, runDir: string): Promise<RunState | null> {
   const text = await $.fs.read(`${runDir}/state.json`).catch(() => null)
   if (typeof text !== 'string') return null
@@ -118,10 +129,9 @@ async function readState($, runDir: string): Promise<RunState | null> {
   }
 }
 
-async function readPid($, runDir: string): Promise<number | null> {
-  const text = await $.fs.read(`${runDir}/pid`).catch(() => null)
-  const pid = typeof text === 'string' ? Number.parseInt(text.trim(), 10) : NaN
-  return Number.isInteger(pid) && pid > 0 ? pid : null
+/** Resolves once a run this session started reaches a terminal state; undefined for any other run. */
+export function whenSettled(id: string): Promise<RunState> | undefined {
+  return settled.get(id)
 }
 
 /** The parsed events of the tail of `events.jsonl`; a long run's file can pass what one read returns. */
@@ -137,17 +147,18 @@ export async function tailEvents($, adapter: HarnessAdapter, runDir: string): Pr
     .filter((event): event is RunEvent => event !== null)
 }
 
-function parseEnvelope(text: string | null): Envelope | null {
-  if (text === null) return null
-  try {
-    const value = JSON.parse(text)
-    return ['done', 'blocked', 'failed'].includes(value?.status) ? value : null
-  } catch {
-    return null
-  }
+export async function startRun($, req: StartRequest): Promise<StartedRun | { error: string }> {
+  const run = await prepareFiles($, req)
+  if ('error' in run) return run
+  const child = spawnHarness($, run)
+  const deadline = armDeadline($, run, child)
+  // Not awaited: the exit wait is the child's life and runs on after the handler returns.
+  settled.set(req.id, awaitExit(child, deadline).then((exit) => recordOutcome($, run, exit)))
+  const { id, harness, model, effort, chosenBy, mode } = run.state
+  return { id, harness, model, effort, chosenBy, mode, runDir: run.runDir }
 }
 
-export async function startRun($, req: StartRequest): Promise<StartedRun | { error: string }> {
+async function prepareFiles($, req: StartRequest): Promise<Supervisor | { error: string }> {
   const runDir = await runDirFor($, req.id)
   const prepared = await prepareRun({ read: (p) => $.fs.read(p), write: (p, t) => $.fs.write(p, t) }, runDir, {
     task: req.task,
@@ -173,12 +184,13 @@ export async function startRun($, req: StartRequest): Promise<StartedRun | { err
   const prompt = await $.fs.read(prepared.promptPath)
   const startedAt = await $.clock.now()
   const timeoutMinutes = req.timeoutMinutes ?? DEFAULT_TIMEOUT_MINUTES
+  const { model, effort, chosenBy } = req.choice
   const state: RunState = {
     id: req.id,
     harness: req.adapter.id,
-    model: req.model ?? null,
-    effort: req.effort ?? null,
-    chosenBy: req.chosenBy,
+    model: model ?? null,
+    effort: effort ?? null,
+    chosenBy,
     mode: req.write ?? 'read-only',
     cwd: req.cwd,
     startedAt,
@@ -188,7 +200,7 @@ export async function startRun($, req: StartRequest): Promise<StartedRun | { err
     exitCode: null,
     ...(branch ? { branch } : {}),
   }
-  cache.set(req.id, state)
+  sessionRuns.set(req.id, state)
 
   let saving = Promise.resolve()
   const save = (patch: Partial<RunState>) => {
@@ -199,59 +211,79 @@ export async function startRun($, req: StartRequest): Promise<StartedRun | { err
     return saving
   }
   await save({})
+  return { req, runDir, dir, writeRun, prompt, timeoutMinutes, state, save, timedOut: false }
+}
 
-  const { argv, env, cwd } = req.adapter.invocation({ runDir, dir, write: writeRun !== null, prompt, model: req.model, effort: req.effort, env: req.env })
+function spawnHarness($, run: Supervisor): Child {
+  const { req, runDir, state } = run
+  const { argv, env, cwd } = req.adapter.invocation({
+    runDir,
+    dir: run.dir,
+    write: run.writeRun !== null,
+    prompt: run.prompt,
+    model: state.model ?? undefined,
+    effort: state.effort ?? undefined,
+    env: req.env,
+  })
   // spawn exposes no pid, so the shell records its own, which `exec` hands to the harness; the mod has no append, so the shell writes the events.
   const child = $.process.spawn({ argv: ['sh', '-c', 'echo $$ > pid; exec "$@" >> events.jsonl', 'sh', ...argv], cwd, env })
+  $.clock.after(1000, () => {
+    void readPid($, runDir).then((pid) => (pid !== null && state.pid === null ? run.save({ pid }) : undefined))
+  })
+  return child
+}
 
-  let timedOut = false
-  const deadline = $.clock.after(timeoutMinutes * 60_000, () => {
-    timedOut = true
+async function readPid($, runDir: string): Promise<number | null> {
+  const text = await $.fs.read(`${runDir}/pid`).catch(() => null)
+  const pid = typeof text === 'string' ? Number.parseInt(text.trim(), 10) : NaN
+  return Number.isInteger(pid) && pid > 0 ? pid : null
+}
+
+function armDeadline($, run: Supervisor, child: Child): { cancel: () => void } {
+  return $.clock.after(run.timeoutMinutes * 60_000, () => {
+    run.timedOut = true
     void (async () => {
-      const pid = await readPid($, runDir)
+      const pid = await readPid($, run.runDir)
       if (pid === null) await child.return(undefined)
       else await $.process.run(['kill', '-TERM', String(pid)]).catch(() => undefined)
     })()
   })
-  $.clock.after(1000, () => {
-    void readPid($, runDir).then((pid) => (pid !== null && state.pid === null ? save({ pid }) : undefined))
-  })
+}
 
-  // Not awaited: the loop is the child's life and runs on after the handler returns (D66).
-  const done = (async (): Promise<RunState> => {
-    let stderr = ''
-    let code: number | null = null
-    let signal: string | null = null
-    try {
-      for (;;) {
-        const piece = await child.next()
-        if (piece.done) {
-          code = piece.value?.code ?? null
-          signal = piece.value?.signal ?? null
-          break
-        }
-        if (piece.value.stream === 'stderr') stderr = (stderr + piece.value.text).slice(-STDERR_TAIL_CHARS)
+async function awaitExit(child: Child, deadline: { cancel: () => void }): Promise<ExitStatus> {
+  let stderr = ''
+  let code: number | null = null
+  let signal: string | null = null
+  try {
+    for (;;) {
+      const piece = await child.next()
+      if (piece.done) {
+        code = piece.value?.code ?? null
+        signal = piece.value?.signal ?? null
+        break
       }
-    } catch (error) {
-      stderr = (error as Error).message
+      if (piece.value.stream === 'stderr') stderr = (stderr + piece.value.text).slice(-STDERR_TAIL_CHARS)
     }
-    deadline.cancel()
+  } catch (error) {
+    stderr = (error as Error).message
+  }
+  deadline.cancel()
+  return { code, signal, stderr }
+}
 
-    try {
-      await $.fs.write(`${runDir}/exit`, `${code ?? signal ?? ''}\n`)
-      const outcome = await settle($, req, runDir, { code, stderr, timedOut, timeoutMinutes })
-      if (writeRun && !timedOut) Object.assign(outcome, await afterWrite($, writeRun, outcome))
-      await save({ ...outcome, exitCode: code, pid: state.pid ?? (await readPid($, runDir)) })
-    } catch (error) {
-      await save({ state: 'failed', reason: `run bookkeeping failed: ${(error as Error).message}`, exitCode: code })
-    }
+async function recordOutcome($, run: Supervisor, exit: ExitStatus): Promise<RunState> {
+  const { req, runDir, writeRun, state } = run
+  try {
+    await $.fs.write(`${runDir}/exit`, `${exit.code ?? exit.signal ?? ''}\n`)
+    const outcome = await settle($, req, runDir, { code: exit.code, stderr: exit.stderr, timedOut: run.timedOut, timeoutMinutes: run.timeoutMinutes })
+    if (writeRun) Object.assign(outcome, outcome.state === 'done' ? await afterWrite($, writeRun, outcome) : leftUnmerged(run, outcome.state))
+    await run.save({ ...outcome, exitCode: exit.code, pid: state.pid ?? (await readPid($, runDir)) })
+  } catch (error) {
+    await run.save({ state: 'failed', reason: `run bookkeeping failed: ${(error as Error).message}`, exitCode: exit.code })
+  }
 
-    if (req.notify) await submitNotice($, req.id, `Collegium run ${req.id} finished: ${state.state}. Call collegium_result.`)
-    return state
-  })()
-  settled.set(req.id, done)
-
-  return { id: req.id, harness: state.harness, model: state.model, effort: state.effort, chosenBy: state.chosenBy, mode: state.mode, runDir }
+  if (req.notify) await submitNotice($, req.id, `Collegium run ${req.id} finished: ${state.state}. Call collegium_result.`)
+  return state
 }
 
 async function settle(
@@ -273,6 +305,16 @@ async function settle(
   return { state: 'failed', reason: 'unparsable final message' }
 }
 
+function parseEnvelope(text: string | null): Envelope | null {
+  if (text === null) return null
+  try {
+    const value = JSON.parse(text)
+    return (ENVELOPE_STATUSES as readonly unknown[]).includes(value?.status) ? value : null
+  } catch {
+    return null
+  }
+}
+
 async function afterWrite($, run: WriteRun, outcome: Partial<RunState>): Promise<Partial<RunState>> {
   const w = await finishWrite($, run, outcome.envelope?.summary ?? '')
   const patch: Partial<RunState> = {}
@@ -287,7 +329,15 @@ async function afterWrite($, run: WriteRun, outcome: Partial<RunState>): Promise
   return patch
 }
 
-// Each run is notified once (D67): accepted leaves the pending set, `drop` waits there for the next main-thread
+// Half-done work must not reach the caller's checkout, so a run that did not end done is neither committed nor merged.
+function leftUnmerged(run: Supervisor, ended: RunStateName | undefined): Partial<RunState> {
+  if (run.writeRun?.mode === 'worktree') {
+    return { worktree: `${run.runDir}/worktree`, note: `The run ended ${ended}, so its worktree is kept as Codex left it.` }
+  }
+  return { note: `The run ended ${ended}, so nothing was committed or merged; ${run.state.branch} stays as it started.` }
+}
+
+// Each run is notified once: accepted leaves the pending set, `drop` waits there for the next main-thread
 // turn.complete, and a rejection (no session bound, as in a headless session) is dropped.
 async function submitNotice($, id: string, text: string): Promise<void> {
   pendingNotices.delete(id)
@@ -300,7 +350,7 @@ async function submitNotice($, id: string, text: string): Promise<void> {
   if (answer?.drop !== undefined) pendingNotices.set(id, text)
 }
 
-/** For the main-thread `turn.complete` (D43): submits each notice the host dropped at completion. */
+/** For the main-thread `turn.complete`: submits each notice the host dropped at completion. */
 export async function flushNotices($): Promise<void> {
   for (const [id, text] of [...pendingNotices]) await submitNotice($, id, text)
 }
@@ -309,8 +359,17 @@ export function pendingNoticeIds(): string[] {
   return [...pendingNotices.keys()]
 }
 
-async function removeDir($, runDir: string): Promise<void> {
-  await $.process.run(['rm', '-rf', runDir]).catch(() => undefined)
+/** After a delivered terminal result: a `worktree`-mode run keeps its worktree, every other file goes. */
+export async function removeRun($, id: string): Promise<void> {
+  const runDir = await runDirFor($, id)
+  const state = sessionRuns.get(id) ?? (await readState($, runDir))
+  sessionRuns.delete(id)
+  settled.delete(id)
+  if (state?.mode === 'worktree' && (await $.fs.exists(`${runDir}/worktree`))) {
+    await $.process.run(['find', runDir, '-mindepth', '1', '-maxdepth', '1', '!', '-name', 'worktree', '-exec', 'rm', '-rf', '{}', '+']).catch(() => undefined)
+    return
+  }
+  await deleteRunDir($, runDir, state)
 }
 
 // A worktree left inside the run directory (a run that timed out) is removed through git so the
@@ -322,17 +381,34 @@ async function deleteRunDir($, runDir: string, state: RunState | null): Promise<
   await removeDir($, runDir)
 }
 
-/** After a delivered terminal result (D20): a `worktree`-mode run keeps its worktree, every other file goes. */
-export async function removeRun($, id: string): Promise<void> {
-  const runDir = await runDirFor($, id)
-  const state = cache.get(id) ?? (await readState($, runDir))
-  cache.delete(id)
-  settled.delete(id)
-  if (state?.mode === 'worktree' && (await $.fs.exists(`${runDir}/worktree`))) {
-    await $.process.run(['find', runDir, '-mindepth', '1', '-maxdepth', '1', '!', '-name', 'worktree', '-exec', 'rm', '-rf', '{}', '+']).catch(() => undefined)
-    return
+async function removeDir($, runDir: string): Promise<void> {
+  await $.process.run(['rm', '-rf', runDir]).catch(() => undefined)
+}
+
+/** The sweep at a session's first Collegium call. */
+export async function sweepOnce($): Promise<string[]> {
+  if (swept) return []
+  swept = true
+  return sweepRuns($)
+}
+
+/** Removes the run directories whose process is dead; returns the ids removed. */
+export async function sweepRuns($): Promise<string[]> {
+  const root = await runsRoot($)
+  const entries = await $.fs.list(root).catch(() => [])
+  const removed: string[] = []
+  for (const entry of entries) {
+    if (entry.kind !== 'directory' || sessionRuns.has(entry.name)) continue
+    const runDir = `${root}/${entry.name}`
+    const state = await readState($, runDir)
+    if (!state) continue
+    if (await isAlive($, state.pid ?? (await readPid($, runDir)))) continue
+    const worktree = `${runDir}/worktree`
+    if (state.mode === 'worktree' && (await $.fs.exists(worktree)) && (await mayHoldUnsavedWork($, worktree))) continue
+    await deleteRunDir($, runDir, state)
+    removed.push(entry.name)
   }
-  await deleteRunDir($, runDir, state)
+  return removed
 }
 
 async function isAlive($, pid: number | null): Promise<boolean> {
@@ -341,33 +417,7 @@ async function isAlive($, pid: number | null): Promise<boolean> {
   return r?.exitCode === 0
 }
 
-async function worktreeHasChanges($, worktree: string): Promise<boolean> {
+async function mayHoldUnsavedWork($, worktree: string): Promise<boolean> {
   const r = await $.process.run(['git', 'status', '--porcelain', '--untracked-files=all'], { cwd: worktree }).catch(() => undefined)
   return r?.exitCode !== 0 || r.stdout.trim() !== ''
-}
-
-/** Removes the run directories whose process is dead (D20); returns the ids removed. */
-export async function sweepRuns($): Promise<string[]> {
-  const root = await runsRoot($)
-  const entries = await $.fs.list(root).catch(() => [])
-  const removed: string[] = []
-  for (const entry of entries) {
-    if (entry.kind !== 'directory' || cache.has(entry.name)) continue
-    const runDir = `${root}/${entry.name}`
-    const state = await readState($, runDir)
-    if (!state) continue
-    if (await isAlive($, state.pid ?? (await readPid($, runDir)))) continue
-    const worktree = `${runDir}/worktree`
-    if (state.mode === 'worktree' && (await $.fs.exists(worktree)) && (await worktreeHasChanges($, worktree))) continue
-    await deleteRunDir($, runDir, state)
-    removed.push(entry.name)
-  }
-  return removed
-}
-
-/** The sweep at a session's first Collegium call. */
-export async function sweepOnce($): Promise<string[]> {
-  if (swept) return []
-  swept = true
-  return sweepRuns($)
 }

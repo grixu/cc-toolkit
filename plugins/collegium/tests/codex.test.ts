@@ -1,9 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 import { TOKEN_EXCHANGE_URL, codex } from '../hooks/codex.ts'
-import { stubEnv, stubbedHost } from './host.ts'
+import { exit, failure, ok, stubEnv, stubbedHost } from './host.ts'
 
-const ok = (stdout = '') => ({ value: { exitCode: 0, stdout, stderr: '' } })
-const exit = (exitCode: number) => ({ value: { exitCode, stdout: '', stderr: '' } })
 const fetched = (status: number, body: unknown = {}) => ({
   value: { status, ok: status >= 200 && status < 300, headers: {}, text: JSON.stringify(body) },
 })
@@ -90,7 +88,7 @@ test('the catalogue becomes one openai palette with hidden flags and per-model e
 test('an unreadable catalogue fails naming the Codex version', async () => {
   const { $, on } = stubbedHost()
   on('process.run', ($, e) => (e.argv[1] === 'debug' ? ok('{"data":[]}') : ok('codex-cli 0.165.0\n')))
-  const message = await codex.catalogue($).then(() => 'resolved', (err) => err.message)
+  const message = await failure(() => codex.catalogue($))
   expect(message).toContain('codex 0.165.0')
 })
 
@@ -119,7 +117,7 @@ test('a catalogue model without a slug or with a malformed effort fails naming t
   let model: unknown
   on('process.run', ($, e) => (e.argv[1] === 'debug' ? ok(JSON.stringify({ models: [model] })) : ok('codex-cli 0.165.0\n')))
   for (model of broken) {
-    const message = await codex.catalogue($).then(() => 'resolved', (err) => err.message)
+    const message = await failure(() => codex.catalogue($))
     expect(message).toContain('codex 0.165.0')
     expect(message).toContain('model without slug or efforts')
   }
@@ -197,7 +195,7 @@ test('a failed CI step names the step and status and never a token or body', asy
   for (const at of [1, 2, 3]) {
     failAt = at
     call = 0
-    messages.push(await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message))
+    messages.push(await failure(() => codex.prepare($, 'run1')))
   }
   expect(messages[0]).toContain('GitHub OIDC token request: HTTP 401')
   expect(messages[1]).toContain('OpenAI token exchange: HTTP 401')
@@ -209,14 +207,17 @@ test('a CI request that never completes, or answers without the field, names the
   const { $, on } = stubbedHost()
   stubEnv(on,CI_ENV)
   on('process.run', () => ok())
-  let completes = false
-  on('http.fetch', () => (completes ? fetched(200, {}) : { deny: 'network down' }))
+  let body: unknown
+  on('http.fetch', () => (body === undefined ? { deny: 'network down' } : fetched(200, body)))
 
-  const rejected = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
-  completes = true
-  const empty = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
+  const rejected = await failure(() => codex.prepare($, 'run1'))
+  body = {}
+  const missing = await failure(() => codex.prepare($, 'run1'))
+  body = { value: '' }
+  const empty = await failure(() => codex.prepare($, 'run1'))
 
   expect(rejected).toContain('GitHub OIDC token request: request did not complete')
+  expect(missing).toContain('GitHub OIDC token request: HTTP 200 without value')
   expect(empty).toContain('GitHub OIDC token request: HTTP 200 without value')
 })
 
@@ -227,7 +228,7 @@ test('a CODEX_HOME that cannot be created fails the CI login', async () => {
   on('http.fetch', () => (++call === 1 ? fetched(200, { value: 'jwt-secret' }) : fetched(200, { access_token: 'access-secret' })))
   on('process.run', ($, e) => (e.argv[0] === 'mkdir' ? exit(1) : ok()))
 
-  const message = await codex.prepare($, 'run1').then(() => 'resolved', (err) => err.message)
+  const message = await failure(() => codex.prepare($, 'run1'))
 
   expect(message).toContain('creating CODEX_HOME: exit 1')
 })
