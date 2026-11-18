@@ -21,6 +21,8 @@ plugins/*/evals/*/local/
 plugins/code-review/evals/cases/
 plugins/code-review/evals/comment-track/
 plugins/code-review/evals/scope-mix/
+# R2 keys for scripts/eval-data.mjs, written by scripts/r2-secrets-init.sh
+.r2-secrets.sh
 # scripts/eval-data.mjs markers, staging tarballs and pre-pull backups
 plugins/*/evals/.eval-data-*
 plugins/*/evals/*/.eval-data-*

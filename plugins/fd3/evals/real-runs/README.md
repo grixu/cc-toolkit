@@ -8,7 +8,8 @@ pnpm eval:data pull fd3/real-runs   # restores local/
 pnpm eval:data push fd3/real-runs   # after a change; commit the new pin in eval-data.json
 ```
 
-Both need the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`.
+Both need the aws CLI and the R2 keys, from the environment or from the git-ignored `.r2-secrets.sh` that
+`bash scripts/r2-secrets-init.sh` writes from 1Password.
 
 Each case holds what a stage can be evaluated from:
 
