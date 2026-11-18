@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { CALLER, ENVELOPE, NOW, ROOT, exit, notice, ok, removeUnder, type End } from './host.ts'
+import { CALLER, ENVELOPE, NOW, ROOT, exit, notice, ok, stubMemoryFs, type End } from './host.ts'
 
 const RUN = 'mcp__collegium__collegium_run'
 const STATUS = 'mcp__collegium__collegium_status'
@@ -64,18 +64,7 @@ function host(on, o: Options = {}) {
     const length = e.length ?? text.length
     return { value: text.slice(offset, offset + length) }
   })
-  on('fs.write', ($, e) => {
-    files[e.path] = e.text
-    return { value: undefined }
-  })
-  on('fs.exists', ($, e) => ({ value: Object.keys(files).some((k) => k === e.path || k.startsWith(`${e.path}/`)) }))
-  on('fs.stat', ($, e) => (e.path in files ? { value: { kind: 'file', size: files[e.path].length } } : { deny: `ENOENT: ${e.path}` }))
-  on('fs.list', ($, e) => {
-    const names = new Set<string>()
-    for (const key of Object.keys(files)) if (key.startsWith(`${e.path}/`)) names.add(key.slice(e.path.length + 1).split('/')[0])
-    if (names.size === 0) return { deny: `ENOENT: ${e.path}` }
-    return { value: [...names].map((name) => ({ name, kind: 'directory', size: 0, mtimeMs: 0, isLink: false })) }
-  })
+  const removed = stubMemoryFs(on, files)
   on('process.run', ($, e) => {
     const argv: string[] = e.argv
     runs.push({ argv, init: e.init })
@@ -85,10 +74,7 @@ function host(on, o: Options = {}) {
     if (argv[0] === 'codex' && args === 'login status') return exit(o.loggedIn === false ? 1 : 0)
     if (argv[0] === 'codex' && args === 'debug models') return ok(MODELS)
     if (argv[0] === 'kill' && argv[1] === '-0') return exit(Number(argv[2]) === LIVE_PID ? 0 : 1)
-    if (argv[0] === 'rm') {
-      removeUnder(files, argv[2])
-      return ok()
-    }
+    if (removed(argv)) return ok()
     if (argv[0] === 'sh') {
       if (o.watcher === 'timeout') return { deny: 'the command was still running at its timeout' }
       const runDir = e.init?.cwd
@@ -218,20 +204,41 @@ test('a run starts at once, returns its id and runs Codex read-only in the sessi
   const h = host(on)
   const out = await $.tool.call({ tool: RUN, task: 'Review it.', model: 'openai/gpt-6.1-sol', effort: 'high' })
   const started = JSON.parse(out.result)
+  const argv: string[] = h.spawned[0].argv
 
   expect(started).toMatchObject({ harness: 'codex', model: 'openai/gpt-6.1-sol', effort: 'high', chosenBy: 'caller', mode: 'read-only' })
   expect(started.id).toMatch(/^20261118T083336-[0-9a-f]{6}$/)
   expect(started.runDir).toBe(`${ROOT}/${started.id}`)
   expect(h.spawned).toHaveLength(1)
-  const argv: string[] = h.spawned[0].argv
   expect(argv.slice(argv.indexOf('-C'), argv.indexOf('-C') + 4)).toEqual(['-C', CALLER, '-s', 'read-only'])
   expect(codexCalls(h, 'login status')).toHaveLength(1)
 
+  h.finish()
+  await settle(h, () => h.submitted.length === 1)
+})
+
+test('a second run reuses the detected harness and the cached catalogue', { options: { codex: true } }, async ($, on) => {
+  const h = host(on)
+  await $.tool.call({ tool: RUN, task: 'Review it.', model: 'openai/gpt-6.1-sol', effort: 'high' })
   await $.tool.call({ tool: RUN, task: 'Again.', model: 'openai/gpt-6.1-sol', effort: 'high' })
+
   expect(codexCalls(h, 'debug models')).toHaveLength(1)
   expect(codexCalls(h, '--version')).toHaveLength(1)
+
   h.finish()
   await settle(h, () => h.submitted.length === 2)
+})
+
+test('a one-minute timeout is accepted and the run starts', { options: { codex: true } }, async ($, on) => {
+  const h = host(on)
+  const out = await $.tool.call({ tool: RUN, task: 'Review it.', model: 'openai/gpt-6.1-sol', effort: 'high', timeout_minutes: 1 })
+  const { id } = JSON.parse(out.result)
+
+  expect(launched(h)).toBe(true)
+  expect(JSON.parse(h.files[`${ROOT}/${id}/state.json`]).deadline).toBe(NOW + 60_000)
+
+  h.finish()
+  await settle(h, () => h.submitted.length === 1)
 })
 
 test('a main-loop run is notified once when it ends', { options: { codex: true } }, async ($, on) => {

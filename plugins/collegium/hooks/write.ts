@@ -27,7 +27,7 @@ export type WriteResult = {
 // Signing can wait on a pinentry prompt, so commits get more than the host's 30 s default.
 const GIT_TIMEOUT_MS = 120_000
 
-function worktreePath(runDir: string): string {
+export function worktreePath(runDir: string): string {
   return `${withoutTrailingSlash(runDir)}/worktree`
 }
 

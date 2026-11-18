@@ -25,7 +25,7 @@ export type FileConfig = {
   backend?: Backend
 }
 
-export const PROJECT_FILE = '.claude/collegium.json'
+const PROJECT_FILE ='.claude/collegium.json'
 
 const MODEL_ID = /^[^/\s]+\/\S+$/
 
@@ -145,7 +145,7 @@ async function readFile($, file: string): Promise<FileConfig> {
   return parseConfig(text, file)
 }
 
-export function configPaths(env: Record<string, string>): { user: string; project: string } {
+function configPaths(env: Record<string, string>): { user: string; project: string } {
   const data = env.CLAUDE_PLUGIN_DATA
   const project = env.CLAUDE_PROJECT_DIR
   if (!data) throw new Error('cannot locate the user config: CLAUDE_PLUGIN_DATA is not set')

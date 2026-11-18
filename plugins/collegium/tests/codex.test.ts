@@ -6,7 +6,7 @@ const fetched = (status: number, body: unknown = {}) => ({
   value: { status, ok: status >= 200 && status < 300, headers: {}, text: JSON.stringify(body) },
 })
 
-const SPEC = { runDir: '/r/run1', dir: '/repo', write: false, prompt: 'Do it.', env: {} }
+const SPEC = { runDir: '/r/run1', dir: '/repo', write: false, prompt: 'Do it.', schemaPath: '/r/run1/schema.json', env: {} }
 
 const CI_ENV = {
   EVAL_ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'request-token-secret',

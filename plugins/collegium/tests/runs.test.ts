@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 import { codex } from '../hooks/codex.ts'
 import { flushNotices, newRunId, pendingNoticeIds, removeRun, startRun, sweepOnce, sweepRuns, whenSettled, type StartRequest } from '../hooks/runs.ts'
-import { CALLER, ENVELOPE, NOW, ROOT, fakeGitReply, notice, removeUnder, stubbedHost, type End, type GitReply } from './host.ts'
+import { CALLER, ENVELOPE, NOW, ROOT, fakeGitReply, gitReplyValue, notice, removeUnder, stubMemoryFs, stubbedHost, type End, type GitReply } from './host.ts'
 
 type Run = { argv: string[]; cwd?: string }
 type SubmitAnswer = 'accept' | 'drop' | 'reject'
@@ -35,22 +35,7 @@ function fixture(options: { files?: Record<string, string>; git?: Record<string,
     const offset = e.options?.offset ?? 0
     return { value: e.options ? text.slice(offset, offset + (e.options.length ?? text.length)) : text }
   })
-  on('fs.write', (_, e) => {
-    files[e.path] = e.text
-    return { value: undefined }
-  })
-  on('fs.stat', (_, e) => (e.path in files ? { value: { kind: 'file', size: files[e.path].length } } : { deny: `ENOENT: ${e.path}` }))
-  on('fs.exists', (_, e) => ({ value: Object.keys(files).some((k) => k === e.path || k.startsWith(`${e.path}/`)) }))
-  on('fs.list', (_, e) => {
-    const names = new Map<string, string>()
-    for (const key of Object.keys(files)) {
-      if (!key.startsWith(`${e.path}/`)) continue
-      const rest = key.slice(e.path.length + 1)
-      names.set(rest.split('/')[0], rest.includes('/') ? 'directory' : 'file')
-    }
-    if (names.size === 0) return { deny: `ENOENT: ${e.path}` }
-    return { value: [...names].map(([name, kind]) => ({ name, kind, size: 0, mtimeMs: 0, isLink: false })) }
-  })
+  const removed = stubMemoryFs(on, files)
   on('process.spawn', (_, e) => {
     spawned.push(e)
     return { value: child.gen }
@@ -58,22 +43,18 @@ function fixture(options: { files?: Record<string, string>; git?: Record<string,
   on('process.run', (_, e) => {
     const argv: string[] = e.argv
     runs.push({ argv, cwd: e.init?.cwd })
-    const reply = (r: GitReply = {}) => ({ value: { exitCode: r.exitCode ?? 0, stdout: r.stdout ?? '', stderr: r.stderr ?? '' } })
-    if (argv[0] === 'kill' && argv[1] === '-0') return reply({ exitCode: (options.alive ?? []).includes(Number(argv[2])) ? 0 : 1 })
+    if (argv[0] === 'kill' && argv[1] === '-0') return gitReplyValue({ exitCode: (options.alive ?? []).includes(Number(argv[2])) ? 0 : 1 })
     if (argv[0] === 'kill') {
       child.finish({ code: null, signal: 'SIGTERM' })
-      return reply()
+      return gitReplyValue()
     }
-    if (argv[0] === 'rm') {
-      removeUnder(files, argv[2])
-      return reply()
-    }
+    if (removed(argv)) return gitReplyValue()
     if (argv[0] === 'find') {
       removeUnder(files, argv[1], 'worktree')
-      return reply()
+      return gitReplyValue()
     }
-    if (argv[0] === 'git') return reply(fakeGitReply(git, argv.slice(1)))
-    return reply()
+    if (argv[0] === 'git') return gitReplyValue(fakeGitReply(git, argv.slice(1)))
+    return gitReplyValue()
   })
   on('prompt.submit', (_, e) => {
     submitted.push(e.text)
@@ -110,6 +91,7 @@ test('starting a run writes the run files and state, spawns the shell wrapper in
   const runDir = `${ROOT}/${req.id}`
 
   const started = await startRun(f.$, req)
+  const { argv, cwd } = f.spawned[0]
 
   expect(started).toEqual({ id: req.id, harness: 'codex', model: 'openai/gpt-6.1-sol', effort: 'high', chosenBy: 'caller', mode: 'read-only', runDir })
   expect(JSON.parse(f.files[`${runDir}/state.json`])).toEqual({
@@ -129,7 +111,6 @@ test('starting a run writes the run files and state, spawns the shell wrapper in
   expect(f.files[`${runDir}/prompt.md`]).toContain('Review it.')
   expect(f.files[`${runDir}/schema.json`]).toBeDefined()
   expect(f.spawned).toHaveLength(1)
-  const { argv, cwd } = f.spawned[0]
   expect(argv.slice(0, 7)).toEqual(['sh', '-c', 'echo $$ > pid; exec "$@" >> events.jsonl', 'sh', 'codex', 'exec', '--skip-git-repo-check'])
   expect(argv[argv.length - 1]).toBe(f.files[`${runDir}/prompt.md`])
   expect(cwd).toBe(runDir)
@@ -355,6 +336,20 @@ test('a dropped submit waits for the main-thread turn.complete, which notifies i
   expect(f.submitted).toHaveLength(2)
 })
 
+test('removing a run drops its pending notice', async () => {
+  const f = fixture({ submits: ['drop'] })
+  const req = request()
+  await startRun(f.$, req)
+
+  f.child.finish({ code: 0, signal: null })
+  await whenSettled(req.id)
+  await removeRun(f.$, req.id)
+  await flushNotices(f.$)
+
+  expect(pendingNoticeIds()).not.toContain(req.id)
+  expect(f.submitted).toHaveLength(1)
+})
+
 test('a notice dropped again at turn.complete stays pending for the next one', async () => {
   const f = fixture({ submits: ['drop', 'drop', 'accept'] })
   const req = request()
@@ -428,6 +423,19 @@ test('the sweep removes runs whose process is dead and keeps live runs and workt
     `${ROOT}/live/state.json`,
   ])
   expect(f.runs).toContainEqual({ argv: ['git', 'worktree', 'remove', '--force', `${ROOT}/timed-out-branch/worktree`], cwd: CALLER })
+})
+
+test('the sweep removes a dead worktree-mode run whose worktree has no change', async () => {
+  const f = fixture({
+    files: {
+      [`${ROOT}/clean-worktree/state.json`]: runState({ mode: 'worktree', pid: 55 }),
+      [`${ROOT}/clean-worktree/worktree/a.ts`]: 'x',
+    },
+  })
+
+  expect(await sweepRuns(f.$)).toEqual(['clean-worktree'])
+  expect(Object.keys(f.files)).toEqual([])
+  expect(f.runs).toContainEqual({ argv: ['git', 'worktree', 'remove', '--force', `${ROOT}/clean-worktree/worktree`], cwd: CALLER })
 })
 
 test('the sweep runs at the first call of a session only', async () => {

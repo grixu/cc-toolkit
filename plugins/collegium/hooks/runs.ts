@@ -2,9 +2,11 @@ import { finalMessage } from './adapters.ts'
 import type { Choice } from './choose.ts'
 import { withoutTrailingSlash, type HarnessAdapter, type RunEvent } from './harness.ts'
 import { ENVELOPE_STATUSES, prepareRun } from './prompt.ts'
-import { finishWrite, prepareWrite, type WriteMode, type WriteRun } from './write.ts'
+import { finishWrite, prepareWrite, worktreePath, type WriteMode, type WriteRun } from './write.ts'
 
-export type RunStateName = 'running' | 'done' | 'blocked' | 'failed' | 'timeout' | 'conflict'
+const TERMINAL = ['done', 'blocked', 'failed', 'timeout', 'conflict'] as const
+
+export type RunStateName = 'running' | (typeof TERMINAL)[number]
 
 export type Envelope = {
   status: (typeof ENVELOPE_STATUSES)[number]
@@ -71,14 +73,15 @@ type Supervisor = {
   dir: string // where the harness works: the caller's checkout, or the run's worktree
   writeRun: WriteRun | null
   prompt: string
+  schemaPath: string
   timeoutMinutes: number
   state: RunState
   save: (patch: Partial<RunState>) => Promise<void>
   timedOut: boolean
 }
 
-export const DEFAULT_TIMEOUT_MINUTES = 60
-const TERMINAL: readonly RunStateName[] = ['done', 'blocked', 'failed', 'timeout', 'conflict']
+const DEFAULT_TIMEOUT_MINUTES = 60
+const PID_READ_DELAY_MS = 1000
 const EVENTS_TAIL_BYTES = 1_048_576
 const STDERR_TAIL_CHARS = 2000
 
@@ -89,7 +92,7 @@ const pendingNotices = new Map<string, string>()
 let swept = false
 
 export function isTerminal(state: RunStateName): boolean {
-  return TERMINAL.includes(state)
+  return (TERMINAL as readonly RunStateName[]).includes(state)
 }
 
 export function newRunId(now: number): string {
@@ -105,7 +108,7 @@ export async function sessionTop($): Promise<string> {
   return r?.exitCode === 0 && r.stdout.trim() !== '' ? withoutTrailingSlash(r.stdout.trim()) : root
 }
 
-export async function runsRoot($): Promise<string> {
+async function runsRoot($): Promise<string> {
   const top = await sessionTop($)
   const cut = top.lastIndexOf('/')
   return `${top.slice(0, cut)}/${top.slice(cut + 1)}.collegium`
@@ -182,10 +185,17 @@ async function prepareFiles($, req: StartRequest): Promise<Supervisor | { error:
   }
 
   const prompt = await $.fs.read(prepared.promptPath)
-  const startedAt = await $.clock.now()
   const timeoutMinutes = req.timeoutMinutes ?? DEFAULT_TIMEOUT_MINUTES
+  const state = initialRunState(req, await $.clock.now(), timeoutMinutes, branch)
+  sessionRuns.set(req.id, state)
+  const save = stateSaver($, runDir, state)
+  await save({})
+  return { req, runDir, dir, writeRun, prompt, schemaPath: prepared.schemaPath, timeoutMinutes, state, save, timedOut: false }
+}
+
+function initialRunState(req: StartRequest, startedAt: number, timeoutMinutes: number, branch: string | undefined): RunState {
   const { model, effort, chosenBy } = req.choice
-  const state: RunState = {
+  return {
     id: req.id,
     harness: req.adapter.id,
     model: model ?? null,
@@ -200,18 +210,17 @@ async function prepareFiles($, req: StartRequest): Promise<Supervisor | { error:
     exitCode: null,
     ...(branch ? { branch } : {}),
   }
-  sessionRuns.set(req.id, state)
+}
 
+function stateSaver($, runDir: string, state: RunState): (patch: Partial<RunState>) => Promise<void> {
   let saving = Promise.resolve()
-  const save = (patch: Partial<RunState>) => {
+  return (patch) => {
     saving = saving.catch(() => undefined).then(() => {
       Object.assign(state, patch)
       return $.fs.write(`${runDir}/state.json`, `${JSON.stringify(state, null, 2)}\n`)
     })
     return saving
   }
-  await save({})
-  return { req, runDir, dir, writeRun, prompt, timeoutMinutes, state, save, timedOut: false }
 }
 
 function spawnHarness($, run: Supervisor): Child {
@@ -221,13 +230,14 @@ function spawnHarness($, run: Supervisor): Child {
     dir: run.dir,
     write: run.writeRun !== null,
     prompt: run.prompt,
+    schemaPath: run.schemaPath,
     model: state.model ?? undefined,
     effort: state.effort ?? undefined,
     env: req.env,
   })
   // spawn exposes no pid, so the shell records its own, which `exec` hands to the harness; the mod has no append, so the shell writes the events.
   const child = $.process.spawn({ argv: ['sh', '-c', 'echo $$ > pid; exec "$@" >> events.jsonl', 'sh', ...argv], cwd, env })
-  $.clock.after(1000, () => {
+  $.clock.after(PID_READ_DELAY_MS, () => {
     void readPid($, runDir).then((pid) => (pid !== null && state.pid === null ? run.save({ pid }) : undefined))
   })
   return child
@@ -275,7 +285,7 @@ async function recordOutcome($, run: Supervisor, exit: ExitStatus): Promise<RunS
   const { req, runDir, writeRun, state } = run
   try {
     await $.fs.write(`${runDir}/exit`, `${exit.code ?? exit.signal ?? ''}\n`)
-    const outcome = await settle($, req, runDir, { code: exit.code, stderr: exit.stderr, timedOut: run.timedOut, timeoutMinutes: run.timeoutMinutes })
+    const outcome = await outcomeOf($, req, runDir, { code: exit.code, stderr: exit.stderr, timedOut: run.timedOut, timeoutMinutes: run.timeoutMinutes })
     if (writeRun) Object.assign(outcome, outcome.state === 'done' ? await afterWrite($, writeRun, outcome) : leftUnmerged(run, outcome.state))
     await run.save({ ...outcome, exitCode: exit.code, pid: state.pid ?? (await readPid($, runDir)) })
   } catch (error) {
@@ -286,7 +296,7 @@ async function recordOutcome($, run: Supervisor, exit: ExitStatus): Promise<RunS
   return state
 }
 
-async function settle(
+async function outcomeOf(
   $,
   req: StartRequest,
   runDir: string,
@@ -332,7 +342,7 @@ async function afterWrite($, run: WriteRun, outcome: Partial<RunState>): Promise
 // Half-done work must not reach the caller's checkout, so a run that did not end done is neither committed nor merged.
 function leftUnmerged(run: Supervisor, ended: RunStateName | undefined): Partial<RunState> {
   if (run.writeRun?.mode === 'worktree') {
-    return { worktree: `${run.runDir}/worktree`, note: `The run ended ${ended}, so its worktree is kept as Codex left it.` }
+    return { worktree: worktreePath(run.runDir), note: `The run ended ${ended}, so its worktree is kept as Codex left it.` }
   }
   return { note: `The run ended ${ended}, so nothing was committed or merged; ${run.state.branch} stays as it started.` }
 }
@@ -365,18 +375,19 @@ export async function removeRun($, id: string): Promise<void> {
   const state = sessionRuns.get(id) ?? (await readState($, runDir))
   sessionRuns.delete(id)
   settled.delete(id)
-  if (state?.mode === 'worktree' && (await $.fs.exists(`${runDir}/worktree`))) {
+  pendingNotices.delete(id)
+  if (state?.mode === 'worktree' && (await $.fs.exists(worktreePath(runDir)))) {
     await $.process.run(['find', runDir, '-mindepth', '1', '-maxdepth', '1', '!', '-name', 'worktree', '-exec', 'rm', '-rf', '{}', '+']).catch(() => undefined)
     return
   }
   await deleteRunDir($, runDir, state)
 }
 
-// A worktree left inside the run directory (a run that timed out) is removed through git so the
-// caller's repository keeps no stale entry; its branch stays.
+// A worktree still inside the run directory is removed through git so the caller's repository keeps no stale entry;
+// its branch stays.
 async function deleteRunDir($, runDir: string, state: RunState | null): Promise<void> {
-  if (state && (await $.fs.exists(`${runDir}/worktree`))) {
-    await $.process.run(['git', 'worktree', 'remove', '--force', `${runDir}/worktree`], { cwd: state.cwd, timeoutMs: 120_000 }).catch(() => undefined)
+  if (state && (await $.fs.exists(worktreePath(runDir)))) {
+    await $.process.run(['git', 'worktree', 'remove', '--force', worktreePath(runDir)],{ cwd: state.cwd, timeoutMs: 120_000 }).catch(() => undefined)
   }
   await removeDir($, runDir)
 }
@@ -403,7 +414,7 @@ export async function sweepRuns($): Promise<string[]> {
     const state = await readState($, runDir)
     if (!state) continue
     if (await isAlive($, state.pid ?? (await readPid($, runDir)))) continue
-    const worktree = `${runDir}/worktree`
+    const worktree = worktreePath(runDir)
     if (state.mode === 'worktree' && (await $.fs.exists(worktree)) && (await mayHoldUnsavedWork($, worktree))) continue
     await deleteRunDir($, runDir, state)
     removed.push(entry.name)

@@ -30,6 +30,7 @@ export interface RunSpec {
   dir: string
   write: boolean
   prompt: string
+  schemaPath: string
   model?: string // provider/model; absent leaves the harness's configured default
   effort?: string
   env: Record<string, string> // what prepare returned for this run

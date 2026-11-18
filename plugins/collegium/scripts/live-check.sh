@@ -63,22 +63,28 @@ check() {
   if [ "$2" = "$3" ]; then echo "PASS $1: $2"; else echo "FAIL $1: got '${2:-none}', want '$3'"; failures=$((failures + 1)); fi
 }
 
+# report <name> <want-state> [extra tools]: prints the run's tool answers and checks its final state.
+report() {
+  local name="$1" want="$2" tool
+  shift 2
+  for tool in collegium_run "$@" collegium_result; do
+    show "$name" "$tool"
+  done
+  check "$name" "$(final_state "$name")" "$want"
+}
+
 run_readonly() {
   local repo
   repo="$(new_repo readonly)"
   drive readonly "$repo" '/collegium:run --wait Read README.md and report its first line verbatim. Change no file.'
-  show readonly collegium_run
-  show readonly collegium_result
-  check readonly "$(final_state readonly)" 'done'
+  report readonly 'done'
 }
 
 run_branch() {
   local repo
   repo="$(new_repo branch)"
   drive branch "$repo" '/collegium:run --wait --write branch Create the file hello.txt containing the single line "hello from collegium".'
-  show branch collegium_run
-  show branch collegium_result
-  check branch "$(final_state branch)" 'done'
+  report branch 'done'
   echo "branches: $(git -C "$repo" branch --list 'collegium/*' | tr -d ' *' | tr '\n' ' ')"
   check branch-kept "$(git -C "$repo" branch --list 'collegium/*' | wc -l | tr -d ' ')" 1
   check worktree-removed "$(git -C "$repo" worktree list --porcelain | grep -c '^worktree ')" 1
@@ -100,9 +106,7 @@ Count the words in the file named here: $ARGUMENTS
 Change no file. Report the file name and its word count in the summary.
 EOF
   drive skill "$repo" "/collegium:run --wait --skill $skill README.md"
-  show skill collegium_run
-  show skill collegium_result
-  check skill "$(final_state skill)" 'done'
+  report skill 'done'
 }
 
 # `/collegium:run` has no timeout flag, so this run calls the tools directly.
@@ -111,10 +115,7 @@ run_timeout() {
   repo="$(new_repo timeout)"
   marker="collegium-live-timeout-$$"
   drive timeout "$repo" "Call mcp__collegium__collegium_run with task \"Run the shell command 'sleep 3600 # $marker' and wait for it to finish, then report done.\" and timeout_minutes 1. Then call mcp__collegium__collegium_result with its id and wait_seconds 20, then mcp__collegium__collegium_status with that id. Then call mcp__collegium__collegium_result with that id and wait_seconds 600, again each time it answers running, until it answers another state. Print each tool's answer verbatim."
-  show timeout collegium_run
-  show timeout collegium_status
-  show timeout collegium_result
-  check timeout "$(final_state timeout)" timeout
+  report timeout timeout collegium_status
   if pgrep -f "$marker" >/dev/null; then
     echo "FAIL process-gone: a process still matches $marker"
     failures=$((failures + 1))

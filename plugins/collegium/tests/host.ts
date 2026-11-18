@@ -76,6 +76,36 @@ export function removeUnder(files: Record<string, string>, dir: string, keep?: s
   }
 }
 
+// Serves fs.write, fs.exists, fs.stat and fs.list from `files`; the returned function carries out an `rm -rf` argv
+// against `files` and says whether the argv was one.
+export function stubMemoryFs(on: (name: string, stub: Stub) => void, files: Record<string, string>): (argv: string[]) => boolean {
+  on('fs.write', (_, e) => {
+    files[e.path] = e.text
+    return { value: undefined }
+  })
+  on('fs.stat', (_, e) => (e.path in files ? { value: { kind: 'file', size: files[e.path].length } } : { deny: `ENOENT: ${e.path}` }))
+  on('fs.exists', (_, e) => ({ value: Object.keys(files).some((k) => k === e.path || k.startsWith(`${e.path}/`)) }))
+  on('fs.list', (_, e) => {
+    const names = new Map<string, string>()
+    for (const key of Object.keys(files)) {
+      if (!key.startsWith(`${e.path}/`)) continue
+      const rest = key.slice(e.path.length + 1)
+      names.set(rest.split('/')[0], rest.includes('/') ? 'directory' : 'file')
+    }
+    if (names.size === 0) return { deny: `ENOENT: ${e.path}` }
+    return { value: [...names].map(([name, kind]) => ({ name, kind, size: 0, mtimeMs: 0, isLink: false })) }
+  })
+  return (argv) => {
+    if (argv[0] !== 'rm') return false
+    removeUnder(files, argv[2])
+    return true
+  }
+}
+
+export function gitReplyValue(reply: GitReply = {}) {
+  return { value: { exitCode: reply.exitCode ?? 0, stdout: reply.stdout ?? '', stderr: reply.stderr ?? '' } }
+}
+
 export function fakeGitReply(replies: Record<string, GitReply | GitReply[]>, args: string[]): GitReply {
   const joined = args.join(' ')
   const key = Object.keys(replies).find((k) => joined.startsWith(k))

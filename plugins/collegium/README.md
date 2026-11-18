@@ -87,7 +87,7 @@ next to your repository, in `<repo>.collegium/<id>/`, and are removed once the r
 | none (default) | nothing: read-only on your checkout | the envelope |
 | `worktree` | a detached git worktree of its own | the worktree's path, kept for you to inspect |
 | `branch` | a worktree on branch `collegium/<id>`, committed and removed when Codex ends | the branch and its diffstat |
-| `merge` | as `branch`, then merged into your checkout | the branch and its diffstat; `conflict` when the merge fails |
+| `merge` | as `branch`, then merged into your checkout | the branch and its diffstat; `conflict` when the merge conflicts or git refuses it over your changes; `failed` when it fails otherwise |
 
 A `merge` run that conflicts aborts the merge and keeps the branch for you to merge. It also leaves
 the branch unmerged when a merge of yours is already in progress, or when git refuses to merge over
@@ -205,5 +205,6 @@ directory is removed, so a second call answers "unknown id".
 | `assumptions` | the choices Codex made where the task was unclear, since nobody answers its questions |
 | `open_questions` | what Codex could not settle |
 
-A `failed` run without an envelope carries a `reason`: a launch error, the process ending without a
-readable final message, or the session that started it closing before it ended.
+A `failed` run without an envelope carries a `reason`: Codex's own error message when its turn
+failed, a launch error, the process ending without a readable final message, a failure in
+Collegium's own bookkeeping of the run, or the session that started it closing before it ended.

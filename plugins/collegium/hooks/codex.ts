@@ -137,7 +137,7 @@ function invocation(spec: RunSpec) {
   ]
   if (spec.model) argv.push('-m', spec.model.replace(new RegExp(`^${PROVIDER}/`), ''))
   if (spec.effort) argv.push('-c', `model_reasoning_effort=${spec.effort}`)
-  argv.push('--json', '-o', `${spec.runDir}/last.json`, '--output-schema', `${spec.runDir}/schema.json`, spec.prompt)
+  argv.push('--json', '-o', `${spec.runDir}/last.json`, '--output-schema', spec.schemaPath, spec.prompt)
   return { argv, env: { ...spec.env }, cwd: spec.runDir }
 }
 

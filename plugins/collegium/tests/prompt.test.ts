@@ -83,6 +83,12 @@ test('a nullable object with properties still needs additionalProperties false',
   expect(checkStrictSchema(schema)).toContain('additionalProperties')
 })
 
+test('a schema with properties and no type still needs additionalProperties false', () => {
+  const schema = structuredClone(strict)
+  schema.properties.verdict = { required: ['why'], properties: { why: { type: 'string' } } }
+  expect(checkStrictSchema(schema)).toBe('result_schema.properties.verdict: an object needs "additionalProperties": false')
+})
+
 test('the envelope slots the caller result schema in and keeps the rest fixed', () => {
   const plain = envelopeSchema()
   expect(plain.properties.result).toEqual({ type: ['string', 'null'] })

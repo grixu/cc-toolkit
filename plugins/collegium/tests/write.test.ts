@@ -1,9 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 import { finishWrite, prepareWrite, type WriteMode } from '../hooks/write.ts'
-import { fakeGitReply, stubbedHost, type GitReply } from './host.ts'
+import { CALLER, ROOT, fakeGitReply, gitReplyValue, stubbedHost, type GitReply } from './host.ts'
 
-const CALLER = '/work/repo'
-const RUN_DIR = '/work/repo.collegium/r1'
+const RUN_DIR = `${ROOT}/r1`
 const WORKTREE = `${RUN_DIR}/worktree`
 
 type GitCall = { cwd: string; args: string[] }
@@ -17,8 +16,7 @@ function useFakeGit(on, replies: Record<string, GitReply | GitReply[]> = {}): Gi
   on('process.run', ($, e) => {
     const args: string[] = e.argv.slice(1)
     calls.push({ cwd: e.init?.cwd, args })
-    const reply = fakeGitReply(all, args)
-    return { value: { exitCode: reply.exitCode ?? 0, stdout: reply.stdout ?? '', stderr: reply.stderr ?? '' } }
+    return gitReplyValue(fakeGitReply(all, args))
   })
   return calls
 }

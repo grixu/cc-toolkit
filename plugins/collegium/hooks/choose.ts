@@ -33,7 +33,7 @@ export async function choose($, req: ChoiceRequest): Promise<Choice> {
   if (given && req.effort && !given.efforts.includes(req.effort)) {
     throw new Error(`${given.id} has no effort ${req.effort}; it supports ${given.efforts.join(', ')}`)
   }
-  if (given && req.effort) return { model: given.id, effort: req.effort, chosenBy: 'caller', source: { model: 'caller', effort: 'caller' } }
+  if (given && req.effort) return { model: given.id, effort: req.effort, chosenBy: 'caller', source: sources(req, 'decision') }
 
   const candidates = given ? [] : modelCandidates(req)
   try {
@@ -102,11 +102,11 @@ async function askBackend($, provider: DecisionProvider, req: ChoiceRequest, giv
     const options = Object.fromEntries(model.efforts.map((e) => [e, e === model!.defaultEffort ? `${e} (the model's default)` : e]))
     effort = await pick({ type: 'choice', instructions: EFFORT_INSTRUCTIONS, options }, { task: req.task, model: model.id })
   }
-  return { model: model.id, effort, chosenBy: provider.name, source: sources(req) }
+  return { model: model.id, effort, chosenBy: provider.name, source: sources(req, 'decision') }
 }
 
-function sources(req: ChoiceRequest): Choice['source'] {
-  return { model: req.model ? 'caller' : 'decision', effort: req.effort ? 'caller' : 'decision' }
+function sources(req: ChoiceRequest, missing: Source): Choice['source'] {
+  return { model: req.model ? 'caller' : missing, effort: req.effort ? 'caller' : missing }
 }
 
 const HAIKU_SYSTEM =
@@ -132,10 +132,10 @@ async function askHaiku($, req: ChoiceRequest, given: Model | undefined, candida
       ...(given ? { model: given.id } : {}),
       ...(req.effort ? { effort: req.effort } : {}),
       chosenBy: FALLBACK_MODEL,
-      source: { model: given ? 'caller' : 'default', effort: req.effort ? 'caller' : 'default' },
+      source: sources(req, 'default'),
     }
   }
-  return { model: model.id, effort, chosenBy: FALLBACK_MODEL, source: sources(req) }
+  return { model: model.id, effort, chosenBy: FALLBACK_MODEL, source: sources(req, 'decision') }
 }
 
 async function haikuAnswer($, prompt: string): Promise<{ model?: unknown; effort?: unknown } | undefined> {
