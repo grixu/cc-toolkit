@@ -44,6 +44,24 @@ earlier run state (13 `done`, 8 `merged`, 5 `blocked`) is gone from the files. T
 stays on `feat/collegium`, `feat/code-review-codex-review` and `feat/fd3-codex-review`.
 `task-graph.mjs` reports no problems, and every element code lands in at least one task.
 
+**Re-split 2026-11-18, after P4** (`/fd3:split-to-tasks`), taken against this verdict, quoted
+verbatim:
+
+> Verdict: ready — claims: 75 verified / 2 deferred / 0 blocked — spec 813 lines at this verdict
+
+`wc -l` on the spec: 813 (commit `5d49c2ec`). `origin/main` is `2ee20d08`; since the branch base it
+changed only eval READMEs, eval scripts, `.claude/` settings and `.gitignore`, none of them cited.
+What changed in the spec: C15 landed negative (`aabcaafd`), C16 is dropped with TEST-3 (D77), and
+C17 removes the WIF CI path (D78). The user chose to update the files in place and keep their
+statuses: `collegium-evals-ci` is replaced by `remove-wif-path` (C17, `todo`) at ordinal 0015. It
+edits `hooks/codex.ts` and `tests/codex.test.ts`, which `codex-adapter` wrote, hence its one edge,
+and it carries CICD-2, whose row (the existing `lint.yml` mod-test step on PR 1) no other work item
+builds. `release-collegium` now depends on `remove-wif-path` and exercises the UI-1 row's TEST-2
+runs. `run-and-config-ui`'s UI-1 row moves from the dropped eval to TEST-2, and `ci-eval-spike`'s
+Note records the negative outcome. Every other file, edge, branch, base, `merge-after` and ordinal
+stands. `task-graph.mjs` reports no problems; every element code lands in a task except TEST-3,
+which the spec dropped.
+
 ## Tasks
 
 | # | slug | repository | branch | phase | depends-on | elements |
