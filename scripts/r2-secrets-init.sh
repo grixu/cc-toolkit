@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Writes the git-ignored .r2-secrets.sh at the repo root from 1Password, for scripts/eval-data.mjs.
+# Writes the git-ignored .r2-secrets.sh at the main checkout's root from 1Password, for scripts/eval-data.mjs;
+# every worktree reads that one copy.
 # It refuses to overwrite an existing file; pass --force after a key rotation.
 #
 #   bash scripts/r2-secrets-init.sh [--force]
@@ -8,7 +9,7 @@
 # (default my.1password.com). The values go straight from `op read` into the file and are never printed.
 set -euo pipefail
 
-out="$(cd "$(dirname "$0")/.." && pwd)/.r2-secrets.sh"
+out="$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")/.r2-secrets.sh"
 item="${R2_OP_ITEM:-op://Private/cc-toolkit R2 Bucket}"
 account="${OP_ACCOUNT:-my.1password.com}"
 

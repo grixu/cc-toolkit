@@ -52,7 +52,11 @@ function load(target) {
 }
 
 const R2_VARS = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET']
-const SECRETS = join(REPO, '.r2-secrets.sh')
+// The main checkout's root, so every worktree shares one copy of the keys.
+const SECRETS = join(
+  dirname(spawnSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: REPO, encoding: 'utf8' }).stdout.trim() || join(REPO, '.git')),
+  '.r2-secrets.sh',
+)
 
 function loadSecrets() {
   if (R2_VARS.every((k) => process.env[k])) return
