@@ -309,8 +309,9 @@ notification carries its `cr-scan` closing block inside `<result>`, and its find
 
    **The `codex` Scanner is exempt from this rule.** It never enters the re-dispatch or the
    proceed-or-abort menu: a missing or `status: error` closing block, or a `codex.md` that is
-   missing or has no `Lens:` header, reads as `skipped: codex — no output`, and a skip header
-   reads as `skipped: codex — <reason>`, both in the Tally by `merge-contract.md`. A Codex run
+   missing or has no `Lens:` header, reads as `External review: skipped: codex — no output`, and a
+   skip header reads as `External review: skipped: codex — <reason>`, both in the Tally by
+   `merge-contract.md`. A Codex run
    that failed is an optional reader that did not answer, never a degraded review.
 3. **Merge only once all N have delivered** — and the `codex` Scanner too, when there is one: the
    merge waits for its notification, however long the Codex run takes. Merging early loses
