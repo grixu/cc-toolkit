@@ -1,0 +1,13 @@
+{
+  "prefix": "fd3/real-runs",
+  "root": "local",
+  "paths": [
+    "README.md",
+    "cases",
+    "cases.jsonl",
+    "repos",
+    "scripts",
+    "transcripts"
+  ],
+  "sha256": "09417278324b4ef670d00bab0fbc0005978b99da3549a7a4dc1d9bdaaf922453"
+}
