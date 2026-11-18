@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-11-18
+
 ### Fixed
 
 - `split-to-tasks` no longer stops when `origin/<default>` only moved a pin's lines: when the cited text is unchanged, the tasks cite its new lines, the spec stays as it is, and the report lists each moved pin with its old and new lines.
