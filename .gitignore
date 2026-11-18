@@ -44,3 +44,6 @@ plugins/*/tsconfig.json
 .ai/specs/*/*.session/
 .ai/specs/*/*.notes.md
 .ai/specs/*/*.research/
+
+# third-party agent kits installed into a worktree; their settings belong in user scope
+.agentkit/

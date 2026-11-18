@@ -21,3 +21,39 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check Codex plugin packages
         run: ./scripts/check-codex-plugins.sh
+
+  verify-plugins:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check manifests, marketplace and copied files
+        run: node scripts/verify-plugins.mjs
+
+  plugin-validate-test:
+    runs-on: ubuntu-latest
+    env:
+      # Same version plugin-evals.yml pins, so validation matches the evals' runtime.
+      CLAUDE_CODE_VERSION: 2.1.322
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash -s "$CLAUDE_CODE_VERSION"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Validate the marketplace and every plugin
+        run: |
+          claude plugin validate .claude-plugin/marketplace.json --strict
+          # Not --strict: it turns the mods' TypeScript warnings into failures, including TS5097 on the
+          # '.ts' import paths the mod loader requires.
+          for d in plugins/*/; do claude plugin validate "$d"; done
+      - name: Run mod tests
+        run: |
+          for d in plugins/*/; do
+            [ -d "$d/tests" ] && [ -f "$d/hooks/hooks.json" ] || continue
+            echo "::group::$d"
+            claude plugin test "$d"
+            echo "::endgroup::"
+          done
