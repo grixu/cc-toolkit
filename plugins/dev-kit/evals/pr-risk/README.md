@@ -18,13 +18,13 @@ Live runs require `TYPESAFE_API_KEY` and the Claude Agent SDK's authenticated se
 The labelled cohorts come from private repositories, so they live in a Cloudflare R2 bucket, never in git. `data.mjs` pulls a set into the ignored `local/data/<set>/` and verifies every file against the set's sha256 manifest:
 
 ```sh
-node plugins/dev-kit/evals/pr-risk/data.mjs pull v8
+bash scripts/with-r2-keys.sh node plugins/dev-kit/evals/pr-risk/data.mjs pull v8
 node plugins/dev-kit/evals/pr-risk/fe-eval.mjs --replay
 node plugins/dev-kit/evals/pr-risk/fe-eval.mjs --live --limit 20
 node plugins/dev-kit/evals/pr-risk/e2e.mjs --limit 3
 ```
 
-It needs the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. The sets are `v8` (the test cohort: frozen part states, recorded factor answers, PR bodies and sealed labels), `v5` (the development cohort) and `research` (archived write-ups and scripts).
+It needs the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET` in the environment; `scripts/with-r2-keys.sh` exports them from the git-ignored `.r2-secrets.sh` that `bash scripts/r2-secrets-init.sh` writes from 1Password. The sets are `v8` (the test cohort: frozen part states, recorded factor answers, PR bodies and sealed labels), `v5` (the development cohort) and `research` (archived write-ups and scripts).
 
 - `fe-eval.mjs --replay` runs production's `hooks/factors.ts` on the recorded Jev answers. It fails unless every factor state and request body production builds equals the frozen ones byte for byte, and unless the cost equals the cohort's recorded baseline. A pass shows that production scores what the cohort measured.
 - `fe-eval.mjs --live` sends the same states to Jev now and compares the result with the recorded answers, showing drift in Jev or in the questions. It reports request count, tokens and latency. `--backend gemini` sends them to Gemini Decision instead (`GEMINI_DECISIONS_API_KEY` or `GEMINI_API_KEY`), comparing Gemini with the recorded Jev answers on the same scorer. `run.mjs` stays on TypeSafe.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Writes the git-ignored .r2-secrets.sh at the main checkout's root from 1Password, for scripts/eval-data.mjs;
+# Writes the git-ignored .r2-secrets.sh at the main checkout's root from 1Password, for scripts/with-r2-keys.sh;
 # every worktree reads that one copy.
 # It refuses to overwrite an existing file; pass --force after a key rotation.
 #

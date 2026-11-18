@@ -5,7 +5,7 @@
   "description": "Claude Code plugin marketplace \u2014 root dev tooling (promptfoo eval suites live in plugins/<name>/evals/)",
   "scripts": {
     "eval": "bash scripts/run-evals.sh",
-    "eval:data": "node scripts/eval-data.mjs",
+    "eval:data": "bash scripts/with-r2-keys.sh node scripts/eval-data.mjs",
     "eval:code-review": "bash scripts/run-evals.sh code-review",
     "eval:tester": "bash plugins/tester/evals/reset-sandbox.sh && TESTER_RUNS_DIR=\"$PWD/plugins/tester/evals/.sandbox/runs\" promptfoo eval -c plugins/tester/evals/promptfooconfig.yaml --no-cache --no-share -o /tmp/eval-tester.json",
     "eval:tester:fixture": "bash plugins/tester/evals/reset-sandbox.sh",

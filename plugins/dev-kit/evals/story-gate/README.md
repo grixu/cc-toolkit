@@ -8,7 +8,7 @@ Run from the repository root with a Node version that strips TypeScript types:
 
 ```sh
 node --test 'plugins/dev-kit/evals/story-gate/*.test.mjs'
-node plugins/dev-kit/evals/story-gate/data.mjs pull v1
+bash scripts/with-r2-keys.sh node plugins/dev-kit/evals/story-gate/data.mjs pull v1
 node plugins/dev-kit/evals/story-gate/extract.mjs --intent
 node plugins/dev-kit/evals/story-gate/run.mjs --backend typesafe --data plugins/dev-kit/evals/story-gate/local/states.intent.jsonl --tag e4-ts-1
 node plugins/dev-kit/evals/story-gate/run.mjs --backend gemini --data plugins/dev-kit/evals/story-gate/local/states.intent.jsonl --tag e4-gm
@@ -32,7 +32,8 @@ node plugins/dev-kit/evals/story-gate/metrics.mjs plugins/dev-kit/evals/.results
 The PRs come from private repositories, so the data lives in the ignored `local/` folder and in Cloudflare R2, never
 in git. `data.mjs` keeps set `v1` as two tarballs with their SHA-256: `local/` without the bare clones, and the
 recorded answers of every experiment in `.results/story-gate/`. It needs the aws CLI and `R2_ACCOUNT_ID`,
-`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`; `push` runs on the owner's machine only.
+`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET` in the environment, which `scripts/with-r2-keys.sh`
+exports from the git-ignored `.r2-secrets.sh`; `push` runs on the owner's machine only.
 
 - `local/cohort.jsonl` and `local/labels.jsonl`: the development set, 37 of the owner's PRs from 2026-10-29 to
   2026-11-17 across three organisations. 24 carry a published code story, 13 do not. The owner labelled every one
