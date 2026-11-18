@@ -1,6 +1,6 @@
 ---
 name: Harness adapter contract and the Codex adapter
-status: todo
+status: merged
 spec: ../SPEC.md
 elements: [INTEGRATION-1, INTEGRATION-2, TEST-1]
 decisions: [D8, D10, D13, D33, D46, D47, D7, D63, D64]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-codex-adapter
 phase: 2
 depends-on: [collegium-scaffold]
 tickets: []

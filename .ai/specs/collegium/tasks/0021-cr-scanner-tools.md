@@ -1,6 +1,6 @@
 ---
 name: Scanner tool list and the Codex-host skip
-status: todo
+status: merged
 spec: ../SPEC.md
 elements: [INTEGRATION-7]
 decisions: [D44]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/code-review-codex-review
 branch-base: main
 merge-after: [feat/collegium]
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-cr-scanner-tools
 phase: 4
 depends-on: []
 tickets: []

@@ -1,6 +1,6 @@
 ---
 name: Gate 3 — merge PR 1, release collegium v0.1.0, live checks
-status: todo
+status: blocked
 spec: ../SPEC.md
 elements: [TEST-2]
 decisions: [D26, D62]

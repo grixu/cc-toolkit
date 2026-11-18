@@ -1,6 +1,6 @@
 ---
 name: cr-scan --lens codex and cr-prepare --codex
-status: todo
+status: merged
 spec: ../SPEC.md
 elements: [INTEGRATION-7]
 decisions: [D36, D42, D44, D52, D53]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/code-review-codex-review
 branch-base: main
 merge-after: [feat/collegium]
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-cr-scan-prepare-codex
 phase: 4
 depends-on: [cr-codex-reference]
 tickets: []
