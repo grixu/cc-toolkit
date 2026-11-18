@@ -70,6 +70,7 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 | Plugin | What it does | Start with |
 |---|---|---|
 | [fd3](plugins/fd3/README.md) | Turns a rough idea into working code in stages. Claude questions you until the design decisions are settled, writes them up as a spec, checks the spec against your code, splits it into tasks, then implements the tasks in parallel in separate git worktrees and validates the result. Nothing is pushed without your approval. | `/fd3:build-spec <topic>` |
+| [collegium](plugins/collegium/README.md) | Hands a task to another coding agent and model, such as OpenAI Codex, while you keep working, and shows its result when it ends: a summary, the answer, and the assumptions and open questions it had. Codex reads your checkout without changing it, or writes in a git worktree, a branch or a merge when you ask. Codex stays off until you turn it on. | `/collegium:run <task>` |
 | [codex-plan-improver](plugins/codex-plan-improver/README.md) | Gets a second opinion on Claude's plans. When you leave plan mode, it sends the plan to OpenAI Codex and revises it until Codex approves, for up to 5 rounds. | Runs on leaving plan mode, or `/codex-plan-improver:codex-review` |
 
 ### Review and test code

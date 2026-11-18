@@ -212,7 +212,7 @@
     {
       "name": "collegium",
       "source": "./plugins/collegium",
-      "description": "Hands a piece of work to another coding agent and model, such as OpenAI Codex, and brings its result back to Claude Code. Codex stays off until you turn it on.",
+      "description": "Hands a task to another coding agent, such as OpenAI Codex, while you keep working, and brings back its answer with the assumptions and open questions it had. Codex is off until you turn it on, because each run sends your code to OpenAI.",
       "version": "0.0.0",
       "author": {
         "name": "Mateusz Gostański",
