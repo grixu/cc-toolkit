@@ -109,6 +109,7 @@ Most plugins need only Claude Code. These need more:
 |---|---|
 | codex-plan-improver | [OpenAI Codex CLI](https://github.com/openai/codex), `jq` |
 | code-review | Python 3, git |
+| collegium | Claude Code 2.1.327 or later; [OpenAI Codex CLI](https://github.com/openai/codex) |
 | hookify | Python 3 |
 | fd3 | git; [dynamic workflows](https://code.claude.com/docs/en/workflows) for `/fd3:implement`; code-review 0.4.0 or later for its optional review step |
 | researcher | [Dynamic workflows](https://code.claude.com/docs/en/workflows); the [firecrawl](https://www.firecrawl.dev) MCP server with `FIRECRAWL_API_KEY`; optional `mmdc` for diagrams |

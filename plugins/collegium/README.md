@@ -4,7 +4,10 @@ Hands a piece of work to another coding agent and model, such as OpenAI Codex, a
 
 ## Requirements
 
-<!-- Codex CLI, Claude Code version: filled in with the full README. -->
+- Claude Code 2.1.327 or later, with mods turned on. Collegium reads its data folder through
+  `$.process.hookEnv()`, which older versions lack. On a Team or Enterprise plan, an admin setting
+  such as `allowManagedModsOnly` can turn off mods that you install.
+- The [OpenAI Codex CLI](https://github.com/openai/codex) on your `PATH`; tested with 0.169.0.
 
 ## Installation
 
