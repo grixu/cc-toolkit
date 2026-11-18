@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `evals/real-runs/`: a private set of real build-spec → split-to-tasks → implement-tasks runs (the spec as split read it, the tasks as split wrote them, the grill Q&A, repo snapshots at each base, the transcripts), kept in R2 and restored with `pnpm eval:data pull fd3/real-runs`.
+
 ## [0.5.5] - 2026-11-18
 
 ### Fixed
