@@ -222,7 +222,14 @@ Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branche
   4 runs: 0 hits in the targeted clusters (`mktemp` failures, Write before Read on a `mktemp` file,
   `Operation not permitted` on saved tool results; dk-pr-open baseline 1 + 7 + 6 hits in 139 runs); its
   failed-tool-call rate, 7.4% (4 of 54 tool calls, all `ls` on absent paths), against the dk-pr-open
-  baseline of 6.2% (104 of 1,676 tool calls; 3.3% across all families) is noise at n=4. The code-review before/after
-  verdict run is pending: its fixtures come from R2, and the R2 keys need the owner's 1Password session.)
+  baseline of 6.2% (104 of 1,676 tool calls; 3.3% across all families) is noise at n=4. code-review
+  before/after, also 2026-11-18: eval-1 and eval-6, 3 trials each, scored the same with the #66 host
+  copy and with the old `evals-isolation.json` (eval-1 0/3, eval-6 3/3), and neither run read
+  `CLAUDE.md`, `AGENTS.md` or `.claude/`. A single trial of the other quality-track tests (5, 7, 8, 9,
+  15, 38, 39) read only eval-15's own `cases/standards/CODING_STANDARDS*.md`. The skill no longer
+  probes the repo it runs from, so the 122/136 baseline no longer applies, and the host copy guards a
+  regression. The failures come from check drift, not isolation: eval-1 expects quotes with the `//`
+  marker the output leaves out, and eval-7/9/39 expect `Lens: readability-tests` slugs where the output
+  prints `Lens: readability & tests`.)
 - Whole plan: in two weeks, rerun the retro aggregation over new sessions; compare gate blocks, hook
   false positives and `/verify`-type misses with this baseline.
