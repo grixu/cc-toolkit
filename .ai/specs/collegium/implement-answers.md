@@ -18,6 +18,11 @@
 
 - Q8 G4 split (`$.process.hookEnv()` exists from 2.1.326, absent on 2.1.322/.323/.325): Collegium requires Claude Code ≥ 2.1.327 and the CI pin `plugin-evals.yml` `CLAUDE_CODE_VERSION` goes to 2.1.327; CONFIG-2 stays as written (`${CLAUDE_PLUGIN_DATA}/config.json` from `hookEnv()`), no `$.store` fallback. Spec amendment via `/fd3:build-spec`.
 
+## Relaunch (2026-11-18)
+
+- Merge-up: `origin/main` (dd387afe) merged into `feat/collegium` (573226e0) before the relaunch, under the standing merge-up answer; no conflicts.
+- Tasks re-pointed at D66–D76 (1a8bade3) before the relaunch.
+
 Repairs: /Users/mateusz/grixu/cc-toolkit-collegium feat/collegium: 1
 
 Last report: /private/tmp/claude-501/-Users-mateusz-grixu-cc-toolkit-collegium/9012e0f3-8518-4efc-b7ea-c46b0dc4d3cf/tasks/wywluub58.output (implement, 2026-11-17)
