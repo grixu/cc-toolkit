@@ -29,6 +29,12 @@
 - Re-split by `/fd3:split-to-tasks` (3f33aad3); the user chose Replace, so every task restarted at `todo`. `probe-mod-host` set back to `done` from `evidence/spikes.md` (b7dc87bf, 6dff3e9b).
 - Merge-up: `origin/main` (7b8aa779) merged into `feat/collegium` (91304a13), standing answer, no conflicts.
 
+## P4 relaunch (2026-11-18)
+
+- Spec amended for P4 (D77, D78; 5d49c2ec), tasks updated in place (586744ae): `remove-wif-path` (C17) replaces the eval task.
+- Merge-up: `origin/main` (2ee20d08) merged into `feat/collegium` (04c37b5e), standing answer, no conflicts.
+- Stale `node_modules` removed from the code-review and fd3 branch worktrees so their local ShellCheck matches CI's fresh checkout (Q5 cause).
+
 Repairs: /Users/mateusz/grixu/cc-toolkit-collegium feat/collegium: 1
 
 Last report: /private/tmp/claude-501/-Users-mateusz-grixu-cc-toolkit-collegium/9012e0f3-8518-4efc-b7ea-c46b0dc4d3cf/tasks/wqh97jc1i.output (implement, 2026-11-18)
