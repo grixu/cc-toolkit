@@ -242,7 +242,10 @@ Return its closing block verbatim, and nothing else.
 `codex` entry: the same prompt with `--lens codex`, the same unnamed `code-review:scanner`, started
 with the Lens Scanners. It calls Collegium and waits for the run itself, up to 60 minutes, and
 always writes `<context>/codex.md`, delivered or skipped. Under the Codex host there is no such
-call.
+call. Collegium also posts its own `Collegium run <id> finished` notice to this conversation when
+the run ends: that notice is not a Scanner result. Never call `collegium_result` for it — the codex
+Scanner owns the result, and a second caller would consume it first — and keep waiting for the codex
+Scanner's own `<task-notification>`.
 
 The `scanner` agent has only the tools a Scanner needs and loads no `CLAUDE.md`, so the
 conventions note is the one house style it judges by. Pass no `model`: every Lens runs on the

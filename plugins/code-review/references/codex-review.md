@@ -70,6 +70,8 @@ from the context directory, then:
 3. Calls `mcp__collegium__collegium_result` with `{ id, wait_seconds: 600 }`, again while it
    answers `running`. Collegium ends the run at its 60-minute deadline; if it still answers
    `running` after seven calls, write the skip header with `no result after 70 minutes` and stop.
+   An error string instead of a state means the result is gone, read by another caller or never
+   kept: write the skip header with `collegium_result: <the error's first line>` and stop.
 4. Renders the terminal answer into `codex.md` as **Rendering** says.
 
 ## The task text
@@ -170,7 +172,7 @@ Lens: codex · skipped: <reason>
 
 | outcome | reason |
 |---|---|
-| tools absent, or `collegium_run` returned an error | as **The run** says |
+| tools absent, or `collegium_run` or `collegium_result` returned an error | as **The run** says |
 | state `timeout` | `timed out after 60 minutes` |
 | state `failed` | `failed — <the reason Collegium gives>` |
 | state `blocked`, or an envelope `status` other than `done` | `blocked — <the envelope's summary>` |
