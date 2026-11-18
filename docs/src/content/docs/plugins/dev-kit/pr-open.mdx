@@ -122,7 +122,7 @@ A later run that finds stale proof removes it, so the label comes back only afte
 
 - **No manifest on this machine** leaves the labels as they are, since the manifest lives where the proof was taken.
 - **A missing label** is created once with the description "Proof from pr-proof matches the code". An existing label is never changed.
-- **The Proof label option** (`proof_label`) turns the label off, and **Proof label name** (`proof_label_name`) renames it.
+- **The Proof label option** (`proof_label`, on by default) turns the label off, and **Proof label name** (`proof_label_name`, `proof` by default) renames it.
 
 ## The code story
 
@@ -165,9 +165,9 @@ The **Code story gate backend** option (`story_gate_backend`) picks the model:
 When one of two backends fails, the other decides on its own thresholds, and the report names the failure.
 
 :::note[How well the gate works]
-The questions and thresholds were calibrated on the plugin author's own 37 pull requests, then checked once on 24 more that played no part in the fit.
-On those 24, both backends together skipped 8 of the 13 pull requests the author would skip, Jev alone 7 and Gemini alone 10.
-None of them skipped any of the 11 that should have a story.
+The questions and thresholds were calibrated on the plugin author's own 37 pull requests, then checked on 24 more that played no part in the fit.
+Only the thresholds for both backends together were frozen before that check: they skipped 8 of the 13 pull requests the author would skip, and none of the 11 that should have a story.
+The single-backend thresholds were fitted on the same 37 afterwards, so their results on the 24 (Jev alone 7 of 13, Gemini alone 10, no story skipped) are not a blind test.
 That is one person's judgement on a small sample, so a skipped story is worth a second look until your own log says otherwise.
 :::
 

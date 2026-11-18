@@ -122,7 +122,7 @@ Kolejne uruchomienie, które znajdzie nieaktualny dowód, zdejmuje etykietę, wi
 
 - **Brak manifestu na tym komputerze** zostawia etykiety bez zmian, bo manifest jest tam, gdzie zebrano dowód.
 - **Brakująca etykieta** powstaje raz z opisem „Proof from pr-proof matches the code”. Istniejąca etykieta nigdy nie jest zmieniana.
-- **Opcja Proof label** (`proof_label`) wyłącza etykietę, a **Proof label name** (`proof_label_name`) zmienia jej nazwę.
+- **Opcja Proof label** (`proof_label`, domyślnie włączona) wyłącza etykietę, a **Proof label name** (`proof_label_name`, domyślnie `proof`) zmienia jej nazwę.
 
 ## Historia zmiany
 
@@ -165,9 +165,9 @@ Model wybiera opcja **Code story gate backend** (`story_gate_backend`):
 Gdy jeden z dwóch backendów zawiedzie, drugi decyduje na własnych progach, a raport podaje błąd.
 
 :::note[Jak dobrze działa bramka]
-Pytania i progi skalibrowano na 37 pull requestach autora pluginu, a potem raz sprawdzono na 24 kolejnych, które nie brały udziału w dopasowaniu.
-Na tych 24 oba backendy razem pominęły 8 z 13 pull requestów, które autor by pominął, sam Jev 7, a sam Gemini 10.
-Żaden wariant nie pominął żadnego z 11, które powinny mieć historię.
+Pytania i progi skalibrowano na 37 pull requestach autora pluginu, a potem sprawdzono na 24 kolejnych, które nie brały udziału w dopasowaniu.
+Przed tym sprawdzeniem zamrożono tylko progi dla obu backendów razem: pominęły 8 z 13 pull requestów, które autor by pominął, i żadnego z 11, które powinny mieć historię.
+Progi dla pojedynczego backendu dopasowano później na tych samych 37, więc ich wyniki na 24 (sam Jev 7 z 13, sam Gemini 10, żadna historia pominięta) nie są ślepym testem.
 To ocena jednej osoby na małej próbie, więc pominiętej historii warto się przyjrzeć, dopóki twój własny log nie pokaże czegoś innego.
 :::
 
