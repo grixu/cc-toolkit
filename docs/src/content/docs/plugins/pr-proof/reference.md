@@ -195,7 +195,8 @@ An empty `entries` list means "no proof needed", while a missing manifest means 
 | `~/.cache/pr-proof/<repo>/<branch>/terminal.txt`, `api.txt` | the masked, reviewed transcripts |
 | `~/.cache/pr-proof/<repo>/<branch>/base-worktree/` | the base worktree for before shots, removed when you stop its stack |
 | `~/.cache/pr-proof/compare.jsonl` | the comparison log, with both backends |
-| `~/.cache/walkthrough-video/<repo>/<feature-slug>/` | a walkthrough's work folder, including the video in `out/` |
+| `~/.cache/walkthrough-video/<repo>/<feature-slug>/` | a walkthrough's work folder, including the video in `out/` and its caption list in `out/frames/cues.txt` |
+| `~/.cache/walkthrough-video/<repo>/repo-profile.md` | the repo profile every walkthrough in the repository shares: how the app starts, logs in and shows success and errors |
 | `~/Downloads/<ticket-or-PR>-<slug>.mp4` | a standalone walkthrough's delivered copy |
 
 Table 6. Where pr-proof writes. Nothing is written into the repository.

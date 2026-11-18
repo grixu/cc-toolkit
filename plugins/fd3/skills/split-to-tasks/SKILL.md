@@ -109,7 +109,10 @@ line; a block older than that line is measured from the commit that last changed
 has moved past it, the spec may describe code that is no longer there: intersect `git diff --name-only
 <validated commit>..origin/<default>` with the paths the spec cites. No hit, and the split goes on. A
 hit clears when that path's diff leaves every claim the spec makes about it intact — its line pins,
-the symbols and shapes it quotes — and the report names the path and what was checked. Any other
+the symbols and shapes it quotes — and the report names the path and what was checked. A pin whose
+cited text is unchanged and only moved to other line numbers is intact: the tasks cite the lines
+where that text now is, the spec stays as it is, and the report lists each moved pin, old and new
+lines. Any other
 hit is a stop before anything is written — name the paths the new commits changed and the route
 `/fd3:build-spec <spec path>`; rebasing a branch or correcting the spec to follow is that route's
 work, never this skill's.

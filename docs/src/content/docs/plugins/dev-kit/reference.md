@@ -6,7 +6,7 @@ sidebar:
   order: 10
 ---
 
-This page lists the arguments, the pre-approved commands and the result blocks of the dev-kit skills.
+This page lists the arguments, the options, the pre-approved commands and the result blocks of the dev-kit skills.
 The risk label's options, tool inputs and result fields are on [Risk label reference](/plugins/dev-kit/risk-assessment/reference/).
 
 ## Arguments
@@ -26,6 +26,22 @@ Table 1. Skill arguments
 - **`checkout=<dir>`** (`ci-fix`) names the local checkout to fix in, when the caller works in a worktree on the run's branch.
 - **`unattended`** (`dep-upgrade-check`) asks nothing, ends with status `stopped` wherever the check would otherwise ask you, and posts its full report on the pull request. `GITHUB_ACTIONS=true` has the same effect.
 
+## Plugin options
+
+Set them with `/plugin configure dev-kit@cc-toolkit`.
+These options shape `pr-open`'s code story and proof label; the API keys and the risk label's options are on [Risk label reference](/plugins/dev-kit/risk-assessment/reference/#plugin-options).
+
+| Option | Default | What it does |
+|---|---|---|
+| `code_story` | `auto` | When `pr-open` writes a code story. `auto` asks a decision model whether the change is worth one and needs a TypeSafe or Gemini key; without one, the story is written. `always` writes one for every pull request, `never` writes none. |
+| `story_gate_backend` | `auto` | Which model decides under `auto`. `auto` uses every backend whose key is set, `both` needs both keys, `typesafe` or `gemini` uses that one. |
+| `proof_label` | `true` | Whether `pr-open` labels the pull request while its proof from pr-proof is current. |
+| `proof_label_name` | `proof` | The name of that label. |
+
+Table 2. Code story and proof label options
+
+[Whether a change gets a story](/plugins/dev-kit/pr-open/#whether-a-change-gets-a-story) and [the proof label](/plugins/dev-kit/pr-open/#the-proof-label) explain both in full.
+
 ## Permissions
 
 Each skill pre-approves only some of the commands it runs.
@@ -38,7 +54,7 @@ Anything else asks for permission unless your settings already allow it.
 | `ci-fix` | File edits; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checks from third-party apps); your test, lint and build commands |
 | `dep-upgrade-check` | Writing files (the advisory query and the comment bodies); `printenv GITHUB_ACTIONS`; `git fetch`, `show`; `gh repo view`; `gh pr view`, `diff`, `checks`; `gh run view`; `gh api`, writes included; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; `curl -s` to api.osv.dev and api.deps.dev; WebFetch; firecrawl search and scrape; context7 | Lookups for npm, yarn, Python, Go, PHP, Rust, container images and GitHub Actions; the optional worktree build |
 
-Table 2. Commands each skill runs without asking
+Table 3. Commands each skill runs without asking
 
 An unattended `pr-shepherd` loop pauses at the first permission prompt.
 Before you start it, allow your repository's check commands in `.claude/settings.json`, for example `"Bash(pnpm test *)"`.

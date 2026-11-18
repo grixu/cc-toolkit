@@ -196,7 +196,8 @@ Pusta lista `entries` oznacza „dowód niepotrzebny”, a brak manifestu oznacz
 | `~/.cache/pr-proof/<repo>/<branch>/terminal.txt`, `api.txt` | zamaskowane i przejrzane transkrypty |
 | `~/.cache/pr-proof/<repo>/<branch>/base-worktree/` | worktree bazy do zrzutów „przed”, usuwany po zatrzymaniu jego stacka |
 | `~/.cache/pr-proof/compare.jsonl` | log porównań przy obu backendach |
-| `~/.cache/walkthrough-video/<repo>/<feature-slug>/` | folder roboczy walkthrough, z wideo w `out/` |
+| `~/.cache/walkthrough-video/<repo>/<feature-slug>/` | folder roboczy walkthrough, z wideo w `out/` i listą napisów w `out/frames/cues.txt` |
+| `~/.cache/walkthrough-video/<repo>/repo-profile.md` | profil repozytorium wspólny dla każdego walkthrough w repozytorium: jak aplikacja startuje, jak loguje użytkownika i jak pokazuje sukces oraz błędy |
 | `~/Downloads/<ticket-or-PR>-<slug>.mp4` | kopia wideo dostarczona przez samodzielne uruchomienie walkthrough |
 
 Tabela 6. Gdzie pr-proof zapisuje pliki. Nic nie trafia do repozytorium.

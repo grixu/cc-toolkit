@@ -11,6 +11,8 @@ output.json
 # eval sandboxes (recreated from fixtures/ by the suite's reset script) and exported results
 plugins/*/evals/.sandbox/
 plugins/*/evals/.results/
+# written by scripts/run-evals.sh with this checkout's absolute paths
+scripts/.evals-isolation.host.json
 # eval cases drawn from private repositories: their names, commits and descriptions stay off this public repo
 plugins/*/evals/*/local/
 # code-review eval fixtures, pulled from R2 by evals/data.mjs at the sha256 fixtures.sha256 pins
@@ -44,3 +46,6 @@ plugins/*/tsconfig.json
 .ai/specs/*/*.session/
 .ai/specs/*/*.notes.md
 .ai/specs/*/*.research/
+
+# third-party agent kits installed into a worktree; their settings belong in user scope
+.agentkit/
