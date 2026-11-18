@@ -17,6 +17,7 @@
 ## Decisions (probes, 2026-11-18)
 
 - Q8 G4 split (`$.process.hookEnv()` exists from 2.1.326, absent on 2.1.322/.323/.325): Collegium requires Claude Code ≥ 2.1.327 and the CI pin `plugin-evals.yml` `CLAUDE_CODE_VERSION` goes to 2.1.327; CONFIG-2 stays as written (`${CLAUDE_PLUGIN_DATA}/config.json` from `hookEnv()`), no `$.store` fallback. Spec amendment via `/fd3:build-spec`.
+- Q9 G3 negative (2026-11-18, `evidence/spikes.md` G3; inside `claude plugin eval` the mod gets only manifest-default options, so `codex` is false, and `$.http.fetch` is refused): no eval suite. TEST-3 and the CI eval arm are dropped; `/collegium:run` is checked by the live-check script (TEST-2); CICD-2 is already met by `lint.yml:54-57`. Spec amendment via `/fd3:build-spec`.
 
 ## Relaunch (2026-11-18)
 

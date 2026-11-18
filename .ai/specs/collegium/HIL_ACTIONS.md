@@ -20,9 +20,10 @@ holds every answer so far.
    Claude Code ≥ 2.1.327 and CI pins 2.1.327 (G4 closes on CONFIG-2 as written); G1 closes on
    spawn; G2 closes on submit at completion, with D43's `turn.complete` notice kept for a submit
    the host drops after a user Stop.
-3. **CI eval spike G3** — [0014-ci-eval-spike.md](tasks/0014-ci-eval-spike.md), once the
-   `/collegium:run` skill exists on `feat/collegium`. Unblocks *Eval suite and the CI job the spike
-   chose*.
+3. **CI eval spike G3** — [0014-ci-eval-spike.md](tasks/0014-ci-eval-spike.md): done 2026-11-18,
+   negative (`evidence/spikes.md`, G3). Decision Q9: no eval suite. Next: `/fd3:build-spec
+   .ai/specs/collegium/SPEC.md` drops TEST-3 and the CI arm (notes P4), then re-split *Eval suite
+   and the CI job the spike chose*.
 4. **Gate 3** — [0016-release-collegium.md](tasks/0016-release-collegium.md): merge PR 1, release
    collegium v0.1.0, live checks.
 5. **Gate 4** — [0024-release-code-review.md](tasks/0024-release-code-review.md): merge PR 2,
