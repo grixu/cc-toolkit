@@ -3,7 +3,7 @@ name: Model and effort choice
 status: todo
 spec: ../SPEC.md
 elements: [INTEGRATION-3, TEST-1]
-decisions: [D5, D6, D7, D12, D47, D48, D56, D59]
+decisions: [D5, D6, D7, D12, D47, D48, D56, D59, D72]
 repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
@@ -37,5 +37,7 @@ where each value came from. Its choice-path tests land with it.
 Uses the copied client in `hooks/decision.ts` and `hooks/providers/` (`decision-client-copy`) —
 call it, never edit it. Reads the merged tiers, exclusions and `decision.backend` from
 `hooks/config.ts` (`config-merge`) and the `Palette`/`Model` types and catalogue from
-`hooks/harness.ts` and `hooks/codex.ts` (`codex-adapter`). Write the tests as
+`hooks/harness.ts` and `hooks/codex.ts` (`codex-adapter`). The `choice` question goes to the
+decision client, answered by the backend or Haiku and never by a person (D72), so a headless
+caller needs no extra path. Write the tests as
 `plugins/collegium/tests/choose.test.ts`.

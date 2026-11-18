@@ -20,6 +20,20 @@ now point at D63–D65 (the WIF CI path, `prepare`, the model pin), and the `OPE
 gone from `ci-eval-spike` and from Still owed. Every replaced file was `status: todo` with no
 worktree, so nothing implementation wrote was lost.
 
+**Update 2026-11-18**, taken against this verdict, quoted verbatim:
+
+> Verdict: ready — claims: 66 verified / 3 deferred / 0 blocked — spec 773 lines at this verdict
+
+`wc -l` on the spec: 773 (commit `49debb2d`). The spec's work-item table (C1–C16, R1–R7, F1–F4),
+elements, phases and gates are unchanged since the split, so the cut, edges, branches, bases,
+`merge-after` and ordinals stand. The files were updated in place rather than rewritten, because
+13 of them carry `merged` statuses and implementation state. Only `decisions:` and `## Note`
+changed, to point at D66–D76 instead of the G1/G2/G4 branches the probes settled:
+`config-merge` (D68), `model-choice` (D72), `run-lifecycle` (D66, D67, D69, D76),
+`tools-registration` (D67, D76; no `collegium_config`), `live-check-script` (D75; the `timeout`
+run calls `collegium_run` directly), `run-and-config-ui` (D68, D75, D76), `collegium-readme`
+(D68, D75) and `collegium-evals-ci` (D68, D75). `task-graph.mjs` reports no problems.
+
 ## Tasks
 
 | # | slug | repository | branch | phase | depends-on | elements |
@@ -162,8 +176,9 @@ points at a lower ordinal, and `branch-base`/`merge-after` match on every task o
 
 ## Still owed
 
-- **Unvalidated spec edit:** the two `register.ts` pin corrections the split made on the user's
-  instruction have no evidence row; the next `/fd3:build-spec` pass picks them up.
+- **Non-blocking validation findings the tasks now carry** (pass 8): the TEST-2 `timeout` run's
+  route (`live-check-script` Note) and the duplicate notice after `--wait` (`run-and-config-ui`
+  Note).
 - **WIF mapping assertions** were suggested, not read back from OpenAI (spec Prerequisites, K6);
   `ci-eval-spike` exercises them.
 - **Evidence commits:** `probe-mod-host`, `ci-eval-spike` and `probe-configure-json` write

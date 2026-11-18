@@ -3,7 +3,7 @@ name: Register the three Collegium tools
 status: todo
 spec: ../SPEC.md
 elements: [API-1, API-2, API-3, TEST-1]
-decisions: [D2, D11, D13, D14, D15, D20, D26, D53]
+decisions: [D2, D11, D13, D14, D15, D20, D26, D53, D67, D76]
 repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
@@ -39,6 +39,8 @@ land with it.
 
 `hooks/hooks.json` from `collegium-scaffold` already points at `./register.ts`, and the `codex`
 toggle it reads comes from that task's manifest. The handlers call `hooks/config.ts`,
-`hooks/codex.ts`, `hooks/choose.ts`, `hooks/prompt.ts`, `hooks/write.ts` and `hooks/runs.ts`. If
-`probe-mod-host` recorded G4 as "not returned", this task also adds the `collegium_config` tool G4's
-rule names. Write the tests as `plugins/collegium/tests/register.test.ts`.
+`hooks/codex.ts`, `hooks/choose.ts`, `hooks/prompt.ts`, `hooks/write.ts` and `hooks/runs.ts`. The
+`collegium_run` handler records whether its call came from the main loop (`e.agentId` absent) so
+`hooks/runs.ts` notifies only those runs (D76), and the completion submit uses that handler's own
+`$` (D67). There is no `collegium_config` tool (D68). The existing empty `hooks/register.ts`
+(commit `67160546`) is a placeholder this task replaces. Write the tests as `plugins/collegium/tests/register.test.ts`.

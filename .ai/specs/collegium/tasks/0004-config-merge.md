@@ -3,7 +3,7 @@ name: Read and merge the JSON configuration
 status: todo
 spec: ../SPEC.md
 elements: [CONFIG-2, TEST-1]
-decisions: [D25, D26, D27, D56, D60, D12, D47]
+decisions: [D25, D26, D27, D56, D60, D12, D47, D68]
 repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
@@ -29,13 +29,11 @@ palette-filtering tests land with it.
 
 - CONFIG-2 — section 4, "CONFIG-2: the JSON configuration".
 - TEST-1 — section 4, "TEST-1: collegium unit tests" (config merge, palette filtering).
-- Gap G4 — section 12, "Declared gaps".
+- D68 — section 3 (G4 settled by `probe-mod-host`, `evidence/spikes.md`).
 - Work item C4, plus the matching share of C12 — section 6.
 
 ## Note
 
-Write the user-config location against the G4 answer `probe-mod-host` records in
-`.ai/specs/collegium/evidence/spikes.md`, following G4's rule: `$.process.hookEnv()` returns
-`CLAUDE_PLUGIN_DATA` → CONFIG-2 as written; it does not → keep the user config in `$.store` under
-`user-config` (the added `collegium_config` tool that rule names belongs to `tools-registration`).
-Write the tests as `plugins/collegium/tests/config.test.ts`.
+G4 is settled (D68): take the user-config path from `$.process.hookEnv()`'s `CLAUDE_PLUGIN_DATA`
+and never build it by hand; there is no `$.store` fallback and no `collegium_config` tool. Write
+the tests as `plugins/collegium/tests/config.test.ts`.

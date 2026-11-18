@@ -3,7 +3,7 @@ name: Collegium README, root README rows and description
 status: todo
 spec: ../SPEC.md
 elements: [DOCS-1]
-decisions: [D51, D26]
+decisions: [D51, D26, D68, D75]
 repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
@@ -39,4 +39,6 @@ Fills in the README skeleton, `plugin.json` description and marketplace entry `c
 created; describes the skill and command `run-and-config-ui` ships and the tools behind them. Run
 `/compound-writing:cw-scribe`, `/compound-writing:cw-reader` and `/compound-writing:cw-ai-check`
 on the description until reader and ai-check raise nothing that matters. Never touch the version
-field.
+field. The README's Requirements section and the root README's requirements row already state
+Claude Code 2.1.327 and the Codex CLI (commit `d25540bb`, D68): keep them and add the plugin-table
+row. Document `/collegium:run --wait` (D75).

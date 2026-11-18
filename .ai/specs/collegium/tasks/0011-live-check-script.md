@@ -3,7 +3,7 @@ name: Manual live-check script
 status: todo
 spec: ../SPEC.md
 elements: [TEST-2]
-decisions: [D31]
+decisions: [D31, D75]
 repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
@@ -36,4 +36,7 @@ run's state and envelope.
 
 ## Note
 
-Calls the tools `tools-registration` registers, by the names API-1–3 give them.
+Calls the tools `tools-registration` registers, by the names API-1–3 give them. Runs that go
+through `/collegium:run` pass `--wait` (D75): a `claude -p` session ends with its turn, so without
+it no envelope comes back. Give the section 8 INTEGRATION-5 `timeout` run (`timeout_minutes: 1`) a
+route — `/collegium:run --wait` has no timeout flag, so call `collegium_run` directly for it.
