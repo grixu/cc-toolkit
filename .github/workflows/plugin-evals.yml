@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  CLAUDE_CODE_VERSION: 2.1.322
+  CLAUDE_CODE_VERSION: 2.1.327
   # The suites were calibrated on this model; pinning it keeps a model rollout from reading as a regression.
   EVAL_MODEL: claude-opus-5-5
 
