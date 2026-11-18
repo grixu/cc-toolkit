@@ -16,7 +16,10 @@ holds every answer so far.
    `External review: skipped: codex — <reason>` (D55); no codex entry is written under
    `collegium_run` never or ask-No; settle how a headless scanner or fd3 workflow answers
    INTEGRATION-3's model `choice` question; RunSpec's shape; and how the run tool gets
-   `${CLAUDE_PLUGIN_ROOT}`. Best done together with the G1/G2/G4 answers.
+   `${CLAUDE_PLUGIN_ROOT}`. From the probes (`evidence/spikes.md`, decision Q8): Collegium needs
+   Claude Code ≥ 2.1.327 and CI pins 2.1.327 (G4 closes on CONFIG-2 as written); G1 closes on
+   spawn; G2 closes on submit at completion, with D43's `turn.complete` notice kept for a submit
+   the host drops after a user Stop.
 3. **CI eval spike G3** — [0014-ci-eval-spike.md](tasks/0014-ci-eval-spike.md), once the
    `/collegium:run` skill exists on `feat/collegium`. Unblocks *Eval suite and the CI job the spike
    chose*.

@@ -14,6 +14,10 @@
 - Q6 Collegium hook tests failing under the real `claude plugin test`: repair now on feat/collegium.
 - Q7 spec drift (finalMessage($, runDir) async, Tally clause `External review: skipped: codex — …`, no codex entry under never/ask-No, headless `choice` gap): keep code, amend spec via `/fd3:build-spec .ai/specs/collegium/SPEC.md`.
 
+## Decisions (probes, 2026-11-18)
+
+- Q8 G4 split (`$.process.hookEnv()` exists from 2.1.326, absent on 2.1.322/.323/.325): Collegium requires Claude Code ≥ 2.1.327 and the CI pin `plugin-evals.yml` `CLAUDE_CODE_VERSION` goes to 2.1.327; CONFIG-2 stays as written (`${CLAUDE_PLUGIN_DATA}/config.json` from `hookEnv()`), no `$.store` fallback. Spec amendment via `/fd3:build-spec`.
+
 Repairs: /Users/mateusz/grixu/cc-toolkit-collegium feat/collegium: 1
 
 Last report: /private/tmp/claude-501/-Users-mateusz-grixu-cc-toolkit-collegium/9012e0f3-8518-4efc-b7ea-c46b0dc4d3cf/tasks/wywluub58.output (implement, 2026-11-17)
