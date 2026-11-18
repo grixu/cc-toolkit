@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-18
+
 ### Fixed
 
 - `pr-open` creates the body directory with `mktemp -d "${TMPDIR:-/tmp}/pr-body.XXXXXX"`. The `-t` form ignores `$TMPDIR` on macOS, so it failed in a sandboxed shell that may write only there.
