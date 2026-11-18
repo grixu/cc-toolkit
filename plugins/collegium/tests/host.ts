@@ -12,9 +12,15 @@ export function stubbedHost() {
     return out.value
   }
   const $ = {
-    process: { run: (argv: string[], init?: Record<string, unknown>) => call('process.run', { argv, init }) },
+    process: {
+      run: (argv: string[], init?: Record<string, unknown>) => call('process.run', { argv, init }),
+      hookEnv: () => call('process.hookEnv', {}),
+    },
     env: { get: (name: string) => call('env.get', { name }) },
-    fs: { read: (path: string) => call('fs.read', { path }) },
+    fs: {
+      read: (path: string) => call('fs.read', { path }),
+      exists: (path: string) => call('fs.exists', { path }),
+    },
     http: { fetch: (url: string, init?: Record<string, unknown>) => call('http.fetch', { url, init }) },
   }
   const on = (name: string, stub: Stub) => {
