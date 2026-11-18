@@ -1,8 +1,7 @@
-import { withoutTrailingSlash, type HarnessAdapter, type Palette, type ProcessResult, type RunEvent, type RunSpec } from './harness.ts'
+import type { HarnessAdapter, Palette, ProcessResult, RunEvent, RunSpec } from './harness.ts'
 
 const PROVIDER = 'openai'
 const LOGIN_FIX = '! codex login'
-export const TOKEN_EXCHANGE_URL = 'https://auth.openai.com/oauth/token'
 
 function exitDetail(r: ProcessResult | undefined): string {
   return `exit ${r?.exitCode ?? 'n/a'}`
@@ -57,67 +56,8 @@ export async function catalogue($): Promise<Palette[]> {
   }
 }
 
-function ciFailure(step: string, detail: string): Error {
-  return new Error(`Codex CI login failed at ${step}: ${detail}`)
-}
-
-async function fetchTokenField($, step: string, url: string, init: Record<string, unknown>, field: string): Promise<string> {
-  const res = await $.http.fetch(url, init).catch(() => undefined)
-  if (!res) throw ciFailure(step, 'request did not complete')
-  if (!res.ok) throw ciFailure(step, `HTTP ${res.status}`)
-  let value: unknown
-  try {
-    value = JSON.parse(res.text)?.[field]
-  } catch {
-    value = undefined
-  }
-  if (typeof value !== 'string' || value === '') throw ciFailure(step, `HTTP ${res.status} without ${field}`)
-  return value
-}
-
-// Errors here name the step and status only: a token, JWT or response body must never reach a log.
 export async function prepare($, runId: string): Promise<Record<string, string>> {
-  const requestToken = (await $.env.get('EVAL_ACTIONS_ID_TOKEN_REQUEST_TOKEN')) ?? ''
-  if (requestToken === '') return {}
-  const requestUrl = (await $.env.get('EVAL_ACTIONS_ID_TOKEN_REQUEST_URL')) ?? ''
-  const audience = (await $.env.get('EVAL_OPENAI_WIF_AUDIENCE')) ?? ''
-  const identityProviderId = (await $.env.get('EVAL_OPENAI_IDENTITY_PROVIDER_ID')) ?? ''
-  const serviceAccountId = (await $.env.get('EVAL_OPENAI_SERVICE_ACCOUNT_ID')) ?? ''
-  // A hooks module has no Node, so the OS temp dir comes from the environment.
-  const tmp = withoutTrailingSlash((await $.env.get('TMPDIR')) || '/tmp')
-  const home = `${tmp}/collegium-codex-home/${runId}`
-
-  const jwt = await fetchTokenField(
-    $,
-    'the GitHub OIDC token request',
-    `${requestUrl}&audience=${encodeURIComponent(audience)}`,
-    { method: 'GET', headers: { authorization: `bearer ${requestToken}` } },
-    'value',
-  )
-  const accessToken = await fetchTokenField(
-    $,
-    'the OpenAI token exchange',
-    TOKEN_EXCHANGE_URL,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
-        subject_token: jwt,
-        identity_provider_id: identityProviderId,
-        service_account_id: serviceAccountId,
-      }),
-    },
-    'access_token',
-  )
-
-  // Codex refuses a CODEX_HOME that does not exist yet.
-  const mkdir = await run($, ['mkdir', '-p', home])
-  if (mkdir?.exitCode !== 0) throw ciFailure('creating CODEX_HOME', exitDetail(mkdir))
-  const login = await run($, ['codex', 'login', '--with-api-key'], { env: { CODEX_HOME: home }, stdin: accessToken })
-  if (login?.exitCode !== 0) throw ciFailure('codex login --with-api-key', exitDetail(login))
-  return { CODEX_HOME: home }
+  return {}
 }
 
 export async function loginStatus($, env: Record<string, string>) {
