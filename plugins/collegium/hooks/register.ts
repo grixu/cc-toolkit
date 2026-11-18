@@ -1,3 +1,4 @@
+import { catalogue as harnessCatalogue, detect, loginStatus, prepare } from './adapters.ts'
 import { choose } from './choose.ts'
 import { codex } from './codex.ts'
 import { isEnabled, loadConfig, paletteConfig, type Config } from './config.ts'
@@ -138,7 +139,7 @@ async function runTool($, e, options: Record<string, unknown> | undefined, detec
   if (!adapter) return `unknown harness ${harness}; Collegium knows ${Object.keys(ADAPTERS).join(', ')}`
   const name = NAMES[harness] ?? harness
 
-  const found = detected.get(harness) ?? (await adapter.detect($))
+  const found = detected.get(harness) ?? (await detect($, adapter))
   if (!found.installed) return `${name} is not installed: it was not found on PATH. Install it, then call again.`
   detected.set(harness, found)
   if (!isEnabled(config, harness, options)) {
@@ -150,11 +151,11 @@ async function runTool($, e, options: Record<string, unknown> | undefined, detec
   const id = newRunId(await $.clock.now())
   let env: Record<string, string>
   try {
-    env = await adapter.prepare($, id)
+    env = await prepare($, adapter, id)
   } catch (error) {
     return message(error)
   }
-  const login = await adapter.loginStatus($, env)
+  const login = await loginStatus($, adapter, env)
   if (!login.loggedIn) return `${name} is logged out. Run \`${login.fix}\`, then call again.`
 
   let palettes: Palette[]
@@ -224,7 +225,7 @@ async function catalogue($, adapter: HarnessAdapter, version: string | undefined
   const key = `${CATALOGUE_PREFIX}${adapter.id}:${version ?? 'unknown'}`
   const cached = await $.store.get(key).catch(() => undefined)
   if (Array.isArray(cached)) return cached as Palette[]
-  const palettes = await adapter.catalogue($)
+  const palettes = await harnessCatalogue($, adapter)
   try {
     const stale = (await $.store.keys()).filter((k: string) => k.startsWith(`${CATALOGUE_PREFIX}${adapter.id}:`) && k !== key)
     for (const k of stale) await $.store.delete(k)

@@ -12,7 +12,7 @@ async function run($, argv: string[], init: Record<string, unknown> = {}): Promi
   return $.process.run(argv, { stdin: '', timeoutMs: 60_000, ...init }).catch(() => undefined)
 }
 
-async function detect($) {
+export async function detect($) {
   const r = await run($, ['codex', '--version'])
   if (r?.exitCode !== 0) return { installed: false }
   const version = r.stdout.trim().split(/\s+/).pop()
@@ -46,7 +46,7 @@ function parseCatalogue(stdout: string): Palette[] {
 }
 
 // `codex debug models` is a diagnostic command whose JSON may change without notice, so a failure names the version.
-async function catalogue($): Promise<Palette[]> {
+export async function catalogue($): Promise<Palette[]> {
   const r = await run($, ['codex', 'debug', 'models'])
   try {
     if (r?.exitCode !== 0) throw new Error(exitDetail(r))
@@ -76,7 +76,7 @@ async function fetchTokenField($, step: string, url: string, init: Record<string
 }
 
 // Errors here name the step and status only: a token, JWT or response body must never reach a log.
-async function prepare($, runId: string): Promise<Record<string, string>> {
+export async function prepare($, runId: string): Promise<Record<string, string>> {
   const requestToken = (await $.env.get('EVAL_ACTIONS_ID_TOKEN_REQUEST_TOKEN')) ?? ''
   if (requestToken === '') return {}
   const requestUrl = (await $.env.get('EVAL_ACTIONS_ID_TOKEN_REQUEST_URL')) ?? ''
@@ -120,7 +120,7 @@ async function prepare($, runId: string): Promise<Record<string, string>> {
   return { CODEX_HOME: home }
 }
 
-async function loginStatus($, env: Record<string, string>) {
+export async function loginStatus($, env: Record<string, string>) {
   const r = await run($, ['codex', 'login', 'status'], { env })
   return { loggedIn: r?.exitCode === 0, fix: LOGIN_FIX }
 }
@@ -160,7 +160,7 @@ function parseEvent(line: string): RunEvent | null {
   return null
 }
 
-async function finalMessage($, runDir: string): Promise<string | null> {
+export async function finalMessage($, runDir: string): Promise<string | null> {
   const text = await $.fs.read(`${runDir}/last.json`).catch(() => null)
   return typeof text === 'string' && text.trim() !== '' ? text : null
 }

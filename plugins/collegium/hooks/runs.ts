@@ -1,3 +1,4 @@
+import { finalMessage } from './adapters.ts'
 import { withoutTrailingSlash, type HarnessAdapter, type RunEvent } from './harness.ts'
 import { prepareRun } from './prompt.ts'
 import { finishWrite, prepareWrite, type WriteMode, type WriteRun } from './write.ts'
@@ -260,7 +261,7 @@ async function settle(
   end: { code: number | null; stderr: string; timedOut: boolean; timeoutMinutes: number },
 ): Promise<Partial<RunState>> {
   if (end.timedOut) return { state: 'timeout', reason: `no result within ${end.timeoutMinutes} minutes; the process was killed` }
-  const envelope = parseEnvelope(await req.adapter.finalMessage($, runDir))
+  const envelope = parseEnvelope(await finalMessage($, req.adapter, runDir))
   if (envelope) return { state: envelope.status, envelope }
   const events = await tailEvents($, req.adapter, runDir)
   const failed = events.filter((e) => e.kind === 'failed').pop()
