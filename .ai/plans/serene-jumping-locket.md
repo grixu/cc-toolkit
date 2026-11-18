@@ -164,14 +164,16 @@ Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branche
 - [x] Baseline: `work-g9/agg.mjs` and the per-group evidence are kept, git-ignored, in
   `.ai/specs/harness-retro/retro.session/` (changed: not copied into a plugin's `evals/`; it reads
   session transcripts, not eval output).
-- [ ] ~~`scripts/evals-isolation.json`: narrow the `~/.ccs` block~~ — skipped: the paths under `~/.ccs`
-  that hold secrets vary by ccs profile (`config.yaml`, per-instance settings, `.session-secret`), so a
-  file list would leak the next new one; the Read tool already reaches `tool-results/` (its deny rules
-  name only the secret files), and the 17 failures were `grep`/`cat` on those files, a one-retry cost.
-- [ ] ~~code-review `working_dir` into a sandbox~~ — skipped: every code-review prompt names the
-  plugin's rule files by repo-root path and pins conventions to "none", so isolating it means
-  rewriting ~20 prompts and a full Opus re-run of the suite, against a cost g9 measured only as
-  failed reads (48), with no verdict effect shown. Left as a follow-up.
+- [x] `scripts/evals-isolation.json`: narrow the `~/.ccs` block. (changed: not a file list, which would
+  miss the next secret a ccs profile adds. Probes showed a `credentials.files` deny cannot be re-opened
+  and `allowRead` takes only literal paths, so `run-evals.sh` writes a git-ignored
+  `scripts/.evals-isolation.host.json` that moves `~/.ccs`/`~/.claude` to `filesystem.denyRead` and
+  re-opens only this checkout's project dirs. Probe: a saved tool result reads from Bash; `~/.ccs`
+  secrets and other projects' transcripts stay denied. In #66)
+- [x] code-review isolation. (changed: `working_dir` stays at the repo root, so the ~20 prompts keep
+  their paths; the host copy denies this checkout's `CLAUDE.md`, `AGENTS.md` and `.claude/` to Bash and
+  Read instead. Probe: all three denied. The before/after eval needs the R2 fixtures, which need the
+  owner's 1Password; see the PR. In #66)
 - [x] `TMPDIR`: a probe in the real eval sandbox showed it already points inside the sandbox; the
   failures came from `mktemp -t`, which ignores `$TMPDIR` on macOS. Fixed at the source in dev-kit
   pr-open (step 5) instead of in `run-evals.sh`. `npm_config_cache` and the `push -u` upstream: not
