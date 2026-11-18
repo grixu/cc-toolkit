@@ -93,6 +93,10 @@ A `merge` run that conflicts aborts the merge and keeps the branch for you to me
 the branch unmerged when a merge of yours is already in progress, or when git refuses to merge over
 your uncommitted changes.
 
+A write-mode run that does not end `done` is neither committed nor merged, so half-done work never
+reaches your checkout. A `worktree` run keeps its worktree as Codex left it; a `branch` or `merge`
+run leaves its branch as it started. The result's `note` says which.
+
 ### `/collegium:config`
 
 Sets which model each tier uses and which models Collegium never picks. It runs `codex --version`,
