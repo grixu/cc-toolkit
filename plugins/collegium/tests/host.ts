@@ -42,6 +42,7 @@ export function stubbedHost() {
         return { cancel: () => (timer.cancelled = true) }
       },
     },
+    model: { complete: (request: Record<string, unknown>) => call('model.complete', request) },
     session: { root: () => call('session.root', {}) },
     prompt: { submit: (input: Record<string, unknown>) => call('prompt.submit', input) },
   }
