@@ -41,12 +41,13 @@ The cases come from private repositories, so they live in the ignored `local/` d
   with its answer.
 - `local/extract/`: the scripts that rebuild both, and the brief the annotators followed.
 
-`data.mjs` keeps a copy in Cloudflare R2 as a tarball of `local/` with its SHA-256. It needs the aws CLI and
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`:
+`pnpm eval:data` keeps a copy in Cloudflare R2 as a tarball of `local/`, stored under its SHA-256, which
+`eval-data.json` pins. It needs the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and
+`R2_BUCKET`:
 
 ```sh
-node plugins/code-review/evals/apply-decision/data.mjs pull v1   # restores local/
-node plugins/code-review/evals/apply-decision/data.mjs push v1   # the owner's machine only
+pnpm eval:data pull code-review/apply-decision   # restores local/
+pnpm eval:data push code-review/apply-decision   # the owner's machine only; commit the new pin
 ```
 
 How the set was built:

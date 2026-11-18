@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The private eval fixtures and the apply-decision set move between git and R2 through the repo-wide `pnpm eval:data`, pinned by `evals/eval-data.json` and `evals/apply-decision/eval-data.json`, in place of the two `data.mjs` scripts.
+
 ## [0.10.0] - 2026-11-17
 
 ### Added

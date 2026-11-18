@@ -1,0 +1,8 @@
+{
+  "prefix": "code-review/apply-decision",
+  "root": "local",
+  "paths": [
+    "."
+  ],
+  "sha256": "7944ef88d236f1b589613fc9e41a574813fc45e20ec8762d810519d1bc6bc374"
+}

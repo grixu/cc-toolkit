@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # The fixtures come from private repositories, so they live in R2, not in this public repo.
-node data.mjs pull
+node ../../../scripts/eval-data.mjs pull code-review
 
 rm -rf .sandbox
 repo=.sandbox/headless

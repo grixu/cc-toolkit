@@ -20,8 +20,7 @@ evals/
   prompts/performance.txt  # scanner brief — performance lens
   prompts/spec.txt         # scanner brief — spec lens ({{spec}} carries the spec path)
   prompts/scope-paths.txt  # start-cr Step 1 over named paths, with the kinds and lens set — eval-19
-  data.mjs                 # pulls cases/, scope-mix/ and comment-track/ from R2 at the sha256 fixtures.sha256 pins
-  fixtures.sha256          # the pinned fixtures tarball; push rewrites it
+  eval-data.json           # pins the R2 tarball holding cases/, scope-mix/ and comment-track/; push rewrites it
   cases/                   # (from R2) inputs, kept out of fixtures/ (test kind in scope.md); cases/spec-conformance/ and cases/standards/ are multi-file
   scope-mix/               # (from R2) eval-19 input, kept out of fixtures/ so its paths classify by kind
   comment-track/           # (from R2) evals 0–4 inputs, kept out of fixtures/ so R11's test-file bar does not apply
@@ -47,16 +46,16 @@ evals/
 
 ## Fixtures live in R2
 
-The fixtures under `cases/`, `scope-mix/` and `comment-track/` are drawn from private repositories, so new and changed fixtures stay out of this public repo; versions committed before the move remain in git history. They live in a Cloudflare R2 bucket as one tarball, stored under its sha256, and `fixtures.sha256` pins the one this commit's evals were written against. `reset-sandbox.sh` runs `node data.mjs pull` first, which skips the download when the pinned fixtures are already in place and refuses a tarball whose hash differs.
+The fixtures under `cases/`, `scope-mix/` and `comment-track/` are drawn from private repositories, so new and changed fixtures stay out of this public repo; versions committed before the move remain in git history. They live in a Cloudflare R2 bucket as one tarball, stored under its sha256, and `eval-data.json` pins the one this commit's evals were written against. `reset-sandbox.sh` runs `pnpm eval:data pull code-review` first (the repo-wide `scripts/eval-data.mjs`), which skips the download when the pinned fixtures are already in place and refuses a tarball whose hash differs.
 
 Both commands need the aws CLI and `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. After you change a fixture, upload the new set and commit the new pin:
 
 ```sh
-node plugins/code-review/evals/data.mjs push
-git add plugins/code-review/evals/fixtures.sha256
+pnpm eval:data push code-review
+git add plugins/code-review/evals/eval-data.json
 ```
 
-A pull that brings a different pin moves your local, unpushed fixtures to a new `.fixtures-prev-<outgoing pin>-<timestamp>/` rather than deleting them. Pulls never remove these backups; delete them yourself once you no longer need them.
+A pull that brings a different pin moves your local, unpushed fixtures to a new `.eval-data-prev-<outgoing pin>-<timestamp>/` rather than deleting them. Pulls never remove these backups; delete them yourself once you no longer need them.
 
 The headless skills review committed changes only, so eval-20 runs against a git
 checkout rather than a fixture path; `scripts/run-evals.sh code-review` rebuilds it
