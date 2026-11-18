@@ -1,6 +1,6 @@
 ---
 name: code-review docs, ADR 0005 and CHANGELOG
-status: todo
+status: merged
 spec: ../SPEC.md
 elements: [DOCS-2]
 decisions: [D35, D36, D37, D38, D41, D52, D55]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/code-review-codex-review
 branch-base: main
 merge-after: [feat/collegium]
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-cr-docs
 phase: 4
 depends-on: [cr-collegium-option, cr-merge-skip, cr-scan-prepare-codex, cr-scanner-tools, cr-start-cr-codex]
 tickets: []

@@ -1,6 +1,6 @@
 ---
 name: Scaffold the collegium plugin
-status: todo
+status: done
 spec: ../SPEC.md
 elements: [CONFIG-1, DOCS-1]
 decisions: [D25, D26]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-collegium-scaffold
 phase: 2
 depends-on: []
 tickets: []

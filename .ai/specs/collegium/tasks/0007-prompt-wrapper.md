@@ -1,6 +1,6 @@
 ---
 name: Prompt wrapper, envelope and strict-schema check
-status: todo
+status: done
 spec: ../SPEC.md
 elements: [INTEGRATION-4, TEST-1]
 decisions: [D21, D22, D23, D40]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-prompt-wrapper
 phase: 2
 depends-on: [collegium-scaffold]
 tickets: []
