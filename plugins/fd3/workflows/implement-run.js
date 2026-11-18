@@ -26,6 +26,8 @@ export const meta = {
 //                 CI passes and fix what they find; "gated" to review the same way but hold
 //                 security, boy-scout, unfixed and fix-review findings for a human; false skips review.
 //                 Under repair, only the repair's own delta of a branch with instructions is reviewed
+//   codexReview   (optional) true to add code-review's Codex review to each branch's first review;
+//                 ignored when review is false. The delta and repair reviews never run it
 //   decisions     (optional) [string] — the user's standing decisions on this task graph from earlier
 //                 report rounds, verbatim; review and fix agents treat a finding against one as
 //                 reserved, and under repair each repair's own instructions count as decisions too
@@ -63,6 +65,7 @@ const specRef = specPath ? `the specification at ${specPath}` : 'the specificati
 const specArg = specPath || '<spec>'
 const review = input.review === true || input.review === 'gated'
 const gated = input.review === 'gated'
+const codexReview = review && input.codexReview === true
 // Undefined would make every `fixRounds < maxFixRounds` false and silently skip the fix rounds
 // the run exists to perform, reporting failures it was built to repair.
 const maxFixRounds = input.maxFixRounds ?? 3
@@ -1200,7 +1203,7 @@ const prepPrompt = (unit, base, dir, only) => {
     ``,
     `Remove ${dir} if it exists — lens files left there by an earlier run would be read as this`,
     `run's. Then invoke the \`code-review:cr-prepare\` skill through the Skill tool with:`,
-    `\`--base ${base} --out ${dir} -C ${tree}${specPath ? ` --spec ${specPath}` : ''}\``,
+    `\`--base ${base} --out ${dir} -C ${tree}${specPath ? ` --spec ${specPath}` : ''}${codexReview && !only ? ' --codex' : ''}\``,
     ...specFocusRule(taskFilesOf(unit)),
     ``,
     `Return what its closing block says: status, judged and skipped file counts, active and inactive`,
@@ -1239,20 +1242,31 @@ const lensDead = (r) => !r || !r.invoked || r.status === 'error' || (r.status ==
 // A lens that read some of its files still reported, but its silence on the rest is not a verdict.
 const lensPartial = (r) => r.status === 'scanned' && r.filesJudged > 0 && r.filesJudged < r.filesTotal
 
+// The Codex review is optional: its scanner writes codex.md even when the run fails, and cr-merge
+// reads a missing one as skipped, so it never holds a branch as dead or partial.
+const CODEX_LENS = 'codex'
+
 // Returns the lenses that did not report — a lens the single scanner left out of its list is one —
 // and those that judged only part of their files.
-const scanLenses = async (lenses, dir, files, tag, pass) => {
+const scanLenses = async (lenses, withCodex, dir, files, tag, pass) => {
+  // One attempt only: a retry would restart a Codex run of up to an hour, and its failure is a skip.
+  const codexScan = withCodex
+    ? [() => agent(STEP_GUARD + scanPrompt(CODEX_LENS, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${CODEX_LENS}`, phase: 'Validate', schema: SCAN_RESULT }).catch(() => null)]
+    : []
   let results
   if (lenses.length > 1 && files <= SINGLE_SCAN_MAX_FILES) {
-    const r = await tryTwice(scanAllPrompt(lenses, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
+    const scanAll = () =>
+      tryTwice(scanAllPrompt(lenses, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:all`, phase: 'Validate', schema: SCAN_ALL_RESULT })
+    const [r] = await parallel([scanAll, ...codexScan])
     const reported = new Map((r && r.invoked ? r.lenses || [] : []).map((e) => [norm(e.lens), { ...e, invoked: true }]))
     results = lenses.map((l) => reported.get(l))
   } else {
-    results = await parallel(
-      lenses.map((lens) => () =>
+    results = await parallel([
+      ...lenses.map((lens) => () =>
         tryTwice(scanPrompt(lens, dir), { agentType: SCANNER, label: `cr:${tag}:${pass}:${lens}`, phase: 'Validate', schema: SCAN_RESULT }),
       ),
-    )
+      ...codexScan,
+    ])
   }
   const dead = lenses.filter((_, i) => lensDead(results[i]))
   const partial = lenses
@@ -1318,7 +1332,9 @@ const runReview = async (unit, base, pass, tag, only) => {
   const all = (prep.active || []).map(norm)
   // A lens outside the narrowed set that is still active fails at cr-merge as missing, which is the
   // honest outcome: its scope.json was not narrowed.
-  const lenses = only ? all.filter((l) => only.includes(l)) : all
+  const selected = only ? all.filter((l) => only.includes(l)) : all
+  // Codex sits outside the lens count, so these checks weigh the Claude lenses alone.
+  const lenses = selected.filter((l) => l !== CODEX_LENS)
   // None of the narrowed lenses applies — an all-skipped change the spec lens alone would read — so
   // the caller's own checks are the review.
   if (only && lenses.length === 0) return { dir, files: prep.files || 0, lenses: 0, findings: [], notices: [] }
@@ -1330,7 +1346,7 @@ const runReview = async (unit, base, pass, tag, only) => {
   if (lenses.length === 0 || (!(prep.files > 0) && !specOnly)) {
     return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
   }
-  const scan = await scanLenses(lenses, dir, prep.files || 0, tag, pass)
+  const scan = await scanLenses(lenses, selected.includes(CODEX_LENS), dir, prep.files || 0, tag, pass)
   if (scan.dead.length > 0) return { dir, dead: `lens ${scan.dead.join(', ')} did not report` }
   const merged = await tryTwice(crMergePrompt(dir, unit), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {
