@@ -6,8 +6,9 @@
 //   pnpm eval:data list [target…]
 //
 // A target is <plugin> or <plugin>/<suite>, naming plugins/<plugin>/evals[/<suite>]/eval-data.json:
-//   { "prefix": "fd3/real-runs", "root": "local", "paths": ["."], "sha256": "<pinned tarball>" }
-// `root` is relative to the config's folder and `paths` to `root`. Pull and list without a target act on every config.
+//   { "prefix": "fd3/real-runs", "root": "local", "paths": ["cases", "cases.jsonl"], "sha256": "<pinned tarball>" }
+// `root` is relative to the config's folder and `paths` to `root`. `paths` names the data folders, never `.`, so the
+// experiment folders kept beside them in local/ stay out of the tarball and a pull never moves them. Pull and list without a target act on every config.
 // Needs the aws CLI and R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET. Tarballs are stored as
 // <prefix>/<sha256>.tar.gz, so every commit pulls the data its evals were written against.
 import { spawnSync } from 'node:child_process'
