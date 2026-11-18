@@ -10,7 +10,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.command // \"\"' | grep -q '\\.r2-secrets\\.sh' || exit 0; echo 'Blocked: .r2-secrets.sh holds the R2 keys; never read, source or print it. pnpm eval:data loads it on its own. If it is missing, create it with: bash scripts/r2-secrets-init.sh' >&2; exit 2",
+            "command": "jq -r '.tool_input.command // \"\"' | grep -q '\\.r2-secrets\\.sh' || exit 0; echo 'Blocked: .r2-secrets.sh holds the R2 keys; never read, source or print it. pnpm eval:data exports it on its own; wrap any other R2 script in bash scripts/with-r2-keys.sh. If it is missing, create it with: bash scripts/r2-secrets-init.sh' >&2; exit 2",
             "timeout": 10
           }
         ]
