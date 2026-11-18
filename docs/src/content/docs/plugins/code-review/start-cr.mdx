@@ -158,6 +158,7 @@ When both answers are no, the fix is applied without a question.
 Otherwise you are asked, as before.
 Security, spec and boy-scout fixes are always asked, and so is any fix the model could not decide.
 The wrap-up lists the fixes applied this way, with the backend that decided each one.
+The option exists only in Claude Code, so [under Codex](/plugins/code-review/codex/) every structural fix is asked one at a time.
 
 :::note
 The thresholds come from 209 recorded walk decisions. Gemini Decision settled about a third of them without applying a fix its owner had declined. Jev settled a similar share, but applied two declined fixes.

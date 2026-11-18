@@ -67,6 +67,11 @@ Poniższy diagram pokazuje kroki przebiegu:
 Typowa historia ma od 4 do 8 rozdziałów, ułożonych w kolejności, w jakiej musi narastać zrozumienie.
 Każdy rozdział odpowiada na jedno pytanie, a jego nagłówek jest tym pytaniem.
 
+Rozdział powstaje z linii, których dotyczy, zmienionych lub nie, a w dwóch przypadkach sięga poza diff:
+
+- **Poprawka, której przyczyna leży w niezmienionych liniach.** Rozdział cytuje te linie i pokazuje, jak spowodowały błąd.
+- **Zmiana, która czyni zbędnym kod w innym miejscu,** na przykład warunek powtarzany przez każdego wywołującego. Rozdział pokazuje jednego prawdziwego wywołującego, zacytowanego z pliku, w obecnej postaci i w takiej, jaką mógłby mieć, i mówi, czy ten branch go usuwa, czy zostawia na później.
+
 Skill pracuje w swoim katalogu roboczym (scratchpad), w `code-story/<branch>/`, z każdym `/` w nazwie brancha zamienionym na `-`.
 Nigdy nie edytuje, nie stage'uje ani nie commituje plików w twoim repozytorium i nigdy nie pushuje ani nie edytuje pull requesta.
 

@@ -25,6 +25,7 @@ The map shows where code-story sits in the cycle.
 code-story is a supporting plugin in [03c Human review](/lifecycle/human-review/).
 There, [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) orchestrates the pull request.
 It asks for a story in a background subagent and adds a `## Code story` section with the link to the pull request description.
+With a decision model key, `pr-open` [skips the story](/plugins/dev-kit/pr-open/#whether-a-change-gets-a-story) for a change too plain to need one, such as a typo fix or a test-only change.
 code-story writes its own prose through [anti-slop](/plugins/anti-slop/) before it assembles the page.
 
 You can also run it on its own, on any branch or pull request.

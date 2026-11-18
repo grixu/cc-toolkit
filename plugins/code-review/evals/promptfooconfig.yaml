@@ -80,7 +80,7 @@ providers:
       setting_sources: [] # keep this repo's CLAUDE.md / hooks OUT of the eval
       # Sandboxed Bash and deny rules for the file tools: these agents run with bypassPermissions
       # on the operator's machine.
-      settings: ../../../scripts/evals-isolation.json
+      settings: ../../../scripts/.evals-isolation.host.json
       ask_user_question:
         behavior: first_option # file-path mode shouldn't prompt, but never block if it does
 
@@ -95,7 +95,7 @@ defaultTest:
         apiKeyRequired: false
         model: claude-opus-5-5
         max_turns: 1
-        settings: ../../../scripts/evals-isolation.json
+        settings: ../../../scripts/.evals-isolation.host.json
         # Without the JSON-only pin the grader occasionally wraps the verdict in prose and
         # promptfoo cannot extract the JSON.
         append_system_prompt: >-

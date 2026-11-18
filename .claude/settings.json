@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; case \"$f\" in *.sh) shellcheck \"$f\" ;; esac; } 2>/dev/null || true",
+            "command": "jq -r '.tool_input.file_path // .tool_response.filePath' | { read -r f; case \"$f\" in *.sh) command -v shellcheck >/dev/null || exit 0; shellcheck \"$f\" >&2 || exit 2 ;; esac; }",
             "timeout": 30,
             "statusMessage": "Running ShellCheck..."
           }

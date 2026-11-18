@@ -30,7 +30,7 @@ providers:
           path: ../../anti-slop
       skills: all
       setting_sources: []
-      settings: ../../../scripts/evals-isolation.json
+      settings: ../../../scripts/.evals-isolation.host.json
       # Questions get the first option unless a test names its answer in vars.answer.
 
 # Each test runs one prompt: the dep-upgrade-check tests inherit security-gate, pr-open tests name theirs.
