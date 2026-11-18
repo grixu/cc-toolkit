@@ -1,0 +1,11 @@
+{
+  "prefix": "code-review/apply-decision",
+  "root": "local",
+  "paths": [
+    "decisions.code.jsonl",
+    "decisions.jsonl",
+    "extract",
+    "runs"
+  ],
+  "sha256": "cc4ded5e65a46f9e08c3220d546942aacc8bef0ae03d5a16e44b4713fe710639"
+}
