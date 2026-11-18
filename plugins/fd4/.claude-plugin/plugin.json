@@ -1,0 +1,14 @@
+{
+  "name": "fd4",
+  "version": "0.0.0",
+  "description": "wip",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "spec-driven-development",
+    "spec"
+  ]
+}
