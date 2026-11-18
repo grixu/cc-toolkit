@@ -18,9 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cr-scan --lens codex` runs the Codex review in its own scanner, read-only in the checkout under
   review, waiting up to 60 minutes; `cr-prepare --codex` turns it on for a headless caller
 - The merge reads `codex.md`: a delivered run adds `External review: codex` to the Tally and its
-  findings merge like any lens's; a failed, timed-out or missing run reads `skipped: codex —
-  <reason>` and never stops the merge or opens the missing-lens menu. Codex stays outside
-  `Lenses: L of A`
+  findings merge like any lens's; a failed, timed-out or missing run reads `External review:
+  skipped: codex — <reason>` and never stops the merge or opens the missing-lens menu. A review
+  switched off adds nothing to the Tally. Codex stays outside `Lenses: L of A`
 - The `code-review:scanner` agent and `/start-cr` may call the Collegium tools. Under the Codex
   CLI the Codex review is never offered
 - ADR 0005 records the Codex external review

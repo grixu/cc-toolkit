@@ -36,9 +36,11 @@ never holds up the lenses listed with it.
 waits for it, up to the 60-minute run limit. A run that fails, times out, is skipped or finds the
 tools absent still writes `codex.md`, with the header `Lens: codex · skipped: <reason>`; a
 `codex.md` that is missing or headerless, because its scanner died, reads as `no output`. The merge
-turns both into `skipped: codex — <reason>` in the Tally. Neither is an undelivered lens:
-`/start-cr`'s fail-closed menu never opens for Codex, and `cr-merge` never returns `incomplete`
-for it.
+turns both into `External review: skipped: codex — <reason>` in the Tally, under the same label
+as a delivered run. Neither is an undelivered lens: `/start-cr`'s fail-closed menu never opens for
+Codex, and `cr-merge` never returns `incomplete` for it. A review the user switched off, by
+`never` or by answering No under `ask`, is not a skip: it writes no `codex` entry, no `codex.md`
+and nothing in the Tally.
 
 **Counting.** A Codex finding that lands on the same code as a Claude lens finding counts as
 independent convergence, the strongest signal the merge has. Codex is not counted among the
