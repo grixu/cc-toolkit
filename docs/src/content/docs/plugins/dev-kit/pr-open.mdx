@@ -200,6 +200,7 @@ Each decision, without the diff, is appended to `~/.cache/dev-kit/story-gate.jso
 The questions and thresholds were calibrated on the plugin author's own 37 pull requests, then checked once on 24 more that played no part in the fit.
 On those 24, neither backend alone nor the pair skipped any of the 11 pull requests that should have a story.
 Of the 13 the author would skip, both backends together skipped 8, TypeSafe's Jev alone 7 and Gemini alone 10.
+Only the pair's thresholds were fixed before that check; each backend's own thresholds were set afterwards, from the 37 alone, so their numbers are weaker evidence.
 That is one person's judgement on a small sample.
 When every pull request in your repository should carry a story, set `code_story` to `always`.
 :::
