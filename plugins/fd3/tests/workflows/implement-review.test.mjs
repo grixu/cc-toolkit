@@ -215,6 +215,8 @@ test('the codex lens gets its own scanner beside the single all-lens scanner', a
   assert.match(r.call('cr:app:feat-x:review:all').prompt, /--lens simplicity,security --context/)
   assert.match(r.call('cr:app:feat-x:review:codex').prompt, /--lens codex --context/)
   assert.equal(r.call('cr:app:feat-x:review:codex').opts.agentType, 'code-review:scanner')
+  assert.ok(r.has('cr-merge:app:feat-x:review'))
+  assert.deepEqual(status(r), ['done', 'done'])
 })
 
 test('a skipped or dead Codex review merges without a dead-lens verdict', async () => {
