@@ -11,7 +11,7 @@ has a `codex` entry in `scope.json`'s `lenses.active` and writes `codex.md` besi
 but it is gated by a user setting and by tool presence, never by the input, and it stays outside
 `Lenses: L of A`. A Codex finding that agrees with a Claude lens counts as independent
 convergence. It never enters `/start-cr`'s fail-closed menu: whatever goes wrong, it ends as
-`skipped: codex — <reason>` in the Tally.
+`External review: skipped: codex — <reason>` in the Tally.
 
 ## When it runs
 
@@ -138,7 +138,7 @@ and `open_questions`.
 ## Rendering
 
 Write `<context>/codex.md` with the `Write` tool — always, delivered or skipped, since a missing or
-headerless `codex.md` reads as `skipped: codex — no output`.
+headerless `codex.md` reads as `External review: skipped: codex — no output`.
 
 **Delivered** — `collegium_result` answers `done` with an envelope whose `status` is `done` and
 whose `result` holds a `findings` array. `M` is the length of the `codex` entry's `files`:
@@ -178,5 +178,5 @@ Lens: codex · skipped: <reason>
 | state `blocked`, or an envelope `status` other than `done` | `blocked — <the envelope's summary>` |
 | `done` without a `findings` array in `result` | `unreadable result` |
 
-The merge reads the skip header as `skipped: codex — <reason>` in the Tally and a delivered
+The merge reads the skip header as `External review: skipped: codex — <reason>` in the Tally and a delivered
 `codex.md` as `External review: codex`; `merge-contract.md` owns both clauses.
