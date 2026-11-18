@@ -200,11 +200,13 @@ test('codexReview adds --codex to the first prepare prompt only, never to the de
   const r = await runCodex(true, [['cr-merge:app:feat-x:review', crMerged([F.plain])]])
   assert.match(r.call('cr-prep:app:feat-x:review').prompt, /--spec \S+ --codex`/)
   assert.doesNotMatch(r.call('cr-prep:app:feat-x:delta').prompt, /--codex/)
+  assert.equal(r.callsMatching('cr:app:feat-x:review:codex').length, 0)
 })
 
 test('codexReview false never adds --codex', async () => {
   const r = await runCodex(false)
   assert.doesNotMatch(r.call('cr-prep:app:feat-x:review').prompt, /--codex/)
+  assert.equal(r.callsMatching('cr:app:feat-x:review:codex').length, 0)
 })
 
 test('the codex lens gets its own scanner beside the single all-lens scanner', async () => {

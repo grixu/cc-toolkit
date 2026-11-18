@@ -1332,9 +1332,9 @@ const runReview = async (unit, base, pass, tag, only) => {
   const all = (prep.active || []).map(norm)
   // A lens outside the narrowed set that is still active fails at cr-merge as missing, which is the
   // honest outcome: its scope.json was not narrowed.
-  const scanned = only ? all.filter((l) => only.includes(l)) : all
+  const selected = only ? all.filter((l) => only.includes(l)) : all
   // Codex sits outside the lens count, so these checks weigh the Claude lenses alone.
-  const lenses = scanned.filter((l) => l !== CODEX_LENS)
+  const lenses = selected.filter((l) => l !== CODEX_LENS)
   // None of the narrowed lenses applies — an all-skipped change the spec lens alone would read — so
   // the caller's own checks are the review.
   if (only && lenses.length === 0) return { dir, files: prep.files || 0, lenses: 0, findings: [], notices: [] }
@@ -1346,7 +1346,7 @@ const runReview = async (unit, base, pass, tag, only) => {
   if (lenses.length === 0 || (!(prep.files > 0) && !specOnly)) {
     return { dir, dead: `cr-prepare reported ready with ${prep.files > 0 ? 'no active lens' : 'no judged file'}` }
   }
-  const scan = await scanLenses(lenses, scanned.includes(CODEX_LENS), dir, prep.files || 0, tag, pass)
+  const scan = await scanLenses(lenses, selected.includes(CODEX_LENS), dir, prep.files || 0, tag, pass)
   if (scan.dead.length > 0) return { dir, dead: `lens ${scan.dead.join(', ')} did not report` }
   const merged = await tryTwice(crMergePrompt(dir, unit), { label: `cr-merge:${tag}:${pass}`, phase: 'Validate', schema: CR_MERGE_RESULT })
   if (!merged || !merged.invoked || merged.status !== 'merged') {
