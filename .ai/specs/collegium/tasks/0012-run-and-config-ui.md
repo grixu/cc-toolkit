@@ -1,6 +1,6 @@
 ---
 name: /collegium:run skill and /collegium:config command
-status: todo
+status: done
 spec: ../SPEC.md
 elements: [UI-1, UI-2]
 decisions: [D14, D26, D28, D47, D58, D68, D75, D76]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-run-and-config-ui
 phase: 2
 depends-on: [tools-registration]
 tickets: []

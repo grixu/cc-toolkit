@@ -1,6 +1,6 @@
 ---
 name: Scaffold the collegium plugin
-status: merged
+status: done
 spec: ../SPEC.md
 elements: [CONFIG-1, DOCS-1]
 decisions: [D25, D26]

@@ -1,6 +1,6 @@
 ---
 name: Write modes (worktree, branch, merge)
-status: merged
+status: done
 spec: ../SPEC.md
 elements: [INTEGRATION-6, TEST-1]
 decisions: [D3, D24, D39, D50, D61]

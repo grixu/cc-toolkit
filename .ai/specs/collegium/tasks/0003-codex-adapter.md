@@ -1,6 +1,6 @@
 ---
 name: Harness adapter contract and the Codex adapter
-status: merged
+status: done
 spec: ../SPEC.md
 elements: [INTEGRATION-1, INTEGRATION-2, TEST-1]
 decisions: [D8, D10, D13, D33, D46, D47, D7, D63, D64]

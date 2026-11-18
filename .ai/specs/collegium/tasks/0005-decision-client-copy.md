@@ -1,6 +1,6 @@
 ---
 name: Copy the decision client into collegium
-status: merged
+status: done
 spec: ../SPEC.md
 elements: [INTEGRATION-3]
 decisions: [D6, D56]

@@ -1,6 +1,6 @@
 ---
 name: Collegium README, root README rows and description
-status: todo
+status: done
 spec: ../SPEC.md
 elements: [DOCS-1]
 decisions: [D51, D26, D68, D75]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-collegium-readme
 phase: 2
 depends-on: [collegium-scaffold, run-and-config-ui]
 tickets: []

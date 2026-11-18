@@ -1,6 +1,6 @@
 ---
 name: Prompt wrapper, envelope and strict-schema check
-status: merged
+status: done
 spec: ../SPEC.md
 elements: [INTEGRATION-4, TEST-1]
 decisions: [D21, D22, D23, D40]
