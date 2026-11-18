@@ -133,3 +133,7 @@ inactive: <lens — reason; …>
 
 On `empty`, add `alternate: <ref> — <count> files` when the script returned one, or
 `reason: every file skipped` when the count was above zero; on `error`, `reason: <what stopped you>`.
+
+A `codex` entry is listed on `active:` like a lens, but the caller dispatches it as its own
+`cr-scan --lens codex` agent, never inside a `--lens` list: inside a list cr-scan answers it with an
+error block, and the merge reads the Codex review as skipped.

@@ -311,7 +311,7 @@ uses `cr-scan` too: it writes the same context directory itself and runs each le
 | Skill | Arguments | Writes |
 |---|---|---|
 | `code-review:cr-prepare` | `--base <ref> --out <dir> [-C <checkout>] [--spec <path> [--spec-focus <codes>]] [--codex]` | `scope.json`, `conventions.md`, `standards.md` |
-| `code-review:cr-scan` | `--lens <lens>[,<lens>…] --context <dir>`: one agent per active lens, or one agent judging a comma-separated list in turn; `--lens codex` runs the Codex review in an agent of its own | `<lens>.md` per lens, `codex.md` for the Codex review |
+| `code-review:cr-scan` | `--lens <lens>[,<lens>…] --context <dir>`: one agent per active lens, or one agent judging a comma-separated list in turn; `--lens codex` runs the Codex review in an agent of its own, never inside a list, even though `cr-prepare` lists `codex` on its `active:` line | `<lens>.md` per lens, `codex.md` for the Codex review |
 | `code-review:cr-merge` | `--context <dir>` | `cr-report.md`, and returns each finding with its fix risk: `safe`, `structural` or `report-only`, plus the real problems no rule names and the files left to `/security-review` |
 
 `--spec-focus "DB-1,D3"` names, by element code or decision id, the part of the spec a change
