@@ -226,8 +226,11 @@ the one `.sandbox/` the run reset. Run-all mode (`pnpm eval`) discovers every
 ## Isolation
 
 The target agent runs with `bypassPermissions` on your machine, so the target provider and
-the grader load `scripts/evals-isolation.json` (the same file the fd3 suite uses) as flag
-settings:
+the grader load `scripts/.evals-isolation.host.json` as flag settings. `scripts/run-evals.sh`
+writes it from `scripts/evals-isolation.json` (the same base the fd3 suite uses) with this
+checkout's absolute paths, and it denies this repo's `CLAUDE.md`, `AGENTS.md` and `.claude/`:
+the working directory is the repo root, and without the deny the skill reads cc-toolkit's own
+conventions as those of the change under review.
 
 - **Bash runs in the Claude Code sandbox** (Seatbelt on macOS; bubblewrap + socat on
   Linux), in strict mode: the run fails if the sandbox cannot start, and

@@ -8,9 +8,12 @@ Monorepo of Claude Code plugins, published as a marketplace at `grixu/cc-toolkit
 
 ## Rules of Working
 
-- Always read the current Claude Code plugin documentation before creating a new plugin or updating `.claude-plugin/marketplace.json`
-- Always propose a plan and get approval before implementing
+- Before creating a plugin or updating `.claude-plugin/marketplace.json`, check the current Claude Code docs: find the page in `https://code.claude.com/docs/llms.txt`, scrape it once as markdown to the scratchpad, then grep that file
 - Show missing questions, unresolved cases, and edge cases not covered in skills, commands, or scripts
+
+## Checks
+
+`node scripts/verify-plugins.mjs`, `claude plugin validate <dir>` and `claude plugin test <dir>` (mod tests, written against `claude-code/testing`) run in CI (`lint.yml`); the `verify` skill runs them locally. Mod code (`hooks/*.ts`) has no tsc or tsconfig: `claude plugin validate` is its type check. Shell scripts go through ShellCheck.
 
 ## Script Language Preference
 
@@ -18,7 +21,11 @@ When creating new scripts, prefer (in order): Bash > Node.js > Python.
 
 ## Releasing
 
-Always use `./scripts/release.sh <plugin-name> <patch|minor|major>` — do not perform release steps manually. Requires `jq` and `git`; `gh` is optional for creating GitHub Releases.
+Release only when the user asks, through the `release` skill (`.claude/skills/release/SKILL.md`): it runs `CI=true ./scripts/release.sh <plugin-name> <patch|minor|major>` from a detached worktree of `origin/main`. Never perform release steps by hand.
+
+## Merging
+
+`main` is protected by a required review the owner cannot give themselves. When the user says merge, run `gh pr merge <n> --squash --admin --delete-branch` without asking again. PRs land as one squash commit, so `fixup!` commits never reach `main`.
 
 ## Commits
 
