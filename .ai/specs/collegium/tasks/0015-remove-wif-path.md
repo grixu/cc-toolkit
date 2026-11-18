@@ -1,6 +1,6 @@
 ---
 name: Remove the WIF CI path from the Codex adapter
-status: todo
+status: done
 spec: ../SPEC.md
 elements: [INTEGRATION-2, TEST-1, CICD-2]
 decisions: [D77, D78]
@@ -8,7 +8,7 @@ repository: /Users/mateusz/grixu/cc-toolkit-collegium
 branch: feat/collegium
 branch-base: main
 merge-after: []
-worktree:
+worktree: /Users/mateusz/grixu/cc-toolkit-collegium.worktrees/task-remove-wif-path
 phase: 3
 depends-on: [codex-adapter]
 tickets: []
