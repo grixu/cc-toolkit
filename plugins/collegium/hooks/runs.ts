@@ -81,10 +81,15 @@ export function newRunId(now: number): string {
   return `${stamp}-${hex}`
 }
 
-export async function runsRoot($): Promise<string> {
+/** The git top level of the session root, or the session root outside git. */
+export async function sessionTop($): Promise<string> {
   const root = withoutTrailingSlash(await $.session.root())
   const r = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { cwd: root, timeoutMs: 10_000 }).catch(() => undefined)
-  const top = r?.exitCode === 0 && r.stdout.trim() !== '' ? withoutTrailingSlash(r.stdout.trim()) : root
+  return r?.exitCode === 0 && r.stdout.trim() !== '' ? withoutTrailingSlash(r.stdout.trim()) : root
+}
+
+export async function runsRoot($): Promise<string> {
+  const top = await sessionTop($)
   const cut = top.lastIndexOf('/')
   return `${top.slice(0, cut)}/${top.slice(cut + 1)}.collegium`
 }
