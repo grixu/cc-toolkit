@@ -1,6 +1,6 @@
 ---
 name: Phase-1 probes of the mod host (G1, G2, G4)
-status: todo
+status: done
 spec: ../SPEC.md
 elements: [TEST-5]
 decisions: [D16, D29, D43, D27]
