@@ -9,7 +9,8 @@
 # (default my.1password.com). The values go straight from `op read` into the file and are never printed.
 set -euo pipefail
 
-out="$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")/.r2-secrets.sh"
+common_dir="$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)"
+out="$(dirname "$common_dir")/.r2-secrets.sh"
 item="${R2_OP_ITEM:-op://Private/cc-toolkit R2 Bucket}"
 account="${OP_ACCOUNT:-my.1password.com}"
 
