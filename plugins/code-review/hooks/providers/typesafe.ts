@@ -1,4 +1,4 @@
-import { readWireAnswers, type DecisionProvider, type DecisionRequest, type Failure, type Question } from '../decision.ts'
+import { readWireAnswers, RETRYABLE_STATUSES, type DecisionProvider, type DecisionRequest, type Failure, type Question } from '../decision.ts'
 
 export const TYPESAFE_MODEL = 'jev-1.14.0'
 const DEFAULT_ENDPOINT = 'https://api.typesafe.ai'
@@ -36,7 +36,7 @@ export function typesafeFailure(res: { status: number; text: string }): Failure 
     return { kind: 'too_long', message: 'A request was longer than the Jev model accepts (HTTP 400 max_tokens_exceeded).' }
   if (status === 422) return { kind: 'other', message: `TypeSafe refused the request (HTTP 422): ${body.slice(0, 500)}` }
   if (status === 429) return { kind: 'rate_limit', message: 'TypeSafe rate limit reached (HTTP 429). Try again later.' }
-  return { kind: [500, 502, 503, 504, 529].includes(status) ? 'retryable' : 'other', message: `TypeSafe answered HTTP ${status}: ${body.slice(0, 300)}` }
+  return { kind: RETRYABLE_STATUSES.includes(status) ? 'retryable' : 'other', message: `TypeSafe answered HTTP ${status}: ${body.slice(0, 300)}` }
 }
 
 export function typesafe(key: string, options?: { endpoint?: unknown; model?: unknown }): DecisionProvider {

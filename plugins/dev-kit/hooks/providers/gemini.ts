@@ -1,4 +1,4 @@
-import { readWireAnswers, type DecisionProvider, type DecisionRequest, type Failure, type Question } from '../decision.ts'
+import { readWireAnswers, RETRYABLE_STATUSES, type DecisionProvider, type DecisionRequest, type Failure, type Question } from '../decision.ts'
 
 export const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/decisions'
 export const GEMINI_MODEL = 'gemini-decision-1'
@@ -38,7 +38,7 @@ export function geminiFailure(res: { status: number; text: string }): Failure {
   if (status === 400 && body.includes('exceeds the maximum number of tokens'))
     return { kind: 'too_long', message: `Gemini answered HTTP 400: ${body.slice(0, 300)}` }
   if (status === 429) return { kind: 'rate_limit', message: 'Gemini rate limit reached (HTTP 429). Try again later.' }
-  return { kind: [500, 502, 503, 504, 529].includes(status) ? 'retryable' : 'other', message: `Gemini answered HTTP ${status}: ${body.slice(0, 300)}` }
+  return { kind: RETRYABLE_STATUSES.includes(status) ? 'retryable' : 'other', message: `Gemini answered HTTP ${status}: ${body.slice(0, 300)}` }
 }
 
 export function gemini(key: string): DecisionProvider {

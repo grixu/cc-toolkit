@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Same version plugin-evals.yml pins, so validation matches the evals' runtime.
-      CLAUDE_CODE_VERSION: 2.1.322
+      CLAUDE_CODE_VERSION: 2.1.327
     steps:
       - uses: actions/checkout@v4
       - name: Install Claude Code

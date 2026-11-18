@@ -46,6 +46,7 @@ export class DecisionError extends Error {
 export type Limit = <T>(fn: () => Promise<T>) => Promise<T>
 
 export const MAX_ATTEMPTS = 3
+export const RETRYABLE_STATUSES: readonly number[] = [500, 502, 503, 504, 529]
 const MAX_RETRY_DELAY_MS = 10_000
 
 export async function ask($, provider: DecisionProvider, request: DecisionRequest, limit: Limit): Promise<DecisionResponse> {
