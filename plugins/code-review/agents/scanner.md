@@ -6,7 +6,7 @@ description: >-
   Internal sub-agent dispatched by /start-cr and by workflows that drive cr-prepare, cr-scan and
   cr-merge; not intended for direct user invocation.
 model: inherit
-tools: Skill, Read, Grep, Glob, Bash, Write
+tools: Skill, Read, Grep, Glob, Bash, Write, ToolSearch, mcp__collegium__collegium_run, mcp__collegium__collegium_result
 omitClaudeMd: true
 ---
 

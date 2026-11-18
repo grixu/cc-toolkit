@@ -171,5 +171,10 @@ session offers one of two tool shapes, depending on the model: v1 takes `fork_co
   - Never offer or run them.
   - A fixed output that names one, such as the report's `Skipped` pointer or cr-merge's
     `security-review:` line, keeps the wording the body defines, because callers parse it.
+- **The Codex review** (the `codex` lens, run through the collegium plugin's Collegium tools) does
+  not exist in Codex: there is no collegium plugin here, and the review would be Codex judging
+  itself.
+  - Never offer or run it: skip the body's Codex-review question and its `codex` dispatch, and
+    never pass `--codex` to cr-prepare.
 - **`model:` frontmatter and per-agent model advice**: ignore them. Every child runs on the
   session model.

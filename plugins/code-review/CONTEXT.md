@@ -20,6 +20,10 @@ _Avoid_: theme, dimension
 **Rules file**:
 The single source of truth for one Lens's rule text: `references/rules/<lens>.md`, named after the lens with no numeric prefix (`comments.md`, `readability-tests.md`, `naming-module.md`, `objects-patterns.md`, `simplicity-types.md`, `correctness.md`, `security.md`, `coherence.md`, `assumptions.md`, `performance.md`, `spec.md`, `hookify.md`).
 
+**External review**:
+A review by a model outside the plugin that rides the Lens-file channel without being a Lens. The one in v1 is the Codex review: OpenAI Codex run through the collegium plugin, gated by the `collegium_run` option (`always`, `never`, `ask`) and by the Collegium tools being present, never by the input. It has a `codex` entry in `lenses.active`, its own Scanner (`cr-scan --lens codex`) and writes `codex.md`, but it stays outside `Lenses: L of A`. A delivered one adds `External review: codex` to the Tally; a failed, timed-out or absent one is `External review: skipped: codex — <reason>` and never an undelivered Lens; one the user switched off (`never`, or `ask` answered No) leaves no `codex` entry and nothing in the Tally. Its Findings that land on a Claude Lens's code count as independent convergence.
+_Avoid_: Codex lens, thirteenth lens; Codex adapter (that runs the plugin itself under the Codex CLI, where the External review does not exist)
+
 **Codex adapter**:
 A skill under `codex/skills/<name>/` that the OpenAI Codex CLI loads in place of the Claude Code skill or command of the same name. It reads `codex/host.md`, the mapping from Claude Code mechanics to Codex ones, then follows the canonical body unchanged; no lens rule lives in an adapter.
 _Avoid_: port, Codex fork (nothing is copied)

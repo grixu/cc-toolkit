@@ -13,7 +13,7 @@ description: >-
   With `--pr <number>` it reviews a GitHub pull request's head against its base; on
   someone else's pull request it drafts review comments instead of applying fixes. Without
   `--pr`, on a branch that is someone else's open pull request, it offers that reviewer mode.
-allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write, mcp__code-review__apply_decision
+allowed-tools: Read, Bash, Grep, Glob, Agent, AskUserQuestion, Edit, Write, mcp__code-review__apply_decision, ToolSearch, mcp__collegium__collegium_run, mcp__collegium__collegium_status, mcp__collegium__collegium_result
 argument-hint: "[paths...] [--base <branch>] [--spec <path>] [--pr <number>]"
 ---
 
@@ -30,7 +30,9 @@ is no lens selection — which Lenses run is decided by the input in Step 2b, ne
 user choice: the five craft Lenses, `correctness`, `security`, `coherence` and `assumptions`
 always run (`objects & patterns` except over infrastructure code alone), `performance` runs
 when executable source is in scope, `spec` when a spec file is named, `hookify` when the
-checkout carries hookify rule files.
+checkout carries hookify rule files. The **Codex review** is not a Lens: it is an external review
+that rides the lens-file channel, gated by the user's `collegium_run` setting and by whether the
+Collegium tools are present (Step 2b), and it stays outside the Lens count.
 
 Arguments: `$ARGUMENTS`
 
@@ -197,6 +199,16 @@ Decide the set once, from the input and never from a preference, by the second h
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`. Record **N**, each active Lens's own
 `<files>`, and every inactive Lens with its reason.
 
+**Decide the Codex review.** Read the **When it runs** section of
+`${CLAUDE_PLUGIN_ROOT}/references/codex-review.md` and apply it: the setting is
+`${user_config.collegium_run}` — that literal text, unexpanded, means the user never saved it and
+reads as `ask`, as does any value other than `always`, `never` and `ask`; the tool check is one
+`ToolSearch` for `select:mcp__collegium__collegium_run,mcp__collegium__collegium_result`; under
+`ask` with the tools found, ask that file's question once. When the review runs, add
+`{ "lens": "codex", "files": <the files security gets> }` to `lenses.active` below; when it does
+not, write no `codex` entry at all, active or inactive, and say nothing of it in the Tally. Either
+way the decision leaves **N** alone.
+
 **Write the context directory.** The Scanners read the review's setup from files, never from a
 brief you compose: eight retyped briefs paraphrased the contract, dropped its clauses, and took
 two minutes of output before the first Scanner started. Make a fresh directory in the session
@@ -209,7 +221,8 @@ directory**, in exactly that shape:
   `--pr`), `base` and `diff_args` from the script, `files` with each judged file's `status`, `kind` and
   `untracked`, `skipped` with its reasons, `spec` the absolute spec path or `null`, `spec_focus`
   `null`, `hookify` the rule files the lens set recorded or `null`, and `lenses` with every Lens once — active with its own `files`, inactive with its
-  reason — named by its rules file's basename (`readability-tests`, `naming-module`, …).
+  reason — named by its rules file's basename (`readability-tests`, `naming-module`, …), plus the
+  `codex` entry when Step 2b decided the Codex review runs.
 
 A review of named paths has no diff: write `diff_args` as `null` and `base` as `null`, and each
 file's `status` as `A`. Read nothing back; the Scanners and Step 4 do.
@@ -224,6 +237,15 @@ and the directory being the only parts that differ:
 Invoke the `code-review:cr-scan` skill with `--lens <lens> --context <the context directory>`.
 Return its closing block verbatim, and nothing else.
 ```
+
+**The Codex review is one more Scanner call in that same message** when `lenses.active` holds a
+`codex` entry: the same prompt with `--lens codex`, the same unnamed `code-review:scanner`, started
+with the Lens Scanners. It calls Collegium and waits for the run itself, up to 60 minutes, and
+always writes `<context>/codex.md`, delivered or skipped. Under the Codex host there is no such
+call. Collegium also posts its own `Collegium run <id> finished` notice to this conversation when
+the run ends: that notice is not a Scanner result. Never call `collegium_result` for it — the codex
+Scanner owns the result, and a second caller would consume it first — and keep waiting for the codex
+Scanner's own `<task-notification>`.
 
 The `scanner` agent has only the tools a Scanner needs and loads no `CLAUDE.md`, so the
 conventions note is the one house style it judges by. Pass no `model`: every Lens runs on the
@@ -284,7 +306,16 @@ notification carries its `cr-scan` closing block inside `<result>`, and its find
    however reasonable it looks as the recommended option. A single-pass or missing-lens review is a **labelled, user-acknowledged
    degradation**, never the silent default — that silent fallback is exactly how a single
    perspective's false positive reaches the report unchecked.
-3. **Merge only once all N have delivered.** Merging early loses findings.
+
+   **The `codex` Scanner is exempt from this rule.** It never enters the re-dispatch or the
+   proceed-or-abort menu: a missing or `status: error` closing block, or a `codex.md` that is
+   missing or has no `Lens:` header, reads as `External review: skipped: codex — no output`, and a
+   skip header reads as `External review: skipped: codex — <reason>`, both in the Tally by
+   `merge-contract.md`. A Codex run
+   that failed is an optional reader that did not answer, never a degraded review.
+3. **Merge only once all N have delivered** — and the `codex` Scanner too, when there is one: the
+   merge waits for its notification, however long the Codex run takes. Merging early loses
+   findings.
 
 While the Scanners run, do work that doesn't depend on them — **pre-read the diff and the
 changed files** so you can re-grade and locate sites the moment findings land. While you
