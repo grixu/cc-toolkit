@@ -23,6 +23,11 @@
 - Merge-up: `origin/main` (dd387afe) merged into `feat/collegium` (573226e0) before the relaunch, under the standing merge-up answer; no conflicts.
 - Tasks re-pointed at D66–D76 (1a8bade3) before the relaunch.
 
+## Re-split relaunch (2026-11-18)
+
+- Re-split by `/fd3:split-to-tasks` (3f33aad3); the user chose Replace, so every task restarted at `todo`. `probe-mod-host` set back to `done` from `evidence/spikes.md` (b7dc87bf, 6dff3e9b).
+- Merge-up: `origin/main` (7b8aa779) merged into `feat/collegium` (91304a13), standing answer, no conflicts.
+
 Repairs: /Users/mateusz/grixu/cc-toolkit-collegium feat/collegium: 1
 
 Last report: /private/tmp/claude-501/-Users-mateusz-grixu-cc-toolkit-collegium/9012e0f3-8518-4efc-b7ea-c46b0dc4d3cf/tasks/wwwfsp8kp.output (implement, 2026-11-18)
