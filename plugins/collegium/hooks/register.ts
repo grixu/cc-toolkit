@@ -3,11 +3,12 @@ import { choose } from './choose.ts'
 import { codex } from './codex.ts'
 import { isEnabled, loadConfig, paletteConfig, type Config } from './config.ts'
 import type { HarnessAdapter, Palette } from './harness.ts'
-import { checkStrictSchema } from './prompt.ts'
+import { resultSchemaError } from './prompt.ts'
 import {
   flushNotices,
   isTerminal,
   newRunId,
+  processGone,
   readRun,
   removeRun,
   runDirFor,
@@ -203,11 +204,7 @@ function checkInput(e): string | null {
   for (const field of ['cwd', 'skill'] as const) {
     if (e[field] !== undefined && (typeof e[field] !== 'string' || !e[field].startsWith('/'))) return `${field} must be an absolute path`
   }
-  if (e.result_schema !== undefined) {
-    const broken = checkStrictSchema(e.result_schema)
-    if (broken) return `invalid result_schema (${broken})`
-  }
-  return null
+  return e.result_schema === undefined ? null : resultSchemaError(e.result_schema)
 }
 
 // The first harness in the user's order that is enabled; with none enabled, the first one, so the caller
@@ -296,11 +293,14 @@ async function resultTool($, e): Promise<string> {
   })
 }
 
-// A run whose process wrote `exit` while no session of ours watches it (the session that started it ended) will
-// never have its state.json settled, so it reads as failed; one this session started is still recording.
+// Only the session that started a run writes `exit` and settles state.json, so a run that session no longer watches
+// reads as failed once `exit` exists or its process is gone; one this session started is still recording.
 async function endedState($, state: RunState, runDir: string): Promise<RunState> {
   if (isTerminal(state.state) || whenSettled(state.id)) return state
   const exit = await $.fs.read(`${runDir}/exit`).catch(() => null)
-  if (typeof exit !== 'string') return state
-  return { ...state, state: 'failed', reason: `the process ended (exit ${exit.trim() || 'unknown'}) after the session that started it closed` }
+  if (typeof exit === 'string') {
+    return { ...state, state: 'failed', reason: `the process ended (exit ${exit.trim() || 'unknown'}) after the session that started it closed` }
+  }
+  if (!(await processGone($, state, runDir))) return state
+  return { ...state, state: 'failed', reason: 'the process ended after the session that started it closed' }
 }

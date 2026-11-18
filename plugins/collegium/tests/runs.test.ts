@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 import { codex } from '../hooks/codex.ts'
 import { flushNotices, newRunId, pendingNoticeIds, removeRun, startRun, sweepOnce, sweepRuns, whenSettled, type StartRequest } from '../hooks/runs.ts'
-import { CALLER, ENVELOPE, NOW, ROOT, fakeGitReply, gitReplyValue, notice, removeUnder, stubMemoryFs, stubbedHost, type End, type GitReply } from './host.ts'
+import { CALLER, ENVELOPE, NOW, ROOT, fakeGitReply, processReply, notice, removeUnder, stubMemoryFs, stubbedHost, type End, type GitReply } from './host.ts'
 
 type Run = { argv: string[]; cwd?: string }
 type SubmitAnswer = 'accept' | 'drop' | 'reject'
@@ -43,18 +43,18 @@ function fixture(options: { files?: Record<string, string>; git?: Record<string,
   on('process.run', (_, e) => {
     const argv: string[] = e.argv
     runs.push({ argv, cwd: e.init?.cwd })
-    if (argv[0] === 'kill' && argv[1] === '-0') return gitReplyValue({ exitCode: (options.alive ?? []).includes(Number(argv[2])) ? 0 : 1 })
+    if (argv[0] === 'kill' && argv[1] === '-0') return processReply({ exitCode: (options.alive ?? []).includes(Number(argv[2])) ? 0 : 1 })
     if (argv[0] === 'kill') {
       child.finish({ code: null, signal: 'SIGTERM' })
-      return gitReplyValue()
+      return processReply()
     }
-    if (removed(argv)) return gitReplyValue()
+    if (removed(argv)) return processReply()
     if (argv[0] === 'find') {
       removeUnder(files, argv[1], 'worktree')
-      return gitReplyValue()
+      return processReply()
     }
-    if (argv[0] === 'git') return gitReplyValue(fakeGitReply(git, argv.slice(1)))
-    return gitReplyValue()
+    if (argv[0] === 'git') return processReply(fakeGitReply(git, argv.slice(1)))
+    return processReply()
   })
   on('prompt.submit', (_, e) => {
     submitted.push(e.text)
@@ -274,6 +274,7 @@ test('a branch run whose commit fails ends failed with git\'s message and its br
 
   expect(final).toMatchObject({ state: 'failed', branch: `collegium/${req.id}`, envelope: ENVELOPE })
   expect(final?.reason).toContain('gpg failed to sign the data')
+  expect(final?.worktree).toBeUndefined()
   expect(f.runs.some((r) => r.argv.join(' ').startsWith('git worktree remove'))).toBe(false)
 })
 
@@ -290,6 +291,20 @@ test('a worktree run that ends done keeps its worktree in the state', async () =
   expect(final).toMatchObject({ state: 'done', mode: 'worktree', worktree: `${runDir}/worktree` })
   expect(final?.branch).toBeUndefined()
   expect(final?.note).toBeUndefined()
+})
+
+test('a worktree run that ends blocked keeps its worktree as Codex left it, and says so', async () => {
+  const f = fixture({ git: { 'status --porcelain': { stdout: ' M src/a.ts\n' } } })
+  const req = request({ write: 'worktree' })
+  const runDir = `${ROOT}/${req.id}`
+  await startRun(f.$, req)
+
+  f.files[`${runDir}/last.json`] = JSON.stringify({ ...ENVELOPE, status: 'blocked' })
+  f.child.finish({ code: 0, signal: null })
+  const final = await whenSettled(req.id)
+
+  expect(final).toMatchObject({ state: 'blocked', worktree: `${runDir}/worktree` })
+  expect(final?.note).toBe('The run ended blocked, so its worktree is kept as Codex left it.')
 })
 
 test('a merge run that ends blocked is neither committed nor merged, and says so', async () => {
@@ -436,6 +451,13 @@ test('the sweep removes a dead worktree-mode run whose worktree has no change', 
   expect(await sweepRuns(f.$)).toEqual(['clean-worktree'])
   expect(Object.keys(f.files)).toEqual([])
   expect(f.runs).toContainEqual({ argv: ['git', 'worktree', 'remove', '--force', `${ROOT}/clean-worktree/worktree`], cwd: CALLER })
+})
+
+test('the sweep keeps a run just started elsewhere whose pid is not recorded yet', async () => {
+  const f = fixture({ files: { [`${ROOT}/starting/state.json`]: runState({ state: 'running', startedAt: NOW - 1000 }) } })
+
+  expect(await sweepRuns(f.$)).toEqual([])
+  expect(f.files[`${ROOT}/starting/state.json`]).toBeDefined()
 })
 
 test('the sweep runs at the first call of a session only', async () => {

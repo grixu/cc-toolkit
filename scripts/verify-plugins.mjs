@@ -12,7 +12,7 @@ const tracked = execFileSync('git', ['ls-files', 'plugins'], { cwd: root, encodi
 
 // Copies of the decision-model client: each plugin's mod loads only its own files.
 const COPIED = ['hooks/decision.ts', 'hooks/providers/gemini.ts', 'hooks/providers/index.ts', 'hooks/providers/typesafe.ts']
-const COPY_HOLDERS = ['code-review', 'dev-kit', 'pr-proof']
+const COPY_HOLDERS = ['code-review', 'collegium', 'dev-kit', 'pr-proof']
 const MANIFEST_KEYS = ['name', 'version', 'description', 'author', 'repository', 'keywords']
 
 const fail = []

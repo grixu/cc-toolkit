@@ -76,8 +76,7 @@ export function removeUnder(files: Record<string, string>, dir: string, keep?: s
   }
 }
 
-// Serves fs.write, fs.exists, fs.stat and fs.list from `files`; the returned function carries out an `rm -rf` argv
-// against `files` and says whether the argv was one.
+// The returned function carries out an `rm -rf` argv against `files` and says whether the argv was one.
 export function stubMemoryFs(on: (name: string, stub: Stub) => void, files: Record<string, string>): (argv: string[]) => boolean {
   on('fs.write', (_, e) => {
     files[e.path] = e.text
@@ -102,7 +101,7 @@ export function stubMemoryFs(on: (name: string, stub: Stub) => void, files: Reco
   }
 }
 
-export function gitReplyValue(reply: GitReply = {}) {
+export function processReply(reply: GitReply = {}) {
   return { value: { exitCode: reply.exitCode ?? 0, stdout: reply.stdout ?? '', stderr: reply.stderr ?? '' } }
 }
 

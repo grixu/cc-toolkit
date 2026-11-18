@@ -2,9 +2,9 @@ import { finalMessage } from './adapters.ts'
 import type { Choice } from './choose.ts'
 import { withoutTrailingSlash, type HarnessAdapter, type RunEvent } from './harness.ts'
 import { ENVELOPE_STATUSES, prepareRun } from './prompt.ts'
-import { finishWrite, prepareWrite, worktreePath, type WriteMode, type WriteRun } from './write.ts'
+import { finishWrite, GIT_TIMEOUT_MS, prepareWrite, worktreePath, WRITE_POLICY, type WriteMode, type WriteRun } from './write.ts'
 
-const TERMINAL = ['done', 'blocked', 'failed', 'timeout', 'conflict'] as const
+const TERMINAL = [...ENVELOPE_STATUSES, 'timeout', 'conflict'] as const
 
 export type RunStateName = 'running' | (typeof TERMINAL)[number]
 
@@ -52,15 +52,7 @@ export type StartRequest = {
   notify: boolean
 }
 
-export type StartedRun = {
-  id: string
-  harness: string
-  model: string | null
-  effort: string | null
-  chosenBy: string
-  mode: WriteMode | 'read-only'
-  runDir: string
-}
+export type StartedRun = Pick<RunState, 'id' | 'harness' | 'model' | 'effort' | 'chosenBy' | 'mode'> & { runDir: string }
 
 type Child = AsyncGenerator<{ stream: string; text: string }, { code?: number | null; signal?: string | null } | undefined>
 
@@ -82,6 +74,8 @@ type Supervisor = {
 
 const DEFAULT_TIMEOUT_MINUTES = 60
 const PID_READ_DELAY_MS = 1000
+// state.json is written before the wrapper records its pid, so a run that young without one may still be starting.
+const PID_GRACE_MS = 60_000
 const EVENTS_TAIL_BYTES = 1_048_576
 const STDERR_TAIL_CHARS = 2000
 
@@ -330,7 +324,7 @@ async function afterWrite($, run: WriteRun, outcome: Partial<RunState>): Promise
   const patch: Partial<RunState> = {}
   if (w.branch) patch.branch = w.branch
   if (w.diffstat) patch.diffstat = w.diffstat
-  if (w.worktree && run.mode === 'worktree') patch.worktree = w.worktree
+  if (w.worktree && keepsWorktree(run.mode)) patch.worktree = w.worktree
   if (w.note) patch.note = w.note
   if (w.state !== 'done') {
     patch.state = w.state
@@ -341,7 +335,7 @@ async function afterWrite($, run: WriteRun, outcome: Partial<RunState>): Promise
 
 // Half-done work must not reach the caller's checkout, so a run that did not end done is neither committed nor merged.
 function leftUnmerged(run: Supervisor, ended: RunStateName | undefined): Partial<RunState> {
-  if (run.writeRun?.mode === 'worktree') {
+  if (keepsWorktree(run.state.mode)) {
     return { worktree: worktreePath(run.runDir), note: `The run ended ${ended}, so its worktree is kept as Codex left it.` }
   }
   return { note: `The run ended ${ended}, so nothing was committed or merged; ${run.state.branch} stays as it started.` }
@@ -376,7 +370,7 @@ export async function removeRun($, id: string): Promise<void> {
   sessionRuns.delete(id)
   settled.delete(id)
   pendingNotices.delete(id)
-  if (state?.mode === 'worktree' && (await $.fs.exists(worktreePath(runDir)))) {
+  if (state && keepsWorktree(state.mode) && (await $.fs.exists(worktreePath(runDir)))) {
     await $.process.run(['find', runDir, '-mindepth', '1', '-maxdepth', '1', '!', '-name', 'worktree', '-exec', 'rm', '-rf', '{}', '+']).catch(() => undefined)
     return
   }
@@ -387,7 +381,7 @@ export async function removeRun($, id: string): Promise<void> {
 // its branch stays.
 async function deleteRunDir($, runDir: string, state: RunState | null): Promise<void> {
   if (state && (await $.fs.exists(worktreePath(runDir)))) {
-    await $.process.run(['git', 'worktree', 'remove', '--force', worktreePath(runDir)],{ cwd: state.cwd, timeoutMs: 120_000 }).catch(() => undefined)
+    await $.process.run(['git', 'worktree', 'remove', '--force', worktreePath(runDir)], { cwd: state.cwd, timeoutMs: GIT_TIMEOUT_MS }).catch(() => undefined)
   }
   await removeDir($, runDir)
 }
@@ -403,7 +397,7 @@ export async function sweepOnce($): Promise<string[]> {
   return sweepRuns($)
 }
 
-/** Removes the run directories whose process is dead; returns the ids removed. */
+/** Removes the run directories whose process is dead, except this session's runs and a worktree run that may hold unsaved work; returns the ids removed. */
 export async function sweepRuns($): Promise<string[]> {
   const root = await runsRoot($)
   const entries = await $.fs.list(root).catch(() => [])
@@ -413,13 +407,24 @@ export async function sweepRuns($): Promise<string[]> {
     const runDir = `${root}/${entry.name}`
     const state = await readState($, runDir)
     if (!state) continue
-    if (await isAlive($, state.pid ?? (await readPid($, runDir)))) continue
+    if (!(await processGone($, state, runDir))) continue
     const worktree = worktreePath(runDir)
-    if (state.mode === 'worktree' && (await $.fs.exists(worktree)) && (await mayHoldUnsavedWork($, worktree))) continue
+    if (keepsWorktree(state.mode) && (await $.fs.exists(worktree)) && (await mayHoldUnsavedWork($, worktree))) continue
     await deleteRunDir($, runDir, state)
     removed.push(entry.name)
   }
   return removed
+}
+
+function keepsWorktree(mode: RunState['mode']): boolean {
+  return mode !== 'read-only' && WRITE_POLICY[mode].keepsWorktree
+}
+
+/** Whether the run's process has ended; a running run with no pid yet counts as alive for PID_GRACE_MS. */
+export async function processGone($, state: RunState, runDir: string): Promise<boolean> {
+  const pid = state.pid ?? (await readPid($, runDir))
+  if (pid === null && state.state === 'running' && (await $.clock.now()) - state.startedAt < PID_GRACE_MS) return false
+  return !(await isAlive($, pid))
 }
 
 async function isAlive($, pid: number | null): Promise<boolean> {

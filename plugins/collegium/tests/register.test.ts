@@ -354,3 +354,13 @@ test('a run whose process ended after its session closed reads as failed', async
   expect(out.state).toBe('failed')
   expect(out.reason).toContain('exit 0')
 })
+
+test('a run whose process is gone without an exit file reads as failed', async ($, on) => {
+  const h = host(on, { files: { [`${ROOT}/${SEEDED}/state.json`]: seededState() } })
+  await $.tool.call({ tool: STATUS, id: SEEDED })
+  h.files[`${ROOT}/${SEEDED}/state.json`] = seededState({ pid: LIVE_PID + 1 })
+  const out = JSON.parse((await $.tool.call({ tool: RESULT, id: SEEDED })).result)
+
+  expect(out.state).toBe('failed')
+  expect(out.reason).toBe('the process ended after the session that started it closed')
+})

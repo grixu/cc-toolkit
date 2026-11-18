@@ -146,4 +146,6 @@ test('the final message is the -o file, or null when Codex wrote none', async ()
   expect(reads[0]).toContain('/r/run1/last.json')
   written = ''
   expect(await codex.finalMessage($, '/r/run1')).toBe(null)
+  written = '  \n'
+  expect(await codex.finalMessage($, '/r/run1')).toBe(null)
 })

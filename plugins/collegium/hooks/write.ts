@@ -3,6 +3,12 @@ import { withoutTrailingSlash, type ProcessResult } from './harness.ts'
 export const WRITE_MODES = ['worktree', 'branch', 'merge'] as const
 export type WriteMode = (typeof WRITE_MODES)[number]
 
+export const WRITE_POLICY: Record<WriteMode, { keepsWorktree: boolean; merges: boolean }> = {
+  worktree: { keepsWorktree: true, merges: false },
+  branch: { keepsWorktree: false, merges: false },
+  merge: { keepsWorktree: false, merges: true },
+}
+
 export type WriteRun = {
   mode: WriteMode
   id: string
@@ -25,7 +31,7 @@ export type WriteResult = {
 }
 
 // Signing can wait on a pinentry prompt, so commits get more than the host's 30 s default.
-const GIT_TIMEOUT_MS = 120_000
+export const GIT_TIMEOUT_MS = 120_000
 
 export function worktreePath(runDir: string): string {
   return `${withoutTrailingSlash(runDir)}/worktree`
@@ -65,7 +71,7 @@ async function worktreeHasChanges($, worktree: string): Promise<boolean> {
   return r.stdout.trim() !== ''
 }
 
-/** Runs after Codex exits. `worktree` mode only reports whether files changed; the other modes commit any change, report the diffstat, remove the worktree and, in `merge` mode, merge. */
+/** Runs after Codex exits; only `worktree` mode leaves the change uncommitted. */
 export async function finishWrite($, run: WriteRun, summary: string): Promise<WriteResult> {
   const worktree = worktreePath(run.runDir)
   const fail = (error: string, extra: Partial<WriteResult> = {}): WriteResult => ({ state: 'failed', mode: run.mode, changed: false, worktree, error, ...extra })
@@ -77,7 +83,7 @@ export async function finishWrite($, run: WriteRun, summary: string): Promise<Wr
     return fail((error as Error).message)
   }
 
-  if (run.mode === 'worktree') {
+  if (WRITE_POLICY[run.mode].keepsWorktree) {
     return { state: 'done', mode: run.mode, changed, worktree, ...(changed ? {} : { note: 'Codex changed no file.' }) }
   }
 
@@ -99,7 +105,7 @@ export async function finishWrite($, run: WriteRun, summary: string): Promise<Wr
   if (remove.exitCode !== 0) return fail(gitError(removeArgs, remove), { changed, branch, ...committedPart })
 
   const done: WriteResult = { state: 'done', mode: run.mode, changed, branch, ...committedPart }
-  if (run.mode === 'branch' || !changed) return done
+  if (!WRITE_POLICY[run.mode].merges || !changed) return done
 
   // A merge the user left unfinished is theirs: merging or aborting here would destroy their resolution.
   if (await mergeInProgress($, run.cwd)) {

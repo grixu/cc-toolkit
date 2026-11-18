@@ -46,6 +46,12 @@ export function checkStrictSchema(schema: unknown): string | null {
   return checkNode(schema, 'result_schema')
 }
 
+/** The caller-facing error for a result_schema that breaks strict mode, or null when it is usable. */
+export function resultSchemaError(schema: unknown): string | null {
+  const broken = checkStrictSchema(schema)
+  return broken ? `invalid result_schema (${broken})` : null
+}
+
 function checkNode(node: unknown, at: string): string | null {
   if (Array.isArray(node)) {
     for (const [i, item] of node.entries()) {
@@ -107,8 +113,8 @@ function dirname(path: string): string {
 
 export async function prepareRun(fs: Fs, runDir: string, input: RunInput): Promise<PreparedRun> {
   if (input.resultSchema !== undefined) {
-    const broken = checkStrictSchema(input.resultSchema)
-    if (broken) return { error: `invalid result_schema (${broken})` }
+    const error = resultSchemaError(input.resultSchema)
+    if (error) return { error }
   }
 
   let task = input.task

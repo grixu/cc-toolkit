@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 import { finishWrite, prepareWrite, type WriteMode } from '../hooks/write.ts'
-import { CALLER, ROOT, fakeGitReply, gitReplyValue, stubbedHost, type GitReply } from './host.ts'
+import { CALLER, ROOT, fakeGitReply, processReply, stubbedHost, type GitReply } from './host.ts'
 
 const RUN_DIR = `${ROOT}/r1`
 const WORKTREE = `${RUN_DIR}/worktree`
@@ -9,14 +9,13 @@ type GitCall = { cwd: string; args: string[] }
 
 const NO_MERGE_HEAD = { 'rev-parse -q --verify MERGE_HEAD': { exitCode: 1 } }
 
-// A list of replies is consumed one call at a time, and its last reply repeats.
 function useFakeGit(on, replies: Record<string, GitReply | GitReply[]> = {}): GitCall[] {
   const calls: GitCall[] = []
   const all = { ...NO_MERGE_HEAD, ...replies }
   on('process.run', ($, e) => {
     const args: string[] = e.argv.slice(1)
     calls.push({ cwd: e.init?.cwd, args })
-    return gitReplyValue(fakeGitReply(all, args))
+    return processReply(fakeGitReply(all, args))
   })
   return calls
 }
@@ -58,6 +57,15 @@ test('branch mode commits with the summary, reports the diffstat, removes the wo
   expect(result).toMatchObject({ state: 'done', mode: 'branch', changed: true, committed: true, branch: 'collegium/r1' })
   expect(result.diffstat).toContain('2 files changed')
   expect(result.worktree).toBeUndefined()
+})
+
+test('branch mode commits a blank summary under the run id', async () => {
+  const { $, on } = stubbedHost()
+  const calls = useFakeGit(on, { ...CHANGED, ...STAT })
+
+  await finishWrite($, run('branch'), '  ')
+
+  expect(calls.map((c) => c.args.join(' '))).toContain('commit -m Collegium run r1')
 })
 
 test('nothing is committed when Codex changed no file, and the result says so', async () => {
