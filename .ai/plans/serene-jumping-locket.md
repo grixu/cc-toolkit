@@ -133,7 +133,8 @@ Before editing, back up each file to `<file>.bak-retro-20261117`.
   (no change: the rule is about modules under test; test files may import `node:test`, and no
   `hooks/*.ts` imports `node:*`)
 - [x] Add `.agentkit/` to `.gitignore`.
-- [ ] PR via `dev-kit:pr-open`, shepherd to green, merge with `--admin`.
+- [x] PR via `dev-kit:pr-open`, shepherd to green, merge with `--admin`. (#64, squash-merged as
+  49c95c62 after five review fixes)
 
 Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branches, by the owner's
 2026-11-18 go-ahead to keep one branch.
@@ -156,7 +157,7 @@ Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branche
   #57–#63 landed as squash commits, so merging switched to `--squash`, which keeps `fixup!` commits
   off `main` and makes the check redundant)
 - [x] `CLAUDE.md`, one "Checks:" line with these commands; mod code has no tsc or tsconfig.
-- [x] PR, shepherd. (merge with step 5)
+- [x] PR, shepherd, merge. (in #64)
 
 ### 4. Eval harness
 
@@ -190,7 +191,8 @@ Steps 3–5 landed on `chore/harness-retro` (PR #64) instead of separate branche
 - [x] fd3 `skills/split-to-tasks/SKILL.md:107-115`: an unchanged cited text whose line numbers moved
   clears; update the pins and name them in the report. (changed: the tasks cite the new lines and the
   spec stays as it is, since only build-spec may edit a spec)
-- [ ] Each: `CHANGELOG.md` `[Unreleased]`, merge, then the `release` skill.
+- [x] Each: `CHANGELOG.md` `[Unreleased]`, merge, then the `release` skill. (dev-kit 0.12.1, fd3
+  0.5.5, both released through the skill from a detached `origin/main` worktree)
 
 ### 6. Memory
 
