@@ -28,9 +28,9 @@ review, which is the pull request's worktree under `--pr`.
 **One path for both routes.** `/start-cr` Step 2b and `cr-prepare --codex` each write the `codex`
 entry, and a `code-review:scanner` agent running `cr-scan --lens codex` calls `collegium_run`,
 waits on `collegium_result`, and writes `codex.md`. `cr-prepare` cannot wait for anything, and one
-renderer keeps the two routes' `codex.md` identical. fd3 dispatches the `codex` lens as its own
-agent even when one agent runs every other lens, so a long Codex run never holds up the lenses
-listed with it.
+renderer keeps the two routes' `codex.md` identical. A caller that runs every other lens in one
+agent, as fd3 does, must still dispatch the `codex` lens as its own agent, so a long Codex run
+never holds up the lenses listed with it.
 
 **Timing and failure.** The Codex run starts together with the Claude scanners, and the merge
 waits for it, up to the 60-minute run limit. A run that fails, times out, is skipped or finds the
