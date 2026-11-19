@@ -72,6 +72,10 @@ Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
    zadanie dodaje lub zmienia, opisuje sygnaturą: nazwa, wejście, wyjście, błędy. Scenariusze testów
    jednostkowych, integracyjnych i e2e są wypisane w formacie Gherkin (Given/When/Then). Sygnatura i
    scenariusz to opis kodu, nie kod, więc wymaganie 3 obowiązuje dalej.
+9. **Katalog na SPEC i zadania jest konfigurowalny.** Użytkownik ustawia w konfiguracji pluginu
+   katalog, w którym trzymane są SPEC i zadania. Domyślnie to `.ai/` w katalogu głównym projektu:
+   SPEC w `specs/<data>-<slug>.md`, jego zadania w `tasks/<data>-<slug>/`. Wartość domyślną mod
+   wypełnia sam (wymaganie 4).
 
 ## Nowe pomysły
 
