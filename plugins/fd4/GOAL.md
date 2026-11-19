@@ -56,10 +56,19 @@ więc do tego czasu fd4 to nazwa robocza.
 5. **Zadania dzielimy na vertical slices.** Każde zadanie dowozi przekrój funkcjonalności przez
    wszystkie warstwy, których dotyka.
 6. **Walidacja SPEC przechodzi przez zestaw soczewek.** Każda soczewka sprawdza jeden aspekt, jak w
-   pluginie [code-review](../code-review/README.md).
+   pluginie [code-review](../code-review/README.md). Zestaw dla SPEC:
+   - **Gap Analyzer:** czego brakuje, choć cel SPEC tego wymaga (np. przypadek, rola, stan, błąd).
+   - **Ambiguity Mapper:** sformułowania, które da się odczytać na więcej niż jeden sposób.
+   - **Assumption Excavator:** założenia, na których SPEC stoi, ale których nie zapisał.
+   - **Implied Completeness Detector:** miejsca, które wyglądają na kompletne, a zostawiają zakres
+     niedopowiedziany (np. „itd.”, „obsłuż błędy”, „jak w module X”).
 7. **Zadania planują samodzielne wykonanie przez agenta.** Krok, który agent może wykonać przez CLI,
    trafia do zadania agenta, także gdy jest ryzykowny (problem 9). Zgodę na ryzykowne kroki daje
    pomysł 9.
+8. **Plik zadania podaje interfejsy publiczne i scenariusze testów.** Interfejsy publiczne, które
+   zadanie dodaje lub zmienia, opisuje sygnaturą: nazwa, wejście, wyjście, błędy. Scenariusze testów
+   jednostkowych, integracyjnych i e2e są wypisane w formacie Gherkin (Given/When/Then). Sygnatura i
+   scenariusz to opis kodu, nie kod, więc wymaganie 3 obowiązuje dalej.
 
 ## Nowe pomysły
 
@@ -80,7 +89,11 @@ więc do tego czasu fd4 to nazwa robocza.
 7. **SPEC waliduje inny model niż ten, który go pisał.** Gdy dostępny jest inny harness i dostawca
    modeli, walidacja idzie do nich przez plugin [collegium](../collegium/README.md).
 8. **Soczewki walidują też zadania.** Ten sam mechanizm co przy walidacji SPEC (wymaganie 6) sprawdza
-   pliki zadań.
+   pliki zadań. Do soczewek SPEC dochodzą dwie dla zadań:
+   - **Public Interface Validator:** czy interfejsy publiczne zadania (wymaganie 8) są kompletne,
+     spójne ze SPEC i z zadaniami, które od nich zależą.
+   - **Test Architect:** czy scenariusze testów (wymaganie 8) pokrywają AC zadania i leżą na właściwym
+     poziomie: unit, integracja albo e2e.
 9. **Zgoda na ryzykowne zadania po podziale.** Po stworzeniu zadań agent wypisuje te z ryzykownymi
    krokami (problem 9) i pyta użytkownika o zgodę. Użytkownik zatwierdza wszystkie, wprowadza
    poprawki, zatwierdza część albo odrzuca. Zadanie odrzucone, także w ramach częściowej zgody, staje
