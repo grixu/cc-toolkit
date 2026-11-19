@@ -91,8 +91,10 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    scenariusz to opis kodu, nie kod, więc wymaganie 3 obowiązuje dalej.
 9. **Katalog na SPEC i zadania jest konfigurowalny.** Użytkownik ustawia w konfiguracji pluginu
    katalog, w którym trzymane są SPEC i zadania. Domyślnie to `.ai/` w katalogu głównym projektu:
-   SPEC w `specs/<data>-<slug>.md`, jego zadania w `tasks/<data>-<slug>/`. Wartość domyślną mod
-   wypełnia sam (wymaganie 4).
+   każdy SPEC w osobnym katalogu `specs/<slug>/` (plik `SPEC.md`), jego zadania w
+   `specs/<slug>/tasks/`, jak w regule repozytorium `.claude/rules/ai-directory.md`. Slug nie
+   zawiera daty: pliki da się posortować po dacie i bez niej. Wartość domyślną mod wypełnia sam
+   (wymaganie 4).
 10. **Walidacja zwraca kontrakt werdyktu.** Dla każdego sprawdzanego pliku: werdykt binarny (gotowy
     albo nie), lista uwag oznaczonych jako blokujące lub nie i dowód dla każdego „sprawdzone”.
     Sprawdzenie, które niczego nie zweryfikowało, zwraca „nie uruchomiono”, nigdy „przeszło”. W fd3
