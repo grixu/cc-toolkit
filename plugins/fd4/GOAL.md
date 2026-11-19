@@ -105,6 +105,17 @@ Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
    krokami (problem 9) i pyta użytkownika o zgodę. Użytkownik zatwierdza wszystkie, wprowadza
    poprawki, zatwierdza część albo odrzuca. Zadanie odrzucone, także w ramach częściowej zgody, staje
    się zadaniem dla użytkownika.
+10. **Powtarzalne pytania stają się ustawieniami.** W przebiegach fd3 użytkownik odpowiadał tak samo
+    na te same pytania w wielu przypadkach (baseline, metryka m10), więc fd4 bierze odpowiedź z
+    konfiguracji pluginu, zamiast pytać:
+    - `auto-commit` (`true`/`false`): agent commituje sam.
+    - `auto-push` (`true`/`false`): agent wypycha gałąź sam.
+    - `auto-pr-open` (`true`/`false`): agent otwiera PR sam.
+    - `auto-ticket-manage` (`true`/`false`): agent tworzy i aktualizuje tickety w systemie typu Jira
+      sam.
+
+    Pytania o sprawy już rozstrzygnięte nie są ustawieniem: usuwa je nowy grill, w którym do
+    użytkownika trafiają tylko pytania kluczowe (problem 6).
 
 ## Założenia
 
