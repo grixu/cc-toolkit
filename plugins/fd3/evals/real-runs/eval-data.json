@@ -5,10 +5,9 @@
     "README.md",
     "cases",
     "cases.jsonl",
-    "fd4-baseline",
     "repos",
     "scripts",
     "transcripts"
   ],
-  "sha256": "111cd5899fee2ddd2ad9c4cdf170bb7bf25c34acb4ac21288a4485743b1f1cb0"
+  "sha256": "b7f7b22c9ba51c67ced197667f9f0fa06b97d78874b0938bda90cf2607124bcc"
 }

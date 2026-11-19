@@ -37,11 +37,27 @@ cases/<case>/
 repos/<repo>@<sha>.tar.gz     snapshot repo na commicie bazowym
 transcripts/<session-id>/     pełny transkrypt i subagenci, bez zmian
 scripts/                      kolektor (collect, snapshot, index) i cases.json
-fd4-baseline/                 osiem problemów fd3 zmierzonych na tych przebiegach
-  REPORT.md                   wyniki, metoda, pytania otwarte, jak puścić na fd4
-  m*.mjs, phases.mjs, …       skrypty metryk; RUNS.md: komendy uruchomień
-  out/                        surowe liczby i tables.md, regenerowane przy każdym uruchomieniu
-  labels/                     ręczne etykiety pytań grilla (problem 6), nie nadpisywać
+```
+
+## Baseline: problemy fd3 zmierzone na tych przebiegach
+
+**Gdzie leży:**
+- **R2:** tarball `fd4/baseline/<sha256>.tar.gz`, przypięty w `plugins/fd4/evals/baseline/eval-data.json`.
+- **Lokalnie:** `plugins/fd4/evals/baseline/local/fd3/`, folder ignorowany przez git.
+
+```sh
+pnpm eval:data pull fd4/baseline
+pnpm eval:data push fd4/baseline    # potem zacommituj przypięcie
+```
+
+Skrypty czytają dane z `plugins/fd3/evals/real-runs/local/`, podanej jako pierwszy argument; komendy są w `RUNS.md`,
+pełny blok w sekcji „Re-running on fd4” w `REPORT.md`.
+
+```
+REPORT.md                     wyniki, metoda, pytania otwarte, jak puścić na fd4
+m*.mjs, phases.mjs, …         skrypty metryk; RUNS.md: komendy uruchomień
+out/                          surowe liczby i tables.md, regenerowane przy każdym uruchomieniu
+labels/                       etykiety (problem 6: pytania grilla, problem 9: kroki ręczne), nie nadpisywać
 ```
 
 **Zastrzeżenia:**
