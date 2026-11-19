@@ -8,6 +8,9 @@ implementacja) i omija problemy, które pokazały prawdziwe przebiegi fd3.
 Kształt wydania jest otwarty: nowy major fd3 albo dwa osobne pluginy. Decyzja zapada na końcu prac,
 więc do tego czasu fd4 to nazwa robocza.
 
+Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
+[`KNOWLEDGE_SOURCES.md`](KNOWLEDGE_SOURCES.md).
+
 ## Zasady nieprzekraczalne
 
 1. **Każdy tekst dla agenta powstaje według skilla `writing-for-agents`.** Dotyczy skilli, komend,
