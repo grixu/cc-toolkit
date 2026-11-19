@@ -38,6 +38,10 @@ więc do tego czasu fd4 to nazwa robocza.
    pozwalają.
 8. **Za drobne zadania.** Każde zadanie to osobny subagent, worktree i walidacja, więc drobny podział
    mnoży ich liczbę.
+9. **Ryzykowne kroki trafiają do użytkownika.** Podział na zadania często zostawia użytkownikowi do
+   ręcznego wykonania kroki, które agent zrobiłby sam przez CLI. Dotyczy to zwykle działań
+   ryzykownych: trudno odwracalnych albo takich, których porażka dotknie użytkowników końcowych (np.
+   zmian w infrastrukturze).
 
 ## Wymagania
 
@@ -53,6 +57,9 @@ więc do tego czasu fd4 to nazwa robocza.
    wszystkie warstwy, których dotyka.
 6. **Walidacja SPEC przechodzi przez zestaw soczewek.** Każda soczewka sprawdza jeden aspekt, jak w
    pluginie [code-review](../code-review/README.md).
+7. **Zadania planują samodzielne wykonanie przez agenta.** Krok, który agent może wykonać przez CLI,
+   trafia do zadania agenta, także gdy jest ryzykowny (problem 9). Zgodę na ryzykowne kroki daje
+   pomysł 9.
 
 ## Nowe pomysły
 
@@ -74,6 +81,10 @@ więc do tego czasu fd4 to nazwa robocza.
    modeli, walidacja idzie do nich przez plugin [collegium](../collegium/README.md).
 8. **Soczewki walidują też zadania.** Ten sam mechanizm co przy walidacji SPEC (wymaganie 6) sprawdza
    pliki zadań.
+9. **Zgoda na ryzykowne zadania po podziale.** Po stworzeniu zadań agent wypisuje te z ryzykownymi
+   krokami (problem 9) i pyta użytkownika o zgodę. Użytkownik zatwierdza wszystkie, wprowadza
+   poprawki, zatwierdza część albo odrzuca. Zadanie odrzucone, także w ramach częściowej zgody, staje
+   się zadaniem dla użytkownika.
 
 ## Założenia
 
