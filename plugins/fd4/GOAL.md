@@ -11,6 +11,9 @@ więc do tego czasu fd4 to nazwa robocza.
 Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
 [`KNOWLEDGE_SOURCES.md`](KNOWLEDGE_SOURCES.md).
 
+Ten dokument obejmuje drogę do zadań: grill, SPEC, jego walidację i podział na zadania. Ustalenia
+dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
+
 ## Zasady nieprzekraczalne
 
 1. **Każdy tekst dla agenta powstaje według skilla `writing-for-agents`.** Dotyczy skilli, komend,
@@ -65,6 +68,20 @@ Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
    - **Assumption Excavator:** założenia, na których SPEC stoi, ale których nie zapisał.
    - **Implied Completeness Detector:** miejsca, które wyglądają na kompletne, a zostawiają zakres
      niedopowiedziany (np. „itd.”, „obsłuż błędy”, „jak w module X”).
+   - **Repo Reality Checker:** czy SPEC zgadza się z regułami i narzędziami repozytorium (CLAUDE.md,
+     reguły, standardy kodu, workflowy CI, generatory, indeksy dokumentacji). Zanim luka trafi do
+     innego zespołu, soczewka sprawdza ją tanim testem w worktree.
+   - **External Contract Verifier:** każde zachowanie biblioteki, API lub platformy, na którym SPEC
+     stoi, ma źródło w dokumentacji lub kodzie tej wersji, której używa projekt. Użycie w repozytorium
+     nie jest dowodem.
+   - **Security & Abuse Lens:** dla każdej nowej roli, tokenu, endpointu i uprawnienia: kto do niego
+     dotrze, co ujawnia i co się dzieje przy współbieżności.
+   - **Consistency & Order Checker:** decyzje sobie nie przeczą, nie odwracają po cichu wcześniejszych
+     dokumentów, a kolejność budowy się trzyma. Co da się, sprawdza kod.
+
+   Soczewka nie edytuje pliku, który sprawdza: walidator i edytor to osobne agenty. Walidator zwraca
+   uwagi, edytor wprowadza przyjęte. W fd3 walidator poprawiał SPEC w trakcie sprawdzania, przez co
+   17 uwag to regresje po jego własnych edycjach (baseline, metryka m12).
 7. **Zadania planują samodzielne wykonanie przez agenta.** Krok, który agent może wykonać przez CLI,
    trafia do zadania agenta, także gdy jest ryzykowny (problem 9). Zgodę na ryzykowne kroki daje
    pomysł 9.
@@ -76,6 +93,11 @@ Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
    katalog, w którym trzymane są SPEC i zadania. Domyślnie to `.ai/` w katalogu głównym projektu:
    SPEC w `specs/<data>-<slug>.md`, jego zadania w `tasks/<data>-<slug>/`. Wartość domyślną mod
    wypełnia sam (wymaganie 4).
+10. **Walidacja zwraca kontrakt werdyktu.** Dla każdego sprawdzanego pliku: werdykt binarny (gotowy
+    albo nie), lista uwag oznaczonych jako blokujące lub nie i dowód dla każdego „sprawdzone”.
+    Sprawdzenie, które niczego nie zweryfikowało, zwraca „nie uruchomiono”, nigdy „przeszło”. W fd3
+    werdykt nie wypadł negatywnie ani razu w 48 przebiegach, a check wykonalności w repozytorium
+    przeszedł 46 razy, choć przepuścił 18 defektów (m12).
 
 ## Nowe pomysły
 
@@ -93,8 +115,8 @@ Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
    użytkownika, gdy to zawęża stożek możliwości, a przez to zmniejsza ilość researchu. Pytania
    doprecyzowujące przechodzą ten sam podział co pytania grilla (problem 6): do użytkownika trafiają
    tylko kluczowe, a o tym, które są kluczowe, może rozstrzygać model decyzyjny.
-7. **SPEC waliduje inny model niż ten, który go pisał.** Gdy dostępny jest inny harness i dostawca
-   modeli, walidacja idzie do nich przez plugin [collegium](../collegium/README.md).
+7. **SPEC i zadania waliduje inny model niż ten, który je pisał.** Gdy dostępny jest inny harness i
+   dostawca modeli, walidacja idzie do nich przez plugin [collegium](../collegium/README.md).
 8. **Soczewki walidują też zadania.** Ten sam mechanizm co przy walidacji SPEC (wymaganie 6) sprawdza
    pliki zadań. Do soczewek SPEC dochodzą dwie dla zadań:
    - **Public Interface Validator:** czy interfejsy publiczne zadania (wymaganie 8) są kompletne,
@@ -122,6 +144,9 @@ Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
 
     Pytania o sprawy już rozstrzygnięte nie są ustawieniem: usuwa je nowy grill, w którym do
     użytkownika trafiają tylko pytania kluczowe (problem 6).
+11. **Zmiana SPEC po podziale wraca do zadań.** Gdy SPEC zmieni się po podziale, zadania, które
+    wskazują zmienione sekcje, przechodzą walidację ponownie. Najpierw trafiają do nich wszystkie
+    edycje, a potem idzie jedno sprawdzenie, żeby poprawki i sprawdzenia nie zapętliły się na zmianę.
 
 ## Założenia
 
