@@ -113,6 +113,12 @@ Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
     - `auto-pr-open` (`true`/`false`): agent otwiera PR sam.
     - `auto-ticket-manage` (`true`/`false`): agent tworzy i aktualizuje tickety w systemie typu Jira
       sam.
+    - `auto-review` (`true`/`false`): każda gałąź przechodzi przegląd kodu po zielonym CI.
+    - `auto-cleanup` (`true`/`false`): po zakończeniu agent usuwa worktree i scalone gałęzie.
+    - `pr-split` (`one-per-repo`/`split`): zmiana trafia do jednego PR na repozytorium albo
+      dzieli się na kilka PR.
+    - `base-sync` (`merge`/`rebase`): tak agent dogania gałąź bazową, gdy gałąź zadania jest za
+      nią.
 
     Pytania o sprawy już rozstrzygnięte nie są ustawieniem: usuwa je nowy grill, w którym do
     użytkownika trafiają tylko pytania kluczowe (problem 6).
