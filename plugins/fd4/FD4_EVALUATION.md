@@ -2,13 +2,13 @@
 
 **Co to jest:** 7 prawdziwych przebiegów fd3 w wersjach 0.5.0–0.5.3, każdy przez etapy build-spec, split-to-tasks i
 implement. Dwa przypadki są z Bizwave (mailer, calendar-api), pięć z console-monorepo (user-flags,
-response-body-stripping, nested-fields, impersonation, responses-api). Razem to 25 sesji, 160 zadań i 8 snapshotów
-repo. Dane zebrane 18.11.2026.
+response-body-stripping, nested-fields, impersonation, responses-api). Razem to 29 sesji, 160 zadań i 8 snapshotów
+repo. Dane zebrane 18.11.2026, sesje poprawek user-flags i nested-fields dołożone 19.11.2026.
 
 **Gdzie leżą:**
-- **R2:** bucket z sekretu `R2_BUCKET`, obiekt `fd3/real-runs/b41d11ed….tar.gz` (ok. 367 MB).
-- **Przypięcie w git:** `plugins/fd3/evals/real-runs/eval-data.json`, wskazuje sha256 tarballa.
-- **Lokalnie:** `plugins/fd3/evals/real-runs/local/` (ok. 1,1 GB), folder ignorowany przez git.
+- **R2:** bucket z sekretu `R2_BUCKET`, tarball `fd3/real-runs/<sha256>.tar.gz` (ok. 410 MB).
+- **Przypięcie w git:** `plugins/fd3/evals/real-runs/eval-data.json`, wskazuje sha256 aktualnego tarballa.
+- **Lokalnie:** `plugins/fd3/evals/real-runs/local/` (ok. 1,2 GB), folder ignorowany przez git.
 
 **Obsługa:**
 
@@ -37,6 +37,11 @@ cases/<case>/
 repos/<repo>@<sha>.tar.gz     snapshot repo na commicie bazowym
 transcripts/<session-id>/     pełny transkrypt i subagenci, bez zmian
 scripts/                      kolektor (collect, snapshot, index) i cases.json
+fd4-baseline/                 osiem problemów fd3 zmierzonych na tych przebiegach
+  REPORT.md                   wyniki, metoda, pytania otwarte, jak puścić na fd4
+  m*.mjs, phases.mjs, …       skrypty metryk; RUNS.md: komendy uruchomień
+  out/                        surowe liczby i tables.md, regenerowane przy każdym uruchomieniu
+  labels/                     ręczne etykiety pytań grilla (problem 6), nie nadpisywać
 ```
 
 **Zastrzeżenia:**
