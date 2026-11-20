@@ -41,10 +41,12 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    designu. Resztę może rozstrzygnąć agent albo panel agentów, a użytkownik na końcu przegląda te
    rozstrzygnięcia i je zatwierdza.
 7. **Brak TDD.** Implementacja nie pisze testów przed kodem, nawet gdy kod i setup projektu na to
-   pozwalają.
+   pozwalają. Rozwiązanie zaczyna się przy podziale na zadania: zadanie bez scenariuszy testów
+   (wymaganie 8) skazuje implementację na trudności, zanim ta się zacznie.
 8. **Za drobne zadania.** Każde zadanie to osobny subagent, worktree i walidacja, więc drobny podział
-   mnoży ich liczbę.
-9. **Ryzykowne kroki trafiają do użytkownika.** Podział na zadania często zostawia użytkownikowi do
+   mnoży ich liczbę. Każdy subagent ładuje od nowa bazowy kontekst sesji, często ciężki od skilli i
+   pluginów, więc w fd3 40 zadań niosło ten kontekst 40 razy, choć ten sam zakres zmieściłby się w
+   8–10 zadaniach. Celem jest mniej, a większych zadań, nie obniżanie kosztu za wszelką cenę.9. **Ryzykowne kroki trafiają do użytkownika.** Podział na zadania często zostawia użytkownikowi do
    ręcznego wykonania kroki, które agent zrobiłby sam przez CLI. Dotyczy to zwykle działań
    ryzykownych: trudno odwracalnych albo takich, których porażka dotknie użytkowników końcowych (np.
    zmian w infrastrukturze).
@@ -105,8 +107,9 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 
 1. **Szczegóły implementacji w zadaniach.** Podział na zadania przenosi szczegóły implementacyjne ze
    SPEC do plików zadań, więc poprawka dotyka mniejszego pliku.
-2. **Poprawki po implementacji to zwykła edycja.** Zmiana SPEC lub zadań po implementacji to edycja
-   plików, bez weryfikacji, którą przechodzi tworzenie.
+2. **Poprawki po starcie implementacji to zwykła edycja.** Zmiana SPEC lub zadań po rozpoczęciu
+   implementacji to edycja plików, bez weryfikacji, którą przechodzi tworzenie. Przed startem
+   implementacji obowiązuje założenie 5.
 3. **Model i effort zadania wybiera model decyzyjny.** Wynik trafia do pliku zadania, a implementacja
    uruchamia zadanie z tym modelem i effortem.
 4. **Słownik domenowy powstaje razem ze SPEC.** Domyślnie w `GLOSSARY.md`; użytkownik może ustawić
@@ -146,9 +149,6 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 
     Pytania o sprawy już rozstrzygnięte nie są ustawieniem: usuwa je nowy grill, w którym do
     użytkownika trafiają tylko pytania kluczowe (problem 6).
-11. **Zmiana SPEC po podziale wraca do zadań.** Gdy SPEC zmieni się po podziale, zadania, które
-    wskazują zmienione sekcje, przechodzą walidację ponownie. Najpierw trafiają do nich wszystkie
-    edycje, a potem idzie jedno sprawdzenie, żeby poprawki i sprawdzenia nie zapętliły się na zmianę.
 
 ## Założenia
 
@@ -157,3 +157,8 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    własnym wcześniejszym researchem albo dowolne ich połączenie.
 3. **Budowa SPEC ma trzy fazy:** grill, spisanie SPEC i jego walidacja.
 4. **Zadania powstają ze zwalidowanego SPEC.** Opisują etapy jego implementacji.
+5. **Zmiana SPEC po podziale, a przed implementacją, wraca do zadań.** Gdy SPEC zmieni się po
+   podziale, zadania, które wskazują zmienione sekcje, przechodzą walidację ponownie. Najpierw
+   trafiają do nich wszystkie edycje, a potem idzie jedno sprawdzenie, żeby poprawki i sprawdzenia
+   nie zapętliły się na zmianę. Założenie przestaje obowiązywać ze startem implementacji; od tej
+   chwili zmiany są zwykłą edycją (pomysł 2).
