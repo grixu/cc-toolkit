@@ -17,3 +17,9 @@ obejmuje drogę do zadań; tutaj odkładamy to, co ustalimy, gdy przyjdzie kolej
    - sprawdzenie, czy naprawa robi to, co zdecydował użytkownik, i nic więcej.
 2. **Decyzje o naprawach waliduje inny model.** Pomysł 7 z `GOAL.md` obejmuje też decyzje o
    naprawach po przeglądzie, nie tylko SPEC i zadania.
+3. **Implementacja uruchamia testy przed kodem.** Problem 7 z `GOAL.md` ma w fd3 przyczynę w
+   prompcie implementacji: od 0.5.2 zabrania on uruchamiania testów, lintów i buildów („Do not run
+   linters, test suites or builds”), więc test na czerwono jest niemożliwy z założenia. W baseline
+   (metryka m7) tylko 1 ze 136 agentów implementacji uruchomił test, zanim napisał kod. Agent
+   implementacji fd4 zaczyna od scenariuszy z pliku zadania (wymaganie 8): pisze test, uruchamia go
+   na czerwono, potem pisze kod, gdy repozytorium ma komendę testów.
