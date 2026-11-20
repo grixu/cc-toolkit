@@ -92,7 +92,14 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    17 uwag to regresje po jego własnych edycjach (baseline, metryka m12).
 7. **Zadania planują samodzielne wykonanie przez agenta.** Krok, który agent może wykonać przez CLI,
    trafia do zadania agenta, także gdy jest ryzykowny (problem 9). Zgodę na ryzykowne kroki daje
-   pomysł 9.
+   pomysł 9. Zadanie użytkownika powstaje tylko dla pracy wyłącznie ludzkiej: przeglądu innego
+   zespołu, urządzenia fizycznego, akceptacji interesariusza albo interfejsu, do którego agent nie ma
+   narzędzia. Decyzję rozstrzyga grill, fakt sprawdza agent przy budowie SPEC, a przygotowanie
+   infrastruktury trafia do zadania agenta. Podział nie stawia pracy ludzkiej przed startem
+   implementacji; gdy kolejność tego wymaga, ta praca trafia na listę przed startem, którą agent
+   pokazuje razem z prośbą o zgodę z pomysłu 9, a nie dopiero po pierwszym przebiegu. W fd3 przed
+   0.4.0 22 zadania użytkownika blokowały start, prawie same decyzje przebrane za zadania; od 0.4.0
+   zostały 4, z czego 2 agent zrobił sam po jednej zgodzie (baseline, metryka m11).
 8. **Plik zadania podaje interfejsy publiczne i scenariusze testów.** Interfejsy publiczne, które
    zadanie dodaje lub zmienia, opisuje sygnaturą: nazwa, wejście, wyjście, błędy. Scenariusze testów
    jednostkowych, integracyjnych i e2e są wypisane w formacie Gherkin (Given/When/Then). Sygnatura i
