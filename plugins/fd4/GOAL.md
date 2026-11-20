@@ -102,6 +102,14 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
     Sprawdzenie, które niczego nie zweryfikowało, zwraca „nie uruchomiono”, nigdy „przeszło”. W fd3
     werdykt nie wypadł negatywnie ani razu w 48 przebiegach, a check wykonalności w repozytorium
     przeszedł 46 razy, choć przepuścił 18 defektów (m12).
+11. **Każdy etap i agent ma model dobrany do swojej pracy.** W fd3 większość pracy idzie na Opusie,
+    także czytanie plików i wyszukiwanie. Opus decyduje: planuje, rozstrzyga decyzje kluczowe i robi
+    końcowe sprawdzenie. Pisanie i edycję prowadzi Sonnet. Czytanie, wyszukiwanie, uruchamianie
+    testów i czytanie logów idą do Haiku, z krótkim podsumowaniem zamiast całych plików. Każdy
+    subagent i agent workflowu ma model ustawiony jawnie, bo bez tego dziedziczy model sesji, czyli
+    zwykle Opusa. Model zmieniamy na granicy etapu, nie w środku sesji, bo zmiana modelu traci cache
+    rozmowy. Przydział modelu do etapu potwierdza ewaluacja jakości (zasada 2), nie tylko koszt.
+    Pomysł 3 dobiera model dla zadań implementacji; to wymaganie obejmuje resztę etapów.
 
 ## Nowe pomysły
 
