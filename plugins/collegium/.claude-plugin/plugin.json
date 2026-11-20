@@ -1,6 +1,6 @@
 {
   "name": "collegium",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Hands a task to another coding agent, such as OpenAI Codex, while you keep working, and brings back its answer with the assumptions and open questions it had. Codex is off until you turn it on, because each run sends your code to OpenAI.",
   "author": {
     "name": "Mateusz Gostański",
