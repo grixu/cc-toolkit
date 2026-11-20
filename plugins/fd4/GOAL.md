@@ -46,10 +46,16 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 8. **Za drobne zadania.** Każde zadanie to osobny subagent, worktree i walidacja, więc drobny podział
    mnoży ich liczbę. Każdy subagent ładuje od nowa bazowy kontekst sesji, często ciężki od skilli i
    pluginów, więc w fd3 40 zadań niosło ten kontekst 40 razy, choć ten sam zakres zmieściłby się w
-   8–10 zadaniach. Celem jest mniej, a większych zadań, nie obniżanie kosztu za wszelką cenę.9. **Ryzykowne kroki trafiają do użytkownika.** Podział na zadania często zostawia użytkownikowi do
+   8–10 zadaniach. Celem jest mniej, a większych zadań, nie obniżanie kosztu za wszelką cenę.
+   Miarą jest liczba zadań na przypadek; w fd3 mediana to 21 (baseline, metryka m8).
+9. **Ryzykowne kroki trafiają do użytkownika.** Podział na zadania często zostawia użytkownikowi do
    ręcznego wykonania kroki, które agent zrobiłby sam przez CLI. Dotyczy to zwykle działań
    ryzykownych: trudno odwracalnych albo takich, których porażka dotknie użytkowników końcowych (np.
    zmian w infrastrukturze).
+10. **Przegląd kodu i CI na każdym zadaniu.** Każde zadanie dostaje osobny przebieg CI i przegląd kodu
+    soczewkami, także gdy zmiana tego nie potrzebuje. To one, a nie liczba zadań, mnożą subagentów:
+    fd3 uruchamiał medianę 113 subagentów na przypadek, z czego przegląd 24–87, a CI 5–20. Miarą
+    jest liczba subagentów przeglądu i CI na przypadek (baseline, metryka m13).
 
 ## Wymagania
 
@@ -157,6 +163,12 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 
     Pytania o sprawy już rozstrzygnięte nie są ustawieniem: usuwa je nowy grill, w którym do
     użytkownika trafiają tylko pytania kluczowe (problem 6).
+11. **Model decyzyjny ocenia, czy zadanie dostaje przegląd kodu i CI.** Przy podziale, jak model i
+    effort w pomyśle 3, model decyzyjny rozstrzyga dla każdego zadania osobno, czy uruchomić przegląd
+    kodu i czy uruchomić CI, a wynik trafia do pliku zadania. Są zadania, dla których jedno lub
+    drugie nie ma sensu, np. zmiana samej dokumentacji albo konfiguracji, której CI nie sprawdza
+    (problem 10). Ustawienie `auto-review` (pomysł 10) dalej włącza przegląd w ogóle; model
+    decyzyjny wybiera zadania, na których go pominąć.
 
 ## Założenia
 
