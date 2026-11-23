@@ -62,7 +62,7 @@ Read the setting `${user_config.merge_auto_push}`:
 - `true`: push at once.
 - anything else, including text still starting with `${user_config.` (the setting was never saved; it lives nowhere else, so don't look for it in git config or files): ask with `AskUserQuestion`, options **Push now** and **Leave it local**, naming the branch and remote in the question.
 
-Push with `git push`, or `git push -u <remote> <current>` when the branch has no upstream. A repository without a remote skips this step (`pushed: no: no remote`). A rejected push (the remote moved meanwhile) is reported, never forced.
+Push with `git push <push-remote> <current>`, adding `-u` when the branch has no upstream, where `<push-remote>` is `origin` when it exists (in a fork, the fork) and otherwise `<remote>`. Never a bare `git push`: it follows the branch's upstream, which for a branch cut from `origin/develop` is `develop` itself. A repository without a remote skips this step (`pushed: no: no remote`). A rejected push (the remote moved meanwhile) is reported, never forced.
 
 ## Result block
 
