@@ -15,7 +15,7 @@ Run each git and gh command as its own call, without `;`, `&&`, `$(…)` or loop
 
 ## 1. Check the checkout
 
-Read `git status` and `git rev-parse --git-path MERGE_HEAD` / `rebase-merge` / `rebase-apply`:
+Read `git status` (it reports a rebase in progress) and `git rev-parse -q --verify MERGE_HEAD` / `CHERRY_PICK_HEAD` (each exits non-zero when that operation is not in progress):
 
 - **A merge is already in progress**: the base is the merge's `MERGE_HEAD`; go straight to step 4 and resolve what is left.
 - **A rebase or cherry-pick is in progress, HEAD is detached, or tracked files have uncommitted changes**: stop with status `blocked`, naming which. Those changes are the user's; never stash, commit or discard them. Untracked files (`??`) do not block, and stay out of every commit.
