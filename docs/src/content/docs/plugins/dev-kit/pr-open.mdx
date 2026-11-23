@@ -284,7 +284,7 @@ The report ends with a one-line suggestion to run `/dev-kit:pr-shepherd`.
 
 - **You're on the default branch or a detached HEAD.** `pr-open` stops and says so.
 - **Tracked files have uncommitted changes.** It asks whether to open the pull request from the committed state or stop so you can commit. It never commits itself. Untracked files stay out of the pull request and are listed in the report.
-- **The base has moved ahead.** It reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never merges, rebases or force-pushes.
+- **The base has moved ahead.** It reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and suggests [`merge-in-head`](/plugins/dev-kit/merge-in-head/) for the sync. It never merges, rebases or force-pushes.
 - **The push is rejected.** It reports the error and stops. Resolving a diverged branch is your call.
 - **The assignment or the label fails.** The pull request stays open, and the report says why.
 - **Your `gh` is older than 2.99.0.** With a **Proof** section, `gh pr create` fails on the `--attach` flag. Update `gh` and run `pr-open` again.

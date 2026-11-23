@@ -18,6 +18,7 @@ Opcje etykiety ryzyka, wejścia narzędzia i pola wyniku są na stronie [Etykiet
 | `/dev-kit:pr-shepherd` | `[PR …] [iteration]` |
 | `/dev-kit:ci-fix` | `[run/job/PR/commit URL \| run ID \| PR number] [push-authorized] [checkout=<dir>]` |
 | `/dev-kit:dep-upgrade-check` | `<package>[@<version>] \| <pull request URL> [unattended]` |
+| `/dev-kit:merge-in-head` | `[base branch \| PR number]` |
 
 Tabela 1. Argumenty skilli
 
@@ -26,11 +27,12 @@ Tabela 1. Argumenty skilli
 - **`push-authorized`** (`ci-fix`) pushuje bez pytania i kończy ze statusem `blocked` wszędzie tam, gdzie `ci-fix` inaczej by cię zapytał. Tak woła `ci-fix` skill `pr-shepherd`.
 - **`checkout=<dir>`** (`ci-fix`) wskazuje lokalny checkout do naprawy, gdy wywołujący pracuje w worktree na branchu runu.
 - **`unattended`** (`dep-upgrade-check`) o nic nie pyta, kończy ze statusem `stopped` wszędzie tam, gdzie sprawdzenie inaczej by zapytało, i publikuje pełny raport na pull requeście. `GITHUB_ACTIONS=true` działa tak samo.
+- **`base branch`** albo **`PR number`** (`merge-in-head`) ustawia bazę do zmergowania. Numer pull requesta bierze bazę tego pull requesta i musi wskazywać pull request bieżącego brancha. Bez nich skill [sam znajduje bazę](/pl/plugins/dev-kit/merge-in-head/#jak-znajduje-bazę).
 
 ## Opcje pluginu
 
 Ustawiasz je przez `/plugin configure dev-kit@cc-toolkit`.
-Te opcje sterują historią zmiany i etykietą dowodu w `pr-open`; klucze API i opcje etykiety ryzyka są na stronie [Etykieta ryzyka: referencja](/pl/plugins/dev-kit/risk-assessment/reference/#opcje-pluginu).
+Te opcje sterują historią zmiany i etykietą dowodu w `pr-open` oraz tym, czy `merge-in-head` pushuje bez pytania; klucze API i opcje etykiety ryzyka są na stronie [Etykieta ryzyka: referencja](/pl/plugins/dev-kit/risk-assessment/reference/#opcje-pluginu).
 
 | Opcja | Domyślnie | Co robi |
 |---|---|---|
@@ -38,8 +40,9 @@ Te opcje sterują historią zmiany i etykietą dowodu w `pr-open`; klucze API i 
 | `story_gate_backend` | `auto` | Który model decyduje przy `auto`. `auto` używa każdego backendu z ustawionym kluczem, `both` wymaga obu kluczy, `typesafe` albo `gemini` używa tego jednego. |
 | `proof_label` | `true` | Czy `pr-open` dodaje etykietę do pull requesta, dopóki jego dowód z pr-proof jest aktualny. |
 | `proof_label_name` | `proof` | Nazwa tej etykiety. |
+| `merge_auto_push` | `false` | Czy `merge-in-head` pushuje merge od razu, zamiast najpierw zapytać. |
 
-Tabela 2. Opcje historii zmiany i etykiety dowodu
+Tabela 2. Opcje historii zmiany, etykiety dowodu i pusha po merge'u
 
 Sekcje [Czy zmiana dostaje historię](/pl/plugins/dev-kit/pr-open/#czy-zmiana-dostaje-historię) i [Etykieta proof](/pl/plugins/dev-kit/pr-open/#etykieta-proof) opisują obie funkcje w pełni.
 
@@ -54,6 +57,7 @@ O każdą inną pyta, chyba że twoje ustawienia już na nią pozwalają.
 | `pr-shepherd` | Edycja plików; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `merge`, `worktree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Twoje komendy testów i lintera |
 | `ci-fix` | Edycja plików; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checki z aplikacji zewnętrznych); twoje komendy testów, lintera i buildu |
 | `dep-upgrade-check` | Zapis plików (zapytanie o advisory i treści komentarzy); `printenv GITHUB_ACTIONS`; `git fetch`, `show`; `gh repo view`; `gh pr view`, `diff`, `checks`; `gh run view`; `gh api`, łącznie z zapisami; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; `curl -s` do api.osv.dev i api.deps.dev; WebFetch; wyszukiwanie i scrape firecrawla; context7 | Zapytania dla npm, yarn, Python, Go, PHP, Rust, obrazów kontenerów i GitHub Actions; opcjonalny build w worktree |
+| `merge-in-head` | Edycja plików; `git status`, `branch`, `config --get`, `reflog`, `remote`, `symbolic-ref`, `for-each-ref`, `rev-parse`, `rev-list`, `merge-base`, `fetch`, `merge`, `log`, `diff`, `show`, `blame`, `ls-files`, `add`, `commit`, `push`; `gh pr view`, `list`; `gh issue view` | Twoje komendy typechecka, testów i formatowania |
 
 Tabela 3. Komendy, które każdy skill uruchamia bez pytania
 
@@ -76,6 +80,24 @@ next: <what the user or caller must do, or none>
 ```
 
 Przy kilku przyczynach `cause` wymienia każdą, a `status` przyjmuje pierwszą pasującą wartość w kolejności `blocked`, `not-fixable`, `fixed`, `rerun`, `nothing-to-fix`.
+
+## merge-in-head result
+
+Każdy run `merge-in-head` kończy się tym blokiem, także przy wczesnym zatrzymaniu:
+
+```
+merge-in-head result
+status: merged | resolved | up-to-date | blocked
+base: <ref> (<source: argument | pr #<n> | gh-merge-base | reflog | nearest | default | asked | in-progress merge>) | none: <why>
+conflicts: <file: how it was resolved>; ... | none
+checks: <command: pass | fail: why | not run: why>; ... | none found
+commit: <short SHA> <subject>, ... (the merge first, then each fix) | none
+pushed: yes | no: <why> | n/a
+next: <what the user must do, or none>
+```
+
+`merged` to czysty merge, a `resolved` to merge, którego konflikty run rozwiązał.
+Check, którego nie dało się uruchomić, ma wartość `not run`, nigdy nie liczy się jako zaliczony.
 
 ## dep-upgrade-check result
 

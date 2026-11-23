@@ -93,7 +93,7 @@ Zatrzymuje się i składa raport, gdy zajdzie jedno z poniższych:
 
 - Każdy wymagany check jest zielony i nie ma otwartego wątku review. To sukces.
 - Branch nie ma otwartego pull requesta, ma niezacommitowane zmiany w śledzonych plikach albo niewypchnięte commity, albo rozjechał się z remote'em.
-- GitHub zgłasza pull request jako konfliktowy. Skill i tak obsługuje wątki review i pushuje, potem zatrzymuje się i wymienia pliki z konfliktem. Nigdy nie rozwiązuje konfliktu.
+- GitHub zgłasza pull request jako konfliktowy. Skill i tak obsługuje wątki review i pushuje, potem zatrzymuje się i wymienia pliki z konfliktem. Nigdy nie rozwiązuje konfliktu: uruchom [`/dev-kit:merge-in-head`](/pl/plugins/dev-kit/merge-in-head/), a potem znów `pr-shepherd`.
 - `ci-fix` zgłasza błąd, którego nie umie naprawić, albo ten sam check jest znów czerwony po dwóch cyklach poprawki albo ponownego uruchomienia.
 - Każdy wymagany check jest zielony, a każdy pozostały wątek czeka na ciebie albo na reviewera, który nie odpowiada od 24 godzin.
 - Wykonał 48 rund.

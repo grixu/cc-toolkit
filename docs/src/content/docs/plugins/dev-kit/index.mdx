@@ -18,10 +18,11 @@ Each skill does the whole job, including commits and pushes where you allow them
 
 <LifeMap focus="dev-kit" animate={false} />
 
-Three skills work in [human review](/lifecycle/human-review/), the last stage of the cycle: `pr-open`, `pr-shepherd` and `ci-fix`.
+Four skills work in [human review](/lifecycle/human-review/), the last stage of the cycle: `pr-open`, `pr-shepherd`, `ci-fix` and `merge-in-head`.
 [`/pr-proof:prepare-proof`](/plugins/pr-proof/prepare-proof/) first records the branch's proof.
 `pr-open` then opens the pull request with that proof, a [code story](/plugins/code-story/) that explains the change, and sentences cleaned by [anti-slop](/plugins/anti-slop/).
 `pr-shepherd` keeps it green until it's approved, and hands every red check to `ci-fix`.
+When the base moves ahead and the pull request conflicts, `merge-in-head` merges the base in and resolves the conflicts.
 `dep-upgrade-check` works in [Maintain](/lifecycle/maintain/), outside the cycle: run it when an upgrade arrives.
 
 ## What's in the plugin
@@ -31,6 +32,7 @@ Three skills work in [human review](/lifecycle/human-review/), the last stage of
 | [`/dev-kit:pr-open`](/plugins/dev-kit/pr-open/) | Your commits are ready for review | Pushes the branch and opens a pull request that fills the repository's template from the diff, with the branch's proof and code story, and labels it `proof` while that proof is current. With a TypeSafe or Gemini Decision key, it labels the pull request with its risk and skips the story for a change too plain to need one. |
 | [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) | The pull request is open | Loops until every required check is green and no review thread is open. It fixes what it agrees with and answers the rest. |
 | [`/dev-kit:ci-fix`](/plugins/dev-kit/ci-fix/) | A check failed | Finds the cause of a red run, fixes it, verifies the fix locally, and commits one fix per cause. `pr-shepherd` calls it for you. |
+| [`/dev-kit:merge-in-head`](/plugins/dev-kit/merge-in-head/) | The base moved ahead, or the pull request conflicts | Merges the base into your branch, resolves each conflict by the intent behind both sides, and fixes what the merge broke. It never rebases or force-pushes. |
 | [`/dev-kit:dep-upgrade-check`](/plugins/dev-kit/dep-upgrade-check/) | A dependency bump arrives | Checks the target version's security record, then maps every change to where your code uses the package. Returns `safe`, `safe with changes` or `breaking`. |
 
 Table 1. The dev-kit skills

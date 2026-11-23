@@ -47,6 +47,7 @@ It builds the pull request from what the other plugins produce:
 
 A new code story is private until you share it on claude.ai, so share it before reviewers open the link.
 You rarely run `ci-fix` by hand: pr-shepherd calls it when a check fails.
+When the pull request conflicts with its base, pr-shepherd stops; run [`/dev-kit:merge-in-head`](/plugins/dev-kit/merge-in-head/) to merge the base in and resolve the conflicts.
 
 ## What to run
 

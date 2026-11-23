@@ -123,6 +123,8 @@ export const skills: Skill[] = [
     does: { en: 'Answer review comments and keep CI green until checks pass and threads are settled', pl: 'Odpowiadaj na komentarze i trzymaj CI na zielono, aż checki przejdą, a wątki zostaną rozstrzygnięte' } },
   { id: 'ci-fix', plugin: 'dev-kit', cmd: '/dev-kit:ci-fix', stage: 'human', href: 'plugins/dev-kit/ci-fix/', calledBy: 'pr-shepherd',
     does: { en: 'Fix a red CI run at its root cause', pl: 'Napraw czerwone CI u źródła' } },
+  { id: 'merge-in-head', plugin: 'dev-kit', cmd: '/dev-kit:merge-in-head', stage: 'human', href: 'plugins/dev-kit/merge-in-head/',
+    does: { en: 'Merge the base into your branch and resolve the conflicts', pl: 'Zmerguj bazę do swojego brancha i rozwiąż konflikty' } },
   { id: 'dep-upgrade-check', plugin: 'dev-kit', cmd: '/dev-kit:dep-upgrade-check', stage: 'maintain', href: 'plugins/dev-kit/dep-upgrade-check/',
     does: { en: 'Find out whether an upgrade will break you', pl: 'Sprawdź, czy aktualizacja coś zepsuje' } },
 
