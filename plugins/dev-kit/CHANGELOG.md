@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-23
+
 ### Added
 
 - `merge-in-head` skill: merges the current branch's base into it and resolves the conflicts by the intent behind both sides, then runs the project's checks and commits the merge. It takes the base from the open pull request, then `gh-merge-base`, then git's reflog and branch distances, and asks when those disagree. The **Push merges without asking** option (`merge_auto_push`, off by default) pushes the merge without asking first.
