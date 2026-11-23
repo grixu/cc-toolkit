@@ -60,6 +60,101 @@ for s in pr-clear-private pr-transitive-rerun pr-escalated-accept pr-merge-check
   fi
 done
 
+# merge-in-head scenarios: the feature branch is cut from develop and pushed, then develop moves on
+# through another clone, so the checkout's origin/develop is stale until the skill fetches. Each mode
+# leaves a different trace of the base: an open PR (pr), only the reflog (reflog), gh-merge-base (clean).
+mih() {
+  local name="$1" mode="$2" branch="$3" repo=".sandbox/$1" origin tip n
+  origin="$(pwd)/.sandbox/$1-origin.git"
+  tip=".sandbox/$1-tip"
+  checkout "$repo" cases/merge-in-head/base
+  git -C "$repo" config user.name 'dev-kit-evals'
+  git -C "$repo" config user.email 'dev-kit-evals@localhost'
+  git clone -q --bare "$repo" "$origin"
+  git -C "$repo" remote add origin "$origin"
+  git -C "$repo" fetch -q origin
+  git -C "$repo" branch -q --set-upstream-to=origin/main main
+  git -C "$repo" switch -q -c develop
+  git -C "$repo" push -q -u origin develop
+  case "$mode" in
+    pr) git -C "$repo" switch -q -c "$branch" ;;
+    reflog) git -C "$repo" switch -q -c "$branch" origin/develop ;;
+    clean) git -C "$repo" switch -q -c "$branch" develop
+      git -C "$repo" config "branch.$branch.gh-merge-base" develop ;;
+  esac
+  if [ "$mode" = clean ]; then
+    cp -R cases/merge-in-head/feature-clean/. "$repo/"
+    git -C "$repo" add -A
+    commit "$repo" 'feat: add a farewell helper'
+  else
+    cp -R cases/merge-in-head/feature/. "$repo/"
+    git -C "$repo" add -A
+    commit "$repo" 'feat: greet people with Hi instead of Hello'
+  fi
+  git -C "$repo" push -q -u origin "$branch"
+  if [ "$mode" = pr ]; then
+    n="$(jq -r .number cases/merge-in-head/pr.json)"
+    git -C "$repo" push -q origin "HEAD:refs/pull/$n/head"
+    mkdir -p ".sandbox/prs/$n"
+    cp cases/merge-in-head/pr.json ".sandbox/prs/$n/pr.json"
+    printf '%s\n' "$origin" > ".sandbox/prs/$n/origin"
+    echo '[]' > ".sandbox/prs/$n/comments.json"
+  fi
+  git -C "$repo" branch -q -D develop
+  git clone -q -b develop "$origin" "$tip"
+  cp -R cases/merge-in-head/develop/. "$tip/"
+  git -C "$tip" add -A
+  commit "$tip" 'fix: trim surrounding whitespace from names before greeting'
+  git -C "$tip" push -q origin develop
+  rm -rf "$tip"
+  git -C "$repo" rev-parse HEAD > ".sandbox/$name-pushed-head"
+}
+
+mih mih-pr pr feat/hi-greeting
+mih mih-reflog reflog feat/casual-greeting
+mih mih-clean clean feat/farewell
+
+# A teammate's branch checked out from the remote, so its reflog names only its own remote copy, with
+# two sibling feature branches cut from the same main commit and no develop: the base is main.
+mih_siblings() {
+  local name=mih-siblings branch=feat/farewell repo=.sandbox/mih-siblings origin tip=.sandbox/mih-siblings-tip s
+  origin="$(pwd)/.sandbox/$name-origin.git"
+  checkout "$repo" cases/merge-in-head/base
+  git -C "$repo" config user.name 'dev-kit-evals'
+  git -C "$repo" config user.email 'dev-kit-evals@localhost'
+  git clone -q --bare "$repo" "$origin"
+  git -C "$repo" remote add origin "$origin"
+  git -C "$repo" fetch -q origin
+  git -C "$repo" branch -q --set-upstream-to=origin/main main
+  for s in feat/sibling-one feat/sibling-two "$branch"; do
+    git -C "$repo" switch -q -c "$s" main
+    if [ "$s" = "$branch" ]; then
+      cp -R cases/merge-in-head/feature-clean/. "$repo/"
+      git -C "$repo" add -A
+      commit "$repo" 'feat: add a farewell helper'
+    else
+      printf '%s\n' "$s" > "$repo/${s#feat/}.txt"
+      git -C "$repo" add -A
+      commit "$repo" "chore: work on $s"
+    fi
+    git -C "$repo" push -q origin "$s"
+    git -C "$repo" switch -q main
+    git -C "$repo" branch -q -D "$s"
+  done
+  git -C "$repo" fetch -q origin
+  git -C "$repo" remote set-head -a origin > /dev/null
+  git -C "$repo" switch -q "$branch"
+  git clone -q -b main "$origin" "$tip"
+  cp -R cases/merge-in-head/develop/. "$tip/"
+  git -C "$tip" add -A
+  commit "$tip" 'fix: trim surrounding whitespace from names before greeting'
+  git -C "$tip" push -q origin main
+  rm -rf "$tip"
+  git -C "$repo" rev-parse HEAD > ".sandbox/$name-pushed-head"
+}
+
+mih_siblings
+
 # pr-open scenarios: a base history in Conventional Commits (`base-log`), an optional shared branch the
 # PR is based on (`feature/`), then the PR branch's own commits. A commit directory holding `push`
 # is pushed and stands as the open PR of that number (`pr.json`); later commits stay local.
