@@ -17,6 +17,7 @@ plugins/*/evals/.results/
 scripts/.evals-isolation.host.json
 # eval cases drawn from private repositories: their names, commits and descriptions stay off this public repo
 plugins/*/evals/*/local/
+plugins/*/evals/local/
 # code-review eval fixtures, pulled from R2 by scripts/eval-data.mjs at the sha256 evals/eval-data.json pins
 plugins/code-review/evals/cases/
 plugins/code-review/evals/comment-track/
