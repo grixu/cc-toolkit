@@ -22,6 +22,8 @@ Read `git status` (it reports a rebase in progress) and `git rev-parse -q --veri
 
 ## 2. Find the base
 
+`<remote>` below is the remote of the repository the branch merges into (`git remote -v`): with an open PR, the one whose URL names the owner/repo in the PR's `url`; otherwise `upstream` when it exists (a fork's parent), else `origin`, else the only remote. In a fork, `origin/<base>` is the fork's own, often stale copy.
+
 Take the first source that answers, and record which one it was for the result block:
 
 1. **Argument**: a branch name is the base; a PR number means that PR's `baseRefName` (`gh pr view <n> --json baseRefName,headRefName`; when its `headRefName` is not the current branch, stop `blocked`).
