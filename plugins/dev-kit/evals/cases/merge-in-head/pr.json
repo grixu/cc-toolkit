@@ -1,0 +1,12 @@
+{
+  "number": 30,
+  "title": "feat: greet people with Hi",
+  "author": {
+    "login": "eval-user"
+  },
+  "headRefName": "feat/hi-greeting",
+  "baseRefName": "develop",
+  "state": "OPEN",
+  "isDraft": false,
+  "body": "Switches the greeting from Hello to Hi."
+}

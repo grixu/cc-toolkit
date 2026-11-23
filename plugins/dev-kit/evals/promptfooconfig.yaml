@@ -6,6 +6,8 @@ prompts:
     label: security-gate
   - id: file://prompts/pr-open.txt
     label: pr-open
+  - id: file://prompts/merge-in-head.txt
+    label: merge-in-head
 
 providers:
   - id: file://provider.mjs
@@ -226,3 +228,52 @@ tests:
     assert:
       - type: javascript
         value: file://checks/pr-open.mjs:proof
+
+  # The push question is declined in every merge-in-head case, so the remote branch must stay where it was.
+  - description: 'mih-pr: the open PR names develop as the base; the conflict keeps both Hi and name.trim()'
+    prompts:
+      - merge-in-head
+    vars:
+      request: Merge the base into this branch and resolve the conflicts.
+      checkout: plugins/dev-kit/evals/.sandbox/mih-pr
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^leave'
+    assert:
+      - type: javascript
+        value: file://checks/merge-in-head.mjs:pr
+
+  - description: 'mih-reflog: no PR; the reflog names develop and settles a main/develop distance tie, so it merges without asking'
+    prompts:
+      - merge-in-head
+    vars:
+      request: domerguj heada i rozwiąż konflikty
+      checkout: plugins/dev-kit/evals/.sandbox/mih-reflog
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^leave'
+    assert:
+      - type: javascript
+        value: file://checks/merge-in-head.mjs:reflog
+
+  - description: 'mih-clean: no PR; gh-merge-base names develop and the merge is clean'
+    prompts:
+      - merge-in-head
+    vars:
+      request: Bring my branch up to date with its base.
+      checkout: plugins/dev-kit/evals/.sandbox/mih-clean
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^leave'
+    assert:
+      - type: javascript
+        value: file://checks/merge-in-head.mjs:clean
+
+  - description: 'mih-siblings: a branch checked out from the remote, sibling feature branches and no develop; the base is main, picked without asking'
+    prompts:
+      - merge-in-head
+    vars:
+      request: domerguj heada
+      checkout: plugins/dev-kit/evals/.sandbox/mih-siblings
+      gh: plugins/dev-kit/evals/.sandbox/bin/gh
+      answer: '^leave'
+    assert:
+      - type: javascript
+        value: file://checks/merge-in-head.mjs:siblings

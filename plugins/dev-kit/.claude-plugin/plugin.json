@@ -1,6 +1,6 @@
 {
   "name": "dev-kit",
-  "description": "Fixes failed CI runs, keeps fixing a pull request until CI is green and review is resolved, and checks dependency upgrades against your code. Also opens pull requests from the repository's template, labelled with how risky the change is.",
+  "description": "Fixes failed CI runs, keeps fixing a pull request until CI is green and review is resolved, and checks dependency upgrades against your code. Also opens pull requests labelled with how risky the change is, and merges the base branch into your branch and resolves the conflicts.",
   "version": "0.12.1",
   "author": {
     "name": "Mateusz Gostański",
@@ -17,7 +17,9 @@
     "pull-request",
     "code-review",
     "dependencies",
-    "renovate"
+    "renovate",
+    "git",
+    "merge"
   ],
   "userConfig": {
     "typesafe_api_key": {
@@ -112,6 +114,12 @@
       "title": "Proof label name",
       "description": "Name of the proof label",
       "default": "proof"
+    },
+    "merge_auto_push": {
+      "type": "boolean",
+      "title": "Push merges without asking",
+      "description": "merge-in-head pushes the merge commit at once instead of asking first",
+      "default": false
     },
     "risk_levels": {
       "type": "string",

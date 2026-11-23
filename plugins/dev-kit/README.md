@@ -1,6 +1,6 @@
 # dev-kit
 
-dev-kit takes over four chores that interrupt work on a GitHub repository: fixing a red CI run, driving a pull request through review until it is green, checking whether a dependency upgrade breaks your code, and opening a pull request with a filled-in description. Each skill does the whole job, including commits and pushes where you allow them, and ends with a short report.
+dev-kit takes over five chores that interrupt work on a GitHub repository: fixing a red CI run, driving a pull request through review until it is green, checking whether a dependency upgrade breaks your code, opening a pull request with a filled-in description, and merging the base into your branch with its conflicts resolved. Each skill does the whole job, including commits and pushes where you allow them, and ends with a short report.
 
 ## Install
 
@@ -70,7 +70,7 @@ Apart from those decisions, it never asks you anything mid-run; while a decision
 
 - Every required check is green and no review thread is open (success).
 - The branch has no open pull request, uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
-- GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files; it never resolves the conflict, and running it again before you do stops the same way.
+- GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files; it never resolves the conflict, and running it again before you do stops the same way. The report suggests [`merge-in-head`](#merge-in-head-merge-the-base-into-your-branch) to resolve it.
 - `ci-fix` reports a failure it cannot fix, or the same check is red again after two fix or rerun cycles, whichever step made them.
 - Every required check is green and every remaining thread waits on a human who has not replied for 24 hours, already holds two of its rebuttals, is a decision you kept for yourself, or cannot be replied to.
 - It has run 48 rounds.
@@ -221,7 +221,7 @@ It pushes the current branch and fills the repository's pull request template. I
 - A background `code-story` run builds the branch's code story, or updates the one the description already links, and the description gets a **Code story** section with its link, on a new pull request and an existing one alike. A new story is private until you share it on claude.ai. With a TypeSafe or Gemini key, a decision model first judges whether the change is worth a story, and a typo fix, a test-only change or a small local fix gets none. See [Code story gate](#code-story-gate).
 - These sections close the description in this order: **Code story**, **Proof**, **Risk**, each only when it has content, above any link reference definitions that end the body.
 
-When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and offers the sync as a separate step. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
+When the base has moved ahead, it reports how far behind the branch is and whether a merge would conflict, opens the pull request as it stands, and suggests [`merge-in-head`](#merge-in-head-merge-the-base-into-your-branch) for the sync. It never commits, merges, rebases or force-pushes, and running it counts as the per-branch push consent a repository rule may require. It stops on the default branch or a detached HEAD, and asks what to do when tracked files have uncommitted changes; untracked files stay out of the pull request and are listed in the report.
 
 Output: the pull request URL, its base branch, the template it used, the sections and checkboxes left for you to complete, the risk level and label with the backend that set it (or why it was not assessed), the proof entries it rendered or left out, anything that failed to upload and what happened to the `proof` label, the code story link with its status (or why there is none: off, skipped by the gate with its reason, or a failure), and a one-line suggestion to run `pr-shepherd` next.
 
@@ -255,6 +255,29 @@ An existing pull request whose description already links a story always gets it 
 
 The questions and thresholds were calibrated on the plugin author's own 37 pull requests and checked once on 24 more that played no part in the fit. On those 24, both backends together skipped 8 of the 13 pull requests the author would skip, Jev alone 7 and Gemini alone 10, and none of them skipped any of the 11 that should have a story. Only the pair's thresholds were fixed before that check. That is one person's judgement on a small sample; see the [evaluation guide](evals/story-gate/README.md).
 
+### merge-in-head: merge the base into your branch
+
+Use it when your branch is behind its base or a pull request conflicts with it. Pass the base, a pull request number, or nothing:
+
+```
+/dev-kit:merge-in-head
+/dev-kit:merge-in-head develop
+```
+
+It finds the base, fetches it, and merges it into the current branch with a merge commit. It never rebases or force-pushes. Without an argument it takes the base from, in order:
+
+1. the open pull request for the branch (`gh pr view`);
+2. `git config branch.<branch>.gh-merge-base`, the base `gh pr create` uses;
+3. git alone: the reflog's `Created from <branch>` entry, the branch the current one is fewest commits ahead of, and the default branch. When these agree, it merges. When they disagree, it asks you, listing each candidate with its evidence.
+
+The last step works in any git repository, with or without GitHub.
+
+Conflicts are resolved by the intent behind each side: it reads the commits, pull requests and tickets behind both changes, keeps both where they fit, picks the one that serves the branch where they do not, and adds no new behaviour. It commits the merge with git's message. After every merge, clean or not, it runs the project's typecheck, tests and formatter and fixes what the merge broke, each fix in its own commit. It stops without touching anything when a rebase is in progress, HEAD is detached, or tracked files have uncommitted changes, and picks up a merge already in progress.
+
+It asks before pushing. Set the **Push merges without asking** option (`/plugin configure dev-kit@cc-toolkit`) to push at once.
+
+Output: the base and where it came from, each conflicted file and how it was resolved, the checks it ran, the merge commit, and whether it pushed.
+
 ## Risk assessment
 
 dev-kit includes a mod that gives Claude the `pr_risk` tool (`mcp__dev-kit__pr_risk`). It groups the changed files of `<base>...HEAD` into slices, one per purpose of the change, and asks a decision model, [TypeSafe's Jev](https://docs.typesafe.ai/introduction) or Google's [Gemini Decision](https://aistudio.google.com/docs/decisions-api), fixed questions about each slice: the impact of a mistake, how complex the logic is, what the slice does, and which risky areas it touches. Code turns the answers into a level (`low`, `medium`, `high` or `critical`) and risk flags: security, persisted data, public contracts, CI and infrastructure, and logic without tests. `pr-open` calls it; Claude can also call it when you ask how risky a branch is. There is no slash command.
@@ -282,6 +305,7 @@ Each skill pre-approves only some of the commands it runs. Anything else asks fo
 | `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `merge`, `worktree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
 | `dep-upgrade-check` | Writing files (the advisory query and the comment bodies); `printenv GITHUB_ACTIONS`; `git fetch`, `show`; `gh repo view`; `gh pr view`, `diff`, `checks`; `gh run view`; `gh api`, writes included (changelog files, commit ranges, advisories, the comments' lookup, creation and update); `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; `curl -s` to api.osv.dev and api.deps.dev; WebFetch; firecrawl search and scrape; context7 | Lookups for npm, yarn, Python, Go, PHP, Rust, container images and GitHub Actions; the optional worktree build |
 | `pr-open` | Nothing | Every `git` and `gh` command |
+| `merge-in-head` | File edits; `git status`, `branch`, `config`, `reflog`, `remote`, `symbolic-ref`, `for-each-ref`, `rev-parse`, `rev-list`, `merge-base`, `fetch`, `merge`, `log`, `diff`, `show`, `blame`, `ls-files`, `add`, `commit`, `push`; `gh pr view`, `list`; `gh issue view` | Your typecheck, test and format commands |
 
 An unattended `pr-shepherd` loop pauses at the first permission prompt. Before you start it, allow your repository's check commands in `.claude/settings.json`, for example `"Bash(pnpm test *)"`.
 
