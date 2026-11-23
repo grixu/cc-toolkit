@@ -284,7 +284,7 @@ Raport kończy się jednolinijkową sugestią, żeby uruchomić `/dev-kit:pr-she
 
 - **Jesteś na domyślnym branchu albo na odłączonym HEAD.** `pr-open` zatrzymuje się i o tym informuje.
 - **Śledzone pliki mają niezacommitowane zmiany.** Pyta, czy otworzyć pull request ze stanu z commitów, czy zatrzymać się, żeby można było zrobić commit. Sam nigdy nie commituje. Nieśledzone pliki nie trafiają do pull requesta i są wymienione w raporcie.
-- **Baza poszła do przodu.** Raport mówi, o ile branch jest w tyle i czy merge dałby konflikt, pull request otwiera się w obecnym stanie, a synchronizacja jest proponowana jako osobny krok. Nigdy nie merguje, nie rebase'uje i nie robi force-pusha.
+- **Baza poszła do przodu.** Raport mówi, o ile branch jest w tyle i czy merge dałby konflikt, pull request otwiera się w obecnym stanie, a do synchronizacji proponuje [`merge-in-head`](/pl/plugins/dev-kit/merge-in-head/). Nigdy nie merguje, nie rebase'uje i nie robi force-pusha.
 - **Push zostaje odrzucony.** Raport podaje błąd i skill się zatrzymuje. Rozwiązanie rozjechanego brancha należy do ciebie.
 - **Przypisanie albo etykieta się nie udają.** Pull request zostaje otwarty, a raport mówi dlaczego.
 - **Twoje `gh` jest starsze niż 2.99.0.** Przy sekcji **Proof** `gh pr create` pada na fladze `--attach`. Zaktualizuj `gh` i uruchom `pr-open` ponownie.

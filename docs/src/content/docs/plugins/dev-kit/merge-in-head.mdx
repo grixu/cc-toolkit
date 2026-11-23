@@ -1,0 +1,101 @@
+---
+title: /dev-kit:merge-in-head
+description: Merges the branch's base into it with a merge commit, resolves each conflict by the intent behind both sides, runs your checks and fixes what the merge broke. It never rebases or force-pushes.
+group: guides
+skill: merge-in-head
+sidebar:
+  label: merge-in-head
+  order: 4.5
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+While your pull request waits for review, its base keeps moving.
+At some point GitHub reports a conflict, or `pr-open` tells you the branch is behind.
+`merge-in-head` brings the branch up to date with a merge commit.
+Your published history stays as it is, so anyone who pulled the branch can keep working.
+
+## When to reach for it
+
+- [`pr-shepherd`](/plugins/dev-kit/pr-shepherd/) stopped because GitHub reports the pull request as conflicting.
+- [`pr-open`](/plugins/dev-kit/pr-open/) reported that the base has moved ahead of your branch.
+- A merge you started by hand stopped on conflicts, and you want them resolved.
+
+## Run it
+
+<Strip cmd="/dev-kit:merge-in-head" />
+
+Pass the base, a pull request number, or nothing:
+
+```
+/dev-kit:merge-in-head
+/dev-kit:merge-in-head develop
+/dev-kit:merge-in-head 42
+```
+
+## How it runs
+
+<SkillFlow
+  skill="merge-in-head"
+  input="Your branch, and optionally its base or pull request number"
+  steps={[
+    { name: 'Inspect', does: 'Stops when a rebase or cherry-pick is in progress, HEAD is detached, or tracked files have uncommitted changes. Picks up a merge already in progress.' },
+    { name: 'Find the base', does: 'Takes the base from your argument, the open pull request, or git history, and fetches it.' },
+    { name: 'Merge', does: 'Merges the base into the branch with git\'s own message.', leaves: 'merge commit' },
+    { name: 'Resolve', does: 'Resolves each conflict by the intent behind both sides.', optional: true },
+    { name: 'Run checks', does: 'Runs your typecheck, tests and formatter and fixes what the merge broke, one commit per fix.' },
+    { name: 'Push', does: 'Asks before pushing, unless you set it to push at once.', leaves: 'merge-in-head result' },
+  ]}
+/>
+
+## How it finds the base
+
+Without an argument, it takes the first source that answers:
+
+1. The open pull request for the branch.
+2. `git config branch.<branch>.gh-merge-base`, the base `gh pr create` uses.
+3. Git alone: the reflog's `Created from <branch>` entry, the branch the current one is fewest commits ahead of, and the default branch.
+
+When the git traces agree, it merges.
+When they disagree, it asks you, listing each candidate with its evidence, such as `reflog: Created from origin/develop` or `3 commits ahead of origin/main`.
+A wrong base would merge unrelated work into your branch, so it asks rather than guesses.
+The last step needs only git, so it works without GitHub too.
+
+In a fork, it fetches the base from the parent repository: the remote named in the pull request's URL, otherwise `upstream`.
+The fork's own copy of `main` is often stale.
+
+## How it resolves a conflict
+
+For each conflict, it reads the commits, pull requests and tickets behind both changes.
+It keeps both changes where they fit.
+Where they don't, it keeps the one that serves your branch and notes the trade-off in the report.
+It adds no new behaviour, and it never aborts the merge unless you ask.
+
+A clean merge can still break the code, such as a call to a function the base renamed.
+So after every merge it runs your checks and commits each fix separately, never by amending the merge.
+A check that already failed before the merge is reported, not fixed.
+
+## Pushing
+
+It asks before pushing.
+To push at once, turn on **Push merges without asking** with `/plugin configure dev-kit@cc-toolkit`.
+It pushes to the branch's own name, never to its upstream, which for a branch cut from `origin/develop` would be `develop` itself.
+A rejected push is reported, never forced.
+
+## What it leaves
+
+- A merge commit with git's message, then one commit per fix the checks needed.
+- A `merge-in-head result` block: the status (`merged`, `resolved`, `up-to-date` or `blocked`), the base and where it came from, each conflicted file and how it was resolved, the checks it ran, the commits, and whether it pushed. The [reference](/plugins/dev-kit/reference/#merge-in-head-result) lists every field.
+
+## What it never does
+
+- Rebase or force-push.
+- Edit the pull request.
+- Stash, commit or discard your uncommitted changes.
+- Stage untracked files.
+
+## Next steps
+
+- Hand the pull request back to [`/dev-kit:pr-shepherd`](/plugins/dev-kit/pr-shepherd/) to keep it green until approval.
+- The [reference](/plugins/dev-kit/reference/) lists the commands `merge-in-head` runs without asking.

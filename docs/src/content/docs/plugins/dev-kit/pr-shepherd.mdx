@@ -93,7 +93,7 @@ It stops and reports when one of these happens:
 
 - Every required check is green and no review thread is open. This is success.
 - The branch has no open pull request, has uncommitted changes to tracked files or unpushed commits, or has diverged from the remote.
-- GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files. It never resolves the conflict.
+- GitHub reports the pull request as conflicting. It still handles the review threads and pushes, then stops and names the conflicting files. It never resolves the conflict: run [`/dev-kit:merge-in-head`](/plugins/dev-kit/merge-in-head/), then start `pr-shepherd` again.
 - `ci-fix` reports a failure it can't fix, or the same check is red again after two fix or rerun cycles.
 - Every required check is green, and every remaining thread waits on you or on a reviewer who hasn't replied for 24 hours.
 - It has run 48 rounds.

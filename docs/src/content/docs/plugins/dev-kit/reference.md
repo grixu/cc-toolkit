@@ -17,6 +17,7 @@ The risk label's options, tool inputs and result fields are on [Risk label refer
 | `/dev-kit:pr-shepherd` | `[PR …] [iteration]` |
 | `/dev-kit:ci-fix` | `[run/job/PR/commit URL \| run ID \| PR number] [push-authorized] [checkout=<dir>]` |
 | `/dev-kit:dep-upgrade-check` | `<package>[@<version>] \| <pull request URL> [unattended]` |
+| `/dev-kit:merge-in-head` | `[base branch \| PR number]` |
 
 Table 1. Skill arguments
 
@@ -25,11 +26,12 @@ Table 1. Skill arguments
 - **`push-authorized`** (`ci-fix`) pushes without asking, and ends with status `blocked` wherever `ci-fix` would otherwise ask you. `pr-shepherd` calls `ci-fix` this way.
 - **`checkout=<dir>`** (`ci-fix`) names the local checkout to fix in, when the caller works in a worktree on the run's branch.
 - **`unattended`** (`dep-upgrade-check`) asks nothing, ends with status `stopped` wherever the check would otherwise ask you, and posts its full report on the pull request. `GITHUB_ACTIONS=true` has the same effect.
+- **`base branch`** or **`PR number`** (`merge-in-head`) sets the base to merge. A pull request number takes that pull request's base and must be the current branch's pull request. Without either, the skill [finds the base itself](/plugins/dev-kit/merge-in-head/#how-it-finds-the-base).
 
 ## Plugin options
 
 Set them with `/plugin configure dev-kit@cc-toolkit`.
-These options shape `pr-open`'s code story and proof label; the API keys and the risk label's options are on [Risk label reference](/plugins/dev-kit/risk-assessment/reference/#plugin-options).
+These options shape `pr-open`'s code story and proof label, and whether `merge-in-head` pushes without asking; the API keys and the risk label's options are on [Risk label reference](/plugins/dev-kit/risk-assessment/reference/#plugin-options).
 
 | Option | Default | What it does |
 |---|---|---|
@@ -37,8 +39,9 @@ These options shape `pr-open`'s code story and proof label; the API keys and the
 | `story_gate_backend` | `auto` | Which model decides under `auto`. `auto` uses every backend whose key is set, `both` needs both keys, `typesafe` or `gemini` uses that one. |
 | `proof_label` | `true` | Whether `pr-open` labels the pull request while its proof from pr-proof is current. |
 | `proof_label_name` | `proof` | The name of that label. |
+| `merge_auto_push` | `false` | Whether `merge-in-head` pushes the merge at once instead of asking first. |
 
-Table 2. Code story and proof label options
+Table 2. Code story, proof label and merge push options
 
 [Whether a change gets a story](/plugins/dev-kit/pr-open/#whether-a-change-gets-a-story) and [the proof label](/plugins/dev-kit/pr-open/#the-proof-label) explain both in full.
 
@@ -53,6 +56,7 @@ Anything else asks for permission unless your settings already allow it.
 | `pr-shepherd` | File edits; `git status`, `fetch`, `rev-list`, `pull --ff-only`, `log`, `diff`, `merge-tree`, `merge`, `worktree`, `add`, `commit`, `push`; `gh pr view`, `checks`, `comment`; `gh api graphql`; `ci-fix` | Your test and lint commands |
 | `ci-fix` | File edits; `git status`, `fetch`, `switch`, `log`, `diff`, `show`, `add`, `commit`, `push`; `gh run view`, `list`, `rerun`; `gh pr checks`, `checkout` | `gh api` (checks from third-party apps); your test, lint and build commands |
 | `dep-upgrade-check` | Writing files (the advisory query and the comment bodies); `printenv GITHUB_ACTIONS`; `git fetch`, `show`; `gh repo view`; `gh pr view`, `diff`, `checks`; `gh run view`; `gh api`, writes included; `gh release list`, `view`; `pnpm view`, `why`, `list`; `npm diff`; `curl -s` to api.osv.dev and api.deps.dev; WebFetch; firecrawl search and scrape; context7 | Lookups for npm, yarn, Python, Go, PHP, Rust, container images and GitHub Actions; the optional worktree build |
+| `merge-in-head` | File edits; `git status`, `branch`, `config --get`, `reflog`, `remote`, `symbolic-ref`, `for-each-ref`, `rev-parse`, `rev-list`, `merge-base`, `fetch`, `merge`, `log`, `diff`, `show`, `blame`, `ls-files`, `add`, `commit`, `push`; `gh pr view`, `list`; `gh issue view` | Your typecheck, test and format commands |
 
 Table 3. Commands each skill runs without asking
 
@@ -75,6 +79,24 @@ next: <what the user or caller must do, or none>
 ```
 
 With several causes, `cause` lists each one, and `status` takes the first that applies in the order `blocked`, `not-fixable`, `fixed`, `rerun`, `nothing-to-fix`.
+
+## merge-in-head result
+
+Every `merge-in-head` run ends with this block, an early stop too:
+
+```
+merge-in-head result
+status: merged | resolved | up-to-date | blocked
+base: <ref> (<source: argument | pr #<n> | gh-merge-base | reflog | nearest | default | asked | in-progress merge>) | none: <why>
+conflicts: <file: how it was resolved>; ... | none
+checks: <command: pass | fail: why | not run: why>; ... | none found
+commit: <short SHA> <subject>, ... (the merge first, then each fix) | none
+pushed: yes | no: <why> | n/a
+next: <what the user must do, or none>
+```
+
+`merged` is a clean merge, and `resolved` a merge whose conflicts the run resolved.
+A check it couldn't run is `not run`, never a pass.
 
 ## dep-upgrade-check result
 

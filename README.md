@@ -87,7 +87,7 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 
 | Plugin | What it does | Start with |
 |---|---|---|
-| [dev-kit](plugins/dev-kit/README.md) | Four small skills: fix a failed CI run at its root cause; keep fixing a pull request until CI is green and review comments are resolved; check whether a dependency upgrade breaks your code; open a pull request filled in from the repository's template, with the branch's proof, a code story and a risk label. | `/dev-kit:ci-fix <run URL>`, `/dev-kit:pr-shepherd`, `/dev-kit:dep-upgrade-check <package>@<version>`, `/dev-kit:pr-open` |
+| [dev-kit](plugins/dev-kit/README.md) | Five small skills: fix a failed CI run at its root cause; keep fixing a pull request until CI is green and review comments are resolved; check whether a dependency upgrade breaks your code; open a pull request filled in from the repository's template, with the branch's proof, a code story and a risk label; merge the base into your branch and resolve the conflicts. | `/dev-kit:ci-fix <run URL>`, `/dev-kit:pr-shepherd`, `/dev-kit:dep-upgrade-check <package>@<version>`, `/dev-kit:pr-open`, `/dev-kit:merge-in-head` |
 
 ### Research and writing
 

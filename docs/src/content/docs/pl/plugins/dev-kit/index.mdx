@@ -18,10 +18,11 @@ Każdy skill wykonuje całą pracę, łącznie z commitami i pushami tam, gdzie 
 
 <LifeMap focus="dev-kit" animate={false} />
 
-Trzy skille działają w etapie [review człowieka](/pl/lifecycle/human-review/), ostatnim w cyklu: `pr-open`, `pr-shepherd` i `ci-fix`.
+Cztery skille działają w etapie [review człowieka](/pl/lifecycle/human-review/), ostatnim w cyklu: `pr-open`, `pr-shepherd`, `ci-fix` i `merge-in-head`.
 Najpierw [`/pr-proof:prepare-proof`](/pl/plugins/pr-proof/prepare-proof/) zbiera dowód dla brancha.
 Potem `pr-open` otwiera pull request z tym dowodem, z [historią zmiany](/pl/plugins/code-story/), która tłumaczy zmianę, i ze zdaniami oczyszczonymi przez [anti-slop](/pl/plugins/anti-slop/).
 `pr-shepherd` trzyma go na zielono aż do akceptacji i przekazuje każdy czerwony check do `ci-fix`.
+Gdy baza pójdzie do przodu i pull request ma konflikty, `merge-in-head` merguje bazę i rozwiązuje konflikty.
 `dep-upgrade-check` działa w [Utrzymaniu](/pl/lifecycle/maintain/), poza cyklem: uruchamiaj go, gdy przychodzi aktualizacja.
 
 ## Co jest w pluginie
@@ -31,6 +32,7 @@ Potem `pr-open` otwiera pull request z tym dowodem, z [historią zmiany](/pl/plu
 | [`/dev-kit:pr-open`](/pl/plugins/dev-kit/pr-open/) | Twoje commity są gotowe do review | Pushuje branch i otwiera pull request, który wypełnia szablon repozytorium na podstawie diffu, z dowodem i historią zmiany brancha, i oznacza go etykietą `proof`, dopóki ten dowód jest aktualny. Z kluczem TypeSafe albo Gemini Decision dodaje etykietę z ryzykiem i pomija historię zmiany, gdy zmiana jest zbyt prosta, żeby jej potrzebować. |
 | [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/) | Pull request jest otwarty | Działa w pętli, aż każdy wymagany check będzie zielony i nie zostanie żaden otwarty wątek review. Naprawia to, z czym się zgadza, a na resztę odpowiada. |
 | [`/dev-kit:ci-fix`](/pl/plugins/dev-kit/ci-fix/) | Check padł | Znajduje przyczynę czerwonego runu, naprawia ją, sprawdza poprawkę lokalnie i robi jeden commit na przyczynę. `pr-shepherd` woła go za ciebie. |
+| [`/dev-kit:merge-in-head`](/pl/plugins/dev-kit/merge-in-head/) | Baza poszła do przodu albo pull request ma konflikty | Merguje bazę do twojego brancha, rozwiązuje każdy konflikt według intencji obu stron i naprawia to, co merge zepsuł. Nigdy nie robi rebase'u ani force-pusha. |
 | [`/dev-kit:dep-upgrade-check`](/pl/plugins/dev-kit/dep-upgrade-check/) | Przychodzi podbicie zależności | Sprawdza historię bezpieczeństwa wersji docelowej, a potem odnosi każdą zmianę do miejsc, w których twój kod używa paczki. Zwraca `safe`, `safe with changes` albo `breaking`. |
 
 Tabela 1. Skille dev-kit

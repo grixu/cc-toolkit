@@ -1,0 +1,101 @@
+---
+title: /dev-kit:merge-in-head
+description: Merguje bazę brancha do niego commitem merge, rozwiązuje każdy konflikt według intencji obu stron, uruchamia twoje checki i naprawia to, co merge zepsuł. Nigdy nie robi rebase'u ani force-pusha.
+group: guides
+skill: merge-in-head
+sidebar:
+  label: merge-in-head
+  order: 4.5
+---
+
+import SkillFlow from '~/components/SkillFlow.astro'
+import Strip from '~/components/Strip.astro'
+
+Kiedy pull request czeka na review, jego baza idzie do przodu.
+W końcu GitHub zgłasza konflikt albo `pr-open` mówi, że branch jest w tyle.
+`merge-in-head` aktualizuje branch commitem merge.
+Opublikowana historia zostaje bez zmian, więc każdy, kto pobrał branch, może dalej na nim pracować.
+
+## Kiedy po niego sięgnąć
+
+- [`pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/) zatrzymał się, bo GitHub zgłasza konflikt w pull requeście.
+- [`pr-open`](/pl/plugins/dev-kit/pr-open/) zgłosił, że baza wyprzedziła twój branch.
+- Merge uruchomiony ręcznie zatrzymał się na konfliktach i chcesz je rozwiązać.
+
+## Uruchom
+
+<Strip cmd="/dev-kit:merge-in-head" />
+
+Podaj bazę, numer pull requesta albo nic:
+
+```
+/dev-kit:merge-in-head
+/dev-kit:merge-in-head develop
+/dev-kit:merge-in-head 42
+```
+
+## Jak działa
+
+<SkillFlow
+  skill="merge-in-head"
+  input="Twój branch i opcjonalnie jego baza albo numer pull requesta"
+  steps={[
+    { name: 'Sprawdzenie', does: 'Zatrzymuje się, gdy trwa rebase albo cherry-pick, HEAD jest odłączony albo śledzone pliki mają niezacommitowane zmiany. Podejmuje merge, który już trwa.' },
+    { name: 'Baza', does: 'Bierze bazę z twojego argumentu, z otwartego pull requesta albo z historii gita i ją pobiera.' },
+    { name: 'Merge', does: 'Merguje bazę do brancha z wiadomością od gita.', leaves: 'commit merge' },
+    { name: 'Konflikty', does: 'Rozwiązuje każdy konflikt według intencji obu stron.', optional: true },
+    { name: 'Checki', does: 'Uruchamia typecheck, testy i formatter i naprawia to, co merge zepsuł, jeden commit na poprawkę.' },
+    { name: 'Push', does: 'Pyta przed pushem, chyba że ustawisz push od razu.', leaves: 'merge-in-head result' },
+  ]}
+/>
+
+## Jak znajduje bazę
+
+Bez argumentu bierze pierwsze źródło, które daje odpowiedź:
+
+1. Otwarty pull request dla brancha.
+2. `git config branch.<branch>.gh-merge-base`, czyli bazę, której używa `gh pr create`.
+3. Sam git: wpis `Created from <branch>` w reflogu, branch, który obecny wyprzedza o najmniej commitów, i domyślny branch.
+
+Gdy ślady w gicie się zgadzają, merguje.
+Gdy się różnią, pyta cię i podaje każdego kandydata z dowodem, na przykład `reflog: Created from origin/develop` albo `3 commits ahead of origin/main`.
+Zła baza wmergowałaby do brancha niezwiązaną pracę, więc pyta, zamiast zgadywać.
+Ostatni krok potrzebuje tylko gita, więc działa też bez GitHuba.
+
+W forku pobiera bazę z repozytorium nadrzędnego: z remote'a wskazanego w URL-u pull requesta, a bez niego z `upstream`.
+Własna kopia `main` w forku często jest nieaktualna.
+
+## Jak rozwiązuje konflikt
+
+Przy każdym konflikcie czyta commity, pull requesty i tickety stojące za obiema zmianami.
+Zachowuje obie zmiany tam, gdzie się mieszczą.
+Gdzie się wykluczają, zostawia tę, która służy twojemu branchowi, i opisuje kompromis w raporcie.
+Nie dodaje nowego zachowania i nie przerywa merge'a, chyba że o to poprosisz.
+
+Czysty merge też może zepsuć kod, na przykład wywołanie funkcji, której nazwę baza zmieniła.
+Dlatego po każdym merge'u uruchamia twoje checki i commituje każdą poprawkę osobno, nigdy przez poprawianie commita merge.
+Checka, który padał już przed merge'em, nie naprawia, tylko zgłasza w raporcie.
+
+## Push
+
+Przed pushem pyta.
+Żeby pushował od razu, włącz **Push merges without asking** przez `/plugin configure dev-kit@cc-toolkit`.
+Pushuje pod własną nazwę brancha, nigdy do jego upstreamu, którym dla brancha wyciętego z `origin/develop` byłby sam `develop`.
+Odrzucony push zgłasza, nigdy go nie wymusza.
+
+## Co zostawia
+
+- Commit merge z wiadomością od gita, a po nim po jednym commicie na każdą poprawkę, której wymagały checki.
+- Blok `merge-in-head result`: status (`merged`, `resolved`, `up-to-date` albo `blocked`), bazę i jej źródło, każdy plik z konfliktem i sposób rozwiązania, uruchomione checki, commity i informację, czy pushował. [Dokumentacja referencyjna](/pl/plugins/dev-kit/reference/#merge-in-head-result) opisuje każde pole.
+
+## Czego nigdy nie robi
+
+- Rebase'u ani force-pusha.
+- Edycji pull requesta.
+- Stashowania, commitowania ani odrzucania twoich niezacommitowanych zmian.
+- Stage'owania nieśledzonych plików.
+
+## Następne kroki
+
+- Oddaj pull request z powrotem [`/dev-kit:pr-shepherd`](/pl/plugins/dev-kit/pr-shepherd/), żeby trzymał go na zielono do akceptacji.
+- [Dokumentacja referencyjna](/pl/plugins/dev-kit/reference/) wymienia komendy, które `merge-in-head` uruchamia bez pytania.
