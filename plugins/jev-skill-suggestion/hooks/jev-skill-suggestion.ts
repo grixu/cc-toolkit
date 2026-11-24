@@ -108,7 +108,7 @@ import {
   rerankQuestions,
   requestBody,
   requestHeaders,
-  restoreGeminiIds,
+  restoreIds,
   selectProvider,
   setupAborted,
   setupInstructions,
@@ -182,7 +182,7 @@ async function postDecision(
       }),
       $.clock.sleep(timeoutMs),
     ])
-    if (response && response.ok) return provider === 'gemini' ? restoreGeminiIds(response.text, questions) : response.text
+    if (response && response.ok) return restoreIds(provider, response.text, questions)
     if (response) $.ui.log(`[jev-skill-suggestion] ${provider} responded ${response.status} to the ${what}`)
     else $.ui.log(`[jev-skill-suggestion] ${what} passed ${timeoutMs}ms; no suggestion`)
   } catch (error) {

@@ -109,9 +109,7 @@ export function selectProvider(
 
 /** The full endpoint a backend posts to; Gemini's is fixed. */
 export function endpoint(provider: Provider, baseUrl: string): string {
-  if (provider === 'gemini') return GEMINI_URL
-  if (provider === 'typesafe') return typesafeEndpoint(baseUrl)
-  return `${baseUrl.replace(/\/+$/, '')}/evaluation-model`
+  return BACKENDS[provider].endpoint(baseUrl)
 }
 
 /** A comma-separated option as a set of trimmed, non-empty names. */
@@ -417,7 +415,7 @@ const INVERTED = new Set(['prose_suffices'])
 
 /** The same yes/no question under two names. */
 function yesNo(provider: Provider, instructions: string): Record<string, unknown> {
-  return { type: provider === 'gateway' ? 'boolean' : 'noul', instructions }
+  return { type: BACKENDS[provider].yesNoType, instructions }
 }
 
 /** The options Gemini takes in one choice: 1 and 256 are a 400, checked live. */
@@ -426,7 +424,9 @@ export const GEMINI_MAX_CHOICE = 255
 
 /** Whether the backend can take the whole catalog in one ranking choice. */
 export function ranksCatalog(provider: Provider | null, skillCount: number): boolean {
-  return provider !== null && (provider !== 'gemini' || (skillCount >= GEMINI_MIN_CHOICE && skillCount <= GEMINI_MAX_CHOICE))
+  if (provider === null) return false
+  const { minChoice, maxChoice } = BACKENDS[provider]
+  return skillCount >= minChoice && skillCount <= maxChoice
 }
 
 /** The first request's `questions`: the ranking and the gate. */
@@ -456,7 +456,7 @@ export function rerankQuestions(
   for (const candidate of candidates) criteria[candidate.name] = candidate.detail
   const questions: Record<string, unknown> = {}
   // Gemini rejects a choice with one option; readRerank then takes the lone candidate as the winner.
-  if (provider !== 'gemini' || candidates.length >= GEMINI_MIN_CHOICE) {
+  if (candidates.length >= BACKENDS[provider].minChoice) {
     questions.which = {
       type: 'choice',
       instructions:
@@ -480,10 +480,7 @@ export function requestBody(
   questions: Record<string, unknown>,
   model: string,
 ): string {
-  const state = { request: prompt, recent_context: '' }
-  if (provider === 'gemini') return JSON.stringify({ model, input: JSON.stringify(state), questions: geminiQuestions(questions) })
-  const body = provider === 'typesafe' ? { model, state, questions } : { state, questions }
-  return JSON.stringify(body)
+  return BACKENDS[provider].body({ request: prompt, recent_context: '' }, questions, model)
 }
 
 // Gemini takes question IDs of 1-64 characters from [A-Za-z0-9_-] only, which `gate::…` and `fits::<skill>` break,
@@ -507,15 +504,67 @@ export function restoreGeminiIds(responseText: string, questions: Record<string,
 }
 
 export function requestHeaders(provider: Provider, apiKey: string, model: string): Record<string, string> {
-  if (provider === 'gemini') return { 'content-type': 'application/json', 'x-goog-api-key': apiKey }
-  const common = { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }
-  if (provider === 'typesafe') return common
-  return {
-    ...common,
-    'ai-gateway-auth-method': 'api-key',
-    'ai-model-id': model,
-    'ai-evaluation-model-specification-version': '4',
-  }
+  return BACKENDS[provider].headers(apiKey, model)
+}
+
+/** A response with its answers under the question keys that were asked, whatever ids the backend saw. */
+export function restoreIds(provider: Provider, responseText: string, questions: Record<string, unknown>): string {
+  return BACKENDS[provider].restore(responseText, questions)
+}
+
+/** Everything that differs between the backends: where to post, how to authenticate, the wire shape and the limits. */
+interface BackendAdapter {
+  endpoint: (baseUrl: string) => string
+  headers: (apiKey: string, model: string) => Record<string, string>
+  body: (state: Record<string, string>, questions: Record<string, unknown>, model: string) => string
+  yesNoType: 'noul' | 'boolean'
+  minChoice: number
+  maxChoice: number
+  restore: (responseText: string, questions: Record<string, unknown>) => string
+}
+
+const bearer = (apiKey: string): Record<string, string> => ({
+  'content-type': 'application/json',
+  authorization: `Bearer ${apiKey}`,
+})
+
+const asSent = (responseText: string): string => responseText
+
+const BACKENDS: Record<Provider, BackendAdapter> = {
+  typesafe: {
+    endpoint: (baseUrl) => typesafeEndpoint(baseUrl),
+    headers: (apiKey) => bearer(apiKey),
+    body: (state, questions, model) => JSON.stringify({ model, state, questions }),
+    yesNoType: 'noul',
+    minChoice: 1,
+    maxChoice: Number.POSITIVE_INFINITY,
+    restore: asSent,
+  },
+  gemini: {
+    endpoint: () => GEMINI_URL,
+    headers: (apiKey) => ({ 'content-type': 'application/json', 'x-goog-api-key': apiKey }),
+    body: (state, questions, model) =>
+      JSON.stringify({ model, input: JSON.stringify(state), questions: geminiQuestions(questions) }),
+    yesNoType: 'noul',
+    minChoice: GEMINI_MIN_CHOICE,
+    maxChoice: GEMINI_MAX_CHOICE,
+    restore: restoreGeminiIds,
+  },
+  // The Gateway carries the model in a header rather than the body.
+  gateway: {
+    endpoint: (baseUrl) => `${baseUrl.replace(/\/+$/, '')}/evaluation-model`,
+    headers: (apiKey, model) => ({
+      ...bearer(apiKey),
+      'ai-gateway-auth-method': 'api-key',
+      'ai-model-id': model,
+      'ai-evaluation-model-specification-version': '4',
+    }),
+    body: (state, questions) => JSON.stringify({ state, questions }),
+    yesNoType: 'boolean',
+    minChoice: 1,
+    maxChoice: Number.POSITIVE_INFINITY,
+    restore: asSent,
+  },
 }
 
 type Answers = Record<string, Record<string, unknown>>
