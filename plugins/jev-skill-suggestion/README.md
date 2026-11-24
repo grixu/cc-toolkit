@@ -63,13 +63,14 @@ Skills you have hidden are still yours to run by typing `/name`.
 
 ## How it works
 
-Three hooks, two on the way in and one on the way out:
+Three hooks do the work, two on the way in and one on the way out; two more only reset state:
 
 | Hook | What it does |
 |---|---|
 | `prompt.attachment` on `skill_listing` | Answers the engine's skill listing with `{ text: null }`, so the model never reads it — or with the listing trimmed to the names in `alwaysListed`. The names the listing carried are remembered. |
 | `prompt.submit` | Runs the two requests below and attaches the one winner, if any, to the prompt as a `<skill_relevance>` block the model reads and the user never sees — with the skill's own `SKILL.md` inside it (`inject: "content"`, the default), or with its name alone for the Skill tool (`inject: "suggest"`). |
 | `skill.prompt` | Observation: logs whether a skill the model loaded was the suggested one. Also writes the prompt of `/jev-skill-suggestion:setup` (see Install). |
+| `session.end`, `session.compact` | Forget which skills were already attached, so after `/clear`, a resume or a compaction the next pick goes in whole again. |
 
 The block the model reads, in place of the listing:
 
@@ -157,7 +158,7 @@ jev · no skill
 **No lines at all** has three causes, and only the last is the module failing to load. Check them in this order:
 
 1. **You ran `claude -p` (or the SDK).** A headless run has no transcript and no status row: every line still goes to the debug log, `~/.claude/debug/<session-id>.txt` (a `.txt`, not a `.log`; `latest` is a symlink to the newest), and an SDK host receives each one as `ui_log`.
-2. **The plugin was never loaded.** Check `/plugin` that it is installed and enabled. `claude --debug` settles it: a loaded module prints `hooks module jev-skill-suggestion@cc-toolkit loaded (worker, …); events: prompt.attachment,prompt.submit,skill.prompt`; `Found N plugins` without it means the plugin is not in the session.
+2. **The plugin was never loaded.** Check `/plugin` that it is installed and enabled. `claude --debug` settles it: a loaded module prints `hooks module jev-skill-suggestion@cc-toolkit loaded (worker, …); events: prompt.attachment,prompt.submit,skill.prompt,session.end,session.compact`; `Found N plugins` without it means the plugin is not in the session.
 3. **Claude Code is too old.** Mods are on by default from 2.1.287; on an older build the debug log says `installed plugins' hooks modules not loaded: rollout flag (tengu_plugin_hooks_modules) is off`. Update Claude Code (this mod needs 2.1.278+, see below).
 
 A `ready on the built-in classifier, no key set` line when you did set a key means the key reached neither the environment Claude Code started in nor the right `pluginConfigs` entry (see Options).

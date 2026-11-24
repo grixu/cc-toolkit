@@ -1,5 +1,5 @@
 {
-  "description": "Withholds the engine's skill listing at prompt.attachment and, at prompt.submit, runs TypeSafe's two-request skill suggestion (rank every skill + gate nouls, then re-read the top three with their SKILL.md + one fits noul each) or the built-in classifier, attaching the one winner as a <skill_relevance> block for the Skill tool.",
+  "description": "Withholds the engine's skill listing at prompt.attachment and, at prompt.submit, runs the two-request skill suggestion from TypeSafe's cookbook (rank every skill + gate nouls, then re-read the top three with their SKILL.md + one fits noul each) on TypeSafe, Gemini Decision or the AI Gateway, else the built-in classifier, attaching the one winner as a <skill_relevance> block that carries its SKILL.md (or only its name for the Skill tool under inject: suggest).",
   "modules": [
     "./jev-skill-suggestion.ts"
   ]
