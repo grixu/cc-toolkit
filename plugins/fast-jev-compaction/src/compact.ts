@@ -24,7 +24,7 @@ export const DEFAULT_OPTIONS: ResolvedCompactOptions = {
 };
 
 /** Tokens the request envelope (`model`, key names) adds around state and questions. */
-const REQUEST_OVERHEAD_TOKENS = 20;
+export const REQUEST_OVERHEAD_TOKENS = 20;
 // Within this many chars of the head, the truncation note costs about what it saves.
 const TRUNCATION_NOTE_CHARS = 120;
 

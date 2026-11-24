@@ -189,7 +189,7 @@ describe('compactSession', () => {
     expect(decisionLogLines({ ...output, decisions: [] })).toEqual(['decisions: (none)']);
   });
 
-  it('throws on a missing key and on failed requests so the hook falls back', async () => {
+  it('throws on a missing key and on failed requests', async () => {
     const config = resolveHookConfig({ preserveRecentMessages: 1 });
     await expect(compactSession(transcript(), config, jevFetch(() => 0))).rejects.toThrow(/TYPESAFE_API_KEY/);
     await expect(
@@ -216,7 +216,7 @@ describe('compactSession', () => {
     expect(output.decisions.map((d) => d.action)).toEqual(['drop_call', 'keep']);
   });
 
-  it('turns a Gemini error into a thrown message so the hook falls back', async () => {
+  it('turns a Gemini error into a thrown message', async () => {
     const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), geminiApiKey: 'g' };
     await expect(
       compactSession(transcript(), config, async () => ({ status: 403, ok: false, text: 'denied' })),

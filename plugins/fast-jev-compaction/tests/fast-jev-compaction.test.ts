@@ -4,7 +4,9 @@ import {
   batchCalls,
   compact,
   decideCall,
+  questionsFor,
   reductionRatio,
+  REQUEST_OVERHEAD_TOKENS,
   resolveOptions,
 } from '../src/compact.ts';
 import { buildJevRequest, parseJevResponse } from '../src/request.ts';
@@ -152,7 +154,7 @@ describe('state fitting', () => {
     expect((state.history[1]?.tool_calls?.[0] as HistoryToolCall).input.length).toBeLessThanOrEqual(200);
   });
 
-  it('shrinks old tool calls to one line each when nothing else is left to cut', () => {
+  function fortyReads() {
     const messages = [message('user', 'start')];
     for (let i = 0; i < 40; i += 1) {
       messages.push(call(`c${i}`, 'Read', { file_path: `/repo/src/module-${i}.ts` }, 'x'), result(`c${i}`, 'x'));
@@ -160,6 +162,12 @@ describe('state fitting', () => {
     messages.push(message('assistant', 'done'));
     const calls = collectToolCalls(messages, 1);
     const full = fitState(messages, calls, { ...fit, preserveRecentMessages: 1 });
+    return { messages, calls, full };
+  }
+
+  it('shrinks old tool calls to one line each when nothing else is left to cut', () => {
+    const { messages, calls, full } = fortyReads();
+
     const compacted = fitState(messages, calls, {
       ...fit,
       preserveRecentMessages: 1,
@@ -172,6 +180,10 @@ describe('state fitting', () => {
       't1 Read file_path=/repo/src/module-0.ts → ok 1ch',
     );
     expect(compacted.state.history.at(-1)?.text).toBe('done');
+  });
+
+  it('merges old tool calls into one message when one line each is still too much', () => {
+    const { messages, calls, full } = fortyReads();
 
     const merged = fitState(messages, calls, {
       ...fit,
@@ -241,6 +253,15 @@ describe('question batching', () => {
     expect(batches.flat().map((c) => c.id)).toEqual(calls.map((c) => c.id));
   });
 
+  it('keeps a batch that exactly fills the budget in one request', () => {
+    const two = calls.slice(0, 2);
+    const cost = two.reduce((sum, c) => sum + estimateTokens(JSON.stringify(questionsFor(c))), 0);
+    const stateTokens = options.maxRequestTokens - REQUEST_OVERHEAD_TOKENS - cost;
+
+    expect(batchCalls(two, stateTokens, options)).toHaveLength(1);
+    expect(batchCalls(two, stateTokens + 1, options)).toHaveLength(2);
+  });
+
   it('throws when a single question does not fit', () => {
     expect(() => batchCalls(calls, 29_990, options)).toThrow(/no room/);
   });
@@ -260,16 +281,28 @@ describe('decisions', () => {
     });
   });
 
-  it('removes dropped calls and truncates dropped results', () => {
-    const messages = transcript();
-    messages[4]!.toolUses[0]!.text = 'x'.repeat(2000);
-    messages[5]!.toolResults![0]!.text = 'x'.repeat(2000);
+  it('keeps a probability equal to the threshold', () => {
+    expect(decideCall(unpinned, { keepCall: 0.1, keepResult: 0.5 }, options).action).toBe('keep');
+    expect(decideCall(unpinned, { keepCall: 0.5, keepResult: 0.49 }, options).action).toBe('drop_result');
+  });
+
+  // Drops t1, truncates t2's result, keeps t3.
+  function decisionsFor(messages: Message[]) {
     const calls = collectToolCalls(messages, 0);
     const decisions = [
       decideCall(calls[0]!, { keepCall: 0.1, keepResult: 0.1 }, options),
       decideCall(calls[1]!, { keepCall: 0.9, keepResult: 0.1 }, options),
       decideCall(calls[2]!, { keepCall: 0.9, keepResult: 0.9 }, options),
     ];
+    return { calls, decisions };
+  }
+
+  it('removes dropped calls and truncates dropped results', () => {
+    const messages = transcript();
+    messages[4]!.toolUses[0]!.text = 'x'.repeat(2000);
+    messages[5]!.toolResults![0]!.text = 'x'.repeat(2000);
+    const { calls, decisions } = decisionsFor(messages);
+
     const kept = applyDecisions(messages, decisions, calls, 300);
 
     expect(kept.map((m) => m.text || m.toolUses[0]?.tool_use_id || m.toolResults?.[0]?.tool_use_id)).toEqual([
@@ -290,17 +323,37 @@ describe('decisions', () => {
     expect(kept[3]?.toolResults?.[0]?.text).toMatch(
       new RegExp(`^${'x'.repeat(300)}\\n\\[fast-jev-compaction truncated 1700 chars`),
     );
-    expect(kept[2]).not.toBe(messages[4]);
     expect(kept[3]).not.toBe(messages[5]);
     expect(kept[4]).toBe(messages[6]);
     expect(kept[5]?.toolResults?.[0]?.text).toContain('expected 2 to be 3');
+  });
 
-    const shortMessages = transcript();
-    shortMessages[4]!.toolUses[0]!.text = 'y'.repeat(100);
-    shortMessages[5]!.toolResults![0]!.text = 'y'.repeat(100);
-    const shortKept = applyDecisions(shortMessages, decisions, calls, 300);
-    expect(shortKept[2]).toBe(shortMessages[4]);
-    expect(shortKept[3]).toBe(shortMessages[5]);
+  it('leaves a dropped result untouched when truncating it would save nothing', () => {
+    const messages = transcript();
+    messages[4]!.toolUses[0]!.text = 'y'.repeat(100);
+    messages[5]!.toolResults![0]!.text = 'y'.repeat(100);
+    const { calls, decisions } = decisionsFor(messages);
+
+    const kept = applyDecisions(messages, decisions, calls, 300);
+
+    expect(kept[2]).toBe(messages[4]);
+    expect(kept[3]).toBe(messages[5]);
+  });
+
+  it('truncates a dropped result only past the head plus 120 chars', () => {
+    const at = transcript();
+    at[5]!.toolResults![0]!.text = 'z'.repeat(300 + 120);
+    const past = transcript();
+    past[5]!.toolResults![0]!.text = 'z'.repeat(300 + 121);
+
+    const forAt = decisionsFor(at);
+    const forPast = decisionsFor(past);
+
+    const keptAt = applyDecisions(at, forAt.decisions, forAt.calls, 300);
+    const keptPast = applyDecisions(past, forPast.decisions, forPast.calls, 300);
+
+    expect(keptAt[3]?.toolResults?.[0]?.text).toBe('z'.repeat(420));
+    expect(keptPast[3]?.toolResults?.[0]?.text).toMatch(/fast-jev-compaction truncated 121 chars/);
   });
 
   it('honours truncateHeadChars, including a zero head', () => {
@@ -364,7 +417,7 @@ describe('compact', () => {
     expect(output.messages).toEqual(messages);
   });
 
-  it('reports a tiny reduction when Jev wants everything kept', async () => {
+  it('reports no reduction when Jev wants everything kept', async () => {
     const output = await compact(transcript(), fakeJev(() => 0.95), { preserveRecentMessages: 1 });
     expect(output.decisions.every((d) => d.action === 'keep')).toBe(true);
     expect(reductionRatio(output)).toBe(0);

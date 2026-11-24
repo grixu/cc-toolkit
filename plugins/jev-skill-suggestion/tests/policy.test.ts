@@ -149,45 +149,80 @@ test('the first request ranks every skill and asks the three gate nouls, boolean
   expect(gateway['gate::prose_suffices']?.type).toBe('boolean')
 })
 
-test('the gate is the mean of the oriented nouls: an action passes, a prose question does not', () => {
+test('the gate is the mean of the oriented nouls, and an action passes it', () => {
   const action = readWide(wideAnswer('powerpoint', DECK, ACTION))
+
   expect(Math.abs((action?.gate) - ((0.8 + 0.9 + 0.9) / 3)) < 0.005).toBe(true)
   expect(passesGate(action!, config)).toBe(true)
+})
+
+test('a prose question fails the gate and gets no suggestion', () => {
   const prose = readWide(wideAnswer('commit', { commit: 0.6, pdf: 0.4 }, PROSE))
+
   expect(Math.abs((prose?.gate) - ((0.05 + 0.2 + 0.05) / 3)) < 0.005).toBe(true)
   expect(passesGate(prose!, config)).toBe(false)
   expect(decide(prose, null, skills, config)).toEqual({ name: null, reason: 'needs a skill 0.10 < 0.3' })
 })
 
-test('the ranking is the distribution, surest first; without one the named choice stands alone', () => {
-  const wide = readWide(wideAnswer('powerpoint', DECK, ACTION))
-  expect(wide?.ranked.slice(0, 2).map((e) => e.name)).toEqual(['powerpoint', 'pptx-author'])
-  expect(shortlistOf(wide!, skills, 3).map((s) => s.name)).toEqual(['powerpoint', 'pptx-author', 'commit'])
-  const bare = readWide(wideAnswer('commit', undefined, ACTION))
-  expect(bare?.ranked).toEqual([{ name: 'commit', probability: 0.9 }])
-  // A gate with no nouls answered is null and does not block.
-  expect(readWide(wideAnswer('commit', undefined))?.gate).toBeNull()
-  expect(passesGate(readWide(wideAnswer('commit', undefined))!, config)).toBe(true)
+test('a gate exactly at the threshold passes', () => {
+  expect(passesGate({ ranked: [], gate: 0.3 }, config)).toBe(true)
 })
 
-test('the rerank can flip the winner, and its fits nouls can reject the whole shortlist', () => {
+test('the ranking is the distribution, surest first', () => {
+  const wide = readWide(wideAnswer('powerpoint', DECK, ACTION))
+
+  expect(wide?.ranked.slice(0, 2).map((e) => e.name)).toEqual(['powerpoint', 'pptx-author'])
+  expect(shortlistOf(wide!, skills, 3).map((s) => s.name)).toEqual(['powerpoint', 'pptx-author', 'commit'])
+})
+
+test('without a distribution the named choice stands alone', () => {
+  const bare = readWide(wideAnswer('commit', undefined, ACTION))
+
+  expect(bare?.ranked).toEqual([{ name: 'commit', probability: 0.9 }])
+})
+
+test('a gate with no nouls answered is null and does not block', () => {
+  const ungated = readWide(wideAnswer('commit', undefined))
+
+  expect(ungated?.gate).toBeNull()
+  expect(passesGate(ungated!, config)).toBe(true)
+})
+
+test('the rerank can flip the winner', () => {
   const wide = readWide(wideAnswer('powerpoint', DECK, ACTION))
   const flipped = readRerank(
     rerankAnswer('pptx-author', { powerpoint: 0.73, 'pptx-author': 0.38, commit: 0.02 }),
   )
+
   expect(decide(wide, flipped, skills, config)).toEqual({
     name: 'pptx-author',
     reason: 'rerank of 3, fits 0.38',
   })
+})
+
+test('the fits nouls can reject the whole shortlist', () => {
+  const wide = readWide(wideAnswer('powerpoint', DECK, ACTION))
   const rejected = readRerank(
     rerankAnswer('powerpoint', { powerpoint: 0.2, 'pptx-author': 0.1, commit: 0.0 }),
   )
+
   expect(decide(wide, rejected, skills, config)).toEqual({
     name: null,
     reason: 'nothing fits, best 0.20 < 0.3',
   })
-  // A winner that was never on the shortlist is not trusted.
+})
+
+test('a best fit exactly at the threshold is still suggested', () => {
+  const wide = readWide(wideAnswer('powerpoint', DECK, ACTION))
+  const borderline = readRerank(rerankAnswer('powerpoint', { powerpoint: 0.3, 'pptx-author': 0.1 }))
+
+  expect(decide(wide, borderline, skills, config).name).toBe('powerpoint')
+})
+
+test('a winner that was never on the shortlist is not trusted', () => {
+  const wide = readWide(wideAnswer('powerpoint', DECK, ACTION))
   const stray = readRerank(rerankAnswer('made-up', { powerpoint: 0.9 }))
+
   expect(decide(wide, stray, skills, config).name).toBeNull()
 })
 
@@ -276,7 +311,9 @@ test('skill bodies are looked for where Claude Code lays skills out', () => {
   })
   expect(installPathsOf(installed, 'engineering')).toEqual(['/x/cache/engineering/1.0.0'])
   expect(installPathsOf('not json', 'engineering')).toEqual([])
-  // A name that is not a plain basename is never spliced into a path.
+})
+
+test('a name that is not a plain basename is never spliced into a path', () => {
   expect(skillFileCandidates('../etc/passwd')).toEqual([])
   expect(skillFileCandidates('x', '..')).toEqual([])
   expect(pluginFileCandidates('/x', 'a/b', 'p')).toEqual([])
@@ -295,21 +332,30 @@ test('the request carries the prompt as state and the model where each backend e
 
 test('Gemini gets the state as JSON text, the TypeSafe question shapes and its key in x-goog-api-key', () => {
   const questions = wideQuestions('gemini', skills) as Record<string, { type: string }>
-  expect(questions['gate::prose_suffices']?.type).toBe('noul')
+
   const body = JSON.parse(requestBody('gemini', 'fix the tests', questions, 'gemini-decision-1'))
+
+  expect(questions['gate::prose_suffices']?.type).toBe('noul')
   expect(body.model).toBe('gemini-decision-1')
   expect(JSON.parse(body.input)).toEqual({ request: 'fix the tests', recent_context: '' })
+  expect(requestHeaders('gemini', 'g', 'gemini-decision-1')).toEqual({ 'content-type': 'application/json', 'x-goog-api-key': 'g' })
+  expect(endpoint('gemini', 'https://ignored.example')).toBe('https://generativelanguage.googleapis.com/v1beta/decisions')
+})
+
+test('Gemini question ids go out as q0, q1, … and come back under their own names', () => {
+  const questions = wideQuestions('gemini', skills) as Record<string, { type: string }>
   const keys = Object.keys(questions)
+  const answers = Object.fromEntries(keys.map((_, i) => [`q${i}`, i === 0 ? { choice: 'pdf', probabilities: { pdf: 0.9 } } : { noul: 0.8 }]))
+
+  const body = JSON.parse(requestBody('gemini', 'fix the tests', questions, 'gemini-decision-1'))
+  const wide = readWide(restoreGeminiIds(JSON.stringify({ answers }), questions))
+
   expect(Object.keys(body.questions)).toEqual(keys.map((_, i) => `q${i}`))
   expect(Object.keys(body.questions).every((id) => /^[A-Za-z0-9_-]{1,64}$/.test(id))).toBe(true)
   expect(body.questions.q0).toEqual(questions[keys[0]!])
-  const answers = Object.fromEntries(keys.map((_, i) => [`q${i}`, i === 0 ? { choice: 'pdf', probabilities: { pdf: 0.9 } } : { noul: 0.8 }]))
-  const wide = readWide(restoreGeminiIds(JSON.stringify({ answers }), questions))
   expect(wide?.ranked[0]?.name).toBe('pdf')
   expect(wide?.gate).not.toBeNull()
   expect(restoreGeminiIds('not json', questions)).toBe('not json')
-  expect(requestHeaders('gemini', 'g', 'gemini-decision-1')).toEqual({ 'content-type': 'application/json', 'x-goog-api-key': 'g' })
-  expect(endpoint('gemini', 'https://ignored.example')).toBe('https://generativelanguage.googleapis.com/v1beta/decisions')
 })
 
 test('a one-candidate Gemini rerank sends no choice and takes the lone candidate on its fits', () => {
@@ -320,6 +366,15 @@ test('a one-candidate Gemini rerank sends no choice and takes the lone candidate
   const answer = restoreGeminiIds(JSON.stringify({ answers: { q0: { noul: 0.8 } } }), questions)
   expect(readRerank(answer, 'pdf')).toEqual({ winner: 'pdf', confidence: null, fits: { pdf: 0.8 } })
   expect(readRerank(answer)).toBeNull()
+})
+
+test('a two-candidate Gemini rerank still asks the choice', () => {
+  const pair: Candidate[] = [
+    { name: 'pdf', description: 'Read PDFs', detail: 'Read PDFs — # PDF' },
+    { name: 'commit', description: 'Commit', detail: 'Commit — # Commit' },
+  ]
+
+  expect(Object.keys(rerankQuestions('gemini', pair))).toEqual(['which', 'fits::pdf', 'fits::commit'])
 })
 
 test('Gemini ranks 2 to 255 skills in one choice; other backends take any catalog', () => {
@@ -438,24 +493,42 @@ test('the setup plan hides user skills still on, leaves hidden ones, and reports
   expect(plan).toEqual({ hide: ['pptx'], alreadyHidden: ['commit', 'deploy'], locked: ['eng:debug'], bundledStillOn: true })
 })
 
-test('the setup instructions list every skill, carry the exact edit and the backup, and demand a yes first', () => {
-  const settings = { skillOverrides: { commit: 'name-only' }, disableBundledSkills: undefined }
-  const plan = setupPlan([{ name: 'pptx', source: 'user' }, { name: 'commit', source: 'user' }, { name: 'eng:debug', source: 'plugin' }], settings, new Set())
-  const text = setupInstructions('apply', plan, settings, '/home/u/.claude/settings.json', '/home/u/.claude/backup.json')
+const setupSettings = { skillOverrides: { commit: 'name-only' }, disableBundledSkills: undefined }
+const setupPlanFor = () =>
+  setupPlan(
+    [{ name: 'pptx', source: 'user' }, { name: 'commit', source: 'user' }, { name: 'eng:debug', source: 'plugin' }],
+    setupSettings,
+    new Set(),
+  )
+
+test('the setup instructions list every skill, carry the exact edit, and demand a yes first', () => {
+  const text = setupInstructions('apply', setupPlanFor(), setupSettings, '/home/u/.claude/settings.json', '/home/u/.claude/backup.json')
+
   expect(text).toContain('Skills that will be hidden from the model (2):\n- pptx\n- commit')
   expect(text).toContain('- eng:debug')
   expect(text).toContain('Do not edit anything before a clear yes.')
   expect(text).toContain('"pptx": "user-invocable-only"')
   expect(text).toContain('"commit": "user-invocable-only"')
   expect(text).toContain('"disableBundledSkills": true')
-  // The backup keeps what was there, so restore can put it back.
+  expect(text).toContain(`/${SETUP_COMMAND} restore`)
+})
+
+test('the backup keeps what was there, so restore can put it back', () => {
+  const text = setupInstructions('apply', setupPlanFor(), setupSettings, '/home/u/.claude/settings.json', '/home/u/.claude/backup.json')
+
   expect(text).toContain('"commit": "name-only"')
   expect(text).toContain('"disableBundledSkills": null')
-  expect(text).toContain(`/${SETUP_COMMAND} restore`)
-  const restore = setupInstructions('restore', plan, settings, '/s.json', '/b.json')
+})
+
+test('the restore instructions read the backup, ask first, then remove it', () => {
+  const restore = setupInstructions('restore', setupPlanFor(), setupSettings, '/s.json', '/b.json')
+
   expect(restore).toContain('Read /b.json')
   expect(restore).toContain('Only after a clear yes')
   expect(restore).toContain('rm ~/.claude/jev-skill-suggestion.skill-overrides.backup.json')
+})
+
+test('the still-listed notice counts the skills and points at the setup', () => {
   expect(describeStillListed(1)).toContain('1 skill is still listed')
   expect(describeStillListed(13)).toContain(`run /${SETUP_COMMAND}`)
 })
