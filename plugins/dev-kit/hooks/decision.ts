@@ -1,6 +1,6 @@
 // The internal decision format and the client every consumer asks through. This file and providers/ are identical in
-// dev-kit/hooks, pr-proof/hooks and code-review/hooks, since a plugin cannot import another plugin's files; change
-// every copy together.
+// every plugin that asks a decision model, since a plugin cannot import another plugin's files; change every copy
+// together.
 
 export type ProviderName = 'typesafe' | 'gemini'
 
