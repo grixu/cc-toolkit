@@ -323,13 +323,6 @@ export function detailOf(skill: Skill, markdown: string | null, excerptChars: nu
   return description ? `${description} — ${excerpt}` : excerpt
 }
 
-/**
- * Whether a skill's own frontmatter lets the model invoke it. A skill with
- * `disable-model-invocation: true` is left out of the engine's listing and
- * refused by the Skill tool, so it must never be suggested; before the
- * listing has been seen, this is the only way to tell. No file, or no such
- * field, reads as invocable.
- */
 /** A skill's body with its frontmatter taken off. */
 export function bodyOf(markdown: string): string {
   const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown)
@@ -388,6 +381,13 @@ export function injectionBlock(
   return lines.join('\n')
 }
 
+/**
+ * Whether a skill's frontmatter lets the model invoke it: one with
+ * `disable-model-invocation: true` is left out of the listing and refused by
+ * the Skill tool, so it must never be suggested, and whenever the listing does
+ * not narrow the catalog this is the only check. No file, or no such field,
+ * reads as invocable.
+ */
 export function modelInvocable(markdown: string | null): boolean {
   if (!markdown) return true
   const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown)
