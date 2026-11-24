@@ -8,10 +8,10 @@ import type {
   TurnCompleteInput,
 } from 'claude-code';
 
-import { compact, reductionRatio, resolveOptions } from '../src/compact.ts';
-import type { DecisionRequest, Questions } from './decision.ts';
+import { compact, isFiniteNumber, reductionRatio } from '../src/compact.ts';
+import type { DecisionRequest, ProviderName, Questions } from './decision.ts';
 import { gemini } from './providers/gemini.ts';
-import { providerKeys } from './providers/index.ts';
+import { PROVIDER_NAMES, providerKeys } from './providers/index.ts';
 import { buildJevRequest, DEFAULT_MODEL, parseJevResponse } from '../src/request.ts';
 import type {
   CompactOptions,
@@ -25,8 +25,8 @@ import type {
   ToolUse,
 } from '../src/types.ts';
 
-export const COMPACTION_BACKENDS = ['auto', 'typesafe', 'gemini'] as const;
-export type Backend = Exclude<(typeof COMPACTION_BACKENDS)[number], 'auto'>;
+export const COMPACTION_BACKENDS = ['auto', ...PROVIDER_NAMES] as const;
+export type Backend = ProviderName;
 
 const HOOK_DEFAULTS = {
   compactAtPercent: 60,
@@ -60,7 +60,7 @@ export type HookConfig = CompactOptions & {
 
 function optionNumber(options: PluginOptions, key: string, fallback: number): number {
   const value = options[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return isFiniteNumber(value) ? value : fallback;
 }
 
 function optionString(options: PluginOptions, key: string): string | undefined {
@@ -79,7 +79,7 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
     'truncateHeadChars',
   ] as const) {
     const value = options[key];
-    if (typeof value === 'number' && Number.isFinite(value)) numbers[key] = value;
+    if (isFiniteNumber(value)) numbers[key] = value;
   }
   const config: HookConfig = {
     ...numbers,
@@ -252,21 +252,24 @@ const UI_LOG_MAX_CHARS = 4096;
 // Room for the "decisions (i/n): " prefix each chunk gets.
 const LOG_PREFIX_RESERVE = 24;
 
-export function decisionLog(result: CompactResult): string {
+function decisionEntries(result: CompactResult): string[] {
   return result.decisions
     .filter((d) => d.reason !== 'pinned')
     .map(
       (d) =>
         `${d.id}:${d.tool}:${d.action}/call=${d.keepCall.toFixed(2)}/result=${d.keepResult.toFixed(2)}`,
-    )
-    .join(' ');
+    );
+}
+
+export function decisionLog(result: CompactResult): string {
+  return decisionEntries(result).join(' ');
 }
 
 export function decisionLogLines(
   result: CompactResult,
   maxChars: number = UI_LOG_MAX_CHARS,
 ): string[] {
-  const entries = decisionLog(result).split(' ').filter(Boolean);
+  const entries = decisionEntries(result);
   if (entries.length === 0) return ['decisions: (none)'];
   const chunks: string[] = [];
   let current = '';
@@ -371,5 +374,3 @@ export const register: Register = (on: On, options: PluginOptions) => {
     return next(event);
   });
 };
-
-export { resolveOptions };

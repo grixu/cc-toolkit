@@ -107,14 +107,7 @@ export interface CompactOptions {
   truncateHeadChars?: number;
 }
 
-export interface ResolvedCompactOptions {
-  goal: string;
-  keepThreshold: number;
-  preserveRecentMessages: number;
-  maxStateTokens: number;
-  maxRequestTokens: number;
-  truncateHeadChars: number;
-}
+export type ResolvedCompactOptions = Required<CompactOptions>;
 
 export interface CompactResult {
   /** The compacted transcript; untouched messages are the input objects. */

@@ -215,10 +215,13 @@ export function fitState(
   let history: HistoryEntry[] = [];
   let perEntry: number[] = [];
   let tokens = 0;
-  const rebuild = (inputChars: number): void => {
-    history = historyEntries(messages, calls, inputChars);
+  const retotal = (): void => {
     perEntry = history.map(entryTokens);
     tokens = baseTokens + perEntry.reduce((sum, n) => sum + n, 0);
+  };
+  const rebuild = (inputChars: number): void => {
+    history = historyEntries(messages, calls, inputChars);
+    retotal();
   };
   const fits = (): boolean => tokens <= options.maxStateTokens;
   const shrink = (index: number, change: (entry: HistoryEntry) => void): void => {
@@ -295,8 +298,7 @@ export function fitState(
     history.filter((_, i) => !left.has(i)),
     pinned,
   );
-  perEntry = history.map(entryTokens);
-  tokens = baseTokens + perEntry.reduce((sum, n) => sum + n, 0);
+  retotal();
   if (fits()) return fitted(history, tokens, 'old calls merged');
 
   throw new Error(

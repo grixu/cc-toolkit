@@ -28,8 +28,12 @@ export const REQUEST_OVERHEAD_TOKENS = 20;
 // Within this many chars of the head, the truncation note costs about what it saves.
 const TRUNCATION_NOTE_CHARS = 120;
 
+export function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function finite(value: number | undefined, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return isFiniteNumber(value) ? value : fallback;
 }
 
 export function resolveOptions(options: CompactOptions = {}): ResolvedCompactOptions {
