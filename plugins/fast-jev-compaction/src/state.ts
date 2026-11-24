@@ -198,110 +198,165 @@ export function fitState(
   calls: readonly ToolCall[],
   options: Pick<ResolvedCompactOptions, 'maxStateTokens' | 'preserveRecentMessages' | 'goal'>,
 ): FittedState {
-  const goal = options.goal || goalFromMessages(messages);
-  const stateOf = (history: HistoryEntry[]): CompactionState => ({
-    context: STATE_CONTEXT,
-    goal,
-    history,
-  });
-  const entryTokens = (entry: HistoryEntry): number => estimateTokens(JSON.stringify(entry)) + 1;
-  const baseTokens = estimateTokens(JSON.stringify(stateOf([])));
-  const fitted = (history: HistoryEntry[], tokens: number, stage: string): FittedState => ({
-    state: stateOf(history),
-    tokens,
-    stage,
-  });
+  const fitter = new StateFitter(messages, calls, options);
+  const fitted =
+    fitter.atFullInputs() ??
+    fitter.withShorterInputs() ??
+    fitter.withTextsAbridged() ??
+    fitter.withOldMessagesCollapsed() ??
+    fitter.withOldCallsCompacted() ??
+    fitter.withOldMessagesLeftOut() ??
+    fitter.withOldCallsMerged();
+  if (fitted) return fitted;
+  throw new Error(
+    `history too large for Jev (~${fitter.tokens} tokens after truncation, limit ${options.maxStateTokens})`,
+  );
+}
 
-  let history: HistoryEntry[] = [];
-  let perEntry: number[] = [];
-  let tokens = 0;
-  const retotal = (): void => {
-    perEntry = history.map(entryTokens);
-    tokens = baseTokens + perEntry.reduce((sum, n) => sum + n, 0);
-  };
-  const rebuild = (inputChars: number): void => {
-    history = historyEntries(messages, calls, inputChars);
-    retotal();
-  };
-  const fits = (): boolean => tokens <= options.maxStateTokens;
-  const shrink = (index: number, change: (entry: HistoryEntry) => void): void => {
-    const entry = history[index];
+/**
+ * The state being shrunk, one stage per method. Every stage changes the
+ * history in place and returns the fitted state as soon as it fits, or null
+ * to hand on to the next stage.
+ */
+class StateFitter {
+  tokens = 0;
+  private history: HistoryEntry[] = [];
+  private perEntry: number[] = [];
+  private order: number[] = [];
+  private readonly left = new Set<number>();
+  private readonly messages: readonly Message[];
+  private readonly calls: readonly ToolCall[];
+  private readonly options: Pick<ResolvedCompactOptions, 'maxStateTokens' | 'preserveRecentMessages' | 'goal'>;
+  private readonly goal: string;
+  private readonly baseTokens: number;
+
+  constructor(
+    messages: readonly Message[],
+    calls: readonly ToolCall[],
+    options: Pick<ResolvedCompactOptions, 'maxStateTokens' | 'preserveRecentMessages' | 'goal'>,
+  ) {
+    this.messages = messages;
+    this.calls = calls;
+    this.options = options;
+    this.goal = options.goal || goalFromMessages(messages);
+    this.baseTokens = estimateTokens(JSON.stringify(this.stateOf([])));
+  }
+
+  atFullInputs(): FittedState | null {
+    this.rebuild(INPUT_CHARS[0]);
+    return this.fitted('full');
+  }
+
+  withShorterInputs(): FittedState | null {
+    for (const limit of INPUT_CHARS.slice(1)) {
+      this.rebuild(limit);
+      const fitted = this.fitted(`inputs<=${limit}`);
+      if (fitted) return fitted;
+    }
+    // Unpinned entries shrink first, oldest first; pinned ones only after.
+    const indices = this.history.map((_, index) => index);
+    this.order = [
+      ...indices.filter((index) => !this.pinned(this.history[index]!)),
+      ...indices.filter((index) => this.pinned(this.history[index]!)),
+    ];
+    return null;
+  }
+
+  withTextsAbridged(): FittedState | null {
+    for (const index of this.order) {
+      if (this.history[index]!.text.length <= TEXT_HEAD + TEXT_TAIL + MIN_ABRIDGE_SAVINGS) continue;
+      this.shrink(index, (e) => {
+        e.text = abridge(e.text, TEXT_HEAD, TEXT_TAIL);
+      });
+      const fitted = this.fitted('texts abridged');
+      if (fitted) return fitted;
+    }
+    return null;
+  }
+
+  withOldMessagesCollapsed(): FittedState | null {
+    for (const index of this.order) {
+      const entry = this.history[index]!;
+      if (this.pinned(entry) || entry.text.length === 0) continue;
+      const original = this.messages[entry.i]?.text.length ?? entry.text.length;
+      this.shrink(index, (e) => {
+        e.text = `[… ${original} chars omitted …]`;
+      });
+      const fitted = this.fitted('old messages collapsed');
+      if (fitted) return fitted;
+    }
+    return null;
+  }
+
+  withOldCallsCompacted(): FittedState | null {
+    const byMessage = callsByMessage(this.calls);
+    for (const index of this.order) {
+      const entry = this.history[index]!;
+      const own = byMessage.get(entry.i);
+      if (this.pinned(entry) || !own) continue;
+      this.shrink(index, (e) => {
+        e.tool_calls = own.map(compactCall);
+      });
+      const fitted = this.fitted('old calls compacted');
+      if (fitted) return fitted;
+    }
+    return null;
+  }
+
+  withOldMessagesLeftOut(): FittedState | null {
+    for (const index of this.order) {
+      const entry = this.history[index]!;
+      if (this.pinned(entry) || entry.tool_calls) continue;
+      this.left.add(index);
+      this.tokens -= this.perEntry[index] ?? 0;
+      const fitted = this.fitted('old messages left out', this.kept());
+      if (fitted) return fitted;
+    }
+    return null;
+  }
+
+  withOldCallsMerged(): FittedState | null {
+    this.history = mergeCallRuns(this.kept(), this.pinned);
+    this.retotal();
+    return this.fitted('old calls merged');
+  }
+
+  private readonly pinned = (entry: HistoryEntry): boolean =>
+    isPinned(entry.i, this.messages.length, this.options.preserveRecentMessages);
+
+  private kept(): HistoryEntry[] {
+    return this.history.filter((_, i) => !this.left.has(i));
+  }
+
+  private stateOf(history: HistoryEntry[]): CompactionState {
+    return { context: STATE_CONTEXT, goal: this.goal, history };
+  }
+
+  private fitted(stage: string, history: HistoryEntry[] = this.history): FittedState | null {
+    if (this.tokens > this.options.maxStateTokens) return null;
+    return { state: this.stateOf(history), tokens: this.tokens, stage };
+  }
+
+  private rebuild(inputChars: number): void {
+    this.history = historyEntries(this.messages, this.calls, inputChars);
+    this.retotal();
+  }
+
+  private retotal(): void {
+    this.perEntry = this.history.map(entryTokens);
+    this.tokens = this.baseTokens + this.perEntry.reduce((sum, n) => sum + n, 0);
+  }
+
+  private shrink(index: number, change: (entry: HistoryEntry) => void): void {
+    const entry = this.history[index];
     if (!entry) return;
     change(entry);
     const now = entryTokens(entry);
-    tokens += now - (perEntry[index] ?? 0);
-    perEntry[index] = now;
-  };
-
-  rebuild(INPUT_CHARS[0]);
-  if (fits()) return fitted(history, tokens, 'full');
-
-  for (const limit of INPUT_CHARS.slice(1)) {
-    rebuild(limit);
-    if (fits()) return fitted(history, tokens, `inputs<=${limit}`);
+    this.tokens += now - (this.perEntry[index] ?? 0);
+    this.perEntry[index] = now;
   }
+}
 
-  const pinned = (entry: HistoryEntry): boolean =>
-    isPinned(entry.i, messages.length, options.preserveRecentMessages);
-  const indices = history.map((_, index) => index);
-  const order = [
-    ...indices.filter((index) => !pinned(history[index]!)),
-    ...indices.filter((index) => pinned(history[index]!)),
-  ];
-
-  for (const index of order) {
-    const entry = history[index]!;
-    if (entry.text.length <= TEXT_HEAD + TEXT_TAIL + MIN_ABRIDGE_SAVINGS) continue;
-    shrink(index, (e) => {
-      e.text = abridge(e.text, TEXT_HEAD, TEXT_TAIL);
-    });
-    if (fits()) return fitted(history, tokens, 'texts abridged');
-  }
-
-  for (const index of order) {
-    const entry = history[index]!;
-    if (pinned(entry) || entry.text.length === 0) continue;
-    const original = messages[entry.i]?.text.length ?? entry.text.length;
-    shrink(index, (e) => {
-      e.text = `[… ${original} chars omitted …]`;
-    });
-    if (fits()) return fitted(history, tokens, 'old messages collapsed');
-  }
-
-  const byMessage = callsByMessage(calls);
-  for (const index of order) {
-    const entry = history[index]!;
-    const own = byMessage.get(entry.i);
-    if (pinned(entry) || !own) continue;
-    shrink(index, (e) => {
-      e.tool_calls = own.map(compactCall);
-    });
-    if (fits()) return fitted(history, tokens, 'old calls compacted');
-  }
-
-  const left = new Set<number>();
-  for (const index of order) {
-    const entry = history[index]!;
-    if (pinned(entry) || entry.tool_calls) continue;
-    left.add(index);
-    tokens -= perEntry[index] ?? 0;
-    if (fits()) {
-      return fitted(
-        history.filter((_, i) => !left.has(i)),
-        tokens,
-        'old messages left out',
-      );
-    }
-  }
-
-  history = mergeCallRuns(
-    history.filter((_, i) => !left.has(i)),
-    pinned,
-  );
-  retotal();
-  if (fits()) return fitted(history, tokens, 'old calls merged');
-
-  throw new Error(
-    `history too large for Jev (~${tokens} tokens after truncation, limit ${options.maxStateTokens})`,
-  );
+function entryTokens(entry: HistoryEntry): number {
+  return estimateTokens(JSON.stringify(entry)) + 1;
 }
