@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The README's Privacy section now says that, with no key set, the prompt and the skills' names and descriptions still go to Claude Code's own small model.
+
 ## [0.1.0] - 2026-11-24
 
 ### Added
