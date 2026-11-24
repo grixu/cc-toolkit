@@ -417,12 +417,13 @@ function yesNo(provider: Provider, instructions: string): Record<string, unknown
   return { type: provider === 'gateway' ? 'boolean' : 'noul', instructions }
 }
 
-/** The most options Gemini takes in one choice; it also needs at least 2 (1 and 256 are a 400, checked live). */
+/** The options Gemini takes in one choice: 1 and 256 are a 400, checked live. */
+export const GEMINI_MIN_CHOICE = 2
 export const GEMINI_MAX_CHOICE = 255
 
 /** Whether the backend can take the whole catalog in one ranking choice. */
 export function ranksCatalog(provider: Provider | null, skillCount: number): boolean {
-  return provider !== null && (provider !== 'gemini' || (skillCount >= 2 && skillCount <= GEMINI_MAX_CHOICE))
+  return provider !== null && (provider !== 'gemini' || (skillCount >= GEMINI_MIN_CHOICE && skillCount <= GEMINI_MAX_CHOICE))
 }
 
 /** The first request's `questions`: the ranking and the gate. */
@@ -452,7 +453,7 @@ export function rerankQuestions(
   for (const candidate of candidates) criteria[candidate.name] = candidate.detail
   const questions: Record<string, unknown> = {}
   // Gemini rejects a choice with one option; readRerank then takes the lone candidate as the winner.
-  if (provider !== 'gemini' || candidates.length > 1) {
+  if (provider !== 'gemini' || candidates.length >= GEMINI_MIN_CHOICE) {
     questions.which = {
       type: 'choice',
       instructions:

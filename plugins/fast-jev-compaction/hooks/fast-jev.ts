@@ -249,6 +249,8 @@ export function summarize(result: CompactResult): string {
 }
 
 const UI_LOG_MAX_CHARS = 4096;
+// Room for the "decisions (i/n): " prefix each chunk gets.
+const LOG_PREFIX_RESERVE = 24;
 
 export function decisionLog(result: CompactResult): string {
   return result.decisions
@@ -270,7 +272,7 @@ export function decisionLogLines(
   let current = '';
   for (const entry of entries) {
     const next = current ? `${current} ${entry}` : entry;
-    if (current && next.length > maxChars - 24) {
+    if (current && next.length > maxChars - LOG_PREFIX_RESERVE) {
       chunks.push(current);
       current = entry;
     } else current = next;

@@ -25,6 +25,8 @@ export const DEFAULT_OPTIONS: ResolvedCompactOptions = {
 
 /** Tokens the request envelope (`model`, key names) adds around state and questions. */
 const REQUEST_OVERHEAD_TOKENS = 20;
+// Within this many chars of the head, the truncation note costs about what it saves.
+const TRUNCATION_NOTE_CHARS = 120;
 
 function finite(value: number | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -133,7 +135,7 @@ async function askBatch(
 }
 
 function truncatedResultText(text: string, isError: boolean, headChars: number): string {
-  if (text.length <= headChars + 120) return text;
+  if (text.length <= headChars + TRUNCATION_NOTE_CHARS) return text;
   const head = headChars > 0 ? `${text.slice(0, headChars)}\n` : '';
   return `${head}[fast-jev-compaction truncated ${text.length - headChars} chars of this tool result${
     isError ? ' (error)' : ''
@@ -199,7 +201,7 @@ export function applyDecisions(
               isError: result.isError,
             };
       });
-    if (
+    const unchanged =
       !message.toolUses.some(
         (tool) => actions.get(tool.tool_use_id) === 'drop_call',
       ) &&
@@ -209,8 +211,8 @@ export function applyDecisions(
       toolUses.every((tool, index) => tool === message.toolUses[index]) &&
       toolResults.every(
         (result, index) => result === message.toolResults?.[index],
-      )
-    ) {
+      );
+    if (unchanged) {
       kept.push(message);
       continue;
     }

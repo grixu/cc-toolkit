@@ -15,6 +15,8 @@ export const STATE_CONTEXT =
 const INPUT_CHARS = [1000, 200, 60] as const;
 const TEXT_HEAD = 400;
 const TEXT_TAIL = 150;
+// Below this, the abridgement marker costs about what cutting the text saves.
+const MIN_ABRIDGE_SAVINGS = 40;
 
 const TOKEN_PIECES = /[A-Za-z]+|\d+|[^\sA-Za-z\d]/g;
 
@@ -28,9 +30,8 @@ const TOKEN_PIECES = /[A-Za-z]+|\d+|[^\sA-Za-z\d]/g;
 export function estimateTokens(text: string): number {
   let tokens = 0;
   for (const [piece] of text.matchAll(TOKEN_PIECES)) {
-    const first = piece.charCodeAt(0);
-    if (first >= 48 && first <= 57) tokens += piece.length / 2;
-    else if ((first >= 65 && first <= 90) || (first >= 97 && first <= 122)) {
+    if (/^\d/.test(piece)) tokens += piece.length / 2;
+    else if (/^[A-Za-z]/.test(piece)) {
       tokens += 1 + Math.floor((piece.length - 1) / 6);
     } else tokens += 0.9;
   }
@@ -42,7 +43,7 @@ export function truncate(text: string, limit: number): string {
 }
 
 function abridge(text: string, head: number, tail: number): string {
-  if (text.length <= head + tail + 40) return text;
+  if (text.length <= head + tail + MIN_ABRIDGE_SAVINGS) return text;
   const omitted = text.length - head - tail;
   return `${text.slice(0, head)}\n[… ${omitted} chars omitted …]\n${text.slice(-tail)}`;
 }
@@ -247,7 +248,7 @@ export function fitState(
 
   for (const index of order) {
     const entry = history[index]!;
-    if (entry.text.length <= TEXT_HEAD + TEXT_TAIL + 40) continue;
+    if (entry.text.length <= TEXT_HEAD + TEXT_TAIL + MIN_ABRIDGE_SAVINGS) continue;
     shrink(index, (e) => {
       e.text = abridge(e.text, TEXT_HEAD, TEXT_TAIL);
     });
