@@ -2,16 +2,19 @@
 
 Takes the skill listing out of the context window and lets [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), TypeSafe's System One decision model, pick at most one skill per prompt from the skills' descriptions — and then loads that one skill itself, by attaching its `SKILL.md` to the prompt. The skills stay installed and you can still type `/name`; what goes away is the listing Claude Code sends the model every session — one line per skill, sixty-odd lines on a well-equipped machine — whether or not the prompt has anything to do with any of them. Because the mod does the loading, the skills can be hidden from the model altogether (`/jev-skill-suggestion:setup` sets them `user-invocable-only`), and `/skills` and `/context` then show the saving.
 
+Ported from [davila7/claude-code-templates](https://github.com/davila7/claude-code-templates/tree/main/cli-tool/components/mods/productivity/jev-skill-suggestion) 0.1.0 (MIT, see `LICENSE`). This copy adds Gemini Decision as a backend and reads the keys from the environment as well as from the plugin options, so no key has to be passed on the command line.
+
 The decision is TypeSafe's own [skill-suggestion cookbook](https://docs.typesafe.ai/cookbooks/skill_suggestion), which on a 182-skill roster cut wrong skill loads from 16.8% to 7.3% and needless ones from 9.8% to 4.0%: two requests per prompt, one that ranks every skill and asks whether the prompt needs a skill at all, one that re-reads the top three properly and can reject all of them.
 
-Two backends, chosen by whichever key is set:
+Three backends, chosen by whichever key is set:
 
 | Backend | Endpoint | Model | Confidence |
 |---|---|---|---|
 | `typesafe` | `POST api.typesafe.ai/v1/systemone` | `jev-latest` | reported per answer |
+| `gemini` | `POST generativelanguage.googleapis.com/v1beta/decisions` | `gemini-decision-1` | reported per answer |
 | `gateway` | `POST ai-gateway.vercel.sh/v4/ai/evaluation-model` | `typesafe-ai/jev` | derived from an optional distribution |
 
-TypeSafe's own API wins when both keys are set: it is the only one that reports a calibrated confidence per answer, which the log shows beside every pick. Set `provider` to force one, or to `builtin` to use neither. Each backend keeps its own URL and model option, so an override written for one is never sent to the other. A `provider` forced onto a backend whose key is missing degrades to the built-in classifier and says so once in the log.
+Under `auto`, TypeSafe's own API wins, then Gemini, then the Gateway. The thresholds below were set on Jev, so TypeSafe comes first; Gemini Decision asks the same questions in the same shape and also reports a confidence per answer. Set `provider` to force one, or to `builtin` to use none. Each backend keeps its own URL and model option, so an override written for one is never sent to the other. A `provider` forced onto a backend whose key is missing degrades to the built-in classifier and says so once in the log.
 
 **With no key configured the mod still works**: it falls back to the engine's own `$.model.classify`, which answers the ranking question with the small fast model, the descriptions folded into the text it reads. That path has no gate and no second request: its single answer is taken as is.
 
@@ -19,12 +22,14 @@ TypeSafe's own API wins when both keys are set: it is the only one that reports 
 
 Five steps, in this order. Each one is checkable before the next.
 
-**1. Install and start.** Claude Code 2.1.278 or newer, in a project you trust:
+**1. Install and start.** Claude Code 2.1.278 or newer:
 
-```sh
-npx claude-code-templates@latest --mod productivity/jev-skill-suggestion
-claude
 ```
+/plugin marketplace add grixu/cc-toolkit
+/plugin install jev-skill-suggestion@cc-toolkit
+```
+
+Export `TYPESAFE_API_KEY` (or `GEMINI_DECISIONS_API_KEY`) before starting `claude`, or set the key in `/config`; with none, the built-in classifier picks. If you installed the upstream mod with `claude-code-templates --mod`, delete its `.claude/skills/jev-skill-suggestion/` copy (in the project or `~/.claude/skills/`), or both copies run on every prompt.
 
 The first prompt of the session prints `[jev-skill-suggestion] ready on …; withholding the skill listing` in the transcript. From here on the listing is already kept from the model on every prompt — but `/skills` and `/context` do not know that yet (see [Checking that it works](#checking-that-it-works)), which is what the next step is for.
 
@@ -152,10 +157,10 @@ jev · no skill
 **No lines at all** has three causes, and only the last is the module failing to load. Check them in this order:
 
 1. **You ran `claude -p` (or the SDK).** A headless run has no transcript and no status row: every line still goes to the debug log, `~/.claude/debug/<session-id>.txt` (a `.txt`, not a `.log`; `latest` is a symlink to the newest), and an SDK host receives each one as `ui_log`.
-2. **The plugin was never loaded.** Claude Code adopts a plugin from a project's `.claude/skills/` (where `--mod` writes it) only once the project is trusted: it is repository content, so an untrusted folder's `.claude/` is not read at all, and `claude -p` never asks. Open `claude` interactively in the folder and accept the trust prompt, or name the plugin explicitly with `--plugin-dir` (see Install). `claude --debug` settles it: a loaded module prints `hooks module jev-skill-suggestion@skills-dir loaded (worker, …); events: prompt.attachment,prompt.submit,skill.prompt` (`@inline` when loaded with `--plugin-dir`); `Found N plugins` without it means the plugin is not in the session.
+2. **The plugin was never loaded.** Check `/plugin` that it is installed and enabled. `claude --debug` settles it: a loaded module prints `hooks module jev-skill-suggestion@cc-toolkit loaded (worker, …); events: prompt.attachment,prompt.submit,skill.prompt`; `Found N plugins` without it means the plugin is not in the session.
 3. **Claude Code is too old.** Mods are on by default from 2.1.287; on an older build the debug log says `installed plugins' hooks modules not loaded: rollout flag (tengu_plugin_hooks_modules) is off`. Update Claude Code (this mod needs 2.1.278+, see below).
 
-A `ready on the built-in classifier, no key set` line when you did set a key means the key sits under the wrong `pluginConfigs` entry: the key must match the plugin's id, which depends on how it was loaded (see Options).
+A `ready on the built-in classifier, no key set` line when you did set a key means the key reached neither the environment Claude Code started in nor the right `pluginConfigs` entry (see Options).
 
 ## Checking that it works
 
@@ -175,14 +180,15 @@ If `/skills` still shows one of your own skills as `on` after `setup` and a rest
 
 ## Privacy
 
-With a key set, the prompt text and every candidate skill's name and one-line description leave the machine on the first request, and the first `excerptChars` of each shortlisted skill's SKILL.md on the second, to whichever backend the key belongs to. Nothing else. With no key set, nothing leaves the machine.
+With a key set, the prompt text and every candidate skill's name and one-line description leave the machine on the first request, and the first `excerptChars` of each shortlisted skill's SKILL.md on the second, to whichever backend the key belongs to: TypeSafe, Google or Vercel. Nothing else. With no key set, nothing leaves the machine.
 
 ## Options
 
 ```
-  typesafeApiKey:   string  TypeSafe API key (preferred: it reports a confidence)
+  typesafeApiKey:   string  TypeSafe API key; empty reads TYPESAFE_API_KEY
+  geminiApiKey:     string  Gemini Developer API key; empty reads GEMINI_DECISIONS_API_KEY, then GEMINI_API_KEY
   gatewayApiKey:    string  Vercel AI Gateway key
-  provider:         string  "auto" | "typesafe" | "gateway" | "builtin"
+  provider:         string  "auto" | "typesafe" | "gemini" | "gateway" | "builtin"
   typesafeBaseUrl:  string  empty uses https://api.typesafe.ai
   typesafeModel:    string  empty uses jev-latest
   gatewayBaseUrl:   string  empty uses https://ai-gateway.vercel.sh/v4/ai
@@ -205,42 +211,25 @@ With a key set, the prompt text and every candidate skill's name and one-line de
 Declared in `.claude-plugin/plugin.json` (`userConfig`). Set them in `/config`, in user settings (`~/.claude/settings.json`, not project settings), with `--settings <file>` or in managed settings:
 
 ```json
-{ "pluginConfigs": { "jev-skill-suggestion@skills-dir": { "options": { "typesafeApiKey": "" } } } }
+{ "pluginConfigs": { "jev-skill-suggestion@cc-toolkit": { "options": { "provider": "auto", "inject": "content" } } } }
 ```
 
-The entry's key is the plugin's id, and the id follows how the plugin was loaded: `"jev-skill-suggestion@skills-dir"` when auto-loaded from `.claude/skills/` (the `--mod` install), `"jev-skill-suggestion"` with `--plugin-dir`. Under the wrong key every option stays at its default, and the `ready on` line reports `no key set`.
+Keys set in `/config` are stored as secrets (the macOS Keychain on a Mac). Keep them out of `--settings` on the command line, where any process listing shows them; the environment variables are the simpler route. Under the wrong `pluginConfigs` key every option stays at its default.
 
 ## Install
 
-The full sequence is in [Quick start](#quick-start); this is the detail behind it.
-
-```sh
-npx claude-code-templates@latest --mod productivity/jev-skill-suggestion
-claude
-```
-
-`--mod` writes the plugin to `.claude/skills/jev-skill-suggestion/` in the project, and Claude Code auto-loads it as `jev-skill-suggestion@skills-dir` **in a trusted project**: a folder's `.claude/` is repository content and is not read until you accept the trust prompt on the first interactive `claude` there (`-p` never asks, so a headless run in a fresh folder never sees it). The options then go under the `"jev-skill-suggestion@skills-dir"` key in `pluginConfigs` (see Options).
-
-For one session with hot reload, or in a folder you do not want to trust, name it on the command line instead — it loads as `jev-skill-suggestion@inline` and reads options from the `"jev-skill-suggestion"` key:
-
-```sh
-claude --plugin-dir .claude/skills/jev-skill-suggestion
-```
-
-Either way, `claude plugin validate .claude/skills/jev-skill-suggestion` prints every event it hooks and every `$` call it makes.
+The full sequence is in [Quick start](#quick-start). From a checkout of this repository, `claude --plugin-dir plugins/jev-skill-suggestion` loads it for one session, and `claude plugin validate plugins/jev-skill-suggestion` prints every event it hooks and every `$` call it makes.
 
 **The setup command.** `/jev-skill-suggestion:setup` is a markdown command the plugin ships (`commands/setup.md`) whose text the mod replaces in its `skill.prompt` hook with the plan built from `$.command.list()` and the settings as they are; its `disable-model-invocation: true` keeps it out of the model's listing. A skill whose frontmatter `name:` is not its directory name (`name: "PocketBase API Rules"` in `pb-api-rules/`) is written by its directory name, which is what the engine lists, runs and overrides. `setup restore` reads `~/.claude/jev-skill-suggestion.skill-overrides.backup.json` and puts every saved entry back, removing the ones the setup added. Both modes end with a restart of Claude Code. The command only ever proposes an edit; Claude makes it with the Edit tool after you confirm, so a `--permission-mode plan` session shows the plan and changes nothing.
 
 Uninstalling: run `/jev-skill-suggestion:setup restore` first, or your skills stay hidden from the model with nothing left to inject them.
 
-Pairs with [jev-model-router](../jev-model-router/README.md), which asks the same decision model which model and effort a prompt deserves; the two share a key and run side by side, each prefixing its own transcript lines.
-
 ## Tests
 
 ```sh
-bun test cli-tool/components/mods/productivity/jev-skill-suggestion/tests
+claude plugin test plugins/jev-skill-suggestion
 ```
 
 **Requirements.** Mods are on by default in Claude Code 2.1.287+. This mod needs **Claude Code 2.1.278 or newer**: the `prompt.attachment` event it hooks to withhold the listing first shipped there. On an older release the module loads but the event never fires, so the listing stays and only the suggestion is added. Typed against Anthropic's declarations: https://github.com/anthropics/claude-code/tree/main/mods
 
-A mod runs without `node_modules`, so neither `@typesafe-ai/sdk` nor the AI SDK is available here: both backends are spoken to over HTTP through `$.http.fetch`. The TypeSafe wire shape was read from `@typesafe-ai/sdk` v0.6.0; the Gateway's, which is `experimental` in the AI SDK (`experimental_evaluate`, 7.0.105+) and not documented publicly, from `@ai-sdk/gateway` v4.0.86 and `@ai-sdk/provider` v4.0.17. Either may change.
+A mod runs without `node_modules`, so neither `@typesafe-ai/sdk` nor the AI SDK is available here: every backend is spoken to over HTTP through `$.http.fetch`. The TypeSafe wire shape was read from `@typesafe-ai/sdk` v0.6.0; the Gateway's, which is `experimental` in the AI SDK (`experimental_evaluate`, 7.0.105+) and not documented publicly, from `@ai-sdk/gateway` v4.0.86 and `@ai-sdk/provider` v4.0.17. Either may change.

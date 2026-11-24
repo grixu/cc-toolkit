@@ -6,7 +6,7 @@
     "name": "Mateusz Gostański",
     "email": "mg@grixu.dev"
   },
-  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, code stories, AI-slop cleanup for prose, hook rules, and a sound when Claude waits for you",
+  "description": "Claude Code plugins for spec-driven delivery, code review, manual app testing, CI and pull-request chores, walkthrough videos as pull-request proof, plan review with OpenAI Codex, research reports, code stories, skill suggestion and verbatim context compaction, AI-slop cleanup for prose, hook rules, and a sound when Claude waits for you",
   "plugins": [
     {
       "name": "codex-plan-improver",
@@ -227,6 +227,43 @@
         "delegation",
         "second-opinion",
         "multi-model"
+      ]
+    },
+    {
+      "name": "jev-skill-suggestion",
+      "source": "./plugins/jev-skill-suggestion",
+      "description": "Saves context when many skills are installed by showing Claude only the skill that fits each prompt, not every skill's description. Any skill still runs when you type /name.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "skills",
+        "context",
+        "skill-suggestion",
+        "typesafe",
+        "jev",
+        "gemini-decision"
+      ]
+    },
+    {
+      "name": "fast-jev-compaction",
+      "source": "./plugins/fast-jev-compaction",
+      "description": "Compacts sessions early by removing the tool calls and outputs Claude no longer needs, keeping your messages and Claude's replies word for word. Needs an API key; without one, or when that frees too little space, the usual summary runs.",
+      "version": "0.0.0",
+      "author": {
+        "name": "Mateusz Gostański",
+        "email": "mg@grixu.dev"
+      },
+      "category": "productivity",
+      "tags": [
+        "compaction",
+        "context",
+        "typesafe",
+        "jev",
+        "gemini-decision"
       ]
     }
   ]

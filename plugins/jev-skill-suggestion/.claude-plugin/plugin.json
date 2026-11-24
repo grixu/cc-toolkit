@@ -1,19 +1,20 @@
 {
   "name": "jev-skill-suggestion",
-  "version": "0.1.0",
-  "description": "Keeps the skill listing out of the context window and lets TypeSafe's Jev, a System One decision model, pick at most one skill per prompt from the skills' descriptions, the way TypeSafe's skill-suggestion cookbook does: one request ranks every skill and asks whether the prompt needs a skill at all, a second re-reads the top three with their SKILL.md and can reject them all. The winner's SKILL.md is attached to the prompt, so the skills can be hidden from the model altogether (/jev-skill-suggestion:setup makes them user-invocable-only and /context counts them at 0). Falls back to the engine's built-in classifier when no key is set.",
+  "version": "0.0.0",
+  "description": "Saves context when many skills are installed by showing Claude only the skill that fits each prompt, not every skill's description. Any skill still runs when you type /name.",
   "author": {
-    "name": "claude-code-templates",
-    "url": "https://www.aitmpl.com"
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
   },
-  "repository": "https://github.com/davila7/claude-code-templates",
+  "repository": "https://github.com/grixu/cc-toolkit",
   "license": "MIT",
   "keywords": [
-    "mod",
-    "function-hooks",
-    "productivity",
     "skills",
-    "context"
+    "context",
+    "skill-suggestion",
+    "typesafe",
+    "jev",
+    "gemini-decision"
   ],
   "userConfig": {
     "typesafeApiKey": {
