@@ -1,6 +1,6 @@
 {
   "name": "fd3",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "description": "Turns a rough idea into working code: settles the design with you, writes and checks a spec, and splits it into tasks. Then implements the tasks in parallel git worktrees and validates the result.",
   "author": {
     "name": "Mateusz Gostański",
