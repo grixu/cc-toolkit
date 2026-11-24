@@ -25,7 +25,7 @@ upstream in README and CHANGELOG.
 - [x] plugin.json (author grixu, repository, keywords), CHANGELOG `[Unreleased]`, README, marketplace.json entries;
       descriptions reviewed by the reader and ai-pattern agents (two rounds).
 - [x] Docs site pages if `.claude/rules/docs.md` requires one per plugin. — Not required (only existing pages must be kept current; collegium has none); left as a follow-up.
-- [ ] `/verify`, one commit per step, PR. Release only on request. — Verified and committed; push and PR await the user.
+- [x] `/verify`, one commit per step, PR. Release only on request. — Verified, committed and opened as #79; release awaits the user.
 
 Live checks (2026-11-24): Gemini answered the skill-suggestion ranking and rerank in 234–328 ms, and a
 fast-jev compaction dropped an unrelated Read while keeping the failing test's Bash call.
