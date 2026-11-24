@@ -25,8 +25,8 @@ import type {
   ToolUse,
 } from '../src/types.ts';
 
-export const BACKENDS = ['auto', 'typesafe', 'gemini'] as const;
-export type Backend = Exclude<(typeof BACKENDS)[number], 'auto'>;
+export const COMPACTION_BACKENDS = ['auto', 'typesafe', 'gemini'] as const;
+export type Backend = Exclude<(typeof COMPACTION_BACKENDS)[number], 'auto'>;
 
 const HOOK_DEFAULTS = {
   compactAtPercent: 60,
@@ -52,7 +52,7 @@ export type HookFetch = (url: string, init?: HookFetchInit) => Promise<HookFetch
 export type HookConfig = CompactOptions & {
   apiKey?: string;
   geminiApiKey?: string;
-  backend: (typeof BACKENDS)[number];
+  backend: (typeof COMPACTION_BACKENDS)[number];
   compactAtPercent: number;
   minReductionRatio: number;
   model: string;
@@ -90,7 +90,7 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
       HOOK_DEFAULTS.minReductionRatio,
     ),
     model: optionString(options, 'model') ?? HOOK_DEFAULTS.model,
-    backend: BACKENDS.find((name) => name === options['backend']) ?? 'auto',
+    backend: COMPACTION_BACKENDS.find((name) => name === options['backend']) ?? 'auto',
   };
   const apiKey = optionString(options, 'apiKey');
   if (apiKey) config.apiKey = apiKey;
@@ -149,7 +149,7 @@ export function geminiAsker(fetchFn: HookFetch, apiKey: string): JevAsker {
 }
 
 /** The backend to ask: the configured one, or under `auto` TypeSafe and then Gemini, whichever has a key. */
-export function chooseBackend(config: Pick<HookConfig, 'backend' | 'apiKey' | 'geminiApiKey'>): Backend {
+export function compactionBackend(config: Pick<HookConfig, 'backend' | 'apiKey' | 'geminiApiKey'>): Backend {
   if (config.backend === 'typesafe' && !config.apiKey) throw new Error('TYPESAFE_API_KEY is not configured');
   if (config.backend === 'gemini' && !config.geminiApiKey) throw new Error('GEMINI_DECISIONS_API_KEY is not configured');
   if (config.backend !== 'auto') return config.backend;
@@ -224,7 +224,7 @@ export async function compactSession(
   fetchFn: HookFetch,
 ): Promise<SessionCompaction> {
   const asker =
-    chooseBackend(config) === 'gemini'
+    compactionBackend(config) === 'gemini'
       ? geminiAsker(fetchFn, config.geminiApiKey!)
       : jevAsker(fetchFn, config.apiKey!, config.model);
   const result = await compact(messages, asker, config);

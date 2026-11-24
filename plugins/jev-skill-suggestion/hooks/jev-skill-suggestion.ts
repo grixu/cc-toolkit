@@ -348,7 +348,7 @@ export const register: Register = (on, options) => {
       return found
     }
     /** A skill's whole SKILL.md, or null when its file is nowhere. */
-    const bodyOf = async (skill: Skill, plugin: string | undefined): Promise<string | null> =>
+    const markdownOf = async (skill: Skill, plugin: string | undefined): Promise<string | null> =>
       (await fileOf(skill, plugin))?.markdown ?? null
 
     if (!unusableReported) {
@@ -426,7 +426,7 @@ export const register: Register = (on, options) => {
     if (active && rerankEnabled && wide && passesGate(wide, policy)) {
       const candidates: Candidate[] = []
       for (const skill of shortlistOf(wide, skills, policy.shortlist)) {
-        const body = await bodyOf(skill, pluginOf.get(skill.name))
+        const body = await markdownOf(skill, pluginOf.get(skill.name))
         if (!modelInvocable(body)) {
           barred.push(skill.name)
           continue
@@ -452,7 +452,7 @@ export const register: Register = (on, options) => {
     let decision = decide(wide, rerank, offered, policy, rerankAttempted)
     let pick = decision.name ? (skills.find((skill) => skill.name === decision.name) ?? null) : null
     // The winner's own frontmatter has the last word, whichever path picked it.
-    if (pick && !barred.includes(pick.name) && !modelInvocable(await bodyOf(pick, pluginOf.get(pick.name)))) {
+    if (pick && !barred.includes(pick.name) && !modelInvocable(await markdownOf(pick, pluginOf.get(pick.name)))) {
       barred.push(pick.name)
       decision = { name: null, reason: `/${pick.name} has disable-model-invocation` }
       pick = null

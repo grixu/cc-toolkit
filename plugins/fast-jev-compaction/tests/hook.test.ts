@@ -1,6 +1,6 @@
 import { describe, expect, test as it } from 'claude-code/testing';
 import {
-  chooseBackend,
+  compactionBackend,
   compactSession,
   decisionLog,
   decisionLogLines,
@@ -85,12 +85,12 @@ describe('hook config', () => {
 
 describe('backend choice', () => {
   it('prefers TypeSafe under auto and honours a forced backend only when its key is set', () => {
-    expect(chooseBackend({ backend: 'auto', apiKey: 't', geminiApiKey: 'g' })).toBe('typesafe');
-    expect(chooseBackend({ backend: 'auto', geminiApiKey: 'g' })).toBe('gemini');
-    expect(chooseBackend({ backend: 'gemini', apiKey: 't', geminiApiKey: 'g' })).toBe('gemini');
-    expect(() => chooseBackend({ backend: 'auto' })).toThrow(/neither TYPESAFE_API_KEY nor GEMINI_DECISIONS_API_KEY/);
-    expect(() => chooseBackend({ backend: 'gemini', apiKey: 't' })).toThrow(/GEMINI_DECISIONS_API_KEY/);
-    expect(() => chooseBackend({ backend: 'typesafe', geminiApiKey: 'g' })).toThrow(/TYPESAFE_API_KEY/);
+    expect(compactionBackend({ backend: 'auto', apiKey: 't', geminiApiKey: 'g' })).toBe('typesafe');
+    expect(compactionBackend({ backend: 'auto', geminiApiKey: 'g' })).toBe('gemini');
+    expect(compactionBackend({ backend: 'gemini', apiKey: 't', geminiApiKey: 'g' })).toBe('gemini');
+    expect(() => compactionBackend({ backend: 'auto' })).toThrow(/neither TYPESAFE_API_KEY nor GEMINI_DECISIONS_API_KEY/);
+    expect(() => compactionBackend({ backend: 'gemini', apiKey: 't' })).toThrow(/GEMINI_DECISIONS_API_KEY/);
+    expect(() => compactionBackend({ backend: 'typesafe', geminiApiKey: 'g' })).toThrow(/TYPESAFE_API_KEY/);
   });
 });
 
