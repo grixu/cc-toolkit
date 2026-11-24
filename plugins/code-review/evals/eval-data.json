@@ -1,6 +1,10 @@
 {
   "prefix": "code-review/fixtures",
   "root": ".",
-  "paths": ["cases", "comment-track", "scope-mix"],
-  "sha256": "e37657f696fab2518304c883825e7633967e868f5ca8a31585976997355a1a80"
+  "paths": [
+    "cases",
+    "comment-track",
+    "scope-mix"
+  ],
+  "sha256": "94d4f3aeb0a2c56c1180ff5c2bfd8c970c48b8671be25ce7869c3483fb1e50a9"
 }

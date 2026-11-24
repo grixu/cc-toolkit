@@ -70,13 +70,13 @@ When two project files disagree, the more specific one wins, and the report name
 | Shape | Example |
 |---|---|
 | Code finding: `` `family` · rule · severity · lines — problem → fix `` | `` `readability` · magic-literal · medium · L22 `` |
-| Comment verdict: `` `comments` · R1–R12 · verdict · line — problem → fix `` | `` `comments` · R2 · ADD · L44 `` |
+| Comment verdict: `` `comments` · R1–R14 · verdict · line — problem → fix `` | `` `comments` · R2 · ADD · L44 `` |
 
 Table 4. The two finding shapes
 
 - **Families:** `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, and the repository-defined `standards`.
 - **Severities:** `high`, `medium`, `nit`. A `security`, `correctness`, `spec`, `coherence` or `assumptions` finding is `high` or `medium` only.
-- **Comment verdicts:** `KEEP` (the comment stays), `REMOVE`, `REWRITE` (with the exact text), `MOVE` (to where the behavior it explains lives) and `ADD` (a missing comment that explains a decision).
+- **Comment verdicts:** `KEEP` (the comment stays), `REMOVE`, `REWRITE` (with the exact text), `MOVE` (to where the behavior it explains lives, or into a new ADR for a decision other code must follow) and `ADD` (a missing comment that explains a decision).
 - **`(verify)`:** a fact the scanner can't confirm from what it can read, such as runtime behavior or a file outside the review. The scanners read code; the correctness, security, performance and spec lenses never run it.
 - **Report blocks:** `Conventions`, `Headline`, one section per file, `Not flagged`, `Boy-scout`, `Tally`, with a `Reconciliation` line above them.
 

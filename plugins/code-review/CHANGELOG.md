@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `comments` R13: a comment that excuses a shortcut ("hacky but works", "for simplicity we just",
+  a `TODO` that only defers a proper fix) is reported as a report-only REWRITE naming the proper
+  fix or the constraint to state
+- `comments` R14: a comment that records a decision other code must follow moves into a new ADR,
+  when the repository keeps an ADR directory; `/start-cr` writes the ADR on the walk's yes
+- The comments rules open with a triage into tautology, stale, excuse and decision record
+- ADR 0006 records what the lens took from Matt Pocock's comment taxonomy and what it left out
+
+### Changed
+
+- `comments` R9 also covers a stale comment: one naming code or an approach the file no longer has
+- `comments` R6 keeps an open `TODO` only when it names an external, checkable trigger
+
 ## [0.11.0] - 2026-11-20
 
 ### Added

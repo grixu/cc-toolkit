@@ -15,7 +15,7 @@ The orchestrator is a command (never auto-triggered; five subagents must not
 start by accident), takes only scope arguments (paths, `--base`) with no lens
 selection (partial review = invoke a standalone skill), and renders one report
 grouped per file with the two vocabularies side by side (quality
-`family` · rule · severity, comments `R#` · KEEP/REMOVE/REWRITE/MOVE — no lossy
+`family` · rule · severity, comments `R#` · KEEP/REMOVE/REWRITE/MOVE/ADD — no lossy
 mapping between them), ending in a single risk-cut apply menu.
 
 ## Considered Options

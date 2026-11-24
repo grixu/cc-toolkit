@@ -105,7 +105,11 @@ rules file: `coherence` Greps the repo for each claim's counterpart (`rules/cohe
    config's, else the width the file's other comments wrap at — and comes as several lines
    when one does not hold it: a formatter does not rewrap comments. A replacement you would
    flag yourself is not a fix. For MOVE, name the destination and give the exact text to place
-   there, plus "delete from the declaration".
+   there, plus "delete from the declaration". An **R13 excuse** is a REWRITE whose fix names
+   the proper fix at the site, or the honest constraint text — never a bare removal. An **R14
+   MOVE** names the new ADR as its destination, `<adr-dir>/<next-number>-<slug>.md`, gives the
+   two-to-four-sentence draft under the newest ADR's headings, and says what stays at the code:
+   nothing, or the one local line.
 
 2. **readability & tests** → `rules/readability-tests.md`
    Judges the `readability` and `tests` families.

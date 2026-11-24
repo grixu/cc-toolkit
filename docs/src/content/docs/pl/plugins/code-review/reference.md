@@ -71,13 +71,13 @@ Gdy dwa pliki projektu sobie przeczą, wygrywa bardziej szczegółowy, a raport 
 | Kształt | Przykład |
 |---|---|
 | Uwaga do kodu: `` `family` · rule · severity · lines — problem → fix `` | `` `readability` · magic-literal · medium · L22 `` |
-| Werdykt o komentarzu: `` `comments` · R1–R12 · verdict · line — problem → fix `` | `` `comments` · R2 · ADD · L44 `` |
+| Werdykt o komentarzu: `` `comments` · R1–R14 · verdict · line — problem → fix `` | `` `comments` · R2 · ADD · L44 `` |
 
 Tabela 4. Dwa kształty uwag
 
 - **Rodziny:** `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec` i definiowana przez repozytorium `standards`.
 - **Wagi:** `high`, `medium`, `nit`. Uwaga z rodziny `security`, `correctness`, `spec`, `coherence` albo `assumptions` ma tylko `high` albo `medium`.
-- **Werdykty o komentarzach:** `KEEP` (komentarz zostaje), `REMOVE`, `REWRITE` (z dokładnym tekstem), `MOVE` (tam, gdzie żyje opisywane zachowanie) i `ADD` (brakujący komentarz wyjaśniający decyzję).
+- **Werdykty o komentarzach:** `KEEP` (komentarz zostaje), `REMOVE`, `REWRITE` (z dokładnym tekstem), `MOVE` (tam, gdzie żyje opisywane zachowanie, albo do nowego ADR, gdy komentarz zapisuje decyzję obowiązującą inny kod) i `ADD` (brakujący komentarz wyjaśniający decyzję).
 - **`(verify)`:** fakt, którego scanner nie może potwierdzić z tego, co czyta, np. zachowanie w czasie działania albo plik spoza review. Scannery czytają kod; soczewki correctness, security, performance i spec nigdy go nie uruchamiają.
 - **Bloki raportu:** `Conventions`, `Headline`, sekcja na każdy plik, `Not flagged`, `Boy-scout`, `Tally`, a nad nimi linia `Reconciliation`.
 

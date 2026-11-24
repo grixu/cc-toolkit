@@ -260,6 +260,18 @@ cp -R cases/arch-marker/src "$marker/"
 git -C "$marker" add -A
 commit "$marker" 'feat: order cancellation'
 
+# evals 45-46: the same file in a checkout that keeps ADRs and in one that does not, so R14 moves a
+# cross-cutting decision only where the repository has somewhere to move it.
+for name in comment-adr comment-noadr; do
+  dir=.sandbox/$name
+  mkdir -p "$dir"
+  git -C "$dir" init -q -b main
+  cp -R cases/comment-taxonomy/src "$dir/"
+  if [ "$name" = comment-adr ]; then cp -R cases/comment-taxonomy/docs "$dir/"; fi
+  git -C "$dir" add -A
+  commit "$dir" 'feat: payment client'
+done
+
 # evals 29-30: a branch with one committed source change above origin/main and an uncommitted side.
 # In scope-skip that side is a lockfile bump and a rebuilt dist/ file, which no lens grades, so Step 1
 # has nothing to ask. In scope-mixed it is Markdown and JSON, which coherence grades, plus an

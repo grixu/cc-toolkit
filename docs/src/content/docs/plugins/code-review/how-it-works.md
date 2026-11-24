@@ -44,7 +44,7 @@ There are twelve: nine run on any change of code, two depend on the input, and o
 
 | Lens | Runs | Looks for |
 |---|---|---|
-| comments | always | Comments that narrate the code, cite tickets or other files, contradict the code, or are missing where a decision needs explaining. |
+| comments | always | Comments that narrate the code, cite tickets or other files, contradict or outlive the code, excuse a shortcut, hold a decision that belongs in an ADR, or are missing where a decision needs explaining. |
 | readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that don't check what their name claims. |
 | naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has. |
 | objects & patterns | always, except on infrastructure code alone | Half-built objects, exposed internal collections, methods on the wrong object, repeated type switches. |
