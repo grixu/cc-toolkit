@@ -10,7 +10,9 @@ import {
   toDecisionRequest,
   toSessionMessages,
 } from '../hooks/fast-jev.ts';
-import { applyDecisions, collectToolCalls, decideCall, type Message } from '../src/index.ts';
+import { applyDecisions, decideCall } from '../src/compact.ts';
+import { collectToolCalls } from '../src/state.ts';
+import type { Message } from '../src/types.ts';
 
 type SessionMessage = Message & { handle?: string };
 

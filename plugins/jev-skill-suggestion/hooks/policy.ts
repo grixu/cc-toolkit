@@ -34,6 +34,7 @@
  */
 
 import { GEMINI_MODEL, GEMINI_URL } from './providers/gemini.ts'
+import { typesafeEndpoint } from './providers/typesafe.ts'
 
 export type Provider = 'typesafe' | 'gemini' | 'gateway'
 
@@ -109,8 +110,8 @@ export function selectProvider(
 /** The full endpoint a backend posts to; Gemini's is fixed. */
 export function endpoint(provider: Provider, baseUrl: string): string {
   if (provider === 'gemini') return GEMINI_URL
-  const root = baseUrl.replace(/\/+$/, '')
-  return provider === 'typesafe' ? `${root}/v1/systemone` : `${root}/evaluation-model`
+  if (provider === 'typesafe') return typesafeEndpoint(baseUrl)
+  return `${baseUrl.replace(/\/+$/, '')}/evaluation-model`
 }
 
 /** A comma-separated option as a set of trimmed, non-empty names. */

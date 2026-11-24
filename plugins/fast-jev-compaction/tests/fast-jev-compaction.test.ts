@@ -2,21 +2,14 @@ import { describe, expect, test as it } from 'claude-code/testing';
 import {
   applyDecisions,
   batchCalls,
-  buildJevRequest,
-  collectToolCalls,
   compact,
   decideCall,
-  estimateTokens,
-  fitState,
-  parseJevResponse,
   reductionRatio,
   resolveOptions,
-  type HistoryToolCall,
-  type JevAsker,
-  type JevQuestions,
-  type Message,
-  type ToolCall,
-} from '../src/index.ts';
+} from '../src/compact.ts';
+import { buildJevRequest, parseJevResponse } from '../src/request.ts';
+import { collectToolCalls, estimateTokens, fitState } from '../src/state.ts';
+import type { HistoryToolCall, JevAsker, JevQuestions, Message, ToolCall } from '../src/types.ts';
 
 function message(role: Message['role'], text: string, extra: Partial<Message> = {}): Message {
   return { role, text, toolUses: [], ...extra };
