@@ -423,6 +423,7 @@ export const register: Register = (on, options) => {
     // `$.command.list()` may name a skill the model is not allowed to invoke
     // whenever the listing does not narrow the catalog; its own frontmatter tells.
     const barred: string[] = []
+    let shortlistBarred = false
     if (active && rerankEnabled && wide && passesGate(wide, policy)) {
       const candidates: Candidate[] = []
       for (const skill of shortlistOf(wide, skills, policy.shortlist)) {
@@ -433,6 +434,7 @@ export const register: Register = (on, options) => {
         }
         candidates.push({ ...skill, detail: detailOf(skill, body, excerptChars) })
       }
+      shortlistBarred = candidates.length === 0 && barred.length > 0
       if (candidates.length > 0) {
         const rerankStartedAt = await $.clock.now()
         rerankAttempted = true
@@ -449,7 +451,11 @@ export const register: Register = (on, options) => {
     }
 
     const offered = barred.length > 0 ? skills.filter((skill) => !barred.includes(skill.name)) : skills
-    let decision = decide(wide, rerank, offered, policy, rerankAttempted)
+    // Without this, decide would re-shortlist from the skills below the barred
+    // ones and suggest one that never had its false-positive check.
+    let decision = shortlistBarred
+      ? { name: null, reason: 'every shortlisted skill has disable-model-invocation' }
+      : decide(wide, rerank, offered, policy, rerankAttempted)
     let pick = decision.name ? (skills.find((skill) => skill.name === decision.name) ?? null) : null
     // The winner's own frontmatter has the last word, whichever path picked it.
     if (pick && !barred.includes(pick.name) && !modelInvocable(await markdownOf(pick, pluginOf.get(pick.name)))) {
