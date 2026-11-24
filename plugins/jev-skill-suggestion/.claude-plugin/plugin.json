@@ -1,6 +1,6 @@
 {
   "name": "jev-skill-suggestion",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Saves context when many skills are installed by showing Claude only the skill that fits each prompt, not every skill's description. Any skill still runs when you type /name.",
   "author": {
     "name": "Mateusz Gostański",
