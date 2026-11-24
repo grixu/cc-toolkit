@@ -418,12 +418,12 @@ function yesNo(provider: Provider, instructions: string): Record<string, unknown
   return { type: provider === 'gateway' ? 'boolean' : 'noul', instructions }
 }
 
-/** The most options Gemini takes in one choice (256 is a 400, checked live). */
+/** The most options Gemini takes in one choice; it also needs at least 2 (1 and 256 are a 400, checked live). */
 export const GEMINI_MAX_CHOICE = 255
 
 /** Whether the backend can take the whole catalog in one ranking choice. */
 export function ranksCatalog(provider: Provider | null, skillCount: number): boolean {
-  return provider !== null && (provider !== 'gemini' || skillCount <= GEMINI_MAX_CHOICE)
+  return provider !== null && (provider !== 'gemini' || (skillCount >= 2 && skillCount <= GEMINI_MAX_CHOICE))
 }
 
 /** The first request's `questions`: the ranking and the gate. */

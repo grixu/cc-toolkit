@@ -322,7 +322,10 @@ test('a one-candidate Gemini rerank sends no choice and takes the lone candidate
   expect(readRerank(answer)).toBeNull()
 })
 
-test('Gemini ranks at most 255 skills in one choice; other backends take any catalog', () => {
+test('Gemini ranks 2 to 255 skills in one choice; other backends take any catalog', () => {
+  expect(ranksCatalog('gemini', 1)).toBe(false)
+  expect(ranksCatalog('gemini', 2)).toBe(true)
+  expect(ranksCatalog('typesafe', 1)).toBe(true)
   expect(ranksCatalog('gemini', GEMINI_MAX_CHOICE)).toBe(true)
   expect(ranksCatalog('gemini', GEMINI_MAX_CHOICE + 1)).toBe(false)
   expect(ranksCatalog('typesafe', 1000)).toBe(true)

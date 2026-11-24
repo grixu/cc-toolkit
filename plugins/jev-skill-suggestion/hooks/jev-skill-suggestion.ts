@@ -390,7 +390,7 @@ export const register: Register = (on, options) => {
     let wide: Wide | null = null
     const ranks = ranksCatalog(active, skills.length)
     if (active && !ranks && logDecisions) {
-      $.ui.log(`[jev-skill-suggestion] ${skills.length} skills exceed Gemini's ${GEMINI_MAX_CHOICE}-option choice; ranking with the built-in classifier`)
+      $.ui.log(`[jev-skill-suggestion] ${skills.length} skill(s) fall outside Gemini's 2-${GEMINI_MAX_CHOICE} options per choice; ranking with the built-in classifier`)
     }
     if (active && ranks) {
       const answer = await ask(e.text, wideQuestions(active, skills), 'ranking')
