@@ -23,6 +23,7 @@ import {
   rerankQuestions,
   requestBody,
   requestHeaders,
+  restoreGeminiIds,
   selectProvider,
   shortlistOf,
   skillFileCandidates,
@@ -296,7 +297,15 @@ test('Gemini gets the state as JSON text, the TypeSafe question shapes and its k
   const body = JSON.parse(requestBody('gemini', 'fix the tests', questions, 'gemini-decision-1'))
   expect(body.model).toBe('gemini-decision-1')
   expect(JSON.parse(body.input)).toEqual({ request: 'fix the tests', recent_context: '' })
-  expect(body.questions).toEqual(questions)
+  const keys = Object.keys(questions)
+  expect(Object.keys(body.questions)).toEqual(keys.map((_, i) => `q${i}`))
+  expect(Object.keys(body.questions).every((id) => /^[A-Za-z0-9_-]{1,64}$/.test(id))).toBe(true)
+  expect(body.questions.q0).toEqual(questions[keys[0]!])
+  const answers = Object.fromEntries(keys.map((_, i) => [`q${i}`, i === 0 ? { choice: 'pdf', probabilities: { pdf: 0.9 } } : { noul: 0.8 }]))
+  const wide = readWide(restoreGeminiIds(JSON.stringify({ answers }), questions))
+  expect(wide?.ranked[0]?.name).toBe('pdf')
+  expect(wide?.gate).not.toBeNull()
+  expect(restoreGeminiIds('not json', questions)).toBe('not json')
   expect(requestHeaders('gemini', 'g', 'gemini-decision-1')).toEqual({ 'content-type': 'application/json', 'x-goog-api-key': 'g' })
   expect(endpoint('gemini', 'https://ignored.example')).toBe('https://generativelanguage.googleapis.com/v1beta/decisions')
 })

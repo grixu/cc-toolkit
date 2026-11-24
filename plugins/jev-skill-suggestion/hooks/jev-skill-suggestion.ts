@@ -106,6 +106,7 @@ import {
   rerankQuestions,
   requestBody,
   requestHeaders,
+  restoreGeminiIds,
   selectProvider,
   setupAborted,
   setupInstructions,
@@ -292,7 +293,7 @@ export const register: Register = (on, options) => {
           }),
           $.clock.sleep(timeoutMs),
         ])
-        if (response && response.ok) return response.text
+        if (response && response.ok) return active === 'gemini' ? restoreGeminiIds(response.text, questions) : response.text
         if (response) $.ui.log(`[jev-skill-suggestion] ${active} responded ${response.status} to the ${what}`)
         else $.ui.log(`[jev-skill-suggestion] ${what} passed ${timeoutMs}ms; no suggestion`)
       } catch (error) {

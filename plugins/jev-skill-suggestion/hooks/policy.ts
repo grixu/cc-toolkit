@@ -468,9 +468,29 @@ export function requestBody(
   model: string,
 ): string {
   const state = { request: prompt, recent_context: '' }
-  if (provider === 'gemini') return JSON.stringify({ model, input: JSON.stringify(state), questions })
+  if (provider === 'gemini') return JSON.stringify({ model, input: JSON.stringify(state), questions: geminiQuestions(questions) })
   const body = provider === 'typesafe' ? { model, state, questions } : { state, questions }
   return JSON.stringify(body)
+}
+
+// Gemini takes question IDs of 1-64 characters from [A-Za-z0-9_-] only, which `gate::…` and `fits::<skill>` break,
+// so the questions travel as q0, q1, … in key order and restoreGeminiIds maps the answers back.
+function geminiQuestions(questions: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(questions).map(([, question], i) => [`q${i}`, question]))
+}
+
+/** A Gemini response with its answers under the question keys that were asked. */
+export function restoreGeminiIds(responseText: string, questions: Record<string, unknown>): string {
+  const answers = answersOf(responseText)
+  if (!answers) return responseText
+  const keys = Object.keys(questions)
+  const restored: Answers = {}
+  for (const [id, answer] of Object.entries(answers)) {
+    const index = /^q(\d+)$/.exec(id)?.[1]
+    const key = index === undefined ? undefined : keys[Number(index)]
+    if (key !== undefined) restored[key] = answer
+  }
+  return JSON.stringify({ answers: restored })
 }
 
 /** The request headers. */
