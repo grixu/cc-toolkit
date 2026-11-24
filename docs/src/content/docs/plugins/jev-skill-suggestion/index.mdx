@@ -89,7 +89,7 @@ A `ready on the built-in classifier, no key set` line when you did set a key mea
 
 With a key set, the prompt and every candidate skill's name and description go to the backend that key belongs to (TypeSafe, Google or Vercel), and the second request adds the first 700 characters of each shortlisted `SKILL.md`.
 Nothing else is sent.
-With no key, nothing leaves your machine.
+With no key, the prompt and the skills' names and descriptions go only to Claude Code's own small model, and no third party receives them.
 
 ## Options
 

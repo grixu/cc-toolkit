@@ -181,7 +181,7 @@ If `/skills` still shows one of your own skills as `on` after `setup` and a rest
 
 ## Privacy
 
-With a key set, the prompt text and every candidate skill's name and one-line description leave the machine on the first request, and the first `excerptChars` of each shortlisted skill's SKILL.md on the second, to whichever backend the key belongs to: TypeSafe, Google or Vercel. Nothing else. With no key set, nothing leaves the machine.
+With a key set, the prompt text and every candidate skill's name and one-line description leave the machine on the first request, and the first `excerptChars` of each shortlisted skill's SKILL.md on the second, to whichever backend the key belongs to: TypeSafe, Google or Vercel. Nothing else. With no key set, the prompt text and the skills' names and descriptions go only to Claude Code's own small model, and no third party receives them.
 
 ## Options
 
