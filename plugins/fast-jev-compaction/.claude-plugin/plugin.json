@@ -1,6 +1,6 @@
 {
   "name": "fast-jev-compaction",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Compacts sessions early by removing the tool calls and outputs Claude no longer needs, keeping your messages and Claude's replies word for word. Needs an API key; without one, or when that frees too little space, the usual summary runs.",
   "author": {
     "name": "Mateusz Gostański",

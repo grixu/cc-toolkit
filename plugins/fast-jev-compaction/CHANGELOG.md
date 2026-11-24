@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-24
+
 ### Added
 
 - Ported from tamaratran/fast-jev-compaction 0.3.0 (MIT), as a Claude Code plugin only: the npm library entry points and the demo are not included.
