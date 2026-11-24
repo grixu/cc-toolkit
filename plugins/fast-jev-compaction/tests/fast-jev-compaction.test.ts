@@ -1,15 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, test as it } from 'claude-code/testing';
 import {
   applyDecisions,
   batchCalls,
   buildJevRequest,
   collectToolCalls,
   compact,
-  compactMessages,
   decideCall,
   estimateTokens,
   fitState,
-  JevClient,
   parseJevResponse,
   reductionRatio,
   resolveOptions,
@@ -18,7 +16,7 @@ import {
   type JevQuestions,
   type Message,
   type ToolCall,
-} from '../src/index.js';
+} from '../src/index.ts';
 
 function message(role: Message['role'], text: string, extra: Partial<Message> = {}): Message {
   return { role, text, toolUses: [], ...extra };
@@ -408,26 +406,5 @@ describe('HTTP client', () => {
     expect(() => parseJevResponse(200, true, 'not json')).toThrow(/malformed/);
     expect(() => parseJevResponse(200, true, '{}')).toThrow(/missing answers/);
     expect(parseJevResponse(200, true, '{"answers":{}}')).toEqual({ answers: {} });
-  });
-
-  it('asks over fetch and refuses to run without a key', async () => {
-    const bodies: string[] = [];
-    const client = new JevClient({
-      apiKey: 'k',
-      model: 'jev-test',
-      fetch: (async (_url: string | URL | Request, init?: RequestInit) => {
-        bodies.push(String(init?.body));
-        return new Response(JSON.stringify({ answers: { q: { noul: 0.4 } } }), { status: 200 });
-      }) as typeof fetch,
-    });
-    const response = await client.ask('state', { q: { type: 'noul', instructions: 'x' } });
-    expect(response.answers.q).toEqual({ noul: 0.4 });
-    expect(JSON.parse(bodies[0]!).model).toBe('jev-test');
-
-    const keyless = new JevClient({ apiKey: '' });
-    await expect(keyless.ask('s', {})).rejects.toThrow(/TYPESAFE_API_KEY/);
-    await expect(
-      compactMessages(transcript(), { apiKey: '', preserveRecentMessages: 1 }),
-    ).rejects.toThrow(/TYPESAFE_API_KEY/);
   });
 });

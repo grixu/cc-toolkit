@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, test as it } from 'claude-code/testing';
 import {
   compactSession,
   decisionLog,
@@ -7,7 +7,7 @@ import {
   summarize,
   toSessionMessages,
 } from '../hooks/fast-jev.ts';
-import { applyDecisions, collectToolCalls, decideCall, type Message } from '../src/index.js';
+import { applyDecisions, collectToolCalls, decideCall, type Message } from '../src/index.ts';
 
 type SessionMessage = Message & { handle?: string };
 
