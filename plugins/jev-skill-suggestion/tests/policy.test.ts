@@ -290,6 +290,24 @@ test('the request carries the prompt as state and the model where each backend e
   expect(requestHeaders('typesafe', 'k', 'jev-latest').authorization).toBe('Bearer k')
 })
 
+test('Gemini gets the state as JSON text, the TypeSafe question shapes and its key in x-goog-api-key', () => {
+  const questions = wideQuestions('gemini', skills) as Record<string, { type: string }>
+  expect(questions['gate::prose_suffices']?.type).toBe('noul')
+  const body = JSON.parse(requestBody('gemini', 'fix the tests', questions, 'gemini-decision-1'))
+  expect(body.model).toBe('gemini-decision-1')
+  expect(JSON.parse(body.input)).toEqual({ request: 'fix the tests', recent_context: '' })
+  expect(body.questions).toEqual(questions)
+  expect(requestHeaders('gemini', 'g', 'gemini-decision-1')).toEqual({ 'content-type': 'application/json', 'x-goog-api-key': 'g' })
+  expect(endpoint('gemini', 'https://ignored.example')).toBe('https://generativelanguage.googleapis.com/v1beta/decisions')
+})
+
+test('provider selection takes TypeSafe, then Gemini, then the Gateway under auto', () => {
+  expect(selectProvider('auto', 'ts', 'gw', 'gm')).toBe('typesafe')
+  expect(selectProvider('auto', '', 'gw', 'gm')).toBe('gemini')
+  expect(selectProvider('gemini', 'ts', 'gw', 'gm')).toBe('gemini')
+  expect(selectProvider('gemini', 'ts', 'gw', '')).toBeNull()
+})
+
 test('provider selection prefers TypeSafe, and a forced backend without its key is null', () => {
   expect(selectProvider('auto', 'ts', 'gw')).toBe('typesafe')
   expect(selectProvider('auto', '', 'gw')).toBe('gateway')

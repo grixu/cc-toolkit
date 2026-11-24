@@ -33,11 +33,12 @@
  *                        list and said yes; the model makes the edit with its
  *                        own tools, so it shows and asks like any other.
  *
- * Jev is reached one of two ways, whichever key is configured: TypeSafe's
- * own API (`typesafeApiKey`), which reports a calibrated confidence, or the
- * Vercel AI Gateway (`gatewayApiKey`), which does not. With neither, the
- * engine's own `$.model.classify` stands in with a single request and no
- * gate, so the mod is useful without any account.
+ * The decision comes from whichever backend has a key: TypeSafe's Jev on its
+ * own API (`typesafeApiKey`), Gemini Decision (`geminiApiKey`, model
+ * gemini-decision-1), both of which report a confidence, or Jev on the Vercel
+ * AI Gateway (`gatewayApiKey`), which does not. With none, the engine's own
+ * `$.model.classify` stands in with a single request and no gate, so the mod
+ * is useful without any account.
  *
  * The candidates come from `$.command.list()`, not from the listing: the
  * listing is only rendered at the turn's first request, after `prompt.submit`
@@ -59,8 +60,10 @@
  * latency budget lets the prompt through with no suggestion, and the listing
  * hook always answers the same way, so the model's prompt cache holds.
  *
- * The API key comes from the plugin's options (userConfig "typesafeApiKey"
- * or "gatewayApiKey"). Never hardcode it in this file.
+ * The API keys come from the plugin's options (userConfig "typesafeApiKey",
+ * "geminiApiKey" or "gatewayApiKey"), else from TYPESAFE_API_KEY and
+ * GEMINI_DECISIONS_API_KEY or GEMINI_API_KEY in the environment, so no key
+ * has to travel on the command line. Never hardcode one in this file.
  *
  * Needs Claude Code >= 2.1.278: the
  * `prompt.attachment` event is that release's. Typed against Anthropic's
@@ -116,6 +119,7 @@ import {
   wideQuestions,
 } from './policy.ts'
 import type { Candidate, PolicyConfig, Provider, Rerank, Skill, Wide } from './policy.ts'
+import { providerKeys } from './providers/index.ts'
 
 /** Prompt origins that are not a task of the person's: nothing to suggest for. */
 const NOT_A_TASK = new Set([
@@ -135,31 +139,42 @@ export const register: Register = (on, options) => {
   const flag = (key: string, fallback: boolean) =>
     typeof options[key] === 'boolean' ? (options[key] as boolean) : fallback
 
-  // TypeSafe's own API is preferred when both keys are set: it is the only
-  // one that reports a calibrated confidence. `provider` forces one,
-  // including "builtin" to use neither.
-  const typesafeKey = text('typesafeApiKey', '')
-  const gatewayKey = text('gatewayApiKey', '')
+  // `provider` forces one backend, including "builtin" to use none; `auto`
+  // takes TypeSafe, then Gemini, then the Gateway, whichever has a key.
   const forced = text('provider', 'auto')
-  const active: Provider | null = selectProvider(forced, typesafeKey, gatewayKey)
+  let active: Provider | null = null
+  let apiKey = ''
+  let modelId = ''
+  let url = ''
+  let unusableReported = true
+  let resolved = false
+  const keyOptions = { typesafe_api_key: text('typesafeApiKey', ''), gemini_api_key: text('geminiApiKey', '') }
 
-  // Each backend keeps its own URL and model, so an override written for one
-  // can never be sent to the other when `auto` picks differently than expected.
-  const apiKey = active === 'typesafe' ? typesafeKey : active === 'gateway' ? gatewayKey : ''
-  const modelId = !active
-    ? ''
-    : active === 'typesafe'
-      ? text('typesafeModel', DEFAULT_MODEL.typesafe)
-      : text('gatewayModel', DEFAULT_MODEL.gateway)
-  const url = !active
-    ? ''
-    : active === 'typesafe'
-      ? endpoint('typesafe', text('typesafeBaseUrl', DEFAULT_BASE_URL.typesafe))
-      : endpoint('gateway', text('gatewayBaseUrl', DEFAULT_BASE_URL.gateway))
-
-  // A backend named in the options but missing its key degrades to the
-  // built-in classifier, which is silent; say so once, when a hook first runs.
-  let unusableReported = forced === 'auto' || forced === 'builtin' || active !== null
+  // The environment is only readable through `$`, so the backend is settled
+  // when the first hook runs rather than at registration.
+  const settleBackend = (keys: { typesafe: string; gemini: string }) => {
+    resolved = true
+    const gatewayKey = text('gatewayApiKey', '')
+    active = selectProvider(forced, keys.typesafe, gatewayKey, keys.gemini)
+    // Each backend keeps its own URL and model, so an override written for one
+    // can never be sent to another when `auto` picks differently than expected.
+    if (active === 'typesafe') {
+      apiKey = keys.typesafe
+      modelId = text('typesafeModel', DEFAULT_MODEL.typesafe)
+      url = endpoint('typesafe', text('typesafeBaseUrl', DEFAULT_BASE_URL.typesafe))
+    } else if (active === 'gemini') {
+      apiKey = keys.gemini
+      modelId = DEFAULT_MODEL.gemini
+      url = endpoint('gemini', '')
+    } else if (active === 'gateway') {
+      apiKey = gatewayKey
+      modelId = text('gatewayModel', DEFAULT_MODEL.gateway)
+      url = endpoint('gateway', text('gatewayBaseUrl', DEFAULT_BASE_URL.gateway))
+    }
+    // A backend named in the options but missing its key degrades to the
+    // built-in classifier, which is silent; say so once.
+    unusableReported = forced === 'auto' || forced === 'builtin' || active !== null
+  }
 
   const hideListing = flag('hideListing', true)
   // "content": the mod reads the chosen skill's SKILL.md and attaches it, so
@@ -209,6 +224,7 @@ export const register: Register = (on, options) => {
   let displayToId: Map<string, string> | null = null
 
   on('prompt.attachment', { type: 'skill_listing' }, async ($, e, next) => {
+    if (!resolved) settleBackend(await providerKeys($, keyOptions))
     if (!announced) {
       announced = true
       if (logDecisions) {
@@ -246,6 +262,7 @@ export const register: Register = (on, options) => {
   })
 
   on('prompt.submit', async ($, e, next) => {
+    if (!resolved) settleBackend(await providerKeys($, keyOptions))
     if (!announced) {
       announced = true
       if (logDecisions) {

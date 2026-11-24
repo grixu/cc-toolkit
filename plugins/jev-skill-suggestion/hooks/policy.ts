@@ -18,11 +18,14 @@
  *              per candidate: does this skill do the specific thing asked?
  *              Every `fits` may come back low, and then nothing is suggested.
  *
- * Two backends speak to the same model with different wire shapes:
+ * Three backends, two of them the same model, with different wire shapes:
  *
  *   typesafe  POST https://api.typesafe.ai/v1/systemone
  *             `{ model, state, questions }`; a yes/no question is a `noul`
  *             and every answer carries its own `confidence`.
+ *   gemini    POST https://generativelanguage.googleapis.com/v1beta/decisions
+ *             `{ model: "gemini-decision-1", input, questions }`, the state
+ *             as JSON text; questions and answers as on TypeSafe.
  *   gateway   POST https://ai-gateway.vercel.sh/v4/ai/evaluation-model
  *             `{ state, questions }` with the model in a header; a yes/no
  *             question is a `boolean` answered as `probability`.
@@ -31,7 +34,9 @@
  * @ai-sdk/gateway and @ai-sdk/provider.
  */
 
-export type Provider = 'typesafe' | 'gateway'
+import { GEMINI_MODEL, GEMINI_URL } from './providers/gemini.ts'
+
+export type Provider = 'typesafe' | 'gemini' | 'gateway'
 
 /** One skill as the model could be told about it: its name and one line. */
 export interface Skill {
@@ -68,33 +73,43 @@ export interface Rerank {
 /** The label the built-in classifier answers when no skill applies. */
 export const NONE = 'none'
 
-export const DEFAULT_BASE_URL: Record<Provider, string> = {
+export const DEFAULT_BASE_URL: Record<Exclude<Provider, 'gemini'>, string> = {
   typesafe: 'https://api.typesafe.ai',
   gateway: 'https://ai-gateway.vercel.sh/v4/ai',
 }
 
 export const DEFAULT_MODEL: Record<Provider, string> = {
   typesafe: 'jev-latest',
+  gemini: GEMINI_MODEL,
   gateway: 'typesafe-ai/jev',
 }
 
 /**
  * Which backend a configuration asks for, or null for the built-in
- * classifier. `auto` prefers TypeSafe, since it is the only one that reports
- * a calibrated confidence; a forced backend whose key is missing resolves to
- * null rather than falling through to the other one's key.
+ * classifier. `auto` prefers TypeSafe, the model the thresholds were set on,
+ * then Gemini, which also reports a confidence, then the Gateway, which does
+ * not; a forced backend whose key is missing resolves to null rather than
+ * falling through to another one's key.
  */
-export function selectProvider(forced: string, typesafeKey: string, gatewayKey: string): Provider | null {
+export function selectProvider(
+  forced: string,
+  typesafeKey: string,
+  gatewayKey: string,
+  geminiKey = '',
+): Provider | null {
   if (forced === 'builtin') return null
   if (forced === 'typesafe') return typesafeKey ? 'typesafe' : null
+  if (forced === 'gemini') return geminiKey ? 'gemini' : null
   if (forced === 'gateway') return gatewayKey ? 'gateway' : null
   if (typesafeKey) return 'typesafe'
+  if (geminiKey) return 'gemini'
   if (gatewayKey) return 'gateway'
   return null
 }
 
-/** The full endpoint a backend posts to. */
+/** The full endpoint a backend posts to; Gemini's is fixed. */
 export function endpoint(provider: Provider, baseUrl: string): string {
+  if (provider === 'gemini') return GEMINI_URL
   const root = baseUrl.replace(/\/+$/, '')
   return provider === 'typesafe' ? `${root}/v1/systemone` : `${root}/evaluation-model`
 }
@@ -400,7 +415,7 @@ const INVERTED = new Set(['prose_suffices'])
 
 /** The same yes/no question under two names. */
 function yesNo(provider: Provider, instructions: string): Record<string, unknown> {
-  return { type: provider === 'typesafe' ? 'noul' : 'boolean', instructions }
+  return { type: provider === 'gateway' ? 'boolean' : 'noul', instructions }
 }
 
 /** The first request's `questions`: the ranking and the gate. */
@@ -445,7 +460,7 @@ export function rerankQuestions(
   return questions
 }
 
-/** A request body. The Gateway carries the model in a header instead. */
+/** A request body. The Gateway carries the model in a header instead; Gemini takes the state as text. */
 export function requestBody(
   provider: Provider,
   prompt: string,
@@ -453,12 +468,14 @@ export function requestBody(
   model: string,
 ): string {
   const state = { request: prompt, recent_context: '' }
+  if (provider === 'gemini') return JSON.stringify({ model, input: JSON.stringify(state), questions })
   const body = provider === 'typesafe' ? { model, state, questions } : { state, questions }
   return JSON.stringify(body)
 }
 
 /** The request headers. */
 export function requestHeaders(provider: Provider, apiKey: string, model: string): Record<string, string> {
+  if (provider === 'gemini') return { 'content-type': 'application/json', 'x-goog-api-key': apiKey }
   const common = { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }
   if (provider === 'typesafe') return common
   return {

@@ -19,7 +19,14 @@
     "typesafeApiKey": {
       "type": "string",
       "title": "TypeSafe API key",
-      "description": "Key for TypeSafe's own API; preferred over the Gateway, since only it reports a calibrated confidence",
+      "description": "Key for TypeSafe's own API; preferred over Gemini and the Gateway. Leave empty to read TYPESAFE_API_KEY",
+      "default": "",
+      "sensitive": true
+    },
+    "geminiApiKey": {
+      "type": "string",
+      "title": "Gemini API key",
+      "description": "Gemini Developer API key for the Decisions API (gemini-decision-1). Leave empty to read GEMINI_DECISIONS_API_KEY, then GEMINI_API_KEY",
       "default": "",
       "sensitive": true
     },
@@ -33,11 +40,12 @@
     "provider": {
       "type": "string",
       "title": "Backend",
-      "description": "Which backend to use; \"auto\" picks TypeSafe when its key is set, then the Gateway, then the built-in classifier",
+      "description": "Which backend to use; \"auto\" picks TypeSafe when its key is set, then Gemini, then the Gateway, then the built-in classifier",
       "default": "auto",
       "options": [
         "auto",
         "typesafe",
+        "gemini",
         "gateway",
         "builtin"
       ]
