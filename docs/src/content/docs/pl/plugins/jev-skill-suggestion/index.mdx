@@ -1,0 +1,120 @@
+---
+title: jev-skill-suggestion
+description: Oszczędza kontekst, gdy masz dużo skilli, bo pokazuje Claude’owi tylko skill pasujący do promptu zamiast opisów wszystkich skilli. Każdy skill nadal uruchomisz, wpisując /nazwa.
+group: start
+sidebar:
+  order: 1
+---
+
+Claude Code w każdej sesji wysyła modelowi listę wszystkich zainstalowanych skilli, po jednej linii na skill, niezależnie od tego, czy prompt któregoś potrzebuje.
+Na komputerze z wieloma skillami to ponad sześćdziesiąt linii.
+jev-skill-suggestion wstrzymuje tę listę.
+Do każdego promptu model decyzyjny wybiera z opisów skilli najwyżej jeden skill, a plugin sam dołącza do promptu jego `SKILL.md`.
+
+Skille zostają zainstalowane, a wpisanie `/nazwa` nadal uruchamia każdy z nich.
+
+Plugin jest portem [moda jev-skill-suggestion](https://github.com/davila7/claude-code-templates/tree/main/cli-tool/components/mods/productivity/jev-skill-suggestion) 0.1.0.
+Ta kopia dodaje Gemini Decision jako backend i czyta klucze API ze zmiennych środowiskowych, więc żaden klucz nie musi trafiać do wiersza poleceń.
+
+## Gdzie działa
+
+jev-skill-suggestion nie należy do żadnego etapu [cyklu pracy](/pl/lifecycle/).
+To plugin pomocniczy, który działa w każdej sesji, przy każdym prompcie wpisanym w głównej rozmowie.
+Subagent zachowuje własną listę skilli.
+
+## Instalacja i konfiguracja
+
+Plugin wymaga Claude Code 2.1.278 lub nowszego.
+
+1. **Ustaw klucz.** Wyeksportuj `TYPESAFE_API_KEY` albo `GEMINI_DECISIONS_API_KEY` przed uruchomieniem `claude` albo ustaw klucz w `/plugin` → jev-skill-suggestion → configure. Bez klucza plugin też działa, z małym modelem samego Claude Code (zobacz [Backendy i klucze](#backendy-i-klucze)). Jeśli masz moda z `claude-code-templates --mod`, usuń jego kopię `.claude/skills/jev-skill-suggestion/`, bo inaczej przy każdym prompcie działają obie.
+2. **Ukryj skille przed modelem.** Uruchom `/jev-skill-suggestion:setup`. Zanim cokolwiek zmieni, pokazuje trzy listy: skille, które ustawi na `user-invocable-only` w `~/.claude/settings.json`, wbudowane skille Claude Code (wyłączane przez `disableBundledSkills: true`) i skille z pluginów, których nie da się ukryć. Gdy się zgodzisz, Claude zapisuje stare wartości w `~/.claude/jev-skill-suggestion.skill-overrides.backup.json`, a potem edytuje `settings.json`. Ponowne uruchomienie proponuje tylko to, co jeszcze zostało do zmiany.
+3. **Uruchom Claude Code ponownie.** `/skills` i `/context` czytają ustawienia przy starcie.
+4. **Sprawdź.** `/skills` pokazuje każdy ukryty skill jako `user-only`. Poproś o coś, co robi jeden z twoich skilli: wiersz statusu pokaże `jev · skill: <nazwa>`, a Claude wykona kroki tego skilla.
+5. **Cofnij.** `/jev-skill-suggestion:setup restore` przywraca zapisane wartości. Uruchom to przed odinstalowaniem pluginu, bo inaczej skille zostaną ukryte i nic ich nie załaduje.
+
+Plugin wstrzymuje listę od pierwszego promptu, jeszcze przed `setup`.
+Dopiero `setup` sprawia, że `/skills` i `/context` pokazują oszczędność.
+
+## Backendy i klucze
+
+| Backend | Model | Klucz |
+|---|---|---|
+| `typesafe` | `jev-latest` | `typesafeApiKey`, potem `TYPESAFE_API_KEY` |
+| `gemini` | `gemini-decision-1` | `geminiApiKey`, potem `GEMINI_DECISIONS_API_KEY`, potem `GEMINI_API_KEY` |
+| `gateway` | `typesafe-ai/jev` w Vercel AI Gateway | `gatewayApiKey` |
+| `builtin` | mały model Claude Code | brak |
+
+Tabela 1. Backendy jev-skill-suggestion.
+
+Przy `provider` ustawionym na `auto`, czyli domyślnie, odpowiada pierwszy backend z kluczem, w kolejności z tabeli.
+Progi dobrano pod Jev, dlatego TypeSafe jest pierwszy.
+Gemini przyjmuje od 2 do 255 opcji w jednym pytaniu, więc przy jednym skillu albo ponad 255 wybiera model wbudowany.
+`provider` wymuszony na backend bez klucza przechodzi na model wbudowany i raz pisze o tym w transkrypcie.
+
+Model wbudowany daje jedną odpowiedź, bez bramki i bez drugiego zapytania.
+
+## Jak decyduje
+
+Każdy prompt dostaje dwa zapytania, według [cookbooka skill-suggestion](https://docs.typesafe.ai/cookbooks/skill_suggestion) od TypeSafe.
+
+1. **Ranking wszystkich skilli.** Model układa wszystkie kandydujące skille według ich jednolinijkowych opisów. Do tego odpowiada na trzy pytania o sam prompt: czy każe Claude’owi działać na twoich plikach albo usługach, czy ekspert sięgnąłby po opisaną procedurę i czy osoba z ogólną wiedzą odpowiedziałaby samym tekstem. Gdy ich średnia jest poniżej `gateThreshold` (0.3), nic nie jest proponowane.
+2. **Ponowne czytanie trzech pierwszych.** Model czyta pierwsze 700 znaków `SKILL.md` każdego skilla z krótkiej listy i dla każdego osobno ocenia, czy robi to, o co prosi prompt. Gdy najlepsza ocena jest poniżej `fitsThreshold` (0.3), nic nie jest proponowane. W przeciwnym razie zwycięzca trafia do promptu.
+
+Drugie zapytanie rozróżnia skille, które w jednej linii wyglądają tak samo, na przykład jeden edytujący pliki `.pptx` i drugi, który je tworzy.
+
+Skill z `disable-model-invocation: true` we frontmatterze nigdy nie jest proponowany.
+Prompty, które nie są zadaniem, na przykład powiadomienia albo wpisane `/nazwa`, nie dostają propozycji.
+Nieudane zapytanie, przekroczony `timeoutMs` albo zniekształcona odpowiedź przepuszczają prompt bez propozycji: plugin nigdy nie blokuje promptu.
+
+## Jak sprawdzić, że działa
+
+Przy włączonym `logDecisions`, domyślnie, transkrypt pokazuje każdy krok:
+
+```
+[jev-skill-suggestion] ready on typesafe (https://api.typesafe.ai/v1/systemone); withholding the skill listing
+[jev-skill-suggestion] suggesting /pptx-author: rerank of 3, fits 0.38
+[jev-skill-suggestion] injected /pptx-author from /home/me/.claude/skills/pptx-author/SKILL.md (4210 characters)
+[jev-skill-suggestion] withheld the skill listing (58 skills, 9127 characters); kept listed: none
+```
+
+Wiersz statusu pod promptem pokazuje `jev · skill: <nazwa>` albo `jev · no skill`.
+
+`/context` szacuje wiersz Skills z listy skilli i nie pyta pluginu, więc przed `setup` pokazuje to samo z pluginem i bez niego.
+Faktyczny spadek widać w `input_tokens` pierwszego zapytania w pliku `.jsonl` sesji w `~/.claude/projects/`.
+
+Gdy nie widać żadnych linii, sprawdź po kolei: uruchomienie `claude -p` zapisuje je tylko w `~/.claude/debug/<session-id>.txt`; `/plugin` pokazuje, czy plugin jest włączony; Claude Code starszy niż 2.1.287 może mieć wyłączone mody.
+Linia `ready on the built-in classifier, no key set`, choć klucz ustawiłeś, znaczy, że klucz nie dotarł ani do środowiska, ani do wpisu `jev-skill-suggestion@cc-toolkit` w `pluginConfigs`.
+
+## Prywatność
+
+Z ustawionym kluczem prompt oraz nazwa i opis każdego kandydującego skilla trafiają do backendu, do którego należy klucz (TypeSafe, Google albo Vercel), a drugie zapytanie dokłada pierwsze 700 znaków `SKILL.md` każdego skilla z krótkiej listy.
+Nic więcej nie jest wysyłane.
+Bez klucza nic nie opuszcza twojego komputera.
+
+## Opcje
+
+Ustawisz je w `/plugin` → jev-skill-suggestion → configure albo w `pluginConfigs` → `jev-skill-suggestion@cc-toolkit` → `options` w `~/.claude/settings.json`.
+Klucze ustawione w `/plugin` są przechowywane jako sekrety.
+
+| Opcja | Domyślnie | Co robi |
+|---|---|---|
+| `provider` | `auto` | `auto`, `typesafe`, `gemini`, `gateway` albo `builtin` |
+| `inject` | `content` | `content` dołącza `SKILL.md` wybranego skilla; `suggest` tylko podaje jego nazwę dla narzędzia Skill |
+| `hideListing` | `true` | Wstrzymuje listę skilli Claude Code |
+| `rerank` | `true` | Wysyła drugie zapytanie dla krótkiej listy |
+| `gateThreshold` | `0.3` | Średnia trzech pytań o prompt, poniżej której nic nie jest proponowane |
+| `fitsThreshold` | `0.3` | Najlepsza ocena dopasowania, poniżej której krótka lista odpada |
+| `alwaysListed` | brak | Skille po przecinku, które zostają na liście |
+| `neverSuggested` | brak | Skille po przecinku, których model nigdy nie dostaje do wyboru |
+| `timeoutMs` | `800` | Limit czasu na zapytanie |
+| `logDecisions` | `true` | Zapisuje każdą decyzję w transkrypcie |
+
+Tabela 2. Główne opcje jev-skill-suggestion.
+
+Pozostałe, czyli klucze, adresy bazowe, modele, `shortlist` i `excerptChars`, opisuje [README pluginu](https://github.com/grixu/cc-toolkit/blob/main/plugins/jev-skill-suggestion/README.md#options).
+`inject: "suggest"` z `hideListing: false` uruchamia cookbook w opublikowanej postaci: lista zostaje, a propozycja dochodzi na wierzchu.
+
+## Następne kroki
+
+- [fast-jev-compaction](/pl/plugins/fast-jev-compaction/): ten sam model decyzyjny, użyty do kompaktowania sesji.
+- [Pluginy](/pl/plugins/): pozostałe pluginy w marketplace.

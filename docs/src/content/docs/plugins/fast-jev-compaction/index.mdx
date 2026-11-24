@@ -1,0 +1,92 @@
+---
+title: fast-jev-compaction
+description: Compacts sessions early by removing the tool calls and outputs Claude no longer needs, keeping your messages and Claude's replies word for word. Needs an API key; without one, or when that frees too little space, the usual summary runs.
+group: start
+sidebar:
+  order: 1
+---
+
+Claude Code's compaction replaces the conversation with a summary.
+fast-jev-compaction keeps the conversation and removes only the tool calls and outputs that a decision model judges Claude no longer needs.
+What it keeps stays word for word: your messages and Claude's replies are never rewritten.
+When it can't remove enough, Claude Code's own summary runs as usual.
+
+The plugin is a port of [fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) 0.3.0.
+This copy adds Gemini Decision as a backend and reads every key from the environment as well as from the plugin options.
+
+## Where it works
+
+fast-jev-compaction belongs to no stage of the [lifecycle](/lifecycle/).
+It's a supporting plugin that works in every session.
+There's no command to type: it runs on `/compact`, on auto-compaction, and at the end of any turn once context usage reaches `compactAtPercent` (60% by default).
+
+## Install
+
+If you installed the upstream plugin (`fast-jev-compaction@fast-jev-compaction`), uninstall it, or both compact the same session.
+
+## Keys
+
+It needs a key for one of two backends:
+
+- **TypeSafe's Jev:** `TYPESAFE_API_KEY` in the environment, or the `apiKey` option.
+- **Google's Gemini Decision** (`gemini-decision-1`): a Gemini Developer API key with access to the Decisions API, in `GEMINI_DECISIONS_API_KEY` or `GEMINI_API_KEY`, or the `geminiApiKey` option.
+
+With neither, every compaction falls back to Claude Code's summary.
+
+## How it works
+
+1. Every tool call is paired with its output. Calls in the first message and in the newest `preserveRecentMessages` messages are never touched.
+2. The model gets the whole conversation, oldest first, with each tool output replaced by a short note such as `ok, 4213 chars (omitted)`. Nothing is summarized.
+3. When the conversation doesn't fit into `maxStateTokens`, it's shortened in stages, each only when the one before wasn't enough: tool inputs truncated, long texts abridged oldest first, old messages collapsed to a note, old tool calls cut to one line, old messages with no calls left out.
+4. For every call that may go, the model answers two yes-or-no questions: should the call stay, and should its full output stay.
+5. The questions are split across as many requests as `maxRequestTokens` needs, and the requests run at once.
+6. When the output should stay, the call and the output both stay. When only the call should stay, the output is cut to `truncateHeadChars` characters plus a note. Otherwise both go.
+7. The message list is rebuilt. No output is ever left without its call.
+
+Each outcome shows as a toast, and a `decisions:` log line lists every call with both probabilities.
+
+## When it falls back
+
+Claude Code's own summary runs instead when:
+
+- no key is set;
+- a request fails or returns a malformed answer;
+- the conversation can't be shortened to fit `maxStateTokens`;
+- the compaction would remove less than `minReductionRatio` (25%) of the characters.
+
+## Options
+
+Set them in `/plugin` → fast-jev-compaction → configure, or under `pluginConfigs` in `settings.json`.
+Keys set as options are stored as secrets.
+
+| Option | Default | What it does |
+|---|---|---|
+| `backend` | `auto` | `auto` uses TypeSafe when its key is set, otherwise Gemini; `typesafe` or `gemini` uses that one only |
+| `apiKey` | none | TypeSafe API key. Empty reads `TYPESAFE_API_KEY`, then `env.TYPESAFE_API_KEY` in Claude Code's settings |
+| `geminiApiKey` | none | Gemini API key. Empty reads `GEMINI_DECISIONS_API_KEY`, then `GEMINI_API_KEY` |
+| `keepThreshold` | `0.5` | Minimum probability that a call or output is still needed; below it, the item goes |
+| `preserveRecentMessages` | `6` | Newest messages never touched. The first message is always kept too |
+| `compactAtPercent` | `60` | Context usage at which the end of a turn asks for a compaction |
+| `minReductionRatio` | `0.25` | Minimum share of characters a compaction must remove |
+| `maxStateTokens` | `25000` | Estimated token budget for the conversation sent with every request |
+| `maxRequestTokens` | `30000` | Estimated token budget for the conversation plus one batch of questions |
+| `truncateHeadChars` | `300` | Characters kept from a dropped output; `0` keeps only the note |
+| `model` | `jev-latest` | Jev model on TypeSafe. Gemini always uses `gemini-decision-1` |
+
+Table 1. fast-jev-compaction options.
+
+## Privacy
+
+Each compaction sends the conversation, with tool outputs replaced by notes, to the backend whose key is in use: TypeSafe or Google.
+
+## Limitations
+
+- Only tool calls and outputs are removed. Text messages are abridged only in what the model reads.
+- Token counts are estimated from characters, not counted by a tokenizer.
+- A probability is no proof that an output is safe to drop. Claude can always run the tool again.
+- Every request resends the whole conversation, so a long history costs one request per handful of questions.
+
+## Next steps
+
+- [jev-skill-suggestion](/plugins/jev-skill-suggestion/): the same decision model, used to pick one skill per prompt.
+- [Plugins](/plugins/): the other plugins in the marketplace.

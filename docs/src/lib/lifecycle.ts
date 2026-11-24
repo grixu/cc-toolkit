@@ -187,6 +187,10 @@ const raw: Omit<Plugin, 'version' | 'cmd'>[] = [
     desc: { en: 'Cleans AI tells out of English and Polish prose without changing what it says.', pl: 'Usuwa ślady pisania przez AI z prozy po angielsku i po polsku, nie zmieniając jej treści.' } },
   { name: 'stop-sound', core: false, promise: { en: '', pl: '' },
     desc: { en: 'Chimes when Claude waits for you, and stays silent while subagents work.', pl: 'Daje sygnał dźwiękowy, gdy Claude czeka na ciebie, i milczy, gdy pracują subagenty.' } },
+  { name: 'jev-skill-suggestion', core: false, promise: { en: '', pl: '' },
+    desc: { en: 'Shows Claude only the skill that fits each prompt, instead of every installed skill.', pl: 'Pokazuje Claude’owi tylko skill pasujący do promptu, zamiast wszystkich zainstalowanych.' } },
+  { name: 'fast-jev-compaction', core: false, promise: { en: '', pl: '' },
+    desc: { en: 'Compacts a session by dropping the tool calls Claude no longer needs, keeping the conversation word for word.', pl: 'Kompaktuje sesję, usuwając wywołania narzędzi, których Claude już nie potrzebuje, a rozmowę zostawia słowo w słowo.' } },
 ]
 
 export const plugins: Plugin[] = raw.map((p) => ({
