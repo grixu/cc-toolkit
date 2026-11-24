@@ -101,6 +101,8 @@ for example when you paste a failed CI link. Each plugin's README covers usage a
 | Plugin | What it does | Start with |
 |---|---|---|
 | [stop-sound](plugins/stop-sound/README.md) | Chimes when Claude waits for you: when it finishes a turn and when it asks a question. Silent while subagents work. | Runs on its own once installed |
+| [jev-skill-suggestion](plugins/jev-skill-suggestion/README.md) | Saves context when many skills are installed by showing Claude only the skill that fits each prompt, not every skill's description. Any skill still runs when you type /name. | `/jev-skill-suggestion:setup`, then it runs on its own |
+| [fast-jev-compaction](plugins/fast-jev-compaction/README.md) | Compacts sessions early by removing the tool calls and outputs Claude no longer needs, keeping your messages and Claude's replies word for word. Needs an API key; without one, or when that frees too little space, the usual summary runs. | Runs on its own once installed |
 
 ## Requirements
 
@@ -119,6 +121,8 @@ Most plugins need only Claude Code. These need more:
 | code-story | Node.js 22 or later, git, `gh`; installs anti-slop with it |
 | anti-slop | Node.js 22 or later for its scan script |
 | pr-proof | A web app that runs locally; Node.js 22.18 or later, `pnpm`, `ffmpeg` with libass, `timeout` (coreutils on macOS), `gh` 2.103 or later |
+| jev-skill-suggestion | Claude Code 2.1.278 or later; optional `TYPESAFE_API_KEY`, `GEMINI_DECISIONS_API_KEY` or `GEMINI_API_KEY` (without one, Claude Code's small model picks the skill) |
+| fast-jev-compaction | `TYPESAFE_API_KEY`, or `GEMINI_DECISIONS_API_KEY` or `GEMINI_API_KEY` (without one, Claude Code's own summary runs) |
 
 Dynamic workflows are available on paid plans and with Anthropic API access. On Pro, turn them on
 in the Dynamic workflows row of `/config`.

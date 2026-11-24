@@ -1,0 +1,92 @@
+---
+title: fast-jev-compaction
+description: Kompaktuje sesję wcześnie, usuwając wywołania narzędzi i ich wyniki, których Claude już nie potrzebuje, a twoje wiadomości i odpowiedzi Claude’a zostawia słowo w słowo. Wymaga klucza API; bez niego, albo gdy zwolni za mało miejsca, działa zwykłe podsumowanie.
+group: start
+sidebar:
+  order: 1
+---
+
+Kompaktowanie w Claude Code zastępuje rozmowę podsumowaniem.
+fast-jev-compaction zostawia rozmowę i usuwa tylko te wywołania narzędzi i ich wyniki, które model decyzyjny uzna za niepotrzebne Claude’owi.
+To, co zostaje, zostaje słowo w słowo: twoje wiadomości i odpowiedzi Claude’a nigdy nie są przepisywane.
+Gdy nie da się usunąć wystarczająco dużo, działa zwykłe podsumowanie Claude Code.
+
+Plugin jest portem [fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) 0.3.0.
+Ta kopia dodaje Gemini Decision jako backend i czyta każdy klucz ze zmiennych środowiskowych, a nie tylko z opcji pluginu.
+
+## Gdzie działa
+
+fast-jev-compaction nie należy do żadnego etapu [cyklu pracy](/pl/lifecycle/).
+To plugin pomocniczy, który działa w każdej sesji.
+Nie ma komendy do wpisania: działa przy `/compact`, przy automatycznym kompaktowaniu i na końcu każdej tury, gdy zużycie kontekstu dojdzie do `compactAtPercent` (domyślnie 60%).
+
+## Instalacja
+
+Jeśli masz plugin z oryginalnego repozytorium (`fast-jev-compaction@fast-jev-compaction`), odinstaluj go, bo inaczej oba kompaktują tę samą sesję.
+
+## Klucze
+
+Plugin potrzebuje klucza do jednego z dwóch backendów:
+
+- **Jev od TypeSafe:** `TYPESAFE_API_KEY` w środowisku albo opcja `apiKey`.
+- **Gemini Decision od Google** (`gemini-decision-1`): klucz Gemini Developer API z dostępem do Decisions API, w `GEMINI_DECISIONS_API_KEY` albo `GEMINI_API_KEY`, albo opcja `geminiApiKey`.
+
+Bez żadnego z nich każde kompaktowanie przechodzi na podsumowanie Claude Code.
+
+## Jak działa
+
+1. Każde wywołanie narzędzia jest łączone w parę ze swoim wynikiem. Wywołań z pierwszej wiadomości i z `preserveRecentMessages` najnowszych wiadomości plugin nigdy nie rusza.
+2. Model dostaje całą rozmowę, od najstarszej wiadomości, z każdym wynikiem narzędzia zastąpionym krótką notką, na przykład `ok, 4213 chars (omitted)`. Nic nie jest streszczane.
+3. Gdy rozmowa nie mieści się w `maxStateTokens`, jest skracana etapami, każdy tylko wtedy, gdy poprzedni nie wystarczył: przycięte wejścia narzędzi, skrócone długie teksty od najstarszych, stare wiadomości zwinięte do notki, stare wywołania skrócone do jednej linii, pominięte stare wiadomości bez wywołań.
+4. Dla każdego wywołania, które może zniknąć, model odpowiada na dwa pytania tak lub nie: czy wywołanie ma zostać i czy ma zostać jego pełny wynik.
+5. Pytania są dzielone na tyle zapytań, ile wymaga `maxRequestTokens`, a zapytania idą równolegle.
+6. Gdy wynik ma zostać, zostają wywołanie i wynik. Gdy ma zostać tylko wywołanie, wynik jest przycinany do `truncateHeadChars` znaków z notką. W przeciwnym razie znikają oba.
+7. Lista wiadomości jest budowana od nowa. Żaden wynik nie zostaje bez swojego wywołania.
+
+Każdy wynik pokazuje się jako toast, a linia logu `decisions:` wymienia każde wywołanie z oboma prawdopodobieństwami.
+
+## Kiedy przechodzi na podsumowanie
+
+Zamiast niego działa podsumowanie Claude Code, gdy:
+
+- nie ma klucza;
+- zapytanie się nie uda albo zwróci zniekształconą odpowiedź;
+- rozmowy nie da się skrócić do `maxStateTokens`;
+- kompaktowanie usunęłoby mniej niż `minReductionRatio` (25%) znaków.
+
+## Opcje
+
+Ustawisz je w `/plugin` → fast-jev-compaction → configure albo w `pluginConfigs` w `settings.json`.
+Klucze ustawione jako opcje są przechowywane jako sekrety.
+
+| Opcja | Domyślnie | Co robi |
+|---|---|---|
+| `backend` | `auto` | `auto` używa TypeSafe, gdy jest jego klucz, a w przeciwnym razie Gemini; `typesafe` albo `gemini` używa tylko tego jednego |
+| `apiKey` | brak | Klucz API TypeSafe. Pusty czyta `TYPESAFE_API_KEY`, potem `env.TYPESAFE_API_KEY` w ustawieniach Claude Code |
+| `geminiApiKey` | brak | Klucz API Gemini. Pusty czyta `GEMINI_DECISIONS_API_KEY`, potem `GEMINI_API_KEY` |
+| `keepThreshold` | `0.5` | Minimalne prawdopodobieństwo, że wywołanie albo wynik jest jeszcze potrzebny; poniżej znika |
+| `preserveRecentMessages` | `6` | Najnowsze wiadomości, których plugin nie rusza. Pierwsza wiadomość też zawsze zostaje |
+| `compactAtPercent` | `60` | Zużycie kontekstu, przy którym koniec tury prosi o kompaktowanie |
+| `minReductionRatio` | `0.25` | Minimalna część znaków, którą kompaktowanie musi usunąć |
+| `maxStateTokens` | `25000` | Szacowany budżet tokenów na rozmowę wysyłaną z każdym zapytaniem |
+| `maxRequestTokens` | `30000` | Szacowany budżet tokenów na rozmowę razem z jedną paczką pytań |
+| `truncateHeadChars` | `300` | Znaki zostawiane z usuniętego wyniku; `0` zostawia samą notkę |
+| `model` | `jev-latest` | Model Jev w TypeSafe. Gemini zawsze używa `gemini-decision-1` |
+
+Tabela 1. Opcje fast-jev-compaction.
+
+## Prywatność
+
+Każde kompaktowanie wysyła rozmowę, z wynikami narzędzi zastąpionymi notkami, do backendu, którego klucz jest w użyciu: TypeSafe albo Google.
+
+## Ograniczenia
+
+- Usuwane są tylko wywołania narzędzi i ich wyniki. Wiadomości tekstowe są skracane tylko w tym, co czyta model.
+- Liczba tokenów jest szacowana ze znaków, a nie liczona tokenizerem.
+- Prawdopodobieństwo nie dowodzi, że wynik można bezpiecznie usunąć. Claude zawsze może uruchomić narzędzie ponownie.
+- Każde zapytanie wysyła całą rozmowę od nowa, więc długa historia kosztuje jedno zapytanie na kilka pytań.
+
+## Następne kroki
+
+- [jev-skill-suggestion](/pl/plugins/jev-skill-suggestion/): ten sam model decyzyjny, użyty do wyboru jednego skilla na prompt.
+- [Pluginy](/pl/plugins/): pozostałe pluginy w marketplace.
