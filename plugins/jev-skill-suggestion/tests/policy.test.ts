@@ -291,7 +291,6 @@ test('skill bodies are looked for where Claude Code lays skills out', () => {
   expect(skillFileCandidates('commit')).toEqual([
     '.claude/skills/commit/SKILL.md',
     '.claude/commands/commit.md',
-    '.claude/skills/commit/SKILL.md',
   ])
   expect(skillFileCandidates('engineering:code-review', 'engineering')).toContain(
     '.claude/skills/engineering/skills/code-review/SKILL.md',
@@ -525,7 +524,7 @@ test('the restore instructions read the backup, ask first, then remove it', () =
 
   expect(restore).toContain('Read /b.json')
   expect(restore).toContain('Only after a clear yes')
-  expect(restore).toContain('rm ~/.claude/jev-skill-suggestion.skill-overrides.backup.json')
+  expect(restore).toContain('rm /b.json')
 })
 
 test('the still-listed notice counts the skills and points at the setup', () => {

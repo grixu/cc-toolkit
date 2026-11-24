@@ -204,13 +204,10 @@ function safeName(name: string): boolean {
  */
 export function skillFileCandidates(name: string, plugin?: string): string[] {
   if (!safeName(name) || (plugin !== undefined && !safeName(plugin))) return []
-  const short = plugin && name.startsWith(`${plugin}:`) ? name.slice(plugin.length + 1) : name
+  const short = plugin ? withoutPluginPrefix(name, plugin) : name
   const asPath = short.replace(/:/g, '/')
-  const files = [
-    `.claude/skills/${short}/SKILL.md`,
-    `.claude/commands/${asPath}.md`,
-    `.claude/skills/${asPath}/SKILL.md`,
-  ]
+  const files = [`.claude/skills/${short}/SKILL.md`, `.claude/commands/${asPath}.md`]
+  if (asPath !== short) files.push(`.claude/skills/${asPath}/SKILL.md`)
   if (plugin) {
     // A plugin auto-loaded from a skills dir keeps its own `skills/` inside.
     files.push(`.claude/skills/${plugin}/skills/${short}/SKILL.md`)
@@ -224,14 +221,32 @@ export function commandLike(name: string): boolean {
   return name.length > 0 && !/\s/.test(name)
 }
 
+/** A SKILL.md split into its frontmatter lines (null when it has none) and its body. */
+function splitFrontmatter(markdown: string): { fields: string | null; body: string } {
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown)
+  if (!frontmatter) return { fields: null, body: markdown }
+  return { fields: frontmatter[1] as string, body: markdown.slice(frontmatter[0].length) }
+}
+
+/** One frontmatter field's value, trimmed and unquoted, or null when absent or empty. */
+function frontmatterField(fields: string | null, key: string): string | null {
+  if (fields === null) return null
+  const field = new RegExp(`^${key}:\\s*(.*)$`, 'm').exec(fields)
+  if (!field) return null
+  return (field[1] as string).trim().replace(/^["']|["']$/g, '') || null
+}
+
+function withoutPluginPrefix(name: string, plugin: string): string {
+  return name.startsWith(`${plugin}:`) ? name.slice(plugin.length + 1) : name
+}
+
+function describedAs(skill: Skill): string {
+  return skill.description || `A skill named ${skill.name}.`
+}
+
 /** The `name:` a SKILL.md's frontmatter declares, or null. */
 export function frontmatterName(markdown: string): string | null {
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown)
-  if (!frontmatter) return null
-  const field = /^name:\s*(.*)$/m.exec(frontmatter[1] as string)
-  if (!field) return null
-  const value = (field[1] as string).trim().replace(/^["']|["']$/g, '')
-  return value || null
+  return frontmatterField(splitFrontmatter(markdown).fields, 'name')
 }
 
 /**
@@ -272,7 +287,7 @@ export function syncedFileCandidates(home: string, accounts: readonly string[], 
  */
 export function pluginFileCandidates(installPath: string, name: string, plugin: string): string[] {
   if (!safeName(name) || !safeName(plugin)) return []
-  const short = name.startsWith(`${plugin}:`) ? name.slice(plugin.length + 1) : name
+  const short = withoutPluginPrefix(name, plugin)
   const root = installPath.replace(/\/+$/, '')
   return [`${root}/skills/${short}/SKILL.md`, `${root}/commands/${short.replace(/:/g, '/')}.md`]
 }
@@ -306,31 +321,22 @@ export function installPathsOf(installedJson: string, plugin: string): string[] 
  * With no file found, the one-line description alone.
  */
 export function detailOf(skill: Skill, markdown: string | null, excerptChars: number): string {
-  if (!markdown) return skill.description || `A skill named ${skill.name}.`
-  let body = markdown
-  let description = skill.description
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown)
-  if (frontmatter) {
-    body = markdown.slice(frontmatter[0].length)
-    const field = /^description:\s*(.*)$/m.exec(frontmatter[1] as string)
-    if (field) {
-      const value = (field[1] as string).trim().replace(/^["']|["']$/g, '')
-      if (value.length > description.length) description = value
-    }
-  }
+  if (!markdown) return describedAs(skill)
+  const { fields, body } = splitFrontmatter(markdown)
+  const declared = frontmatterField(fields, 'description')
+  const description = declared && declared.length > skill.description.length ? declared : skill.description
   const excerpt = body.trim().slice(0, Math.max(0, excerptChars))
-  if (!excerpt) return description || `A skill named ${skill.name}.`
+  if (!excerpt) return description || describedAs(skill)
   return description ? `${description} — ${excerpt}` : excerpt
 }
 
 /** A skill's body with its frontmatter taken off. */
-export function bodyOf(markdown: string): string {
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(markdown)
-  return (frontmatter ? markdown.slice(frontmatter[0].length) : markdown).trim()
+function bodyOf(markdown: string): string {
+  return splitFrontmatter(markdown).body.trim()
 }
 
 /** The directory a skill file lives in, for `${CLAUDE_SKILL_DIR}`. */
-export function dirOf(path: string): string {
+function dirOf(path: string): string {
   const cut = path.lastIndexOf('/')
   return cut > 0 ? path.slice(0, cut) : '.'
 }
@@ -351,10 +357,7 @@ export function injectionBlock(
   projectDir: string,
   alreadyLoaded: boolean,
 ): string {
-  const lines = [
-    '<skill_relevance>',
-    `Relevant to the current request: ${suggested.name}. Ignore this if it does not fit what the user actually asked for.`,
-  ]
+  const lines = relevanceHeader(suggested)
   if (alreadyLoaded) {
     lines.push(`Skill /${suggested.name} is already loaded above; instructions unchanged.`)
   } else if (markdown && path) {
@@ -374,7 +377,7 @@ export function injectionBlock(
     // name and the way to load it are all there is.
     lines.push(
       `${line(suggested)}`,
-      `Load it with the Skill tool (skill: "${suggested.name}") before you start; if the tool refuses it, tell the user to type /${suggested.name}.`,
+      `${loadBySkillTool(suggested)}; if the tool refuses it, tell the user to type /${suggested.name}.`,
     )
   }
   lines.push('</skill_relevance>')
@@ -390,9 +393,8 @@ export function injectionBlock(
  */
 export function modelInvocable(markdown: string | null): boolean {
   if (!markdown) return true
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(markdown)
-  if (!frontmatter) return true
-  return !/^disable-model-invocation:\s*true\s*$/m.test(frontmatter[1] as string)
+  const { fields } = splitFrontmatter(markdown)
+  return fields === null || !/^disable-model-invocation:\s*true\s*$/m.test(fields)
 }
 
 /**
@@ -430,7 +432,7 @@ export function ranksCatalog(provider: Provider | null, skillCount: number): boo
 /** The first request's `questions`: the ranking and the gate. */
 export function wideQuestions(provider: Provider, skills: readonly Skill[]): Record<string, unknown> {
   const criteria: Record<string, string> = {}
-  for (const skill of skills) criteria[skill.name] = skill.description || `A skill named ${skill.name}.`
+  for (const skill of skills) criteria[skill.name] = describedAs(skill)
   const questions: Record<string, unknown> = {
     which: {
       type: 'choice',
@@ -720,22 +722,32 @@ export function suggestionBlock(suggested: Skill | null, hidden: boolean): strin
       ? null
       : '<skill_relevance>\nNo skill in the roster appears relevant to this request.\n</skill_relevance>'
   }
-  const lines = [
-    '<skill_relevance>',
-    `Relevant to the current request: ${suggested.name}. Ignore this if it does not fit what the user actually asked for.`,
-  ]
+  const lines = relevanceHeader(suggested)
   if (hidden) {
     // The model has no listing to look the name up in, so the line it would
     // have found there and the way to load it come along.
     lines.push(
       `${line(suggested)}`,
-      'Load it with the Skill tool (skill: "' +
-        suggested.name +
-        '") before you start. The full skill listing is withheld from your context; the user can invoke any skill by typing /name.',
+      `${loadBySkillTool(suggested)}. The full skill listing is withheld from your context; the user can invoke any skill by typing /name.`,
     )
   }
   lines.push('</skill_relevance>')
   return lines.join('\n')
+}
+
+function relevanceHeader(skill: Skill): string[] {
+  return [
+    '<skill_relevance>',
+    `Relevant to the current request: ${skill.name}. Ignore this if it does not fit what the user actually asked for.`,
+  ]
+}
+
+function loadBySkillTool(skill: Skill): string {
+  return `Load it with the Skill tool (skill: "${skill.name}") before you start`
+}
+
+function tookSuffix(ms: number | null): string {
+  return ms === null ? '' : ` · ${Math.round(ms)}ms`
 }
 
 /** A number for the log, or `n/d` when the backend reported none. */
@@ -764,7 +776,7 @@ export function describeSetup(
 
 /** What the first request answered: the gate and the top of the ranking. */
 export function describeWide(wide: Wide | null, candidates: number, ms: number | null): string {
-  const took = ms === null ? '' : ` · ${Math.round(ms)}ms`
+  const took = tookSuffix(ms)
   if (!wide) return `no answer from ${candidates} candidates${took}`
   const top = wide.ranked
     .slice(0, 3)
@@ -775,7 +787,7 @@ export function describeWide(wide: Wide | null, candidates: number, ms: number |
 
 /** What the second request answered: the winner and every `fits`. */
 export function describeRerank(rerank: Rerank | null, ms: number | null): string {
-  const took = ms === null ? '' : ` · ${Math.round(ms)}ms`
+  const took = tookSuffix(ms)
   if (!rerank) return `rerank: no answer${took}`
   const fits = Object.entries(rerank.fits)
     .map(([name, value]) => `${name} ${value.toFixed(2)}`)
@@ -904,7 +916,7 @@ export function setupInstructions(
       `1. Read ${backupPath}. It holds {"skillOverrides": {...}, "disableBundledSkills": ...} as they were before the setup.`,
       `   If it does not exist, say so and stop: there is nothing to restore.`,
       `2. Show the user what will change in ${settingsPath}: the "skillOverrides" entries that go back to their saved value (an entry not in the backup is removed), and "disableBundledSkills" back to its saved value (removed when the backup says null).`,
-      `3. Ask the user to confirm. Only after a clear yes, edit ${settingsPath} with the Edit tool, changing nothing else in the file, then remove the backup by running exactly this command with the Bash tool: rm ~/.claude/jev-skill-suggestion.skill-overrides.backup.json`,
+      `3. Ask the user to confirm. Only after a clear yes, edit ${settingsPath} with the Edit tool, changing nothing else in the file, then remove the backup by running exactly this command with the Bash tool: rm ${backupPath}`,
       `4. Tell the user to restart Claude Code for /skills and /context to show the change.`,
       '</jev_skill_suggestion_setup>',
     )

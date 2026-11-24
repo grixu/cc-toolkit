@@ -134,6 +134,28 @@ const NOT_A_TASK = new Set([
   'observer-activity',
 ])
 
+/** Display name → directory id for the skills under the project's and the user's `.claude/skills`. */
+async function readDisplayIds($: {
+  session: { cwd: () => Promise<string> }
+  env: { get: (name: string) => Promise<string | undefined> }
+  fs: {
+    exists: (path: string) => Promise<boolean>
+    read: (path: string) => Promise<string>
+    list: (path: string) => Promise<readonly { name: string; kind: string }[]>
+  }
+}): Promise<Map<string, string>> {
+  const found: { dir: string; markdown: string }[] = []
+  for (const root of [await $.session.cwd(), (await $.env.get('HOME')) ?? '']) {
+    const dir = root && `${root}/.claude/skills`
+    if (!dir || !(await $.fs.exists(dir))) continue
+    for (const entry of await $.fs.list(dir)) {
+      const file = `${dir}/${entry.name}/SKILL.md`
+      if (entry.kind === 'dir' && (await $.fs.exists(file))) found.push({ dir: entry.name, markdown: await $.fs.read(file) })
+    }
+  }
+  return displayIds(found)
+}
+
 export const register: Register = (on, options) => {
   const text = (key: string, fallback: string) =>
     typeof options[key] === 'string' && options[key] ? (options[key] as string) : fallback
@@ -226,14 +248,20 @@ export const register: Register = (on, options) => {
   // hook first needs it.
   let displayToId: Map<string, string> | null = null
 
+  // Takes a loader and a logger rather than `$`, which the runtime will not
+  // let through a call it cannot resolve statically.
+  const ensureStarted = async (
+    loadKeys: () => Promise<{ typesafe: string; gemini: string }>,
+    log: (line: string) => void,
+  ): Promise<void> => {
+    if (!resolved) settleBackend(await loadKeys())
+    if (announced) return
+    announced = true
+    if (logDecisions) log(`[jev-skill-suggestion] ${describeSetup(active, url, hideListing, forced === 'builtin')}`)
+  }
+
   on('prompt.attachment', { type: 'skill_listing' }, async ($, e, next) => {
-    if (!resolved) settleBackend(await providerKeys($, keyOptions))
-    if (!announced) {
-      announced = true
-      if (logDecisions) {
-        $.ui.log(`[jev-skill-suggestion] ${describeSetup(active, url, hideListing, forced === 'builtin')}`)
-      }
-    }
+    await ensureStarted(() => providerKeys($, keyOptions), (line) => $.ui.log(line))
 
     const skills = parseListing(e.text)
     for (const skill of skills) listed.add(skill.name)
@@ -265,13 +293,7 @@ export const register: Register = (on, options) => {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    if (!resolved) settleBackend(await providerKeys($, keyOptions))
-    if (!announced) {
-      announced = true
-      if (logDecisions) {
-        $.ui.log(`[jev-skill-suggestion] ${describeSetup(active, url, hideListing, forced === 'builtin')}`)
-      }
-    }
+    await ensureStarted(() => providerKeys($, keyOptions), (line) => $.ui.log(line))
     suggested = null
 
     // Notifications and peer messages are not tasks; a typed `/name` already
@@ -359,18 +381,7 @@ export const register: Register = (on, options) => {
     let commands: Awaited<ReturnType<typeof $.command.list>>
     try {
       commands = await $.command.list()
-      if (!displayToId && commands.some((command) => !commandLike(command.name))) {
-        const found: { dir: string; markdown: string }[] = []
-        for (const root of [await $.session.cwd(), (await $.env.get('HOME')) ?? '']) {
-          const dir = root && `${root}/.claude/skills`
-          if (!dir || !(await $.fs.exists(dir))) continue
-          for (const entry of await $.fs.list(dir)) {
-            const file = `${dir}/${entry.name}/SKILL.md`
-            if (entry.kind === 'dir' && (await $.fs.exists(file))) found.push({ dir: entry.name, markdown: await $.fs.read(file) })
-          }
-        }
-        displayToId = displayIds(found)
-      }
+      if (!displayToId && commands.some((command) => !commandLike(command.name))) displayToId = await readDisplayIds($)
       commands = canonical(commands, displayToId ?? new Map())
     } catch (error) {
       $.ui.log(`[jev-skill-suggestion] could not list the skills: ${String(error)}`)
@@ -527,18 +538,7 @@ export const register: Register = (on, options) => {
     let commands: Awaited<ReturnType<typeof $.command.list>> = []
     try {
       commands = await $.command.list()
-      if (!displayToId && commands.some((command) => !commandLike(command.name))) {
-        const found: { dir: string; markdown: string }[] = []
-        for (const root of [await $.session.cwd(), (await $.env.get('HOME')) ?? '']) {
-          const dir = root && `${root}/.claude/skills`
-          if (!dir || !(await $.fs.exists(dir))) continue
-          for (const entry of await $.fs.list(dir)) {
-            const file = `${dir}/${entry.name}/SKILL.md`
-            if (entry.kind === 'dir' && (await $.fs.exists(file))) found.push({ dir: entry.name, markdown: await $.fs.read(file) })
-          }
-        }
-        displayToId = displayIds(found)
-      }
+      if (!displayToId && commands.some((command) => !commandLike(command.name))) displayToId = await readDisplayIds($)
       commands = canonical(commands, displayToId ?? new Map())
     } catch (error) {
       $.ui.log(`[jev-skill-suggestion] setup: could not list the skills: ${String(error)}`)
