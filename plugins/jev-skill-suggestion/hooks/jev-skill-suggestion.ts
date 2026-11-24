@@ -97,8 +97,10 @@ import {
   installPathsOf,
   parseListing,
   parseNames,
+  GEMINI_MAX_CHOICE,
   passesGate,
   pluginFileCandidates,
+  ranksCatalog,
   readRerank,
   readSkillSettings,
   modelInvocable,
@@ -386,7 +388,11 @@ export const register: Register = (on, options) => {
     // Request 1: rank everything, and ask whether the prompt wants a skill at all.
     const startedAt = await $.clock.now()
     let wide: Wide | null = null
-    if (active) {
+    const ranks = ranksCatalog(active, skills.length)
+    if (active && !ranks && logDecisions) {
+      $.ui.log(`[jev-skill-suggestion] ${skills.length} skills exceed Gemini's ${GEMINI_MAX_CHOICE}-option choice; ranking with the built-in classifier`)
+    }
+    if (active && ranks) {
       const answer = await ask(e.text, wideQuestions(active, skills), 'ranking')
       if (answer) wide = readWide(answer)
     } else {
@@ -431,7 +437,7 @@ export const register: Register = (on, options) => {
         const rerankStartedAt = await $.clock.now()
         rerankAttempted = true
         const answer = await ask(e.text, rerankQuestions(active, candidates), 'rerank')
-        if (answer) rerank = readRerank(answer)
+        if (answer) rerank = readRerank(answer, candidates.length === 1 ? candidates[0]!.name : undefined)
         if (logDecisions) {
           const ms = (await $.clock.now()) - rerankStartedAt
           const read = candidates.filter((candidate) => files.get(candidate.name)).length

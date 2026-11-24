@@ -418,6 +418,14 @@ function yesNo(provider: Provider, instructions: string): Record<string, unknown
   return { type: provider === 'gateway' ? 'boolean' : 'noul', instructions }
 }
 
+/** The most options Gemini takes in one choice (256 is a 400, checked live). */
+export const GEMINI_MAX_CHOICE = 255
+
+/** Whether the backend can take the whole catalog in one ranking choice. */
+export function ranksCatalog(provider: Provider | null, skillCount: number): boolean {
+  return provider !== null && (provider !== 'gemini' || skillCount <= GEMINI_MAX_CHOICE)
+}
+
 /** The first request's `questions`: the ranking and the gate. */
 export function wideQuestions(provider: Provider, skills: readonly Skill[]): Record<string, unknown> {
   const criteria: Record<string, string> = {}
@@ -443,13 +451,15 @@ export function rerankQuestions(
 ): Record<string, unknown> {
   const criteria: Record<string, string> = {}
   for (const candidate of candidates) criteria[candidate.name] = candidate.detail
-  const questions: Record<string, unknown> = {
-    which: {
+  const questions: Record<string, unknown> = {}
+  // Gemini rejects a choice with one option; readRerank then takes the lone candidate as the winner.
+  if (provider !== 'gemini' || candidates.length > 1) {
+    questions.which = {
       type: 'choice',
       instructions:
         "Exactly one of these skills is the right one to load for the user's latest request. Which one? Read what each actually does, not just its name.",
       criteria,
-    },
+    }
   }
   for (const candidate of candidates) {
     questions[`fits::${candidate.name}`] = yesNo(
@@ -566,9 +576,9 @@ export function readWide(responseText: string): Wide | null {
 }
 
 /** Reads the second request's answer. */
-export function readRerank(responseText: string): Rerank | null {
+export function readRerank(responseText: string, sole?: string): Rerank | null {
   const answers = answersOf(responseText)
-  const which = answers?.which
+  const which = answers?.which ?? (sole === undefined ? undefined : { choice: sole })
   if (!answers || !which || typeof which.choice !== 'string') return null
   const fits: Record<string, number> = {}
   for (const [key, answer] of Object.entries(answers)) {

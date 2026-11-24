@@ -1,6 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 import {
   GATE_QUESTIONS,
+  GEMINI_MAX_CHOICE,
+  ranksCatalog,
   NONE,
   builtinWide,
   catalog,
@@ -308,6 +310,23 @@ test('Gemini gets the state as JSON text, the TypeSafe question shapes and its k
   expect(restoreGeminiIds('not json', questions)).toBe('not json')
   expect(requestHeaders('gemini', 'g', 'gemini-decision-1')).toEqual({ 'content-type': 'application/json', 'x-goog-api-key': 'g' })
   expect(endpoint('gemini', 'https://ignored.example')).toBe('https://generativelanguage.googleapis.com/v1beta/decisions')
+})
+
+test('a one-candidate Gemini rerank sends no choice and takes the lone candidate on its fits', () => {
+  const lone: Candidate[] = [{ name: 'pdf', description: 'Read PDFs', detail: 'Read PDFs — # PDF' }]
+  const questions = rerankQuestions('gemini', lone)
+  expect(Object.keys(questions)).toEqual(['fits::pdf'])
+  expect(Object.keys(rerankQuestions('typesafe', lone))).toContain('which')
+  const answer = restoreGeminiIds(JSON.stringify({ answers: { q0: { noul: 0.8 } } }), questions)
+  expect(readRerank(answer, 'pdf')).toEqual({ winner: 'pdf', confidence: null, fits: { pdf: 0.8 } })
+  expect(readRerank(answer)).toBeNull()
+})
+
+test('Gemini ranks at most 255 skills in one choice; other backends take any catalog', () => {
+  expect(ranksCatalog('gemini', GEMINI_MAX_CHOICE)).toBe(true)
+  expect(ranksCatalog('gemini', GEMINI_MAX_CHOICE + 1)).toBe(false)
+  expect(ranksCatalog('typesafe', 1000)).toBe(true)
+  expect(ranksCatalog(null, 3)).toBe(false)
 })
 
 test('provider selection takes TypeSafe, then Gemini, then the Gateway under auto', () => {
