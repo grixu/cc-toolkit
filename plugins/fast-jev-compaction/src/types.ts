@@ -196,7 +196,7 @@ export interface JevResponse {
   [key: string]: unknown;
 }
 
-/** Anything that can answer Jev questions: `JevClient`, or a host-provided adapter. */
+/** Anything that can answer Jev questions, over whatever transport the host provides. */
 export interface JevAsker {
   ask(state: JevState, questions: JevQuestions): Promise<JevResponse>;
 }

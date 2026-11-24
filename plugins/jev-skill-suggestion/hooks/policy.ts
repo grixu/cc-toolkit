@@ -6,8 +6,7 @@
  * into at most one skill name and the text that suggests it. The hooks module
  * does every call on `$` at its own call site.
  *
- * The shape follows TypeSafe's "Skill suggestion" cookbook
- * (https://docs.typesafe.ai/cookbooks/skill_suggestion):
+ * The shape follows TypeSafe's "Skill suggestion" cookbook:
  *
  *   request 1  rank every skill (`which`, a Choice with each skill's one-line
  *              description as its criterion) and ask three Nouls about the
@@ -503,7 +502,6 @@ export function restoreGeminiIds(responseText: string, questions: Record<string,
   return JSON.stringify({ answers: restored })
 }
 
-/** The request headers. */
 export function requestHeaders(provider: Provider, apiKey: string, model: string): Record<string, string> {
   if (provider === 'gemini') return { 'content-type': 'application/json', 'x-goog-api-key': apiKey }
   const common = { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` }
@@ -656,8 +654,7 @@ export interface Suggestion {
 
 /**
  * At most one skill name for a request. With the second request switched
- * off, the top of the ranking stands, which is what the first request alone
- * can say; a second request that was attempted and failed suggests nothing.
+ * off, the top of the ranking stands.
  */
 export function decide(
   wide: Wide | null,

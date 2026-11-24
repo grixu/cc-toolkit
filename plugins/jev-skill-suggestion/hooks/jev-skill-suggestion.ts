@@ -12,7 +12,8 @@
  * skill at all, one to re-read the top few with their full text and let each
  * be rejected on its own. Either may come back empty-handed.
  *
- * Three hooks:
+ * Three hooks do the work (session.end and session.compact only forget
+ * which skills were injected):
  *   prompt.attachment  — the engine's `skill_listing` attachment is answered
  *                        with `{ text: null }` (left out) or trimmed to the
  *                        names in `alwaysListed`. Its names are remembered:
@@ -66,8 +67,7 @@
  * has to travel on the command line. Never hardcode one in this file.
  *
  * Needs Claude Code >= 2.1.278: the
- * `prompt.attachment` event is that release's. Typed against Anthropic's
- * declarations: https://github.com/anthropics/claude-code/tree/main/mods
+ * `prompt.attachment` event is that release's.
  *
  * Privacy: with a key set, the prompt text, every candidate skill's name and
  * description, and the opening of each shortlisted skill's SKILL.md are sent
@@ -197,16 +197,16 @@ export const register: Register = (on, options) => {
     fitsThreshold: number('fitsThreshold', 0.3),
   }
 
-  // The names every skill_listing attachment carried so far. Once non-empty,
-  // only these are offered to the decision model: the listing is the engine's
-  // word on which skills the model is allowed to invoke, and `$.command.list()`
-  // also names commands the model may not.
+  // The names every skill_listing attachment carried so far. Under
+  // `inject: "suggest"`, once non-empty, only these are offered to the
+  // decision model: the listing is the engine's word on which skills the
+  // model may invoke, and `$.command.list()` also names commands it may not.
   const listed = new Set<string>()
   // The skill suggested for the current prompt, so a skill.prompt that loads
   // it can be told apart from one the model reached for on its own.
   let suggested: string | null = null
   // Each skill's SKILL.md as first found, with where, or null when nowhere:
-  // read once per session, since the second request wants it on every prompt
+  // read once per worker, since the second request wants it on every prompt
   // it is on, and the injection wants it whole.
   const files = new Map<string, { path: string; markdown: string } | null>()
   // The skills whose instructions were already attached this session: a
@@ -216,13 +216,13 @@ export const register: Register = (on, options) => {
   // never loaded are otherwise told apart only by the absence of later lines,
   // and absence is not evidence: with the listing gone, silence is the norm.
   let announced = false
-  // The setup hint, once per session.
+  // The setup hint, once per worker: session.end does not reset it.
   let hintedSetup = false
 
   // A skill whose frontmatter `name:` has spaces ("PocketBase API Rules") is
   // reported by `$.command.list()` under that name, but the engine lists,
   // runs and overrides it by its directory name (`pb-api-rules`). The map
-  // from one to the other is read from disk once per session, in whichever
+  // from one to the other is read from disk once per worker, in whichever
   // hook first needs it.
   let displayToId: Map<string, string> | null = null
 
@@ -347,7 +347,7 @@ export const register: Register = (on, options) => {
       files.set(skill.name, found)
       return found
     }
-    /** The opening of a skill's body, or null when its file is nowhere. */
+    /** A skill's whole SKILL.md, or null when its file is nowhere. */
     const bodyOf = async (skill: Skill, plugin: string | undefined): Promise<string | null> =>
       (await fileOf(skill, plugin))?.markdown ?? null
 
@@ -420,8 +420,8 @@ export const register: Register = (on, options) => {
     // every candidate be rejected on its own.
     let rerank: Rerank | null = null
     let rerankAttempted = false
-    // Before the listing has been seen, `$.command.list()` may name a skill
-    // the model is not allowed to invoke; its own frontmatter tells.
+    // `$.command.list()` may name a skill the model is not allowed to invoke
+    // whenever the listing does not narrow the catalog; its own frontmatter tells.
     const barred: string[] = []
     if (active && rerankEnabled && wide && passesGate(wide, policy)) {
       const candidates: Candidate[] = []
