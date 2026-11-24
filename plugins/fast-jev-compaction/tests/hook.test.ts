@@ -1,10 +1,13 @@
 import { describe, expect, test as it } from 'claude-code/testing';
 import {
+  chooseBackend,
   compactSession,
   decisionLog,
   decisionLogLines,
   resolveHookConfig,
+  resolveKeys,
   summarize,
+  toDecisionRequest,
   toSessionMessages,
 } from '../hooks/fast-jev.ts';
 import { applyDecisions, collectToolCalls, decideCall, type Message } from '../src/index.ts';
@@ -53,11 +56,22 @@ function jevFetch(answer: (name: string) => number, bodies: string[] = []) {
 
 describe('hook config', () => {
   it('reads userConfig values and falls back to defaults', () => {
-    expect(resolveHookConfig({})).toEqual({ compactAtPercent: 60, minReductionRatio: 0.25, model: 'jev-latest' });
+    expect(resolveHookConfig({})).toEqual({ compactAtPercent: 60, minReductionRatio: 0.25, model: 'jev-latest', backend: 'auto' });
     expect(
-      resolveHookConfig({ apiKey: 'k', keepThreshold: 0.3, maxStateTokens: 1000, model: 'jev-x', goal: 'g', compactAtPercent: 'no' }),
+      resolveHookConfig({
+        apiKey: 'k',
+        geminiApiKey: 'g-k',
+        backend: 'gemini',
+        keepThreshold: 0.3,
+        maxStateTokens: 1000,
+        model: 'jev-x',
+        goal: 'g',
+        compactAtPercent: 'no',
+      }),
     ).toEqual({
       apiKey: 'k',
+      geminiApiKey: 'g-k',
+      backend: 'gemini',
       keepThreshold: 0.3,
       maxStateTokens: 1000,
       model: 'jev-x',
@@ -65,6 +79,40 @@ describe('hook config', () => {
       compactAtPercent: 60,
       minReductionRatio: 0.25,
     });
+    expect(resolveHookConfig({ backend: 'openai' }).backend).toBe('auto');
+  });
+});
+
+describe('backend choice', () => {
+  it('prefers TypeSafe under auto and honours a forced backend only when its key is set', () => {
+    expect(chooseBackend({ backend: 'auto', apiKey: 't', geminiApiKey: 'g' })).toBe('typesafe');
+    expect(chooseBackend({ backend: 'auto', geminiApiKey: 'g' })).toBe('gemini');
+    expect(chooseBackend({ backend: 'gemini', apiKey: 't', geminiApiKey: 'g' })).toBe('gemini');
+    expect(() => chooseBackend({ backend: 'auto' })).toThrow(/neither TYPESAFE_API_KEY nor GEMINI_DECISIONS_API_KEY/);
+    expect(() => chooseBackend({ backend: 'gemini', apiKey: 't' })).toThrow(/GEMINI_DECISIONS_API_KEY/);
+    expect(() => chooseBackend({ backend: 'typesafe', geminiApiKey: 'g' })).toThrow(/TYPESAFE_API_KEY/);
+  });
+});
+
+describe('key lookup', () => {
+  const host = (env: Record<string, string>, settingsEnv: Record<string, string> = {}) => ({
+    env: { get: async (name: string) => env[name] },
+    settings: { read: async () => ({ env: settingsEnv }) },
+  });
+  const config = resolveHookConfig({});
+
+  it('reads the plugin options first, then the environment, then settings.json for TypeSafe', async () => {
+    const env = { TYPESAFE_API_KEY: 'env-t', GEMINI_DECISIONS_API_KEY: 'env-gd', GEMINI_API_KEY: 'env-g' };
+    expect(await resolveKeys(host(env), { ...config, apiKey: 'opt-t', geminiApiKey: 'opt-g' })).toEqual({
+      apiKey: 'opt-t',
+      geminiApiKey: 'opt-g',
+    });
+    expect(await resolveKeys(host(env), config)).toEqual({ apiKey: 'env-t', geminiApiKey: 'env-gd' });
+    expect(await resolveKeys(host({ GEMINI_API_KEY: 'env-g' }, { TYPESAFE_API_KEY: 'set-t' }), config)).toEqual({
+      apiKey: 'set-t',
+      geminiApiKey: 'env-g',
+    });
+    expect(await resolveKeys(host({}), config)).toEqual({ apiKey: undefined, geminiApiKey: undefined });
   });
 });
 
@@ -145,5 +193,39 @@ describe('compactSession', () => {
     await expect(
       compactSession(transcript(), { ...config, apiKey: 'k' }, async () => ({ status: 500, ok: false, text: 'x' })),
     ).rejects.toThrow(/500/);
+  });
+
+  it('asks Gemini Decision the same questions when it is the backend', async () => {
+    const requests: { url: string; headers?: Record<string, string>; body: string }[] = [];
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1, backend: 'gemini' }), apiKey: 't', geminiApiKey: 'g' };
+    const { result: output } = await compactSession(transcript(), config, async (url, init) => {
+      requests.push({ url, headers: init?.headers, body: init?.body ?? '' });
+      const { questions } = JSON.parse(init?.body ?? '{}') as { questions: Record<string, unknown> };
+      const answers = Object.fromEntries(Object.keys(questions).map((key) => [key, { noul: key.endsWith('t2') ? 0.9 : 0.1 }]));
+      return { status: 200, ok: true, text: JSON.stringify({ answers }) };
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.url).toBe('https://generativelanguage.googleapis.com/v1beta/decisions');
+    expect(requests[0]!.headers?.['x-goog-api-key']).toBe('g');
+    const body = JSON.parse(requests[0]!.body);
+    expect(body.model).toBe('gemini-decision-1');
+    expect(JSON.parse(body.input).history.length).toBeGreaterThan(0);
+    expect(body.questions.call_t1).toMatchObject({ type: 'noul' });
+    expect(output.decisions.map((d) => d.action)).toEqual(['drop_call', 'keep']);
+  });
+
+  it('turns a Gemini error into a thrown message so the hook falls back', async () => {
+    const config = { ...resolveHookConfig({ preserveRecentMessages: 1 }), geminiApiKey: 'g' };
+    await expect(
+      compactSession(transcript(), config, async () => ({ status: 403, ok: false, text: 'denied' })),
+    ).rejects.toThrow(/Gemini rejected the API key/);
+  });
+
+  it('rejects a question Gemini cannot take in the compaction format', () => {
+    expect(() => toDecisionRequest({}, { q: { type: 'score', instructions: 'x', criteria: ['a'] } })).toThrow(/score/);
+    expect(toDecisionRequest('s', { q: { type: 'noul', instructions: 'x', criteria: { true: 'y', false: 'n' } } })).toEqual({
+      input: { state: 's' },
+      questions: { q: { type: 'binary', instructions: 'x', criteria: { yes: 'y', no: 'n' } } },
+    });
   });
 });

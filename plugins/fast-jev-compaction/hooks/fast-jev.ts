@@ -9,15 +9,24 @@ import type {
 } from 'claude-code';
 
 import { compact, reductionRatio, resolveOptions } from '../src/compact.js';
+import type { DecisionRequest, Questions } from './decision.ts';
+import { gemini } from './providers/gemini.ts';
+import { providerKeys } from './providers/index.ts';
 import { buildJevRequest, DEFAULT_MODEL, parseJevResponse } from '../src/request.js';
 import type {
   CompactOptions,
   CompactResult,
   JevAsker,
+  JevQuestions,
+  JevResponse,
+  JevState,
   Message,
   ToolResult,
   ToolUse,
 } from '../src/types.js';
+
+export const BACKENDS = ['auto', 'typesafe', 'gemini'] as const;
+export type Backend = Exclude<(typeof BACKENDS)[number], 'auto'>;
 
 const HOOK_DEFAULTS = {
   compactAtPercent: 60,
@@ -42,6 +51,8 @@ export type HookFetch = (url: string, init?: HookFetchInit) => Promise<HookFetch
 
 export type HookConfig = CompactOptions & {
   apiKey?: string;
+  geminiApiKey?: string;
+  backend: (typeof BACKENDS)[number];
   compactAtPercent: number;
   minReductionRatio: number;
   model: string;
@@ -79,9 +90,12 @@ export function resolveHookConfig(options: PluginOptions): HookConfig {
       HOOK_DEFAULTS.minReductionRatio,
     ),
     model: optionString(options, 'model') ?? HOOK_DEFAULTS.model,
+    backend: BACKENDS.find((name) => name === options['backend']) ?? 'auto',
   };
   const apiKey = optionString(options, 'apiKey');
   if (apiKey) config.apiKey = apiKey;
+  const geminiApiKey = optionString(options, 'geminiApiKey');
+  if (geminiApiKey) config.geminiApiKey = geminiApiKey;
   const goal = optionString(options, 'goal');
   if (goal) config.goal = goal;
   return config;
@@ -100,6 +114,48 @@ export function jevAsker(fetchFn: HookFetch, apiKey: string, model: string): Jev
       return parseJevResponse(response.status, response.ok, response.text);
     },
   };
+}
+
+/** The compaction questions in the shared decision format; every one of them is a yes/no `noul`. */
+export function toDecisionRequest(state: JevState, questions: JevQuestions): DecisionRequest {
+  const converted: Questions = {};
+  for (const [key, question] of Object.entries(questions)) {
+    if (question.type !== 'noul') throw new Error(`Gemini backend cannot ask the ${question.type} question ${key}`);
+    const { true: yes, false: no } = question.criteria ?? {};
+    converted[key] = {
+      type: 'binary',
+      instructions: question.instructions,
+      ...(yes && no ? { criteria: { yes, no } } : {}),
+    };
+  }
+  return { input: typeof state === 'string' ? { state } : (state as Record<string, unknown>), questions: converted };
+}
+
+/** A `JevAsker` that puts the same questions to Gemini Decision. */
+export function geminiAsker(fetchFn: HookFetch, apiKey: string): JevAsker {
+  const provider = gemini(apiKey);
+  return {
+    async ask(state, questions) {
+      const request = toDecisionRequest(state, questions);
+      const { url, init } = provider.encode(request);
+      const response = await fetchFn(url, init);
+      if (!response.ok) throw new Error(provider.failure(response).message);
+      const { answers } = provider.decode(request, response);
+      const jev: JevResponse['answers'] = {};
+      for (const [key, answer] of Object.entries(answers)) if (answer.type === 'binary') jev[key] = { noul: answer.p };
+      return { model: provider.model, answers: jev };
+    },
+  };
+}
+
+/** The backend to ask: the configured one, or under `auto` TypeSafe and then Gemini, whichever has a key. */
+export function chooseBackend(config: Pick<HookConfig, 'backend' | 'apiKey' | 'geminiApiKey'>): Backend {
+  if (config.backend === 'typesafe' && !config.apiKey) throw new Error('TYPESAFE_API_KEY is not configured');
+  if (config.backend === 'gemini' && !config.geminiApiKey) throw new Error('GEMINI_DECISIONS_API_KEY is not configured');
+  if (config.backend !== 'auto') return config.backend;
+  if (config.apiKey) return 'typesafe';
+  if (config.geminiApiKey) return 'gemini';
+  throw new Error('neither TYPESAFE_API_KEY nor GEMINI_DECISIONS_API_KEY is configured');
 }
 
 function toolUseSummary(tool: ToolUse): ToolUseSummary {
@@ -161,14 +217,17 @@ export type SessionCompaction = {
   messages: SessionMessage[];
 };
 
-/** Runs the library over a session transcript; throws when the key is missing or Jev fails. */
+/** Runs the library over a session transcript; throws when no backend has a key or the backend fails. */
 export async function compactSession(
   messages: readonly SessionMessage[],
   config: HookConfig,
   fetchFn: HookFetch,
 ): Promise<SessionCompaction> {
-  if (!config.apiKey) throw new Error('TYPESAFE_API_KEY is not configured');
-  const result = await compact(messages, jevAsker(fetchFn, config.apiKey, config.model), config);
+  const asker =
+    chooseBackend(config) === 'gemini'
+      ? geminiAsker(fetchFn, config.geminiApiKey!)
+      : jevAsker(fetchFn, config.apiKey!, config.model);
+  const result = await compact(messages, asker, config);
   return { result, messages: toSessionMessages(messages, result.messages) };
 }
 
@@ -224,16 +283,20 @@ export function decisionLogLines(
   );
 }
 
-async function getApiKey(
+export async function resolveKeys(
   $: {
     env: { get: (name: string) => Promise<string | undefined> };
     settings: { read: () => Promise<Readonly<Record<string, unknown>>> };
   },
   config: HookConfig,
-): Promise<string | undefined> {
-  if (config.apiKey) return config.apiKey;
-  const fromEnv = await $.env.get('TYPESAFE_API_KEY');
-  if (fromEnv) return fromEnv;
+): Promise<Pick<HookConfig, 'apiKey' | 'geminiApiKey'>> {
+  const keys = await providerKeys($, { typesafe_api_key: config.apiKey, gemini_api_key: config.geminiApiKey });
+  return { apiKey: keys.typesafe || (await settingsTypesafeKey($)), geminiApiKey: keys.gemini || undefined };
+}
+
+async function settingsTypesafeKey($: {
+  settings: { read: () => Promise<Readonly<Record<string, unknown>>> };
+}): Promise<string | undefined> {
   const settings = await $.settings.read();
   const env = settings['env'];
   if (env && typeof env === 'object') {
@@ -262,7 +325,7 @@ export const register: Register = (on: On, options: PluginOptions) => {
 
   on('session.compact', async ($, event, next) => {
     try {
-      const config = { ...configured, apiKey: await getApiKey($, configured) };
+      const config = { ...configured, ...(await resolveKeys($, configured)) };
       const { result, messages } = await compactSession(event.messages, config, async (url, init) => {
         const response = await $.http.fetch(url, init);
         return { status: response.status, ok: response.ok, text: response.text };

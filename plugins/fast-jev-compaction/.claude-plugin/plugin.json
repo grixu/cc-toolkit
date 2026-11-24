@@ -4,10 +4,27 @@
   "description": "Verbatim Jev-guided compaction for Claude Code sessions.",
   "license": "MIT",
   "userConfig": {
+    "backend": {
+      "type": "string",
+      "title": "Decision backend",
+      "description": "Which model decides what stays: \"auto\" uses TypeSafe's Jev when its key is set, otherwise Gemini Decision (gemini-decision-1).",
+      "default": "auto",
+      "options": [
+        "auto",
+        "typesafe",
+        "gemini"
+      ]
+    },
     "apiKey": {
       "type": "string",
       "title": "TypeSafe API key",
-      "description": "TypeSafe API key. Leave unset to use TYPESAFE_API_KEY.",
+      "description": "TypeSafe API key. Leave empty to read TYPESAFE_API_KEY.",
+      "sensitive": true
+    },
+    "geminiApiKey": {
+      "type": "string",
+      "title": "Gemini API key",
+      "description": "Gemini Developer API key with access to the Decisions API. Leave empty to read GEMINI_DECISIONS_API_KEY, then GEMINI_API_KEY.",
       "sensitive": true
     },
     "keepThreshold": {
@@ -55,7 +72,7 @@
     "model": {
       "type": "string",
       "title": "Jev model",
-      "description": "TypeSafe Jev model name.",
+      "description": "TypeSafe Jev model name; the Gemini backend always uses gemini-decision-1.",
       "default": "jev-latest"
     }
   }
