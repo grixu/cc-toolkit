@@ -213,7 +213,9 @@ export function commentBlocks(output) {
   });
 }
 
-const quoted = (output, c, quote) => commentBlocks(output).filter((b) => b.quote.includes(squash(quote)) && (!c.file || b.file.endsWith(c.file)));
+// A scanner quotes the comment's text with or without its marker (`// x`, `# x` or `x`).
+const unmarked = (s) => squash(s).trim().replace(/^(\/\/+|#+|\/\*+|\*+|--|<!--)\s+/, '');
+const quoted = (output, c, quote) => commentBlocks(output).filter((b) => unmarked(b.quote).includes(unmarked(quote)) && (!c.file || b.file.endsWith(c.file)));
 
 export function commentVerdict(output, { config: c = {} } = {}) {
   const fails = [];
