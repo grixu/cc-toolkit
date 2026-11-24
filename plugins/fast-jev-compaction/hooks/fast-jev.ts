@@ -8,11 +8,11 @@ import type {
   TurnCompleteInput,
 } from 'claude-code';
 
-import { compact, reductionRatio, resolveOptions } from '../src/compact.js';
+import { compact, reductionRatio, resolveOptions } from '../src/compact.ts';
 import type { DecisionRequest, Questions } from './decision.ts';
 import { gemini } from './providers/gemini.ts';
 import { providerKeys } from './providers/index.ts';
-import { buildJevRequest, DEFAULT_MODEL, parseJevResponse } from '../src/request.js';
+import { buildJevRequest, DEFAULT_MODEL, parseJevResponse } from '../src/request.ts';
 import type {
   CompactOptions,
   CompactResult,
@@ -23,7 +23,7 @@ import type {
   Message,
   ToolResult,
   ToolUse,
-} from '../src/types.js';
+} from '../src/types.ts';
 
 export const BACKENDS = ['auto', 'typesafe', 'gemini'] as const;
 export type Backend = Exclude<(typeof BACKENDS)[number], 'auto'>;

@@ -1,5 +1,5 @@
-import { noulAnswer } from './request.js';
-import { collectToolCalls, estimateTokens, fitState } from './state.js';
+import { noulAnswer } from './request.ts';
+import { collectToolCalls, estimateTokens, fitState } from './state.ts';
 import type {
   CallAnswer,
   CallDecision,
@@ -12,7 +12,7 @@ import type {
   ResolvedCompactOptions,
   ToolCall,
   ToolUse,
-} from './types.js';
+} from './types.ts';
 
 export const DEFAULT_OPTIONS: ResolvedCompactOptions = {
   goal: '',

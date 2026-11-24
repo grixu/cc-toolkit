@@ -1,4 +1,4 @@
-import type { JevAnswer, JevQuestions, JevResponse, JevState } from './types.js';
+import type { JevAnswer, JevQuestions, JevResponse, JevState } from './types.ts';
 
 export const SYSTEM_ONE_URL = 'https://api.typesafe.ai/v1/systemone';
 export const DEFAULT_MODEL = 'jev-latest';
