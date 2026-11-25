@@ -450,9 +450,10 @@ deleted a test where the approved fix was to fold it into another) and mention i
 afterwards. The wrap-up lists every approved fix that was skipped, substituted or extended, with
 its reason, and claims nothing the tree does not carry.
 
-**`Write` creates a file that does not exist yet, and nothing else.** Two cases: a new file
-the user picked from the menu — the missing spec a correctness bucket offered, say — and the
-review's own scratchpad file above, which lives outside the repository. Every change to a file already on disk goes through `Edit`, so a
+**`Write` creates a file that does not exist yet, and nothing else.** Three cases: a new file
+the user picked from the menu — the missing spec a correctness bucket offered, say — the new
+ADR an R14 MOVE creates once the structural walk approves it, and the review's own scratchpad
+file above, which lives outside the repository. Every change to a file already on disk goes through `Edit`, so a
 targeted fix can never turn into a wholesale rewrite of a file the review only read
 in part. This is the Orchestrator's alone: a Scanner writes only its own lens file.
 
