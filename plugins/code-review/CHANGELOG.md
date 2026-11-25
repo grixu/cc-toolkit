@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-25
+
 ### Added
 
 - `comments` R13: a comment that excuses a shortcut ("hacky but works", "for simplicity we just",
