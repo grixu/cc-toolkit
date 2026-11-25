@@ -2,7 +2,8 @@
   "prefix": "fd4/baseline",
   "root": "local",
   "paths": [
-    "fd3"
+    "fd3",
+    "m6-overrides"
   ],
-  "sha256": "9026c4fd5125ee8d205674f74fe63608b97cd7a7c51ecb53a576cb3141c5818a"
+  "sha256": "8e07da6965468566a77ae1acb896462743ab4aeb75ce819c59dd113a4d364b37"
 }
