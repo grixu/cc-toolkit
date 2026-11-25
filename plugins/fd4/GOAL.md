@@ -22,18 +22,29 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 2. **Każde założenie o zachowaniu agenta ma ewaluację.** Przypuszczenie („agent pominie X”, „ta zmiana
    skróci Y”) staje się zasadą dopiero, gdy potwierdzi je ewaluacja: najpierw _red_ na obecnym
    zachowaniu, potem _green_ po zmianie. Ewaluacje mają być _tight_: wąskie, na kilku przypadkach,
-   z wynikiem w minutach. Wynik i jego liczby zapisujemy przy decyzji, którą wspierają.
+   z wynikiem w minutach. Wynik i jego liczby zapisujemy przy decyzji, którą wspierają. Każdy etap
+   (grill, zapis SPEC, walidacja, podział…) prowadzi osobny mały skill albo agent, więc ma własne
+   ewaluacje na wejściu z prawdziwego przebiegu. Całość procesu sprawdza dodatkowo jedna ewaluacja
+   końcowa od wejścia do zadań.
 3. **Ewaluacje stoją na prawdziwych przebiegach fd3.** Materiał i jego obsługa są opisane w
    [`FD4_EVALUATION.md`](FD4_EVALUATION.md). Przypadek syntetyczny dokładamy tylko wtedy, gdy
    prawdziwe przebiegi danej gałęzi nie pokrywają.
 
 ## Problemy fd3, których unikamy
 
-1. **Za duży SPEC.** SPEC jest zbyt szczegółowy i za długi.
+1. **Za duży SPEC.** SPEC jest zbyt szczegółowy i za długi. Granica dla fd4: w SPEC zostaje to, co
+   widzi ktoś spoza zmiany (kształt publicznego API z nazwami pól, wymagalnością, kodami i formatem
+   błędów, reguły danych, zachowanie widoczne dla użytkownika, limity i czasy). Do zadań idzie, jak
+   to zbudować (klasy, dekoratory, kolejność rejestracji, wywołania bibliotek, indeksy, wartości
+   stylów). Jedna decyzja może się podzielić: zdanie kontraktu zostaje w SPEC, reszta w zadaniu.
 2. **Drogie edycje SPEC.** Każda poprawka SPEC zajmuje dużo czasu i tokenów.
 3. **Męczący grill.** Grillowanie trwa długo i męczy użytkownika.
 4. **Rozmowa przez identyfikatory.** Agent odnosi się do numerów decyzji i kodów elementów speca,
-   zamiast nazwać, o co chodzi.
+   zamiast nazwać, o co chodzi. Kryterium dla fd4: każdy identyfikator w wiadomości do użytkownika ma
+   w tej samej wiadomości opis z treścią, czyli mówi, czym ta rzecz jest, a nie tylko co się z nią
+   stało. Jedno słowo w nawiasie to za mało. Lista gołych identyfikatorów jest niedopuszczalna, bo
+   zaciera nawet te opisane. Opis sprzed kilku wymian się nie liczy: użytkownik go nie pamięta,
+   nawet gdy sam prowadził sesję.
 5. **Rozdęty kontekst przy dużych zadaniach.** Spec dla dużego zakresu (np. całego epika) rozdyma
    kontekst sesji.
 6. **Każde pytanie trafia do użytkownika.** Grill nie odróżnia pytań kluczowych od reszty. Kluczowe
@@ -117,12 +128,33 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
     przeszedł 46 razy, choć przepuścił 18 defektów (m12).
 11. **Każdy etap i agent ma model dobrany do swojej pracy.** W fd3 większość pracy idzie na Opusie,
     także czytanie plików i wyszukiwanie. Opus decyduje: planuje, rozstrzyga decyzje kluczowe i robi
-    końcowe sprawdzenie. Pisanie i edycję prowadzi Sonnet. Czytanie, wyszukiwanie, uruchamianie
-    testów i czytanie logów idą do Haiku, z krótkim podsumowaniem zamiast całych plików. Każdy
+    końcowe sprawdzenie. Pisanie i edycję prowadzi Sonnet w subagencie, nie orkiestrator: treść
+    zapisana przez orkiestratora zostaje w jego kontekście, a w fd3 jego zapisy to 16% okna (m5).
+    Czytanie i wyszukiwanie idą do Haiku, z krótkim podsumowaniem zamiast całych plików. Wynik
+    komendy przycina sama komenda (`| tail`, filtr), co nic nie kosztuje; osobny runner Haiku
+    dostają tylko komendy o dużym wyniku (pełny build, testy). Delegowanie każdej komendy się nie
+    opłaca: w fd3 wynik Bash ma medianę 213 tokenów, a runner o narzucie jak `fd3:ci-runner`
+    zwraca się dopiero od ok. 2,8 tys. (m14). Każdy agent dostaje tylko potrzebne narzędzia, bo
+    narzut na starcie spada wtedy z ok. 70 tys. do ok. 11 tys. tokenów. Raportów subagentów nie
+    skracamy dalej: to 6,7% kosztu orkiestratora i w fd3 nie powodowały dodatkowej pracy (m14). Każdy
     subagent i agent workflowu ma model ustawiony jawnie, bo bez tego dziedziczy model sesji, czyli
     zwykle Opusa. Model zmieniamy na granicy etapu, nie w środku sesji, bo zmiana modelu traci cache
     rozmowy. Przydział modelu do etapu potwierdza ewaluacja jakości (zasada 2), nie tylko koszt.
     Pomysł 3 dobiera model dla zadań implementacji; to wymaganie obejmuje resztę etapów.
+12. **Walidacja to ograniczona pętla: sprawdzenie, odsiew, edycja, ponowne sprawdzenie.** Orkiestrator
+    uruchamia soczewki (wymaganie 6), zbiera ich uwagi w jedną listę i przepuszcza ją przez ten sam
+    model decyzyjny co pytania grilla (problem 6): uwagi, które rozstrzyga agent, idą prosto do
+    edytora, a do użytkownika trafiają tylko kluczowe. Po edycji idzie ponowne sprawdzenie. Pętla
+    wykonuje się najwyżej 3 razy; użytkownik zmienia ten limit ustawieniem `validation-max-rounds`.
+    Gdy limit się wyczerpie, a uwagi blokujące zostały, werdykt brzmi „nie gotowy” (wymaganie 10).
+13. **Odsiew pytań waży tylko odwracalność decyzji.** Pytanie, którego decyzję trudno odwrócić, trafia
+    na żywo do użytkownika. Pozostałe agent rozstrzyga sam, a użytkownik przegląda je zbiorczo na
+    końcu (problem 6). Odwracalność ocenia model decyzyjny: na 192 pytaniach z fd3 zgadza się z
+    etykietami kluczowe/delegowalne na AUC 0,78 (Jev i Gemini Decision). Przewidywanie, czy
+    użytkownik odrzuci rekomendację, odrzuciliśmy: najlepszy wynik to AUC 0,64, a cechy decyzji
+    (odwracalność, koszty operacyjne, nowość architektoniczna, zgodność z wzorcami, podobieństwo do
+    codebase, doszczegółowienie wybranego kierunku) nie dały sygnału. Dane: 711 pytań z 26 grilli
+    z faktycznymi wyborami użytkownika (`evals/baseline/local/m6-overrides/`).
 
 ## Nowe pomysły
 
@@ -149,10 +181,17 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
      spójne ze SPEC i z zadaniami, które od nich zależą.
    - **Test Architect:** czy scenariusze testów (wymaganie 8) pokrywają AC zadania i leżą na właściwym
      poziomie: unit, integracja albo e2e.
-9. **Zgoda na ryzykowne zadania po podziale.** Po stworzeniu zadań agent wypisuje te z ryzykownymi
-   krokami (problem 9) i pyta użytkownika o zgodę. Użytkownik zatwierdza wszystkie, wprowadza
-   poprawki, zatwierdza część albo odrzuca. Zadanie odrzucone, także w ramach częściowej zgody, staje
-   się zadaniem dla użytkownika.
+9. **Zgoda na kroki operacyjne po podziale.** Po stworzeniu zadań agent pokazuje wszystkie kroki,
+   które nie są pisaniem kodu (np. zmiany infrastruktury, migracje, konfiguracja zewnętrznych
+   usług), nie tylko ryzykowne. Przy każdym kroku podaje:
+   - **kto go wykona:** agent, z narzędziem, którym to zrobi (CLI, MCP…), albo tylko człowiek;
+   - **jak go wykona:** automatycznie albo z potwierdzeniem człowieka przed wykonaniem (human in
+     the loop). Ryzykowne kroki (problem 9) agent proponuje z potwierdzeniem.
+
+   Użytkownik zmienia te propozycje w obie strony: puszcza automatycznie także krok oznaczony jako
+   ryzykowny, żąda potwierdzenia przy kroku oznaczonym jako automatyczny, poprawia krok albo go
+   odrzuca. Krok odrzucony staje się zadaniem dla użytkownika. Lista zawiera też pracę ludzką
+   potrzebną przed startem implementacji (wymaganie 7).
 10. **Powtarzalne pytania stają się ustawieniami.** W przebiegach fd3 użytkownik odpowiadał tak samo
     na te same pytania w wielu przypadkach (baseline, metryka m10), więc fd4 bierze odpowiedź z
     konfiguracji pluginu, zamiast pytać:
