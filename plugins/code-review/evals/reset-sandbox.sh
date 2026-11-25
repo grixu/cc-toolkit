@@ -260,6 +260,29 @@ cp -R cases/arch-marker/src "$marker/"
 git -C "$marker" add -A
 commit "$marker" 'feat: order cancellation'
 
+# evals 45-46: the same file in a checkout that keeps ADRs and in one that does not, so R14 moves a
+# cross-cutting decision only where the repository has somewhere to move it.
+for name in comment-adr comment-noadr; do
+  dir=.sandbox/$name
+  mkdir -p "$dir"
+  git -C "$dir" init -q -b main
+  cp -R cases/comment-taxonomy/src "$dir/"
+  if [ "$name" = comment-adr ]; then cp -R cases/comment-taxonomy/docs "$dir/"; fi
+  git -C "$dir" add -A
+  commit "$dir" 'feat: payment client'
+done
+
+dir=.sandbox/comment-pkgadr
+mkdir -p "$dir/packages/payments"
+git -C "$dir" init -q -b main
+cp -R cases/comment-taxonomy/src cases/comment-taxonomy/docs "$dir/packages/payments/"
+# root ADRs numbered past the package's, so a MOVE into the wrong directory shows in its number
+cp -R cases/comment-taxonomy/docs "$dir/"
+printf '# 2. Use Postgres for every service\n\n## Status\n\nAccepted\n' > "$dir/docs/adr/0002-use-postgres.md"
+printf '# 3. Deploy through Spacelift\n\n## Status\n\nAccepted\n' > "$dir/docs/adr/0003-deploy-through-spacelift.md"
+git -C "$dir" add -A
+commit "$dir" 'feat: payment client'
+
 # evals 29-30: a branch with one committed source change above origin/main and an uncommitted side.
 # In scope-skip that side is a lockfile bump and a rebuilt dist/ file, which no lens grades, so Step 1
 # has nothing to ask. In scope-mixed it is Markdown and JSON, which coherence grades, plus an

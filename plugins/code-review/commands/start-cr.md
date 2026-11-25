@@ -450,9 +450,10 @@ deleted a test where the approved fix was to fold it into another) and mention i
 afterwards. The wrap-up lists every approved fix that was skipped, substituted or extended, with
 its reason, and claims nothing the tree does not carry.
 
-**`Write` creates a file that does not exist yet, and nothing else.** Two cases: a new file
-the user picked from the menu — the missing spec a correctness bucket offered, say — and the
-review's own scratchpad file above, which lives outside the repository. Every change to a file already on disk goes through `Edit`, so a
+**`Write` creates a file that does not exist yet, and nothing else.** Three cases: a new file
+the user picked from the menu — the missing spec a correctness bucket offered, say — the new
+ADR an R14 MOVE creates once the structural walk approves it, and the review's own scratchpad
+file above, which lives outside the repository. Every change to a file already on disk goes through `Edit`, so a
 targeted fix can never turn into a wholesale rewrite of a file the review only read
 in part. This is the Orchestrator's alone: a Scanner writes only its own lens file.
 
@@ -467,7 +468,11 @@ spec-id fragments (`(R2)`, `F1:`, `§4.1`, a file path) and strip them — the w
 of the fix is that the citation does not survive into the file. For a confirmed comment
 **MOVE**, apply the deletion at the declaration and insert the rewritten comment at the
 destination **only when a single unambiguous site was located**; if the destination was
-ambiguous, apply just the deletion and hand the user the exact text to paste.
+ambiguous, apply just the deletion and hand the user the exact text to paste. An **R14
+MOVE** creates the ADR: List the ADR directory again (another ADR may have landed since the scan), take the next number after the highest
+one present in its zero-padding, Write the draft under the newest ADR's headings, then delete
+the comment (or leave the one local line the finding keeps). When the directory's numbering or
+format is not clear from its files, write nothing and hand the user the draft and the path.
 
 **Split the safe batch across editor subagents by what you have already read.** An
 editor pays a full file read before its first `Edit`, so fanning out a file you

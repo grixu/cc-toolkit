@@ -10,7 +10,7 @@ A single "review this" prompt reads the change once, from one angle, and decides
 counts as a problem. This plugin instead:
 
 - runs one reviewer per lens in parallel, each with its own written rule set (68 named rules plus
-  12 comment rules), so every finding names its rule and runs are comparable;
+  14 comment rules), so every finding names its rule and runs are comparable;
 - merges the findings centrally: duplicates collapse, and severities follow one fixed table;
 - reads your project's conventions first, so a documented house style is not reported as a
   problem, and turns explicit rules in `CODING_STANDARDS.md` into findings;
@@ -74,7 +74,7 @@ from the repository.
 
 | Lens | Runs | Looks for |
 |---|---|---|
-| comments | always | Comments that narrate the code, cite tickets or other files, contradict the code, or are missing where a decision needs explaining. |
+| comments | always | Comments that narrate the code, cite tickets or other files, contradict or outlive the code, excuse a shortcut, hold a decision that belongs in an ADR, or are missing where a decision needs explaining. |
 | readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that do not check what their name claims. |
 | naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has, wrappers that only forward a call. |
 | objects & patterns | always, except on a change of infrastructure code only | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
@@ -106,13 +106,15 @@ ticket id, the review asks for a local path; it never fetches one.
 ## What you get
 
 A report grouped by file. Code findings read `` `family` · rule · severity ``, where severity is
-`high`, `medium` or `nit`. Comment findings read `` `comments` · R1–R12 · verdict ``, where the
+`high`, `medium` or `nit`. Comment findings read `` `comments` · R1–R14 · verdict ``, where the
 verdict is one of:
 
 - KEEP: the comment stays.
 - REMOVE: delete it.
-- REWRITE: replace it; the report gives the exact text.
-- MOVE: move it to where the behaviour it explains lives.
+- REWRITE: replace it; the report gives the exact text. A comment that excuses a shortcut
+  ("hacky but works") is reported only: fix the code, or state the constraint behind it.
+- MOVE: move it to where the behaviour it explains lives, or into a new ADR when it records a
+  decision other code must follow and the repository keeps ADRs.
 - ADD: a missing comment that explains a decision.
 
 An example report:

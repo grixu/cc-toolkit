@@ -165,7 +165,7 @@ the fix* is `report-only` too, with its one-line reason.
   verified-redundant `needless-cast`, `verbose`, `dead-code` that is an
   unread binding or an always-true/false guard, and `dead-code-surface` that drops a
   redundant fallback or conjunct; **plus** comment
-  **REMOVE** and **REWRITE**, and a comment **ADD** whose rationale the review
+  **REMOVE** and **REWRITE** (but not an R13 REWRITE, report-only below), and a comment **ADD** whose rationale the review
   actually confirmed — locate the code site by content and insert the comment
   above it. An `ADD` whose WHY you could only guess is **report-only**: hand the
   author the suggested text, since only they know the real reason.
@@ -221,6 +221,11 @@ report-only.** The finding stands, but which behaviour is right is the author's 
 edit to apply: say in the bullet which spec line or test it collides with. The same holds for
 a comment REWRITE or REMOVE of text a spec line quotes or prescribes: report-only, naming the
 spec line, so keeping the cleaner comment and amending the spec stays the author's choice.
+
+**An R13 excuse is always report-only.** Its REWRITE is the author's choice between fixing the
+shortcut and stating the constraint behind it; applying the suggested text would bless the
+shortcut, and removing the comment would hide it. An **R14 MOVE** walks structurally like any
+MOVE: it writes a new ADR file.
 
 **A `coherence` fix is report-only wherever the side it would rewrite may be the right one.**
 Rewriting a document to match the code can hide the code's bug, so `doc-drift` is never safe,

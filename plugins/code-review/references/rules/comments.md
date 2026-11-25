@@ -1,4 +1,4 @@
-# comments lens rules — R1–R12, exceptions, and false-positive traps
+# comments lens rules — R1–R14, exceptions, and false-positive traps
 
 The full rule set for the `comments` lens. Read it whole before judging a single
 comment. The lens reviews **comment quality only**, in every in-scope file, test files
@@ -29,9 +29,18 @@ declaration (an enum member, a constant, a type field) when it actually explains
 behavior of a method elsewhere. That is not a deletion case; it is a relocation case. R12
 covers it.
 
-When two rules collide, the most specific finding wins. When genuinely unsure, default to
-KEEP and move on (low signal is worse than a missed nitpick) — **except in test files,
-where R11 reverses this to default-REMOVE.**
+**Triage before the rules.** Alongside the deletion test, name which of four kinds the
+comment is, then judge it by that kind's rules:
+- **tautology** — says what the code already says: R1, R7, R11;
+- **stale** — names code, a value or an approach the code no longer has, or records how it
+  used to be: R9, R6;
+- **excuse** — concedes the code is a shortcut and offers no constraint that makes it right:
+  R13;
+- **decision record** — explains a choice: R2 keeps a local *why* inline, R14 moves a
+  cross-cutting decision into the repository's ADRs.
+
+A comment that fits none of the four — a scenario label, a doc comment, a diagram — goes
+through the remaining rules as usual.
 
 ## Contents
 - Preamble — a "note" prefix buys nothing
@@ -43,10 +52,12 @@ where R11 reverses this to default-REMOVE.**
 - R6 — No change-state / history comments
 - R7 — No process-narration disguised as a decision
 - R8 — No commented-out code
-- R9 — No comment that contradicts the code (fix-first)
+- R9 — No comment that contradicts or outlived the code (fix-first)
 - R10 — Consistent with the file's commenting style
 - R11 — In test files, the bar is much higher
 - R12 — Rationale belongs where the behavior lives
+- R13 — No excuse for a shortcut
+- R14 — A cross-cutting decision belongs in an ADR
 - Always KEEP (never flag)
 - Doc comments follow language convention, not R1
 - False-positive traps (the calibration that separates a good review from a noisy one)
@@ -99,7 +110,9 @@ The comments worth keeping say why the code is the way it is — the constraint,
 the trade-off, the gotcha that the code itself cannot show.
 
 - **KEEP** decision/rationale comments (`// sequential, because the upstream
-  rate-limits per source IP`).
+  rate-limits per source IP`). A decision that reaches past this code — a choice between
+  alternatives, a rule other modules must follow — is R14's when the repository keeps
+  ADRs.
 - **REWRITE** a "what" comment into a "why" when a real reason exists but the
   comment states the mechanics instead.
 - Surface a **missing WHY** as a finding — **verdict `ADD`**, suggesting the exact
@@ -226,10 +239,12 @@ What changed and why-it-changed lives in version control, not in the source.
   even when it carries a ticket id — e.g. `// Farmer rejects org-owner creds
   (PL-5276)` explaining why the code does what it does *right now*. The id here
   is provenance for a live constraint, not a record of a past change. This
-  covers both a still-open `TODO`/`FIXME` landmine and a plain rationale comment
-  that happens to cite a ticket. What still goes under R6: closed-ticket
-  breadcrumbs and "what changed" history (`// fixed in PROJ-123`, `// was X, now
-  Y`).
+  covers both a still-open `TODO`/`FIXME` tied to an external, checkable trigger
+  (`// TODO: remove once Safari <16 is dropped`) and a plain rationale comment
+  that happens to cite a ticket. A `TODO`/`FIXME` that only defers a proper fix
+  (`// TODO: do this properly later`) names no trigger and no constraint: that is
+  R13, not a landmine. What still goes under R6: closed-ticket breadcrumbs and
+  "what changed" history (`// fixed in PROJ-123`, `// was X, now Y`).
 
 ## R7 — No process-narration disguised as a decision
 A comment can *look* like a rationale but actually just narrates the
@@ -259,7 +274,7 @@ already keeps the old version; a commented-out block just rots and confuses.
   documentation* (a usage example in a doc comment), clearly framed as an
   example, not an abandoned line.
 
-## R9 — No comment that contradicts the code (fix-first)
+## R9 — No comment that contradicts or outlived the code (fix-first)
 A comment that actively lies about what the code does is the worst defect here:
 a reader trusts it and is misled. Surface these **first**, ahead of every
 noise-level finding.
@@ -268,6 +283,13 @@ noise-level finding.
   code beside it does not have: `// returns true on success` above a function
   that returns the error object; `// retries 3×` above a single attempt; a
   param doc naming the wrong unit/range.
+- **Stale reference — REMOVE, or REWRITE what survives.** A comment that names a
+  function, variable, flag, field or approach the code no longer has (`// falls back
+  to legacyNormalize()` where no `legacyNormalize` exists; `// cached in Redis` over an
+  in-memory map) describes code that is gone. Grep the name in the file and its
+  neighbours before you claim it: found nowhere, the comment is stale; still defined
+  somewhere, it is not. If the rest of the sentence still states a true *why*, REWRITE
+  it without the dead name; otherwise REMOVE.
 - This is a semantic check — you must have read the code to claim it. Never
   raise R9 on suspicion; cite the exact line of code that contradicts the
   comment.
@@ -377,11 +399,59 @@ lands on whoever is reading the method that implements it.
   semantics** (stays — every reader of the value needs it) or **what some method
   does with it** (moves — only that method's reader needs it)?
 
+## R13 — No excuse for a shortcut
+Some comments license the code they sit on. *"Hacky but works"*, *"for
+simplicity we just retry once"*, *"good enough for now"*, *"TODO: do this properly"*
+tell the next reader the code is wrong and leave it wrong, and the next change copies the
+shortcut because a comment said it was acceptable.
+
+- **The tell:** the comment concedes the code is a shortcut — *hack*, *quick fix*, *for
+  now*, *temporary*, *for simplicity*, *should really*, *not ideal*, *good enough*, a
+  `TODO`/`FIXME` that defers a proper fix — and names **no constraint that makes the
+  shortcut right**: no upstream bug, API limit, deadline-bound trigger or measured cost.
+- **Verdict REWRITE, always `report-only`.** The comment stays until its author acts; the
+  finding names both ways out: the proper fix at this site (what the code should do
+  instead, as a clause), or — when the shortcut is deliberate — the honest constraint the
+  comment should state instead: exact comment text when the code shows the constraint,
+  otherwise one clause saying only the author knows it. Never REMOVE an excuse on its own:
+  deleting it hides the shortcut and keeps the code.
+- **One bullet per excuse, at the comment.** The shortcut itself is not graded here; when
+  another lens's rule names the same code (`simplicity`, `correctness` · swallowed-error),
+  hand it off as usual.
+- **Contrast → KEEP (R2):** a workaround that names its cause —
+  `// upstream fetchkit ≤2.3 drops the body on 307; re-send it` — is a decision with its
+  reason, not an excuse. So is a `TODO` with an external, checkable trigger (R6).
+
+## R14 — A cross-cutting decision belongs in an ADR
+R2 keeps a *why* inline when it explains the code beside it. A comment that records a
+decision reaching past this code — a choice between named alternatives (*"we chose
+optimistic locking over a queue because…"*), a rule other modules must follow (*"all
+writes go through the outbox"*) — is an architecture decision written where nobody looks
+for one, and repeated or contradicted the next time someone makes the same choice
+elsewhere.
+
+- **Fires only when the repository keeps ADRs.** Walk up from the reviewed file's directory
+  to the repository root and, at each level, look for `docs/adr/`, `doc/adr/`, `adr/`,
+  `docs/decisions/` or `docs/architecture/decisions/` holding numbered Markdown files; the
+  nearest one is `<adr-dir>`, so a monorepo package's own ADRs win over the root's. No such
+  directory at any level → the comment is R2's: **KEEP**, and say nothing. A comment that already names an ADR by number, and states nothing the ADR
+  does not, is R4's.
+- **Verdict MOVE.** The destination is `<adr-dir>/<next-number>-<slug>.md` — the next
+  number after the highest one present, in the same zero-padding, and a kebab-case slug of
+  the decision. The fix gives the draft: two to four sentences of context, decision and
+  consequence, under the headings the newest ADR in that directory uses. At the code,
+  delete the comment, or keep one line when a local constraint survives it (*"writes go
+  through `outbox.enqueue`, never the repo directly"*) — without citing the ADR (R4).
+- **Contrast → KEEP (R2):** a *why* about this line or block — a limit, an ordering, a
+  gotcha, a workaround's cause. The test: would the sentence still matter to someone
+  writing **other** code? Yes → R14; only to the reader of this code → R2.
+
 ## Always KEEP (never flag)
 Type annotations (not comments), license/SPDX headers, framework-required tags
 (`@deprecated`, `@internal`, `@param` on public APIs), tool directives
 (`eslint-disable-next-line`, `// nolint`, `# type: ignore`), and genuine
-decision/rationale comments per R2.
+decision/rationale comments per R2 (a cross-cutting one is R14's when the repository keeps
+ADRs).
 
 ## Doc comments follow language convention, not R1
 Idiomatic public-API doc comments are required form, not narration: Go godoc
@@ -414,7 +484,8 @@ emitting — a wrong REMOVE is worse than a missed nitpick.
 - **R6 vs a present-tense landmine** — `// TODO: remove once Safari <16 is dropped`
   warns about today's constraint; keep it. `// fixed the Safari bug (PROJ-12)`
   describes the past; remove it. The tense and whether the work is *still open*
-  decide it, not the presence of a ticket id.
+  decide it, not the presence of a ticket id. An open `TODO` with no trigger
+  (`// TODO: clean this up`) is neither: it excuses today's code, so it is R13.
 - **R7 vs a genuine invariant** — `// must run before auth(); sets the tenant
   context the guard reads` looks like narration but states an ordering
   contract the code cannot enforce. Keep. Narration that just re-says the
@@ -439,7 +510,7 @@ emitting — a wrong REMOVE is worse than a missed nitpick.
   pointer. When you are unsure whether `R2` is a spec slot or a real value, look at
   the code beside it: if some identifier or literal *is* that token, it is a value;
   if the token only appears in the prose, it is a reference. (Separately: when you
-  cite your own findings in the report, your rule labels are also `R1`–`R12` — keep
+  cite your own findings in the report, your rule labels are also `R1`–`R14` — keep
   the user's `R2`-in-a-comment distinct from "this finding matches R-something" so
   the report does not read as circular.)
 - **R12 vs a value-meaning note** — a comment on a declaration that explains the
@@ -448,3 +519,11 @@ emitting — a wrong REMOVE is worse than a missed nitpick.
   correctly located. R12 only fires when the load-bearing clause is about *what a
   method does* with the value, not about *what the value is*. Don't MOVE a note
   that the call site genuinely depends on.
+- **R13 vs an honest workaround** — `// for simplicity we retry once` is an excuse;
+  `// retry once: the payment API is idempotent only within 30 s` is a decision. The word
+  *workaround* or *for now* does not make a comment R13; the missing constraint does. When
+  the comment names a cause you cannot check, it is not an excuse — KEEP.
+- **R14 vs a local why** — `// sequential, because the upstream rate-limits per source IP`
+  explains this loop: R2, stays. `// all outbound calls go through RateLimitedClient; we
+  rejected per-call backoff because it cannot share a budget` sets a rule for code
+  elsewhere: R14, when the repository keeps ADRs. When unsure which, KEEP.

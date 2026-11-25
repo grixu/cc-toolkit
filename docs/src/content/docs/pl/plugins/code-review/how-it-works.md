@@ -44,7 +44,7 @@ Jest ich dwanaście: dziewięć rusza przy każdej zmianie kodu, dwie zależą o
 
 | Soczewka | Kiedy rusza | Czego szuka |
 |---|---|---|
-| comments | zawsze | Komentarzy, które opowiadają kod, cytują zgłoszenia albo inne pliki, przeczą kodowi, albo ich brakuje tam, gdzie decyzja wymaga wyjaśnienia. |
+| comments | zawsze | Komentarzy, które opowiadają kod, cytują zgłoszenia albo inne pliki, przeczą kodowi albo go przeżyły, usprawiedliwiają skrót, zapisują decyzję, której miejsce jest w ADR, albo ich brakuje tam, gdzie decyzja wymaga wyjaśnienia. |
 | readability & tests | zawsze | Zagnieżdżeń, które spłaszczyłby guard clause, nienazwanych magicznych wartości, funkcji robiących kilka rzeczy, testów, które nie sprawdzają tego, co obiecuje ich nazwa. |
 | naming & module | zawsze | Nazw ukrywających intencję, zapytań zmieniających stan, importów w złą stronę, helperów dublujących te, które repozytorium już ma. |
 | objects & patterns | zawsze, oprócz zmian samego kodu infrastruktury | Niedokończonych obiektów, wystawionych wewnętrznych kolekcji, metod na złym obiekcie, powtarzanych switchy po typie. |

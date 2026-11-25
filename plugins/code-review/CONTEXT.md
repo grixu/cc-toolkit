@@ -14,7 +14,7 @@ One parallel review subagent running exactly one Lens — the `code-review:scann
 _Avoid_: role, reviewer, worker
 
 **Lens**:
-One of the twelve rule clusters: comments (`R1`–`R12`), readability & tests, naming & module, objects & patterns, simplicity & types, correctness, security, coherence, assumptions, performance, spec, hookify. Seven sit beyond the craft five: correctness, security, coherence and assumptions (always on), and three gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user), hookify (hookify rule files in the checkout's `.claude/`). Comments is a Lens like any other, not a special case. No Lens has a standalone skill: every one runs through a Scanner.
+One of the twelve rule clusters: comments (`R1`–`R14`), readability & tests, naming & module, objects & patterns, simplicity & types, correctness, security, coherence, assumptions, performance, spec, hookify. Seven sit beyond the craft five: correctness, security, coherence and assumptions (always on), and three gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user), hookify (hookify rule files in the checkout's `.claude/`). Comments is a Lens like any other, not a special case. No Lens has a standalone skill: every one runs through a Scanner.
 _Avoid_: theme, dimension
 
 **Rules file**:
@@ -32,7 +32,7 @@ _Avoid_: port, Codex fork (nothing is copied)
 One of the fifteen stable top-level labels in the quality vocabulary: `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, `standards`, and `hookify`. Thirteen are fixed by the plugin; `standards` and `hookify` are repo-defined (their rules come from the Standards file and the Hookify rule files).
 
 **Rule**:
-A specific sub-tag under a Family — one of the 68 fixed rules across the thirteen plugin-defined Families, a repo-defined `standards` rule whose slug derives from the quoted rule, or a `hookify` rule named by its rule file's `name` — or one of the comment rules `R1`–`R12`.
+A specific sub-tag under a Family — one of the 68 fixed rules across the thirteen plugin-defined Families, a repo-defined `standards` rule whose slug derives from the quoted rule, or a `hookify` rule named by its rule file's `name` — or one of the comment rules `R1`–`R14`.
 
 **Finding**:
 The quality-side unit of output: `family` · rule · severity · lines → fix.
