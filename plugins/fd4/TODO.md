@@ -31,7 +31,7 @@ Kolejność prac nad drogą do zadań z [`GOAL.md`](GOAL.md). Każdy etap dostaj
 ## 4. Mod
 
 - [ ] **Szkielet moda:** ustawienia z wartościami domyślnymi (wymaganie 9, pomysły 4 i 10,
-      `validation-max-rounds`) i narzędzie odsiewu pytań z kroku 3.
+      `validation.maxRounds`) i narzędzie odsiewu pytań z kroku 3.
 
 ## 5. Grill
 
@@ -42,7 +42,7 @@ Kolejność prac nad drogą do zadań z [`GOAL.md`](GOAL.md). Każdy etap dostaj
 - [ ] **Szablon SPEC.**
 - [ ] **Skill zapisu i edycji SPEC.**
 - [ ] **Orkiestrator walidacji** (wymaganie 12): soczewki w subagentach, złożenie uwag, odsiew,
-      edycja, ponowne sprawdzenie, najwyżej `validation-max-rounds` rund.
+      edycja, ponowne sprawdzenie, najwyżej `validation.maxRounds` rund.
 
 ## 7. Zadania
 

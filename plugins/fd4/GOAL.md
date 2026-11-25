@@ -66,7 +66,10 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 10. **Przegląd kodu i CI na każdym zadaniu.** Każde zadanie dostaje osobny przebieg CI i przegląd kodu
     soczewkami, także gdy zmiana tego nie potrzebuje. To one, a nie liczba zadań, mnożą subagentów:
     fd3 uruchamiał medianę 113 subagentów na przypadek, z czego przegląd 24–87, a CI 5–20. Miarą
-    jest liczba subagentów przeglądu i CI na przypadek (baseline, metryka m13).
+    jest liczba subagentów przeglądu i CI na przypadek (baseline, metryka m13). Problem zależy od
+    problemu 8, bo większe zadania to mniej przebiegów przeglądu i CI, ale ma też własne
+    rozwiązanie: model decyzyjny pomija przegląd albo CI tam, gdzie nie mają sensu, np. przy
+    dokumentacji czy infrastrukturze (pomysł 11).
 
 ## Wymagania
 
@@ -145,7 +148,7 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
     uruchamia soczewki (wymaganie 6), zbiera ich uwagi w jedną listę i przepuszcza ją przez ten sam
     model decyzyjny co pytania grilla (problem 6): uwagi, które rozstrzyga agent, idą prosto do
     edytora, a do użytkownika trafiają tylko kluczowe. Po edycji idzie ponowne sprawdzenie. Pętla
-    wykonuje się najwyżej 3 razy; użytkownik zmienia ten limit ustawieniem `validation-max-rounds`.
+    wykonuje się najwyżej 3 razy; użytkownik zmienia ten limit ustawieniem `validation.maxRounds`.
     Gdy limit się wyczerpie, a uwagi blokujące zostały, werdykt brzmi „nie gotowy” (wymaganie 10).
 13. **Odsiew pytań waży tylko odwracalność decyzji.** Pytanie, którego decyzję trudno odwrócić, trafia
     na żywo do użytkownika. Pozostałe agent rozstrzyga sam, a użytkownik przegląda je zbiorczo na
@@ -194,26 +197,58 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    potrzebną przed startem implementacji (wymaganie 7).
 10. **Powtarzalne pytania stają się ustawieniami.** W przebiegach fd3 użytkownik odpowiadał tak samo
     na te same pytania w wielu przypadkach (baseline, metryka m10), więc fd4 bierze odpowiedź z
-    konfiguracji pluginu, zamiast pytać:
-    - `auto-commit` (`true`/`false`): agent commituje sam.
-    - `auto-push` (`true`/`false`): agent wypycha gałąź sam.
-    - `auto-pr-open` (`true`/`false`): agent otwiera PR sam.
-    - `auto-ticket-manage` (`true`/`false`): agent tworzy i aktualizuje tickety w systemie typu Jira
-      sam.
-    - `auto-review` (`true`/`false`): każda gałąź przechodzi przegląd kodu po zielonym CI.
-    - `auto-cleanup` (`true`/`false`): po zakończeniu agent usuwa worktree i scalone gałęzie.
-    - `pr-split` (`one-per-repo`/`split`): zmiana trafia do jednego PR na repozytorium albo
-      dzieli się na kilka PR.
-    - `base-sync` (`merge`/`rebase`): tak agent dogania gałąź bazową, gdy gałąź zadania jest za
-      nią.
+    konfiguracji pluginu, zamiast pytać. Nazwy mają postać `grupa.nazwa` w camelCase. Ustawienie,
+    które pozwala agentowi wykonać coś bez pytania, zaczyna się od `auto`. Ustawienie wskazujące
+    skill kończy się na `Skill`. Wartości domyślne pochodzą z odpowiedzi właściciela w fd3 (m10,
+    przegląd 2026-11-25):
+    - `flow.autoAdvance` (tak): przejście do kolejnego etapu bez pytania, gdy SPEC jest gotowy.
+    - `validation.maxRounds` (3): limit rund pętli walidacji (wymaganie 12).
+    - `paths.specDir` (`.ai/specs/` albo układ, którego repo już używa): katalog SPEC (wymaganie 9).
+    - `spec.commitWithPr` (tak): pliki, które fd4 tworzy w katalogu SPEC, trafiają do PR razem z
+      kodem.
+    - `git.autoCommit` (tak): agent commituje sam na gałęzi funkcji.
+    - `git.autoSyncWithBase` (tak): gdy gałąź jest za bazową, agent robi merge z bazy, nigdy rebase
+      gałęzi z merge'ami.
+    - `implement.autoReview` (tak): przegląd kodu po zielonym CI.
+    - `implement.autoRepair` (tak): agent naprawia każdą uwagę z przeglądu, którą da się naprawić;
+      resztę wpisuje do raportu.
+    - `implement.autoSecurityReview` (tak): przegląd bezpieczeństwa, gdy zmieniają się zależności,
+      lockfile albo migracje.
+    - `implement.autoCloseAnsweredGaps` (tak): agent zamyka luki, na które odpowiedział przebieg,
+      i wypisuje je w raporcie.
+    - `implement.specDrift` (`amend-spec`/`ask`, domyślnie `amend-spec`): gdy kod odchodzi od SPEC,
+      agent zostawia kod i poprawia SPEC albo pyta.
+    - `implement.autoCleanup` (tak): po ostatniej poprawce agent usuwa worktree i scalone gałęzie.
+    - `files.autoCleanup` (tak): agent usuwa pliki robocze, gdy wszystkie zadania są zrobione.
+    - `autonomy.autoOpsSteps` (tak): kroki operacyjne wykonuje agent; ryzykowne trafiają raz na
+      listę zgód (pomysł 9).
+    - `autonomy.autoLocalProtectedChanges` (tak): zmiany w lokalnym stacku i lokalnym env bez
+      pytania; środowiska współdzielone dalej wymagają zgody.
+    - `tracker.autoUpdate` (tak): komentarze i statusy w Jirze lub Linearze bez pytania; szkice
+      nowych ticketów agent pokazuje raz.
+    - `tracker.autoAssignOnStart` (tak): na starcie ticket przypisany do użytkownika, status In
+      Progress.
+    - `pr.autoPush` (nie): push i otwarcie szkicu PR po poprawkach; domyślnie agent pyta raz.
+    - `pr.autoSplit` (nie): czy dzielić zmianę w jednym repo na kilka PR; domyślnie jeden PR na repo.
+    - `pr.autoMerge` (nie): merge PR po zielonym CI; repo prowadzone w pojedynkę włącza to w
+      konfiguracji projektu.
+    - `pr.openSkill` (`dev-kit:pr-open`, gdy zainstalowany): skill otwierający PR.
+    - `pr.shepherdSkill` (`dev-kit:pr-shepherd`, gdy zainstalowany): skill prowadzący PR do zielonego
+      CI.
+    - `pr.diagramSkill` (`code-story`, gdy zainstalowany; pusty = bez diagramów): skill rysujący
+      diagramy w opisie PR.
 
-    Pytania o sprawy już rozstrzygnięte nie są ustawieniem: usuwa je nowy grill, w którym do
-    użytkownika trafiają tylko pytania kluczowe (problem 6).
+    Ustawieniem nie są: zatwierdzanie pojedynczych decyzji pisarza SPEC (przegląd zbiorczy,
+    wymaganie 13), ponowne pytania o rzeczy rozstrzygnięte (agent zapisuje odpowiedzi i nie pyta
+    drugi raz), poziom testów (scenariusze w zadaniu i soczewka Test Architect, pomysł 8), płatne
+    testy na żywo i wybór gałęzi docelowej (agent pyta albo decyduje sam, gdy sytuacja wystąpi).
+    Grill dalej kończy się pytaniem o wspólne rozumienie, a do niego dołącza przegląd decyzji
+    agenta.
 11. **Model decyzyjny ocenia, czy zadanie dostaje przegląd kodu i CI.** Przy podziale, jak model i
     effort w pomyśle 3, model decyzyjny rozstrzyga dla każdego zadania osobno, czy uruchomić przegląd
     kodu i czy uruchomić CI, a wynik trafia do pliku zadania. Są zadania, dla których jedno lub
     drugie nie ma sensu, np. zmiana samej dokumentacji albo konfiguracji, której CI nie sprawdza
-    (problem 10). Ustawienie `auto-review` (pomysł 10) dalej włącza przegląd w ogóle; model
+    (problem 10). Ustawienie `implement.autoReview` (pomysł 10) dalej włącza przegląd w ogóle; model
     decyzyjny wybiera zadania, na których go pominąć.
 
 ## Założenia
