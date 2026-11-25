@@ -1106,6 +1106,21 @@ tests:
         value: file://checks/report.mjs:commentVerdict
         config: { quote: do this properly later, verdict: REWRITE, rule: R13 }
 
+  - description: 'eval-47 comment-taxonomy-pkgadr (comment-pkgadr/packages/payments/src/payment-client.ts)'
+    prompts: [comment-track]
+    vars:
+      # the eval-45 file in a monorepo with ADRs both at the root (up to 0003) and in the package (0001)
+      file: plugins/code-review/evals/.sandbox/comment-pkgadr/packages/payments/src/payment-client.ts
+    assert:
+      - type: regex
+        value: 'Lens: comments · files judged: \d+ of \d+'
+      - type: javascript
+        value: file://checks/report.mjs:commentVerdict
+        config: { quote: goes through PaymentClient, verdict: MOVE, rule: R14 }
+      - type: javascript
+        value: file://checks/report.mjs:commentFix
+        config: { quote: goes through PaymentClient, pattern: 'packages/payments/docs/adr/0002-' }
+
   - description: 'eval-29 scope-all-skipped (start-cr Step 1, an uncommitted side of a lockfile and generated output only)'
     prompts: [scope-question-track]
     vars:

@@ -468,7 +468,7 @@ of the fix is that the citation does not survive into the file. For a confirmed 
 **MOVE**, apply the deletion at the declaration and insert the rewritten comment at the
 destination **only when a single unambiguous site was located**; if the destination was
 ambiguous, apply just the deletion and hand the user the exact text to paste. An **R14
-MOVE** creates the ADR: List the ADR directory again, take the next number after the highest
+MOVE** creates the ADR: List the ADR directory again (another ADR may have landed since the scan), take the next number after the highest
 one present in its zero-padding, Write the draft under the newest ADR's headings, then delete
 the comment (or leave the one local line the finding keeps). When the directory's numbering or
 format is not clear from its files, write nothing and hand the user the draft and the path.

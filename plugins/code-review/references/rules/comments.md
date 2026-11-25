@@ -430,10 +430,11 @@ writes go through the outbox"*) — is an architecture decision written where no
 for one, and repeated or contradicted the next time someone makes the same choice
 elsewhere.
 
-- **Fires only when the repository keeps ADRs.** Glob from the reviewed file's repository
-  root for `docs/adr/`, `doc/adr/`, `adr/`, `docs/decisions/` or `docs/architecture/decisions/`
-  holding numbered Markdown files. No such directory → the comment is R2's: **KEEP**, and
-  say nothing. A comment that already names an ADR by number, and states nothing the ADR
+- **Fires only when the repository keeps ADRs.** Walk up from the reviewed file's directory
+  to the repository root and, at each level, look for `docs/adr/`, `doc/adr/`, `adr/`,
+  `docs/decisions/` or `docs/architecture/decisions/` holding numbered Markdown files; the
+  nearest one is `<adr-dir>`, so a monorepo package's own ADRs win over the root's. No such
+  directory at any level → the comment is R2's: **KEEP**, and say nothing. A comment that already names an ADR by number, and states nothing the ADR
   does not, is R4's.
 - **Verdict MOVE.** The destination is `<adr-dir>/<next-number>-<slug>.md` — the next
   number after the highest one present, in the same zero-padding, and a kebab-case slug of

@@ -118,6 +118,7 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-44 | hookify | `.sandbox/hookify` (`hookify/DEFECTS.md`) | calibration with the same rules: matches in removed lines only, a team rule shadowed by a `.local.md` of the same name, a disabled rule, a `bash` rule, a `file_path` anchored at `^src/`, a path-only rule over a credential-free line stay non-findings; a match in a comment and in a test asserting absence go to `CANDIDATES`; the closing line names each rule set aside with its reason | 13 / 0 |
 | eval-45 | comment | `.sandbox/comment-adr/src/payment-client.ts` (`comment-taxonomy/DEFECTS.md`) | the four comment kinds in a checkout with `docs/adr/`: three excuses are R13 REWRITE (never REMOVE), a comment naming a function that does not exist is R9, a decision other code must follow is R14 MOVE into `docs/adr/0002-…`; a local why, a named-cause workaround and a `TODO` with a dated trigger stay KEEP | 8 / 0 |
 | eval-46 | comment | `.sandbox/comment-noadr/src/payment-client.ts` (`comment-taxonomy/DEFECTS.md`) | eval-45's file with no ADR directory: the cross-cutting decision stays KEEP under R2, an excuse is still R13 | 3 / 0 |
+| eval-47 | comment | `.sandbox/comment-pkgadr/packages/payments/src/payment-client.ts` (`comment-taxonomy/DEFECTS.md`) | eval-45's file in a monorepo whose ADRs live in the package: R14 MOVE targets `packages/payments/docs/adr/0002-…`, not the root | 3 / 0 |
 
 ### Grading
 
