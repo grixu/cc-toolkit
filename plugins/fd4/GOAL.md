@@ -86,21 +86,48 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    wszystkie warstwy, których dotyka.
 6. **Walidacja SPEC przechodzi przez zestaw soczewek.** Każda soczewka sprawdza jeden aspekt, jak w
    pluginie [code-review](../code-review/README.md). Zestaw dla SPEC:
-   - **Gap Analyzer:** czego brakuje, choć cel SPEC tego wymaga (np. przypadek, rola, stan, błąd).
-   - **Ambiguity Mapper:** sformułowania, które da się odczytać na więcej niż jeden sposób.
-   - **Assumption Excavator:** założenia, na których SPEC stoi, ale których nie zapisał.
+   - **Gap Analyzer:** czego brakuje, choć cel SPEC tego wymaga. Soczewka przechodzi każdą encję
+     przez jej stany i zdarzenia, także cudze: drugiego aktora w tym samym czasie, współbieżny zapis,
+     wygaśnięcie i odświeżenie, awarię zależności i dwie decyzje działające naraz (np. przesunięcie
+     terminu przy czekającym mailu). Każdy cel widoczny dla użytkownika ma swoje AC.
+   - **Ambiguity Mapper:** sformułowania, które da się odczytać na dwa sposoby prowadzące do innego
+     zachowania; soczewka podaje oba odczytania. Obejmuje zakres reguł typu „każdy inny błąd” i
+     kolejność kroków lub sprawdzeń, której tekst nie ustala (np. 400 czy 404, gdy zachodzą oba).
+   - **Assumption Excavator:** założenia, na których SPEC stoi, ale których nie zapisał: o
+     konfiguracji i jej wartościach domyślnych, o kodzie, który dostaje wynik (np. retry), o
+     odbiorcach i o skali. Każde podaje warunek, przy którym pęka. Założenie, które rozstrzyga odczyt
+     kodu lub dokumentacji, soczewka sprawdza i zgłasza tylko wtedy, gdy się nie potwierdza.
    - **Implied Completeness Detector:** miejsca, które wyglądają na kompletne, a zostawiają zakres
-     niedopowiedziany (np. „itd.”, „obsłuż błędy”, „jak w module X”).
+     niedopowiedziany: „itd.”, „obsłuż błędy”, reguła ustalona dla jednego z kilku odbiorców,
+     ścieżek lub punktów wejścia, a pominięta dla reszty, oraz lista prac bez miejsc, które opisują
+     zmieniane zachowanie. Te miejsca soczewka szuka wszędzie, gdzie projekt trzyma wiedzę: w
+     dokumentacji i diagramach, ADR, plikach dla agentów (CLAUDE.md, AGENTS.md, reguły, skille), w
+     źródłach dostępnych przez MCP lub skille pobierające dokumentację oraz we wcześniejszych SPEC
+     fd4 dla tego samego obszaru.
    - **Repo Reality Checker:** czy SPEC zgadza się z regułami i narzędziami repozytorium (CLAUDE.md,
-     reguły, standardy kodu, workflowy CI, generatory, indeksy dokumentacji). Zanim luka trafi do
-     innego zespołu, soczewka sprawdza ją tanim testem w worktree.
+     reguły, standardy kodu, lint, workflowy CI i wdrożeń, generatory, indeksy dokumentacji) i z
+     istniejącym kodem, na którym stoi (ścieżki wywołań, helpery, graf modułów). Bramki, które trafi
+     zmiana, soczewka uruchamia w izolowanym worktree, w którym wolno instalować zależności; lukę,
+     którą rozstrzyga tani test, sprawdza, zanim ta trafi do innego zespołu.
    - **External Contract Verifier:** każde zachowanie biblioteki, API lub platformy, na którym SPEC
-     stoi, ma źródło w dokumentacji lub kodzie tej wersji, której używa projekt. Użycie w repozytorium
-     nie jest dowodem.
-   - **Security & Abuse Lens:** dla każdej nowej roli, tokenu, endpointu i uprawnienia: kto do niego
-     dotrze, co ujawnia i co się dzieje przy współbieżności.
-   - **Consistency & Order Checker:** decyzje sobie nie przeczą, nie odwracają po cichu wcześniejszych
-     dokumentów, a kolejność budowy się trzyma. Co da się, sprawdza kod.
+     stoi, ma źródło w dokumentacji, typach lub kodzie tej wersji, której używa projekt. Użycie w
+     repozytorium nie jest dowodem. Reguła, która wylicza warianty zewnętrznego schematu, obejmuje
+     wszystkie, także brakujące i puste wartości pól. Gdy dokumentacja milczy, soczewka robi tani
+     test albo szuka w zgłoszeniach SDK, zanim odłoży lukę.
+   - **Security & Abuse Lens:** dla każdej nowej roli, tokenu, sesji, endpointu, uprawnienia i danej
+     wrażliwej: kto do niej dotrze (także bez logowania i nadając uprawnienie sam sobie), co ujawnia
+     i dokąd trafia (logi, historia przeglądarki, kopie plików), jak się ją odbiera, co uruchamia
+     każde żądanie i czy wyścig omija sprawdzenie.
+   - **Consistency & Order Checker:** decyzje, elementy i AC sobie nie przeczą ani nie odwracają po
+     cichu wcześniejszych dokumentów (poprawka ADR przepisuje każdy punkt, któremu przeczy), a
+     kolejność budowy się trzyma, także dla testów: nic nie korzysta z elementu, pola ani harnessu
+     przed zadaniem, które je wprowadza. Co da się, sprawdza kod.
+   - **Public Interface Validator:** czy kształt publicznego API, który zostaje w SPEC (problem 1),
+     jest kompletny: typ i format każdego pola, wymagalność, dozwolone wartości, kody i format
+     błędów, zmiany łamiące zgodność. W zadaniach ta sama soczewka sprawdza więcej (pomysł 8).
+
+   Każda soczewka wymienia, czego nie sprawdza i której soczewce to oddaje, żeby jedna wada nie
+   wracała z dwóch soczewek.
 
    Soczewka nie edytuje pliku, który sprawdza: walidator i edytor to osobne agenty. Walidator zwraca
    uwagi, edytor wprowadza przyjęte. W fd3 walidator poprawiał SPEC w trakcie sprawdzania, przez co
@@ -131,7 +158,11 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    (wymaganie 4).
 10. **Walidacja zwraca kontrakt werdyktu.** Dla każdego sprawdzanego pliku: werdykt binarny (gotowy
     albo nie), lista uwag oznaczonych jako blokujące lub nie i dowód dla każdego „sprawdzone”.
-    Sprawdzenie, które niczego nie zweryfikowało, zwraca „nie uruchomiono”, nigdy „przeszło”. W fd3
+    Sprawdzenie, które niczego nie zweryfikowało, zwraca „nie uruchomiono”, nigdy „przeszło”. Każda
+    uwaga to jeden rekord: co jest nie tak, jaki ma skutek i co ją zamyka („rozstrzygnięte, jeśli…”);
+    liczniki w podsumowaniu zgadzają się z liczbą rekordów. Soczewka zapisuje ślad tego, co sprawdziła,
+    także gdy nic nie znalazła, a cały jej wynik mieści się w ok. 3,5 tys. tokenów. Nie ma punktacji
+    ani poziomów wagi poza blokująca/nieblokująca, a zero uwag jest dopuszczalnym wynikiem. W fd3
     werdykt nie wypadł negatywnie ani razu w 48 przebiegach, a check wykonalności w repozytorium
     przeszedł 46 razy, choć przepuścił 18 defektów (m12).
 11. **Każdy etap i agent ma model dobrany do swojej pracy.** W fd3 większość pracy idzie na Opusie,
@@ -152,7 +183,9 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 12. **Walidacja to ograniczona pętla: sprawdzenie, odsiew, edycja, ponowne sprawdzenie.** Orkiestrator
     uruchamia soczewki (wymaganie 6), zbiera ich uwagi w jedną listę i przepuszcza ją przez ten sam
     model decyzyjny co pytania grilla (problem 6): uwagi, które rozstrzyga agent, idą prosto do
-    edytora, a do użytkownika trafiają tylko kluczowe. Po edycji idzie ponowne sprawdzenie. Pętla
+    edytora, a do użytkownika trafiają tylko kluczowe. Po edycji idzie ponowne sprawdzenie edytowanych
+    sekcji i każdej sekcji, która się do nich odwołuje: w fd3 4 defekty to regresje po naprawach
+    walidatora w sekcjach, których nikt potem nie sprawdził (m12). Pętla
     wykonuje się najwyżej 3 razy; użytkownik zmienia ten limit ustawieniem `validation.maxRounds`.
     Gdy limit się wyczerpie, a uwagi blokujące zostały, werdykt brzmi „nie gotowy” (wymaganie 10).
 13. **Odsiew pytań waży tylko odwracalność decyzji.** Pytanie, którego decyzję trudno odwrócić, trafia
@@ -184,11 +217,15 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
 7. **SPEC i zadania waliduje inny model niż ten, który je pisał.** Gdy dostępny jest inny harness i
    dostawca modeli, walidacja idzie do nich przez plugin [collegium](../collegium/README.md).
 8. **Soczewki walidują też zadania.** Ten sam mechanizm co przy walidacji SPEC (wymaganie 6) sprawdza
-   pliki zadań. Do soczewek SPEC dochodzą dwie dla zadań:
-   - **Public Interface Validator:** czy interfejsy publiczne zadania (wymaganie 8) są kompletne,
-     spójne ze SPEC i z zadaniami, które od nich zależą.
-   - **Test Architect:** czy scenariusze testów (wymaganie 8) pokrywają AC zadania i leżą na właściwym
-     poziomie: unit, integracja albo e2e.
+   pliki zadań. W zadaniach dwie soczewki sprawdzają więcej niż w SPEC albo działają tylko tam:
+   - **Public Interface Validator:** czy interfejsy publiczne zadania (wymaganie 8) są kompletne (typ
+     i format każdego pola, wymagalność, dozwolone wartości, kody błędów), spójne ze SPEC i z
+     zadaniami, które od nich zależą, i czy jakieś zadanie je rejestruje lub podłącza.
+   - **Test Architect:** czy scenariusze testów (wymaganie 8) pokrywają AC zadania, także błędy i
+     przypadki brzegowe, a każde AC SPEC trafia do któregoś zadania; czy każde Then sprawdza wynik,
+     który zmieniłby się przy zepsutym zachowaniu; czy poziom zgadza się z regułą testów repozytorium
+     i czy warunki scenariusza da się spełnić w tym miejscu kolejności (harness, testowany kod,
+     selektory e2e).
 9. **Zgoda na kroki operacyjne po podziale.** Po stworzeniu zadań agent pokazuje wszystkie kroki,
    które nie są pisaniem kodu (np. zmiany infrastruktury, migracje, konfiguracja zewnętrznych
    usług), nie tylko ryzykowne. Przy każdym kroku podaje:
