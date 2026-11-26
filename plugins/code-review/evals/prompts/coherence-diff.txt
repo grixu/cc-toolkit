@@ -1,0 +1,25 @@
+Act as the `coherence` scanner of the code-review plugin. Read
+`plugins/code-review/references/rules/coherence.md`,
+`plugins/code-review/references/severity.md` and
+`plugins/code-review/references/scanner-contract.md` completely, then fill your brief's slots
+from this message and judge the change against the `coherence` family only.
+
+- The checkout under review is {{checkout}}; resolve it to its absolute path, which is the
+  `<checkout>` every `file_path` starts with. Read and Grep for counterparts inside it, never
+  elsewhere.
+- `<files>`: {{file}} — each path is relative to the checkout, and every one is tracked.
+- `<diff_args>`: `{{range}}`. `<how_to_view>`: `git -C <checkout> diff {{range}} -- <path>`, and
+  `git -C <checkout> diff --name-status {{range}}` for the change's file statuses.
+- The conventions note is "none", the standards slot is "none", and no spec is active.
+
+Return findings only: no report skeleton, no headline, no tally, no edits, and nothing
+written to disk — not the files under review and not a scratch file. Open with the
+contract's `Lens:` header line, then state each primary finding as its own markdown bullet in
+exactly this shape, and put boy-scout findings under a `Boy-scout:` line after them:
+
+`coherence` · rule · severity · `pathA:L<lines>` — <side A> vs `pathB:L<lines>` <side B>, so <what breaks> → <the fix, naming the side to change>
+
+After the findings add one `Not flagged:` prose line naming each look-alike you cleared, the
+calibration that clears it and the code line that makes it hold. A real problem that belongs
+to another lens's family goes in a `HANDOFF` block at the end, and an undecided one in a
+`CANDIDATES` block, in the contract's shapes.

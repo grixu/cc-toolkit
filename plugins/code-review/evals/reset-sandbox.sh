@@ -375,4 +375,24 @@ cp -R cases/hookify/head/. "$hookify/"
 git -C "$hookify" add -A
 commit "$hookify" 'feat: payments client, order export and the release script'
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions, $(pwd)/$injection, $(pwd)/$hookify"
+# evals 48-49: two branches off one base, reviewed as diffs, so the stale side of every seam sits
+# in a file the branch never touched or outside its hunk (coherence-sweep/DEFECTS.md). Each eval
+# gets a checkout of its own, sitting on its branch, so the files on disk are the change's side.
+sweep=.sandbox/coherence-sweep
+mkdir -p "$sweep"
+cp -R cases/coherence-sweep/base/. "$sweep/"
+git -C "$sweep" init -q -b main
+git -C "$sweep" add -A
+commit "$sweep" 'feat: users, channels, flags and the API overview'
+git -C "$sweep" switch -q -c feat/sweep
+cp -R cases/coherence-sweep/recall/. "$sweep/"
+git -C "$sweep" add -A
+commit "$sweep" 'feat: deactivate users, SMS channels, a status route and background flag refresh'
+git -C "$sweep" switch -q -c refactor/slug main
+cp -R cases/coherence-sweep/calibration/. "$sweep/"
+git -C "$sweep" add -A
+commit "$sweep" 'refactor: name the accent-stripping step and test toSlug'
+cp -R "$sweep" "$sweep-calibration"
+git -C "$sweep" switch -q feat/sweep
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions, $(pwd)/$injection, $(pwd)/$hookify, $(pwd)/$sweep, $(pwd)/$sweep-calibration"

@@ -57,6 +57,9 @@ prompts:
   # The hookify lens, over a branch whose base commits the project's hookify rule files.
   - id: file://prompts/hookify.txt
     label: hookify-track
+  # The coherence lens over a branch diff, so its sweep reaches docs the change never touched.
+  - id: file://prompts/coherence-diff.txt
+    label: coherence-diff-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -1249,7 +1252,7 @@ tests:
       # prose labelled plan
       - type: javascript
         value: file://checks/report.mjs:noFinding
-        config: { family: coherence, mentions: ['roadmap', '[Dd]igest'], siteOnly: true }
+        config: { family: coherence, mentions: ['roadmap', '[Dd]igest (e-?mail|flag)', '`digest`'], siteOnly: true }
       # a key with a code default is evidently optional
       - type: javascript
         value: file://checks/report.mjs:noFinding
@@ -1566,3 +1569,64 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:findingsVocabulary
         config: { families: [hookify], severities: [high, medium] }
+
+  - description: 'eval-48 coherence-sweep-recall (coherence-sweep/ untouched docs, generated contract, missing changeset)'
+    prompts: [coherence-diff-track]
+    vars:
+      # coherence-sweep/DEFECTS.md lists the five seams; reset-sandbox.sh leaves it out of the checkout.
+      checkout: plugins/code-review/evals/.sandbox/coherence-sweep
+      range: main..feat/sweep
+      file: >-
+        docs/flags.md src/app.module.ts src/channels/kind.ts src/flags/flags.service.ts
+        src/http/status.controller.ts src/users/user.service.ts
+    # The lens reads the diff with git and sweeps the repo with Grep or git grep: both need Bash.
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: '(^|\n)Lens: coherence · files judged: [1-9]'
+      # a method the change removed, still named by a doc the change never touched
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: doc-drift, mentions: ['users\.md'], all: ['archiveUser'] }
+      # a count and an exclusive claim the new route breaks
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: doc-drift, mentions: ['overview\.md'], all: ['StatusController|status\.controller'] }
+      # "never" outside the edited hunk, broken by the second fetch path
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: doc-drift, mentions: ['flags\.md'], all: ['refresh|never'] }
+      # the committed OpenAPI file and the generated client were not regenerated
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: [contract-drift, incomplete-propagation], mentions: ['openapi\.json|schema\.ts'], all: ['sms|Sms'], severity: high }
+      # a removed public method in a Changesets repo, with no changeset
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: coherence, rule: missing-counterpart, mentions: ['changeset'] }
+      # a released changelog entry is history
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: coherence, mentions: ['CHANGELOG\.md'], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [coherence], severities: [high, medium], rules: true }
+      - type: javascript
+        value: file://checks/handoff-families.mjs
+
+  - description: 'eval-49 coherence-sweep-calibration (coherence-sweep/ a private rename, a released entry, no changeset needed)'
+    prompts: [coherence-diff-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/coherence-sweep-calibration
+      range: main..refactor/slug
+      file: src/text/slug.ts src/text/slug.test.ts
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: '(^|\n)Lens: coherence · files judged: [1-9]'
+      - type: regex
+        value: '[Nn]ot flagged'
+      # no changeset needed, a released entry is history, and no doc names the renamed helper
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: coherence }

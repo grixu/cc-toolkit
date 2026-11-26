@@ -31,6 +31,7 @@ evals/
   prompts/coherence.txt    # scanner brief — coherence lens, over a checkout it Greps for counterparts — evals 34–35, 42
   prompts/assumptions.txt  # scanner brief — assumptions lens, over a checkout with node_modules installed — evals 36–37, 41
   prompts/hookify.txt      # scanner brief — hookify lens, over a branch diff with its <hookify_rules> slot — evals 43–44
+  prompts/coherence-diff.txt # scanner brief — coherence lens over a branch diff, so its sweep reaches untouched docs — evals 48–49
   prompts/pr-scope.txt     # start-cr Step 1 for --pr, with a gh stand-in — eval-23
   prompts/start-cr-merge.txt # start-cr Steps 4–7 over lens files already on disk — eval-26
   prompts/pr-draft.txt     # start-cr --pr Step 1, then Step 4 on over lens files on disk — eval-27
@@ -41,7 +42,7 @@ evals/
   checks/pr-draft.mjs      # eval-27: the reviewer-mode draft, its hunks, and when the gh stand-in got a POST
   checks/untrusted-text.mjs # evals 41–42: what the tool calls ran, read and met — a planted command, a forbidden file, a kept-out value
   checks/                  # the other checks read files on disk (headless, pr, HANDOFF families)
-  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22–33, 34–37 and 41–44 run in, the context dirs of evals 26–27, and the gh stand-in
+  reset-sandbox.sh         # rebuilds .sandbox/: the checkouts evals 20, 22–33, 34–37 and 41–49 run in, the context dirs of evals 26–27, and the gh stand-in
 ```
 
 ## Fixtures live in R2
@@ -119,6 +120,8 @@ tracks don't cross-run (promptfoo otherwise matrices every test against every pr
 | eval-45 | comment | `.sandbox/comment-adr/src/payment-client.ts` (`comment-taxonomy/DEFECTS.md`) | the four comment kinds in a checkout with `docs/adr/`: three excuses are R13 REWRITE (never REMOVE), a comment naming a function that does not exist is R9, a decision other code must follow is R14 MOVE into `docs/adr/0002-…`; a local why, a named-cause workaround and a `TODO` with a dated trigger stay KEEP | 8 / 0 |
 | eval-46 | comment | `.sandbox/comment-noadr/src/payment-client.ts` (`comment-taxonomy/DEFECTS.md`) | eval-45's file with no ADR directory: the cross-cutting decision stays KEEP under R2, an excuse is still R13 | 3 / 0 |
 | eval-47 | comment | `.sandbox/comment-pkgadr/packages/payments/src/payment-client.ts` (`comment-taxonomy/DEFECTS.md`) | eval-45's file in a monorepo whose ADRs live in the package: R14 MOVE targets `packages/payments/docs/adr/0002-…`, not the root | 3 / 0 |
+| eval-48 | coherence | `.sandbox/coherence-sweep` `main..feat/sweep` (`coherence-sweep/DEFECTS.md`) | the sweep from code to prose over a diff: a removed method still named by an untouched doc, a count and an "only route" claim a new route breaks, a "never" outside the edited hunk, `openapi.json` and the generated client missing a new enum member, a behaviour change with no changeset — all primary; a released changelog entry stays history | 5 / 1 |
+| eval-49 | coherence | `.sandbox/coherence-sweep` `main..refactor/slug` (`coherence-sweep/DEFECTS.md`) | a private rename plus a test: no changeset needed, the released entry naming the old helper is history, no coherence finding at all | 0 / 1 |
 
 ### Grading
 
