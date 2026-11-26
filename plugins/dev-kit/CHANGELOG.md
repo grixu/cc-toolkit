@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-26
+
 ### Changed
 
 - `dep-upgrade-check` maps the usage surface with text search and no longer points to a code graph (codebase-memory MCP). A connected semantic code search may add sites, but text search still settles "not used".
