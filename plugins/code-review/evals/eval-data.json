@@ -4,7 +4,24 @@
   "paths": [
     "cases",
     "comment-track",
-    "scope-mix"
+    "scope-mix",
+    "local/coherence-sweep-ab/analysis",
+    "local/coherence-sweep-ab/ctx",
+    "local/coherence-sweep-ab/out",
+    "local/coherence-sweep-ab/judge",
+    "local/coherence-sweep-ab/run1",
+    "local/coherence-sweep-ab/heldout",
+    "local/coherence-sweep-ab/blind",
+    "local/coherence-sweep-ab/logs",
+    "local/coherence-sweep-ab/gh",
+    "local/coherence-sweep-ab/ab-gt.json",
+    "local/coherence-sweep-ab/gt-resolved.json",
+    "local/coherence-sweep-ab/gt-heldout.json",
+    "local/coherence-sweep-ab/prs.tsv",
+    "local/coherence-sweep-ab/prs-heldout.tsv",
+    "local/coherence-sweep-ab/results.json",
+    "local/coherence-sweep-ab/blind-key.json",
+    "local/coherence-sweep-ab/RUNS.md"
   ],
-  "sha256": "8238a7087ec75971d5efa97d1f717b279a2fbcf952408cb78ccbad0a12168b0a"
+  "sha256": "494efda548d7caeb6527cee5f265108b2429cd4ccfbbc9d390029c2bc033e717"
 }
