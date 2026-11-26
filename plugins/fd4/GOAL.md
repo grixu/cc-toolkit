@@ -104,11 +104,16 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
      dokumentacji i diagramach, ADR, plikach dla agentów (CLAUDE.md, AGENTS.md, reguły, skille), w
      źródłach dostępnych przez MCP lub skille pobierające dokumentację oraz we wcześniejszych SPEC
      fd4 dla tego samego obszaru.
-   - **Repo Reality Checker:** czy SPEC zgadza się z regułami i narzędziami repozytorium (CLAUDE.md,
-     reguły, standardy kodu, lint, workflowy CI i wdrożeń, generatory, indeksy dokumentacji) i z
-     istniejącym kodem, na którym stoi (ścieżki wywołań, helpery, graf modułów). Bramki, które trafi
-     zmiana, soczewka uruchamia w izolowanym worktree, w którym wolno instalować zależności; lukę,
-     którą rozstrzyga tani test, sprawdza, zanim ta trafi do innego zespołu.
+   - **Repo Reality Checker:** czy SPEC i jego zadania zgadzają się z regułami, narzędziami i
+     istniejącym kodem repozytorium. Dla każdego zadania soczewka wylicza bramki, które trafi jego
+     zmiana (lint, typecheck, testy, generatory i ich sprawdzenia aktualności, indeksy dokumentacji,
+     snapshoty, workflowy CI i wdrożeń), uruchamia każdą albo jej najtańsze sprawdzenie w izolowanym
+     worktree, w którym wolno instalować zależności, i nazywa, co zadanie musi dodać, żeby bramka
+     przeszła. Bramka, której wejście zadanie zmienia, a której wyniku żadne zadanie nie regeneruje,
+     to uwaga. Reguły repozytorium (CLAUDE.md, AGENTS.md, reguły, standardy kodu i testów) przykłada
+     do kodu i testów, które zadania przepisują, a ścieżki wywołań, helpery, fixtures i rejestracje,
+     na których zadania stoją, sprawdza w kodzie. Lukę, którą rozstrzyga tania komenda, rozstrzyga
+     od razu, zamiast odkładać ją do innego zespołu.
    - **External Contract Verifier:** każde zachowanie biblioteki, API lub platformy, na którym SPEC
      stoi, ma źródło w dokumentacji, typach lub kodzie tej wersji, której używa projekt. Użycie w
      repozytorium nie jest dowodem. Reguła, która wylicza warianty zewnętrznego schematu, obejmuje
@@ -221,11 +226,12 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    - **Public Interface Validator:** czy interfejsy publiczne zadania (wymaganie 8) są kompletne (typ
      i format każdego pola, wymagalność, dozwolone wartości, kody błędów), spójne ze SPEC i z
      zadaniami, które od nich zależą, i czy jakieś zadanie je rejestruje lub podłącza.
-   - **Test Architect:** czy scenariusze testów (wymaganie 8) pokrywają AC zadania, także błędy i
-     przypadki brzegowe, a każde AC SPEC trafia do któregoś zadania; czy każde Then sprawdza wynik,
-     który zmieniłby się przy zepsutym zachowaniu; czy poziom zgadza się z regułą testów repozytorium
-     i czy warunki scenariusza da się spełnić w tym miejscu kolejności (harness, testowany kod,
-     selektory e2e).
+   - **Test Architect:** szuka scenariuszy testów (wymaganie 8), które nie sprawdzają AC, i takich,
+     których nie da się wykonać. Uwagą jest: AC SPEC, które nie trafia do żadnego zadania; AC zadania
+     (także błąd lub przypadek brzegowy, który AC nazywa) bez żadnego scenariusza; Then, które
+     przeszłoby także przy zepsutym zachowaniu; poziom niezgodny z regułą testów repozytorium;
+     scenariusz, którego warunków nie da się spełnić w tym miejscu kolejności (harness, testowany
+     kod, selektory e2e). Prośba o dodatkowe pokrycie AC, które ma już scenariusz, nie jest uwagą.
 9. **Zgoda na kroki operacyjne po podziale.** Po stworzeniu zadań agent pokazuje wszystkie kroki,
    które nie są pisaniem kodu (np. zmiany infrastruktury, migracje, konfiguracja zewnętrznych
    usług), nie tylko ryzykowne. Przy każdym kroku podaje:
