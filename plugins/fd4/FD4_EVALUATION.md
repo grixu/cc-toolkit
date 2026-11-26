@@ -86,7 +86,7 @@ przypadkach mniejsza poprawa ginie w szumie. Progi przyjął właściciel 26.11.
 | m9 kroki dla człowieka | 47 z 60 mógł zrobić agent | 0 kroków agenta przypisanych użytkownikowi; 100% ryzykownych kroków na liście zgód | – |
 | m10 powtarzalne pytania | 119 pytań ze wzorców; 100 pytań „zatwierdź decyzję” | 0 pytań objętych ustawieniem; 0 pojedynczych zatwierdzeń, tylko przegląd zbiorczy | – |
 | m11 blokady na starcie | 2 z 9 przypadków (panel ról: 0 z 25 zadań agenta na starcie; agent-deck: 1 z 11) | 0 zadań użytkownika blokujących start; implementacja rusza w obu przypadkach z blokadą | – |
-| m12 walidacja | 123 defekty przeszły; soczewki złapałyby 60% (ocena modelu) | zmierzone w odtworzeniu: ≥ 50% defektów złapanych; 0 regresji po własnych edycjach; „nie gotowy” przy uwagach blokujących | ≥ 80% uwag soczewek to prawdziwe defekty |
+| m12 walidacja | 122 defekty przeszły; soczewki złapałyby 60% (ocena modelu) | zmierzone w odtworzeniu: ≥ 50% defektów złapanych; 0 regresji po własnych edycjach; „nie gotowy” przy uwagach blokujących | ≥ 80% uwag soczewek to prawdziwe defekty |
 | m13 subagenci i modele | 113 subagentów; narzut na starcie 66 tys.; Opus 93% kosztu | ≤ 55 subagentów; narzut ≤ 20 tys.; Opus ≤ 60% kosztu | model niższy niż Opus tylko tam, gdzie ewaluacja jakości przechodzi (wymaganie 11) |
 | m14 Bash w orkiestratorze | 12% kosztu orkiestratora | ≤ 6% | – |
 | całość | $149 i 351 min aktywnie na przypadek | ≤ $75 i ≤ 175 min | liczba defektów po scaleniu nie większa niż w fd3 |
