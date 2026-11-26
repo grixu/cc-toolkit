@@ -199,7 +199,10 @@ opens by quoting side A.
   cached", "every handler validates" — checked against the whole set it quantifies: the
   module's registry, every call site of the operation (Grep them all), every member of the
   listing. One path that agrees settles nothing; the claim holds only when no path or
-  member breaks it.
+  member breaks it. The set is the one the sentence speaks about: a claim about the running
+  system is broken only by a path that runs there, never by a dev-only seeder, a test, a
+  fixture or a one-off script, unless the sentence is about that context ("local development
+  never fetches" is broken by a fetch that runs in development).
 - **Suggested fix**: name the sentence or entry to change and the value it takes, or —
   when the prose may be the intended behaviour — "align the doc with the code or the code
   with the doc; the author decides".

@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   becomes a candidate
 - `coherence` never skips a sentence as "pre-existing prose" when it describes a unit the
   change touched: the sentence is traced to the code after the change
+- A count or exclusive claim about the running system is no longer broken by a dev-only
+  seeder, a test, a fixture or a one-off script
 - `coherence` · contract-drift requires Grepping a committed `openapi.json`, generated
   `schema.ts` or SDK whenever the change touches what feeds it
 - An acknowledgement clears drift only when it names the document to update; a report, ADR or
