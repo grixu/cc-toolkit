@@ -25,7 +25,7 @@ cheap. The orchestrator re-grades centrally against the master table, so your se
 is a first pass.
 
 ## Contents
-- `spec` — missing-requirement, wrong-implementation, partial-requirement, scope-creep
+- `spec` — missing-requirement, wrong-implementation, partial-requirement, scope-creep, stale-spec
 
 Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 **Calibration** paragraph naming the look-alike that is *not* a violation.
@@ -36,6 +36,7 @@ Every rule below carries its **Flag** conditions, a **Suggested fix**, and a
 | `spec` | wrong-implementation | a requirement implemented, but the implementation contradicts the spec line | high |
 | `spec` | partial-requirement  | a requirement only partly implemented | medium |
 | `spec` | scope-creep          | behaviour in the diff no spec line asked for | medium |
+| `spec` | stale-spec           | a spec line still states the behaviour an approved departure replaced (approval in an ADR or the brief, not in the spec) | medium |
 
 ### Enumerate, then map — the discipline for the whole lens
 
@@ -182,5 +183,23 @@ intent, and it widens what the spec's author must now own.
   documents (the `<conventions>` note); a departure the user already approved where the
   review can read it — a decision recorded in the spec, a spec amendment in the same
   change, or the caller's brief — cleared in one line naming where the approval is
-  written, and never raised again. Craft problems in the added code are
+  written, and never raised again. An approval written outside the spec clears the code,
+  not the spec: when the spec's own line still states what was replaced, raise
+  `stale-spec` below. Craft problems in the added code are
   `HANDOFF`, never a reason to raise this rule.
+
+#### `stale-spec` — a spec line an approved departure left behind
+
+The code departs from the spec, and the departure is approved — by an ADR or amendment in
+the change, or by the caller's brief — but the spec line itself was never updated. The
+code is right; the spec now tells its next reader the old behaviour, and the active spec is
+read by no other lens.
+
+- **Flag** a spec line — a requirement, a decision row, a code sketch, an example — that
+  states the mechanism, value or condition the approved departure replaced, quoting the
+  spec line and naming where the approval is written.
+- **Suggested fix**: update the spec line to the approved behaviour, or mark it superseded
+  by the record that approved the change.
+- **Calibration → not a finding**: a departure approved inside the spec itself (an
+  amendment, a superseding decision row the spec carries); a spec the change marks frozen or
+  archived; a departure on a point the spec leaves open — that is no departure at all.

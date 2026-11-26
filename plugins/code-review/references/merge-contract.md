@@ -17,7 +17,10 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   anything: it is a lens that did not deliver, however clean its findings list looks. One that
   reads `files judged: <K> of <M>` with `K` below `M` delivered in part: merge it, and name the
   lens with its `K of M` in the `Tally`'s lens clause, so a lens that skipped files never reads
-  as one that judged them all.
+  as one that judged them all. A header that ends `· search blocked: <what>` delivered too, but
+  its repo-wide sweep did not run: name the lens and what it could not search in the same
+  clause, so a review that never looked beyond the diff does not read as one that found the
+  repo clean.
 - **The Codex review is an external review, not a lens.** When `scope.json`'s `lenses.active`
   holds a `codex` entry, read `codex.md` from the context directory as `codex-review.md`'s
   **Rendering** wrote it, whatever its scanner's `<result>` said. A header `Lens: codex ·
@@ -52,6 +55,17 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   when an ADR states it. A wider grant, an exposed secret or a missing authorization step is
   `security`, never `coherence` · config-drift or sibling-asymmetry. When two lenses report
   the same seam, keep the owner's bullet and fold the other into it.
+- **A doc folded into a code finding stays in its fix.** When a `doc-drift` or a doc
+  `CANDIDATE` shares a root cause with a finding on the code side and is folded into it, the
+  surviving bullet's fix names the document's `path:L` and the sentence that must change with
+  the code. A fix that names only the code ships the code change and leaves the document
+  false: one run folded a doc candidate into a correctness fix, the author applied the fix,
+  and the paragraph it had made stale came back from a bot.
+- **A doc the change made false is primary.** A `doc-drift` whose code side is in the diff
+  stays a primary finding when its stale sentence sits outside every hunk, or in a file the
+  change never touched; never demote it to `Boy-scout` or `Not flagged` for where the sentence
+  sits. A report, ADR or plan the change itself adds or edits is never "history": clear its
+  claims only by the calibration of the rule they fall under.
 - **A false belief and a missing branch have different owners.** Missing handling for a
   declared or universal outcome is `correctness`; a false belief about a library, the
   runtime or the platform, backed by the installed source or its docs, is `assumptions`. A
@@ -276,7 +290,7 @@ each when one is a real problem with no rule to land on; omit when empty>
 **Boy-scout (untouched code, optional):**
 - `family` · rule · <path>:L<lines> — <one line>
 
-**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of A (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files). External review: codex | skipped: codex — <reason>. Spec: R of T requirements met. Skipped: <files + reason>.
+**Tally:** N quality findings (H high · M medium · K nit) · C comments (X remove · Y rewrite · Z move · V add · W keep) · F files. Lenses: L of A (skipped: <lens> — <reason>; partial: <lens> — <K> of <M> files; search blocked: <lens> — <what>). External review: codex | skipped: codex — <reason>. Spec: R of T requirements met. Skipped: <files + reason>.
 ```
 
 A filled-in report reads like this:

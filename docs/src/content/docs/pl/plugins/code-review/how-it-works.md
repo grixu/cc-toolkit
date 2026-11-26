@@ -51,10 +51,10 @@ Jest ich dwanaście: dziewięć rusza przy każdej zmianie kodu, dwie zależą o
 | simplicity & types | zawsze | Duplikacji, która składa się w jeden kształt, kodu dłuższego niż jego idea, zbędnych rzutowań, martwego kodu. |
 | correctness | zawsze | Warunków wybierających złą gałąź, nieobsłużonych przypadków, błędów o jeden, połkniętych błędów, wyścigów, złamanych kontraktów wywołań. |
 | security | zawsze | Sekretów w źródłach, injection, brakujących kontroli dostępu, niewalidowanego wejścia, niebezpiecznych ustawień, poszerzonego dostępu, w kodzie, politykach i workflowach CI. |
-| coherence | zawsze | Dwóch artefaktów opisujących to samo inaczej: dokumentacji, kontraktów, migracji albo konfiguracji niezgodnych z kodem, albo kodu łamiącego regułę z przyjętego ADR-a lub `CONTEXT.md`. |
+| coherence | zawsze | Dwóch artefaktów opisujących to samo inaczej: dokumentacji, kontraktów, zacommitowanych generowanych klientów, migracji albo konfiguracji niezgodnych z kodem, dokumentacji spoza zmiany, która wciąż wymienia to, co zmiana usunęła, zmiany zachowania bez changesetu w repo używającym Changesets, albo kodu łamiącego regułę z przyjętego ADR-a lub `CONTEXT.md`. |
 | assumptions | zawsze | Kodu, który polega na zachowaniu biblioteki, runtime'u, CI albo platformy sprzecznym z zainstalowanym źródłem lub zablokowaną wersją, i dublerów testowych, do których prawdziwa zależność by nie pasowała. |
 | performance | w zmianie jest kod wykonywalny | Wywołań N+1, nieograniczonych pobrań, blokujących wywołań na ścieżkach async, zbędnych renderów Reacta, zapytań po nieindeksowanych kolumnach. |
-| spec | wskazano spec | Linii specu, których nic nie implementuje, implementacji błędnych albo częściowych i zachowań, o które spec nie prosił. |
+| spec | wskazano spec | Linii specu, których nic nie implementuje, implementacji błędnych albo częściowych, zachowań, o które spec nie prosił, i linii specu wciąż opisujących to, co zastąpiło zatwierdzone odstępstwo. |
 | hookify | projekt ma reguły hookify | Dodanych linii, przed którymi własne reguły `file` projektu w [hookify](/pl/plugins/hookify/) by ostrzegły albo które by zablokowały, odtworzonych na diffie. |
 
 Tabela 1. Dwanaście soczewek i kiedy każda rusza
@@ -120,7 +120,7 @@ Scala pliki soczewek przez te kontrole:
 3. **Zbieżność.** Uwaga, do której kilka soczewek doszło niezależnie, prowadzi swój plik. Zbieżność podnosi pewność i kolejność, nigdy wagę.
 4. **Każdy handoff i kandydat dostaje miejsce.** Staje się ocenioną uwagą, łączy się z inną albo trafia do `Not flagged` z powodem.
 5. **Każdy znacznik `(verify)` zostaje rozstrzygnięty** przez przeczytanie kodu. Obalona uwaga wypada z adnotacją.
-6. **Każda waga jest oceniana ponownie** według jednej głównej tabeli 68 reguł. Ocena scannera to pierwsze podejście; trafia dalej wiersz z tabeli.
+6. **Każda waga jest oceniana ponownie** według jednej głównej tabeli 69 reguł. Ocena scannera to pierwsze podejście; trafia dalej wiersz z tabeli.
 7. **Ocena poprawki, nie tylko uwagi.** Poprawka, która zmieniłaby to, co widzą wywołujący, przeczyłaby innej poprawce albo stworzyłaby kolejną uwagę, trafia do przechodzenia strukturalnego albo zostaje tylko do raportu.
 
 Krok 4 jest publikowany jako jedna policzona linia nad raportem, na przykład `Reconciliation: 3 handoffs + 2 candidates → 2 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped · 1 passed on`.

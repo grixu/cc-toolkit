@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `coherence` sweeps from the code to the prose on every change: it Greps the repo's docs,
+  ADRs, changesets, contracts and committed generated clients for every identifier the change
+  adds, removes, renames or reformats, so a doc the change never touched that still names a
+  removed method or path is reported
+- `coherence` · missing-counterpart covers a behaviour change with no changeset in a repo that
+  versions with Changesets
+- `spec` · stale-spec: a spec line that still states what an approved departure (an ADR or the
+  brief) replaced is reported, with the fix to update the spec
+- A behavioural invariant a `CLAUDE.md` or `AGENTS.md` states about the code beside it, broken
+  by the change, reaches the merge as a `coherence` candidate (ADR 0003 amended)
+- A lens whose repo-wide search a hook refused says so in its header (`search blocked:`) and the
+  Tally names it
+
+### Changed
+
+- `coherence` · doc-drift checks counts and exclusive claims ("eleven controllers", "the one
+  route", "never fetches") against the whole registry or every call site, and checks the
+  outcome a sentence states, not only its condition
+- A coherence clearance cites the code line that makes the claim true; without one the claim
+  becomes a candidate
+- `coherence` never skips a sentence as "pre-existing prose" when it describes a unit the
+  change touched: the sentence is traced to the code after the change
+- `coherence` · contract-drift requires Grepping a committed `openapi.json`, generated
+  `schema.ts` or SDK whenever the change touches what feeds it
+- An acknowledgement clears drift only when it names the document to update; a report, ADR or
+  plan the change adds is never history; a decision never makes a published contract true
+- The merge keeps a `doc-drift` the change caused as a primary finding wherever the stale
+  sentence sits, and a doc folded into a code finding keeps its `path:L` in that fix
+
 ## [0.12.0] - 2026-11-25
 
 ### Added

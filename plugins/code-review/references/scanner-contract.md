@@ -57,7 +57,9 @@ as a finding where a rule fits.
 Every Scanner's output opens with one header line, `Lens: <lens> · files judged: <N> of <M>`,
 where `M` is the length of its `<files>` and a file counts as judged once its change was read. A
 Scanner that judged none of its files says so there; the merge never reads a findings-free
-output without that line as a clean lens.
+output without that line as a clean lens. A Scanner whose repo-wide search a hook or a
+permission refused, with `git grep` refused too, appends `· search blocked: <what>` to that
+line.
 
 A Scanner is **one agent, one pass, one output**. It **dispatches no agent of its own** — a
 sub-agent puts a second hop between the finding and the merge, and the Scanner that tried it

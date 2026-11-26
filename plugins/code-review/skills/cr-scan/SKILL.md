@@ -73,7 +73,9 @@ for your lens, under one header line:
 Lens: <lens> · files judged: <N> of <M>
 ```
 
-A file counts as judged once you have read its change. That file, one per listed lens, is the only thing you write:
+A file counts as judged once you have read its change. When a hook or a permission refused a
+repo-wide search your rules file asks for, and `git grep` too, append `· search blocked: <what>`
+to that line. That file, one per listed lens, is the only thing you write:
 nothing in the checkout, no probe or scratch file anywhere. You dispatch no agent. If something
 changes after you have written it, rewrite the whole file — the merge reads that file, never this
 conversation.

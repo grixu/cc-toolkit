@@ -65,6 +65,7 @@ Przyjęty ADR, `CONTEXT.md` albo dokument decyzji w zmianie też tworzą uwagi: 
 `CLAUDE.md` i `AGENTS.md` (w katalogu głównym i w każdym katalogu aż do ocenianego pliku), `CONTRIBUTING.md`, `.cursor/rules` i `.claude/rules/*.md`.
 Gdy któryś opisuje styl, review przestaje go zgłaszać.
 Gdy dwa pliki projektu sobie przeczą, wygrywa bardziej szczegółowy, a raport wymienia konflikt w linii `Conventions`.
+Jeden wyjątek: zdanie z `CLAUDE.md` albo `AGENTS.md` o tym, jak działa kod obok niego (np. „fails open”), które zmiana łamie, trafia do scalania jako kandydat, nigdy samo jako oceniona uwaga.
 
 ## Słownik raportu
 

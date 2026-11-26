@@ -52,6 +52,12 @@ design note or plan yields a `CANDIDATE` marked "intent unconfirmed". `CLAUDE.md
 `AGENTS.md`, `CONTRIBUTING.md` and `.claude/rules` stay suppress-only, as 0002 set for every
 lens: a convention file the author writes for an agent is not a decision record.
 
+*Amended 2026-11-26:* a behavioural invariant a `CLAUDE.md` or `AGENTS.md` states about the
+code beside it — a runtime property such as "fails open", never a rule for how to write code
+— that the diff breaks becomes a `CANDIDATE` marked "intent unconfirmed", and the merge
+decides it. A reviewer caught a broken "fail open" invariant stated only in a module's
+`CLAUDE.md`; the lens had no way to raise it. These files still never raise a graded finding.
+
 **A docs-only change runs `coherence`.** When every file is skipped — documents,
 changesets, config data — `coherence` is the one active lens (plus `spec` when one is
 active) and reads the code side of each claim from the repository. A policy-only change

@@ -64,6 +64,7 @@ An accepted ADR, `CONTEXT.md` or a decision document in the change also creates 
 `CLAUDE.md` and `AGENTS.md` (at the root and in every directory down to the reviewed file), `CONTRIBUTING.md`, `.cursor/rules` and `.claude/rules/*.md`.
 When one of them documents a style, the review stops flagging it.
 When two project files disagree, the more specific one wins, and the report names the conflict on its `Conventions` line.
+One exception: a `CLAUDE.md` or `AGENTS.md` sentence about how the code beside it behaves at runtime, such as "fails open", that the change breaks reaches the merge as a candidate, never as a graded finding on its own.
 
 ## Report vocabulary
 

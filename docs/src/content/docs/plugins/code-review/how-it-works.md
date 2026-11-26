@@ -51,10 +51,10 @@ There are twelve: nine run on any change of code, two depend on the input, and o
 | simplicity & types | always | Duplication that collapses into one shape, code longer than its idea, needless casts, dead code. |
 | correctness | always | Conditions that pick the wrong branch, unhandled cases, off-by-one bounds, swallowed errors, races, broken call contracts. |
 | security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, widened access, in code, policies and CI workflows. |
-| coherence | always | Two artifacts that describe the same thing differently: docs, contracts, migrations or config that disagree with the code, or code that breaks a rule an accepted ADR or `CONTEXT.md` states. |
+| coherence | always | Two artifacts that describe the same thing differently: docs, contracts, committed generated clients, migrations or config that disagree with the code, docs the change never touched that still name what it removed, a behaviour change with no changeset where the repo uses Changesets, or code that breaks a rule an accepted ADR or `CONTEXT.md` states. |
 | assumptions | always | Code relying on library, runtime, CI or platform behavior that the installed source or the locked version contradicts, and test doubles the real dependency wouldn't match. |
 | performance | executable source in the change | N+1 calls, unbounded fetches, blocking calls on async paths, wasted React renders, queries on unindexed columns. |
-| spec | a spec is named | Spec lines nothing implements, implemented wrongly or only partly, and behavior the spec never asked for. |
+| spec | a spec is named | Spec lines nothing implements, implemented wrongly or only partly, behavior the spec never asked for, and spec lines still describing what an approved departure replaced. |
 | hookify | the project has hookify rules | Added lines that the project's own [hookify](/plugins/hookify/) `file` rules would have warned about or blocked, replayed over the diff. |
 
 Table 1. The twelve lenses and when each runs
@@ -120,7 +120,7 @@ It merges the lens files through these checks:
 3. **Count convergence.** A finding several lenses reached on their own leads its file. Convergence raises confidence and order, never severity.
 4. **Route every handoff and candidate.** Each one becomes a graded finding, merges into one, or is cleared in `Not flagged` with a reason.
 5. **Resolve every `(verify)` mark** by reading the code. A refuted finding is dropped and noted.
-6. **Re-grade every severity** against one master table of 68 rules. A scanner's grade is a first pass; the table's row is the one that ships.
+6. **Re-grade every severity** against one master table of 69 rules. A scanner's grade is a first pass; the table's row is the one that ships.
 7. **Judge the fix, not only the finding.** A fix that would change what callers observe, contradict another fix, or create the next finding is moved to the structural walk or to report only.
 
 Step 4 is published as one counted line above the report, for example `Reconciliation: 3 handoffs + 2 candidates → 2 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped · 1 passed on`.

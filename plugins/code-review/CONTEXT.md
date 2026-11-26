@@ -65,7 +65,7 @@ _Avoid_: lens selection (the user never picks), enabled lenses
 - Only the **hookify** Lens reads the **Hookify rule files**; a rule's `action` sets the severity (`block` high, otherwise medium)
 - No **Lens** has a standalone skill; a single-lens run is `cr-scan` with one `--lens`
 - **coherence** also reads the skipped files (documents, config data, migrations), never lockfiles, generated output or real `.env*` files (templates such as `.env.example` stay; a real one is Grepped for key names only); **assumptions** reads the installed dependency source and lockfile as evidence, never as files it judges
-- An accepted ADR, `CONTEXT.md` or a decision document in the diff generates `coherence` · invariant-breach **Findings**; `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` and `.claude/rules` stay suppress-only
+- An accepted ADR, `CONTEXT.md` or a decision document in the diff generates `coherence` · invariant-breach **Findings**; `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md` and `.claude/rules` never generate a graded **Finding**; a behavioural invariant a `CLAUDE.md` or `AGENTS.md` states about the code beside it, broken by the diff, becomes a `coherence` **Candidate** the merge decides
 - A **Scanner** returns **Findings**/**Verdicts** only; the **Orchestrator** merges, dedups, and re-grades severity centrally
 - A **Scanner** detects; the **Orchestrator** filters. Uncertainty travels as a **Candidate** rather than being dropped at detection, so the filter decides it with the whole review in view
 - The **start-cr** report groups by **file**, not by Scanner; **Findings** and **Verdicts** keep their own vocabularies side by side (no severity↔verdict mapping)

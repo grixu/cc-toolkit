@@ -9,7 +9,7 @@ a short menu asks which fixes to apply. Nothing is edited until you choose.
 A single "review this" prompt reads the change once, from one angle, and decides on the fly what
 counts as a problem. This plugin instead:
 
-- runs one reviewer per lens in parallel, each with its own written rule set (68 named rules plus
+- runs one reviewer per lens in parallel, each with its own written rule set (69 named rules plus
   14 comment rules), so every finding names its rule and runs are comparable;
 - merges the findings centrally: duplicates collapse, and severities follow one fixed table;
 - reads your project's conventions first, so a documented house style is not reported as a
@@ -81,10 +81,10 @@ from the repository.
 | simplicity & types | always | Duplication that collapses into one shape, code longer than its idea, needless casts, dead code. |
 | correctness | always | Conditions that pick the wrong branch, cases nothing handles, off-by-one bounds, swallowed errors, races on shared state, calls that break their callee's contract. |
 | security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, exposed infrastructure, widened access, including in access policies, RBAC, `CODEOWNERS` and CI workflows. |
-| coherence | always | Two artifacts that describe the same thing differently: docs or a changeset stating what the code does not do, an API contract or migration out of step with the code, a config key the code reads that compose, Helm or a workflow does not set, one of several parallel paths skipping a shared step, a new enum member a sibling listing misses, code breaking a rule an accepted ADR or `CONTEXT.md` states. |
+| coherence | always | Two artifacts that describe the same thing differently: docs or a changeset stating what the code does not do (including docs the change never touched that still name what it removed or renamed), an API contract, a committed generated client or a migration out of step with the code, a behaviour change with no changeset in a repo that uses Changesets, a config key the code reads that compose, Helm or a workflow does not set, one of several parallel paths skipping a shared step, a new enum member a sibling listing misses, code breaking a rule an accepted ADR or `CONTEXT.md` states. |
 | assumptions | always | Code that relies on a library, runtime, CI or platform behaving in a way it does not: an option's real scope or default, an API the locked version lacks, a job reading a secret its environment does not grant, a test double the real dependency would not match. |
 | performance | the change includes executable source (not tests, test helpers, `*.config.*`, infrastructure code or `.sh`) | N+1 calls, unbounded fetches, blocking calls on async paths, wasted React renders, queries on unindexed columns. |
-| spec | you name a spec with `--spec`, or accept the one the change carries | Spec lines nothing implements, implemented wrongly or only partly, and behaviour the spec never asked for. |
+| spec | you name a spec with `--spec`, or accept the one the change carries | Spec lines nothing implements, implemented wrongly or only partly, behaviour the spec never asked for, and spec lines still describing what an approved departure replaced. |
 | hookify | the checkout has hookify rule files (`.claude/hookify.*.local.md` or `.claude/hookify.*.rule.md`) with an enabled `file` or `all` rule | Added lines that the project's hookify rules would have warned about or blocked, had every edit gone through the hooks. |
 
 A security finding names where untrusted data enters and where it lands; a performance finding
@@ -210,7 +210,9 @@ design notes and plans only raise it as a candidate the merge decides.
 Files that only silence findings: `CLAUDE.md` and `AGENTS.md` (at the root and in every directory
 down to the reviewed file), `CONTRIBUTING.md`, `.cursor/rules`, and `.claude/rules/*.md`. When one
 of them documents a style, the review stops flagging it. When two project files disagree, the more
-specific one wins, and the report names the conflict on its `Conventions` line.
+specific one wins, and the report names the conflict on its `Conventions` line. One exception: a
+`CLAUDE.md` or `AGENTS.md` sentence about how the code beside it behaves at runtime, such as "fails
+open", that the change breaks reaches the merge as a candidate, never as a graded finding on its own.
 
 ## Fewer questions in the structural walk
 
