@@ -104,6 +104,10 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    Soczewka nie edytuje pliku, który sprawdza: walidator i edytor to osobne agenty. Walidator zwraca
    uwagi, edytor wprowadza przyjęte. W fd3 walidator poprawiał SPEC w trakcie sprawdzania, przez co
    17 uwag to regresje po jego własnych edycjach (baseline, metryka m12).
+
+   Soczewka nie zgłasza różnic bez wpływu na zachowanie, np. mapy zamiast zbioru, chyba że zabrania
+   ich reguła repozytorium. Decyzja zapisana w SPEC ma pierwszeństwo przed ogólną regułą skilla lub
+   konwencji: soczewka zgłasza ją tylko wtedy, gdy decyzja nie podaje powodu.
 7. **Zadania planują samodzielne wykonanie przez agenta.** Krok, który agent może wykonać przez CLI,
    trafia do zadania agenta, także gdy jest ryzykowny (problem 9). Zgodę na ryzykowne kroki daje
    pomysł 9. Zadanie użytkownika powstaje tylko dla pracy wyłącznie ludzkiej: przeglądu innego
