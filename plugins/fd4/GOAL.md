@@ -9,7 +9,8 @@ Kształt wydania jest otwarty: nowy major fd3 albo dwa osobne pluginy. Decyzja z
 więc do tego czasu fd4 to nazwa robocza.
 
 Zewnętrzne materiały, na których opieramy założenia i pomysły, są w
-[`KNOWLEDGE_SOURCES.md`](KNOWLEDGE_SOURCES.md).
+[`KNOWLEDGE_SOURCES.md`](KNOWLEDGE_SOURCES.md). Progi, po których poznajemy, że fd4 rozwiązał problemy
+fd3, są w [`FD4_EVALUATION.md`](FD4_EVALUATION.md#progi-sukcesu).
 
 Ten dokument obejmuje drogę do zadań: grill, SPEC, jego walidację i podział na zadania. Ustalenia
 dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
