@@ -5,9 +5,11 @@ Kolejność prac nad drogą do zadań z [`GOAL.md`](GOAL.md). Każdy etap dostaj
 
 ## 1. Baseline i progi sukcesu
 
-- [ ] **Przegląd baseline'u przez właściciela.** Rozstrzygnąć 10 otwartych pytań z sekcji „Open
+- [x] **Przegląd baseline'u przez właściciela.** Rozstrzygnąć 10 otwartych pytań z sekcji „Open
       questions” w `evals/baseline/local/fd3/REPORT.md`: etykiety m6, m9–m12, granice m1 i m4, cel m8.
-- [ ] **Progi sukcesu.** Dla każdej metryki m1–m13 zapisać próg _green_ dla fd4 i sposób pomiaru.
+      — zamknięte 26.11.2026; doszły m14 (koszt delegowania) i dwa przypadki z blokadą startu.
+- [x] **Progi sukcesu.** Dla każdej metryki m1–m13 zapisać próg _green_ dla fd4 i sposób pomiaru.
+      — w `FD4_EVALUATION.md`, sekcja „Progi sukcesu”, z m14 i progiem dla całości.
 
 ## 2. Soczewki walidacji
 
