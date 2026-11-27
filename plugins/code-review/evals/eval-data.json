@@ -22,7 +22,26 @@
     "local/coherence-sweep-ab/results.json",
     "local/coherence-sweep-ab/blind-key.json",
     "local/coherence-sweep-ab/RUNS.md",
-    "local/tests-lens-ab/analysis"
+    "local/tests-lens-ab/analysis",
+    "local/tests-lens-ab/ctx",
+    "local/tests-lens-ab/out",
+    "local/tests-lens-ab/judge",
+    "local/tests-lens-ab/blind",
+    "local/tests-lens-ab/logs",
+    "local/tests-lens-ab/blind-key.json",
+    "local/tests-lens-ab/gt.json",
+    "local/tests-lens-ab/prs.tsv",
+    "local/tests-lens-ab/results.json",
+    "local/tests-lens-ab/RUNS.md",
+    "local/tests-lens-ab/judge-brief.md",
+    "local/tests-lens-ab/aggregate.mjs",
+    "local/tests-lens-ab/blind.sh",
+    "local/tests-lens-ab/run-cell.sh",
+    "local/tests-lens-ab/run-matrix.sh",
+    "local/tests-lens-ab/run-prepare.sh",
+    "local/tests-lens-ab/run-scan.sh",
+    "local/tests-lens-ab/with-token.sh",
+    "local/tests-lens-ab/write-tokens.sh"
   ],
-  "sha256": "76491fd6ce1e1b6e832687cc5beea137a564ee934ff66330476f0f6db2b76926"
+  "sha256": "c1f527df897314f513cfca9b9caf1fe73738a48acb27e497cbadfe6c9aa6331c"
 }
