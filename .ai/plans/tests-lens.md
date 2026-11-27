@@ -96,11 +96,15 @@ convention or hookify rule on phase labels.
 - [x] 7. `verify-plugins.mjs`, `claude plugin validate`, `claude plugin test`; commit per logical
       change. `claude plugin test` for code-review cannot run locally while the A/B worktrees
       sit under `evals/local/`; CI has none.
-- [ ] 8. cr-merge keeps an unsettled `unwarranted-test` / `implementation-mirror` candidate in
+- [x] 8. cr-merge keeps an unsettled `unwarranted-test` / `implementation-mirror` candidate in
       CANDIDATES; confirm by re-running only the merge on the A/B candidate contexts.
-- [ ] 9. Find and fix the held-out `mutation-gap` regression on #4342 (250 ms boundary).
-- [ ] 10. Narrow the `implementation-mirror` observable-effect exception to calls that leave the
+      Done (8318b102): GT in report body 22 → 38/60; 29 of 38 keep-or-delete bullets fair.
+- [x] 9. Find and fix the held-out `mutation-gap` regression on #4342 (250 ms boundary).
+      Done (c863bb09): moved-code exemption leaked into mutation-gap; 4342-cache 0/4 → 4/4.
+- [x] 10. Narrow the `implementation-mirror` observable-effect exception to calls that leave the
       repo.
+      Skipped: 4281-notify asserts the mapped message (an outcome), the same shape as eval-51's
+      known-good publish test, so the narrowing would flag good tests.
 
 ## Out of scope (follow-ups)
 
