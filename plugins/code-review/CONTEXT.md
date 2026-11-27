@@ -14,15 +14,15 @@ One parallel review subagent running exactly one Lens — the `code-review:scann
 _Avoid_: role, reviewer, worker
 
 **Lens**:
-One of the twelve rule clusters: comments (`R1`–`R14`), readability & tests, naming & module, objects & patterns, simplicity & types, correctness, security, coherence, assumptions, performance, spec, hookify. Seven sit beyond the craft five: correctness, security, coherence and assumptions (always on), and three gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user), hookify (hookify rule files in the checkout's `.claude/`). Comments is a Lens like any other, not a special case. No Lens has a standalone skill: every one runs through a Scanner.
+One of the thirteen rule clusters: comments (`R1`–`R14`), readability, naming & module, objects & patterns, simplicity & types, tests, correctness, security, coherence, assumptions, performance, spec, hookify. Eight sit beyond the craft five: tests (on when test or source files are in scope), correctness, security, coherence and assumptions (always on), and three gated ones — performance (executable source files in scope), spec (a spec file named — `--spec <path>`, or the one the diff carries, accepted by the user), hookify (hookify rule files in the checkout's `.claude/`). Comments is a Lens like any other, not a special case. No Lens has a standalone skill: every one runs through a Scanner.
 _Avoid_: theme, dimension
 
 **Rules file**:
-The single source of truth for one Lens's rule text: `references/rules/<lens>.md`, named after the lens with no numeric prefix (`comments.md`, `readability-tests.md`, `naming-module.md`, `objects-patterns.md`, `simplicity-types.md`, `correctness.md`, `security.md`, `coherence.md`, `assumptions.md`, `performance.md`, `spec.md`, `hookify.md`).
+The single source of truth for one Lens's rule text: `references/rules/<lens>.md`, named after the lens with no numeric prefix (`comments.md`, `readability.md`, `naming-module.md`, `objects-patterns.md`, `simplicity-types.md`, `tests.md`, `correctness.md`, `security.md`, `coherence.md`, `assumptions.md`, `performance.md`, `spec.md`, `hookify.md`).
 
 **External review**:
 A review by a model outside the plugin that rides the Lens-file channel without being a Lens. The one in v1 is the Codex review: OpenAI Codex run through the collegium plugin, gated by the `collegium_run` option (`always`, `never`, `ask`) and by the Collegium tools being present, never by the input. It has a `codex` entry in `lenses.active`, its own Scanner (`cr-scan --lens codex`) and writes `codex.md`, but it stays outside `Lenses: L of A`. A delivered one adds `External review: codex` to the Tally; a failed, timed-out or absent one is `External review: skipped: codex — <reason>` and never an undelivered Lens; one the user switched off (`never`, or `ask` answered No) leaves no `codex` entry and nothing in the Tally. Its Findings that land on a Claude Lens's code count as independent convergence.
-_Avoid_: Codex lens, thirteenth lens; Codex adapter (that runs the plugin itself under the Codex CLI, where the External review does not exist)
+_Avoid_: Codex lens, fourteenth lens; Codex adapter (that runs the plugin itself under the Codex CLI, where the External review does not exist)
 
 **Codex adapter**:
 A skill under `codex/skills/<name>/` that the OpenAI Codex CLI loads in place of the Claude Code skill or command of the same name. It reads `codex/host.md`, the mapping from Claude Code mechanics to Codex ones, then follows the canonical body unchanged; no lens rule lives in an adapter.
@@ -32,7 +32,7 @@ _Avoid_: port, Codex fork (nothing is copied)
 One of the fifteen stable top-level labels in the quality vocabulary: `readability`, `tests`, `naming`, `module`, `objects`, `patterns`, `simplicity`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, `standards`, and `hookify`. Thirteen are fixed by the plugin; `standards` and `hookify` are repo-defined (their rules come from the Standards file and the Hookify rule files).
 
 **Rule**:
-A specific sub-tag under a Family — one of the 68 fixed rules across the thirteen plugin-defined Families, a repo-defined `standards` rule whose slug derives from the quoted rule, or a `hookify` rule named by its rule file's `name` — or one of the comment rules `R1`–`R14`.
+A specific sub-tag under a Family — one of the 75 fixed rules across the thirteen plugin-defined Families, a repo-defined `standards` rule whose slug derives from the quoted rule, or a `hookify` rule named by its rule file's `name` — or one of the comment rules `R1`–`R14`.
 
 **Finding**:
 The quality-side unit of output: `family` · rule · severity · lines → fix.
@@ -53,7 +53,7 @@ The checkout's own `.claude/hookify.*.local.md` and `.claude/hookify.*.rule.md`,
 _Avoid_: hookify config, hooks (the hooks are the plugin's runtime; the files are the rules)
 
 **Active lens set**:
-The N Lenses (up to 12) that Step 2b of **start-cr** resolves for one run: the five craft Lenses, correctness, security, coherence and assumptions always — objects & patterns except over a list of `iac` files alone, and each needs files of its own, so a change of policy files only runs security, assumptions and coherence, and a change whose every file is skipped (documents, changesets, config data) runs coherence alone, each plus spec and hookify when they are active — performance when the source-kind subset of the resolved files (minus `.sh` and `*.config.*`) is non-empty, spec when a spec file was named, hookify when the checkout carries Hookify rule files with an enabled `file` or `all` rule. The report's `Lenses: L of 12` line records it, naming every inactive Lens with its reason.
+The N Lenses (up to 13) that Step 2b of **start-cr** resolves for one run: the five craft Lenses, tests when test or source files are in scope, correctness, security, coherence and assumptions always — objects & patterns except over a list of `iac` files alone, and each needs files of its own, so a change of policy files only runs security, assumptions and coherence, and a change whose every file is skipped (documents, changesets, config data) runs coherence alone, each plus spec and hookify when they are active — performance when the source-kind subset of the resolved files (minus `.sh` and `*.config.*`) is non-empty, spec when a spec file was named, hookify when the checkout carries Hookify rule files with an enabled `file` or `all` rule. The report's `Lenses: L of 13` line records it, naming every inactive Lens with its reason.
 _Avoid_: lens selection (the user never picks), enabled lenses
 
 ## Relationships

@@ -16,9 +16,9 @@ Send each Scanner a brief in this shape, filling every slot:
 
 ```
 <scanner_brief>
-  <lens>comments | readability & tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness | coherence | assumptions | hookify</lens>
+  <lens>comments | readability | tests | naming & module | objects & patterns | simplicity & types | security | performance | spec | correctness | coherence | assumptions | hookify</lens>
   <rules_file>rules/<lens>.md</rules_file>
-  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the full resolved list for `security` and `assumptions`, the full resolved list plus every skipped file except real `.env*` files (templates such as `.env.example` stay) for `spec`, the full resolved list plus every skipped file except lockfiles, generated output and real `.env*` files, minus the active spec, for `coherence`, the same list with the active spec kept for `hookify`, the resolved list minus `policy` files for every other Lens --></files>
+  <files><!-- this Lens's list from the lens set: the source subset for `performance`, the `test` and `source` files for `tests`, the full resolved list for `security` and `assumptions`, the full resolved list plus every skipped file except real `.env*` files (templates such as `.env.example` stay) for `spec`, the full resolved list plus every skipped file except lockfiles, generated output and real `.env*` files, minus the active spec, for `coherence`, the same list with the active spec kept for `hookify`, the resolved list minus `policy` files for every other Lens --></files>
   <diff_args><!-- from the scope resolution; "none" when the user named paths --></diff_args>
   <how_to_view>
     diff_args "none" → read the file whole; every line is under review
@@ -79,8 +79,8 @@ it still writes nothing. Three other bounded read protocols sit beside it, each 
 rules file: `coherence` Greps the repo for each claim's counterpart (`rules/coherence.md`),
 `assumptions` reads the lockfile and targeted lines of the installed dependency tree
 (`rules/assumptions.md`), `hookify` reads the rule files its `<hookify_rules>` slot names
-(`rules/hookify.md`), and `tests` · mutation-gap Greps one hop for the changed unit's tests
-(`rules/readability-tests.md`). No other Scanner reads across files beyond a doubt it settles.
+(`rules/hookify.md`), and `tests` reads the base's tests, the callers' tests one hop, and the test
+files a deleted identifier still appears in (`rules/tests.md`). No other Scanner reads across files beyond a doubt it settles.
 
 ## The Lenses
 
@@ -113,8 +113,8 @@ rules file: `coherence` Greps the repo for each claim's counterpart (`rules/cohe
    two-to-four-sentence draft under the newest ADR's headings, and says what stays at the code:
    nothing, or the one local line.
 
-2. **readability & tests** → `rules/readability-tests.md`
-   Judges the `readability` and `tests` families.
+2. **readability** → `rules/readability.md`
+   Judges the `readability` family, test files included.
 
 3. **naming & module** → `rules/naming-module.md`
    Judges the `naming` and `module` families.
@@ -178,7 +178,18 @@ rules file: `coherence` Greps the repo for each claim's counterpart (`rules/cohe
     consequence** on the changed path as input → outcome; severity is `high` or `medium`,
     **never `nit`**.
 
-12. **hookify** → `rules/hookify.md`
+12. **tests** → `rules/tests.md`
+    Judges the `tests` family; active when the change has `test` or `source` files. It asks
+    first whether each test the change adds, edits or leaves behind should exist, then whether it
+    guards behaviour the way its name says, and whether a guarantee the change adds is reached by
+    any test. A finding about a test that should not exist names **what already guards the
+    behaviour, or why nothing needs to** — the existing test's `path:L`, the base fact (the target
+    existed untested), or the quoted project test-scope rule. A test whose value is a judgment the
+    code cannot settle — critical or complex code, a higher-level test that may not reach the
+    changed path — goes to `CANDIDATES` with what the user should weigh: the user decides whether
+    it stays.
+
+13. **hookify** → `rules/hookify.md`
     Judges the `hookify` family; active only when the checkout carries hookify rule files. It
     replays each enabled `file` or `all` rule in the `<hookify_rules>` slot over the diff, hunk
     by hunk, the way hookify's hooks check an edit. The rule slot of a finding is the hookify
@@ -311,7 +322,10 @@ unsettled travels in one of three channels, and these are **not** interchangeabl
     about third-party, runtime or platform internals → `assumptions`;
   - a test whose name or fixture claims a boundary its assertions do not check → `tests` ·
     test-fidelity; a double that encodes behaviour the real dependency lacks →
-    `assumptions` · mock-divergence.
+    `assumptions` · mock-divergence; a stub of a collaborator the repo owns that returns what the
+    real one cannot → `tests` · implementation-mirror;
+  - dead source code → `simplicity` · dead-code; a test left behind by deleted code → `tests` ·
+    obsolete-test.
 
   A problem you are sure of that fits no row is still not a new family: send it
   with the nearest family and say in the clause which row it misses, and the merge decides it.

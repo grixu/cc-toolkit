@@ -76,7 +76,7 @@ spec — the Lenses that read it report a code they cannot find.
 Settle the conventions note, the standards slot and the active lens set by
 `${CLAUDE_PLUGIN_ROOT}/references/review-setup.md`, working the mechanical read `scope.md`
 describes inside the checkout. A lens is named by its rules file's basename: `comments`,
-`readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`,
+`readability`, `tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`,
 `security`, `coherence`, `assumptions`, `performance`, `spec`, `hookify`. The hookify rule files
 are looked for in the checkout's own `.claude/`, never in the directory you run from.
 
@@ -108,7 +108,8 @@ Write each file with the `Write` tool:
 
 `spec_focus` is `null` when no focus was given or `spec` is `null`. `hookify` is the gate's file
 list when the `hookify` lens is active, and `null` when it is inactive. `files` holds the judged files only. Every lens appears once, active or inactive; an active lens's
-`files` is its own list — the `source` subset for `performance`, the whole judged list for
+`files` is its own list — the `source` subset for `performance`, the `test` and `source` files
+for `tests`, the whole judged list for
 `security` and `assumptions`, the whole judged list plus every skipped path but real `.env*` files (every one but `.env.example`, `.env.sample`, `.env.template` and `.env.dist`) for `spec`, the whole judged list plus
 every skipped path but lockfiles, generated output and real `.env*` files, minus the spec, for `coherence`, the
 same list with the spec kept for `hookify`, and the

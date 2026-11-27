@@ -75,6 +75,14 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   same unit or the same test file merge into one bullet listing each case to add — a
   boundary-blind unit is one report line, not five. A `tests` · test-fidelity and a `tests` ·
   mutation-gap finding that cite the same test line are one finding, filed as test-fidelity.
+- **A test that should not exist is never polished.** When a `tests` · unwarranted-test,
+  obsolete-test or redundant-test finding — or a candidate for one you keep — names a test, every
+  other finding that asks to extend, restructure or tighten that same test (`mutation-gap`,
+  `test-structure`, `test-fidelity`, `implementation-mirror`, a craft rule on the test file) drops
+  to `Not flagged` with that reason: applying both deletes the test and then edits it, or keeps it
+  because the review just invested in it. An unwarranted-test candidate you cannot settle stays a
+  candidate in the report, with the clause that says what the user should weigh; never resolve it
+  by deleting the test silently.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
@@ -189,7 +197,10 @@ the fix* is `report-only` too, with its one-line reason.
   `patterns` refactors (`composition`, `polymorphism`, `execute-around`), `over-complex`
   and `shallow-duplication` unifications, `test-structure` restructuring, every `test-fidelity`
   fix — deleting, merging or rewriting a test changes what the suite covers — the test cases a
-  `mutation-gap` adds (they land in a test file, not the source path the bullet sits under), `dead-code-surface`
+  `mutation-gap` adds (they land in a test file, not the source path the bullet sits under), every
+  other `tests` fix — deleting an `unwarranted-test`, `obsolete-test` or `redundant-test`, rewriting
+  an `implementation-mirror` assertion, retitling a `mechanism-name`, adding an
+  `untested-behaviour` scenario — `dead-code-surface`
   that removes an export or a return field, a `magic-literal` name a second module
   imports (where it lives decides an import edge), and `dead-code` removal of a branch that
   looks reachable; the cross-file `module` and `objects` rules (`dependency-direction`,
@@ -318,7 +329,7 @@ Reconciliation: 4 handoffs + 2 candidates → 3 merged · 1 own bullet · 0 boy-
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 12 (skipped: hookify — no hookify rule files). Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 12 of 13 (skipped: hookify — no hookify rule files). Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 </example>
 
 **The skeleton is the whole report.** It has no other sections: no `### Findings`

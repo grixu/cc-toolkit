@@ -40,15 +40,16 @@ Figure 1. One review, from the changed files to the apply menu
 ## The lenses
 
 A lens is one cluster of written rules.
-There are twelve: nine run on any change of code, two depend on the input, and one depends on the project.
+There are thirteen: nine run on any change of code, three depend on the input, and one depends on the project.
 
 | Lens | Runs | Looks for |
 |---|---|---|
 | comments | always | Comments that narrate the code, cite tickets or other files, contradict or outlive the code, excuse a shortcut, hold a decision that belongs in an ADR, or are missing where a decision needs explaining. |
-| readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that don't check what their name claims. |
+| readability | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, helpers out of reading order. |
 | naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has. |
 | objects & patterns | always, except on infrastructure code alone | Half-built objects, exposed internal collections, methods on the wrong object, repeated type switches. |
 | simplicity & types | always | Duplication that collapses into one shape, code longer than its idea, needless casts, dead code. |
+| tests | test or source files in the change | Tests that shouldn't exist or that the change made obsolete, tests that mirror the implementation or duplicate another, scenario names that narrate calls, tests that don't check what their name claims or would pass with the new decision reverted, and a security or contract guarantee, rollback path or spec criterion no test reaches. |
 | correctness | always | Conditions that pick the wrong branch, unhandled cases, off-by-one bounds, swallowed errors, races, broken call contracts. |
 | security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, widened access, in code, policies and CI workflows. |
 | coherence | always | Two artifacts that describe the same thing differently: docs, contracts, committed generated clients, migrations or config that disagree with the code, docs the change never touched that still name what it removed, a behaviour change with no changeset where the repo uses Changesets, or code that breaks a rule an accepted ADR or `CONTEXT.md` states. |
@@ -57,10 +58,11 @@ There are twelve: nine run on any change of code, two depend on the input, and o
 | spec | a spec is named | Spec lines nothing implements, implemented wrongly or only partly, behavior the spec never asked for, and spec lines still describing what an approved departure replaced. |
 | hookify | the project has hookify rules | Added lines that the project's own [hookify](/plugins/hookify/) `file` rules would have warned about or blocked, replayed over the diff. |
 
-Table 1. The twelve lenses and when each runs
+Table 1. The thirteen lenses and when each runs
 
 ### How the input gates them
 
+- **tests** runs when the change has a test or source file. It reads both kinds, since a source change can leave an old test pointless or a new guarantee untested.
 - **performance** runs when the change has executable source. Tests, test helpers, infrastructure code, `.sh` files and `*.config.*` modules don't count.
 - **spec** runs when `--spec` names a readable local file, or when you accept the spec the review found in the change.
 - **hookify** runs when the checkout's `.claude/` folder holds hookify rule files (`hookify.*.rule.md` or `hookify.*.local.md`) with at least one enabled rule for file edits. A `block` rule's finding is `high`; any other rule's is `medium`.
@@ -68,7 +70,7 @@ Table 1. The twelve lenses and when each runs
 - **A lens with no files of its own is off.** A change of access policies only runs security, assumptions and coherence. A change of documents, changesets or config data only runs coherence, which reads the code each claim describes from the repository.
 
 Each of these lenses still runs alongside spec when a spec is active.
-The report's tally counts the lenses that ran (`Lenses: L of 12`) and names every lens that didn't, with its reason.
+The report's tally counts the lenses that ran (`Lenses: L of 13`) and names every lens that didn't, with its reason.
 
 ### What each lens reads
 
@@ -103,7 +105,7 @@ Each reads the change on its own, so when several land on the same code, that ag
 Before any lens runs, the review reads your project's own rules.
 They come in two kinds:
 
-- **Files that only remove findings:** `CLAUDE.md` and `AGENTS.md` (at the root and in every directory down to the reviewed file), `CONTRIBUTING.md`, `.cursor/rules` and `.claude/rules/*.md`. When one documents a style, the review stops flagging it.
+- **Files that only remove findings:** `CLAUDE.md` and `AGENTS.md` (at the root and in every directory down to the reviewed file), `CONTRIBUTING.md`, `.cursor/rules` and `.claude/rules/*.md`. When one documents a style, the review stops flagging it. The one exception is an explicit rule about what the project tests and at which level: the tests lens may flag a new test that falls outside it.
 - **Files that create findings:** `CODING_STANDARDS.md` at the repository root, and a gitignored `CODING_STANDARDS.local.md` beside it. An explicit rule in them becomes a `standards` finding that quotes it.
 
 Decision records create findings too.
@@ -120,7 +122,7 @@ It merges the lens files through these checks:
 3. **Count convergence.** A finding several lenses reached on their own leads its file. Convergence raises confidence and order, never severity.
 4. **Route every handoff and candidate.** Each one becomes a graded finding, merges into one, or is cleared in `Not flagged` with a reason.
 5. **Resolve every `(verify)` mark** by reading the code. A refuted finding is dropped and noted.
-6. **Re-grade every severity** against one master table of 69 rules. A scanner's grade is a first pass; the table's row is the one that ships.
+6. **Re-grade every severity** against one master table of 75 rules. A scanner's grade is a first pass; the table's row is the one that ships.
 7. **Judge the fix, not only the finding.** A fix that would change what callers observe, contradict another fix, or create the next finding is moved to the structural walk or to report only.
 
 Step 4 is published as one counted line above the report, for example `Reconciliation: 3 handoffs + 2 candidates → 2 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped · 1 passed on`.

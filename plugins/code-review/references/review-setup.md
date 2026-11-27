@@ -40,15 +40,18 @@ conflict the `.local` one wins. Work it there, then:
   **pre-slice it per Lens** so each Scanner receives only the rules in its subject; a
   short pair goes to every Scanner whole. The rest of the conventions — `CLAUDE.md`,
   `AGENTS.md`, `CONTRIBUTING.md`, `.cursor/rules`, `.claude/rules` — stay
-  **suppress-only**: they remove findings, never create them.
+  **suppress-only**: they remove findings, never create them — with one exception: an explicit
+  **test-scope rule** in any of them (what the project tests, at which level, and what it does not
+  test) is quoted whole in the note, and the `tests` Lens alone may raise `unwarranted-test` from
+  it (`rules/tests.md`). For every other Lens it still only suppresses.
 
 ## The active lens set
 
 Not every Lens runs on every change. Decide the set here, once, from the input —
 never from a preference:
 
-- the five craft Lenses (`comments`, `readability & tests`, `naming & module`,
-  `objects & patterns`, `simplicity & types`), **`correctness`**, **`security`**,
+- the five craft Lenses (`comments`, `readability`, `naming & module`,
+  `objects & patterns`, `simplicity & types`), **`tests`**, **`correctness`**, **`security`**,
   **`coherence`** and **`assumptions`** are **always active**, on any change however small
   — except that a Lens whose own `<files>` comes out empty is inactive with that reason: a
   change of `policy` files only runs `security`, `assumptions` and `coherence`, plus `spec`
@@ -56,6 +59,8 @@ never from a preference:
   changesets, config data — runs `coherence` alone, plus `spec` and `hookify` when they are
   active, and `coherence` reads the
   code side of each claim from the repository;
+- **`tests`** is inactive, with the reason `no test or source files`, when the resolved list has
+  no file of the `test` or `source` kind;
 - **`objects & patterns`** is inactive, with the reason `declarative files only`, when
   every file in its `<files>` is `iac` — both its families are N/A for infrastructure code,
   and a scanner dispatched there only writes why;
@@ -74,7 +79,8 @@ never from a preference:
   (`rules/hookify.md`); the gate reads two frontmatter lines and no further.
 
 Record **N**, the number of active Lenses, and for each one its own `<files>`:
-`performance` gets the source subset it was gated on; `security` and `assumptions` get the
+`performance` gets the source subset it was gated on; `tests` gets the `test` and `source` files;
+`security` and `assumptions` get the
 full resolved list; `spec` gets the full resolved list plus every skipped file except real env
 files (every `.env*` but `.env.example`, `.env.sample`, `.env.template` and `.env.dist` — a
 real one in the change `spec` and `coherence` may only Grep for key names, never Read); `coherence`
@@ -85,7 +91,7 @@ files, and minus the active spec,
 which is `spec`'s alone; `hookify` gets the same list as `coherence` with the active spec kept,
 since a rule may target any file the change wrote; every other Lens gets the resolved list minus its
 `policy` files. Record every **inactive** Lens with its reason (`performance — no executable
-code`, `spec — no spec named`, `hookify — no hookify rule files`, `hookify — no enabled file or
+code`, `spec — no spec named`, `tests — no test or source files`, `hookify — no hookify rule files`, `hookify — no enabled file or
 all rules`, `coherence — lockfiles, generated and env files only`, `assumptions
 — no judged files`, `correctness — policy or skipped files only`); the Tally prints them. From here on
 **N** means this count: N Scanners run, N outputs awaited, N outputs merged.

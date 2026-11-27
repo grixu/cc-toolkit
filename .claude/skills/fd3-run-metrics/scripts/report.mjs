@@ -32,8 +32,6 @@ const load = (dir) => ({
 const LENS_OF_FAMILY = {
   simplicity: 'simplicity-types',
   types: 'simplicity-types',
-  readability: 'readability-tests',
-  tests: 'readability-tests',
   naming: 'naming-module',
   module: 'naming-module',
   objects: 'objects-patterns',

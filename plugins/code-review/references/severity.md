@@ -21,6 +21,12 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
 | `tests`       | test-structure      | arrange/act/assert (given/when/then) interleaved or out of order | medium |
 | `tests`       | test-fidelity       | a test's name or fixture claims a boundary its assertions don't actually check | medium |
 | `tests`       | mutation-gap        | a decision the change adds or modifies that the unit's tests exercise but would still pass if inverted, shifted by one, or deleted | medium |
+| `tests`       | unwarranted-test    | a test the change adds, at any level, that guards nothing worth its cost: a unit test for a small change to a target left untested by choice, an integration/e2e test adding no scenario, a test of framework configuration, a test outside the project's test scope | medium |
+| `tests`       | obsolete-test       | an existing test this change made pointless — it exercises deleted code through a mock, was edited only to stay green, or is a helper nothing uses — left in place | medium |
+| `tests`       | redundant-test      | a test whose input → outcome another test, in the change or one level up, already pins | medium |
+| `tests`       | implementation-mirror | a test asserting calls, arguments or query shapes of repo-owned code instead of the outcome, mocking the function the change modified, or stubbing a state the real collaborator cannot produce | medium |
+| `tests`       | mechanism-name      | a scenario title narrating calls or their order instead of the behaviour it guards | nit |
+| `tests`       | untested-behaviour  | a security or contract guarantee, rollback/data-loss path, or spec criterion the change adds or changes that no test reaches, directly or one level up | high |
 | `naming`      | intent-name         | a name after mechanism/algorithm, not intent | medium |
 | `naming`      | role-name           | a name carrying the type instead of the role | nit |
 | `naming`      | command-query       | a query that mutates, or a command relied on only for its return | high |
@@ -104,12 +110,15 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   wire format, a deploy, persistence or dispatch (`contract-drift`, `schema-drift`,
   `config-drift`, `sibling-asymmetry`, `incomplete-propagation`, `invariant-breach`), and
   code that rests on a false belief about a library, the platform or the locked version
-  (`dependency-semantics`, `platform-semantics`, `version-skew`). These cost the most to
+  (`dependency-semantics`, `platform-semantics`, `version-skew`), and a guarantee no test
+  would notice losing (`untested-behaviour`). These cost the most to
   live with.
 - **medium** — readability friction a reader feels every time, or a latent gap that
   matters: `ordering`, `test-structure` interleaving, a `test-fidelity` name/fixture
   that claims more than its assertions check, a decision its tests would not notice
-  changing (`mutation-gap`), `guard-clause` nesting, an unexplained
+  changing (`mutation-gap`), a test that should not exist or no longer should
+  (`unwarranted-test`, `obsolete-test`, `redundant-test`), a test that restates the code
+  (`implementation-mirror`), `guard-clause` nesting, an unexplained
   `magic-literal`, a mechanism `intent-name`, eager `lazy-init`, copies with no logic to
   drift (`shallow-duplication`), surface nothing consumes (`dead-code-surface`), an exposed
   data layout (`exposed-representation`), pointless
@@ -128,7 +137,8 @@ Severity is exactly one of `high`, `medium`, or `nit`. There is no `low`, no
   (`missing-counterpart`), and a test double that keeps the suite green on behaviour the
   real dependency lacks (`mock-divergence`).
 - **nit** — local `openness` / spacing, an inline `explaining-variable`, a
-  type-in-the-name `role-name`, a `verbose` site a shorter form would say plainly. Real, but cheap; cluster them so the report does not
+  type-in-the-name `role-name`, a test title that narrates the code (`mechanism-name`), a
+  `verbose` site a shorter form would say plainly. Real, but cheap; cluster them so the report does not
   drown in nits.
 
 A `security`, `correctness`, `spec`, `coherence`, `assumptions` or `hookify` finding is never `nit`: those families grade `high`

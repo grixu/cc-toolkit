@@ -111,6 +111,11 @@ These consumers depend on this list:
   `*.config.*` modules (build and tool configuration runs once, never per request) — and is not
   dispatched at all when that subset is empty (a tests-only or IaC-only change has no
   performance lens, and the report's Tally names it as skipped);
+- the **`tests` lens** receives the `test` and `source` files — the tests it judges and the code
+  whose guarantees they must reach — and is not dispatched when the change has neither (an
+  IaC-only, policy-only or docs-only change has no tests lens, and the Tally names it as skipped);
+  the base's tests, the callers' tests and every test file a deleted identifier still appears in
+  are evidence it reads, never files it judges;
 - the **`objects & patterns` lens** is not dispatched when every file in its list is
   `iac`: both its families are N/A there (see *Language applicability*), and the Tally
   names it as skipped;

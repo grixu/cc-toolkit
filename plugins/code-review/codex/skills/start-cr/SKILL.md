@@ -2,7 +2,7 @@
 name: start-cr
 description: >-
   Manual multi-lens code review: runs every active review lens (comments, four craft lenses,
-  correctness, security, coherence, assumptions, performance, spec, hookify) as parallel
+  tests, correctness, security, coherence, assumptions, performance, spec, hookify) as parallel
   subagents over a change, merges them into one per-file report, and offers one apply menu.
   Reviews the current branch diff by default, or explicit paths, `--base <branch>`,
   `--spec <path>`, or a GitHub pull request with `--pr <number>`; on someone else's pull request

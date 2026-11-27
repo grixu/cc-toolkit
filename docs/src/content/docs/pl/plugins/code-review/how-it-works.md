@@ -40,15 +40,16 @@ Rysunek 1. Jedno review, od zmienionych plików do menu poprawek
 ## Soczewki
 
 Soczewka to jeden zestaw spisanych reguł.
-Jest ich dwanaście: dziewięć rusza przy każdej zmianie kodu, dwie zależą od wejścia, a jedna od projektu.
+Jest ich trzynaście: dziewięć rusza przy każdej zmianie kodu, trzy zależą od wejścia, a jedna od projektu.
 
 | Soczewka | Kiedy rusza | Czego szuka |
 |---|---|---|
 | comments | zawsze | Komentarzy, które opowiadają kod, cytują zgłoszenia albo inne pliki, przeczą kodowi albo go przeżyły, usprawiedliwiają skrót, zapisują decyzję, której miejsce jest w ADR, albo ich brakuje tam, gdzie decyzja wymaga wyjaśnienia. |
-| readability & tests | zawsze | Zagnieżdżeń, które spłaszczyłby guard clause, nienazwanych magicznych wartości, funkcji robiących kilka rzeczy, testów, które nie sprawdzają tego, co obiecuje ich nazwa. |
+| readability | zawsze | Zagnieżdżeń, które spłaszczyłby guard clause, nienazwanych magicznych wartości, funkcji robiących kilka rzeczy, helperów nie w kolejności czytania. |
 | naming & module | zawsze | Nazw ukrywających intencję, zapytań zmieniających stan, importów w złą stronę, helperów dublujących te, które repozytorium już ma. |
 | objects & patterns | zawsze, oprócz zmian samego kodu infrastruktury | Niedokończonych obiektów, wystawionych wewnętrznych kolekcji, metod na złym obiekcie, powtarzanych switchy po typie. |
 | simplicity & types | zawsze | Duplikacji, która składa się w jeden kształt, kodu dłuższego niż jego idea, zbędnych rzutowań, martwego kodu. |
+| tests | w zmianie są pliki testów albo źródeł | Testów, które nie powinny istnieć albo które zmiana uczyniła zbędnymi, testów odtwarzających implementację albo dublujących inny test, nazw scenariuszy opowiadających wywołania, testów, które nie sprawdzają tego, co obiecuje ich nazwa, albo przeszłyby po odwróceniu nowej decyzji, i gwarancji bezpieczeństwa lub kontraktu, ścieżki rollbacku albo kryterium specu, do których nie sięga żaden test. |
 | correctness | zawsze | Warunków wybierających złą gałąź, nieobsłużonych przypadków, błędów o jeden, połkniętych błędów, wyścigów, złamanych kontraktów wywołań. |
 | security | zawsze | Sekretów w źródłach, injection, brakujących kontroli dostępu, niewalidowanego wejścia, niebezpiecznych ustawień, poszerzonego dostępu, w kodzie, politykach i workflowach CI. |
 | coherence | zawsze | Dwóch artefaktów opisujących to samo inaczej: dokumentacji, kontraktów, zacommitowanych generowanych klientów, migracji albo konfiguracji niezgodnych z kodem, dokumentacji spoza zmiany, która wciąż wymienia to, co zmiana usunęła, zmiany zachowania bez changesetu w repo używającym Changesets, albo kodu łamiącego regułę z przyjętego ADR-a lub `CONTEXT.md`. |
@@ -57,10 +58,11 @@ Jest ich dwanaście: dziewięć rusza przy każdej zmianie kodu, dwie zależą o
 | spec | wskazano spec | Linii specu, których nic nie implementuje, implementacji błędnych albo częściowych, zachowań, o które spec nie prosił, i linii specu wciąż opisujących to, co zastąpiło zatwierdzone odstępstwo. |
 | hookify | projekt ma reguły hookify | Dodanych linii, przed którymi własne reguły `file` projektu w [hookify](/pl/plugins/hookify/) by ostrzegły albo które by zablokowały, odtworzonych na diffie. |
 
-Tabela 1. Dwanaście soczewek i kiedy każda rusza
+Tabela 1. Trzynaście soczewek i kiedy każda rusza
 
 ### Jak wejście je włącza
 
+- **tests** rusza, gdy w zmianie jest plik testu albo źródła. Czyta oba rodzaje, bo zmiana źródła może sprawić, że stary test traci sens, a nowa gwarancja zostaje bez testu.
 - **performance** rusza, gdy w zmianie jest kod wykonywalny. Testy, helpery testowe, kod infrastruktury, pliki `.sh` i moduły `*.config.*` się nie liczą.
 - **spec** rusza, gdy `--spec` wskazuje czytelny lokalny plik albo gdy przyjmiesz spec znaleziony przez review w zmianie.
 - **hookify** rusza, gdy folder `.claude/` checkoutu zawiera pliki reguł hookify (`hookify.*.rule.md` albo `hookify.*.local.md`) z co najmniej jedną włączoną regułą dla edycji plików. Uwaga z reguły `block` ma wagę `high`, z każdej innej `medium`.
@@ -68,7 +70,7 @@ Tabela 1. Dwanaście soczewek i kiedy każda rusza
 - **Soczewka bez własnych plików jest wyłączona.** Zmiana samych polityk dostępu uruchamia tylko security, assumptions i coherence. Zmiana samych dokumentów, changesetów albo danych konfiguracyjnych uruchamia tylko coherence, która czyta z repozytorium kod opisywany przez każde twierdzenie.
 
 Gdy spec jest aktywny, każda z tych soczewek rusza razem ze spec.
-Tally w raporcie liczy soczewki, które ruszyły (`Lenses: L of 12`), i wymienia każdą, która nie ruszyła, z powodem.
+Tally w raporcie liczy soczewki, które ruszyły (`Lenses: L of 13`), i wymienia każdą, która nie ruszyła, z powodem.
 
 ### Co czyta każda soczewka
 
@@ -103,7 +105,7 @@ Każdy czyta zmianę niezależnie, więc gdy kilka trafia w ten sam kod, ta zgod
 Zanim ruszy jakakolwiek soczewka, review czyta reguły twojego projektu.
 Są dwa rodzaje plików:
 
-- **Pliki, które tylko usuwają uwagi:** `CLAUDE.md` i `AGENTS.md` (w katalogu głównym i w każdym katalogu aż do ocenianego pliku), `CONTRIBUTING.md`, `.cursor/rules` i `.claude/rules/*.md`. Gdy któryś opisuje styl, review przestaje go zgłaszać.
+- **Pliki, które tylko usuwają uwagi:** `CLAUDE.md` i `AGENTS.md` (w katalogu głównym i w każdym katalogu aż do ocenianego pliku), `CONTRIBUTING.md`, `.cursor/rules` i `.claude/rules/*.md`. Gdy któryś opisuje styl, review przestaje go zgłaszać. Jedyny wyjątek to jawna reguła o tym, co projekt testuje i na jakim poziomie: soczewka tests może zgłosić nowy test, który z niej wypada.
 - **Pliki, które tworzą uwagi:** `CODING_STANDARDS.md` w katalogu głównym repozytorium i ignorowany przez gita `CODING_STANDARDS.local.md` obok niego. Jawna reguła z tych plików staje się uwagą `standards`, która ją cytuje.
 
 Zapisy decyzji też tworzą uwagi.
@@ -120,7 +122,7 @@ Scala pliki soczewek przez te kontrole:
 3. **Zbieżność.** Uwaga, do której kilka soczewek doszło niezależnie, prowadzi swój plik. Zbieżność podnosi pewność i kolejność, nigdy wagę.
 4. **Każdy handoff i kandydat dostaje miejsce.** Staje się ocenioną uwagą, łączy się z inną albo trafia do `Not flagged` z powodem.
 5. **Każdy znacznik `(verify)` zostaje rozstrzygnięty** przez przeczytanie kodu. Obalona uwaga wypada z adnotacją.
-6. **Każda waga jest oceniana ponownie** według jednej głównej tabeli 69 reguł. Ocena scannera to pierwsze podejście; trafia dalej wiersz z tabeli.
+6. **Każda waga jest oceniana ponownie** według jednej głównej tabeli 75 reguł. Ocena scannera to pierwsze podejście; trafia dalej wiersz z tabeli.
 7. **Ocena poprawki, nie tylko uwagi.** Poprawka, która zmieniłaby to, co widzą wywołujący, przeczyłaby innej poprawce albo stworzyłaby kolejną uwagę, trafia do przechodzenia strukturalnego albo zostaje tylko do raportu.
 
 Krok 4 jest publikowany jako jedna policzona linia nad raportem, na przykład `Reconciliation: 3 handoffs + 2 candidates → 2 merged · 1 own bullet · 0 boy-scout · 2 Not flagged; 0 primary dropped · 1 passed on`.

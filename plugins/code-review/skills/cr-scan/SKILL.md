@@ -50,7 +50,7 @@ The contract's brief arrives as files, not as a message. Assemble it slot by slo
 
 | Slot | Where it is |
 |---|---|
-| `<lens>` | the lens you are judging, one name from `--lens` — the rules file's basename (`readability-tests` is the contract's `readability & tests`) |
+| `<lens>` | the lens you are judging, one name from `--lens` — the rules file's basename (`naming-module` is the contract's `naming & module`) |
 | `<rules_file>` | `${CLAUDE_PLUGIN_ROOT}/references/rules/<lens>.md` — read it completely |
 | `<files>` | this lens's `files` under `lenses.active` in `scope.json` |
 | `<diff_args>` | `diff_args` in `scope.json`; `null` there is the contract's `none` |
@@ -88,8 +88,9 @@ few files that bootstrap is most of the bill. One agent judging a list pays it o
 lens after the first reads the change with what the earlier ones saw still in its context, and
 the lenses run one after another instead of side by side. The caller decides which way to go —
 a list suits a small change, separate agents a large one — and this skill sets no size threshold.
-One limit is the caller's to keep: `coherence` and `assumptions` read well beyond their own
-files — a counterpart for every claim, the installed source behind every belief — so on a change
+One limit is the caller's to keep: `coherence`, `assumptions` and `tests` read well beyond their
+own files — a counterpart for every claim, the installed source behind every belief, the base's
+and the callers' tests behind every test — so on a change
 too large for one shared reader each runs as its own agent, never inside a list.
 
 With a list, judge each lens as if it were the only one:

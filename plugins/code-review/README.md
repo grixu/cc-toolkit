@@ -1,6 +1,6 @@
 # code-review
 
-code-review is a Claude Code plugin that reviews a code change with up to twelve focused reviewers
+code-review is a Claude Code plugin that reviews a code change with up to thirteen focused reviewers
 running in parallel, then merges what they find into one report grouped by file. After the report,
 a short menu asks which fixes to apply. Nothing is edited until you choose.
 
@@ -9,7 +9,7 @@ a short menu asks which fixes to apply. Nothing is edited until you choose.
 A single "review this" prompt reads the change once, from one angle, and decides on the fly what
 counts as a problem. This plugin instead:
 
-- runs one reviewer per lens in parallel, each with its own written rule set (69 named rules plus
+- runs one reviewer per lens in parallel, each with its own written rule set (75 named rules plus
   14 comment rules), so every finding names its rule and runs are comparable;
 - merges the findings centrally: duplicates collapse, and severities follow one fixed table;
 - reads your project's conventions first, so a documented house style is not reported as a
@@ -67,7 +67,7 @@ comment review or keep it.
 
 ## The lenses
 
-You do not pick lenses; the change decides. Nine run on any change of code, three depend on the
+You do not pick lenses; the change decides. Nine run on any change of code, four depend on the
 input or the project, and the report's tally lists any lens that did not run and why. A change of documents,
 changesets or config data alone runs coherence only, which reads the code each claim describes
 from the repository.
@@ -75,10 +75,11 @@ from the repository.
 | Lens | Runs | Looks for |
 |---|---|---|
 | comments | always | Comments that narrate the code, cite tickets or other files, contradict or outlive the code, excuse a shortcut, hold a decision that belongs in an ADR, or are missing where a decision needs explaining. |
-| readability & tests | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, tests that do not check what their name claims. |
+| readability | always | Nesting a guard clause would flatten, unnamed magic values, functions doing several jobs, helpers out of reading order. |
 | naming & module | always | Names that hide intent, queries that change state, imports pointing the wrong way, helpers that duplicate one the repository already has, wrappers that only forward a call. |
 | objects & patterns | always, except on a change of infrastructure code only | Half-built objects, exposed internal collections, methods living on the wrong object, repeated type switches. |
 | simplicity & types | always | Duplication that collapses into one shape, code longer than its idea, needless casts, dead code. |
+| tests | the change includes test or source files | Tests that should not exist (a new unit spec bolted onto an untested file for a small change, an integration or e2e test that adds no scenario, tests of framework wiring, or outside the project's own test-scope rule), tests the change made obsolete, tests that mirror the implementation through mocks of the project's own code, scenario names that narrate calls, tests that duplicate another, tests that do not check what their name claims or would pass with the new decision reverted, and a security or contract guarantee, rollback path or spec criterion no test reaches. Doubtful cases come to you as candidates. |
 | correctness | always | Conditions that pick the wrong branch, cases nothing handles, off-by-one bounds, swallowed errors, races on shared state, calls that break their callee's contract. |
 | security | always | Secrets in source, injection, missing access checks, unvalidated input, insecure settings, exposed infrastructure, widened access, including in access policies, RBAC, `CODEOWNERS` and CI workflows. |
 | coherence | always | Two artifacts that describe the same thing differently: docs or a changeset stating what the code does not do (including docs the change never touched that still name what it removed or renamed), an API contract, a committed generated client or a migration out of step with the code, a behaviour change with no changeset in a repo that uses Changesets, a config key the code reads that compose, Helm or a workflow does not set, one of several parallel paths skipping a shared step, a new enum member a sibling listing misses, code breaking a rule an accepted ADR or `CONTEXT.md` states. |
@@ -140,7 +141,7 @@ An example report:
 
 **Not flagged:** `JSON.parse(raw) as Config` at L7 (boundary narrowing, not `needless-cast`); the exhaustive `default:` throw at L61 (defensive assertion, not `dead-code`).
 
-**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 11 of 12 (skipped: hookify — no hookify rule files). Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
+**Tally:** 5 quality findings (3 high · 1 medium · 1 nit) · 8 comments (1 remove · 0 rewrite · 0 move · 1 add · 6 keep) · 3 files. Lenses: 12 of 13 (skipped: hookify — no hookify rule files). Spec: 4 of 5 requirements met. Skipped: pnpm-lock.yaml (lockfile).
 ```
 
 A report may also carry a `Boy-scout` block, with optional fixes in code the change did not touch,

@@ -66,6 +66,10 @@ When one of them documents a style, the review stops flagging it.
 When two project files disagree, the more specific one wins, and the report names the conflict on its `Conventions` line.
 One exception: a `CLAUDE.md` or `AGENTS.md` sentence about how the code beside it behaves at runtime, such as "fails open", that the change breaks reaches the merge as a candidate, never as a graded finding on its own.
 
+An explicit test-scope rule in any of these files, such as "no unit specs for components", is the one convention that creates findings.
+The review quotes it whole, and only the tests lens may raise `unwarranted-test` from it, against a new test the rule says the project doesn't write.
+For every other lens it only removes findings.
+
 ## Report vocabulary
 
 | Shape | Example |
@@ -98,7 +102,7 @@ Table 5. The headless steps
 
 - **Scope:** committed changes only, against `--base`. Uncommitted work belongs to whoever has the checkout open.
 - **Asks nothing, edits nothing.** Each skill writes only into the context directory and returns a closing block with a status.
-- **Lens names** are the rules files' basenames: `comments`, `readability-tests`, `naming-module`, `objects-patterns`, `simplicity-types`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, `hookify`.
+- **Lens names** are the rules files' basenames: `comments`, `readability`, `naming-module`, `objects-patterns`, `simplicity-types`, `tests`, `correctness`, `security`, `coherence`, `assumptions`, `performance`, `spec`, `hookify`.
 - **`--spec-focus "DB-1,D3"`** names, by element code or decision ID, the part of the spec the change implements. It needs `--spec`. The spec and correctness lenses judge the change against those elements first.
 - **A lens list** (`--lens comments,security`) runs the lenses one after another in one agent. It pays the start-up reading once, but later lenses read with the earlier ones in context, and their agreement doesn't count as convergence. Coherence and assumptions run as their own agents on a large change. `/fd3:implement` uses one agent for all lenses on a change of three judged files or fewer.
 

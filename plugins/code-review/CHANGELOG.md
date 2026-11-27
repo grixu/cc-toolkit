@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A thirteenth lens, `tests`, that asks whether a test should exist (ADR 0007). It runs when the
+  change carries test or source files and owns the whole `tests` family: the moved
+  `test-structure`, `test-fidelity` and `mutation-gap`, plus `unwarranted-test` (a new unit,
+  integration or e2e test that guards nothing another test or level does not),
+  `obsolete-test` (an existing test the change made pointless), `implementation-mirror`,
+  `mechanism-name`, `redundant-test` and `untested-behaviour` (a security or contract
+  guarantee, a rollback path or a spec criterion no test reaches). Critical, complex or
+  doubtful cases go to the user as candidates
+- An explicit test-scope rule in a conventions file (`CLAUDE.md`, `AGENTS.md`,
+  `CONTRIBUTING.md`, `.claude/rules`) may raise `tests` · unwarranted-test; every other
+  convention still only suppresses
 - `coherence` sweeps from the code to the prose on every change: it Greps the repo's docs,
   ADRs, changesets, contracts and committed generated clients for every identifier the change
   adds, removes, renames or reformats, so a doc the change never touched that still names a
@@ -24,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `readability & tests` lens is now `readability` (`references/rules/readability.md`) and no
+  longer carries the `tests` family
+- `tests` · test-structure no longer recommends `// given / when / then` labels where a
+  convention or hookify rule forbids them
 - `coherence` · doc-drift checks counts and exclusive claims ("eleven controllers", "the one
   route", "never fetches") against the whole registry or every call site, and checks the
   outcome a sentence states, not only its condition
