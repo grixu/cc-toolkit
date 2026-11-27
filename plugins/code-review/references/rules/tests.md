@@ -229,7 +229,9 @@ it silently.
   Cite the source `path:L`, what no test feeds it, and which tests you checked.
 - **Suggested fix**: name the scenario to add and the level it belongs at — "add a request test
   that a non-owner gets 404 at `GET /orders/:id`".
-- **Calibration → not a finding**: code the change only moved or renamed; the untouched rest of a
+- **Calibration → not a finding**: code the change only moved or renamed (this exempts asking
+  for a test that does not exist, never a test the change adds or edits: that one is judged by
+  `test-fidelity` and `mutation-gap` whatever its target); the untouched rest of a
   file the change edited (the review judges the change, not the file's history); behaviour outside
   the four kinds above — a missing test there is one `Not flagged` line, never a finding; a
   guarantee the type system enforces; a guarantee reached by a test one level up even if no unit
@@ -270,7 +272,8 @@ shift the bound by one or delete the guard, and the suite stays green. The chang
 decisions — a comparison, a bound, a guard, an early return, an `&&`/`||` — are exactly where a
 later edit will move the boundary, so their tests have to sit on it.
 
-- **Flag** when the change adds or modifies a decision in source and, after you Grep the unit's
+- **Flag** when the change adds or modifies a decision in source, or adds or edits a test of one
+  (moved or not), and, after you Grep the unit's
   name in `test`-kind files (one hop, no further) and read those tests, they exercise it but would
   pass a mutant of it:
   - every input sits far from the boundary, so both `>=` and `>` pass;
