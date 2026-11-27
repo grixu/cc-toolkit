@@ -3,7 +3,8 @@
   "root": "local",
   "paths": [
     "fd3",
+    "lenses",
     "m6-overrides"
   ],
-  "sha256": "c6a309b0b8ed78ca38719700f35bbedfa78818b6eec87dc3bdd627c2c0e9e782"
+  "sha256": "a82c616fd53c11ced1f48736bc71573d646d90736165b8fa05558b328339bcf6"
 }
