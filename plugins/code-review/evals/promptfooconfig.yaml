@@ -60,6 +60,9 @@ prompts:
   # The coherence lens over a branch diff, so its sweep reaches docs the change never touched.
   - id: file://prompts/coherence-diff.txt
     label: coherence-diff-track
+  # The tests lens, over named paths or, with `range`, over a branch diff it measures against the base.
+  - id: file://prompts/tests.txt
+    label: tests-track
 
 providers:
   - id: anthropic:claude-agent-sdk # alias: anthropic:claude-code
@@ -370,7 +373,7 @@ tests:
       # This fixture is deliberately clean, so a family tag may be absent. Proxy on the four
       # Lens headers instead.
       - type: regex
-        value: 'Lens: readability-tests[\s\S]*Lens: naming-module[\s\S]*Lens: objects-patterns[\s\S]*Lens: simplicity-types'
+        value: 'Lens: readability[\s\S]*Lens: naming(-| & )module[\s\S]*Lens: objects(-| & )patterns[\s\S]*Lens: simplicity(-| & )types'
       # narrowing an `unknown` boundary is the documented exception
       - type: javascript
         value: file://checks/report.mjs:noFinding
@@ -446,7 +449,7 @@ tests:
     assert:
       # Deliberately clean fixture — proxy on the four Lens headers, as in eval-7.
       - type: regex
-        value: 'Lens: readability-tests[\s\S]*Lens: naming-module[\s\S]*Lens: objects-patterns[\s\S]*Lens: simplicity-types'
+        value: 'Lens: readability[\s\S]*Lens: naming(-| & )module[\s\S]*Lens: objects(-| & )patterns[\s\S]*Lens: simplicity(-| & )types'
       # a DTO mapper reads another object because that is its job
       - type: javascript
         value: file://checks/report.mjs:noFinding
@@ -844,14 +847,14 @@ tests:
       - type: regex
         value: '(?:^|\n)files:[^\n]*checkout\.spec\.ts \(test\)'
       - type: regex
-        value: '(?:^|\n)lenses:[^\n]*readability-tests:[^;\n]*checkout\.spec\.ts'
+        value: '(?:^|\n)lenses:[^\n]*tests:[^;\n]*checkout\.spec\.ts'
       # a policy file is the security lens's, never a craft lens's
       - type: regex
         value: '(?:^|\n)files:[^\n]*ci\.yml \(policy\)'
       - type: regex
         value: '(?:^|\n)lenses:[^\n]*security:[^;\n]*ci\.yml'
       - type: not-regex
-        value: '(?:^|\n)lenses:[^\n]*(?:readability-tests|naming-module|objects-patterns|simplicity-types|comments):[^;\n]*ci\.yml'
+        value: '(?:^|\n)lenses:[^\n]*(?:readability|tests|naming-module|objects-patterns|simplicity-types|comments):[^;\n]*ci\.yml'
       - type: regex
         value: '(?:^|\n)skipped:[^\n]*/security-review'
       - type: regex
@@ -1336,7 +1339,7 @@ tests:
         config: { patterns: ["manual", 'onRequest', 'once|closing'], min: 2 }
 
   - description: 'eval-38 mutation-gap-recall (tests-mutation/pricing.ts + pricing.test.ts)'
-    prompts: [quality-track]
+    prompts: [tests-track]
     vars:
       # tests-mutation/DEFECTS.md lists the three surviving mutants and the pinned bound beside them.
       file: plugins/code-review/evals/cases/tests-mutation/pricing.ts plugins/code-review/evals/cases/tests-mutation/pricing.test.ts
@@ -1365,12 +1368,12 @@ tests:
         config: { rule: mutation-gap, mentions: [BULK_MIN_QTY, 'qty >= '], siteOnly: true }
 
   - description: 'eval-39 mutation-gap-calibration (tests-mutation/loyalty.ts + loyalty.test.ts)'
-    prompts: [quality-track]
+    prompts: [tests-track]
     vars:
       file: plugins/code-review/evals/cases/tests-mutation/loyalty.ts plugins/code-review/evals/cases/tests-mutation/loyalty.test.ts
     assert:
       - type: regex
-        value: 'Lens: readability-tests[\s\S]*Lens: naming-module[\s\S]*Lens: objects-patterns[\s\S]*Lens: simplicity-types'
+        value: '(^|\n)Lens: tests · files judged: 2'
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { rule: mutation-gap }
@@ -1630,3 +1633,75 @@ tests:
       - type: javascript
         value: file://checks/report.mjs:noFinding
         config: { family: coherence }
+
+  - description: 'eval-50 tests-lens-recall (tests-lens/ unwarranted specs, redundant e2e, obsolete test, untested ownership check)'
+    prompts: [tests-track]
+    vars:
+      # tests-lens/DEFECTS.md lists the seeded sites; reset-sandbox.sh leaves it out of the checkout.
+      checkout: plugins/code-review/evals/.sandbox/tests-lens
+      range: main..feat/orders
+      file: >-
+        src/checkout/checkout.ts src/orders/order.service.ts src/orders/orders.controller.ts
+        src/orders/order.service.spec.ts src/orders/orders.controller.spec.ts
+        tests/checkout.test.ts tests/orders-cancel.http.test.ts
+    # Whether a test was warranted is a fact about the base: the lens needs git to read it.
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: '(^|\n)Lens: tests · files judged: [1-9]'
+      # a white-box spec bolted onto a service left untested, for two trivial methods
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: unwarranted-test, mentions: ['order\.service\.spec'] }
+      # a spec of a controller that only delegates
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: [unwarranted-test, implementation-mirror], mentions: ['orders\.controller\.spec'] }
+      # an HTTP test pinning what the existing flow test already pins
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: [redundant-test, unwarranted-test], mentions: ['orders-cancel'] }
+      # a skipped case for the deleted legacyRounding, and the helper only it used
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: obsolete-test, mentions: ['checkout\.test|legacy-cart|legacyRounding'] }
+      # the new owner-only read that no test reaches
+      - type: javascript
+        value: file://checks/report.mjs:finding
+        config: { family: tests, rule: untested-behaviour, mentions: ['orders\.controller\.ts|owner|404'] }
+      # a test that should not exist is never polished
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: tests, rule: [mutation-gap, test-structure, test-fidelity], mentions: ['order\.service\.spec|orders\.controller\.spec'], siteOnly: true }
+      # pointless at the base and untouched by the change
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: tests, mentions: ['legacy-banner'], siteOnly: true }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [tests], rules: true }
+      - type: javascript
+        value: file://checks/handoff-families.mjs
+
+  - description: 'eval-51 tests-lens-calibration (tests-lens/ critical refund spec, new-route test, regression test, publish contract)'
+    prompts: [tests-track]
+    vars:
+      checkout: plugins/code-review/evals/.sandbox/tests-lens-calibration
+      range: main..feat/refunds
+      file: >-
+        src/coupons/coupon.ts src/http/app.ts src/orders/order.service.ts src/orders/order-events.ts
+        src/pricing/tax.ts src/orders/order.service.spec.ts src/orders/order-events.test.ts
+        tests/coupon.test.ts tests/orders-open-count.http.test.ts tests/tax.test.ts
+    options: { allow_all_tools: true }
+    assert:
+      - type: regex
+        value: '(^|\n)Lens: tests · files judged: [1-9]'
+      - type: regex
+        value: '[Nn]ot flagged'
+      # every new test here is warranted; the refund spec may at most be a candidate
+      - type: javascript
+        value: file://checks/report.mjs:noFinding
+        config: { family: tests, rule: [unwarranted-test, redundant-test, implementation-mirror, obsolete-test] }
+      - type: javascript
+        value: file://checks/report.mjs:findingsVocabulary
+        config: { families: [tests], rules: true }

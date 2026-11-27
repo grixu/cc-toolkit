@@ -21,7 +21,8 @@
     "local/coherence-sweep-ab/prs-heldout.tsv",
     "local/coherence-sweep-ab/results.json",
     "local/coherence-sweep-ab/blind-key.json",
-    "local/coherence-sweep-ab/RUNS.md"
+    "local/coherence-sweep-ab/RUNS.md",
+    "local/tests-lens-ab/analysis"
   ],
-  "sha256": "494efda548d7caeb6527cee5f265108b2429cd4ccfbbc9d390029c2bc033e717"
+  "sha256": "76491fd6ce1e1b6e832687cc5beea137a564ee934ff66330476f0f6db2b76926"
 }

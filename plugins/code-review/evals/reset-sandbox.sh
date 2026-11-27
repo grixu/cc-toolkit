@@ -175,7 +175,7 @@ mkdir -p "$pr9_ctx"
 cp cases/billing-window/lenses/*.md "$pr9_ctx/"
 printf 'No project convention files: no CODING_STANDARDS.md, CLAUDE.md, AGENTS.md, CONTRIBUTING.md, .cursor/rules or .claude/rules at the repository root or along the reviewed paths.\n' > "$pr9_ctx/conventions.md"
 printf 'none\n' > "$pr9_ctx/standards.md"
-pr9_lenses="$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security coherence assumptions performance; do printf '      { "lens": "%s", "files": ["src/billing-window.ts", "src/order-sync.ts"] },\n' "$l"; done)"
+pr9_lenses="$(for l in comments readability tests naming-module objects-patterns simplicity-types correctness security coherence assumptions performance; do printf '      { "lens": "%s", "files": ["src/billing-window.ts", "src/order-sync.ts"] },\n' "$l"; done)"
 cat > "$pr9_ctx/scope.json" <<EOF
 {
   "checkout": "$(pwd)/$pr.worktrees/cr-pr-9",
@@ -244,7 +244,7 @@ cat > "$mailer_ctx/scope.json" <<EOF
   "spec_focus": null,
   "lenses": {
     "active": [
-$(for l in comments readability-tests naming-module objects-patterns simplicity-types correctness security coherence assumptions; do lens "$l"; printf ',\n'; done; lens performance)
+$(for l in comments readability tests naming-module objects-patterns simplicity-types correctness security coherence assumptions; do lens "$l"; printf ',\n'; done; lens performance)
     ],
     "inactive": [{ "lens": "spec", "reason": "no spec named" }]
   }
@@ -395,4 +395,24 @@ commit "$sweep" 'refactor: name the accent-stripping step and test toSlug'
 cp -R "$sweep" "$sweep-calibration"
 git -C "$sweep" switch -q feat/sweep
 
-echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions, $(pwd)/$injection, $(pwd)/$hookify, $(pwd)/$sweep, $(pwd)/$sweep-calibration"
+# evals 50-51: the tests lens over two branches off one base (tests-lens/DEFECTS.md). Whether a
+# new test was warranted is a fact about the base, so each eval reviews a diff and gets a checkout
+# of its own on its branch.
+tl=.sandbox/tests-lens
+mkdir -p "$tl"
+cp -R cases/tests-lens/base/. "$tl/"
+git -C "$tl" init -q -b main
+git -C "$tl" add -A
+commit "$tl" 'feat: orders, checkout and coupons'
+git -C "$tl" switch -q -c feat/orders
+cp -R cases/tests-lens/recall/. "$tl/"
+git -C "$tl" add -A
+commit "$tl" 'feat: open-order count, order labels, owner-only order reads; drop legacy rounding'
+git -C "$tl" switch -q -c feat/refunds main
+cp -R cases/tests-lens/calibration/. "$tl/"
+git -C "$tl" add -A
+commit "$tl" 'feat: refundable amounts, open-order count route, cancellation events, reduced VAT'
+cp -R "$tl" "$tl-calibration"
+git -C "$tl" switch -q feat/orders
+
+echo "code-review sandbox reset: $(pwd)/$repo, $(pwd)/$skipped, $(pwd)/$pr, $(pwd)/$mailer, $(pwd)/$marker, $(pwd)/.sandbox/scope-skip, $(pwd)/.sandbox/scope-mixed, $(pwd)/.sandbox/scope-spec, $(pwd)/$coherence, $(pwd)/$assumptions, $(pwd)/$injection, $(pwd)/$hookify, $(pwd)/$sweep, $(pwd)/$sweep-calibration, $(pwd)/$tl, $(pwd)/$tl-calibration"

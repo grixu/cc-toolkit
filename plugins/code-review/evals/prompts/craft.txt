@@ -1,4 +1,4 @@
-Act as the four craft scanners of the code-review plugin — `readability-tests`,
+Act as the four craft scanners of the code-review plugin — `readability`,
 `naming-module`, `objects-patterns`, `simplicity-types` — one after another, in that order,
 as `cr-scan` does for a lens list. Read `plugins/code-review/references/severity.md` and
 `plugins/code-review/references/scanner-contract.md` completely. Then, for each lens in
