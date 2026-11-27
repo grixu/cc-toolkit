@@ -93,3 +93,30 @@ PRs 4472, 4598, 4183, 4276, 4427, 4511 of console-monorepo, read while the rules
   in-diff checks regressed, possibly because the wider sweep takes attention from deep
   reads of the diff's own docs (one hypothesis, not yet tested). Next experiment, if any:
   scope the sweep's per-hit work so in-diff claim artifacts are judged first.
+
+## 2026-11-27 — Dedicated `tests` lens (`tests.md`, six new rules; `readability-tests` → `readability`)
+- Change: a new `tests` lens takes the three tests rules and adds `unwarranted-test`,
+  `implementation-mirror`, `mechanism-name`, `redundant-test`, `obsolete-test` and
+  `untested-behaviour`; an explicit project test-scope rule may raise `unwarranted-test`.
+- Hypothesis: the old lens never raises "this test should not exist" (0/18 in the 65-run
+  error analysis, `tests-lens/results/t0–t5`); the new rules catch those without false
+  positives on known-good tests and without losing the moved rules.
+- Eval: real-PR A/B, dev 4126, 4598, 4281, 4474 / held-out 4342, 4115, 4472, 4268, baseline
+  HEAD 1fa0d643 vs working tree, Opus 5.5, k=4, one blind judge per PR (blinding partial:
+  the new rule names give the variant away). `evals/local/tests-lens-ab/` (`gt.json`,
+  `judge/`, `results.json`).
+- Result: GT catches dev 0/32 → 18/32, held-out 0/28 → 15/28 (human-evidence items dev
+  0/28 → 17/28; held-out has one, 0/4 → 0/4). 15 of the 17 `unwarranted-test` catches sat
+  in CANDIDATES, and the merge moved 21 of 23 such candidates to `Not flagged`, deciding
+  them against `merge-contract.md`. Moved rules: dev 5/12 → 7/12, held-out 6/8 → 2/8
+  (4342-cache 3/4 → 0/4, the 250 ms boundary cleared on false grounds). Calibration false
+  positives 0 in both. Primary extras precision 87% → 95% (71/82 → 91/96).
+  `implementation-mirror` gave 7 invalid candidate extras; 4281-notify (a spec mocking the
+  repo's own `useNotification`) was cleared 4/4 as "the observable effect".
+- Cost/latency impact: $69.88 → $72.83 for 32 runs (+4%); p50 149 s → 187 s (+25%).
+- Decision: keep the lens, fix before release: (1) cr-merge must keep an unsettled
+  `unwarranted-test` / `implementation-mirror` candidate in CANDIDATES — re-run only the
+  merge on the existing `out/*/candidate-t*/ctx` to confirm; (2) the held-out mutation-gap
+  regression on 4342 needs a look before claiming the moved rules are intact; (3) narrow
+  the observable-effect exception to calls that leave the repo (queue, HTTP, notifier of a
+  third party), not the repo's own modules.
