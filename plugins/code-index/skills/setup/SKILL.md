@@ -57,10 +57,10 @@ On `rescan`, show only what changes against the current `.zgignore` and say that
 3. **MCP server**, from `<root>`:
 
    ```bash
-   claude mcp add-json -s local zvec_grep '{"type":"stdio","command":"zg","args":["--server","--stdio"],"env":{"ZVEC_GREP_EMBEDDING":"<model>"},"alwaysLoad":true}'
+   claude mcp add-json -s local zvec_grep '{"type":"stdio","command":"zg","args":["--server","--stdio"],"env":{"ZVEC_GREP_EMBEDDING":"<model>","ZG_INDEX_ARGS":"<--graph or empty>"},"alwaysLoad":true}'
    ```
 
-   `ZVEC_GREP_EMBEDDING` records the model, so tools that build an index for a new worktree can read it from here. When the server exists already, replace it with `claude mcp remove -s local zvec_grep` first. The server loads from the next session on; say so.
+   `ZVEC_GREP_EMBEDDING` records the model and `ZG_INDEX_ARGS` the extra build options (`--graph` when the graph is on, otherwise an empty string), so tools that build an index for a new worktree read both from here. When the server exists already, replace it with `claude mcp remove -s local zvec_grep` first. The server loads from the next session on; say so.
 4. **Rules**: add this section to `<root>/CLAUDE.local.md`, or replace the existing one. Create the file when it is missing. Drop the graph bullet when the graph is off, and the `.vue` / `.svelte` sentence when the repository has neither.
 
    ```markdown
@@ -95,4 +95,4 @@ When it ends:
 
 ## Worktrees
 
-An index lives in `<checkout>/.zvec-grep/`, one per worktree. A worktree created by copying it from the main checkout (`cp -c` on APFS clones it at no cost) needs only an incremental update. A worktree without one can be built with the same guard command; read the model from the server's `ZVEC_GREP_EMBEDDING` and copy `.zgignore` along.
+An index lives in `<checkout>/.zvec-grep/`, one per worktree. A worktree created by copying it from the main checkout (`cp -c` on APFS clones it at no cost) needs only an incremental update. A worktree without one can be built with the same guard command; read the model from the server's `ZVEC_GREP_EMBEDDING`, the options from `ZG_INDEX_ARGS`, and copy `.zgignore` along.

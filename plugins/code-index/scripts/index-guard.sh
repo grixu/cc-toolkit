@@ -35,7 +35,8 @@ if pgrep -f "zg.exe --index $root( |$)" >/dev/null; then
   die "another zg --index is already running for $root"
 fi
 
-log="${ZG_INDEX_LOG:-${TMPDIR:-/tmp}/zg-index-$(basename "$root")-$(date +%Y%m%d-%H%M%S).log}"
+tmp_dir="${TMPDIR:-/tmp}"
+log="${ZG_INDEX_LOG:-${tmp_dir%/}/zg-index-$(basename "$root")-$(date +%Y%m%d-%H%M%S).log}"
 retries="${ZG_INDEX_RETRIES:-1}"
 ignore_file="$root/.zgignore"
 

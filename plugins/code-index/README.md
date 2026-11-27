@@ -33,7 +33,7 @@ The skill always configures the **main checkout**, because Claude Code keys loca
 
 | File | Content |
 |---|---|
-| `~/.claude.json` (local scope, this project) | the `zvec_grep` MCP server, with the model in `ZVEC_GREP_EMBEDDING` |
+| `~/.claude.json` (local scope, this project) | the `zvec_grep` MCP server, with the model in `ZVEC_GREP_EMBEDDING` and extra build options such as `--graph` in `ZG_INDEX_ARGS` |
 | `<repo>/.zgignore` | exclusions, gitignore syntax |
 | `<repo>/CLAUDE.local.md` | when to use search and the call graph, and the rule that builds go through the guard |
 | `<repo>/.git/info/exclude` | the three local files above, when `.gitignore` does not already cover them |
@@ -71,4 +71,4 @@ Exit codes: zg's own when the build ends by itself, `2` for usage or a build alr
 
 ## Worktrees
 
-Each worktree has its own index in `.zvec-grep/`. Copy it from the main checkout (`cp -c -R` clones it on APFS at no cost) and the next search only updates what changed. A worktree without one can be built with `index-guard.sh`, reading the model from the server's `ZVEC_GREP_EMBEDDING` and copying `.zgignore` along.
+Each worktree has its own index in `.zvec-grep/`. Copy it from the main checkout (`cp -c -R` clones it on APFS at no cost) and the next search only updates what changed. A worktree without one can be built with `index-guard.sh`, reading the model from the server's `ZVEC_GREP_EMBEDDING`, the options from `ZG_INDEX_ARGS`, and copying `.zgignore` along.
