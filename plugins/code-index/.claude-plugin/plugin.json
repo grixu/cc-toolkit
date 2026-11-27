@@ -1,0 +1,18 @@
+{
+  "name": "code-index",
+  "version": "0.0.0",
+  "description": "Sets up local semantic code search for one repository: decides what is worth indexing, connects the search server to that project only, and builds the index on your GPU. Stops a build that would otherwise crawl on the CPU for hours.",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "code-search",
+    "semantic-search",
+    "embeddings",
+    "mcp",
+    "zvec-grep",
+    "index"
+  ]
+}
