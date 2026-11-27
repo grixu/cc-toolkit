@@ -162,3 +162,28 @@ PRs 4472, 4598, 4183, 4276, 4427, 4511 of console-monorepo, read while the rules
   test-scope rule against it at that SHA. The narrowing would flag good tests; the owner's
   deletion is a judgment the code does not carry. 4281-notify should move from recall to a
   borderline case in `gt.json`.
+
+## 2026-11-28 — Full A/B of the final tests lens (both fixes + premise check)
+- Change: `final` = HEAD (fix 1, fix 2) + the merge checking a scanner's "no tests at the base"
+  claim with `git grep` on the target's exported names before rendering an `unwarranted-test`
+  bullet. Baseline = the pre-lens plugin (`readability-tests`), same 32 saved cells.
+- Hypothesis: the fixes keep the first A/B's recall gain, put the candidates in the report body
+  and remove the held-out `mutation-gap` regression.
+- Eval: 8 PRs × 4 trials, Opus 5.5, blind judges (`judge-final/`, `results-final.json`);
+  4281-notify moved to excluded, 4115-bus excluded.
+- Result (baseline → final):
+  - human-evidence recall 0/28 → 15/28; analyst-only 0/28 → 14/28;
+  - moved rules 11/20 → 15/20 (held-out 6/8 → 8/8; 4342-cache 3/4 → 4/4);
+  - candidates placed correctly 1 → 16;
+  - primary extras valid/invalid 82/27 → 111/13; calibration false positives 0 → 2 (4342 routes
+    integration test called redundant, A-t3/A-t4).
+  - Still missed by both: 4474-pfpn, 4342-problem, 4115-redund, 4268-mctrl, 4126-ceh.
+- Defect found: the premise check let an e2e test that reaches the component through a page
+  refute "untested at the base" (4126 compassMasterControl, cleared 3/4). Narrowed: only a unit
+  or integration test importing the target refutes; an e2e reach is named as coverage to weigh.
+  Merge-only re-run on the 4 final 4126 cells (`outm-f2/`): the spec reaches the report 2/4
+  (was 0/4); the other two are a keeping-reason clearance and a scan that never raised it.
+- Cost/latency impact: scans $69.88 → $75.39 (+8 %), median 149 s → 172 s (+15 %); f2 merges
+  $2.79. Experiment total ≈ $78.
+- Decision: keep. Next, if it recurs: `redundant-test` should not call an integration test
+  redundant with a contract package's schema test (4342).
