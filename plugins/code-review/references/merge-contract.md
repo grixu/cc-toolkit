@@ -80,9 +80,15 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   other finding that asks to extend, restructure or tighten that same test (`mutation-gap`,
   `test-structure`, `test-fidelity`, `implementation-mirror`, a craft rule on the test file) drops
   to `Not flagged` with that reason: applying both deletes the test and then edits it, or keeps it
-  because the review just invested in it. An unwarranted-test candidate you cannot settle stays a
-  candidate in the report, with the clause that says what the user should weigh; never resolve it
-  by deleting the test silently.
+  because the review just invested in it.
+- **A test-value candidate is the user's call, so it reaches the report as a bullet.** An
+  `unwarranted-test` or `implementation-mirror` candidate becomes its own bullet under its test
+  file (counted as `own bullet`), severity from the table, its fix clause `keep or delete —
+  <what to weigh>`, and it is report-only. Clear it in `Not flagged` only on a fact the Scanner
+  did not have: the target already had tests at the base, or a named test already reaches the
+  same cases. A reason for keeping the test — what it guards, that the change touches the
+  behaviour it pins, that the code is critical — is the weighing the candidate hands the user,
+  not a settlement.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
@@ -266,6 +272,9 @@ report-only: which half to add, or whether to amend the decision instead, is the
 `platform-semantics` or `version-skew` fix that is a dependency bump, or a platform setting that
 lives outside the repo (a provider console, an organisation secret), is report-only; so is any
 `assumptions` finding still marked `(verify)`. `mock-divergence` walks structurally.
+
+**A test-value candidate rendered as a bullet is report-only**: whether the test stays is the
+user's call, so it never enters a bucket.
 
 **`spec` findings are report-only.** A missing or partial requirement is work to do,
 not an edit to apply, and never enters a bucket. The one exception is a
