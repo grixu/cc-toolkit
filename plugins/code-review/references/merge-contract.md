@@ -88,7 +88,12 @@ Every path in this file is relative to the directory it sits in, the plugin's `r
   did not have: the target already had tests at the base, or a named test already reaches the
   same cases. A reason for keeping the test — what it guards, that the change touches the
   behaviour it pins, that the code is critical — is the weighing the candidate hands the user,
-  not a settlement.
+  not a settlement. Before rendering an `unwarranted-test` bullet that rests on "the target had
+  no tests at the base", check it: `git grep -l` the target's exported class or function names
+  (not its file name) in test-kind files at `scope.json`'s `base`. A unit or integration test
+  there that imports the target and builds or calls it refutes the premise: clear the bullet in
+  `Not flagged`, naming that file. An e2e test that reaches the target only through a page or
+  route does not: keep the bullet and name that test in its fix clause as coverage to weigh.
 - **Count the lenses that converged.** Independent Scanners landing on the same code
   is the strongest signal this review produces — they read the file separately and had
   no way to coordinate. Treat a finding several lenses reached (directly or via
