@@ -120,3 +120,45 @@ PRs 4472, 4598, 4183, 4276, 4427, 4511 of console-monorepo, read while the rules
   regression on 4342 needs a look before claiming the moved rules are intact; (3) narrow
   the observable-effect exception to calls that leave the repo (queue, HTTP, notifier of a
   third party), not the repo's own modules.
+
+## 2026-11-27 — Merge keeps test-value candidates as report-only bullets
+- Change: `merge-contract.md`: an `unwarranted-test` / `implementation-mirror` candidate becomes
+  its own bullet (`keep or delete — <what to weigh>`), report-only; the merge may clear it only
+  on a fact the Scanner lacked (the target had tests at the base, a named test reaches the same
+  cases), never on a reason for keeping the test.
+- Hypothesis: the tests-lens A/B lost 21 of 23 GT candidates to `Not flagged` because the
+  report had no home for an undecided candidate; giving it one moves them into the body
+  without bullets on known-good tests.
+- Eval: merge-only re-run on the 32 saved candidate scans (`outm-m1/`, variant `m1`), Opus 5.5;
+  judge `judge/merge-m1.json` (not blind: one variant).
+- Result: GT recall items in the report body 22 → 38 of 60 item-trials. Of 38 `keep or delete`
+  bullets, 29 fair, 5 unfair, 4 unsure. Unfair: 2 rest on a scanner's false "no tests at the
+  base" (4115), 2 hit calibration tests (4268 cron batching, 4472 90-day window), 1 an e2e
+  test the rule exempts (4598). Still cleared: 4281-notify (4/4), 4474-pfpn (4/4), 4268-mctrl.
+- Cost/latency impact: $26.91 for 32 merges; scans unchanged.
+- Decision: keep. A wrong bullet costs the user one "keep"; a cleared one cost a teammate's
+  review. Next: the merge should check a scanner's "untested at the base" claim before it
+  renders the bullet, since that fact carries the rule.
+
+## 2026-11-27 — Moved-code exemption limited to asking for a missing test
+- Change: `tests.md`: "code the change only moved" exempts asking for a test that does not
+  exist, never a test the change adds or edits; `mutation-gap` also covers a new test of a
+  moved decision.
+- Hypothesis: the held-out regression on 4342-cache (3/4 → 0/4: "not judged as mutation-gap on
+  moved code") comes from the `untested-behaviour` exemption leaking into the other rules.
+- Eval: real-PR scans on 4342, variant `s2` (candidate + new `tests.md`, old merge), Opus 5.5,
+  k=4; promptfoo eval-38, 39, 50, 51 k=2 with both fixes.
+- Result: 4342-cache 0/4 → 4/4 (`test-fidelity` on the 250 ms title vs 251 ms input), in the
+  report body 4/4; promptfoo 8/8.
+- Cost/latency impact: $7.63 → $7.09 for the 4 scans; p50 ≈ 155 s.
+- Decision: keep. Measured on one PR only; the next full A/B checks the other seven.
+
+## 2026-11-27 — Narrow implementation-mirror's observable-effect exception (not shipped)
+- Change considered: count a call as the observable effect only when the double sits on a
+  third-party client or transport, not on a repo-owned wrapper (notifier, mailer service).
+- Why dropped before measuring: 4281-notify asserts the message an error code maps to, which
+  is the outcome, through the repo's `useNotification`; it has the same shape as eval-51's
+  known-good `publishCancelled` test on a repo-defined `Publisher` port, and the project had no
+  test-scope rule against it at that SHA. The narrowing would flag good tests; the owner's
+  deletion is a judgment the code does not carry. 4281-notify should move from recall to a
+  borderline case in `gt.json`.
