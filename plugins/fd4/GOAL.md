@@ -129,7 +129,11 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
      przed zadaniem, które je wprowadza. Co da się, sprawdza kod.
    - **Public Interface Validator:** czy kształt publicznego API, który zostaje w SPEC (problem 1),
      jest kompletny: typ i format każdego pola, wymagalność, dozwolone wartości, kody i format
-     błędów, zmiany łamiące zgodność. W zadaniach ta sama soczewka sprawdza więcej (pomysł 8).
+     błędów, zmiany łamiące zgodność. Lukę zgłasza dopiero, gdy przeczyta wiersze i wspólne
+     kontrakty, do których SPEC odsyła (pole „jak w API-2”, wspólny kontrakt autoryzacji lub błędów),
+     i żaden jej nie rozstrzyga. Twierdzenie, że domyślne zachowanie frameworka lub biblioteki łamie
+     kontrakt, podaje źródło z zainstalowanej wersji: jej kod albo dokumentację. W zadaniach ta sama
+     soczewka sprawdza więcej (pomysł 8).
 
    Każda soczewka wymienia, czego nie sprawdza i której soczewce to oddaje, żeby jedna wada nie
    wracała z dwóch soczewek.
@@ -231,7 +235,11 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
      (także błąd lub przypadek brzegowy, który AC nazywa) bez żadnego scenariusza; Then, które
      przeszłoby także przy zepsutym zachowaniu; poziom niezgodny z regułą testów repozytorium;
      scenariusz, którego warunków nie da się spełnić w tym miejscu kolejności (harness, testowany
-     kod, selektory e2e). Prośba o dodatkowe pokrycie AC, które ma już scenariusz, nie jest uwagą.
+     kod, selektory e2e). Zanim uzna scenariusz za niewykonalny, szuka w repozytorium harnessu,
+     wstrzykiwania providera lub fixture, które pozwolą go wykonać. Prośba o dodatkowe pokrycie AC,
+     które ma już scenariusz, nie jest uwagą, także gdy chodzi o kolejną wartość brzegową. Sprawdzenie,
+     które zadania celowo zostawiają na poziomie gałęzi albo przenoszą na późniejszy etap, to zapisana
+     decyzja, nie brakujący scenariusz.
 9. **Zgoda na kroki operacyjne po podziale.** Po stworzeniu zadań agent pokazuje wszystkie kroki,
    które nie są pisaniem kodu (np. zmiany infrastruktury, migracje, konfiguracja zewnętrznych
    usług), nie tylko ryzykowne. Przy każdym kroku podaje:
