@@ -93,6 +93,9 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    - **Ambiguity Mapper:** sformułowania, które da się odczytać na dwa sposoby prowadzące do innego
      zachowania; soczewka podaje oba odczytania. Obejmuje zakres reguł typu „każdy inny błąd” i
      kolejność kroków lub sprawdzeń, której tekst nie ustala (np. 400 czy 404, gdy zachodzą oba).
+     Najpierw czyta sekcje i decyzje, na których sformułowanie stoi; jeśli któraś rozstrzyga odczyt,
+     uwagi nie ma. Oba odczytania muszą prowadzić do innego zachowania dla wejścia, które może do
+     kodu dotrzeć.
    - **Assumption Excavator:** założenia, na których SPEC stoi, ale których nie zapisał: o
      konfiguracji i jej wartościach domyślnych, o kodzie, który dostaje wynik (np. retry), o
      odbiorcach i o skali. Każde podaje warunek, przy którym pęka. Założenie, które rozstrzyga odczyt
@@ -126,7 +129,10 @@ dla implementacji i dalszych etapów czekają w [`WHAT_NEXT.md`](WHAT_NEXT.md).
    - **Consistency & Order Checker:** decyzje, elementy i AC sobie nie przeczą ani nie odwracają po
      cichu wcześniejszych dokumentów (poprawka ADR przepisuje każdy punkt, któremu przeczy), a
      kolejność budowy się trzyma, także dla testów: nic nie korzysta z elementu, pola ani harnessu
-     przed zadaniem, które je wprowadza. Co da się, sprawdza kod.
+     przed zadaniem, które je wprowadza. Kolejność, którą zadania ustalają celowo (sprawdzenie na
+     poziomie gałęzi, krok po merge'u lub przed pierwszym wdrożeniem, krok wykonywany przez
+     człowieka), nie jest wadą kolejności; wadą jest zadanie, które potrzebuje elementu przed
+     zadaniem, które go dostarcza, bez zapisanego powodu. Co da się, sprawdza kod.
    - **Public Interface Validator:** czy kształt publicznego API, który zostaje w SPEC (problem 1),
      jest kompletny: typ i format każdego pola, wymagalność, dozwolone wartości, kody i format
      błędów, zmiany łamiące zgodność. Lukę zgłasza dopiero, gdy przeczyta wiersze i wspólne
