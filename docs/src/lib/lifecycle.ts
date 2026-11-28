@@ -187,6 +187,8 @@ const raw: Omit<Plugin, 'version' | 'cmd'>[] = [
     desc: { en: 'Cleans AI tells out of English and Polish prose without changing what it says.', pl: 'Usuwa ślady pisania przez AI z prozy po angielsku i po polsku, nie zmieniając jej treści.' } },
   { name: 'stop-sound', core: false, promise: { en: '', pl: '' },
     desc: { en: 'Chimes when Claude waits for you, and stays silent while subagents work.', pl: 'Daje sygnał dźwiękowy, gdy Claude czeka na ciebie, i milczy, gdy pracują subagenty.' } },
+  { name: 'code-index', core: false, promise: { en: '', pl: '' },
+    desc: { en: 'Sets up semantic code search for one repository and stops the index build the moment it falls back to the CPU.', pl: 'Konfiguruje wyszukiwanie semantyczne dla jednego repozytorium i zatrzymuje budowę indeksu, gdy tylko przejdzie ona na CPU.' } },
   { name: 'jev-skill-suggestion', core: false, promise: { en: '', pl: '' },
     desc: { en: 'Shows Claude only the skill that fits each prompt, instead of every installed skill.', pl: 'Pokazuje Claude’owi tylko skill pasujący do promptu, zamiast wszystkich zainstalowanych.' } },
   { name: 'fast-jev-compaction', core: false, promise: { en: '', pl: '' },
