@@ -1,0 +1,116 @@
+---
+title: code-index
+description: Sets up zvec-grep semantic code search for one repository, proposes what to leave out of the index, and stops the build as soon as it falls back to the CPU.
+group: start
+sidebar:
+  order: 1
+---
+
+[zvec-grep](https://github.com/zvec-ai/zvec-grep) lets Claude search a repository by meaning, in code and docs alike.
+Turned on globally, its search server starts in every project, and a default build indexes generated clients and rendered previews along with the code.
+code-index sets it up for one repository at a time: it scans the repository, agrees with you what to index, turns search on for that project only, and builds the index on your Mac's GPU.
+
+## Where it works
+
+code-index belongs to no stage of the [lifecycle](/lifecycle/).
+It's a supporting plugin: you run it once per repository, and the index then serves every session in that repository and its worktrees.
+
+## Requirements
+
+- **zvec-grep 0.3 or later**, installed with `pnpm add -g @zvec/zvec-grep --allow-build=@zvec/zvec-grep`.
+- **macOS with Metal.** The build passes `--device metal`.
+- **Perl 5**, which ships with macOS, for the scan and the NUL-byte check.
+
+## Run it
+
+Run the skill in the repository, or in any of its git worktrees:
+
+| Command | What it does |
+|---|---|
+| `/code-index:setup` | Sets the repository up, or shows the current setup |
+| `/code-index:setup rescan` | Scans again and proposes changed exclusions |
+| `/code-index:setup rebuild` | Rebuilds the index with the current setup |
+
+Table 1. code-index commands.
+
+The skill always configures the **main checkout**.
+Claude Code keys local-scope MCP servers on its path and loads them in every worktree of the repository.
+
+A setup goes through these steps:
+
+1. **Scan.** It lists what zvec-grep would read and shows the heaviest directories, the largest files, paths that look generated, and text files with NUL bytes.
+2. **Agree.** It proposes exclusions, an embedding model and whether to build a call graph, and waits for your answer.
+3. **Write.** It saves the exclusions, registers the search server for this project, and adds usage rules for Claude.
+4. **Build.** It builds the index in the background through the guard described below.
+
+## What it writes
+
+| File | Content |
+|---|---|
+| `~/.claude.json`, local scope for this project | The `zvec_grep` MCP server, with the model in `ZVEC_GREP_EMBEDDING` and extra build options such as `--graph` in `ZG_INDEX_ARGS` |
+| `<repo>/.zgignore` | Exclusions, in gitignore syntax |
+| `<repo>/CLAUDE.local.md` | When Claude should use search and the call graph, and the rule that every build goes through the guard |
+| `<repo>/.git/info/exclude` | `.zgignore`, `CLAUDE.local.md` and `.zvec-grep/`, when `.gitignore` does not cover them already |
+| `<repo>/.zvec-grep/` | The index |
+
+Table 2. Files code-index writes.
+
+Nothing goes into the global `CLAUDE.md` or the user-scope MCP config.
+When a user-scope `zvec_grep` server exists, the skill offers to remove it.
+
+## Models
+
+| Model | Runs on | Notes |
+|---|---|---|
+| `local/embeddinggemma-300m` | GPU | The default. Multilingual, about 1 file per second on an Apple M4 Pro |
+| `local/qwen3-embedding-0.6b` | GPU | Ranks better, about 5 times slower to build |
+| `local/potion-code-16m-v2` | CPU | English code only. Builds in minutes, ranks worst |
+
+Table 3. Embedding models the skill offers.
+
+## Call graph
+
+With `--graph`, zvec-grep 0.3 adds `zvec_grep_callers` and `zvec_grep_callees` for TypeScript, JavaScript, Python, Rust, Go, Java, PHP, C and C++.
+
+:::caution
+The graph has no edges inside `.vue` or `.svelte` files.
+"Who calls this composable" lists only callers in `.ts` files, so the rules in `CLAUDE.local.md` tell Claude to grep the components.
+:::
+
+## Why the build is guarded
+
+zvec-grep 0.3 moves a GPU model to the CPU for the rest of the process after any failed embedding ([zvec-ai/zvec-grep#463](https://github.com/zvec-ai/zvec-grep/issues/463)).
+No flag turns this off, `--device metal` included.
+A CPU build of a large repository takes hours instead of minutes, and an interrupted first build keeps nothing.
+
+The guard script, `scripts/index-guard.sh`, runs every build:
+
+1. It appends text files with NUL bytes to `.zgignore`, because llama.cpp cannot tokenize them.
+2. It runs `zg --index` with `--mode direct --device metal --ignore-file .zgignore` and your options, and logs to `$ZG_INDEX_LOG` or to a file in `$TMPDIR`.
+3. On the first `falling back to CPU` warning it kills the build, including an orphaned indexer process, and shows the warning with the last files read.
+4. When the cause is not an input file, it restarts from scratch once. `ZG_INDEX_RETRIES` sets how many times.
+
+| Exit code | Means |
+|---|---|
+| zg's own | The build ended by itself |
+| `2` | Wrong usage, or a build is already running for that root |
+| `3` | The build fell back to the CPU and was stopped |
+
+Table 4. Exit codes of the guard.
+
+Both scripts also run on their own.
+`scripts/scan.sh <root>` prints the scan from step 1 of the setup.
+
+## Worktrees
+
+Each worktree has its own index in `.zvec-grep/`.
+Copy it from the main checkout and the next search updates only what changed.
+On APFS, `cp -c -R` makes a clone that takes no extra disk space until the files diverge.
+
+To build an index in a worktree that has none, copy `.zgignore` from the main checkout.
+Then run `index-guard.sh` with the model from the server's `ZVEC_GREP_EMBEDDING` and the options from `ZG_INDEX_ARGS`.
+
+## Next steps
+
+- [Plugins](/plugins/): the other plugins in the marketplace.
+- [zvec-grep](https://github.com/zvec-ai/zvec-grep): the search tool code-index sets up.

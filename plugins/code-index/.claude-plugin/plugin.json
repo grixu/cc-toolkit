@@ -1,0 +1,18 @@
+{
+  "name": "code-index",
+  "version": "0.0.0",
+  "description": "Sets up zvec-grep semantic code search for one repository: proposes what to leave out of the index, turns search on for that project only, and builds the index on your Mac's GPU. Stops the build as soon as it falls back to the CPU, where it would run for hours.",
+  "author": {
+    "name": "Mateusz Gostański",
+    "email": "mg@grixu.dev"
+  },
+  "repository": "https://github.com/grixu/cc-toolkit",
+  "keywords": [
+    "code-search",
+    "semantic-search",
+    "embeddings",
+    "mcp",
+    "zvec-grep",
+    "index"
+  ]
+}
