@@ -13,12 +13,29 @@ Kolejność prac nad drogą do zadań z [`GOAL.md`](GOAL.md). Każdy etap dostaj
 
 ## 2. Soczewki walidacji
 
-- [ ] **Porównać zakresy soczewek ze źródłami.** Jeden subagent czyta prompty z
+- [x] **Porównać zakresy soczewek ze źródłami.** Jeden subagent czyta prompty z
       [aself101/agents-and-pipelines](https://github.com/aself101/agents-and-pipelines) (np.
       `agents/assumption-excavator.md`) i walidację z fd3 (`plugins/fd3/skills/validate-spec/`), po
       czym zestawia je z opisami w wymaganiu 6 i pomyśle 8. Tam, gdzie zakresy się różnią, poprawić
-      opisy w `GOAL.md`.
-- [ ] **Napisać prompty soczewek** do przeglądu przez właściciela (skill `writing-for-agents`).
+      opisy w `GOAL.md`. — zrobione 26.11.2026 (`ff4ed018`).
+- [x] **Sprawdzić zakresy na ucieczkach fd3.** Replay 10 soczewek na 7 przypadkach m12 (122 realne
+      ucieczki), recall przez sędziego dopasowań (średnia z dwóch przebiegów), precyzja przez panel
+      GPT-6 Astra + GPT-6.2 Sol + GLM 5.4 (większość 2 z 3). — zrobione 26–28.11.2026, wyniki w
+      `evals/baseline/local/lenses/replay/RESULTS.md`, komendy w `lenses/RUNS.md`, dane w R2.
+  - Zawężone w `GOAL.md` po pomiarze: Repo Reality (uruchamia bramki zadań), Test Architect,
+    Public Interface Validator, Consistency & Order Checker, Ambiguity Mapper.
+  - Zestaw po zawężeniu (Opus 5.5): recall 49/122 (40%, próg ≥ 50%), precyzja 84% licząc
+    dopasowane ucieczki jako realne (76% według samego panelu; próg ≥ 80%).
+  - Modele na tych samych promptach: Opus 5.5 43% recall / 73% precyzji / $84; Fable 5.2 medium
+    42% / 73% / $182; Haiku 5.5 35% / 47% / $13; Sonnet 5.5 25% / 58% / $25; Opus medium 38% /
+    $86. Soczewki zostają na Opusie z domyślnym effortem.
+  - Panel odrzuca część realnych ucieczek (2–4 na wariant Interface), więc każde zawężenie
+    sprawdzamy też na ucieczkach, które traci, nie tylko na precyzji panelu.
+- [ ] **Podnieść recall do ≥ 50%.** Następny krok: rozbić ucieczki, których żadna soczewka nie
+      łapie, na kategorie i ustalić, czy brakuje zakresu soczewki, czy modelu. Zawężenia pisane po
+      lekturze tych samych wyników (held-in), więc na nowych przypadkach liczby będą niższe.
+- [ ] **Napisać prompty soczewek** do przeglądu przez właściciela (skill `writing-for-agents`,
+      potem `agent-prompting`), na bazie `lenses-v5.json` i `prompt.md` z replayu.
 
 ## 3. Odsiew pytań: kluczowe czy delegowalne
 
