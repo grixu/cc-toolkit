@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Sets up zvec-grep semantic code search for the current repository. Scans what is worth indexing, agrees exclusions and the embedding model with the user, registers the zvec-grep MCP server for this project only, writes the usage rules to CLAUDE.local.md, and builds the index with a guard that stops the build if it falls back from the GPU to the CPU. Use when the user asks to set up, configure, rescan or rebuild a code index or semantic search for a project.
+description: Sets up zvec-grep semantic code search for the current repository. Scans the repository, agrees exclusions, the embedding model and the call graph with the user, registers the zvec-grep MCP server for this project only, writes usage rules to CLAUDE.local.md, and builds the index, stopping the build if it falls back from the GPU to the CPU. Use when the user asks to set up, configure, rescan or rebuild a code index or semantic search for a project.
 argument-hint: "[rescan | rebuild]"
 disable-model-invocation: true
 allowed-tools: Read Write Edit Grep Glob AskUserQuestion Bash(${CLAUDE_PLUGIN_ROOT}/scripts/scan.sh *) Bash(${CLAUDE_PLUGIN_ROOT}/scripts/index-guard.sh *) Bash(zg --version) Bash(zg --status *) Bash(git rev-parse *) Bash(git check-ignore *) Bash(claude mcp get *) Bash(claude mcp add-json *) Bash(claude mcp remove *)
@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit Grep Glob AskUserQuestion Bash(${CLAUDE_PLUGIN_RO
 
 # code-index setup
 
-Give one repository a zvec-grep index that is worth searching, wired up for this project only: an MCP server at local scope, rules in `CLAUDE.local.md`, exclusions in `.zgignore`, and an index built on the GPU. Nothing here touches global config.
+Give one repository a zvec-grep index that is worth searching, wired up for this project only: an MCP server at local scope, rules in `CLAUDE.local.md`, exclusions in `.zgignore`, and an index built on the GPU. Nothing is written to global config.
 
 Input: `$ARGUMENTS`. `rescan` reruns the scan and proposes changed exclusions; `rebuild` rebuilds the index with the current configuration. With nothing given, set up from scratch, or, when the project is already configured (step 1), show the current configuration and ask which of the two the user wants.
 
@@ -95,4 +95,4 @@ When it ends:
 
 ## Worktrees
 
-An index lives in `<checkout>/.zvec-grep/`, one per worktree. A worktree created by copying it from the main checkout (`cp -c` on APFS clones it at no cost) needs only an incremental update. A worktree without one can be built with the same guard command; read the model from the server's `ZVEC_GREP_EMBEDDING`, the options from `ZG_INDEX_ARGS`, and copy `.zgignore` along.
+An index lives in `<checkout>/.zvec-grep/`, one per worktree. A worktree whose index was copied from the main checkout (on APFS, `cp -c -R` makes a clone that takes no extra disk space) needs only an incremental update. To build one in a worktree that has none, copy `.zgignore` from the main checkout, then run the same guard command with the model from the server's `ZVEC_GREP_EMBEDDING` and the options from `ZG_INDEX_ARGS`.

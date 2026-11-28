@@ -10,5 +10,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `setup` skill: scans a repository, agrees exclusions, model and call graph with the user, registers the zvec-grep MCP server at local scope, writes the rules to `CLAUDE.local.md`, and builds the index.
-- `scripts/scan.sh`: summary of what a zvec-grep index would contain, with generated-looking paths and text files with NUL bytes.
-- `scripts/index-guard.sh`: builds an index and stops it on the first GPU-to-CPU fallback; excludes text files with NUL bytes before the build.
+- `scripts/scan.sh`: summarizes what a zvec-grep index would contain and lists generated-looking paths and text files with NUL bytes.
+- `scripts/index-guard.sh`: excludes text files with NUL bytes, builds the index, and stops the build on the first GPU-to-CPU fallback, restarting it once when the cause is not an input file.

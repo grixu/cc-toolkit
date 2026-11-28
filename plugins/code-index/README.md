@@ -1,8 +1,8 @@
 # code-index
 
-code-index sets up [zvec-grep](https://github.com/zvec-ai/zvec-grep) semantic code search for one repository at a time. It scans the repository, proposes what to leave out of the index (generated clients, rendered previews, fixtures, lockfiles), lets you pick the embedding model and the call graph, connects the zvec-grep MCP server to that project only, and builds the index on your GPU.
+code-index sets up [zvec-grep](https://github.com/zvec-ai/zvec-grep) semantic code search for one repository at a time. It scans the repository, proposes what to leave out of the index (generated clients, rendered previews, fixtures, lockfiles), lets you pick the embedding model and whether to build a call graph, connects the zvec-grep MCP server to that project only, and builds the index on your GPU.
 
-The build is guarded. zvec-grep 0.3 moves a GPU model to the CPU for the rest of the process after any failed embedding, and a CPU build of a large repository takes hours instead of minutes. The guard stops the build the moment that happens and tells you why.
+zvec-grep 0.3 moves a GPU model to the CPU for the rest of the process after any failed embedding ([zvec-ai/zvec-grep#463](https://github.com/zvec-ai/zvec-grep/issues/463)), and a CPU build of a large repository takes hours instead of minutes. A guard script kills the build on the first fallback warning and shows the warning with the last files read. An interrupted first build keeps nothing, so when the cause is not an input file, the guard restarts the build from scratch once.
 
 ## Install
 
@@ -36,7 +36,7 @@ The skill always configures the **main checkout**, because Claude Code keys loca
 | `~/.claude.json` (local scope, this project) | the `zvec_grep` MCP server, with the model in `ZVEC_GREP_EMBEDDING` and extra build options such as `--graph` in `ZG_INDEX_ARGS` |
 | `<repo>/.zgignore` | exclusions, gitignore syntax |
 | `<repo>/CLAUDE.local.md` | when to use search and the call graph, and the rule that builds go through the guard |
-| `<repo>/.git/info/exclude` | the three local files above, when `.gitignore` does not already cover them |
+| `<repo>/.git/info/exclude` | `.zgignore`, `CLAUDE.local.md` and `.zvec-grep/`, when `.gitignore` does not already cover them |
 | `<repo>/.zvec-grep/` | the index |
 
 Nothing goes into the global `CLAUDE.md` or user-scope MCP config. When a user-scope `zvec_grep` server exists, the skill offers to remove it.
@@ -51,7 +51,7 @@ Nothing goes into the global `CLAUDE.md` or user-scope MCP config. When a user-s
 
 ### Call graph
 
-With `--graph`, zvec-grep 0.3 adds `zvec_grep_callers` and `zvec_grep_callees` for TypeScript, JavaScript, Python, Rust, Go, Java, PHP, C and C++. It builds no edges inside `.vue` or `.svelte` files, so the rules tell Claude to grep those.
+With `--graph`, zvec-grep 0.3 adds `zvec_grep_callers` and `zvec_grep_callees` for TypeScript, JavaScript, Python, Rust, Go, Java, PHP, C and C++. It builds no edges inside `.vue` or `.svelte` files, so the rules in `CLAUDE.local.md` tell Claude to grep those.
 
 ## Scripts
 
@@ -65,10 +65,10 @@ Lists what zvec-grep would scan (`.gitignore` and `.zgignore` applied) and print
 
 1. Appends text files with NUL bytes to `.zgignore`; llama.cpp cannot tokenize them.
 2. Runs `zg --index <root> --mode direct --device metal --ignore-file .zgignore` with your options, logging to `$ZG_INDEX_LOG` or a file in `$TMPDIR`.
-3. Kills the build, including an orphaned indexer process, on the first `falling back to CPU` warning. When the cause is not the input, it restarts once (`ZG_INDEX_RETRIES`).
+3. Kills the build, including an orphaned indexer process, on the first `falling back to CPU` warning. When the cause is not an input file, it restarts from scratch once (`ZG_INDEX_RETRIES` sets how many times).
 
 Exit codes: zg's own when the build ends by itself, `2` for usage or a build already running for that root, `3` when the build fell back to the CPU and was stopped.
 
 ## Worktrees
 
-Each worktree has its own index in `.zvec-grep/`. Copy it from the main checkout (`cp -c -R` clones it on APFS at no cost) and the next search only updates what changed. A worktree without one can be built with `index-guard.sh`, reading the model from the server's `ZVEC_GREP_EMBEDDING`, the options from `ZG_INDEX_ARGS`, and copying `.zgignore` along.
+Each worktree has its own index in `.zvec-grep/`. Copy it from the main checkout (on APFS, `cp -c -R` makes a clone that takes no extra disk space) and the next search only updates what changed. To build one in a worktree that has none, copy `.zgignore` from the main checkout, then run `index-guard.sh` with the model from the server's `ZVEC_GREP_EMBEDDING` and the options from `ZG_INDEX_ARGS`.

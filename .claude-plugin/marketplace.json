@@ -269,7 +269,7 @@
     {
       "name": "code-index",
       "source": "./plugins/code-index",
-      "description": "Sets up local semantic code search for one repository: decides what is worth indexing, connects the search server to that project only, and builds the index on your GPU. Stops a build that would otherwise crawl on the CPU for hours.",
+      "description": "Sets up zvec-grep semantic code search for one repository: proposes what to leave out of the index, turns search on for that project only, and builds the index on your Mac's GPU. Stops the build as soon as it falls back to the CPU, where it would run for hours.",
       "version": "0.0.0",
       "author": {
         "name": "Mateusz Gostański",
